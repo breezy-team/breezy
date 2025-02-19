@@ -16,12 +16,7 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from . import (
-    lock,
-    iterablefile,
-    revision,
-    tree,
-    )
+from . import iterablefile, lock, revision, tree
 
 
 class RevisionTree(tree.Tree):
@@ -40,8 +35,7 @@ class RevisionTree(tree.Tree):
         return self._repository._format.supports_versioned_directories
 
     def supports_tree_reference(self):
-        return getattr(self._repository._format, "supports_tree_reference",
-                       False)
+        return getattr(self._repository._format, "supports_tree_reference", False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -51,8 +45,7 @@ class RevisionTree(tree.Tree):
         if self._revision_id in (None, revision.NULL_REVISION):
             parent_ids = []
         else:
-            parent_ids = self._repository.get_revision(
-                self._revision_id).parent_ids
+            parent_ids = self._repository.get_revision(self._revision_id).parent_ids
         return parent_ids
 
     def get_revision_id(self):
@@ -64,11 +57,11 @@ class RevisionTree(tree.Tree):
         raise NotImplementedError(self.get_file_revision)
 
     def get_file_text(self, path):
-        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+        for identifier, content in self.iter_files_bytes([(path, None)]):
             return b"".join(content)
 
     def get_file(self, path):
-        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+        for identifier, content in self.iter_files_bytes([(path, None)]):
             return iterablefile.IterableFile(content)
 
     def is_locked(self):
@@ -79,8 +72,9 @@ class RevisionTree(tree.Tree):
         return lock.LogicalLockResult(self.unlock)
 
     def __repr__(self):
-        return '<{} instance at {:x}, rev_id={!r}>'.format(
-            self.__class__.__name__, id(self), self._revision_id)
+        return "<{} instance at {:x}, rev_id={!r}>".format(
+            self.__class__.__name__, id(self), self._revision_id
+        )
 
     def unlock(self):
         self._repository.unlock()

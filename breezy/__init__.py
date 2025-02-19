@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""All of bzr.
+"""All of Breezy.
 
 Developer documentation is available at
 https://www.breezy-vcs.org/developers/.
@@ -38,10 +38,8 @@ _start_time = time.time()
 import codecs
 import sys
 
-
 __copyright__ = (
-    "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2022 Breezy developers"
+    "Copyright 2005-2012 Canonical Ltd.\nCopyright 2017-2025 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -51,7 +49,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 3, 2, 'dev', 0)
+version_info = (3, 3, 10, "dev", 0)
 
 
 def _format_version_tuple(version_info):
@@ -83,38 +81,38 @@ def _format_version_tuple(version_info):
     1.4.0.wibble.0
     """
     if len(version_info) == 2:
-        main_version = '%d.%d' % version_info[:2]
+        main_version = "%d.%d" % version_info[:2]
     else:
-        main_version = '%d.%d.%d' % version_info[:3]
+        main_version = "%d.%d.%d" % version_info[:3]
     if len(version_info) <= 3:
         return main_version
 
     release_type = version_info[3]
     sub = version_info[4]
 
-    if release_type == 'final' and sub == 0:
-        sub_string = ''
-    elif release_type == 'final':
-        sub_string = '.' + str(sub)
-    elif release_type == 'dev' and sub == 0:
-        sub_string = '.dev'
-    elif release_type == 'dev':
-        sub_string = '.dev' + str(sub)
-    elif release_type in ('alpha', 'beta'):
+    if release_type == "final" and sub == 0:
+        sub_string = ""
+    elif release_type == "final":
+        sub_string = "." + str(sub)
+    elif release_type == "dev" and sub == 0:
+        sub_string = ".dev"
+    elif release_type == "dev":
+        sub_string = ".dev" + str(sub)
+    elif release_type in ("alpha", "beta"):
         if version_info[2] == 0:
-            main_version = '%d.%d' % version_info[:2]
-        sub_string = '.' + release_type[0] + str(sub)
-    elif release_type == 'candidate':
-        sub_string = '.rc' + str(sub)
+            main_version = "%d.%d" % version_info[:2]
+        sub_string = "." + release_type[0] + str(sub)
+    elif release_type == "candidate":
+        sub_string = ".rc" + str(sub)
     else:
-        return '.'.join(map(str, version_info))
+        return ".".join(map(str, version_info))
 
     return main_version + sub_string
 
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
-_core_version_string = '.'.join(map(str, version_info[:3]))
+_core_version_string = ".".join(map(str, version_info[:3]))
 
 
 def _patch_filesystem_default_encoding(new_enc):
@@ -130,15 +128,14 @@ def _patch_filesystem_default_encoding(new_enc):
     """
     try:
         import ctypes
-        pythonapi = getattr(ctypes, 'pythonapi', None)
+
+        pythonapi = getattr(ctypes, "pythonapi", None)
         if pythonapi is not None:
-            old_ptr = ctypes.c_void_p.in_dll(pythonapi,
-                                             "Py_FileSystemDefaultEncoding")
-            has_enc = ctypes.c_int.in_dll(pythonapi,
-                                          "Py_HasFileSystemDefaultEncoding")
+            old_ptr = ctypes.c_void_p.in_dll(pythonapi, "Py_FileSystemDefaultEncoding")
+            has_enc = ctypes.c_int.in_dll(pythonapi, "Py_HasFileSystemDefaultEncoding")
             as_utf8 = ctypes.PYFUNCTYPE(
-                ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
-                    ("PyUnicode_AsUTF8", pythonapi))
+                ctypes.POINTER(ctypes.c_char), ctypes.py_object
+            )(("PyUnicode_AsUTF8", pythonapi))
     except (ImportError, ValueError):
         return  # No ctypes or not CPython implementation, do nothing
     new_enc = sys.intern(new_enc)
@@ -155,7 +152,7 @@ def _patch_filesystem_default_encoding(new_enc):
 # just ensure a usable locale is set via the $LANG variable on posix systems.
 _fs_enc = sys.getfilesystemencoding()
 if getattr(sys, "_brz_default_fs_enc", None) is not None:
-    if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
+    if _fs_enc is None or codecs.lookup(_fs_enc).name == "ascii":
         _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)  # type: ignore
 if _fs_enc is None:
     _fs_enc = "ascii"
@@ -203,8 +200,10 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         BzrLibraryState directly.
     """
     from breezy import library_state, trace
+
     if setup_ui:
         import breezy.ui
+
         stdin = stdin or sys.stdin
         stdout = stdout or sys.stdout
         stderr = stderr or sys.stderr
@@ -226,4 +225,5 @@ def get_global_state():
 
 def test_suite():
     import tests
+
     return tests.test_suite()

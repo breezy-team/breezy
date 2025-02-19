@@ -21,6 +21,7 @@ import sys
 __docformat__ = "restructuredtext"
 __doc__ = "Terminal control functionality"
 
+
 def has_ansi_colors():
     # XXX The whole color handling should be rewritten to use terminfo
     # XXX before we get there, checking for setaf capability should do.
@@ -30,11 +31,13 @@ def has_ansi_colors():
     if not sys.stdout.isatty():
         return False
     import curses
+
     try:
         curses.setupterm()
     except curses.error:
         return False
-    return bool(curses.tigetstr('setaf'))
+    return bool(curses.tigetstr("setaf"))
+
 
 colors = {
     "black": b"0",
@@ -44,8 +47,9 @@ colors = {
     "blue": b"4",
     "magenta": b"5",
     "cyan": b"6",
-    "white": b"7"
+    "white": b"7",
 }
+
 
 def colorstring(text, fgcolor=None, bgcolor=None):
     """
@@ -61,25 +65,25 @@ def colorstring(text, fgcolor=None, bgcolor=None):
     code = []
 
     if fgcolor:
-        if fgcolor.startswith('dark'):
-            code.append(b'0')
+        if fgcolor.startswith("dark"):
+            code.append(b"0")
             fgcolor = fgcolor[4:]
         else:
-            code.append(b'1')
+            code.append(b"1")
 
-        code.append(b'3' + colors[fgcolor])
+        code.append(b"3" + colors[fgcolor])
 
     if bgcolor:
-        code.append(b'4' + colors[bgcolor])
+        code.append(b"4" + colors[bgcolor])
 
-    return b"".join((b"\033[", b';'.join(code), b"m", text, b"\033[0m"))
+    return b"".join((b"\033[", b";".join(code), b"m", text, b"\033[0m"))
 
 
 def term_title(title):
-    term = os.environ.get('TERM', '')
-    if term.startswith('xterm') or term == 'dtterm':
+    term = os.environ.get("TERM", "")
+    if term.startswith("xterm") or term == "dtterm":
         return "\033]0;%s\007" % title
-    return ''
+    return ""
 
 
 # arch-tag: a79b9993-146e-4a51-8bae-a13791703ddd

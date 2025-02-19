@@ -20,25 +20,15 @@
 import posixpath
 import stat
 
-from dulwich.errors import (
-    NotTreeError,
-    )
+from dulwich.errors import NotTreeError
+from dulwich.object_store import tree_lookup_path
 from dulwich.objects import SubmoduleEncountered
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 
-from ..revision import (
-    NULL_REVISION,
-    )
-
-from .mapping import (
-    encode_git_path,
-    )
+from ..revision import NULL_REVISION
+from .mapping import encode_git_path
 
 
 class GitFileLastChangeScanner:
-
     def __init__(self, repository):
         self.repository = repository
         self.store = self.repository._git.object_store
@@ -51,7 +41,8 @@ class GitFileLastChangeScanner:
             commit = store[commit_id]
             try:
                 target_mode, target_sha = tree_lookup_path(
-                    store.__getitem__, commit.tree, path)
+                    store.__getitem__, commit.tree, path
+                )
             except SubmoduleEncountered as e:
                 revid = self.repository.lookup_foreign_revision_id(commit_id)
                 revtree = self.repository.revision_tree(revid)
@@ -60,28 +51,29 @@ class GitFileLastChangeScanner:
                 path = posixpath.relpath(path, e.path)
             else:
                 break
-        if path == b'':
+        if path == b"":
             target_mode = stat.S_IFDIR
         if target_mode is None:
-            raise AssertionError("sha %r for %r in %r" %
-                                 (target_sha, path, commit_id))
+            raise AssertionError("sha %r for %r in %r" % (target_sha, path, commit_id))
         while True:
             parent_commits = []
             for parent_id in commit.parents:
                 try:
                     parent_commit = store[parent_id]
-                    mode, sha = tree_lookup_path(store.__getitem__,
-                                                 parent_commit.tree, path)
+                    mode, sha = tree_lookup_path(
+                        store.__getitem__, parent_commit.tree, path
+                    )
                 except (KeyError, NotTreeError):
                     continue
                 else:
                     parent_commits.append(parent_commit)
-                if path == b'':
+                if path == b"":
                     mode = stat.S_IFDIR
                 # Candidate found iff, mode or text changed,
                 # or is a directory that didn't previously exist.
                 if mode != target_mode or (
-                        not stat.S_ISDIR(target_mode) and sha != target_sha):
+                    not stat.S_ISDIR(target_mode) and sha != target_sha
+                ):
                     return (store, path, commit.id)
             if parent_commits == []:
                 break
@@ -90,15 +82,14 @@ class GitFileLastChangeScanner:
 
 
 class GitFileParentProvider:
-
     def __init__(self, change_scanner):
         self.change_scanner = change_scanner
         self.store = self.change_scanner.repository._git.object_store
 
     def _get_parents(self, file_id, text_revision):
-        commit_id, mapping = (
-            self.change_scanner.repository.lookup_bzr_revision_id(
-                text_revision))
+        commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
+            text_revision
+        )
         try:
             path = encode_git_path(mapping.parse_file_id(file_id))
         except ValueError:
@@ -107,16 +98,18 @@ class GitFileParentProvider:
         for commit_parent in self.store[commit_id].parents:
             try:
                 (store, path, text_parent) = (
-                    self.change_scanner.find_last_change_revision(
-                        path, commit_parent))
+                    self.change_scanner.find_last_change_revision(path, commit_parent)
+                )
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return tuple([
-            (file_id,
-                self.change_scanner.repository.lookup_foreign_revision_id(p))
-            for p in text_parents])
+        return tuple(
+            [
+                (file_id, self.change_scanner.repository.lookup_foreign_revision_id(p))
+                for p in text_parents
+            ]
+        )
 
     def get_parent_map(self, keys):
         ret = {}

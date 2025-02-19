@@ -16,34 +16,26 @@
 
 """Tests for pristine tar extraction code."""
 
+import stat
 from base64 import standard_b64encode
 
-from ..pristine_tar import (
-    get_pristine_tar_tree,
-    revision_pristine_tar_data,
-    read_git_pristine_tar_data,
-    store_git_pristine_tar_data,
-    )
+from dulwich.objects import Blob, Tree
+from dulwich.repo import MemoryRepo as GitMemoryRepo
 
 from ...revision import Revision
 from ...tests import TestCase
-
-from dulwich.objects import (
-    Blob,
-    Tree,
-    )
-from dulwich.repo import (
-    MemoryRepo as GitMemoryRepo,
-    )
-import stat
+from ..pristine_tar import (
+    get_pristine_tar_tree,
+    read_git_pristine_tar_data,
+    revision_pristine_tar_data,
+    store_git_pristine_tar_data,
+)
 
 
 class RevisionPristineTarDataTests(TestCase):
-
     def test_pristine_tar_delta_unknown(self):
         rev = Revision(b"myrevid")
-        self.assertRaises(KeyError,
-                          revision_pristine_tar_data, rev)
+        self.assertRaises(KeyError, revision_pristine_tar_data, rev)
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision(b"myrevid")
@@ -52,11 +44,9 @@ class RevisionPristineTarDataTests(TestCase):
 
 
 class ReadPristineTarData(TestCase):
-
     def test_read_pristine_tar_data_no_branch(self):
         r = GitMemoryRepo()
-        self.assertRaises(KeyError, read_git_pristine_tar_data,
-                          r, b"foo")
+        self.assertRaises(KeyError, read_git_pristine_tar_data, r, b"foo")
 
     def test_read_pristine_tar_data_no_file(self):
         r = GitMemoryRepo()
@@ -65,10 +55,8 @@ class ReadPristineTarData(TestCase):
         r.object_store.add_object(b)
         t.add(b"README", stat.S_IFREG | 0o644, b.id)
         r.object_store.add_object(t)
-        r.do_commit(b"Add README", tree=t.id,
-                    ref=b'refs/heads/pristine-tar')
-        self.assertRaises(KeyError, read_git_pristine_tar_data,
-                          r, b"foo")
+        r.do_commit(b"Add README", tree=t.id, ref=b"refs/heads/pristine-tar")
+        self.assertRaises(KeyError, read_git_pristine_tar_data, r, b"foo")
 
     def test_read_pristine_tar_data(self):
         r = GitMemoryRepo()
@@ -80,25 +68,25 @@ class ReadPristineTarData(TestCase):
         t.add(b"foo.delta", stat.S_IFREG | 0o644, delta.id)
         t.add(b"foo.id", stat.S_IFREG | 0o644, idfile.id)
         r.object_store.add_object(t)
-        r.do_commit(b"pristine tar delta for foo", tree=t.id,
-                    ref=b'refs/heads/pristine-tar')
+        r.do_commit(
+            b"pristine tar delta for foo", tree=t.id, ref=b"refs/heads/pristine-tar"
+        )
         self.assertEqual(
-            (b"some yummy data", b"someid"),
-            read_git_pristine_tar_data(r, b'foo'))
+            (b"some yummy data", b"someid"), read_git_pristine_tar_data(r, b"foo")
+        )
 
 
 class StoreGitPristineTarData(TestCase):
-
     def test_store_new(self):
         r = GitMemoryRepo()
         cid = store_git_pristine_tar_data(r, b"foo", b"mydelta", b"myid")
         tree = get_pristine_tar_tree(r)
         self.assertEqual(
             (stat.S_IFREG | 0o644, b"7b02de8ac4162e64f402c43487d8a40a505482e1"),
-            tree[b"README"])
+            tree[b"README"],
+        )
         self.assertEqual(r[cid].tree, tree.id)
         self.assertEqual(r[tree[b"foo.delta"][1]].data, b"mydelta")
         self.assertEqual(r[tree[b"foo.id"][1]].data, b"myid")
 
-        self.assertEqual((b"mydelta", b"myid"),
-                         read_git_pristine_tar_data(r, b"foo"))
+        self.assertEqual((b"mydelta", b"myid"), read_git_pristine_tar_data(r, b"foo"))

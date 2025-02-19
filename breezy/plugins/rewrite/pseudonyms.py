@@ -18,12 +18,7 @@
 
 from collections import defaultdict
 
-from breezy import (
-    errors,
-    foreign,
-    ui,
-    urlutils,
-    )
+from breezy import errors, foreign, ui, urlutils
 
 
 def parse_git_svn_id(text):
@@ -38,7 +33,6 @@ def parse_git_svn_id(text):
 
 
 class SubversionBranchUrlFinder:
-
     def __init__(self):
         self._roots = defaultdict(set)
 
@@ -60,7 +54,7 @@ class SubversionBranchUrlFinder:
         if root is None:
             return None
         assert url.startswith(root)
-        return url[len(root):].strip("/")
+        return url[len(root) :].strip("/")
 
 
 svn_branch_path_finder = SubversionBranchUrlFinder()
@@ -80,16 +74,19 @@ def _extract_cscvs(rev):
     if "cscvs-svn-branch-path" not in rev.properties:
         return
     yield (
-        "svn", "{}:{}:{}".format(
+        "svn",
+        "{}:{}:{}".format(
             rev.properties["cscvs-svn-repository-uuid"],
             rev.properties["cscvs-svn-revision-number"],
-            urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
+            urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/")),
+        ),
+    )
 
 
 def _extract_git_svn_id(rev):
     if "git-svn-id" not in rev.properties:
         return
-    (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
+    (full_url, revnum, uuid) = parse_git_svn_id(rev.properties["git-svn-id"])
     branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
     if branch_path is not None:
         yield ("svn", "%s:%d:%s" % (uuid, revnum, urlutils.quote(branch_path)))
@@ -104,18 +101,20 @@ def _extract_foreign_revision(rev):
 def _extract_foreign_revid(rev):
     # Try parsing the revision id
     try:
-        foreign_revid, mapping = \
-            foreign.foreign_vcs_registry.parse_revision_id(rev.revision_id)
+        foreign_revid, mapping = foreign.foreign_vcs_registry.parse_revision_id(
+            rev.revision_id
+        )
     except errors.InvalidRevisionId:
         pass
     else:
         yield (
             mapping.vcs.abbreviation,
-            mapping.vcs.serialize_foreign_revid(foreign_revid))
+            mapping.vcs.serialize_foreign_revid(foreign_revid),
+        )
 
 
 def _extract_debian_md5sum(rev):
-    if 'deb-md5' in rev.properties:
+    if "deb-md5" in rev.properties:
         yield ("debian-md5sum", rev.properties["deb-md5"])
 
 
@@ -126,7 +125,7 @@ _foreign_revid_extractors = [
     _extract_foreign_revision,
     _extract_foreign_revid,
     _extract_debian_md5sum,
-    ]
+]
 
 
 def extract_foreign_revids(rev):

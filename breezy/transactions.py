@@ -66,7 +66,7 @@ class ReadOnlyTransaction(Transaction):
 
     def is_clean(self, an_object):
         """Return True if an_object is clean."""
-        return (an_object in self._clean_objects)
+        return an_object in self._clean_objects
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
@@ -110,13 +110,15 @@ class ReadOnlyTransaction(Transaction):
             else:
                 # 1 missing on Python < 3.11
                 ref_threshold = 7
-            if (sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
-                    and not self._clean_queue[offset] in self._precious_objects):
+            if (
+                sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
+                and not self._clean_queue[offset] in self._precious_objects
+            ):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)
                 del self._clean_queue[offset]
                 self.map.remove_object(removed)
-                mutter('removed object %r', removed)
+                mutter("removed object %r", removed)
                 needed -= 1
             else:
                 offset += 1
@@ -137,7 +139,7 @@ class WriteTransaction(ReadOnlyTransaction):
     def finish(self):
         """Clean up this transaction."""
         for thing in self._dirty_objects:
-            callback = getattr(thing, 'transaction_finished', None)
+            callback = getattr(thing, "transaction_finished", None)
             if callback is not None:
                 callback()
 
@@ -147,7 +149,7 @@ class WriteTransaction(ReadOnlyTransaction):
 
     def is_dirty(self, an_object):
         """Return True if an_object is dirty."""
-        return (an_object in self._dirty_objects)
+        return an_object in self._dirty_objects
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty.
@@ -177,7 +179,7 @@ class PassThroughTransaction(Transaction):
     def finish(self):
         """Clean up this transaction."""
         for thing in self._dirty_objects:
-            callback = getattr(thing, 'transaction_finished', None)
+            callback = getattr(thing, "transaction_finished", None)
             if callback is not None:
                 callback()
 

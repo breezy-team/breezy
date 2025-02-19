@@ -16,23 +16,17 @@
 
 """Tests for versioning of breezy."""
 
-from io import StringIO
 import platform
 import re
+from io import StringIO
 
-from .. import (
-    tests,
-    version,
-    workingtree,
-    )
+from .. import tests, version, workingtree
 from .scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 
 
 class TestBzrlibVersioning(tests.TestCase):
-
     def test_get_brz_source_tree(self):
         """Get tree for bzr source, if any."""
         self.permit_source_tree_branch_repo()
@@ -42,8 +36,7 @@ class TestBzrlibVersioning(tests.TestCase):
         # just assert that it must either return None or the tree.
         src_tree = version._get_brz_source_tree()
         if src_tree is None:
-            raise tests.TestSkipped(
-                "bzr tests aren't run from a bzr working tree")
+            raise tests.TestSkipped("bzr tests aren't run from a bzr working tree")
         else:
             # ensure that what we got was in fact a working tree instance.
             self.assertIsInstance(src_tree, workingtree.WorkingTree)
@@ -51,8 +44,7 @@ class TestBzrlibVersioning(tests.TestCase):
     def test_python_binary_path(self):
         self.permit_source_tree_branch_repo()
         sio = StringIO()
-        version.show_version(show_config=False, show_copyright=False,
-                             to_file=sio)
+        version.show_version(show_config=False, show_copyright=False, to_file=sio)
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
@@ -60,9 +52,10 @@ class TestBzrlibVersioning(tests.TestCase):
 
 
 class TestPlatformUse(tests.TestCase):
-
-    scenarios = [('ascii', dict(_platform='test-platform')),
-                 ('unicode', dict(_platform='Schr\xc3\xb6dinger'))]
+    scenarios = [
+        ("ascii", dict(_platform="test-platform")),
+        ("unicode", dict(_platform="Schr\xc3\xb6dinger")),
+    ]
 
     def setUp(self):
         super().setUp()
@@ -70,10 +63,8 @@ class TestPlatformUse(tests.TestCase):
 
     def test_platform(self):
         out = self.make_utf8_encoded_stringio()
-        self.overrideAttr(platform, 'platform', lambda **
-                          kwargs: self._platform)
-        version.show_version(show_config=False, show_copyright=False,
-                             to_file=out)
-        expected = r'(?m)^  Platform: %s' % self._platform
-        expected = expected.encode('utf-8')
+        self.overrideAttr(platform, "platform", lambda **kwargs: self._platform)
+        version.show_version(show_config=False, show_copyright=False, to_file=out)
+        expected = r"(?m)^  Platform: %s" % self._platform
+        expected = expected.encode("utf-8")
         self.assertContainsRe(out.getvalue(), expected)

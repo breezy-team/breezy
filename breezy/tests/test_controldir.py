@@ -19,28 +19,19 @@
 For interface contract tests, see tests/per_control_dir.
 """
 
-from .. import (
-    controldir,
-    errors,
-    tests,
-    ui,
-    )
+from .. import controldir, errors, tests, ui
 from .scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 
 
 class TestErrors(tests.TestCase):
-
     def test_must_have_working_tree(self):
-        err = controldir.MustHaveWorkingTree('foo', 'bar')
-        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
-                                   " working tree.")
+        err = controldir.MustHaveWorkingTree("foo", "bar")
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a working tree.")
 
 
 class SampleComponentFormat(controldir.ControlComponentFormat):
-
     def get_format_string(self):
         return b"Example component format."
 
@@ -50,7 +41,6 @@ class SampleExtraComponentFormat(controldir.ControlComponentFormat):
 
 
 class TestMetaComponentFormatRegistry(tests.TestCase):
-
     def setUp(self):
         super().setUp()
         self.registry = controldir.ControlComponentFormatRegistry()
@@ -58,11 +48,9 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
     def test_register_unregister_format(self):
         format = SampleComponentFormat()
         self.registry.register(format)
-        self.assertEqual(format,
-                         self.registry.get(b"Example component format."))
+        self.assertEqual(format, self.registry.get(b"Example component format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get,
-                          b"Example component format.")
+        self.assertRaises(KeyError, self.registry.get, b"Example component format.")
 
     def test_get_all(self):
         format = SampleComponentFormat()
@@ -75,8 +63,8 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertEqual(set(), self.registry._get_all_modules())
         self.registry.register(format)
         self.assertEqual(
-            {"breezy.tests.test_controldir"},
-            self.registry._get_all_modules())
+            {"breezy.tests.test_controldir"}, self.registry._get_all_modules()
+        )
 
     def test_register_extra(self):
         format = SampleExtraComponentFormat()
@@ -86,8 +74,9 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
 
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
-        self.registry.register_extra_lazy("breezy.tests.test_controldir",
-                                          "SampleExtraComponentFormat")
+        self.registry.register_extra_lazy(
+            "breezy.tests.test_controldir", "SampleExtraComponentFormat"
+        )
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
@@ -97,8 +86,9 @@ class TestProber(tests.TestCaseWithTransport):
     """Per-prober tests."""
 
     scenarios = [
-        (prober_cls.__name__, {'prober_cls': prober_cls})
-        for prober_cls in controldir.ControlDirFormat._probers]
+        (prober_cls.__name__, {"prober_cls": prober_cls})
+        for prober_cls in controldir.ControlDirFormat._probers
+    ]
 
     def setUp(self):
         super().setUp()
@@ -110,15 +100,13 @@ class TestProber(tests.TestCaseWithTransport):
 
     def test_probe_transport_empty(self):
         transport = self.get_transport(".")
-        self.assertRaises(errors.NotBranchError,
-                          self.prober.probe_transport, transport)
+        self.assertRaises(errors.NotBranchError, self.prober.probe_transport, transport)
 
     def test_known_formats(self):
         known_formats = self.prober_cls.known_formats()
         self.assertIsInstance(known_formats, list)
         for format in known_formats:
-            self.assertIsInstance(format, controldir.ControlDirFormat,
-                                  repr(format))
+            self.assertIsInstance(format, controldir.ControlDirFormat, repr(format))
 
 
 class NotBzrDir(controldir.ControlDir):
@@ -127,7 +115,7 @@ class NotBzrDir(controldir.ControlDir):
     def __init__(self, transport, format):
         self._format = format
         self.root_transport = transport
-        self.transport = transport.clone('.not')
+        self.transport = transport.clone(".not")
 
 
 class NotBzrDirFormat(controldir.ControlDirFormat):
@@ -135,7 +123,7 @@ class NotBzrDirFormat(controldir.ControlDirFormat):
 
     def initialize_on_transport(self, transport):
         """Initialize a new .not dir in the base directory of a Transport."""
-        transport.mkdir('.not')
+        transport.mkdir(".not")
         return self.open(transport)
 
     def open(self, transport):
@@ -144,10 +132,9 @@ class NotBzrDirFormat(controldir.ControlDirFormat):
 
 
 class NotBzrDirProber(controldir.Prober):
-
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
-        if transport.has('.not'):
+        if transport.has(".not"):
             return NotBzrDirFormat()
 
     @classmethod
@@ -170,16 +157,14 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
         # now probe for it.
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
-            found = controldir.ControlDirFormat.find_format(
-                self.get_transport())
+            found = controldir.ControlDirFormat.find_format(self.get_transport())
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
             controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
-        self.addCleanup(
-            controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
+        self.addCleanup(controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
         formats = controldir.ControlDirFormat.known_formats()
         self.assertIsInstance(formats, list)
         for format in formats:
@@ -190,13 +175,11 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
 
 
 class UnsupportedControlComponentFormat(controldir.ControlComponentFormat):
-
     def is_supported(self):
         return False
 
 
 class OldControlComponentFormat(controldir.ControlComponentFormat):
-
     def get_format_description(self):
         return "An old format that is slow"
 
@@ -207,45 +190,45 @@ class DefaultControlComponentFormatTests(tests.TestCase):
     """Tests for default ControlComponentFormat implementation."""
 
     def test_check_support_status_unsupported(self):
-        self.assertRaises(errors.UnsupportedFormatError,
-                          UnsupportedControlComponentFormat().check_support_status,
-                          allow_unsupported=False)
-        UnsupportedControlComponentFormat().check_support_status(
-            allow_unsupported=True)
+        self.assertRaises(
+            errors.UnsupportedFormatError,
+            UnsupportedControlComponentFormat().check_support_status,
+            allow_unsupported=False,
+        )
+        UnsupportedControlComponentFormat().check_support_status(allow_unsupported=True)
 
     def test_check_support_status_supported(self):
         controldir.ControlComponentFormat().check_support_status(
-            allow_unsupported=False)
-        controldir.ControlComponentFormat().check_support_status(
-            allow_unsupported=True)
+            allow_unsupported=False
+        )
+        controldir.ControlComponentFormat().check_support_status(allow_unsupported=True)
 
     def test_recommend_upgrade_current_format(self):
         ui.ui_factory = tests.TestUIFactory()
         format = controldir.ControlComponentFormat()
-        format.check_support_status(allow_unsupported=False,
-                                    recommend_upgrade=True)
+        format.check_support_status(allow_unsupported=False, recommend_upgrade=True)
         self.assertEqual("", ui.ui_factory.stderr.getvalue())
 
     def test_recommend_upgrade_old_format(self):
         ui.ui_factory = tests.TestUIFactory()
         format = OldControlComponentFormat()
-        format.check_support_status(allow_unsupported=False,
-                                    recommend_upgrade=False)
+        format.check_support_status(allow_unsupported=False, recommend_upgrade=False)
         self.assertEqual("", ui.ui_factory.stderr.getvalue())
-        format.check_support_status(allow_unsupported=False,
-                                    recommend_upgrade=True, basedir='apath')
+        format.check_support_status(
+            allow_unsupported=False, recommend_upgrade=True, basedir="apath"
+        )
         self.assertEqual(
-            'An old format that is slow is deprecated and a better format '
-            'is available.\nIt is recommended that you upgrade by running '
-            'the command\n  brz upgrade apath\n',
-            ui.ui_factory.stderr.getvalue())
+            "An old format that is slow is deprecated and a better format "
+            "is available.\nIt is recommended that you upgrade by running "
+            "the command\n  brz upgrade apath\n",
+            ui.ui_factory.stderr.getvalue(),
+        )
 
 
 class IsControlFilenameTest(tests.TestCase):
-
     def test_is_bzrdir(self):
-        self.assertTrue(controldir.is_control_filename('.bzr'))
-        self.assertTrue(controldir.is_control_filename('.git'))
+        self.assertTrue(controldir.is_control_filename(".bzr"))
+        self.assertTrue(controldir.is_control_filename(".git"))
 
     def test_is_not_bzrdir(self):
-        self.assertFalse(controldir.is_control_filename('bla'))
+        self.assertFalse(controldir.is_control_filename("bla"))

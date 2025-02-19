@@ -16,30 +16,22 @@
 
 import os
 
-from breezy import (
-    merge,
-    osutils,
-    tests,
-    )
-from breezy.tests import (
-    features,
-    script,
-    )
-
+from breezy import merge, osutils, tests
 from breezy.plugins import po_merge
+from breezy.tests import features, script
 
 
 class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
-
     _test_needs_features = [features.msgmerge_feature]
 
     def setUp(self):
         super().setUp()
-        self.builder = make_adduser_branch(self, 'adduser')
+        self.builder = make_adduser_branch(self, "adduser")
         # We need to install our hook as the test framework cleared it as part
         # of the initialization
         merge.Merger.hooks.install_named_hook(
-            "merge_file_content", po_merge.po_merge_hook, ".po file merge")
+            "merge_file_content", po_merge.po_merge_hook, ".po file merge"
+        )
 
     def test_merge_with_hook_gives_unexpected_results(self):
         # Since the conflicts in .pot are not seen *during* the merge, the .po
@@ -71,8 +63,8 @@ $ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2>2 conflicts encountered.
 """)
         # Fix the conflicts in the .pot file
-        with open('po/adduser.pot', 'wb') as f:
-            f.write(_Adduser['resolved_pot'])
+        with open("po/adduser.pot", "wb") as f:
+            f.write(_Adduser["resolved_pot"])
         # Tell brz the conflict is resolved
         self.run_script("""\
 $ brz resolve po/adduser.pot
@@ -93,27 +85,38 @@ def make_adduser_branch(test, relpath):
     """
     builder = test.make_branch_builder(relpath)
     builder.start_series()
-    builder.build_snapshot(None,
-                           [('add', ('', b'root-id', 'directory', '')),
-                            # Create empty files
-                            ('add', ('po', b'dir-id', 'directory', None),),
-                            ('add', ('po/adduser.pot', b'pot-id', 'file',
-                                     _Adduser['base_pot'])),
-                            ('add', ('po/fr.po', b'po-id', 'file',
-                                     _Adduser['base_po'])),
-                            ], revision_id=b'base')
+    builder.build_snapshot(
+        None,
+        [
+            ("add", ("", b"root-id", "directory", "")),
+            # Create empty files
+            (
+                "add",
+                ("po", b"dir-id", "directory", None),
+            ),
+            ("add", ("po/adduser.pot", b"pot-id", "file", _Adduser["base_pot"])),
+            ("add", ("po/fr.po", b"po-id", "file", _Adduser["base_po"])),
+        ],
+        revision_id=b"base",
+    )
     # The 'other' branch
-    builder.build_snapshot([b'base'],
-                           [('modify', ('po/adduser.pot',
-                                        _Adduser['other_pot'])),
-                            ('modify', ('po/fr.po',
-                                        _Adduser['other_po'])),
-                            ], revision_id=b'other')
+    builder.build_snapshot(
+        [b"base"],
+        [
+            ("modify", ("po/adduser.pot", _Adduser["other_pot"])),
+            ("modify", ("po/fr.po", _Adduser["other_po"])),
+        ],
+        revision_id=b"other",
+    )
     # The 'this' branch
-    builder.build_snapshot([b'base'],
-                           [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
-                            ('modify', ('po/fr.po', _Adduser['this_po'])),
-                            ], revision_id=b'this')
+    builder.build_snapshot(
+        [b"base"],
+        [
+            ("modify", ("po/adduser.pot", _Adduser["this_pot"])),
+            ("modify", ("po/fr.po", _Adduser["this_po"])),
+        ],
+        revision_id=b"this",
+    )
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
     return builder
@@ -124,26 +127,32 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
         super().setUp()
-        self.builder = make_adduser_branch(self, 'adduser')
+        self.builder = make_adduser_branch(self, "adduser")
 
     def assertAdduserBranchContent(self, revid):
         env = dict(revid=revid, branch_name=revid)
-        self.run_script("""\
+        self.run_script(
+            """\
 $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
-""" % env, null_output_matches_anything=True)
-        self.assertFileEqual(_Adduser['%(revid)s_pot' % env],
-                             '%(branch_name)s/po/adduser.pot' % env)
-        self.assertFileEqual(_Adduser['%(revid)s_po' % env],
-                             '%(branch_name)s/po/fr.po' % env)
+"""
+            % env,
+            null_output_matches_anything=True,
+        )
+        self.assertFileEqual(
+            _Adduser["%(revid)s_pot" % env], "%(branch_name)s/po/adduser.pot" % env
+        )
+        self.assertFileEqual(
+            _Adduser["%(revid)s_po" % env], "%(branch_name)s/po/fr.po" % env
+        )
 
     def test_base(self):
-        self.assertAdduserBranchContent('base')
+        self.assertAdduserBranchContent("base")
 
     def test_this(self):
-        self.assertAdduserBranchContent('this')
+        self.assertAdduserBranchContent("this")
 
     def test_other(self):
-        self.assertAdduserBranchContent('other')
+        self.assertAdduserBranchContent("other")
 
 
 # Real content from the adduser package so we don't have to guess about format

@@ -16,39 +16,30 @@
 
 """Launchpad plugin commands."""
 
-from ... import (
-    branch as _mod_branch,
-    controldir,
-    trace,
-    )
-from ...commands import (
-    Command,
-    )
-from ...errors import (
-    CommandError,
-    NotBranchError,
-    )
+from ... import branch as _mod_branch
+from ... import controldir, trace
+from ...commands import Command
+from ...errors import CommandError, NotBranchError
 from ...i18n import gettext
-from ...option import (
-    Option,
-    ListOption,
-    )
+from ...option import ListOption, Option
 
 
 class cmd_launchpad_open(Command):
     __doc__ = """Open a Launchpad branch page in your web browser."""
 
-    aliases = ['lp-open']
+    aliases = ["lp-open"]
     takes_options = [
-        Option('dry-run',
-               'Do not actually open the browser. Just say the URL we would '
-               'use.'),
-        ]
-    takes_args = ['location?']
+        Option(
+            "dry-run",
+            "Do not actually open the browser. Just say the URL we would use.",
+        ),
+    ]
+    takes_args = ["location?"]
 
     def run(self, location=None, dry_run=False):
-        trace.warning('lp-open is deprecated. Please use web-open instead')
+        trace.warning("lp-open is deprecated. Please use web-open instead")
         from breezy.plugins.propose.cmds import cmd_web_open
+
         return cmd_web_open().run(location=location, dry_run=dry_run)
 
 
@@ -68,20 +59,18 @@ class cmd_launchpad_login(Command):
 
           brz launchpad-login bob
     """
-    aliases = ['lp-login']
-    takes_args = ['name?']
+    aliases = ["lp-login"]
+    takes_args = ["name?"]
     takes_options = [
-        'verbose',
-        Option('no-check',
-               "Don't check that the user name is valid."),
-        Option('service-root', type=str,
-               help="Launchpad service root to connect to"),
-        ]
+        "verbose",
+        Option("no-check", "Don't check that the user name is valid."),
+        Option("service-root", type=str, help="Launchpad service root to connect to"),
+    ]
 
-    def run(self, name=None, no_check=False, verbose=False,
-            service_root='production'):
+    def run(self, name=None, no_check=False, verbose=False, service_root="production"):
         # This is totally separate from any launchpadlib login system.
         from . import account
+
         check_account = not no_check
 
         if name is None:
@@ -90,26 +79,28 @@ class cmd_launchpad_login(Command):
                 if check_account:
                     account.check_lp_login(username)
                     if verbose:
-                        self.outf.write(gettext(
-                            "Launchpad user ID exists and has SSH keys.\n"))
-                self.outf.write(username + '\n')
+                        self.outf.write(
+                            gettext("Launchpad user ID exists and has SSH keys.\n")
+                        )
+                self.outf.write(username + "\n")
             else:
-                self.outf.write(gettext('No Launchpad user ID configured.\n'))
+                self.outf.write(gettext("No Launchpad user ID configured.\n"))
                 return 1
         else:
             name = name.lower()
             if check_account:
                 account.check_lp_login(name)
                 if verbose:
-                    self.outf.write(gettext(
-                        "Launchpad user ID exists and has SSH keys.\n"))
+                    self.outf.write(
+                        gettext("Launchpad user ID exists and has SSH keys.\n")
+                    )
             account.set_lp_login(name)
             if verbose:
-                self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
-                                (name,))
+                self.outf.write(gettext("Launchpad user ID set to '%s'.\n") % (name,))
         if check_account:
             from .lp_api import connect_launchpad
             from .uris import lookup_service_root
+
             connect_launchpad(lookup_service_root(service_root))
 
 
@@ -121,24 +112,24 @@ class cmd_launchpad_logout(Command):
     This means that communication with Launchpad will happen over
     HTTPS, and will not require one of your SSH keys to be available.
     """
-    aliases = ['lp-logout']
-    takes_options = ['verbose']
+    aliases = ["lp-logout"]
+    takes_options = ["verbose"]
 
     def run(self, verbose=False):
         from . import account
+
         old_username = account.get_lp_login()
         if old_username is None:
-            self.outf.write(gettext('Not logged into Launchpad.\n'))
+            self.outf.write(gettext("Not logged into Launchpad.\n"))
             return 1
         account.set_lp_login(None)
         if verbose:
-            self.outf.write(gettext(
-                "Launchpad user ID %s logged out.\n") %
-                old_username)
+            self.outf.write(
+                gettext("Launchpad user ID %s logged out.\n") % old_username
+            )
 
 
 class cmd_lp_find_proposal(Command):
-
     __doc__ = """Find the proposal to merge this revision.
 
     Finds the merge proposal(s) that discussed landing the specified revision.
@@ -153,13 +144,15 @@ class cmd_lp_find_proposal(Command):
       brz lp-find-proposal -r mainline:annotate:README:1
     """
 
-    takes_options = ['revision']
+    takes_options = ["revision"]
 
     def run(self, revision=None):
+        import webbrowser
+
         from ... import ui
         from . import uris
-        import webbrowser
-        b = _mod_branch.Branch.open_containing('.')[0]
+
+        b = _mod_branch.Branch.open_containing(".")[0]
         with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
             if revision is None:
                 revision_id = b.last_revision()
@@ -167,16 +160,20 @@ class cmd_lp_find_proposal(Command):
                 revision_id = revision[0].as_revision_id(b)
             merged = self._find_proposals(revision_id, pb)
             if len(merged) == 0:
-                raise CommandError(gettext('No review found.'))
-            trace.note(gettext('%d proposals(s) found.') % len(merged))
+                raise CommandError(gettext("No review found."))
+            trace.note(gettext("%d proposals(s) found.") % len(merged))
             for mp in merged:
                 webbrowser.open(uris.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from . import uris, lp_api
+        from . import lp_api, uris
+
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
         lp_base_url = uris.LPNET_SERVICE_ROOT
-        launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
-        pb.update(gettext('Finding proposals'))
-        return list(launchpad.branches.getMergeProposals(
-                    merged_revision=revision_id.decode('utf-8')))
+        launchpad = lp_api.connect_launchpad(lp_base_url, version="devel")
+        pb.update(gettext("Finding proposals"))
+        return list(
+            launchpad.branches.getMergeProposals(
+                merged_revision=revision_id.decode("utf-8")
+            )
+        )

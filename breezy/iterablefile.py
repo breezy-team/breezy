@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from typing import List, Optional, Iterator, Callable, Iterable
+from typing import Callable, Iterable, Iterator, List, Optional
 
 
 class IterableFileBase:
@@ -33,11 +33,13 @@ class IterableFileBase:
         >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_n(8)
         b'This is '
         """
+
         def test_length(result):
             if len(result) >= length:
                 return length
             else:
                 return None
+
         return self._read(test_length)
 
     def read_to(self, sequence: bytes, length: Optional[int] = None) -> bytes:
@@ -48,6 +50,7 @@ class IterableFileBase:
         >>> f.read_to(b'\\n')
         b'is is \\n'
         """
+
         def test_contents(result):
             if length is not None:
                 if len(result) >= length:
@@ -56,6 +59,7 @@ class IterableFileBase:
                 return result.index(sequence) + len(sequence)
             except ValueError:
                 return None
+
         return self._read(test_contents)
 
     def _read(self, result_length: Callable[[bytes], Optional[int]]) -> bytes:
@@ -83,8 +87,10 @@ class IterableFileBase:
         >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_all()
         b'This is a test.'
         """
+
         def no_stop(result):
             return None
+
         return self._read(no_stop)
 
     def push_back(self, contents: bytes) -> None:
@@ -112,8 +118,8 @@ class IterableFile:
     def _make_iterator(self) -> Iterator[bytes]:
         while not self._file_base.done:
             self._check_closed()
-            result = self._file_base.read_to(b'\n')
-            if result != b'':
+            result = self._file_base.read_to(b"\n")
+            if result != b"":
                 yield result
 
     def _check_closed(self):
@@ -239,7 +245,7 @@ class IterableFile:
         Traceback (most recent call last):
         ValueError: File is closed.
         """
-        return self.read_to(b'\n', size)
+        return self.read_to(b"\n", size)
 
     def readlines(self, sizehint=None) -> List[bytes]:
         """
@@ -269,4 +275,5 @@ class IterableFile:
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

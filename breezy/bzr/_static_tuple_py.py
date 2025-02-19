@@ -39,18 +39,20 @@ class StaticTuple(tuple):
         """Create a new 'StaticTuple'"""
         num_keys = len(args)
         if num_keys < 0 or num_keys > 255:
-            raise TypeError('StaticTuple(...) takes from 0 to 255 items')
+            raise TypeError("StaticTuple(...) takes from 0 to 255 items")
         for bit in args:
             if type(bit) not in _valid_types:
-                raise TypeError('StaticTuple can only point to'
-                                ' StaticTuple, str, unicode, int, float, bool, or'
-                                ' None not %s' % (type(bit),))
+                raise TypeError(
+                    "StaticTuple can only point to"
+                    " StaticTuple, str, unicode, int, float, bool, or"
+                    " None not %s" % (type(bit),)
+                )
         # We don't need to pass args to tuple.__init__, because that was
         # already handled in __new__.
         tuple.__init__(self)
 
     def __repr__(self):
-        return '{}{}'.format(self.__class__.__name__, tuple.__repr__(self))
+        return "{}{}".format(self.__class__.__name__, tuple.__repr__(self))
 
     def __reduce__(self):
         return (StaticTuple, tuple(self))

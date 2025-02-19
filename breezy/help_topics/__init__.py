@@ -34,13 +34,7 @@ rendering on the screen naturally.
 """
 
 import breezy
-from breezy import (
-    config,
-    osutils,
-    registry,
-    i18n,
-    )
-
+from breezy import config, i18n, osutils, registry
 
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
@@ -68,8 +62,9 @@ class HelpTopicRegistry(registry.Registry):
         info = (summary, section)
         super().register(topic, detail, info=info)
 
-    def register_lazy(self, topic, module_name, member_name, summary,
-                      section=SECT_LIST):
+    def register_lazy(
+        self, topic, module_name, member_name, summary, section=SECT_LIST
+    ):
         """Register a new help topic, and import the details on demand.
 
         :param topic: Name of documentation entry
@@ -80,8 +75,7 @@ class HelpTopicRegistry(registry.Registry):
         """
         # The detail is stored as the 'object' and the metadata as the info
         info = (summary, section)
-        super().register_lazy(topic, module_name,
-                                                     member_name, info=info)
+        super().register_lazy(topic, module_name, member_name, info=info)
 
     def get_detail(self, topic):
         """Get the detailed help on a given topic."""
@@ -121,6 +115,7 @@ topic_registry = HelpTopicRegistry()
 
 # ----------------------------------------------------
 
+
 def _help_on_topics(dummy):
     """Write out the help for topics to outfile"""
 
@@ -131,7 +126,7 @@ def _help_on_topics(dummy):
     for topic in topics:
         summary = topic_registry.get_summary(topic)
         out.append("%-*s %s\n" % (lmax, topic, summary))
-    return ''.join(out)
+    return "".join(out)
 
 
 def _load_from_file(topic_name):
@@ -140,12 +135,13 @@ def _load_from_file(topic_name):
     Topics are expected to be txt files in breezy.help_topics.
     """
     resource_name = osutils.pathjoin("en", "{}.txt".format(topic_name))
-    return osutils.resource_string('breezy.help_topics', resource_name)
+    return osutils.resource_string("breezy.help_topics", resource_name)
 
 
 def _help_on_revisionspec(name):
     """Generate the help for revision specs."""
     import re
+
     import breezy.revisionspec
 
     out = []
@@ -178,14 +174,14 @@ while "brz diff -r 3647..3649" includes the changes done in revisions 3648 and
 3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
-""")
+"""
+    )
     details = []
     details.append("\nIn addition, plugins can provide other keywords.")
-    details.append(
-        "\nA detailed description of each keyword is given below.\n")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
-    indent_re = re.compile(r'^    ', re.MULTILINE)
+    indent_re = re.compile(r"^    ", re.MULTILINE)
     for prefix, i in breezy.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == breezy.revisionspec.RevisionSpec.help_txt:
@@ -195,8 +191,8 @@ The keywords used as revision selection methods are the following:
             # Extract out the top line summary from the body and
             # clean-up the unwanted whitespace
             summary, doc = doc.split("\n", 1)
-            #doc = indent_re.sub('', doc)
-            while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
+            # doc = indent_re.sub('', doc)
+            while doc[-2:] == "\n\n" or doc[-1:] == " ":
                 doc = doc[:-1]
 
         # Note: The leading : here are HACKs to get reStructuredText
@@ -204,24 +200,22 @@ The keywords used as revision selection methods are the following:
         out.append(":{}\n\t{}".format(i.prefix, summary))
         details.append(":{}\n{}".format(i.prefix, doc))
 
-    return '\n'.join(out + details)
+    return "\n".join(out + details)
 
 
 def _help_on_transport(name):
-    from breezy.transport import (
-        transport_list_registry,
-    )
     import textwrap
 
+    from breezy.transport import transport_list_registry
+
     def add_string(proto, help, maxl, prefix_width=20):
-        help_lines = textwrap.wrap(help, maxl - prefix_width,
-                                   break_long_words=False)
-        line_with_indent = '\n' + ' ' * prefix_width
+        help_lines = textwrap.wrap(help, maxl - prefix_width, break_long_words=False)
+        line_with_indent = "\n" + " " * prefix_width
         help_text = line_with_indent.join(help_lines)
         return "%-20s%s\n" % (proto, help_text)
 
     def key_func(a):
-        return a[:a.rfind("://")]
+        return a[: a.rfind("://")]
 
     protl = []
     decl = []
@@ -236,13 +230,10 @@ def _help_on_transport(name):
         else:
             decl.append(add_string(proto, shorthelp, 79))
 
-    out = "URL Identifiers\n\n" + \
-        "Supported URL prefixes::\n\n  " + \
-        '  '.join(protl)
+    out = "URL Identifiers\n\n" + "Supported URL prefixes::\n\n  " + "  ".join(protl)
 
     if len(decl):
-        out += "\nSupported modifiers::\n\n  " + \
-            '  '.join(decl)
+        out += "\nSupported modifiers::\n\n  " + "  ".join(decl)
 
     out += """\
 \nBreezy supports all of the standard parts within the URL::
@@ -270,7 +261,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
     return out
 
 
-_basic_help = \
+_basic_help = (
     """Breezy %s -- a free distributed version-control tool
 https://www.breezy-vcs.org/
 
@@ -295,11 +286,12 @@ Basic commands:
   brz help init      more help on e.g. init command
   brz help commands  list all commands
   brz help topics    list all help topics
-""" % breezy.__version__
+"""
+    % breezy.__version__
+)
 
 
-_global_options = \
-    """Global Options
+_global_options = """Global Options
 
 These options may be used with any command, and may appear in front of any
 command.  (e.g. ``brz --profile help``).
@@ -333,8 +325,7 @@ A number of debug flags are also available to assist troubleshooting and
 development.  See :doc:`debug-flags-help`.
 """
 
-_standard_options = \
-    """Standard Options
+_standard_options = """Standard Options
 
 Standard options are legal for all commands.
 
@@ -346,8 +337,7 @@ Unlike global options, standard options can be used in aliases.
 """
 
 
-_checkouts = \
-    """Checkouts
+_checkouts = """Checkouts
 
 Checkouts are source trees that are connected to a branch, so that when
 you commit in the source tree, the commit goes into that branch.  They
@@ -430,8 +420,7 @@ Related commands::
               bound, then it will also display the location of the bound branch
 """
 
-_repositories = \
-    """Repositories
+_repositories = """Repositories
 
 Repositories in Breezy are where committed information is stored. There is
 a repository associated with every branch.
@@ -473,8 +462,7 @@ Related commands::
 """
 
 
-_working_trees = \
-    """Working Trees
+_working_trees = """Working Trees
 
 A working tree is the contents of a branch placed on disk so that you can
 see the files and edit them. The working tree is where you make changes to a
@@ -515,8 +503,7 @@ Useful commands::
 """
 
 
-_branches = \
-    """Branches
+_branches = """Branches
 
 A branch consists of the state of a project, including all of its
 history. All branches have a repository associated (which is where the
@@ -539,8 +526,7 @@ Related commands::
 """
 
 
-_standalone_trees = \
-    """Standalone Trees
+_standalone_trees = """Standalone Trees
 
 A standalone tree is a working tree with an associated repository. It
 is an independently usable branch, with no dependencies on any other.
@@ -553,8 +539,7 @@ Related Commands::
 """
 
 
-_status_flags = \
-    """Status Flags
+_status_flags = """Status Flags
 
 Status flags are used to summarise changes to the working tree in a concise
 manner.  They are in the form::
@@ -596,40 +581,54 @@ known_env_variables = [
     ("BRZ_DISABLE_PLUGINS", "Plugins that brz should not load."),
     ("BRZ_PLUGINS_AT", "Plugins to load from a directory not in BRZ_PLUGIN_PATH."),
     ("BRZ_HOME", "Directory holding breezy config dir. Overrides HOME."),
-    ("BRZ_HOME (Win32)", "Directory holding breezy config dir. Overrides APPDATA and HOME."),
+    (
+        "BRZ_HOME (Win32)",
+        "Directory holding breezy config dir. Overrides APPDATA and HOME.",
+    ),
     ("BZR_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
-    ("BRZ_SSH", "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh."),
+    (
+        "BRZ_SSH",
+        "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh.",
+    ),
     ("BRZ_LOG", "Location of brz.log (use '/dev/null' to suppress log)."),
     ("BRZ_LOG (Win32)", "Location of brz.log (use 'NUL' to suppress log)."),
     ("BRZ_COLUMNS", "Override implicit terminal width."),
     ("BRZ_CONCURRENCY", "Number of processes that can be run concurrently (selftest)"),
     ("BRZ_PROGRESS_BAR", "Override the progress display. Values are 'none' or 'text'."),
     ("BRZ_PDB", "Control whether to launch a debugger on error."),
-    ("BRZ_SIGQUIT_PDB",
-     "Control whether SIGQUIT behaves normally or invokes a breakin debugger."),
-    ("BRZ_TEXTUI_INPUT",
-     "Force console input mode for prompts to line-based (instead of char-based)."),
-    ]
+    (
+        "BRZ_SIGQUIT_PDB",
+        "Control whether SIGQUIT behaves normally or invokes a breakin debugger.",
+    ),
+    (
+        "BRZ_TEXTUI_INPUT",
+        "Force console input mode for prompts to line-based (instead of char-based).",
+    ),
+]
 
 
 def _env_variables(topic):
     import textwrap
-    ret = ["Environment Variables\n\n"
-           "See brz help configuration for more details.\n\n"]
+
+    ret = ["Environment Variables\n\nSee brz help configuration for more details.\n\n"]
     max_key_len = max([len(k[0]) for k in known_env_variables])
-    desc_len = (80 - max_key_len - 2)
+    desc_len = 80 - max_key_len - 2
     ret.append("=" * max_key_len + " " + "=" * desc_len + "\n")
     for k, desc in known_env_variables:
         ret.append(k + (max_key_len + 1 - len(k)) * " ")
-        ret.append("\n".join(textwrap.wrap(
-            desc, width=desc_len, subsequent_indent=" " * (max_key_len + 1))))
+        ret.append(
+            "\n".join(
+                textwrap.wrap(
+                    desc, width=desc_len, subsequent_indent=" " * (max_key_len + 1)
+                )
+            )
+        )
         ret.append("\n")
     ret += "=" * max_key_len + " " + "=" * desc_len + "\n"
     return "".join(ret)
 
 
-_files = \
-    r"""Files
+_files = r"""Files
 
 :On Unix:   ~/.config/breezy/breezy.conf
 :On Windows: %APPDATA%\\breezy\\breezy.conf
@@ -649,8 +648,7 @@ A typical config file might look something like::
   log10 = log --short -r -10..-1
 """
 
-_criss_cross = \
-    """Criss-Cross
+_criss_cross = """Criss-Cross
 
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
@@ -701,8 +699,7 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
 
 
-_storage_formats = \
-    """Storage Formats
+_storage_formats = """Storage Formats
 
 To ensure that older clients do not access data incorrectly,
 Breezy's policy is to introduce a new storage format whenever
@@ -734,121 +731,164 @@ descriptions of any available experimental and deprecated formats.
 
 
 # Register help topics
-topic_registry.register("revisionspec", _help_on_revisionspec,
-                        "Explain how to use --revision")
-topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
-topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
+topic_registry.register(
+    "revisionspec", _help_on_revisionspec, "Explain how to use --revision"
+)
+topic_registry.register("basic", _basic_help, "Basic commands", SECT_HIDDEN)
+topic_registry.register("topics", _help_on_topics, "Topics list", SECT_HIDDEN)
 
 
 def get_current_formats_topic(topic):
     from breezy import controldir
-    return "Current Storage Formats\n\n" + \
-        controldir.format_registry.help_topic(topic)
+
+    return "Current Storage Formats\n\n" + controldir.format_registry.help_topic(topic)
 
 
 def get_other_formats_topic(topic):
     from breezy import controldir
-    return "Other Storage Formats\n\n" + \
-        controldir.format_registry.help_topic(topic)
+
+    return "Other Storage Formats\n\n" + controldir.format_registry.help_topic(topic)
 
 
-topic_registry.register('current-formats', get_current_formats_topic,
-                        'Current storage formats')
-topic_registry.register('other-formats', get_other_formats_topic,
-                        'Experimental and deprecated storage formats')
-topic_registry.register('standard-options', _standard_options,
-                        'Options that can be used with any command')
-topic_registry.register('global-options', _global_options,
-                        'Options that control how Breezy runs')
-topic_registry.register('urlspec', _help_on_transport,
-                        "Supported transport protocols")
-topic_registry.register('status-flags', _status_flags,
-                        "Help on status flags")
+topic_registry.register(
+    "current-formats", get_current_formats_topic, "Current storage formats"
+)
+topic_registry.register(
+    "other-formats",
+    get_other_formats_topic,
+    "Experimental and deprecated storage formats",
+)
+topic_registry.register(
+    "standard-options", _standard_options, "Options that can be used with any command"
+)
+topic_registry.register(
+    "global-options", _global_options, "Options that control how Breezy runs"
+)
+topic_registry.register("urlspec", _help_on_transport, "Supported transport protocols")
+topic_registry.register("status-flags", _status_flags, "Help on status flags")
 
 
 def get_bugs_topic(topic):
     from breezy import bugtracker
-    return ("Bug Tracker Settings\n\n"
-            + bugtracker.tracker_registry.help_topic(topic))
+
+    return "Bug Tracker Settings\n\n" + bugtracker.tracker_registry.help_topic(topic)
 
 
-topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
-topic_registry.register('env-variables', _env_variables,
-                        'Environment variable names and values')
-topic_registry.register('files', _files,
-                        'Information on configuration and log files')
-topic_registry.register_lazy('hooks', 'breezy.hooks', 'hooks_help_text',
-                             'Points at which custom processing can be added')
-topic_registry.register_lazy('location-alias', 'breezy.directory_service',
-                             'AliasDirectory.help_text',
-                             'Aliases for remembered locations')
+topic_registry.register("bugs", get_bugs_topic, "Bug tracker settings")
+topic_registry.register(
+    "env-variables", _env_variables, "Environment variable names and values"
+)
+topic_registry.register("files", _files, "Information on configuration and log files")
+topic_registry.register_lazy(
+    "hooks",
+    "breezy.hooks",
+    "hooks_help_text",
+    "Points at which custom processing can be added",
+)
+topic_registry.register_lazy(
+    "location-alias",
+    "breezy.directory_service",
+    "AliasDirectory.help_text",
+    "Aliases for remembered locations",
+)
 
 # Load some of the help topics from files. Note that topics which reproduce API
 # details will tend to skew (quickly usually!) so please seek other solutions
 # for such things.
-topic_registry.register('authentication', _load_from_file,
-                        'Information on configuring authentication')
-topic_registry.register('configuration', _load_from_file,
-                        'Details on the configuration settings available')
-topic_registry.register('conflict-types', _load_from_file,
-                        'Types of conflicts and what to do about them')
-topic_registry.register('debug-flags', _load_from_file,
-                        'Options to show or record debug information')
-topic_registry.register('glossary', _load_from_file, 'Glossary')
-topic_registry.register('log-formats', _load_from_file,
-                        'Details on the logging formats available')
-topic_registry.register('missing-extensions', _load_from_file,
-                        'What to do when compiled extensions are missing')
-topic_registry.register('url-special-chars', _load_from_file,
-                        'Special character handling in URLs')
+topic_registry.register(
+    "authentication", _load_from_file, "Information on configuring authentication"
+)
+topic_registry.register(
+    "configuration", _load_from_file, "Details on the configuration settings available"
+)
+topic_registry.register(
+    "conflict-types", _load_from_file, "Types of conflicts and what to do about them"
+)
+topic_registry.register(
+    "debug-flags", _load_from_file, "Options to show or record debug information"
+)
+topic_registry.register("glossary", _load_from_file, "Glossary")
+topic_registry.register(
+    "log-formats", _load_from_file, "Details on the logging formats available"
+)
+topic_registry.register(
+    "missing-extensions",
+    _load_from_file,
+    "What to do when compiled extensions are missing",
+)
+topic_registry.register(
+    "url-special-chars", _load_from_file, "Special character handling in URLs"
+)
 
 
 # Register concept topics.
 # Note that we might choose to remove these from the online help in the
 # future or implement them via loading content from files. In the meantime,
 # please keep them concise.
-topic_registry.register('branches', _branches,
-                        'Information on what a branch is', SECT_CONCEPT)
-topic_registry.register('checkouts', _checkouts,
-                        'Information on what a checkout is', SECT_CONCEPT)
-topic_registry.register('content-filters', _load_from_file,
-                        'Conversion of content into/from working trees',
-                        SECT_CONCEPT)
-topic_registry.register('diverged-branches', _load_from_file,
-                        'How to fix diverged branches',
-                        SECT_CONCEPT)
-topic_registry.register('eol', _load_from_file,
-                        'Information on end-of-line handling',
-                        SECT_CONCEPT)
-topic_registry.register('formats', _storage_formats,
-                        'Information on choosing a storage format',
-                        SECT_CONCEPT)
-topic_registry.register('patterns', _load_from_file,
-                        'Information on the pattern syntax',
-                        SECT_CONCEPT)
-topic_registry.register('repositories', _repositories,
-                        'Basic information on shared repositories.',
-                        SECT_CONCEPT)
-topic_registry.register('rules', _load_from_file,
-                        'Information on defining rule-based preferences',
-                        SECT_CONCEPT)
-topic_registry.register('standalone-trees', _standalone_trees,
-                        'Information on what a standalone tree is',
-                        SECT_CONCEPT)
-topic_registry.register('working-trees', _working_trees,
-                        'Information on working trees', SECT_CONCEPT)
-topic_registry.register('criss-cross', _criss_cross,
-                        'Information on criss-cross merging', SECT_CONCEPT)
-topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
-                        'Steps to resolve "out-of-sync" when reconfiguring',
-                        SECT_CONCEPT)
+topic_registry.register(
+    "branches", _branches, "Information on what a branch is", SECT_CONCEPT
+)
+topic_registry.register(
+    "checkouts", _checkouts, "Information on what a checkout is", SECT_CONCEPT
+)
+topic_registry.register(
+    "content-filters",
+    _load_from_file,
+    "Conversion of content into/from working trees",
+    SECT_CONCEPT,
+)
+topic_registry.register(
+    "diverged-branches", _load_from_file, "How to fix diverged branches", SECT_CONCEPT
+)
+topic_registry.register(
+    "eol", _load_from_file, "Information on end-of-line handling", SECT_CONCEPT
+)
+topic_registry.register(
+    "formats",
+    _storage_formats,
+    "Information on choosing a storage format",
+    SECT_CONCEPT,
+)
+topic_registry.register(
+    "patterns", _load_from_file, "Information on the pattern syntax", SECT_CONCEPT
+)
+topic_registry.register(
+    "repositories",
+    _repositories,
+    "Basic information on shared repositories.",
+    SECT_CONCEPT,
+)
+topic_registry.register(
+    "rules",
+    _load_from_file,
+    "Information on defining rule-based preferences",
+    SECT_CONCEPT,
+)
+topic_registry.register(
+    "standalone-trees",
+    _standalone_trees,
+    "Information on what a standalone tree is",
+    SECT_CONCEPT,
+)
+topic_registry.register(
+    "working-trees", _working_trees, "Information on working trees", SECT_CONCEPT
+)
+topic_registry.register(
+    "criss-cross", _criss_cross, "Information on criss-cross merging", SECT_CONCEPT
+)
+topic_registry.register(
+    "sync-for-reconfigure",
+    _branches_out_of_sync,
+    'Steps to resolve "out-of-sync" when reconfiguring',
+    SECT_CONCEPT,
+)
 
 
 class HelpTopicIndex:
     """A index for brz help that returns topics."""
 
     def __init__(self):
-        self.prefix = ''
+        self.prefix = ""
 
     def get_topics(self, topic):
         """Search for topic in the HelpTopicRegistry.
@@ -858,7 +898,7 @@ class HelpTopicIndex:
             RegisteredTopic entry.
         """
         if topic is None:
-            topic = 'basic'
+            topic = "basic"
         if topic in topic_registry:
             return [RegisteredTopic(topic)]
         else:
@@ -866,11 +906,11 @@ class HelpTopicIndex:
 
 
 def _format_see_also(see_also):
-    result = ''
+    result = ""
     if see_also:
-        result += '\n:See also: '
-        result += ', '.join(sorted(set(see_also)))
-        result += '\n'
+        result += "\n:See also: "
+        result += ", ".join(sorted(set(see_also)))
+        result += "\n"
     return result
 
 
@@ -912,17 +952,18 @@ class RegisteredTopic:
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
     import re
+
     # Remove the standalone code block marker
     text = re.sub(r"(?m)^\s*::\n\s*$", "", text)
     lines = text.splitlines()
     result = []
     for line in lines:
-        if line.startswith(':'):
+        if line.startswith(":"):
             line = line[1:]
-        elif line.endswith('::'):
+        elif line.endswith("::"):
             line = line[:-1]
         # Map :doc:`xxx-help` to ``brz help xxx``
-        line = re.sub(":doc:`(.+?)-help`", r'``brz help \1``', line)
+        line = re.sub(":doc:`(.+?)-help`", r"``brz help \1``", line)
         result.append(line)
     return "\n".join(result) + "\n"
 
@@ -931,7 +972,7 @@ class ConfigOptionHelpIndex:
     """A help index that returns help topics for config options."""
 
     def __init__(self):
-        self.prefix = 'configuration/'
+        self.prefix = "configuration/"
 
     def get_topics(self, topic):
         """Search for topic in the registered config options.
@@ -943,7 +984,7 @@ class ConfigOptionHelpIndex:
         if topic is None:
             return []
         elif topic.startswith(self.prefix):
-            topic = topic[len(self.prefix):]
+            topic = topic[len(self.prefix) :]
         if topic in config.option_registry:
             return [config.option_registry.get(topic)]
         else:

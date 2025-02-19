@@ -18,27 +18,27 @@
 """Track whether a particular directory structure is dirty."""
 
 import os
-from pyinotify import (
-    WatchManager,
-    IN_CREATE,
-    IN_CLOSE_WRITE,
-    IN_Q_OVERFLOW,
-    IN_DELETE,
-    IN_MOVED_TO,
-    IN_MOVED_FROM,
-    IN_ATTRIB,
-    ProcessEvent,
-    Notifier,
-    Event,
-)
 from typing import Set
-from .workingtree import WorkingTree
 
+from pyinotify import (
+    IN_ATTRIB,
+    IN_CLOSE_WRITE,
+    IN_CREATE,
+    IN_DELETE,
+    IN_MOVED_FROM,
+    IN_MOVED_TO,
+    IN_Q_OVERFLOW,
+    Event,
+    Notifier,
+    ProcessEvent,
+    WatchManager,
+)
+
+from .workingtree import WorkingTree
 
 MASK = (
     IN_CLOSE_WRITE | IN_DELETE | IN_Q_OVERFLOW | IN_MOVED_TO | IN_MOVED_FROM | IN_ATTRIB
 )
-
 
 
 class TooManyOpenFiles(Exception):
@@ -46,7 +46,6 @@ class TooManyOpenFiles(Exception):
 
 
 class _Process(ProcessEvent):  # type: ignore
-
     paths: Set[str]
     created: Set[str]
 

@@ -15,14 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...builtins import cmd_init
-from .. import (
-    transport_util,
-    ui_testing,
-    )
+from .. import transport_util, ui_testing
 
 
 class TestInit(transport_util.TestCaseWithConnectionHookedTransport):
-
     def setUp(self):
         super().setUp()
         self.start_logging_connections()

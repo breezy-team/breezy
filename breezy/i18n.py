@@ -25,7 +25,6 @@ import gettext as _gettext
 import os
 import sys
 
-
 _translations = None
 
 
@@ -68,10 +67,10 @@ def gettext_per_paragraph(message):
     :returns: concatenated translated message as unicode.
     """
     install()
-    paragraphs = message.split('\n\n')
+    paragraphs = message.split("\n\n")
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
-    return '\n\n'.join(gettext(p) if p else '' for p in paragraphs)
+    return "\n\n".join(gettext(p) if p else "" for p in paragraphs)
 
 
 def disable_i18n():
@@ -94,7 +93,7 @@ def install(lang=None):
     _translations = install_translations(lang)
 
 
-def install_translations(lang=None, domain='brz', locale_base=None):
+def install_translations(lang=None, domain="brz", locale_base=None):
     """Create a gettext translation object.
 
     :param lang: language to install.
@@ -106,14 +105,15 @@ def install_translations(lang=None, domain='brz', locale_base=None):
     if lang is None:
         lang = _get_current_locale()
     if lang is not None:
-        languages = lang.split(':')
+        languages = lang.split(":")
     else:
         languages = None
     translation = _gettext.translation(
         domain,
         localedir=_get_locale_dir(locale_base),
         languages=languages,
-        fallback=True)
+        fallback=True,
+    )
     return translation
 
 
@@ -138,26 +138,27 @@ def _get_locale_dir(base):
 
     :param base: plugins can specify their own local directory
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         if base is None:
             base = os.path.dirname(sys.executable)
-        return os.path.join(base, 'locale')
+        return os.path.join(base, "locale")
     else:
         if base is None:
             base = os.path.dirname(__file__)
-        dirpath = os.path.realpath(os.path.join(base, 'locale'))
+        dirpath = os.path.realpath(os.path.join(base, "locale"))
         if os.path.exists(dirpath):
             return dirpath
     return os.path.join(sys.prefix, "share", "locale")
 
 
 def _check_win32_locale():
-    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
+    for i in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         if os.environ.get(i):
             break
     else:
         lang = None
         import locale
+
         try:
             import ctypes
         except ImportError:
@@ -172,22 +173,23 @@ def _check_win32_locale():
             else:
                 lcid = [lcid_user]
             lang = [locale.windows_locale.get(i) for i in lcid]
-            lang = ':'.join([i for i in lang if i])
+            lang = ":".join([i for i in lang if i])
         # set lang code for gettext
         if lang:
-            os.environ['LANGUAGE'] = lang
+            os.environ["LANGUAGE"] = lang
 
 
 def _get_current_locale():
-    if not os.environ.get('LANGUAGE'):
+    if not os.environ.get("LANGUAGE"):
         from . import config
-        lang = config.GlobalStack().get('language')
+
+        lang = config.GlobalStack().get("language")
         if lang:
-            os.environ['LANGUAGE'] = lang
+            os.environ["LANGUAGE"] = lang
             return lang
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         _check_win32_locale()
-    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
+    for i in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         lang = os.environ.get(i)
         if lang:
             return lang
@@ -200,7 +202,6 @@ def load_plugin_translations(domain):
     :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
     locale_base = os.path.dirname(__file__)
-    translation = install_translations(domain=domain,
-                                       locale_base=locale_base)
+    translation = install_translations(domain=domain, locale_base=locale_base)
     add_fallback(translation)
     return translation

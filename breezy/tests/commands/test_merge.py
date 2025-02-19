@@ -15,24 +15,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...builtins import cmd_merge
-from .. import (
-    transport_util,
-    ui_testing,
-    )
+from .. import transport_util, ui_testing
 
 
 class TestMerge(transport_util.TestCaseWithConnectionHookedTransport):
-
     def test_merge(self):
-        wt1 = self.make_branch_and_tree('branch1')
-        wt1.commit('empty commit')
-        wt2 = self.make_branch_and_tree('branch2')
+        wt1 = self.make_branch_and_tree("branch1")
+        wt1.commit("empty commit")
+        wt2 = self.make_branch_and_tree("branch2")
         wt2.pull(wt1.branch)
-        wt2.commit('empty commit too')
+        wt2.commit("empty commit too")
 
         self.start_logging_connections()
 
         cmd = cmd_merge()
         cmd.outf = ui_testing.StringIOWithEncoding()
-        cmd.run(self.get_url('branch1'), directory='branch2')
+        cmd.run(self.get_url("branch1"), directory="branch2")
         self.assertEqual(1, len(self.connections))

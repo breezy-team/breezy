@@ -18,8 +18,8 @@
 
 import os
 import sys
-from ...trace import mutter
 
+from ...trace import mutter
 
 _ca_path = None
 
@@ -53,13 +53,13 @@ def get_ca_path(use_cache=True):
     #   bialix: Windows directories usually listed in PATH env variable
     #   j-a-meinel: bzr should not look in current working dir
 
-    path = os.environ.get('CURL_CA_BUNDLE')
-    if not path and sys.platform == 'win32':
-        dirs = [os.path.realpath(os.path.dirname(sys.argv[0]))]     # app dir
-        paths = os.environ.get('PATH')
+    path = os.environ.get("CURL_CA_BUNDLE")
+    if not path and sys.platform == "win32":
+        dirs = [os.path.realpath(os.path.dirname(sys.argv[0]))]  # app dir
+        paths = os.environ.get("PATH")
         if paths:
             # don't include the cwd in the search
-            paths = [i for i in paths.split(os.pathsep) if i not in ('', '.')]
+            paths = [i for i in paths.split(os.pathsep) if i not in ("", ".")]
             dirs.extend(paths)
         for d in dirs:
             fname = os.path.join(d, "curl-ca-bundle.crt")
@@ -67,9 +67,9 @@ def get_ca_path(use_cache=True):
                 path = fname
                 break
     if path:
-        mutter('using CA bundle: %r', path)
+        mutter("using CA bundle: %r", path)
     else:
-        path = ''
+        path = ""
 
     if use_cache:
         _ca_path = path

@@ -14,12 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import _get_bundle_header
-from .v08 import BundleSerializerV08, BundleReader
-from ..bundle_data import BundleInfo
-
 from ...testament import StrictTestament3
-
+from ..bundle_data import BundleInfo
+from . import _get_bundle_header
+from .v08 import BundleReader, BundleSerializerV08
 
 """Serializer for bundle format 0.9"""
 
@@ -39,11 +37,10 @@ class BundleSerializerV09(BundleSerializerV08):
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(_get_bundle_header('0.9') + b'#\n')
+        f.write(_get_bundle_header("0.9") + b"#\n")
 
     def _testament_sha1(self, revision_id):
-        return StrictTestament3.from_revision(self.source,
-                                              revision_id).as_sha1()
+        return StrictTestament3.from_revision(self.source, revision_id).as_sha1()
 
     def read(self, f):
         """Read the rest of the bundles from the supplied file.

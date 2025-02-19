@@ -22,13 +22,8 @@ import shutil
 import stat
 import sys
 
-
-from .. import (
-    KnownFailure,
-    TestCaseWithTransport,
-    TestSkipped,
-    )
 from ...controldir import ControlDir
+from .. import KnownFailure, TestCaseWithTransport, TestSkipped
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -37,17 +32,25 @@ class BisectTestCase(TestCaseWithTransport):
     def assertRevno(self, rev):
         """Make sure we're at the right revision."""
 
-        rev_contents = {1: "one", 1.1: "one dot one", 1.2: "one dot two",
-                        1.3: "one dot three", 2: "two", 3: "three",
-                        4: "four", 5: "five"}
+        rev_contents = {
+            1: "one",
+            1.1: "one dot one",
+            1.2: "one dot two",
+            1.3: "one dot three",
+            2: "two",
+            3: "three",
+            4: "four",
+            5: "five",
+        }
 
         with open("test_file") as test_file:
             content = test_file.read().strip()
         if content != rev_contents[rev]:
             rev_ids = {rev_contents[k]: k for k in rev_contents.keys()}
             found_rev = rev_ids[content]
-            raise AssertionError("expected rev %0.1f, found rev %0.1f"
-                                 % (rev, found_rev))
+            raise AssertionError(
+                "expected rev %0.1f, found rev %0.1f" % (rev, found_rev)
+            )
 
     def setUp(self):
         """Set up tests."""
@@ -62,12 +65,10 @@ class BisectTestCase(TestCaseWithTransport):
 
         with open("test_file", "w") as test_file:
             test_file.write("one")
-        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
-                                                     'test_file')))
+        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(), "test_file")))
         with open("test_file_append", "a") as test_file_append:
             test_file_append.write("one\n")
-        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
-                                                     'test_file_append')))
+        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(), "test_file_append")))
         self.tree.commit(message="add test files")
 
         ControlDir.open(".").sprout("../temp-clone")
@@ -105,15 +106,15 @@ class BisectTestCase(TestCaseWithTransport):
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
 
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
         self.assertRevno(3)
 
         # Mark feature as present in the middle.  Should move us
         # halfway back between the current middle and the start.
 
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "yes"])
         self.assertRevno(2)
 
         # Mark feature as not present.  Since this is only one
@@ -121,12 +122,12 @@ class BisectTestCase(TestCaseWithTransport):
         # the process should end, with the current rev set to the
         # rev following.
 
-        self.run_bzr(['bisect', 'no'])
+        self.run_bzr(["bisect", "no"])
         self.assertRevno(3)
 
         # Run again.  Since we're done, this should do nothing.
 
-        self.run_bzr(['bisect', 'no'])
+        self.run_bzr(["bisect", "no"])
         self.assertRevno(3)
 
     def testWorkflowSubtree(self):
@@ -138,10 +139,10 @@ class BisectTestCase(TestCaseWithTransport):
 
         # This part is similar to testWorkflow.
 
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "yes"])
 
         # Check to make sure we're where we expect to be.
 
@@ -150,19 +151,19 @@ class BisectTestCase(TestCaseWithTransport):
         # Now, mark the merge point revno, meaning the feature
         # appeared at a merge point.
 
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "yes"])
         self.assertRevno(1.2)
 
         # Continue bisecting along the subtree to the real conclusion.
 
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "yes"])
         self.assertRevno(1.1)
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "yes"])
         self.assertRevno(1.1)
 
         # Run again.  Since we're done, this should do nothing.
 
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "yes"])
         self.assertRevno(1.1)
 
     def testMove(self):
@@ -170,13 +171,13 @@ class BisectTestCase(TestCaseWithTransport):
 
         # Set up a bisection in progress.
 
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
 
         # Move.
 
-        self.run_bzr(['bisect', 'move', '-r', '2'])
+        self.run_bzr(["bisect", "move", "-r", "2"])
         self.assertRevno(2)
 
     def testReset(self):
@@ -184,14 +185,14 @@ class BisectTestCase(TestCaseWithTransport):
 
         # Set up a bisection in progress.
 
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "yes"])
 
         # Now reset.
 
-        self.run_bzr(['bisect', 'reset'])
+        self.run_bzr(["bisect", "reset"])
         self.assertRevno(5)
 
         # Check that reset doesn't do anything unless there's a
@@ -200,7 +201,7 @@ class BisectTestCase(TestCaseWithTransport):
         with open("test_file", "w") as test_file:
             test_file.write("keep me")
 
-        out, err = self.run_bzr(['bisect', 'reset'], retcode=3)
+        out, err = self.run_bzr(["bisect", "reset"], retcode=3)
         self.assertIn("No bisection in progress.", err)
 
         with open("test_file") as test_file:
@@ -212,40 +213,39 @@ class BisectTestCase(TestCaseWithTransport):
 
         # Set up a bisection in progress.
 
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "yes"])
 
         # Now save the log.
 
-        self.run_bzr(['bisect', 'log', '-o', 'bisect_log'])
+        self.run_bzr(["bisect", "log", "-o", "bisect_log"])
 
         # Reset.
 
-        self.run_bzr(['bisect', 'reset'])
+        self.run_bzr(["bisect", "reset"])
 
         # Read it back in.
 
-        self.run_bzr(['bisect', 'replay', 'bisect_log'])
+        self.run_bzr(["bisect", "replay", "bisect_log"])
         self.assertRevno(2)
 
         # Mark another state, and see if the bisect moves in the
         # right way.
 
-        self.run_bzr(['bisect', 'no'])
+        self.run_bzr(["bisect", "no"])
         self.assertRevno(3)
 
     def testRunScript(self):
         """Make a test script and run it."""
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n"
-                              "grep -q '^four' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^four' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'run', './test_script'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "run", "./test_script"])
         self.assertRevno(4)
 
     def testRunScriptMergePoint(self):
@@ -253,33 +253,35 @@ class BisectTestCase(TestCaseWithTransport):
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n"
-                              "grep -q '^two' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'run', './test_script'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "run", "./test_script"])
         try:
             self.assertRevno(2)
         except AssertionError:
-            raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+            raise KnownFailure(
+                "bisect does not drill down into merge commits: "
+                "https://bugs.launchpad.net/bzr-bisect/+bug/539937"
+            )
 
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
         with open("test_script", "w") as test_script:
-            test_script.write("#!/bin/sh\n"
-                              "grep -q '^one dot two' test_file_append\n")
+            test_script.write("#!/bin/sh\ngrep -q '^one dot two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
-        self.run_bzr(['bisect', 'start'])
-        self.run_bzr(['bisect', 'yes'])
-        self.run_bzr(['bisect', 'no', '-r', '1'])
-        self.run_bzr(['bisect', 'run', './test_script'])
+        self.run_bzr(["bisect", "start"])
+        self.run_bzr(["bisect", "yes"])
+        self.run_bzr(["bisect", "no", "-r", "1"])
+        self.run_bzr(["bisect", "run", "./test_script"])
         try:
             self.assertRevno(1.2)
         except AssertionError:
-            raise KnownFailure("bisect does not drill down into merge commits: "
-                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+            raise KnownFailure(
+                "bisect does not drill down into merge commits: "
+                "https://bugs.launchpad.net/bzr-bisect/+bug/539937"
+            )

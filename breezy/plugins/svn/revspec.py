@@ -14,10 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from ...revisionspec import (
-    InvalidRevisionSpec,
-    RevisionSpec,
-    )
+from ...revisionspec import InvalidRevisionSpec, RevisionSpec
 
 
 class RevisionSpec_svn(RevisionSpec):
@@ -30,7 +27,7 @@ class RevisionSpec_svn(RevisionSpec):
     a Subversion revision number.
     """
 
-    prefix = 'svn:'
+    prefix = "svn:"
 
     def _match_on(self, branch, revs):
         raise InvalidRevisionSpec(self.user_spec, branch)

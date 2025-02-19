@@ -18,28 +18,27 @@
 
 import stat
 
-
-_directory = 'directory'
-_chardev = 'chardev'
-_block = 'block'
-_file = 'file'
-_fifo = 'fifo'
-_symlink = 'symlink'
-_socket = 'socket'
-_unknown = 'unknown'
+_directory = "directory"
+_chardev = "chardev"
+_block = "block"
+_file = "file"
+_fifo = "fifo"
+_symlink = "symlink"
+_socket = "socket"
+_unknown = "unknown"
 
 _formats = {
-    stat.S_IFDIR: 'directory',
-    stat.S_IFCHR: 'chardev',
-    stat.S_IFBLK: 'block',
-    stat.S_IFREG: 'file',
-    stat.S_IFIFO: 'fifo',
-    stat.S_IFLNK: 'symlink',
-    stat.S_IFSOCK: 'socket',
+    stat.S_IFDIR: "directory",
+    stat.S_IFCHR: "chardev",
+    stat.S_IFBLK: "block",
+    stat.S_IFREG: "file",
+    stat.S_IFIFO: "fifo",
+    stat.S_IFLNK: "symlink",
+    stat.S_IFSOCK: "socket",
 }
 
 
-def _kind_from_mode(stat_mode, _formats=_formats, _unknown='unknown'):
+def _kind_from_mode(stat_mode, _formats=_formats, _unknown="unknown"):
     """Generate a file kind from a stat mode. This is used in walkdirs.
 
     It's performance is critical: Do not mutate without careful benchmarking.

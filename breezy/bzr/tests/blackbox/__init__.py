@@ -22,7 +22,6 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_brz function.
 """
 
-
 from breezy import tests
 
 
@@ -31,11 +30,14 @@ def load_tests(loader, basic_tests, pattern):
     # add the tests for this module
     suite.addTests(basic_tests)
 
-    prefix = __name__ + '.'
+    prefix = __name__ + "."
     testmod_names = [
-        'test_dump_btree',
-        ]
+        "test_dump_btree",
+    ]
     # add the tests for the sub modules
-    suite.addTests(loader.loadTestsFromModuleNames(
-        [prefix + module_name for module_name in testmod_names]))
+    suite.addTests(
+        loader.loadTestsFromModuleNames(
+            [prefix + module_name for module_name in testmod_names]
+        )
+    )
     return suite

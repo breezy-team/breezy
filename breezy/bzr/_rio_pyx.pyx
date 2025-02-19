@@ -22,24 +22,12 @@
 cdef extern from "python-compat.h":
     pass
 
-from cpython.bytes cimport (
-    PyBytes_CheckExact,
-    PyBytes_FromStringAndSize,
-    PyBytes_AS_STRING,
-    PyBytes_GET_SIZE,
-    )
-from cpython.unicode cimport (
-    PyUnicode_CheckExact,
-    PyUnicode_DecodeUTF8,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    )
-from cpython.mem cimport (
-    PyMem_Free,
-    PyMem_Malloc,
-    PyMem_Realloc,
-    )
+from cpython.bytes cimport (PyBytes_AS_STRING, PyBytes_CheckExact,
+                            PyBytes_FromStringAndSize, PyBytes_GET_SIZE)
+from cpython.list cimport PyList_Append
+from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
+from cpython.unicode cimport PyUnicode_CheckExact, PyUnicode_DecodeUTF8
+
 
 cdef extern from "Python.h":
     ctypedef int Py_UNICODE
@@ -49,9 +37,7 @@ cdef extern from "Python.h":
     # Python 3.3 or later unicode handling
     char* PyUnicode_AsUTF8AndSize(object unicode, Py_ssize_t *size)
 
-from libc.string cimport (
-    memcpy,
-    )
+from libc.string cimport memcpy
 
 from .rio import Stanza
 

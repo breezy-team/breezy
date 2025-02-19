@@ -19,24 +19,23 @@ from breezy.tests import TestCaseWithTransport
 
 
 class TestCatRevision(TestCaseWithTransport):
-
     def test_already_url(self):
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
-        out, err = self.run_bzr('resolve-location %s' % wt.branch.user_url)
-        self.assertEqual(out, '%s\n' % wt.branch.user_url.replace('file://', ''))
+        out, err = self.run_bzr("resolve-location %s" % wt.branch.user_url)
+        self.assertEqual(out, "%s\n" % wt.branch.user_url.replace("file://", ""))
 
     def test_parent_missing(self):
-        wt = self.make_branch_and_tree('.')
+        wt = self.make_branch_and_tree(".")
 
-        out, err = self.run_bzr('resolve-location :parent', retcode=3)
-        self.assertEqual(out, '')
-        self.assertEqual(err, 'brz: ERROR: No parent location assigned.\n')
+        out, err = self.run_bzr("resolve-location :parent", retcode=3)
+        self.assertEqual(out, "")
+        self.assertEqual(err, "brz: ERROR: No parent location assigned.\n")
 
     def test_parent(self):
-        wt = self.make_branch_and_tree('.')
-        wt.branch.set_parent('http://example.com/foo')
+        wt = self.make_branch_and_tree(".")
+        wt.branch.set_parent("http://example.com/foo")
 
-        out, err = self.run_bzr('resolve-location :parent')
-        self.assertEqual(out, 'http://example.com/foo\n')
-        self.assertEqual(err, '')
+        out, err = self.run_bzr("resolve-location :parent")
+        self.assertEqual(out, "http://example.com/foo\n")
+        self.assertEqual(err, "")

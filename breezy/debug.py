@@ -32,7 +32,7 @@ def set_debug_flags_from_config():
     from breezy import config
 
     c = config.GlobalStack()
-    for f in c.get('debug_flags'):
+    for f in c.get("debug_flags"):
         debug_flags.add(f)
 
 
@@ -53,5 +53,7 @@ def set_trace():
     """
     import pdb
     import sys
-    pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
-            ).set_trace(sys._getframe().f_back)
+
+    pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__).set_trace(
+        sys._getframe().f_back
+    )

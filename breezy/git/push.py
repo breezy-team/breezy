@@ -16,21 +16,16 @@
 
 """Basic push implementation."""
 
-from ..push import (
-    PushResult,
-    )
-from .errors import (
-    GitSmartRemoteNotSupported,
-    )
+from ..push import PushResult
+from .errors import GitSmartRemoteNotSupported
 
 
 class GitPushResult(PushResult):
-
     def _lookup_revno(self, revid):
         from .branch import _quick_lookup_revno
+
         try:
-            return _quick_lookup_revno(self.source_branch, self.target_branch,
-                                       revid)
+            return _quick_lookup_revno(self.source_branch, self.target_branch, revid)
         except GitSmartRemoteNotSupported:
             return None
 
@@ -44,14 +39,10 @@ class GitPushResult(PushResult):
 
 
 class MissingObjectsIterator:
-    """Iterate over git objects that are missing from a target repository.
-
-    """
+    """Iterate over git objects that are missing from a target repository."""
 
     def __init__(self, store, source, pb=None):
-        """Create a new missing objects iterator.
-
-        """
+        """Create a new missing objects iterator."""
         self.source = source
         self._object_store = store
         self._pending = []
@@ -78,14 +69,12 @@ class MissingObjectsIterator:
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj in self._object_store._revision_to_objects(
-                rev, tree, lossy):
+        for path, obj in self._object_store._revision_to_objects(rev, tree, lossy):
             if obj.type_name == b"commit":
                 commit = obj
             self._pending.append((obj, path))
         if commit is None:
-            raise AssertionError("no commit object generated for revision %s" %
-                                 revid)
+            raise AssertionError("no commit object generated for revision %s" % revid)
         return commit.id
 
     def __len__(self):
@@ -96,7 +85,6 @@ class MissingObjectsIterator:
 
 
 class ObjectStoreParentsProvider:
-
     def __init__(self, store):
         self._store = store
 
@@ -122,5 +110,6 @@ def remote_divergence(old_sha, new_sha, store):
     if not isinstance(new_sha, bytes):
         raise TypeError(new_sha)
     from breezy.graph import Graph
+
     graph = Graph(ObjectStoreParentsProvider(store))
     return not graph.is_ancestor(old_sha, new_sha)

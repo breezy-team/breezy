@@ -20,26 +20,16 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from breezy.bzr.smart.
 """
 
-__all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
+__all__ = ["RemoteTransport", "RemoteTCPTransport", "RemoteSSHTransport"]
 
 from io import BytesIO
 
-from .. import (
-    config,
-    debug,
-    errors,
-    trace,
-    transport,
-    urlutils,
-    )
-from ..bzr import (
-    remote,
-    )
+from .. import config, debug, errors, trace, transport, urlutils
+from ..bzr import remote
 from ..bzr.smart import client, medium
 
 
 class _SmartStat:
-
     def __init__(self, size, mode):
         self.st_size = size
         self.st_mode = mode
@@ -91,15 +81,13 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super().__init__(
-            url, _from_transport=_from_transport)
+        super().__init__(url, _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
         # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
         # what we want to share is really the shared connection.
 
-        if (_from_transport is not None
-                and isinstance(_from_transport, RemoteTransport)):
+        if _from_transport is not None and isinstance(_from_transport, RemoteTransport):
             _client = _from_transport._client
         elif _from_transport is None:
             # If no _from_transport is specified, we need to intialize the
@@ -107,12 +95,13 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-                if 'hpss' in debug.debug_flags:
-                    trace.mutter('hpss: Built a new medium: %s',
-                                 medium.__class__.__name__)
-            self._shared_connection = transport._SharedConnection(medium,
-                                                                  credentials,
-                                                                  self.base)
+                if "hpss" in debug.debug_flags:
+                    trace.mutter(
+                        "hpss: Built a new medium: %s", medium.__class__.__name__
+                    )
+            self._shared_connection = transport._SharedConnection(
+                medium, credentials, self.base
+            )
         elif medium is None:
             # No medium was specified, so share the medium from the
             # _from_transport.
@@ -121,7 +110,8 @@ class RemoteTransport(transport.ConnectedTransport):
             raise AssertionError(
                 "Both _from_transport (%r) and medium (%r) passed to "
                 "RemoteTransport.__init__, but these parameters are mutally "
-                "exclusive." % (_from_transport, medium))
+                "exclusive." % (_from_transport, medium)
+            )
 
         if _client is None:
             self._client = client._SmartClient(medium)
@@ -148,15 +138,15 @@ class RemoteTransport(transport.ConnectedTransport):
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         try:
-            resp = self._call2(b'Transport.is_readonly')
+            resp = self._call2(b"Transport.is_readonly")
         except errors.UnknownSmartMethod:
             # XXX: nasty hack: servers before 0.16 don't have a
             # 'Transport.is_readonly' verb, so we do what clients before 0.16
             # did: assume False.
             return False
-        if resp == (b'yes', ):
+        if resp == (b"yes",):
             return True
-        elif resp == (b'no', ):
+        elif resp == (b"no",):
             return False
         else:
             raise errors.UnexpectedSmartServerResponse(resp)
@@ -185,7 +175,7 @@ class RemoteTransport(transport.ConnectedTransport):
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
-                context = {'relpath': args[0].decode('utf-8')}
+                context = {"relpath": args[0].decode("utf-8")}
             else:
                 context = {}
             self._translate_error(err, **context)
@@ -197,7 +187,7 @@ class RemoteTransport(transport.ConnectedTransport):
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
-                context = {'relpath': args[0]}
+                context = {"relpath": args[0]}
             else:
                 context = {}
             self._translate_error(err, **context)
@@ -207,10 +197,10 @@ class RemoteTransport(transport.ConnectedTransport):
 
         :see: Transport.has()
         """
-        resp = self._call2(b'has', self._remote_path(relpath))
-        if resp == (b'yes', ):
+        resp = self._call2(b"has", self._remote_path(relpath))
+        if resp == (b"yes",):
             return True
-        elif resp == (b'no', ):
+        elif resp == (b"no",):
             return False
         else:
             raise errors.UnexpectedSmartServerResponse(resp)
@@ -225,24 +215,24 @@ class RemoteTransport(transport.ConnectedTransport):
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
         try:
-            resp, response_handler = self._client.call_expecting_body(
-                b'get', remote)
+            resp, response_handler = self._client.call_expecting_body(b"get", remote)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, relpath)
-        if resp != (b'ok', ):
+        if resp != (b"ok",):
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(resp)
         return response_handler.read_body_bytes()
 
     def _serialise_optional_mode(self, mode):
         if mode is None:
-            return b''
+            return b""
         else:
-            return ('%d' % mode).encode('ascii')
+            return ("%d" % mode).encode("ascii")
 
     def mkdir(self, relpath, mode=None):
-        resp = self._call2(b'mkdir', self._remote_path(relpath),
-                           self._serialise_optional_mode(mode))
+        resp = self._call2(
+            b"mkdir", self._remote_path(relpath), self._serialise_optional_mode(mode)
+        )
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -253,29 +243,39 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
-            raise TypeError(
-                'raw_bytes must be bytes string, not %s' % type(raw_bytes))
+            raise TypeError("raw_bytes must be bytes string, not %s" % type(raw_bytes))
         resp = self._call_with_body_bytes(
-            b'put',
+            b"put",
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
-            raw_bytes)
+            raw_bytes,
+        )
         self._ensure_ok(resp)
         return len(raw_bytes)
 
-    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
-                             create_parent_dir=False,
-                             dir_mode=None):
+    def put_bytes_non_atomic(
+        self,
+        relpath: str,
+        raw_bytes: bytes,
+        mode=None,
+        create_parent_dir=False,
+        dir_mode=None,
+    ):
         """See Transport.put_bytes_non_atomic."""
         # FIXME: no encoding in the transport!
-        create_parent_str = b'F'
+        create_parent_str = b"F"
         if create_parent_dir:
-            create_parent_str = b'T'
+            create_parent_str = b"T"
 
         resp = self._call_with_body_bytes(
-            b'put_non_atomic',
-            (self._remote_path(relpath), self._serialise_optional_mode(mode),
-             create_parent_str, self._serialise_optional_mode(dir_mode)),
-            raw_bytes)
+            b"put_non_atomic",
+            (
+                self._remote_path(relpath),
+                self._serialise_optional_mode(mode),
+                create_parent_str,
+                self._serialise_optional_mode(dir_mode),
+            ),
+            raw_bytes,
+        )
         self._ensure_ok(resp)
 
     def put_file(self, relpath, upload_file, mode=None):
@@ -289,27 +289,32 @@ class RemoteTransport(transport.ConnectedTransport):
             upload_file.seek(pos)
             raise
 
-    def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False,
-                            dir_mode=None):
-        return self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
-                                         create_parent_dir=create_parent_dir,
-                                         dir_mode=dir_mode)
+    def put_file_non_atomic(
+        self, relpath, f, mode=None, create_parent_dir=False, dir_mode=None
+    ):
+        return self.put_bytes_non_atomic(
+            relpath,
+            f.read(),
+            mode=mode,
+            create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode,
+        )
 
     def append_file(self, relpath, from_file, mode=None):
         return self.append_bytes(relpath, from_file.read(), mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
         resp = self._call_with_body_bytes(
-            b'append',
+            b"append",
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
-            bytes)
-        if resp[0] == b'appended':
+            bytes,
+        )
+        if resp[0] == b"appended":
             return int(resp[1])
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def delete(self, relpath):
-        resp = self._call2(b'delete', self._remote_path(relpath))
+        resp = self._call2(b"delete", self._remote_path(relpath))
         self._ensure_ok(resp)
 
     def external_url(self):
@@ -328,10 +333,14 @@ class RemoteTransport(transport.ConnectedTransport):
         offsets = list(offsets)
 
         sorted_offsets = sorted(offsets)
-        coalesced = list(self._coalesce_offsets(sorted_offsets,
-                                                limit=self._max_readv_combine,
-                                                fudge_factor=self._bytes_to_read_before_seek,
-                                                max_size=self._max_readv_bytes))
+        coalesced = list(
+            self._coalesce_offsets(
+                sorted_offsets,
+                limit=self._max_readv_combine,
+                fudge_factor=self._bytes_to_read_before_seek,
+                max_size=self._max_readv_bytes,
+            )
+        )
 
         # now that we've coallesced things, avoid making enormous requests
         requests = []
@@ -347,11 +356,15 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_len += c.length
         if cur_request:
             requests.append(cur_request)
-        if 'hpss' in debug.debug_flags:
-            trace.mutter('%s.readv %s offsets => %s coalesced'
-                         ' => %s requests (%s)',
-                         self.__class__.__name__, len(offsets), len(coalesced),
-                         len(requests), sum(map(len, requests)))
+        if "hpss" in debug.debug_flags:
+            trace.mutter(
+                "%s.readv %s offsets => %s coalesced => %s requests (%s)",
+                self.__class__.__name__,
+                len(offsets),
+                len(coalesced),
+                len(requests),
+                sum(map(len, requests)),
+            )
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         # turn the list of offsets into a single stack to iterate
@@ -361,36 +374,42 @@ class RemoteTransport(transport.ConnectedTransport):
         for cur_request in requests:
             try:
                 result = self._client.call_with_body_readv_array(
-                    (b'readv', self._remote_path(relpath),),
-                    [(c.start, c.length) for c in cur_request])
+                    (
+                        b"readv",
+                        self._remote_path(relpath),
+                    ),
+                    [(c.start, c.length) for c in cur_request],
+                )
                 resp, response_handler = result
             except errors.ErrorFromSmartServer as err:
                 self._translate_error(err, relpath)
 
-            if resp[0] != b'readv':
+            if resp[0] != b"readv":
                 # This should raise an exception
                 response_handler.cancel_read_body()
                 raise errors.UnexpectedSmartServerResponse(resp)
 
-            yield from self._handle_response(offset_stack, cur_request,
-                                             response_handler,
-                                             data_map,
-                                             next_offset)
+            yield from self._handle_response(
+                offset_stack, cur_request, response_handler, data_map, next_offset
+            )
 
-    def _handle_response(self, offset_stack, coalesced, response_handler,
-                         data_map, next_offset):
+    def _handle_response(
+        self, offset_stack, coalesced, response_handler, data_map, next_offset
+    ):
         cur_offset_and_size = next_offset[0]
         # FIXME: this should know how many bytes are needed, for clarity.
         data = response_handler.read_body_bytes()
         data_offset = 0
         for c_offset in coalesced:
             if len(data) < c_offset.length:
-                raise errors.ShortReadvError(relpath, c_offset.start,
-                                             c_offset.length, actual=len(data))
+                raise errors.ShortReadvError(
+                    relpath, c_offset.start, c_offset.length, actual=len(data)
+                )
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start + suboffset, subsize)
-                this_data = data[data_offset + suboffset:
-                                 data_offset + suboffset + subsize]
+                this_data = data[
+                    data_offset + suboffset : data_offset + suboffset + subsize
+                ]
                 # Special case when the data is in-order, rather than packing
                 # into a map and then back out again. Benchmarking shows that
                 # this has 100% hit rate, but leave in the data_map work just
@@ -401,8 +420,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
                     try:
-                        cur_offset_and_size = next_offset[0] = next(
-                            offset_stack)
+                        cur_offset_and_size = next_offset[0] = next(offset_stack)
                     except StopIteration:
                         return
                 else:
@@ -419,20 +437,16 @@ class RemoteTransport(transport.ConnectedTransport):
                     return
 
     def rename(self, rel_from, rel_to):
-        self._call(b'rename',
-                   self._remote_path(rel_from),
-                   self._remote_path(rel_to))
+        self._call(b"rename", self._remote_path(rel_from), self._remote_path(rel_to))
 
     def move(self, rel_from, rel_to):
-        self._call(b'move',
-                   self._remote_path(rel_from),
-                   self._remote_path(rel_to))
+        self._call(b"move", self._remote_path(rel_from), self._remote_path(rel_to))
 
     def rmdir(self, relpath):
-        resp = self._call(b'rmdir', self._remote_path(relpath))
+        resp = self._call(b"rmdir", self._remote_path(relpath))
 
     def _ensure_ok(self, resp):
-        if resp[0] != b'ok':
+        if resp[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(resp)
 
     def _translate_error(self, err, relpath=None):
@@ -444,8 +458,8 @@ class RemoteTransport(transport.ConnectedTransport):
             m.disconnect()
 
     def stat(self, relpath):
-        resp = self._call2(b'stat', self._remote_path(relpath))
-        if resp[0] == b'stat':
+        resp = self._call2(b"stat", self._remote_path(relpath))
+        if resp[0] == b"stat":
             return _SmartStat(int(resp[1]), int(resp[2], 8))
         raise errors.UnexpectedSmartServerResponse(resp)
 
@@ -466,15 +480,15 @@ class RemoteTransport(transport.ConnectedTransport):
         return True
 
     def list_dir(self, relpath):
-        resp = self._call2(b'list_dir', self._remote_path(relpath))
-        if resp[0] == b'names':
-            return [name.decode('utf-8') for name in resp[1:]]
+        resp = self._call2(b"list_dir", self._remote_path(relpath))
+        if resp[0] == b"names":
+            return [name.decode("utf-8") for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
-        resp = self._call2(b'iter_files_recursive', self._remote_path(''))
-        if resp[0] == b'names':
-            return [name.decode('utf-8') for name in resp[1:]]
+        resp = self._call2(b"iter_files_recursive", self._remote_path(""))
+        if resp[0] == b"names":
+            return [name.decode("utf-8") for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
 
@@ -487,7 +501,8 @@ class RemoteTCPTransport(RemoteTransport):
 
     def _build_medium(self):
         client_medium = medium.SmartTCPClientMedium(
-            self._parsed_url.host, self._parsed_url.port, self.base)
+            self._parsed_url.host, self._parsed_url.port, self.base
+        )
         return client_medium, None
 
 
@@ -500,7 +515,8 @@ class RemoteTCPTransportV2Only(RemoteTransport):
 
     def _build_medium(self):
         client_medium = medium.SmartTCPClientMedium(
-            self._parsed_url.host, self._parsed_url.port, self.base)
+            self._parsed_url.host, self._parsed_url.port, self.base
+        )
         client_medium._protocol_version = 2
         client_medium._remember_remote_is_before((1, 6))
         return client_medium, None
@@ -519,11 +535,14 @@ class RemoteSSHTransport(RemoteTransport):
         user = self._parsed_url.user
         if user is None:
             auth = config.AuthenticationConfig()
-            user = auth.get_user('ssh', self._parsed_url.host,
-                                 self._parsed_url.port)
-        ssh_params = medium.SSHParams(self._parsed_url.host,
-                                      self._parsed_url.port, user, self._parsed_url.password,
-                                      bzr_remote_path)
+            user = auth.get_user("ssh", self._parsed_url.host, self._parsed_url.port)
+        ssh_params = medium.SSHParams(
+            self._parsed_url.host,
+            self._parsed_url.port,
+            user,
+            self._parsed_url.password,
+            bzr_remote_path,
+        )
         client_medium = medium.SmartSSHClientMedium(self.base, ssh_params)
         return client_medium, (user, self._parsed_url.password)
 
@@ -544,12 +563,11 @@ class RemoteHTTPTransport(RemoteTransport):
             # FIXME: the password may be lost here because it appears in the
             # url only for an intial construction (when the url came from the
             # command-line).
-            http_url = base[len('bzr+'):]
+            http_url = base[len("bzr+") :]
             self._http_transport = transport.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
-        super().__init__(
-            base, _from_transport=_from_transport)
+        super().__init__(base, _from_transport=_from_transport)
 
     def _build_medium(self):
         # We let http_transport take care of the credentials
@@ -560,7 +578,7 @@ class RemoteHTTPTransport(RemoteTransport):
         # Adjust the relpath based on which URL this smart transport is
         # connected to.
         http_base = urlutils.normalize_url(self.get_smart_medium().base)
-        url = urlutils.join(self.base[len('bzr+'):], relpath)
+        url = urlutils.join(self.base[len("bzr+") :], relpath)
         url = urlutils.normalize_url(url)
         return urlutils.relative_url(http_base, url)
 
@@ -581,17 +599,19 @@ class RemoteHTTPTransport(RemoteTransport):
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        return RemoteHTTPTransport(abs_url,
-                                   _from_transport=self,
-                                   http_transport=self._http_transport)
+        return RemoteHTTPTransport(
+            abs_url, _from_transport=self, http_transport=self._http_transport
+        )
 
     def _redirected_to(self, source, target):
         """See transport._redirected_to"""
         redirected = self._http_transport._redirected_to(source, target)
-        if (redirected is not None
-                and isinstance(redirected, type(self._http_transport))):
-            return RemoteHTTPTransport('bzr+' + redirected.external_url(),
-                                       http_transport=redirected)
+        if redirected is not None and isinstance(
+            redirected, type(self._http_transport)
+        ):
+            return RemoteHTTPTransport(
+                "bzr+" + redirected.external_url(), http_transport=redirected
+            )
         else:
             # Either None or a transport for a different protocol
             return redirected
@@ -605,8 +625,10 @@ class HintingSSHTransport(transport.Transport):
 
     def __init__(self, url):
         raise transport.UnsupportedProtocol(
-            url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
-            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
+            url,
+            'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
+            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url),
+        )
 
 
 def get_test_permutations():
@@ -614,4 +636,5 @@ def get_test_permutations():
     # We may need a little more test framework support to construct an
     # appropriate RemoteTransport in the future.
     from ..tests import test_server
+
     return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

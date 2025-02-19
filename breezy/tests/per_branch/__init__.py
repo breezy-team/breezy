@@ -24,10 +24,7 @@ Specific tests for individual formats are in the `tests/test_branch` file
 rather than in `tests/per_branch/*.py`.
 """
 
-from breezy import (
-    errors,
-    tests,
-    )
+from breezy import errors, tests
 from breezy.branch import format_registry
 from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests import test_server
@@ -35,8 +32,13 @@ from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory
 
 
-def make_scenarios(transport_server, transport_readonly_server,
-                   formats, vfs_transport_factory=None, name_suffix=''):
+def make_scenarios(
+    transport_server,
+    transport_readonly_server,
+    formats,
+    vfs_transport_factory=None,
+    name_suffix="",
+):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (branch_format, bzrdir_format).
@@ -45,15 +47,19 @@ def make_scenarios(transport_server, transport_readonly_server,
     for branch_format, bzrdir_format in formats:
         # some branches don't have separate format objects.
         # so we have a conditional here to handle them.
-        scenario_name = getattr(branch_format, '__name__',
-                                branch_format.__class__.__name__)
+        scenario_name = getattr(
+            branch_format, "__name__", branch_format.__class__.__name__
+        )
         scenario_name += name_suffix
-        scenario = (scenario_name, {
-            "transport_server": transport_server,
-            "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format": bzrdir_format,
-            "branch_format": branch_format,
-            })
+        scenario = (
+            scenario_name,
+            {
+                "transport_server": transport_server,
+                "transport_readonly_server": transport_readonly_server,
+                "bzrdir_format": bzrdir_format,
+                "branch_format": branch_format,
+            },
+        )
         result.append(scenario)
     return result
 
@@ -67,7 +73,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch('abranch')
+            self.branch = self.make_branch("abranch")
         return self.branch
 
     def get_default_format(self):
@@ -79,7 +85,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         try:
             return super().make_branch(relpath, format)
         except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('Uninitializable branch format')
+            raise tests.TestNotApplicable("Uninitializable branch format")
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.
@@ -98,17 +104,17 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             3
         """
         revmap = {}
-        tree = self.make_branch_and_memory_tree('tree')
+        tree = self.make_branch_and_memory_tree("tree")
         with tree.lock_write():
-            tree.add('')
-            revmap['1'] = tree.commit('first')
-            revmap['1.1.1'] = tree.commit('second')
+            tree.add("")
+            revmap["1"] = tree.commit("first")
+            revmap["1.1.1"] = tree.commit("second")
             # Uncommit that last commit and switch to the other line
-            tree.branch.set_last_revision_info(1, revmap['1'])
-            tree.set_parent_ids([revmap['1']])
-            revmap['2'] = tree.commit('alt-second')
-            tree.set_parent_ids([revmap['2'], revmap['1.1.1']])
-            revmap['3'] = tree.commit('third')
+            tree.branch.set_last_revision_info(1, revmap["1"])
+            tree.set_parent_ids([revmap["1"]])
+            revmap["2"] = tree.commit("alt-second")
+            tree.set_parent_ids([revmap["2"], revmap["1.1.1"]])
+            revmap["3"] = tree.commit("third")
 
         return tree, revmap
 
@@ -117,65 +123,73 @@ def branch_scenarios():
     """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
-    combinations = [(format, format._matchingcontroldir) for format in
-                    format_registry._get_all()]
+    combinations = [
+        (format, format._matchingcontroldir) for format in format_registry._get_all()
+    ]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        combinations)
+        combinations,
+    )
     # Add RemoteBranch tests, which need a special server.
     remote_branch_format = RemoteBranchFormat()
-    scenarios.extend(make_scenarios(
-        test_server.SmartTCPServer_for_testing,
-        test_server.ReadonlySmartTCPServer_for_testing,
-        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
-        memory.MemoryServer,
-        name_suffix='-default'))
+    scenarios.extend(
+        make_scenarios(
+            test_server.SmartTCPServer_for_testing,
+            test_server.ReadonlySmartTCPServer_for_testing,
+            [(remote_branch_format, remote_branch_format._matchingcontroldir)],
+            memory.MemoryServer,
+            name_suffix="-default",
+        )
+    )
     # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
     # server.
-    scenarios.extend(make_scenarios(
-        test_server.SmartTCPServer_for_testing_v2_only,
-        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        [(remote_branch_format, remote_branch_format._matchingcontroldir)],
-        memory.MemoryServer,
-        name_suffix='-v2'))
+    scenarios.extend(
+        make_scenarios(
+            test_server.SmartTCPServer_for_testing_v2_only,
+            test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+            [(remote_branch_format, remote_branch_format._matchingcontroldir)],
+            memory.MemoryServer,
+            name_suffix="-v2",
+        )
+    )
     return scenarios
 
 
 def load_tests(loader, standard_tests, pattern):
     per_branch_mod_names = [
-        'branch',
-        'break_lock',
-        'check',
-        'config',
-        'create_checkout',
-        'create_clone',
-        'commit',
-        'dotted_revno_to_revision_id',
-        'get_rev_id',
-        'get_revision_id_to_revno_map',
-        'hooks',
-        'http',
-        'iter_merge_sorted_revisions',
-        'last_revision_info',
-        'locking',
-        'parent',
-        'permissions',
-        'pull',
-        'push',
-        'reconcile',
-        'revision_id_to_dotted_revno',
-        'revision_id_to_revno',
-        'sprout',
-        'stacking',
-        'tags',
-        'uncommit',
-        'update',
-        ]
+        "branch",
+        "break_lock",
+        "check",
+        "config",
+        "create_checkout",
+        "create_clone",
+        "commit",
+        "dotted_revno_to_revision_id",
+        "get_rev_id",
+        "get_revision_id_to_revno_map",
+        "hooks",
+        "http",
+        "iter_merge_sorted_revisions",
+        "last_revision_info",
+        "locking",
+        "parent",
+        "permissions",
+        "pull",
+        "push",
+        "reconcile",
+        "revision_id_to_dotted_revno",
+        "revision_id_to_revno",
+        "sprout",
+        "stacking",
+        "tags",
+        "uncommit",
+        "update",
+    ]
     sub_tests = loader.loadTestsFromModuleNames(
-        ['breezy.tests.per_branch.test_' + name
-         for name in per_branch_mod_names])
+        ["breezy.tests.per_branch.test_" + name for name in per_branch_mod_names]
+    )
     return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

@@ -16,14 +16,8 @@
 
 """Test branches with inaccessible parents."""
 
-from breezy import (
-    branch,
-    errors,
-    )
-from breezy.tests import (
-    per_branch,
-    test_server,
-    )
+from breezy import branch, errors
+from breezy.tests import per_branch, test_server
 
 
 class InaccessibleParentTests(per_branch.TestCaseWithBranch):
@@ -43,19 +37,27 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
     def get_branch_with_invalid_parent(self):
         """Get a branch whose get_parent will raise InaccessibleParent."""
         self.build_tree(
-            ['parent/', 'parent/path/', 'parent/path/to/',
-             'child/', 'child/path/', 'child/path/to/'],
-            transport=self.get_transport())
-        self.make_branch(
-            'parent/path/to/a').controldir.sprout(self.get_url('child/path/to/b'))
+            [
+                "parent/",
+                "parent/path/",
+                "parent/path/to/",
+                "child/",
+                "child/path/",
+                "child/path/to/",
+            ],
+            transport=self.get_transport(),
+        )
+        self.make_branch("parent/path/to/a").controldir.sprout(
+            self.get_url("child/path/to/b")
+        )
 
         # The child branch internally will have recorded that its parent is at
         # "../../../../parent/path/to/a" or similar.  So we move the child
         # branch up several directories, so that its parent path will point to
         # somewhere outside the directory served by the HTTP server.  Thus its
         # parent is now inaccessible.
-        self.get_transport().rename('child/path/to/b', 'b')
-        branch_b = branch.Branch.open(self.get_readonly_url('b'))
+        self.get_transport().rename("child/path/to/b", "b")
+        branch_b = branch.Branch.open(self.get_readonly_url("b"))
         return branch_b
 
     def test_get_parent_invalid(self):
@@ -68,12 +70,12 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
         # If clone can't determine the location of the parent of the branch
         # being cloned, then the new branch will have no parent set.
         branch_b = self.get_branch_with_invalid_parent()
-        branch_c = branch_b.controldir.clone('c').open_branch()
+        branch_c = branch_b.controldir.clone("c").open_branch()
         self.assertEqual(None, branch_c.get_parent())
 
     def test_sprout_invalid_parent(self):
         # A sprouted branch will have a parent of the branch it was sprouted
         # from, even if that branch has an invalid parent.
         branch_b = self.get_branch_with_invalid_parent()
-        branch_c = branch_b.controldir.sprout('c').open_branch()
+        branch_c = branch_b.controldir.sprout("c").open_branch()
         self.assertEqual(branch_b.base, branch_c.get_parent())

@@ -45,9 +45,9 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
-from .. import osutils
-
 from io import BytesIO
+
+from .. import osutils
 
 
 class CommitSupplement:
@@ -68,8 +68,7 @@ class CommitSupplement:
         self.verifiers = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id or self.properties or
-                    self.explicit_parent_ids)
+        return bool(self.revision_id or self.properties or self.explicit_parent_ids)
 
 
 class TreeSupplement:
@@ -93,7 +92,7 @@ def parse_roundtripping_metadata(text):
         elif key == b"testament3-sha1":
             ret.verifiers[b"testament3-sha1"] = value.strip()
         elif key.startswith(b"property-"):
-            name = key[len(b"property-"):]
+            name = key[len(b"property-") :]
             if name not in ret.properties:
                 ret.properties[name] = value[1:].rstrip(b"\n")
             else:
@@ -113,14 +112,12 @@ def generate_roundtripping_metadata(metadata, encoding):
     if metadata.revision_id:
         lines.append(b"revision-id: %s\n" % metadata.revision_id)
     if metadata.explicit_parent_ids:
-        lines.append(b"parent-ids: %s\n" %
-                     b" ".join(metadata.explicit_parent_ids))
+        lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
             lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))
     if b"testament3-sha1" in metadata.verifiers:
-        lines.append(b"testament3-sha1: %s\n" %
-                     metadata.verifiers[b"testament3-sha1"])
+        lines.append(b"testament3-sha1: %s\n" % metadata.verifiers[b"testament3-sha1"])
     return b"".join(lines)
 
 

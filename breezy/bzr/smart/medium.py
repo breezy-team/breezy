@@ -24,17 +24,20 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 breezy/transport/smart/__init__.py.
 """
 
+import _thread
 import errno
 import io
 import os
 import sys
 import time
 
-import _thread
-
 import breezy
+
 from ...lazy_import import lazy_import
-lazy_import(globals(), """
+
+lazy_import(
+    globals(),
+    """
 import select
 import socket
 import weakref
@@ -49,11 +52,9 @@ from breezy import (
 from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
-""")
-from ... import (
-    errors,
-    osutils,
-    )
+""",
+)
+from ... import errors, osutils
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
@@ -63,9 +64,10 @@ _MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
 
 
 class HpssVfsRequestNotAllowed(errors.BzrError):
-
-    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
-            "%(method)s, %(arguments)s.")
+    _fmt = (
+        "VFS requests over the smart server are not allowed. Encountered: "
+        "%(method)s, %(arguments)s."
+    )
 
     def __init__(self, method, arguments):
         self.method = method
@@ -95,10 +97,10 @@ def _get_protocol_factory_for_bytes(bytes):
     """
     if bytes.startswith(protocol.MESSAGE_VERSION_THREE):
         protocol_factory = protocol.build_server_protocol_three
-        bytes = bytes[len(protocol.MESSAGE_VERSION_THREE):]
+        bytes = bytes[len(protocol.MESSAGE_VERSION_THREE) :]
     elif bytes.startswith(protocol.REQUEST_VERSION_TWO):
         protocol_factory = protocol.SmartServerRequestProtocolTwo
-        bytes = bytes[len(protocol.REQUEST_VERSION_TWO):]
+        bytes = bytes[len(protocol.REQUEST_VERSION_TWO) :]
     else:
         protocol_factory = protocol.SmartServerRequestProtocolOne
     return protocol_factory, bytes
@@ -113,16 +115,16 @@ def _get_line(read_bytes_func):
     :returns: a tuple of two strs: (line, excess)
     """
     newline_pos = -1
-    bytes = b''
+    bytes = b""
     while newline_pos == -1:
         new_bytes = read_bytes_func(1)
         bytes += new_bytes
-        if new_bytes == b'':
+        if new_bytes == b"":
             # Ran out of bytes before receiving a complete line.
-            return bytes, b''
-        newline_pos = bytes.find(b'\n')
-    line = bytes[:newline_pos + 1]
-    excess = bytes[newline_pos + 1:]
+            return bytes, b""
+        newline_pos = bytes.find(b"\n")
+    line = bytes[: newline_pos + 1]
+    excess = bytes[newline_pos + 1 :]
     return line, excess
 
 
@@ -143,16 +145,18 @@ class SmartMedium:
         if self._push_back_buffer is not None:
             raise AssertionError(
                 "_push_back called when self._push_back_buffer is %r"
-                % (self._push_back_buffer,))
-        if data == b'':
+                % (self._push_back_buffer,)
+            )
+        if data == b"":
             return
         self._push_back_buffer = data
 
     def _get_push_back_buffer(self):
-        if self._push_back_buffer == b'':
+        if self._push_back_buffer == b"":
             raise AssertionError(
-                '%s._push_back_buffer should never be the empty string, '
-                'which can be confused with EOF' % (self,))
+                "%s._push_back_buffer should never be the empty string, "
+                "which can be confused with EOF" % (self,)
+            )
         bytes = self._push_back_buffer
         self._push_back_buffer = None
         return bytes
@@ -197,7 +201,7 @@ class SmartMedium:
 
 
 _bad_file_descriptor = (errno.EBADF,)
-if sys.platform == 'win32':
+if sys.platform == "win32":
     # Given on Windows if you pass a closed socket to select.select. Probably
     # also given if you pass a file handle to select.
     WSAENOTSOCK = 10038
@@ -224,7 +228,7 @@ class SmartServerStreamMedium(SmartMedium):
 
     _timer = time.time
 
-    def __init__(self, backing_transport, root_client_path='/', timeout=None):
+    def __init__(self, backing_transport, root_client_path="/", timeout=None):
         """Construct new server.
 
         :param backing_transport: Transport for the directory served.
@@ -234,7 +238,7 @@ class SmartServerStreamMedium(SmartMedium):
         self.root_client_path = root_client_path
         self.finished = False
         if timeout is None:
-            raise AssertionError('You must supply a timeout.')
+            raise AssertionError("You must supply a timeout.")
         self._client_timeout = timeout
         self._client_poll_timeout = min(timeout / 10.0, 1.0)
         SmartMedium.__init__(self)
@@ -244,12 +248,13 @@ class SmartServerStreamMedium(SmartMedium):
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.
         from sys import stderr
+
         try:
             while not self.finished:
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout as e:
-            trace.note('{}'.format(e))
+            trace.note("{}".format(e))
             trace.log_exception_quietly()
             self._disconnect_client()
             # We reported it, no reason to make a big fuss.
@@ -261,7 +266,7 @@ class SmartServerStreamMedium(SmartMedium):
 
     def _stop_gracefully(self):
         """When we finish this message, stop looking for more."""
-        trace.mutter('Stopping {}'.format(self))
+        trace.mutter("Stopping {}".format(self))
         self.finished = True
 
     def _disconnect_client(self):
@@ -298,7 +303,8 @@ class SmartServerStreamMedium(SmartMedium):
         bytes = self._get_line()
         protocol_factory, unused_bytes = _get_protocol_factory_for_bytes(bytes)
         protocol = protocol_factory(
-            self.backing_transport, self._write_out, self.root_client_path)
+            self.backing_transport, self._write_out, self.root_client_path
+        )
         protocol.accept_bytes(unused_bytes)
         return protocol
 
@@ -318,8 +324,8 @@ class SmartServerStreamMedium(SmartMedium):
             try:
                 rs, _, xs = select.select([fd], [], [fd], poll_timeout)
             except OSError as e:
-                err = getattr(e, 'errno', None)
-                if err is None and getattr(e, 'args', None) is not None:
+                err = getattr(e, "errno", None)
+                if err is None and getattr(e, "args", None) is not None:
                     # select.error doesn't have 'errno', it just has args[0]
                     err = e.args[0]
                 if err in _bad_file_descriptor:
@@ -332,8 +338,9 @@ class SmartServerStreamMedium(SmartMedium):
                 return  # Socket may already be closed
         if rs or xs:
             return
-        raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'
-                                       % (timeout_seconds,))
+        raise errors.ConnectionTimeout(
+            "disconnecting client after %.1f seconds" % (timeout_seconds,)
+        )
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
@@ -362,31 +369,30 @@ class SmartServerStreamMedium(SmartMedium):
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
-
-    def __init__(self, sock, backing_transport, root_client_path='/',
-                 timeout=None):
+    def __init__(self, sock, backing_transport, root_client_path="/", timeout=None):
         """Constructor.
 
         :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
         SmartServerStreamMedium.__init__(
-            self, backing_transport, root_client_path=root_client_path,
-            timeout=timeout)
+            self, backing_transport, root_client_path=root_client_path, timeout=timeout
+        )
         sock.setblocking(True)
         self.socket = sock
         # Get the getpeername now, as we might be closed later when we care.
         try:
             self._client_info = sock.getpeername()
         except OSError:
-            self._client_info = '<unknown>'
+            self._client_info = "<unknown>"
 
     def __str__(self):
-        return '{}(client={})'.format(self.__class__.__name__, self._client_info)
+        return "{}(client={})".format(self.__class__.__name__, self._client_info)
 
     def __repr__(self):
-        return '{}.{}(client={})'.format(self.__module__, self.__class__.__name__,
-                                     self._client_info)
+        return "{}.{}(client={})".format(
+            self.__module__, self.__class__.__name__, self._client_info
+        )
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
@@ -394,7 +400,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             # than MAX_SOCKET_CHUNK ready, the socket will just return a
             # short read immediately rather than block.
             bytes = self.read_bytes(osutils.MAX_SOCKET_CHUNK)
-            if bytes == b'':
+            if bytes == b"":
                 self.finished = True
                 return
             protocol.accept_bytes(bytes)
@@ -418,8 +424,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         return self._wait_on_descriptor(self.socket, timeout_seconds)
 
     def _read_bytes(self, desired_count):
-        return osutils.read_bytes_from_socket(
-            self.socket, self._report_activity)
+        return osutils.read_bytes_from_socket(self.socket, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -430,15 +435,15 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _write_out(self, bytes):
         tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
-        if 'hpss' in debug.debug_flags:
+        if "hpss" in debug.debug_flags:
             thread_id = _thread.get_ident()
-            trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
-                         % ('wrote', thread_id, len(bytes),
-                            osutils.perf_counter() - tstart))
+            trace.mutter(
+                "%12s: [%s] %d bytes to the socket in %.3fs"
+                % ("wrote", thread_id, len(bytes), osutils.perf_counter() - tstart)
+            )
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
-
     def __init__(self, in_file, out_file, backing_transport, timeout=None):
         """Construct new server.
 
@@ -446,13 +451,13 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param out_file: Python file to write responses.
         :param backing_transport: Transport for the directory served.
         """
-        SmartServerStreamMedium.__init__(self, backing_transport,
-                                         timeout=timeout)
-        if sys.platform == 'win32':
+        SmartServerStreamMedium.__init__(self, backing_transport, timeout=timeout)
+        if sys.platform == "win32":
             # force binary mode for files
             import msvcrt
+
             for f in (in_file, out_file):
-                fileno = getattr(f, 'fileno', None)
+                fileno = getattr(f, "fileno", None)
                 if fileno:
                     msvcrt.setmode(fileno(), os.O_BINARY)
         self._in = in_file
@@ -480,7 +485,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             bytes = self.read_bytes(bytes_to_read)
-            if bytes == b'':
+            if bytes == b"":
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
@@ -502,8 +507,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :return: None, this will raise ConnectionTimeout if we time out before
             data is available.
         """
-        if (getattr(self._in, 'fileno', None) is None
-                or sys.platform == 'win32'):
+        if getattr(self._in, "fileno", None) is None or sys.platform == "win32":
             # You can't select() file descriptors on Windows.
             return
         try:
@@ -644,11 +648,12 @@ class SmartClientMediumRequest:
 
     def read_line(self):
         line = self._read_line()
-        if not line.endswith(b'\n'):
+        if not line.endswith(b"\n"):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
                 "Unexpected end of message. Please check connectivity "
-                "and permissions, and report a bug if problems persist.")
+                "and permissions, and report a bug if problems persist."
+            )
         return line
 
     def _read_line(self):
@@ -661,13 +666,12 @@ class SmartClientMediumRequest:
 
 
 class _VfsRefuser:
-    """An object that refuses all VFS requests.
-
-    """
+    """An object that refuses all VFS requests."""
 
     def __init__(self):
         client._SmartClient.hooks.install_named_hook(
-            'call', self.check_vfs, 'vfs refuser')
+            "call", self.check_vfs, "vfs refuser"
+        )
 
     def check_vfs(self, params):
         try:
@@ -690,7 +694,8 @@ class _DebugCounter:
     def __init__(self):
         self.counts = weakref.WeakKeyDictionary()
         client._SmartClient.hooks.install_named_hook(
-            'call', self.increment_call_count, 'hpss call counter')
+            "call", self.increment_call_count, "hpss call counter"
+        )
         breezy.get_global_state().exit_stack.callback(self.flush_all)
 
     def track(self, medium):
@@ -701,8 +706,7 @@ class _DebugCounter:
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = dict(count=0, vfs_count=0,
-                                   medium_repr=medium_repr)
+        self.counts[medium] = dict(count=0, vfs_count=0, medium_repr=medium_repr)
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
@@ -712,27 +716,33 @@ class _DebugCounter:
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
-        value['count'] += 1
+        value["count"] += 1
         try:
             request_method = request.request_handlers.get(params.method)
         except KeyError:
             # A method we don't know about doesn't count as a VFS method.
             return
         if issubclass(request_method, vfs.VfsRequest):
-            value['vfs_count'] += 1
+            value["vfs_count"] += 1
 
     def done(self, ref):
         value = self.counts[ref]
         count, vfs_count, medium_repr = (
-            value['count'], value['vfs_count'], value['medium_repr'])
+            value["count"],
+            value["vfs_count"],
+            value["medium_repr"],
+        )
         # In case this callback is invoked for the same ref twice (by the
         # weakref callback and by the atexit function), set the call count back
         # to 0 so this item won't be reported twice.
-        value['count'] = 0
-        value['vfs_count'] = 0
+        value["count"] = 0
+        value["vfs_count"] = 0
         if count != 0:
-            trace.note(gettext('HPSS calls: {0} ({1} vfs) {2}').format(
-                       count, vfs_count, medium_repr))
+            trace.note(
+                gettext("HPSS calls: {0} ({1} vfs) {2}").format(
+                    count, vfs_count, medium_repr
+                )
+            )
 
     def flush_all(self):
         for ref in list(self.counts.keys()):
@@ -758,12 +768,12 @@ class SmartClientMedium(SmartMedium):
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
         # Install debug hook function if debug flag is set.
-        if 'hpss' in debug.debug_flags:
+        if "hpss" in debug.debug_flags:
             global _debug_counter
             if _debug_counter is None:
                 _debug_counter = _DebugCounter()
             _debug_counter.track(self)
-        if 'hpss_client_no_vfs' in debug.debug_flags:
+        if "hpss_client_no_vfs" in debug.debug_flags:
             global _vfs_refuser
             if _vfs_refuser is None:
                 _vfs_refuser = _VfsRefuser()
@@ -795,20 +805,26 @@ class SmartClientMedium(SmartMedium):
 
         :seealso: _is_remote_before
         """
-        if (self._remote_version_is_before is not None and
-                version_tuple > self._remote_version_is_before):
+        if (
+            self._remote_version_is_before is not None
+            and version_tuple > self._remote_version_is_before
+        ):
             # We have been told that the remote side is older than some version
             # which is newer than a previously supplied older-than version.
             # This indicates that some smart verb call is not guarded
             # appropriately (it should simply not have been tried).
             trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
-                "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
-            if 'hpss' in debug.debug_flags:
+                "_remember_remote_is_before(%r) was called previously.",
+                version_tuple,
+                self._remote_version_is_before,
+            )
+            if "hpss" in debug.debug_flags:
                 ui.ui_factory.show_warning(
                     "_remember_remote_is_before(%r) called, but "
                     "_remember_remote_is_before(%r) was called previously."
-                    % (version_tuple, self._remote_version_is_before))
+                    % (version_tuple, self._remote_version_is_before)
+                )
             return
         self._remote_version_is_before = version_tuple
 
@@ -821,8 +837,7 @@ class SmartClientMedium(SmartMedium):
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
-                client_protocol = protocol.SmartClientRequestProtocolOne(
-                    medium_request)
+                client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
             except errors.SmartProtocolError as e:
@@ -830,7 +845,7 @@ class SmartClientMedium(SmartMedium):
                 # result.
                 self._protocol_version_error = e
                 raise
-        return '2'
+        return "2"
 
     def should_probe(self):
         """Should RemoteBzrDirFormat.probe_transport send a smart request on
@@ -861,7 +876,7 @@ class SmartClientMedium(SmartMedium):
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
-        medium_base = urlutils.join(self.base, '/')
+        medium_base = urlutils.join(self.base, "/")
         rel_url = urlutils.relative_url(medium_base, transport.base)
         return urlutils.unquote(rel_url)
 
@@ -930,10 +945,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
             self._writeable_pipe.write(data)
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
-                raise errors.ConnectionReset(
-                    "Error trying to write to subprocess", e)
+                raise errors.ConnectionReset("Error trying to write to subprocess", e)
             raise
-        self._report_activity(len(data), 'write')
+        self._report_activity(len(data), "write")
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -946,15 +960,16 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium._read_bytes."""
         bytes_to_read = min(count, _MAX_READ_SIZE)
         data = self._readable_pipe.read(bytes_to_read)
-        self._report_activity(len(data), 'read')
+        self._report_activity(len(data), "read")
         return data
 
 
 class SSHParams:
     """A set of parameters for starting a remote bzr via SSH."""
 
-    def __init__(self, host, port=None, username=None, password=None,
-                 bzr_remote_path='bzr'):
+    def __init__(
+        self, host, port=None, username=None, password=None, bzr_remote_path="bzr"
+    ):
         self.host = host
         self.port = port
         self.username = username
@@ -980,7 +995,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._ssh_params = ssh_params
         # for the benefit of progress making a short description of this
         # transport
-        self._scheme = 'bzr+ssh'
+        self._scheme = "bzr+ssh"
         # SmartClientStreamMedium stores the repr of this object in its
         # _DebugCounter so we have to store all the values used in our repr
         # method before calling the super init.
@@ -990,19 +1005,20 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
 
     def __repr__(self):
         if self._ssh_params.port is None:
-            maybe_port = ''
+            maybe_port = ""
         else:
-            maybe_port = ':%s' % self._ssh_params.port
+            maybe_port = ":%s" % self._ssh_params.port
         if self._ssh_params.username is None:
-            maybe_user = ''
+            maybe_user = ""
         else:
-            maybe_user = '%s@' % self._ssh_params.username
+            maybe_user = "%s@" % self._ssh_params.username
         return "{}({}://{}{}{}/)".format(
             self.__class__.__name__,
             self._scheme,
             maybe_user,
             self._ssh_params.host,
-            maybe_port)
+            maybe_port,
+        )
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
@@ -1026,23 +1042,33 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             vendor = ssh._get_ssh_vendor()
         else:
             vendor = self._vendor
-        self._ssh_connection = vendor.connect_ssh(self._ssh_params.username,
-                                                  self._ssh_params.password, self._ssh_params.host,
-                                                  self._ssh_params.port,
-                                                  command=[self._ssh_params.bzr_remote_path, 'serve', '--inet',
-                                                           '--directory=/', '--allow-writes'])
+        self._ssh_connection = vendor.connect_ssh(
+            self._ssh_params.username,
+            self._ssh_params.password,
+            self._ssh_params.host,
+            self._ssh_params.port,
+            command=[
+                self._ssh_params.bzr_remote_path,
+                "serve",
+                "--inet",
+                "--directory=/",
+                "--allow-writes",
+            ],
+        )
         io_kind, io_object = self._ssh_connection.get_sock_or_pipes()
-        if io_kind == 'socket':
+        if io_kind == "socket":
             self._real_medium = SmartClientAlreadyConnectedSocketMedium(
-                self.base, io_object)
-        elif io_kind == 'pipes':
+                self.base, io_object
+            )
+        elif io_kind == "pipes":
             read_from, write_to = io_object
             self._real_medium = SmartSimplePipesClientMedium(
-                read_from, write_to, self.base)
+                read_from, write_to, self.base
+            )
         else:
             raise AssertionError(
-                "Unexpected io_kind %r from %r"
-                % (io_kind, self._ssh_connection))
+                "Unexpected io_kind %r from %r" % (io_kind, self._ssh_connection)
+            )
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
 
@@ -1094,8 +1120,7 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return osutils.read_bytes_from_socket(
-            self._socket, self._report_activity)
+        return osutils.read_bytes_from_socket(self._socket, self._report_activity)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -1124,19 +1149,20 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         else:
             port = int(self._port)
         try:
-            sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
-                                           socket.SOCK_STREAM, 0, 0)
+            sockaddrs = socket.getaddrinfo(
+                self._host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, 0
+            )
         except socket.gaierror as xxx_todo_changeme:
             (err_num, err_msg) = xxx_todo_changeme.args
-            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
-                                         (self._host, port, err_msg))
+            raise errors.ConnectionError(
+                "failed to lookup %s:%d: %s" % (self._host, port, err_msg)
+            )
         # Initialize err in case there are no addresses returned:
         last_err = socket.error("no address found for %s" % self._host)
-        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+        for family, socktype, proto, canonname, sockaddr in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
-                self._socket.setsockopt(socket.IPPROTO_TCP,
-                                        socket.TCP_NODELAY, 1)
+                self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 self._socket.connect(sockaddr)
             except OSError as err:
                 if self._socket is not None:
@@ -1152,8 +1178,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 err_msg = last_err.args
             else:
                 err_msg = last_err.args[1]
-            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                                         (self._host, port, err_msg))
+            raise errors.ConnectionError(
+                "failed to connect to %s:%d: %s" % (self._host, port, err_msg)
+            )
         self._connected = True
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
@@ -1177,10 +1204,11 @@ class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
 
 
 class TooManyConcurrentRequests(errors.InternalBzrError):
-
-    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
-            " Be sure to finish_writing and finish_reading on the"
-            " currently open request.")
+    _fmt = (
+        "The medium '%(medium)s' has reached its concurrent request limit."
+        " Be sure to finish_writing and finish_reading on the"
+        " currently open request."
+    )
 
     def __init__(self, medium):
         self.medium = medium

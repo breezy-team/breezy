@@ -7,7 +7,8 @@
 #
 # command="bzr_ssh_path_limiter /home/foo/code" ssh-rsa ...
 
-import os, sys
+import os
+import sys
 
 orig_cmd = os.getenv('SSH_ORIGINAL_COMMAND', '?')
 if orig_cmd == 'bzr serve --inet --directory=/ --allow-writes':

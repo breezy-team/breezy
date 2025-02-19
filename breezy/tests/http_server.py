@@ -25,16 +25,13 @@ import socket
 import sys
 from urllib.parse import urlparse
 
-from .. import (
-    osutils,
-    urlutils,
-)
+from .. import osutils, urlutils
 from . import test_server
 
 
 class BadWebserverPath(ValueError):
     def __str__(self):
-        return 'path %s is not in %s' % self.args
+        return "path %s is not in %s" % self.args
 
 
 class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
@@ -45,8 +42,9 @@ class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
     TCPServer class, for the HTTP server it is really a connection which itself
     will handle one or several HTTP requests.
     """
+
     # Default protocol version
-    protocol_version = 'HTTP/1.1'
+    protocol_version = "HTTP/1.1"
 
     # The Message-like class used to parse the request headers
     MessageClass = http_client.HTTPMessage
@@ -61,12 +59,14 @@ class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         tcs = self.server.test_case_server
-        tcs.log('webserver - %s - - [%s] %s "%s" "%s"',
-                self.address_string(),
-                self.log_date_time_string(),
-                format % args,
-                self.headers.get('referer', '-'),
-                self.headers.get('user-agent', '-'))
+        tcs.log(
+            'webserver - %s - - [%s] %s "%s" "%s"',
+            self.address_string(),
+            self.log_date_time_string(),
+            format % args,
+            self.headers.get("referer", "-"),
+            self.headers.get("user-agent", "-"),
+        )
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -81,16 +81,19 @@ class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
             # due to the client closing early and we don't want to pollute test
             # results, so we raise only the others.
             self.close_connection = 1
-            if (len(e.args) == 0
-                or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
-                                     errno.ECONNABORTED, errno.EBADF)):
+            if len(e.args) == 0 or e.args[0] not in (
+                errno.EPIPE,
+                errno.ECONNRESET,
+                errno.ECONNABORTED,
+                errno.EBADF,
+            ):
                 raise
 
-    error_content_type = 'text/plain'
-    error_message_format = '''\
+    error_content_type = "text/plain"
+    error_message_format = """\
 Error code: %(code)s.
 Message: %(message)s.
-'''
+"""
 
     def send_error(self, code, message=None):
         """Send and log an error reply.
@@ -109,23 +112,22 @@ Message: %(message)s.
             try:
                 message = self.responses[code][0]
             except KeyError:
-                message = '???'
+                message = "???"
         self.log_error("code %d, message %s", code, message)
-        content = (self.error_message_format %
-                   {'code': code, 'message': message})
+        content = self.error_message_format % {"code": code, "message": message}
         self.send_response(code, message)
         self.send_header("Content-Type", self.error_content_type)
         self.send_header("Content-Length", "%d" % len(content))
-        self.send_header('Connection', 'close')
+        self.send_header("Connection", "close")
         self.end_headers()
-        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content.encode('utf-8'))
+        if self.command != "HEAD" and code >= 200 and code not in (204, 304):
+            self.wfile.write(content.encode("utf-8"))
 
     def _handle_one_request(self):
         http_server.SimpleHTTPRequestHandler.handle_one_request(self)
 
-    _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)?$')
-    _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
+    _range_regexp = re.compile(r"^(?P<start>\d+)-(?P<end>\d+)?$")
+    _tail_regexp = re.compile(r"^-(?P<tail>\d+)$")
 
     def _parse_ranges(self, ranges_header, file_size):
         """Parse the range header value and returns ranges.
@@ -140,18 +142,18 @@ Message: %(message)s.
         :return: A list of (start, end) tuples or None if some invalid range
             specifier is encountered.
         """
-        if not ranges_header.startswith('bytes='):
+        if not ranges_header.startswith("bytes="):
             # Syntactically invalid header
             return None
 
         tail = None
         ranges = []
-        ranges_header = ranges_header[len('bytes='):]
-        for range_str in ranges_header.split(','):
+        ranges_header = ranges_header[len("bytes=") :]
+        for range_str in ranges_header.split(","):
             range_match = self._range_regexp.match(range_str)
             if range_match is not None:
-                start = int(range_match.group('start'))
-                end_match = range_match.group('end')
+                start = int(range_match.group("start"))
+                end_match = range_match.group("end")
                 if end_match is None:
                     # RFC2616 says end is optional and default to file_size
                     end = file_size
@@ -164,7 +166,7 @@ Message: %(message)s.
             else:
                 tail_match = self._tail_regexp.match(range_str)
                 if tail_match is not None:
-                    tail = int(tail_match.group('tail'))
+                    tail = int(tail_match.group("tail"))
                 else:
                     # Syntactically invalid range
                     return None
@@ -184,7 +186,7 @@ Message: %(message)s.
         return checked_ranges
 
     def _header_line_length(self, keyword, value):
-        header_line = '{}: {}\r\n'.format(keyword, value)
+        header_line = "{}: {}\r\n".format(keyword, value)
         return len(header_line)
 
     def send_range_content(self, file, start, length):
@@ -194,43 +196,43 @@ Message: %(message)s.
     def get_single_range(self, file, file_size, start, end):
         self.send_response(206)
         length = end - start + 1
-        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Length", "%d" % length)
 
-        self.send_header("Content-Type", 'application/octet-stream')
-        self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
-                                                              end,
-                                                              file_size))
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, file_size))
         self.end_headers()
         self.send_range_content(file, start, length)
 
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
-        self.send_header('Accept-Ranges', 'bytes')
-        boundary = '%d' % random.randint(0, 0x7FFFFFFF)
-        self.send_header('Content-Type',
-                         'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
+        self.send_header("Accept-Ranges", "bytes")
+        boundary = "%d" % random.randint(0, 0x7FFFFFFF)
+        self.send_header("Content-Type", "multipart/byteranges; boundary=%s" % boundary)
+        boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
-        for (start, end) in ranges:
+        for start, end in ranges:
             content_length += len(boundary_line)
             content_length += self._header_line_length(
-                'Content-type', 'application/octet-stream')
+                "Content-type", "application/octet-stream"
+            )
             content_length += self._header_line_length(
-                'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
-            content_length += len('\r\n')  # end headers
+                "Content-Range", "bytes %d-%d/%d" % (start, end, file_size)
+            )
+            content_length += len("\r\n")  # end headers
             content_length += end - start + 1
         content_length += len(boundary_line)
-        self.send_header('Content-length', content_length)
+        self.send_header("Content-length", content_length)
         self.end_headers()
 
         # Send the multipart body
-        for (start, end) in ranges:
+        for start, end in ranges:
             self.wfile.write(boundary_line)
-            self.send_header('Content-type', 'application/octet-stream')
-            self.send_header('Content-Range', 'bytes %d-%d/%d'
-                             % (start, end, file_size))
+            self.send_header("Content-type", "application/octet-stream")
+            self.send_header(
+                "Content-Range", "bytes %d-%d/%d" % (start, end, file_size)
+            )
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
         # Final boundary
@@ -245,7 +247,7 @@ Message: %(message)s.
         self.server.test_case_server.GET_request_nb += 1
 
         path = self.translate_path(self.path)
-        ranges_header_value = self.headers.get('Range')
+        ranges_header_value = self.headers.get("Range")
         if ranges_header_value is None or os.path.isdir(path):
             # Let the mother class handle most cases
             return http_server.SimpleHTTPRequestHandler.do_GET(self)
@@ -255,7 +257,7 @@ Message: %(message)s.
             # mode may cause newline translations, making the
             # actual size of the content transmitted *less* than
             # the content-length!
-            f = open(path, 'rb')
+            f = open(path, "rb")
         except OSError:
             self.send_error(404, "File not found")
             return
@@ -299,7 +301,7 @@ Message: %(message)s.
             # provide the right behaviour on all python versions).
             path = urlparse(path)[2]
             # And now, we can apply *our* trick to proxy files
-            path += '-proxied'
+            path += "-proxied"
 
         return self._translate_path(path)
 
@@ -317,7 +319,7 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        words = path.split('/')
+        words = path.split("/")
         path = self._cwd
         for num, word in enumerate(w for w in words if w):
             if num == 0:
@@ -330,7 +332,6 @@ Message: %(message)s.
 
 
 class TestingHTTPServerMixin:
-
     def __init__(self, test_case_server):
         # test_case_server can be used to communicate between the
         # tests and the server (or the request handler and the
@@ -341,16 +342,16 @@ class TestingHTTPServerMixin:
 
 
 class TestingHTTPServer(test_server.TestingTCPServer, TestingHTTPServerMixin):
-
-    def __init__(self, server_address, request_handler_class,
-                 test_case_server):
-        test_server.TestingTCPServer.__init__(self, server_address,
-                                              request_handler_class)
+    def __init__(self, server_address, request_handler_class, test_case_server):
+        test_server.TestingTCPServer.__init__(
+            self, server_address, request_handler_class
+        )
         TestingHTTPServerMixin.__init__(self, test_case_server)
 
 
-class TestingThreadingHTTPServer(test_server.TestingThreadingTCPServer,
-                                 TestingHTTPServerMixin):
+class TestingThreadingHTTPServer(
+    test_server.TestingThreadingTCPServer, TestingHTTPServerMixin
+):
     """A threading HTTP test server for HTTP 1.1.
 
     Since tests can initiate several concurrent connections to the same http
@@ -358,10 +359,10 @@ class TestingThreadingHTTPServer(test_server.TestingThreadingTCPServer,
     by spawning a new thread for each connection.
     """
 
-    def __init__(self, server_address, request_handler_class,
-                 test_case_server):
-        test_server.TestingThreadingTCPServer.__init__(self, server_address,
-                                                       request_handler_class)
+    def __init__(self, server_address, request_handler_class, test_case_server):
+        test_server.TestingThreadingTCPServer.__init__(
+            self, server_address, request_handler_class
+        )
         TestingHTTPServerMixin.__init__(self, test_case_server)
 
 
@@ -372,19 +373,21 @@ class HttpServer(test_server.TestingTCPServerInAThread):
     """
 
     # The real servers depending on the protocol
-    http_server_class = {'HTTP/1.0': TestingHTTPServer,
-                         'HTTP/1.1': TestingThreadingHTTPServer,
-                         }
+    http_server_class = {
+        "HTTP/1.0": TestingHTTPServer,
+        "HTTP/1.1": TestingThreadingHTTPServer,
+    }
 
     # Whether or not we proxy the requests (see
     # TestingHTTPRequestHandler.translate_path).
     proxy_requests = False
 
     # used to form the url that connects to this server
-    _url_protocol = 'http'
+    _url_protocol = "http"
 
-    def __init__(self, request_handler=TestingHTTPRequestHandler,
-                 protocol_version=None):
+    def __init__(
+        self, request_handler=TestingHTTPRequestHandler, protocol_version=None
+    ):
         """Constructor.
 
         :param request_handler: a class that will be instantiated to handle an
@@ -406,11 +409,9 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         serv_cls = self.http_server_class.get(proto_vers, None)
         if serv_cls is None:
             raise http_client.UnknownProtocol(proto_vers)
-        self.host = 'localhost'
+        self.host = "localhost"
         self.port = 0
-        super().__init__((self.host, self.port),
-                                         serv_cls,
-                                         request_handler)
+        super().__init__((self.host, self.port), serv_cls, request_handler)
         self.protocol_version = proto_vers
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
@@ -419,17 +420,17 @@ class HttpServer(test_server.TestingTCPServerInAThread):
 
     def create_server(self):
         return self.server_class(
-            (self.host, self.port), self.request_handler_class, self)
+            (self.host, self.port), self.request_handler_class, self
+        )
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
         if os.path.isabs(path):
-            if path_parts[:len(self._local_path_parts)] != \
-                    self._local_path_parts:
+            if path_parts[: len(self._local_path_parts)] != self._local_path_parts:
                 raise BadWebserverPath(path, self.test_dir)
-            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
+            remote_path = "/".join(path_parts[len(self._local_path_parts) :])
         else:
-            remote_path = '/'.join(path_parts)
+            remote_path = "/".join(path_parts)
 
         return self._http_base_url + remote_path
 
@@ -446,19 +447,22 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None
-                or isinstance(backing_transport_server,
-                              test_server.LocalURLServer)):
+        if not (
+            backing_transport_server is None
+            or isinstance(backing_transport_server, test_server.LocalURLServer)
+        ):
             raise AssertionError(
-                "HTTPServer currently assumes local transport, got %s" %
-                backing_transport_server)
+                "HTTPServer currently assumes local transport, got %s"
+                % backing_transport_server
+            )
         self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 
         super().start_server()
-        self._http_base_url = '{}://{}:{}/'.format(
-            self._url_protocol, self.host, self.port)
+        self._http_base_url = "{}://{}:{}/".format(
+            self._url_protocol, self.host, self.port
+        )
 
     def get_url(self):
         """See breezy.transport.Server.get_url."""
@@ -468,4 +472,4 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         """See breezy.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
-        return self._url_protocol + '://127.0.0.1:1/'
+        return self._url_protocol + "://127.0.0.1:1/"

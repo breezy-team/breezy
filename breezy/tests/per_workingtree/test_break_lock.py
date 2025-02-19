@@ -15,19 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
-    errors,
-    ui,
-    )
+from breezy import errors, ui
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestBreakLock(TestCaseWithWorkingTree):
-
     def setUp(self):
         super().setUp()
-        self.unused_workingtree = self.make_branch_and_tree('.')
+        self.unused_workingtree = self.make_branch_and_tree(".")
         self.workingtree = self.unused_workingtree.controldir.open_workingtree()
 
     def test_unlocked(self):
@@ -51,8 +47,7 @@ class TestBreakLock(TestCaseWithWorkingTree):
             return
         if ui.ui_factory.responses == [True]:
             raise TestNotApplicable("repository does not physically lock.")
-        self.assertRaises(errors.LockBroken,
-                          self.workingtree.branch.repository.unlock)
+        self.assertRaises(errors.LockBroken, self.workingtree.branch.repository.unlock)
 
     def test_locked(self):
         # break_lock when locked should

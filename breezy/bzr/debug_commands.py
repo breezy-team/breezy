@@ -18,21 +18,11 @@
 
 from io import BytesIO
 
-from .. import (
-    errors,
-    osutils,
-    transport,
-    )
-from ..workingtree import WorkingTree
-from ..commands import (
-    Command,
-    display_command,
-    )
+from .. import errors, osutils, transport
+from ..commands import Command, display_command
 from ..option import Option
-from . import (
-    btree_index,
-    static_tuple,
-    )
+from ..workingtree import WorkingTree
+from . import btree_index, static_tuple
 
 
 class cmd_dump_btree(Command):
@@ -51,11 +41,14 @@ class cmd_dump_btree(Command):
     #       rather than only going through iter_all_entries. However, this is
     #       good enough for a start
     hidden = True
-    encoding_type = 'exact'
-    takes_args = ['path']
-    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
-                                        ' rather than the parsed tuples.'),
-                     ]
+    encoding_type = "exact"
+    takes_args = ["path"]
+    takes_options = [
+        Option(
+            "raw",
+            help="Write the uncompressed bytes out, rather than the parsed tuples.",
+        ),
+    ]
 
     def run(self, path, raw=False):
         dirname, basename = osutils.split(path)
@@ -80,22 +73,23 @@ class cmd_dump_btree(Command):
         # This is because the first page of every row starts with an
         # uncompressed header.
         bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(range(0, len(bytes),
-                                                    btree_index._PAGE_SIZE)):
+        for page_idx, page_start in enumerate(
+            range(0, len(bytes), btree_index._PAGE_SIZE)
+        ):
             page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
             page_bytes = bytes[page_start:page_end]
             if page_idx == 0:
-                self.outf.write('Root node:\n')
+                self.outf.write("Root node:\n")
                 header_end, data = bt._parse_header_from_bytes(page_bytes)
                 self.outf.write(page_bytes[:header_end])
                 page_bytes = data
-            self.outf.write('\nPage %d\n' % (page_idx,))
+            self.outf.write("\nPage %d\n" % (page_idx,))
             if len(page_bytes) == 0:
-                self.outf.write('(empty)\n')
+                self.outf.write("(empty)\n")
             else:
                 decomp_bytes = zlib.decompress(page_bytes)
                 self.outf.write(decomp_bytes)
-                self.outf.write('\n')
+                self.outf.write("\n")
 
     def _dump_entries(self, trans, basename):
         try:
@@ -117,14 +111,15 @@ class cmd_dump_btree(Command):
                 refs_as_tuples = static_tuple.as_tuples(refs)
             if refs_as_tuples is not None:
                 refs_as_tuples = tuple(
-                    tuple(tuple(r.decode('utf-8')
-                                for r in t1) for t1 in t2)
-                    for t2 in refs_as_tuples)
+                    tuple(tuple(r.decode("utf-8") for r in t1) for t1 in t2)
+                    for t2 in refs_as_tuples
+                )
             as_tuple = (
-                tuple([r.decode('utf-8') for r in node[1]]),
-                node[2].decode('utf-8'),
-                refs_as_tuples)
-            self.outf.write('{}\n'.format(as_tuple))
+                tuple([r.decode("utf-8") for r in node[1]]),
+                node[2].decode("utf-8"),
+                refs_as_tuples,
+            )
+            self.outf.write("{}\n".format(as_tuple))
 
 
 class cmd_file_id(Command):
@@ -136,8 +131,8 @@ class cmd_file_id(Command):
     """
 
     hidden = True
-    _see_also = ['inventory', 'ls']
-    takes_args = ['filename']
+    _see_also = ["inventory", "ls"]
+    takes_args = ["filename"]
 
     @display_command
     def run(self, filename):
@@ -146,7 +141,7 @@ class cmd_file_id(Command):
         if file_id is None:
             raise errors.NotVersionedError(filename)
         else:
-            self.outf.write(file_id.decode('utf-8') + '\n')
+            self.outf.write(file_id.decode("utf-8") + "\n")
 
 
 class cmd_file_path(Command):
@@ -157,7 +152,7 @@ class cmd_file_path(Command):
     """
 
     hidden = True
-    takes_args = ['filename']
+    takes_args = ["filename"]
 
     @display_command
     def run(self, filename):

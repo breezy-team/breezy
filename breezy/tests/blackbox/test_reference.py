@@ -15,81 +15,79 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
-    controldir,
-    )
+from breezy import controldir
 from breezy.tests import TestCaseWithTransport
 
 
 class TestReference(TestCaseWithTransport):
-
     def get_default_format(self):
-        return controldir.format_registry.make_controldir('development-subtree')
+        return controldir.format_registry.make_controldir("2a")
 
     def test_no_args_lists(self):
-        tree = self.make_branch_and_tree('branch')
+        tree = self.make_branch_and_tree("branch")
         branch = tree.branch
-        tree.add_reference(self.make_branch_and_tree('branch/path'))
-        tree.add_reference(self.make_branch_and_tree('branch/lath'))
-        tree.set_reference_info('path', 'http://example.org')
-        tree.set_reference_info('lath', 'http://example.org/2')
-        out, err = self.run_bzr('reference', working_dir='branch')
+        tree.add_reference(self.make_branch_and_tree("branch/path"))
+        tree.add_reference(self.make_branch_and_tree("branch/lath"))
+        tree.set_reference_info("path", "http://example.org")
+        tree.set_reference_info("lath", "http://example.org/2")
+        out, err = self.run_bzr("reference", working_dir="branch")
         lines = out.splitlines()
-        self.assertEqual('lath http://example.org/2', lines[0])
-        self.assertEqual('path http://example.org', lines[1])
+        self.assertEqual("lath http://example.org/2", lines[0])
+        self.assertEqual("path http://example.org", lines[1])
 
     def make_tree_with_reference(self):
-        tree = self.make_branch_and_tree('tree')
-        subtree = self.make_branch_and_tree('tree/newpath')
+        tree = self.make_branch_and_tree("tree")
+        subtree = self.make_branch_and_tree("tree/newpath")
         tree.add_reference(subtree)
-        tree.set_reference_info('newpath', 'http://example.org')
-        tree.commit('add reference')
+        tree.set_reference_info("newpath", "http://example.org")
+        tree.commit("add reference")
         return tree
 
     def test_uses_working_tree_location(self):
         tree = self.make_tree_with_reference()
-        out, err = self.run_bzr('reference', working_dir='tree')
-        self.assertContainsRe(out, 'newpath http://example.org\n')
+        out, err = self.run_bzr("reference", working_dir="tree")
+        self.assertContainsRe(out, "newpath http://example.org\n")
 
     def test_uses_basis_tree_location(self):
         tree = self.make_tree_with_reference()
         tree.controldir.destroy_workingtree()
-        out, err = self.run_bzr('reference', working_dir='tree')
-        self.assertContainsRe(out, 'newpath http://example.org\n')
+        out, err = self.run_bzr("reference", working_dir="tree")
+        self.assertContainsRe(out, "newpath http://example.org\n")
 
     def test_one_arg_displays(self):
         tree = self.make_tree_with_reference()
-        out, err = self.run_bzr('reference newpath', working_dir='tree')
-        self.assertEqual('newpath http://example.org\n', out)
+        out, err = self.run_bzr("reference newpath", working_dir="tree")
+        self.assertEqual("newpath http://example.org\n", out)
 
     def test_one_arg_uses_containing_tree(self):
         tree = self.make_tree_with_reference()
-        out, err = self.run_bzr('reference -d tree newpath')
-        self.assertEqual('newpath http://example.org\n', out)
+        out, err = self.run_bzr("reference -d tree newpath")
+        self.assertEqual("newpath http://example.org\n", out)
 
     def test_two_args_sets(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        tree.add('file')
-        out, err = self.run_bzr('reference -d tree file http://example.org')
-        location = tree.get_reference_info('file')
-        self.assertEqual('http://example.org', location)
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/file"])
+        tree.add("file")
+        out, err = self.run_bzr("reference -d tree file http://example.org")
+        location = tree.get_reference_info("file")
+        self.assertEqual("http://example.org", location)
+        self.assertEqual("", out)
+        self.assertEqual("", err)
 
     def test_missing_file(self):
-        tree = self.make_branch_and_tree('tree')
-        out, err = self.run_bzr('reference file http://example.org',
-                                working_dir='tree', retcode=3)
-        self.assertEqual('brz: ERROR: file is not versioned.\n', err)
+        tree = self.make_branch_and_tree("tree")
+        out, err = self.run_bzr(
+            "reference file http://example.org", working_dir="tree", retcode=3
+        )
+        self.assertEqual("brz: ERROR: file is not versioned.\n", err)
 
     def test_missing_file_forced(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.add_reference(self.make_branch_and_tree('tree/file'))
+        tree = self.make_branch_and_tree("tree")
+        tree.add_reference(self.make_branch_and_tree("tree/file"))
         out, err = self.run_bzr(
-            'reference --force-unversioned file http://example.org',
-            working_dir='tree')
-        location = tree.get_reference_info('file')
-        self.assertEqual('http://example.org', location)
-        self.assertEqual('', out)
-        self.assertEqual('', err)
+            "reference --force-unversioned file http://example.org", working_dir="tree"
+        )
+        location = tree.get_reference_info("file")
+        self.assertEqual("http://example.org", location)
+        self.assertEqual("", out)
+        self.assertEqual("", err)

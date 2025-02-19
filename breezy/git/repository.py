@@ -19,53 +19,23 @@
 
 from io import BytesIO
 
-from dulwich.errors import (
-    NotCommitError,
-    )
-from dulwich.objects import (
-    Commit,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    peel_sha,
-    tree_lookup_path,
-    )
+from dulwich.errors import NotCommitError
+from dulwich.object_store import peel_sha, tree_lookup_path
+from dulwich.objects import ZERO_SHA, Commit
 
-
-
-from .. import (
-    check,
-    errors,
-    graph as _mod_graph,
-    lock,
-    repository,
-    revision as _mod_revision,
-    trace,
-    transactions,
-    ui,
-    )
+from .. import check, errors
+from .. import graph as _mod_graph
+from .. import lock, repository
+from .. import revision as _mod_revision
+from .. import trace, transactions, ui
 from ..decorators import only_raises
-from ..foreign import (
-    ForeignRepository,
-    )
-
-from .filegraph import (
-    GitFileLastChangeScanner,
-    GitFileParentProvider,
-    )
-from .mapping import (
-    default_mapping,
-    encode_git_path,
-    foreign_vcs_git,
-    mapping_registry,
-    )
-from .tree import (
-    GitRevisionTree,
-    )
+from ..foreign import ForeignRepository
+from .filegraph import GitFileLastChangeScanner, GitFileParentProvider
+from .mapping import default_mapping, encode_git_path, foreign_vcs_git, mapping_registry
+from .tree import GitRevisionTree
 
 
 class GitCheck(check.Check):
-
     def __init__(self, repository, check_repo=True):
         self.repository = repository
         self.check_repo = check_repo
@@ -76,13 +46,15 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read(), \
-                ui.ui_factory.nested_progress_bar() as self.progress:
+        with (
+            self.repository.lock_read(),
+            ui.ui_factory.nested_progress_bar() as self.progress,
+        ):
             shas = set(self.repository._git.object_store)
             self.object_count = len(shas)
             # TODO(jelmer): Check more things
             for i, sha in enumerate(shas):
-                self.progress.update('checking objects', i, self.object_count)
+                self.progress.update("checking objects", i, self.object_count)
                 o = self.repository._git.object_store[sha]
                 try:
                     o.check()
@@ -90,28 +62,32 @@ class GitCheck(check.Check):
                     self.problems.append((sha, e))
 
     def _report_repo_results(self, verbose):
-        trace.note('checked repository {} format {}'.format(
-            self.repository.user_url,
-            self.repository._format))
-        trace.note('%6d objects', self.object_count)
+        trace.note(
+            "checked repository {} format {}".format(
+                self.repository.user_url, self.repository._format
+            )
+        )
+        trace.note("%6d objects", self.object_count)
         for sha, problem in self.problems:
-            trace.note('%s: %s', sha, problem)
+            trace.note("%s: %s", sha, problem)
 
     def report_results(self, verbose):
         if self.check_repo:
             self._report_repo_results(verbose)
 
 
-for optimiser in ['InterRemoteGitNonGitRepository',
-                  'InterLocalGitNonGitRepository',
-                  'InterLocalGitLocalGitRepository',
-                  'InterLocalGitRemoteGitRepository',
-                  'InterRemoteGitLocalGitRepository',
-                  'InterToLocalGitRepository',
-                  'InterToRemoteGitRepository',
-                  ]:
+for optimiser in [
+    "InterRemoteGitNonGitRepository",
+    "InterLocalGitNonGitRepository",
+    "InterLocalGitLocalGitRepository",
+    "InterLocalGitRemoteGitRepository",
+    "InterRemoteGitLocalGitRepository",
+    "InterToLocalGitRepository",
+    "InterToRemoteGitRepository",
+]:
     repository.InterRepository.register_lazy_optimiser(
-        'breezy.git.interrepo', optimiser)
+        "breezy.git.interrepo", optimiser
+    )
 
 
 class GitRepository(ForeignRepository):
@@ -122,15 +98,15 @@ class GitRepository(ForeignRepository):
 
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport
-        super().__init__(GitRepositoryFormat(),
-                                            gitdir, control_files=None)
+        super().__init__(GitRepositoryFormat(), gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         self._lock_mode = None
         self._lock_count = 0
 
     def add_fallback_repository(self, basis_url):
-        raise errors.UnstackableRepositoryFormat(self._format,
-                                                 self.control_transport.base)
+        raise errors.UnstackableRepositoryFormat(
+            self._format, self.control_transport.base
+        )
 
     def is_shared(self):
         return False
@@ -141,11 +117,11 @@ class GitRepository(ForeignRepository):
     def lock_write(self):
         """See Branch.lock_write()."""
         if self._lock_mode:
-            if self._lock_mode != 'w':
+            if self._lock_mode != "w":
                 raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
-            self._lock_mode = 'w'
+            self._lock_mode = "w"
             self._lock_count = 1
             self._transaction = transactions.WriteTransaction()
         return repository.RepositoryWriteLockResult(self.unlock, None)
@@ -161,11 +137,11 @@ class GitRepository(ForeignRepository):
 
     def lock_read(self):
         if self._lock_mode:
-            if self._lock_mode not in ('r', 'w'):
+            if self._lock_mode not in ("r", "w"):
                 raise AssertionError
             self._lock_count += 1
         else:
-            self._lock_mode = 'r'
+            self._lock_mode = "r"
             self._lock_count = 1
             self._transaction = transactions.ReadOnlyTransaction()
         return lock.LogicalLockResult(self.unlock)
@@ -174,27 +150,28 @@ class GitRepository(ForeignRepository):
     def unlock(self):
         if self._lock_count == 0:
             raise errors.LockNotHeld(self)
-        if self._lock_count == 1 and self._lock_mode == 'w':
+        if self._lock_count == 1 and self._lock_mode == "w":
             if self._write_group is not None:
                 self.abort_write_group()
                 self._lock_count -= 1
                 self._lock_mode = None
                 raise errors.BzrError(
-                    'Must end write groups before releasing write locks.')
+                    "Must end write groups before releasing write locks."
+                )
         self._lock_count -= 1
         if self._lock_count == 0:
             self._lock_mode = None
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
-            if hasattr(self, '_git'):
+            if hasattr(self, "_git"):
                 self._git.close()
 
     def is_write_locked(self):
-        return (self._lock_mode == 'w')
+        return self._lock_mode == "w"
 
     def is_locked(self):
-        return (self._lock_mode is not None)
+        return self._lock_mode is not None
 
     def get_transaction(self):
         """See Repository.get_transaction()."""
@@ -206,6 +183,7 @@ class GitRepository(ForeignRepository):
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from ..reconcile import ReconcileResult
+
         ret = ReconcileResult()
         ret.aborted = False
         return ret
@@ -238,9 +216,18 @@ class LocalGitRepository(GitRepository):
         self._file_change_scanner = GitFileLastChangeScanner(self)
         self._transaction = None
 
-    def get_commit_builder(self, branch, parents, config, timestamp=None,
-                           timezone=None, committer=None, revprops=None,
-                           revision_id=None, lossy=False):
+    def get_commit_builder(
+        self,
+        branch,
+        parents,
+        config,
+        timestamp=None,
+        timezone=None,
+        committer=None,
+        revprops=None,
+        revision_id=None,
+        lossy=False,
+    ):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
@@ -254,23 +241,29 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
-        from .commit import (
-            GitCommitBuilder,
-            )
+        from .commit import GitCommitBuilder
+
         builder = GitCommitBuilder(
-            self, parents, config, timestamp, timezone, committer, revprops,
-            revision_id, lossy)
+            self,
+            parents,
+            config,
+            timestamp,
+            timezone,
+            committer,
+            revprops,
+            revision_id,
+            lossy,
+        )
         self.start_write_group()
         return builder
 
     def _write_git_config(self, cs):
         f = BytesIO()
         cs.write_to_file(f)
-        self._git._put_named_file('config', f.getvalue())
+        self._git._put_named_file("config", f.getvalue())
 
     def get_file_graph(self):
-        return _mod_graph.Graph(GitFileParentProvider(
-            self._file_change_scanner))
+        return _mod_graph.Graph(GitFileParentProvider(self._file_change_scanner))
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -292,9 +285,8 @@ class LocalGitRepository(GitRepository):
             triples
         """
         per_revision = {}
-        for (file_id, revision_id, identifier) in desired_files:
-            per_revision.setdefault(revision_id, []).append(
-                (file_id, identifier))
+        for file_id, revision_id, identifier in desired_files:
+            per_revision.setdefault(revision_id, []).append((file_id, identifier))
         for revid, files in per_revision.items():
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
@@ -312,8 +304,10 @@ class LocalGitRepository(GitRepository):
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
                     mode, item_id = tree_lookup_path(
-                        self._git.object_store.__getitem__, root_tree,
-                        encode_git_path(path))
+                        self._git.object_store.__getitem__,
+                        root_tree,
+                        encode_git_path(path),
+                    )
                     obj = self._git.object_store[item_id]
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
@@ -327,14 +321,13 @@ class LocalGitRepository(GitRepository):
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super().gather_stats(
-            revid, committers)
+        result = super().gather_stats(revid, committers)
         revs = []
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
             if o.type_name == b"commit":
                 revs.append(o.id)
-        result['revisions'] = len(revs)
+        result["revisions"] = len(revs)
         return result
 
     def _iter_revision_ids(self):
@@ -353,7 +346,7 @@ class LocalGitRepository(GitRepository):
         return list(ret)
 
     def _get_parents(self, revid, no_alternates=False):
-        if type(revid) != bytes:
+        if not isinstance(revid, bytes):
             raise ValueError
         try:
             (hexsha, mapping) = self.lookup_bzr_revision_id(revid)
@@ -378,8 +371,7 @@ class LocalGitRepository(GitRepository):
     def get_parent_map(self, revids, no_alternates=False):
         parent_map = {}
         for revision_id in revids:
-            parents = self._get_parents(
-                revision_id, no_alternates=no_alternates)
+            parents = self._get_parents(revision_id, no_alternates=no_alternates)
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
@@ -391,8 +383,7 @@ class LocalGitRepository(GitRepository):
         return parent_map
 
     def get_known_graph_ancestry(self, revision_ids):
-        """Return the known graph for a set of revision ids and their ancestors.
-        """
+        """Return the known graph for a set of revision ids and their ancestors."""
         pending = set(revision_ids)
         parent_map = {}
         while pending:
@@ -470,6 +461,7 @@ class LocalGitRepository(GitRepository):
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         from breezy import gpg
+
         with self.lock_read():
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
             try:
@@ -484,7 +476,8 @@ class LocalGitRepository(GitRepository):
             without_sig.gpgsig = None
 
             (result, key, plain_text) = gpg_strategy.verify(
-                without_sig.as_raw_string(), commit.gpgsig)
+                without_sig.as_raw_string(), commit.gpgsig
+            )
             return (result, key)
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
@@ -496,8 +489,7 @@ class LocalGitRepository(GitRepository):
             details
         """
         try:
-            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(
-                bzr_revid)
+            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
             raise errors.NoSuchRevision(self, bzr_revid)
         else:
@@ -512,7 +504,8 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         revision, roundtrip_revid, verifiers = mapping.import_commit(
-            commit, self.lookup_foreign_revision_id, strict=False)
+            commit, self.lookup_foreign_revision_id, strict=False
+        )
         if revision is None:
             raise AssertionError
         # FIXME: check verifiers ?
@@ -528,7 +521,7 @@ class LocalGitRepository(GitRepository):
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         except errors.NoSuchRevision:
             return False
-        return (git_commit_id in self._git)
+        return git_commit_id in self._git
 
     def has_revisions(self, revision_ids):
         """See Repository.has_revisions."""
@@ -551,14 +544,14 @@ class LocalGitRepository(GitRepository):
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
         if revision_id is None:
-            raise ValueError('invalid revision id %s' % revision_id)
+            raise ValueError("invalid revision id %s" % revision_id)
         return GitRevisionTree(self, revision_id)
 
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
     def make_working_trees(self):
-        return not self._git.get_config().get_boolean(("core", ), "bare")
+        return not self._git.get_config().get_boolean(("core",), "bare")
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
@@ -588,6 +581,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     @property
     def _matchingcontroldir(self):
         from .dir import LocalGitControlDirFormat
+
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
@@ -595,6 +589,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
 
     def initialize(self, controldir, shared=False, _internal=False):
         from .dir import GitDir
+
         if not isinstance(controldir, GitDir):
             raise errors.UninitializableFormat(self)
         return controldir.open_repository()
@@ -603,9 +598,8 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
-        from .tests.test_repository import (
-            ForeignTestsRepositoryFactory,
-            )
+        from .tests.test_repository import ForeignTestsRepositoryFactory
+
         return ForeignTestsRepositoryFactory()
 
     def network_name(self):
@@ -615,11 +609,21 @@ class GitRepositoryFormat(repository.RepositoryFormat):
 def get_extra_interrepo_test_combinations():
     from ..bzr.groupcompress_repo import RepositoryFormat2a
     from . import interrepo
+
     return [
-        (interrepo.InterLocalGitNonGitRepository,
-         GitRepositoryFormat(), RepositoryFormat2a()),
-        (interrepo.InterLocalGitLocalGitRepository,
-         GitRepositoryFormat(), GitRepositoryFormat()),
-        (interrepo.InterToLocalGitRepository,
-         RepositoryFormat2a(), GitRepositoryFormat()),
-        ]
+        (
+            interrepo.InterLocalGitNonGitRepository,
+            GitRepositoryFormat(),
+            RepositoryFormat2a(),
+        ),
+        (
+            interrepo.InterLocalGitLocalGitRepository,
+            GitRepositoryFormat(),
+            GitRepositoryFormat(),
+        ),
+        (
+            interrepo.InterToLocalGitRepository,
+            RepositoryFormat2a(),
+            GitRepositoryFormat(),
+        ),
+    ]

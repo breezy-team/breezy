@@ -17,16 +17,10 @@
 
 """Support for pristine tar deltas."""
 
-from base64 import (
-    standard_b64decode,
-    )
-
-from dulwich.objects import (
-    Blob,
-    Tree,
-    )
-
 import stat
+from base64 import standard_b64decode
+
+from dulwich.objects import Blob, Tree
 
 README_CONTENTS = b"""\
 This branch contains delta files that pristine-tar can use to
@@ -36,15 +30,15 @@ regenerate tarballs for its own releases.
 
 def revision_pristine_tar_data(rev):
     """Export the pristine tar data from a revision."""
-    if 'deb-pristine-delta' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta']
-        kind = 'gz'
-    elif 'deb-pristine-delta-bz2' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta-bz2']
-        kind = 'bz2'
-    elif 'deb-pristine-delta-xz' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta-xz']
-        kind = 'xz'
+    if "deb-pristine-delta" in rev.properties:
+        uuencoded = rev.properties["deb-pristine-delta"]
+        kind = "gz"
+    elif "deb-pristine-delta-bz2" in rev.properties:
+        uuencoded = rev.properties["deb-pristine-delta-bz2"]
+        kind = "bz2"
+    elif "deb-pristine-delta-xz" in rev.properties:
+        uuencoded = rev.properties["deb-pristine-delta-xz"]
+        kind = "xz"
     else:
         raise KeyError(rev.revision_id)
 
@@ -52,9 +46,7 @@ def revision_pristine_tar_data(rev):
 
 
 def get_pristine_tar_tree(repo):
-    """Retrieve the pristine tar tree for a repository.
-
-    """
+    """Retrieve the pristine tar tree for a repository."""
     try:
         cid = repo.refs[b"refs/heads/pristine-tar"]
     except KeyError:
@@ -73,12 +65,10 @@ def read_git_pristine_tar_data(repo, filename):
     tree = get_pristine_tar_tree(repo)
     delta = tree[filename + b".delta"][1]
     gitid = tree[filename + b".id"][1]
-    return (repo.object_store[delta].data,
-            repo.object_store[gitid].data)
+    return (repo.object_store[delta].data, repo.object_store[gitid].data)
 
 
-def store_git_pristine_tar_data(repo, filename, delta, gitid,
-                                message=None, **kwargs):
+def store_git_pristine_tar_data(repo, filename, delta, gitid, message=None, **kwargs):
     """Add pristine tar data to a Git repository.
 
     :param repo: Git repository to add data to
@@ -90,9 +80,7 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid,
     delta_name = filename + b".delta"
     id_ob = Blob.from_string(gitid)
     id_name = filename + b".id"
-    objects = [
-        (delta_ob, delta_name),
-        (id_ob, id_name)]
+    objects = [(delta_ob, delta_name), (id_ob, id_name)]
     tree = get_pristine_tar_tree(repo)
     tree.add(delta_name, stat.S_IFREG | 0o644, delta_ob.id)
     tree.add(id_name, stat.S_IFREG | 0o644, id_ob.id)
@@ -103,6 +91,7 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid,
     objects.append((tree, ""))
     repo.object_store.add_objects(objects)
     if message is None:
-        message = b'pristine-tar data for %s' % filename
-    return repo.do_commit(ref=b'refs/heads/pristine-tar', tree=tree.id,
-                          message=message, **kwargs)
+        message = b"pristine-tar data for %s" % filename
+    return repo.do_commit(
+        ref=b"refs/heads/pristine-tar", tree=tree.id, message=message, **kwargs
+    )

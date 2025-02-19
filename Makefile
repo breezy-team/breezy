@@ -40,7 +40,7 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs check-nodocs
+check:: docs check-nodocs
 
 check-nodocs: brz
 	-$(RM) -f selftest.log
@@ -72,10 +72,10 @@ brz:
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
 flake8:
-	flake8 breezy
+	$(PYTHON) -m flake8 breezy
 
 mypy:
-	mypy breezy
+	$(PYTHON) -m mypy breezy
 
 clean:
 	$(PYTHON) setup.py clean
@@ -314,3 +314,17 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/breezy-$$version check && \
 	rm -rf $$tmpdir
+
+reformat:
+	ruff format breezy
+
+check:: check-formatting
+
+check-formatting:
+	ruff format --check breezy
+
+.testrepository:
+	testr init
+
+testr: .testrepository all
+	testr run --parallel

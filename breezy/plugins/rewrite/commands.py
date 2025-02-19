@@ -16,41 +16,28 @@
 
 """Bazaar command-line subcommands."""
 
-from ...commands import (
-    Command,
-    display_command,
-    )
-from ...errors import (
-    CommandError,
-    ConflictsInTree,
-    NoWorkingTree,
-    UncommittedChanges,
-    )
-from ...option import (
-    Option,
-    )
-from ...trace import (
-    note,
-    )
-from ...transport import (
-    NoSuchFile,
-    )
-
+from ...commands import Command, display_command
+from ...errors import CommandError, ConflictsInTree, NoWorkingTree, UncommittedChanges
 from ...i18n import gettext
+from ...option import Option
+from ...trace import note
+from ...transport import NoSuchFile
 
 
 def finish_rebase(state, wt, replace_map, replayer):
-    from .rebase import (
-        rebase,
-        )
+    from .rebase import rebase
+
     try:
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
     except ConflictsInTree:
-        raise CommandError(gettext(
-            "A conflict occurred replaying a commit."
-            " Resolve the conflict and run 'brz rebase-continue' or "
-            "run 'brz rebase-abort'."))
+        raise CommandError(
+            gettext(
+                "A conflict occurred replaying a commit."
+                " Resolve the conflict and run 'brz rebase-continue' or "
+                "run 'brz rebase-abort'."
+            )
+        )
     # Remove plan file
     state.remove_plan()
 
@@ -89,47 +76,58 @@ class cmd_rebase(Command):
     you can change the point at which the current branch will appear to be
     branched from when the operation completes.
     """
-    takes_args = ['upstream_location?']
+
+    takes_args = ["upstream_location?"]
     takes_options = [
-        'revision', 'merge-type', 'verbose',
+        "revision",
+        "merge-type",
+        "verbose",
         Option(
-            'dry-run',
-            help="Show what would be done, but don't actually do anything."),
+            "dry-run", help="Show what would be done, but don't actually do anything."
+        ),
         Option(
-            'always-rebase-merges',
-            help="Don't skip revisions that merge already present revisions."),
+            "always-rebase-merges",
+            help="Don't skip revisions that merge already present revisions.",
+        ),
+        Option("pending-merges", help="Rebase pending merges onto local branch."),
+        Option("onto", help="Different revision to replay onto.", type=str),
         Option(
-            'pending-merges',
-            help="Rebase pending merges onto local branch."),
-        Option(
-            'onto', help='Different revision to replay onto.',
-            type=str),
-        Option(
-            'directory',
-            short_name='d',
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)
-        ]
+            type=str,
+        ),
+    ]
 
     @display_command
-    def run(self, upstream_location=None, onto=None, revision=None,
-            merge_type=None, verbose=False, dry_run=False,
-            always_rebase_merges=False, pending_merges=False,
-            directory="."):
+    def run(
+        self,
+        upstream_location=None,
+        onto=None,
+        revision=None,
+        merge_type=None,
+        verbose=False,
+        dry_run=False,
+        always_rebase_merges=False,
+        pending_merges=False,
+        directory=".",
+    ):
         from ...branch import Branch
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
         from .rebase import (
-            generate_simple_plan,
-            rebase,
             RebaseState1,
             WorkingTreeRevisionRewriter,
-            regenerate_default_revid,
+            generate_simple_plan,
+            rebase,
             rebase_todo,
-            )
+            regenerate_default_revid,
+        )
+
         if revision is not None and pending_merges:
-            raise CommandError(gettext(
-                "--revision and --pending-merges are mutually exclusive"))
+            raise CommandError(
+                gettext("--revision and --pending-merges are mutually exclusive")
+            )
 
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
@@ -148,10 +146,13 @@ class cmd_rebase(Command):
             upstream_revision = upstream.last_revision()
             # Abort if there already is a plan file
             if state.has_plan():
-                raise CommandError(gettext(
-                    "A rebase operation was interrupted. "
-                    "Continue using 'brz rebase-continue' or abort using 'brz "
-                    "rebase-abort'"))
+                raise CommandError(
+                    gettext(
+                        "A rebase operation was interrupted. "
+                        "Continue using 'brz rebase-continue' or abort using 'brz "
+                        "rebase-abort'"
+                    )
+                )
 
             start_revid = None
             stop_revid = None
@@ -165,22 +166,23 @@ class cmd_rebase(Command):
                     if revision[1] is not None:
                         stop_revid = revision[1].as_revision_id(wt.branch)
                 else:
-                    raise CommandError(gettext(
-                        "--revision takes only one or two arguments"))
+                    raise CommandError(
+                        gettext("--revision takes only one or two arguments")
+                    )
 
             if pending_merges:
                 wt_parents = wt.get_parent_ids()
                 if len(wt_parents) in (0, 1):
                     raise CommandError(gettext("No pending merges present."))
                 elif len(wt_parents) > 2:
-                    raise CommandError(gettext(
-                        "Rebasing more than one pending merge not supported"))
+                    raise CommandError(
+                        gettext("Rebasing more than one pending merge not supported")
+                    )
                 stop_revid = wt_parents[1]
                 assert stop_revid is not None, "stop revid invalid"
 
             # Check for changes in the working tree.
-            if (not pending_merges and
-                    wt.basis_tree().changes_from(wt).has_changed()):
+            if not pending_merges and wt.basis_tree().changes_from(wt).has_changed():
                 raise UncommittedChanges(wt)
 
             # Pull required revisions
@@ -203,9 +205,12 @@ class cmd_rebase(Command):
                     self.outf.write(gettext("No revisions to rebase.\n"))
                     return
                 if not our_new:
-                    self.outf.write(gettext(
-                        "Base branch is descendant of current "
-                        "branch. Pulling instead.\n"))
+                    self.outf.write(
+                        gettext(
+                            "Base branch is descendant of current "
+                            "branch. Pulling instead.\n"
+                        )
+                    )
                     if not dry_run:
                         wt.pull(upstream, stop_revision=onto)
                     return
@@ -214,14 +219,18 @@ class cmd_rebase(Command):
 
             # Create plan
             replace_map = generate_simple_plan(
-                our_new, start_revid, stop_revid, onto, repo_graph,
-                lambda revid, ps: regenerate_default_revid(
-                    wt.branch.repository, revid),
-                not always_rebase_merges)
+                our_new,
+                start_revid,
+                stop_revid,
+                onto,
+                repo_graph,
+                lambda revid, ps: regenerate_default_revid(wt.branch.repository, revid),
+                not always_rebase_merges,
+            )
 
             if verbose or dry_run:
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
-                note(gettext('%d revisions will be rebased:') % len(todo))
+                note(gettext("%d revisions will be rebased:") % len(todo))
                 for revid in todo:
                     note("%s" % revid)
 
@@ -241,18 +250,18 @@ class cmd_rebase_abort(Command):
 
     takes_options = [
         Option(
-            'directory',
-            short_name='d',
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)]
+            type=str,
+        )
+    ]
 
     @display_command
     def run(self, directory="."):
-        from .rebase import (
-            RebaseState1,
-            complete_revert,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, complete_revert
+
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -270,20 +279,22 @@ class cmd_rebase_abort(Command):
 
 class cmd_rebase_continue(Command):
     """Continue an interrupted rebase after resolving conflicts."""
+
     takes_options = [
-        'merge-type', Option(
-            'directory',
-            short_name='d',
+        "merge-type",
+        Option(
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)]
+            type=str,
+        ),
+    ]
 
     @display_command
     def run(self, merge_type=None, directory="."):
-        from .rebase import (
-            RebaseState1,
-            WorkingTreeRevisionRewriter,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, WorkingTreeRevisionRewriter
+
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -291,10 +302,13 @@ class cmd_rebase_continue(Command):
             replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
-                raise CommandError(gettext(
-                    "There are still conflicts present. "
-                    "Resolve the conflicts and then run "
-                    "'brz resolve' and try again."))
+                raise CommandError(
+                    gettext(
+                        "There are still conflicts present. "
+                        "Resolve the conflicts and then run "
+                        "'brz resolve' and try again."
+                    )
+                )
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
@@ -317,17 +331,17 @@ class cmd_rebase_todo(Command):
 
     takes_options = [
         Option(
-            'directory',
-            short_name='d',
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)]
+            type=str,
+        )
+    ]
 
     def run(self, directory="."):
-        from .rebase import (
-            RebaseState1,
-            rebase_todo,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, rebase_todo
+
         wt = WorkingTree.open_containing(directory)[0]
         with wt.lock_read():
             state = RebaseState1(wt)
@@ -343,29 +357,30 @@ class cmd_rebase_todo(Command):
 
 
 class cmd_replay(Command):
-    """Replay commits from another branch on top of this one.
-
-    """
+    """Replay commits from another branch on top of this one."""
 
     takes_options = [
-        'revision', 'merge-type',
+        "revision",
+        "merge-type",
         Option(
-            'directory',
-            short_name='d',
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)]
-    takes_args = ['location']
+            type=str,
+        ),
+    ]
+    takes_args = ["location"]
     hidden = True
 
     def run(self, location, revision=None, merge_type=None, directory="."):
+        from ... import ui
         from ...branch import Branch
         from ...workingtree import WorkingTree
-        from ... import ui
         from .rebase import (
             RebaseState1,
-            regenerate_default_revid,
             WorkingTreeRevisionRewriter,
-            )
+            regenerate_default_revid,
+        )
 
         from_branch = Branch.open_containing(location)[0]
 
@@ -382,8 +397,9 @@ class cmd_replay(Command):
                 for revno in range(from_revno, to_revno + 1):
                     todo.append(from_branch.get_rev_id(revno))
             else:
-                raise CommandError(gettext(
-                    "--revision takes only one or two arguments"))
+                raise CommandError(
+                    gettext("--revision takes only one or two arguments")
+                )
         else:
             raise CommandError(gettext("--revision is mandatory"))
 
@@ -395,7 +411,9 @@ class cmd_replay(Command):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for revid in todo:
-                    pb.update(gettext("replaying commits"), todo.index(revid), len(todo))
+                    pb.update(
+                        gettext("replaying commits"), todo.index(revid), len(todo)
+                    )
                     wt.branch.repository.fetch(from_branch.repository, revid)
                     newrevid = regenerate_default_revid(wt.branch.repository, revid)
                     replayer(revid, newrevid, [wt.last_revision()])
@@ -413,14 +431,16 @@ class cmd_pseudonyms(Command):
     foreign version control system.
     """
 
-    takes_args = ['repository?']
+    takes_args = ["repository?"]
     hidden = True
 
     def run(self, repository=None):
         from ...controldir import ControlDir
+
         dir, _ = ControlDir.open_containing(repository)
         r = dir.find_repository()
         from .pseudonyms import find_pseudonyms
+
         for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
             self.outf.write(", ".join(pseudonyms) + "\n")
 
@@ -434,36 +454,30 @@ class cmd_rebase_foreign(Command):
     You are recommended to run "brz check" in the local repository
     after running this command.
     """
-    takes_args = ['new_base?']
+
+    takes_args = ["new_base?"]
     takes_options = [
-        'verbose',
-        Option("idmap-file", help="Write map with old and new revision ids.",
-               type=str),
+        "verbose",
+        Option("idmap-file", help="Write map with old and new revision ids.", type=str),
         Option(
-            'directory',
-            short_name='d',
+            "directory",
+            short_name="d",
             help="Branch to replay onto, rather than the one containing the working directory.",
-            type=str)
-        ]
+            type=str,
+        ),
+    ]
 
     def run(self, new_base=None, verbose=False, idmap_file=None, directory="."):
-        from ... import (
-            urlutils,
-            )
+        from ... import urlutils
         from ...branch import Branch
+        from ...foreign import update_workingtree_fileids
         from ...workingtree import WorkingTree
         from .pseudonyms import (
             find_pseudonyms,
             generate_rebase_map_from_pseudonyms,
             pseudonyms_as_dict,
-            )
-        from .upgrade import (
-            create_deterministic_revid,
-            upgrade_branch,
-            )
-        from ...foreign import (
-            update_workingtree_fileids,
-            )
+        )
+        from .upgrade import create_deterministic_revid, upgrade_branch
 
         try:
             wt_to = WorkingTree.open(directory)
@@ -475,35 +489,46 @@ class cmd_rebase_foreign(Command):
         stored_loc = branch_to.get_parent()
         if new_base is None:
             if stored_loc is None:
-                raise CommandError(gettext(
-                    "No pull location known or specified."))
+                raise CommandError(gettext("No pull location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(
-                    stored_loc, self.outf.encoding)
+                    stored_loc, self.outf.encoding
+                )
                 self.outf.write(gettext("Using saved location: %s\n") % display_url)
                 new_base = Branch.open(stored_loc)
         else:
             new_base = Branch.open(new_base)
 
         branch_to.repository.fetch(
-            new_base.repository, revision_id=branch_to.last_revision())
+            new_base.repository, revision_id=branch_to.last_revision()
+        )
 
-        pseudonyms = pseudonyms_as_dict(find_pseudonyms(
-            branch_to.repository, branch_to.repository.all_revision_ids()))
+        pseudonyms = pseudonyms_as_dict(
+            find_pseudonyms(
+                branch_to.repository, branch_to.repository.all_revision_ids()
+            )
+        )
 
         def generate_rebase_map(revision_id):
             return generate_rebase_map_from_pseudonyms(
-                pseudonyms, branch_to.repository.get_ancestry(revision_id),
-                branch_to.repository.get_ancestry(new_base.last_revision()))
+                pseudonyms,
+                branch_to.repository.get_ancestry(revision_id),
+                branch_to.repository.get_ancestry(new_base.last_revision()),
+            )
+
         def determine_new_revid(old_revid, new_parents):
             return create_deterministic_revid(old_revid, new_parents)
+
         branch_to.lock_write()
         try:
             graph = branch_to.repository.get_graph()
             renames = upgrade_branch(
-                branch_to, generate_rebase_map,
-                determine_new_revid, allow_changes=True,
-                verbose=verbose)
+                branch_to,
+                generate_rebase_map,
+                determine_new_revid,
+                allow_changes=True,
+                verbose=verbose,
+            )
             if wt_to is not None:
                 basis_tree = wt_to.basis_tree()
                 basis_tree.lock_read()
@@ -518,7 +543,7 @@ class cmd_rebase_foreign(Command):
             note(gettext("Nothing to do."))
 
         if idmap_file is not None:
-            f = open(idmap_file, 'w')
+            f = open(idmap_file, "w")
             try:
                 for oldid, newid in renames.iteritems():
                     f.write("{}\t{}\n".format(oldid, newid))

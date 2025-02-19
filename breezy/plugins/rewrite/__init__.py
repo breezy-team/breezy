@@ -21,22 +21,27 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import (
-    errors,
-    transport as _mod_transport,
-    )
-from ...commands import plugin_cmds
-
+from ... import errors
+from ... import transport as _mod_transport
 from ...bzr.bzrdir import BzrFormat
+from ...commands import plugin_cmds
 
 BzrFormat.register_feature(b"rebase-v1")
 
 from ...i18n import load_plugin_translations
+
 translation = load_plugin_translations("bzr-rewrite")
 gettext = translation.gettext
 
-for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
-            'replay', 'pseudonyms', 'rebase_foreign']:
+for cmd in [
+    "rebase",
+    "rebase_abort",
+    "rebase_continue",
+    "rebase_todo",
+    "replay",
+    "pseudonyms",
+    "rebase_foreign",
+]:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [], __name__ + ".commands")
 
 
@@ -48,30 +53,31 @@ def show_rebase_summary(params):
         return
     if "rebase-v1" not in features:
         return
-    from .rebase import (
-        RebaseState1,
-        rebase_todo,
-        )
+    from .rebase import RebaseState1, rebase_todo
+
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]
     except _mod_transport.NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
-    params.to_file.write('Rebase in progress. (%d revisions left)\n' % len(todo))
+    params.to_file.write("Rebase in progress. (%d revisions left)\n" % len(todo))
 
 
 from ...hooks import install_lazy_named_hook
 
 install_lazy_named_hook(
-    'breezy.status', 'hooks', 'post_status',
-    show_rebase_summary, 'rewrite status')
+    "breezy.status", "hooks", "post_status", show_rebase_summary, "rewrite status"
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

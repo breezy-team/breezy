@@ -15,21 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from ... import (
-    bedding,
-    errors,
-    osutils,
-    )
-from ...tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from ...tests.features import (
-    ModuleAvailableFeature,
-    )
+from ... import bedding, errors, osutils
+from ...tests import TestCase, TestCaseWithTransport
+from ...tests.features import ModuleAvailableFeature
 
-
-launchpadlib_feature = ModuleAvailableFeature('launchpadlib')
+launchpadlib_feature = ModuleAvailableFeature("launchpadlib")
 
 
 class TestDependencyManagement(TestCase):
@@ -40,6 +30,7 @@ class TestDependencyManagement(TestCase):
     def setUp(self):
         super().setUp()
         from . import lp_api
+
         self.lp_api = lp_api
 
     def patch(self, obj, name, value):
@@ -49,7 +40,7 @@ class TestDependencyManagement(TestCase):
     def test_get_launchpadlib_version(self):
         # parse_launchpadlib_version returns a tuple of a version number of
         # the style used by launchpadlib.
-        version_info = self.lp_api.parse_launchpadlib_version('1.5.1')
+        version_info = self.lp_api.parse_launchpadlib_version("1.5.1")
         self.assertEqual((1, 5, 1), version_info)
 
     def test_supported_launchpadlib_version(self):
@@ -57,7 +48,7 @@ class TestDependencyManagement(TestCase):
         # required version of launchpadlib, check_launchpadlib_compatibility
         # doesn't raise an error.
         launchpadlib = launchpadlib_feature.module
-        self.patch(launchpadlib, '__version__', '1.5.1')
+        self.patch(launchpadlib, "__version__", "1.5.1")
         self.lp_api.MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
         # Doesn't raise an exception.
         self.lp_api.check_launchpadlib_compatibility()
@@ -67,11 +58,11 @@ class TestDependencyManagement(TestCase):
         # required version of launchpadlib, check_launchpadlib_compatibility
         # raises an DependencyNotPresent error.
         launchpadlib = launchpadlib_feature.module
-        self.patch(launchpadlib, '__version__', '1.5.0')
+        self.patch(launchpadlib, "__version__", "1.5.0")
         self.lp_api.MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
         self.assertRaises(
-            errors.DependencyNotPresent,
-            self.lp_api.check_launchpadlib_compatibility)
+            errors.DependencyNotPresent, self.lp_api.check_launchpadlib_compatibility
+        )
 
 
 class TestCacheDirectory(TestCase):
@@ -83,8 +74,9 @@ class TestCacheDirectory(TestCase):
         # get_cache_directory returns the path to a directory inside the
         # Breezy cache directory.
         from . import lp_api
+
         try:
-            expected_path = osutils.pathjoin(bedding.cache_dir(), 'launchpad')
+            expected_path = osutils.pathjoin(bedding.cache_dir(), "launchpad")
         except OSError:
             self.assertRaises(EnvironmentError, lp_api.get_cache_directory)
         else:

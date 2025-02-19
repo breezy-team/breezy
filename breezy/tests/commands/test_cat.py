@@ -17,24 +17,21 @@
 import sys
 
 from ...builtins import cmd_cat
-from ...tests import (
-    ui_testing,
-    )
+from ...tests import ui_testing
 from ...tests.transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestCat(TestCaseWithConnectionHookedTransport):
-
     def test_cat(self):
-        wt1 = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'foo')])
-        wt1.add('foo')
-        wt1.commit('add foo')
+        wt1 = self.make_branch_and_tree("branch")
+        self.build_tree_contents([("branch/foo", b"foo")])
+        wt1.add("foo")
+        wt1.commit("add foo")
 
         self.start_logging_connections()
 
         cmd = cmd_cat()
         cmd.outf = ui_testing.StringIOWithEncoding()
-        cmd.run(self.get_url('branch/foo'))
+        cmd.run(self.get_url("branch/foo"))
         self.assertEqual(1, len(self.connections))
-        self.assertEqual('foo', cmd.outf.getvalue())
+        self.assertEqual("foo", cmd.outf.getvalue())

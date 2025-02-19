@@ -16,20 +16,15 @@
 
 """Tests for branch break-lock behaviour."""
 
-from breezy import (
-    branch as _mod_branch,
-    errors,
-    ui,
-    tests,
-    )
+from breezy import branch as _mod_branch
+from breezy import errors, tests, ui
 from breezy.tests import per_branch
 
 
 class TestBreakLock(per_branch.TestCaseWithBranch):
-
     def setUp(self):
         super().setUp()
-        self.unused_branch = self.make_branch('branch')
+        self.unused_branch = self.make_branch("branch")
         self.branch = _mod_branch.Branch.open(self.unused_branch.base)
 
     def test_unlocked(self):
@@ -45,14 +40,12 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         token = self.branch.repository.lock_write().repository_token
         if token is None:
             self.branch.repository.unlock()
-            raise tests.TestNotApplicable(
-                'Repository does not use physical locks.')
+            raise tests.TestNotApplicable("Repository does not use physical locks.")
         self.branch.repository.leave_lock_in_place()
         self.branch.repository.unlock()
         other_instance = self.branch.repository.controldir.open_repository()
         if not other_instance.get_physical_lock_status():
-            raise tests.TestNotApplicable(
-                'Repository does not lock persistently.')
+            raise tests.TestNotApplicable("Repository does not lock persistently.")
         ui.ui_factory = ui.CannedInputUIFactory([True])
         try:
             self.unused_branch.break_lock()
@@ -77,7 +70,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
     def test_unlocks_master_branch(self):
         # break_lock when the master branch is locked should offer to
         # unlock it.
-        master = self.make_branch('master')
+        master = self.make_branch("master")
         try:
             self.branch.bind(master)
         except _mod_branch.BindingUnsupported:

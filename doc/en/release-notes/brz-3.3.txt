@@ -5,6 +5,120 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.10
+##########
+
+:3.3.10: UNRELEASED
+
+brz 3.3.9
+#########
+
+:3.3.9: 2024-10-20
+
+* Update pyo3 to 0.22, adding support for Python 3.13. (Jelmer Vernooĳ,
+  #2084288
+
+brz 3.3.8
+#########
+
+:3.3.8: 2024-06-27
+
+* Prevent builds with PyO3 0.22 and up, which are incompatible with
+  Breezy 3.3. (Jelmer Vernooĳ)
+
+brz 3.3.7
+#########
+
+:3.3.7: 2024-04-01
+
+* Fix compatibility with Python 3 < 3.11, which don't have datetime.UTC. (Jelmer Vernooĳ)
+
+brz 3.3.6
+#########
+
+:3.3.6: 2024-04-01
+
+* Ignore race conditions loading config files. (Jelmer Vernooĳ)
+
+* Fix tests on Python 3.12. (Jelmer Vernooĳ)
+
+brz 3.3.5
+#########
+
+:3.3.5: 2024-01-19
+
+* Fix compatibility with Python 3.12. Jelmer Vernooĳ, #2047991)
+
+brz 3.3.4
+#########
+
+:3.3.4: 2023-09-04
+
+* Improve handling of lp: URLs when lp: insteadOf is set in gitconfig.
+  (Jelmer Vernooĳ)
+
+* Allow setting _ConnectRequestor.selector.  (Jelmer Vernooĳ)
+
+* Fix brz-email bug on Python 3. (Triss)
+
+* Fix compatibility with newer versions of dulwich.
+  (Jelmer Vernooĳ)
+
+brz 3.3.3
+#########
+
+:3.3.3: 2023-05-23
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* Drop support for the ubuntu: and debianlp: aliases.
+  These imports have long been broken.
+  (Jelmer Vernooĳ)
+
+* Fix support for newer versions of Dulwich.
+  (Jelmer Vernooĳ)
+
+brz 3.3.2
+#########
+
+:3.3.2: 2023-01-21
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+* Update Git code to use newer Dulwich APIs for pack generation,
+  significantly improving performance. (Jelmer Vernooĳ)
+
+* gitlab: Support URL schemes https, http. (Jelmer Vernooĳ)
+
+* Bundle the webdav plugin. (Jelmer Vernooĳ)
+
+* Add supports_auto_merge setting. (Jelmer Vernooĳ)
+
+* Add --auto argument for "brz propose". 
+  (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+* Fix anonymous access of lp: URLs. (Jelmer Vernooĳ, #2000806)
+
+* gitlab: Handle GitLab consistently returning 500 when updating
+  description in some versions. (Jelmer Vernooĳ)
+
+* github: Support multiple pages when enumerating forks.
+  (Jelmer Vernooĳ)
+
+
 brz 3.3.1
 #########
 

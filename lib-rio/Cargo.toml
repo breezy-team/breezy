@@ -1,6 +1,6 @@
 [package]
 name = "rio-py"
-version = "3.3.2"
+version = { workspace = true }
 edition = "2018"
 
 [lib]
@@ -9,8 +9,7 @@ name = "rio"
 path = "pyrio.rs"
 
 [dependencies.pyo3]
-# Use pyo3 < 0.16, as that drop support for Python 3.6.
-version = ">=0.14,<0.16"
+workspace = true
 
 [dependencies.lazy_static]
 version = "1.4.0"

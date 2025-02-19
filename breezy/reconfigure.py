@@ -20,15 +20,7 @@ Various types of reconfiguration operation are available either by
 constructing a class or using a factory method on Reconfigure.
 """
 
-
-from . import (
-    branch,
-    controldir,
-    errors,
-    trace,
-    ui,
-    urlutils,
-    )
+from . import branch, controldir, errors, trace, ui, urlutils
 from .i18n import gettext
 
 # TODO: common base class for all reconfigure operations, making no
@@ -36,75 +28,61 @@ from .i18n import gettext
 
 
 class BzrDirError(errors.BzrError):
-
     def __init__(self, controldir):
-        display_url = urlutils.unescape_for_display(controldir.user_url,
-                                                    'ascii')
-        errors.BzrError.__init__(self, controldir=controldir,
-                                 display_url=display_url)
+        display_url = urlutils.unescape_for_display(controldir.user_url, "ascii")
+        errors.BzrError.__init__(self, controldir=controldir, display_url=display_url)
 
 
 class NoBindLocation(BzrDirError):
-
     _fmt = "No location could be found to bind to at %(display_url)s."
 
 
 class UnsyncedBranches(BzrDirError):
-
-    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
-            " brz help sync-for-reconfigure.")
+    _fmt = (
+        "'%(display_url)s' is not in sync with %(target_url)s.  See"
+        " brz help sync-for-reconfigure."
+    )
 
     def __init__(self, controldir, target_branch):
         errors.BzrError.__init__(self, controldir)
         from . import urlutils
-        self.target_url = urlutils.unescape_for_display(target_branch.base,
-                                                        'ascii')
+
+        self.target_url = urlutils.unescape_for_display(target_branch.base, "ascii")
 
 
 class AlreadyBranch(BzrDirError):
-
     _fmt = "'%(display_url)s' is already a branch."
 
 
 class AlreadyTree(BzrDirError):
-
     _fmt = "'%(display_url)s' is already a tree."
 
 
 class AlreadyCheckout(BzrDirError):
-
     _fmt = "'%(display_url)s' is already a checkout."
 
 
 class AlreadyLightweightCheckout(BzrDirError):
-
     _fmt = "'%(display_url)s' is already a lightweight checkout."
 
 
 class AlreadyUsingShared(BzrDirError):
-
     _fmt = "'%(display_url)s' is already using a shared repository."
 
 
 class AlreadyStandalone(BzrDirError):
-
     _fmt = "'%(display_url)s' is already standalone."
 
 
 class AlreadyWithTrees(BzrDirError):
-
-    _fmt = ("Shared repository '%(display_url)s' already creates "
-            "working trees.")
+    _fmt = "Shared repository '%(display_url)s' already creates working trees."
 
 
 class AlreadyWithNoTrees(BzrDirError):
-
-    _fmt = ("Shared repository '%(display_url)s' already doesn't create "
-            "working trees.")
+    _fmt = "Shared repository '%(display_url)s' already doesn't create working trees."
 
 
 class ReconfigurationNotSupported(BzrDirError):
-
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
 
 
@@ -115,30 +93,29 @@ class ReconfigureStackedOn:
         branch = controldir.open_branch()
         # it may be a path relative to the cwd or a url; the branch wants
         # a path relative to itself...
-        on_url = urlutils.relative_url(branch.base,
-                                       urlutils.normalize_url(stacked_on_url))
+        on_url = urlutils.relative_url(
+            branch.base, urlutils.normalize_url(stacked_on_url)
+        )
         with branch.lock_write():
             branch.set_stacked_on_url(on_url)
             if not trace.is_quiet():
-                ui.ui_factory.note(gettext(
-                    "{0} is now stacked on {1}\n").format(
-                    branch.base, branch.get_stacked_on_url()))
+                ui.ui_factory.note(
+                    gettext("{0} is now stacked on {1}\n").format(
+                        branch.base, branch.get_stacked_on_url()
+                    )
+                )
 
 
 class ReconfigureUnstacked:
-
     def apply(self, controldir):
         branch = controldir.open_branch()
         with branch.lock_write():
             branch.set_stacked_on_url(None)
             if not trace.is_quiet():
-                ui.ui_factory.note(gettext(
-                    "%s is now not stacked\n")
-                    % (branch.base,))
+                ui.ui_factory.note(gettext("%s is now not stacked\n") % (branch.base,))
 
 
 class Reconfigure:
-
     def __init__(self, controldir, new_bound_location=None):
         self.controldir = controldir
         self.new_bound_location = new_bound_location
@@ -149,7 +126,7 @@ class Reconfigure:
             self.repository = None
             self.local_repository = None
         else:
-            if (self.repository.user_url == self.controldir.user_url):
+            if self.repository.user_url == self.controldir.user_url:
                 self.local_repository = self.repository
             else:
                 self.local_repository = None
@@ -188,8 +165,9 @@ class Reconfigure:
         :raise AlreadyBranch: if controldir is already a branch
         """
         reconfiguration = Reconfigure(controldir)
-        reconfiguration._plan_changes(want_tree=False, want_branch=True,
-                                      want_bound=False, want_reference=False)
+        reconfiguration._plan_changes(
+            want_tree=False, want_branch=True, want_bound=False, want_reference=False
+        )
         if not reconfiguration.changes_planned():
             raise AlreadyBranch(controldir)
         return reconfiguration
@@ -202,8 +180,9 @@ class Reconfigure:
         :raise AlreadyTree: if controldir is already a tree
         """
         reconfiguration = Reconfigure(controldir)
-        reconfiguration._plan_changes(want_tree=True, want_branch=True,
-                                      want_bound=False, want_reference=False)
+        reconfiguration._plan_changes(
+            want_tree=True, want_branch=True, want_bound=False, want_reference=False
+        )
         if not reconfiguration.changes_planned():
             raise AlreadyTree(controldir)
         return reconfiguration
@@ -217,8 +196,9 @@ class Reconfigure:
         :raise AlreadyCheckout: if controldir is already a checkout
         """
         reconfiguration = Reconfigure(controldir, bound_location)
-        reconfiguration._plan_changes(want_tree=True, want_branch=True,
-                                      want_bound=True, want_reference=False)
+        reconfiguration._plan_changes(
+            want_tree=True, want_branch=True, want_bound=True, want_reference=False
+        )
         if not reconfiguration.changes_planned():
             raise AlreadyCheckout(controldir)
         return reconfiguration
@@ -233,8 +213,9 @@ class Reconfigure:
             lightweight checkout
         """
         reconfiguration = klass(controldir, reference_location)
-        reconfiguration._plan_changes(want_tree=True, want_branch=False,
-                                      want_bound=False, want_reference=True)
+        reconfiguration._plan_changes(
+            want_tree=True, want_branch=False, want_bound=False, want_reference=True
+        )
         if not reconfiguration.changes_planned():
             raise AlreadyLightweightCheckout(controldir)
         return reconfiguration
@@ -265,15 +246,13 @@ class Reconfigure:
             raise ReconfigurationNotSupported(reconfiguration.controldir)
         if with_trees and reconfiguration.repository.make_working_trees():
             raise AlreadyWithTrees(controldir)
-        elif (not with_trees and
-              not reconfiguration.repository.make_working_trees()):
+        elif not with_trees and not reconfiguration.repository.make_working_trees():
             raise AlreadyWithNoTrees(controldir)
         else:
             reconfiguration._repository_trees = with_trees
         return reconfiguration
 
-    def _plan_changes(self, want_tree, want_branch, want_bound,
-                      want_reference):
+    def _plan_changes(self, want_tree, want_branch, want_bound, want_reference):
         """Determine which changes are needed to assume the configuration"""
         if not want_branch and not want_reference:
             raise ReconfigurationNotSupported(self.controldir)
@@ -284,7 +263,8 @@ class Reconfigure:
                 self._create_repository = True
         else:
             if want_reference and (
-                    self.repository.user_url == self.controldir.user_url):
+                self.repository.user_url == self.controldir.user_url
+            ):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
         if self.referenced_branch is None:
@@ -324,10 +304,17 @@ class Reconfigure:
 
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
-        return (self._unbind or self._bind or self._destroy_tree or
-                self._create_tree or self._destroy_reference or
-                self._create_branch or self._create_repository or
-                self._create_reference or self._destroy_repository)
+        return (
+            self._unbind
+            or self._bind
+            or self._destroy_tree
+            or self._create_tree
+            or self._destroy_reference
+            or self._create_branch
+            or self._create_repository
+            or self._create_reference
+            or self._destroy_repository
+        )
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
@@ -335,8 +322,7 @@ class Reconfigure:
             raise errors.UncommittedChanges(self.tree)
         if self._create_reference and self.local_branch is not None:
             reference_branch = branch.Branch.open(self._select_bind_location())
-            if (reference_branch.last_revision()
-                    != self.local_branch.last_revision()):
+            if reference_branch.last_revision() != self.local_branch.last_revision():
                 raise UnsyncedBranches(self.controldir, reference_branch)
 
     def _select_bind_location(self):
@@ -397,22 +383,26 @@ class Reconfigure:
             else:
                 repo = self.controldir.create_repository()
             if self.local_branch and not self._destroy_branch:
-                repo.fetch(self.local_branch.repository,
-                           self.local_branch.last_revision())
+                repo.fetch(
+                    self.local_branch.repository, self.local_branch.last_revision()
+                )
         else:
             repo = self.repository
         if self._create_branch and self.referenced_branch is not None:
-            repo.fetch(self.referenced_branch.repository,
-                       self.referenced_branch.last_revision())
+            repo.fetch(
+                self.referenced_branch.repository,
+                self.referenced_branch.last_revision(),
+            )
         if self._create_reference:
             reference_branch = branch.Branch.open(self._select_bind_location())
         if self._destroy_repository:
             if self._create_reference:
                 reference_branch.repository.fetch(self.repository)
             elif self.local_branch is not None and not self._destroy_branch:
-                up = self.local_branch.user_transport.clone('..')
+                up = self.local_branch.user_transport.clone("..")
                 up_controldir = controldir.ControlDir.open_containing_from_transport(
-                    up)[0]
+                    up
+                )[0]
                 new_repo = up_controldir.find_repository()
                 new_repo.fetch(self.repository)
         last_revision_info = None

@@ -25,29 +25,13 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/per_interrepository/*.py.
 """
 
-
-from breezy import (
-    pyutils,
-    transport,
-    )
-from breezy.errors import (
-    UninitializableFormat,
-    )
-
-from breezy.repository import (
-    format_registry,
-    InterRepository,
-    )
-from breezy.tests import (
-    TestSkipped,
-    default_transport,
-    multiply_tests,
-    )
+from breezy import pyutils, transport
+from breezy.bzr.vf_repository import InterDifferingSerializer
+from breezy.errors import UninitializableFormat
+from breezy.repository import InterRepository, format_registry
+from breezy.tests import TestSkipped, default_transport, multiply_tests
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import FileExists
-from breezy.bzr.vf_repository import (
-    InterDifferingSerializer,
-    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -58,33 +42,36 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     """
     result = []
     for label, repository_format, repository_format_to, extra_setup in formats:
-        id = '{},{},{}'.format(label, repository_format.__class__.__name__,
-                           repository_format_to.__class__.__name__)
-        scenario = (id,
-                    {"transport_server": transport_server,
-                     "transport_readonly_server": transport_readonly_server,
-                     "repository_format": repository_format,
-                     "repository_format_to": repository_format_to,
-                     "extra_setup": extra_setup,
-                     })
+        id = "{},{},{}".format(
+            label,
+            repository_format.__class__.__name__,
+            repository_format_to.__class__.__name__,
+        )
+        scenario = (
+            id,
+            {
+                "transport_server": transport_server,
+                "transport_readonly_server": transport_readonly_server,
+                "repository_format": repository_format,
+                "repository_format_to": repository_format_to,
+                "extra_setup": extra_setup,
+            },
+        )
         result.append(scenario)
     return result
 
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from breezy.bzr import (
-        groupcompress_repo,
-        knitrepo,
-        knitpack_repo,
-        )
+    from breezy.bzr import groupcompress_repo, knitpack_repo, knitrepo
+
     result = []
 
-    def add_combo(interrepo_cls, from_format, to_format, extra_setup=None,
-                  label=None):
+    def add_combo(interrepo_cls, from_format, to_format, extra_setup=None, label=None):
         if label is None:
             label = interrepo_cls.__name__
         result.append((label, from_format, to_format, extra_setup))
+
     # test the default InterRepository between format 6 and the current
     # default format.
     # XXX: robertc 20060220 reinstate this when there are two supported
@@ -104,7 +91,9 @@ def default_test_list():
 
     def force_known_graph(testcase):
         from breezy.bzr.fetch import Inter1and2Helper
-        testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
+
+        testcase.overrideAttr(Inter1and2Helper, "known_graph_threshold", -1)
+
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations
     # they aren't aware of.
@@ -112,50 +101,72 @@ def default_test_list():
         module = pyutils.get_named_object(module_name)
         try:
             get_extra_interrepo_test_combinations = getattr(
-                module,
-                "get_extra_interrepo_test_combinations")
+                module, "get_extra_interrepo_test_combinations"
+            )
         except AttributeError:
             continue
-        for (interrepo_cls, from_format, to_format) in (
-                get_extra_interrepo_test_combinations()):
+        for (
+            interrepo_cls,
+            from_format,
+            to_format,
+        ) in get_extra_interrepo_test_combinations():
             add_combo(interrepo_cls, from_format, to_format)
-    add_combo(InterRepository,
-              knitrepo.RepositoryFormatKnit1(),
-              knitrepo.RepositoryFormatKnit3())
-    add_combo(knitrepo.InterKnitRepo,
-              knitrepo.RepositoryFormatKnit1(),
-              knitpack_repo.RepositoryFormatKnitPack1())
-    add_combo(knitrepo.InterKnitRepo,
-              knitpack_repo.RepositoryFormatKnitPack1(),
-              knitrepo.RepositoryFormatKnit1())
-    add_combo(knitrepo.InterKnitRepo,
-              knitrepo.RepositoryFormatKnit3(),
-              knitpack_repo.RepositoryFormatKnitPack3())
-    add_combo(knitrepo.InterKnitRepo,
-              knitpack_repo.RepositoryFormatKnitPack3(),
-              knitrepo.RepositoryFormatKnit3())
-    add_combo(knitrepo.InterKnitRepo,
-              knitpack_repo.RepositoryFormatKnitPack3(),
-              knitpack_repo.RepositoryFormatKnitPack4())
-    add_combo(InterDifferingSerializer,
-              knitpack_repo.RepositoryFormatKnitPack1(),
-              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo(InterDifferingSerializer,
-              knitpack_repo.RepositoryFormatKnitPack1(),
-              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
-              force_known_graph,
-              label='InterDifferingSerializer+get_known_graph_ancestry')
-    add_combo(InterDifferingSerializer,
-              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
-              groupcompress_repo.RepositoryFormat2a())
-    add_combo(InterDifferingSerializer,
-              groupcompress_repo.RepositoryFormat2a(),
-              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
+    add_combo(
+        InterRepository,
+        knitrepo.RepositoryFormatKnit1(),
+        knitrepo.RepositoryFormatKnit3(),
+    )
+    add_combo(
+        knitrepo.InterKnitRepo,
+        knitrepo.RepositoryFormatKnit1(),
+        knitpack_repo.RepositoryFormatKnitPack1(),
+    )
+    add_combo(
+        knitrepo.InterKnitRepo,
+        knitpack_repo.RepositoryFormatKnitPack1(),
+        knitrepo.RepositoryFormatKnit1(),
+    )
+    add_combo(
+        knitrepo.InterKnitRepo,
+        knitrepo.RepositoryFormatKnit3(),
+        knitpack_repo.RepositoryFormatKnitPack3(),
+    )
+    add_combo(
+        knitrepo.InterKnitRepo,
+        knitpack_repo.RepositoryFormatKnitPack3(),
+        knitrepo.RepositoryFormatKnit3(),
+    )
+    add_combo(
+        knitrepo.InterKnitRepo,
+        knitpack_repo.RepositoryFormatKnitPack3(),
+        knitpack_repo.RepositoryFormatKnitPack4(),
+    )
+    add_combo(
+        InterDifferingSerializer,
+        knitpack_repo.RepositoryFormatKnitPack1(),
+        knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
+    )
+    add_combo(
+        InterDifferingSerializer,
+        knitpack_repo.RepositoryFormatKnitPack1(),
+        knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
+        force_known_graph,
+        label="InterDifferingSerializer+get_known_graph_ancestry",
+    )
+    add_combo(
+        InterDifferingSerializer,
+        knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
+        groupcompress_repo.RepositoryFormat2a(),
+    )
+    add_combo(
+        InterDifferingSerializer,
+        groupcompress_repo.RepositoryFormat2a(),
+        knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
+    )
     return result
 
 
 class TestCaseWithInterRepository(TestCaseWithControlDir):
-
     def setUp(self):
         super().setUp()
         if self.extra_setup:
@@ -164,7 +175,8 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
     def get_default_format(self):
         self.assertEqual(
             self.repository_format._matchingcontroldir.repository_format,
-            self.repository_format)
+            self.repository_format,
+        )
         return self.repository_format._matchingcontroldir
 
     def make_branch(self, relpath, format=None):
@@ -174,9 +186,9 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
     def make_controldir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
+            segments = url.split("/")
+            if segments and segments[-1] not in ("", "."):
+                parent = "/".join(segments[:-1])
                 t = transport.get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
@@ -193,21 +205,24 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
         return self.repository_format.initialize(made_control)
 
     def make_to_repository(self, relpath):
-        made_control = self.make_controldir(relpath,
-                                            self.repository_format_to._matchingcontroldir)
+        made_control = self.make_controldir(
+            relpath, self.repository_format_to._matchingcontroldir
+        )
         return self.repository_format_to.initialize(made_control)
 
 
 def load_tests(loader, standard_tests, pattern):
-    submod_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_interrepository.test_fetch',
-        'breezy.tests.per_interrepository.test_interrepository',
-        ])
+    submod_tests = loader.loadTestsFromModuleNames(
+        [
+            "breezy.tests.per_interrepository.test_fetch",
+            "breezy.tests.per_interrepository.test_interrepository",
+        ]
+    )
     scenarios = make_scenarios(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        default_test_list()
-        )
+        default_test_list(),
+    )
     return multiply_tests(submod_tests, scenarios, standard_tests)

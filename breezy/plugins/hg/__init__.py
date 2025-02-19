@@ -19,22 +19,18 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
-from ... import (
-    controldir,
-    errors,
-    transport as _mod_transport,
-    )
-
 from ... import version_info  # noqa: F401
+from ... import controldir, errors
+from ... import transport as _mod_transport
 
 
 class MercurialUnsupportedError(errors.UnsupportedVcs):
-
     vcs = "hg"
 
-    _fmt = ('Mercurial branches are not yet supported. '
-            'To interoperate with Mercurial, use the fastimport format.')
-
+    _fmt = (
+        "Mercurial branches are not yet supported. "
+        "To interoperate with Mercurial, use the fastimport format."
+    )
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):
@@ -55,8 +51,9 @@ class LocalHgDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise MercurialUnsupportedError(format=self)
 
     def open(self, transport):
@@ -66,7 +63,6 @@ class LocalHgDirFormat(controldir.ControlDirFormat):
 
 
 class LocalHgProber(controldir.Prober):
-
     @classmethod
     def priority(klass, transport):
         return 100
@@ -75,8 +71,11 @@ class LocalHgProber(controldir.Prober):
     def _has_hg_dumb_repository(transport):
         try:
             return transport.has_any([".hg/requires", ".hg/00changelog.i"])
-        except (_mod_transport.NoSuchFile, errors.PermissionDenied,
-                errors.InvalidHttpResponse):
+        except (
+            _mod_transport.NoSuchFile,
+            errors.PermissionDenied,
+            errors.InvalidHttpResponse,
+        ):
             return False
 
     @classmethod
@@ -109,8 +108,9 @@ class SmartHgDirFormat(controldir.ControlDirFormat):
     def supports_transport(self, transport):
         return False
 
-    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-                             basedir=None):
+    def check_support_status(
+        self, allow_unsupported, recommend_upgrade=True, basedir=None
+    ):
         raise MercurialUnsupportedError()
 
     def open(self, transport):
@@ -120,13 +120,12 @@ class SmartHgDirFormat(controldir.ControlDirFormat):
 
 
 class SmartHgProber(controldir.Prober):
-
     # Perhaps retrieve list from mercurial.hg.schemes ?
     _supported_schemes = ["http", "https"]
 
     @classmethod
     def priority(klass, transport):
-        if 'hg' in transport.base:
+        if "hg" in transport.base:
             return 90
         # hgweb repositories are prone to return *a* page for every possible URL,
         # making probing hard for other formats so use 99 here rather than 100.
@@ -141,11 +140,13 @@ class SmartHgProber(controldir.Prober):
         :return: Boolean indicating whether transport is backed onto hg
         """
         from breezy.urlutils import urlparse
+
         parsed_url = urlparse.urlparse(external_url)
-        parsed_url = parsed_url._replace(query='cmd=capabilities')
+        parsed_url = parsed_url._replace(query="cmd=capabilities")
         url = urlparse.urlunparse(parsed_url)
         resp = transport.request(
-            'GET', url, headers={'Accept': 'application/mercurial-0.1'})
+            "GET", url, headers={"Accept": "application/mercurial-0.1"}
+        )
         if resp.status == 404:
             return False
         if resp.status == 406:
@@ -166,11 +167,11 @@ class SmartHgProber(controldir.Prober):
         if scheme not in klass._supported_schemes:
             raise errors.NotBranchError(path=transport.base)
         from breezy import urlutils
+
         external_url = urlutils.strip_segment_parameters(external_url)
         # Explicitly check for .hg directories here, so we avoid
         # loading foreign branches through Mercurial.
-        if (external_url.startswith("http:") or
-                external_url.startswith("https:")):
+        if external_url.startswith("http:") or external_url.startswith("https:"):
             if klass._has_hg_http_smart_server(transport, external_url):
                 return SmartHgDirFormat()
         raise errors.NotBranchError(path=transport.base)

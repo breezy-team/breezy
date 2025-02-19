@@ -18,10 +18,7 @@
 root.
 """
 
-from . import (
-    pathfilter,
-    register_transport,
-    )
+from . import pathfilter, register_transport
 
 
 class ChrootServer(pathfilter.PathFilteringServer):
@@ -45,7 +42,7 @@ class ChrootServer(pathfilter.PathFilteringServer):
         return ChrootTransport(self, url)
 
     def start_server(self):
-        self.scheme = 'chroot-%d:///' % id(self)
+        self.scheme = "chroot-%d:///" % id(self)
         register_transport(self.scheme, self._factory)
 
 
@@ -64,4 +61,5 @@ class ChrootTransport(pathfilter.PathFilteringTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from breezy.tests import test_server
+
     return [(ChrootTransport, test_server.TestingChrootServer)]

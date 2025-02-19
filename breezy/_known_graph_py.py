@@ -14,20 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Implementation of Graph algorithms when we have already loaded everything.
-"""
+"""Implementation of Graph algorithms when we have already loaded everything."""
 
 from collections import deque
-from . import (
-    errors,
-    revision,
-    )
+
+from . import errors, revision
 
 
 class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
-    __slots__ = ('key', 'parent_keys', 'child_keys', 'gdfo')
+    __slots__ = ("key", "parent_keys", "child_keys", "gdfo")
 
     def __init__(self, key, parent_keys):
         self.key = key
@@ -37,15 +34,19 @@ class _KnownGraphNode:
         self.gdfo = None
 
     def __repr__(self):
-        return '{}({}  gdfo:{} par:{} child:{})'.format(
-            self.__class__.__name__, self.key, self.gdfo,
-            self.parent_keys, self.child_keys)
+        return "{}({}  gdfo:{} par:{} child:{})".format(
+            self.__class__.__name__,
+            self.key,
+            self.gdfo,
+            self.parent_keys,
+            self.child_keys,
+        )
 
 
 class _MergeSortNode:
     """Information about a specific node in the merge graph."""
 
-    __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
+    __slots__ = ("key", "merge_depth", "revno", "end_of_merge")
 
     def __init__(self, key, merge_depth, revno, end_of_merge):
         self.key = key
@@ -95,12 +96,10 @@ class KnownGraph:
                 parent_node.child_keys.append(key)
 
     def _find_tails(self):
-        return [node for node in self._nodes.values()
-                if not node.parent_keys]
+        return [node for node in self._nodes.values() if not node.parent_keys]
 
     def _find_tips(self):
-        return [node for node in self._nodes.values()
-                if not node.child_keys]
+        return [node for node in self._nodes.values() if not node.child_keys]
 
     def _find_gdfo(self):
         nodes = self._nodes
@@ -160,9 +159,10 @@ class KnownGraph:
                     return  # Identical content
                 else:
                     raise ValueError(
-                        'Parent key mismatch, existing node %s'
-                        ' has parents of %s not %s'
-                        % (key, existing_parent_keys, parent_keys))
+                        "Parent key mismatch, existing node %s"
+                        " has parents of %s not %s"
+                        % (key, existing_parent_keys, parent_keys)
+                    )
         else:
             node = _KnownGraphNode(key, parent_keys)
             nodes[key] = node
@@ -305,7 +305,7 @@ class KnownGraph:
         prefix_tips = {}
         for node in tips:
             if node.key.__class__ is str or len(node.key) == 1:
-                prefix = ''
+                prefix = ""
             else:
                 prefix = node.key[0]
             prefix_tips.setdefault(prefix, []).append(node)
@@ -314,8 +314,7 @@ class KnownGraph:
 
         result = []
         for prefix in sorted(prefix_tips):
-            pending = sorted(prefix_tips[prefix], key=lambda n: n.key,
-                             reverse=True)
+            pending = sorted(prefix_tips[prefix], key=lambda n: n.key, reverse=True)
             while pending:
                 node = pending.pop()
                 if node.parent_keys is None:
@@ -337,17 +336,21 @@ class KnownGraph:
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
         from breezy import tsort
-        as_parent_map = {node.key: node.parent_keys
-                             for node in self._nodes.values()
-                             if node.parent_keys is not None}
+
+        as_parent_map = {
+            node.key: node.parent_keys
+            for node in self._nodes.values()
+            if node.parent_keys is not None
+        }
         # We intentionally always generate revnos and never force the
         # mainline_revisions
         # Strip the sequence_number that merge_sort generates
-        return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
-                for _, key, merge_depth, revno, end_of_merge
-                in tsort.merge_sort(as_parent_map, tip_key,
-                                    mainline_revisions=None,
-                                    generate_revno=True)]
+        return [
+            _MergeSortNode(key, merge_depth, revno, end_of_merge)
+            for _, key, merge_depth, revno, end_of_merge in tsort.merge_sort(
+                as_parent_map, tip_key, mainline_revisions=None, generate_revno=True
+            )
+        ]
 
     def get_parent_keys(self, key):
         """Get the parents for a key

@@ -23,12 +23,15 @@ plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
 
 
 from ...forge import forges
-forges.register_lazy("github", __name__ + '.forge', "GitHub")
+
+forges.register_lazy("github", __name__ + ".forge", "GitHub")
 
 
 def test_suite():
     from unittest import TestSuite
+
     from .tests import test_suite
+
     result = TestSuite()
     result.addTest(test_suite())
     return result

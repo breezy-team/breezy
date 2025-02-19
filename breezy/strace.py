@@ -45,14 +45,14 @@ def strace_detailed(function, args, kwargs, follow_children=True):
     err_file = tempfile.NamedTemporaryFile()
     pid = os.getpid()
     # start strace
-    strace_cmd = ['strace', '-r', '-tt', '-p', str(pid), '-o', log_file.name]
+    strace_cmd = ["strace", "-r", "-tt", "-p", str(pid), "-o", log_file.name]
     if follow_children:
-        strace_cmd.append('-f')
+        strace_cmd.append("-f")
     # need to catch both stdout and stderr to work around
     # bug 627208
-    proc = subprocess.Popen(strace_cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=err_file.fileno())
+    proc = subprocess.Popen(
+        strace_cmd, stdout=subprocess.PIPE, stderr=err_file.fileno()
+    )
     # Wait for strace to attach
     proc.stdout.readline()
     # Run the function to strace
@@ -75,7 +75,6 @@ def strace_detailed(function, args, kwargs, follow_children=True):
 
 
 class StraceError(errors.BzrError):
-
     _fmt = "strace failed: %(err_messages)s"
 
 

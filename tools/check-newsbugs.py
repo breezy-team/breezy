@@ -2,7 +2,10 @@
 # Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
-import getopt, re, sys
+import getopt
+import re
+import sys
+
 try:
     from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors
@@ -16,12 +19,14 @@ except ModuleNotFoundError:
     sys.exit(1)
 
 
-options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
+options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", "webbrowser"])
 options = dict(options)
 
 if len(args) == 1:
-    print("Usage: check-newsbugs [--launchpad][--webbrowser] "
-          "doc/en/release-notes/brz-x.y.txt")
+    print(
+        "Usage: check-newsbugs [--launchpad][--webbrowser] "
+        "doc/en/release-notes/brz-x.y.txt"
+    )
     print("Options:")
     print("--launchpad     Print out Launchpad mail commands for closing bugs ")
     print("                that are already fixed.")
@@ -32,7 +37,7 @@ if len(args) == 1:
 
 def report_notmarked(bug, task, section):
     print()
-    print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, ))
+    print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id,))
     print("Launchpad title: %s" % bug.title)
     print("NEWS summary: ")
     print(section)
@@ -42,7 +47,8 @@ def report_notmarked(bug, task, section):
         print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
         import webbrowser
-        webbrowser.open('http://pad.lv/{}>'.format(bug.id))
+
+        webbrowser.open("http://pad.lv/{}>".format(bug.id))
 
 
 def read_news_bugnos(path):
@@ -73,7 +79,8 @@ def read_news_bugnos(path):
 
 
 def print_bug_url(bugno):
-    print('<URL:http://pad.lv/{}>'.format(bugno))
+    print("<URL:http://pad.lv/{}>".format(bugno))
+
 
 launchpad = hydrazine.create_session()
 bugnos = read_news_bugnos(args[1])
@@ -84,14 +91,14 @@ for bugno, section in bugnos:
         if e.response.status == 401:
             print_bug_url(bugno)
             # Private, we can't access the bug content
-            print('{} is private and cannot be accessed'.format(bugno))
+            print("{} is private and cannot be accessed".format(bugno))
             continue
         raise
 
     found_brz = False
     fix_released = False
     for task in bug.bug_tasks:
-        parts = task.bug_target_name.split('/')
+        parts = task.bug_target_name.split("/")
         if len(parts) == 1:
             project = parts[0]
             distribution = None

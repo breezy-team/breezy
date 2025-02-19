@@ -50,8 +50,9 @@ class ZLibEstimator:
         self._unflushed_size_added = 0
         # So far we've read X uncompressed bytes, and written Y compressed
         # bytes. We should have a decent estimate of the final compression.
-        self._estimated_compression = (float(self._uncompressed_size_added)
-                                       / self._compressed_size_added)
+        self._estimated_compression = (
+            float(self._uncompressed_size_added) / self._compressed_size_added
+        )
 
     def full(self):
         """Have we reached the target size?"""
@@ -59,8 +60,7 @@ class ZLibEstimator:
             remaining_size = self._target_size - self._compressed_size_added
             # Estimate how much compressed content the unflushed data will
             # consume
-            est_z_size = (self._unflushed_size_added /
-                          self._estimated_compression)
+            est_z_size = self._unflushed_size_added / self._estimated_compression
             if est_z_size >= remaining_size:
                 # We estimate we are close to remaining
                 z_size = len(self._compressor.flush(zlib.Z_SYNC_FLUSH))

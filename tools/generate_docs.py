@@ -32,44 +32,59 @@ Examples:
 
 Run "%(prog)s --help" for the option reference.
 """
+
 import os
 import sys
 from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import breezy
-from breezy import (
-    commands,
-    doc_generate,
-    )
 from contextlib import ExitStack
+
+import breezy
+from breezy import commands, doc_generate
 
 
 def main(argv):
-    parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT
+    parser = OptionParser(
+        usage="""%prog [options] OUTPUT_FORMAT
 
 Available OUTPUT_FORMAT:
 
     man              man page
     rstx             man page in ReStructuredText format
-    bash_completion  bash completion script""")
+    bash_completion  bash completion script"""
+    )
 
-    parser.add_option("-s", "--show-filename",
-                      action="store_true", dest="show_filename", default=False,
-                      help="print default filename on stdout")
+    parser.add_option(
+        "-s",
+        "--show-filename",
+        action="store_true",
+        dest="show_filename",
+        default=False,
+        help="print default filename on stdout",
+    )
 
-    parser.add_option("-o", "--output", dest="filename", metavar="FILE",
-                      help="write output to FILE")
+    parser.add_option(
+        "-o", "--output", dest="filename", metavar="FILE", help="write output to FILE"
+    )
 
-    parser.add_option("-b", "--brz-name",
-                      dest="brz_name", default="brz", metavar="EXEC_NAME",
-                      help="name of brz executable")
+    parser.add_option(
+        "-b",
+        "--brz-name",
+        dest="brz_name",
+        default="brz",
+        metavar="EXEC_NAME",
+        help="name of brz executable",
+    )
 
-    parser.add_option("-e", "--examples",
-                      action="callback", callback=print_extended_help,
-                      help="Examples of ways to call generate_doc")
-
+    parser.add_option(
+        "-e",
+        "--examples",
+        action="callback",
+        callback=print_extended_help,
+        help="Examples of ways to call generate_doc",
+    )
 
     (options, args) = parser.parse_args(argv)
 
@@ -80,6 +95,7 @@ Available OUTPUT_FORMAT:
     with breezy.initialize(), ExitStack() as es:
         # Import breezy.bzr for format registration, see <http://pad.lv/956860>
         from breezy import bzr as _
+
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)
@@ -93,19 +109,20 @@ Available OUTPUT_FORMAT:
             outfile = es.enter_context(open(outfilename, "w"))
         if options.show_filename and (outfilename != "-"):
             sys.stdout.write(outfilename)
-            sys.stdout.write('\n')
+            sys.stdout.write("\n")
         infogen_mod.infogen(options, outfile)
 
 
 def print_extended_help(option, opt, value, parser):
-    """ Program help examples
+    """Program help examples
 
     Prints out the examples stored in the docstring.
 
     """
     sys.stdout.write(__doc__ % {"prog": sys.argv[0]})
-    sys.stdout.write('\n')
+    sys.stdout.write("\n")
     sys.exit(0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main(sys.argv)

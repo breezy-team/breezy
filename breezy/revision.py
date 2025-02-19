@@ -19,13 +19,9 @@
 
 __docformat__ = "google"
 
-from typing import List, Optional, Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from . import (
-    errors,
-    osutils,
-    )
-
+from . import errors, osutils
 
 RevisionID = bytes
 
@@ -77,6 +73,7 @@ class Revision:
 
     def datetime(self):
         import datetime
+
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(self.timestamp)
 
@@ -91,7 +88,8 @@ class Revision:
             and self.timezone == other.timezone
             and self.committer == other.committer
             and self.properties == other.properties
-            and self.parent_ids == other.parent_ids)
+            and self.parent_ids == other.parent_ids
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -104,8 +102,7 @@ class Revision:
             if not_text or osutils.contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, (str, bytes)):
-                raise ValueError("invalid property value %r for %r" %
-                                 (value, name))
+                raise ValueError("invalid property value %r for %r" % (value, name))
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.
@@ -132,9 +129,9 @@ class Revision:
         Return an empty string if message is None.
         """
         if self.message:
-            return self.message.lstrip().split('\n', 1)[0]
+            return self.message.lstrip().split("\n", 1)[0]
         else:
-            return ''
+            return ""
 
     def get_apparent_authors(self):
         """Return the apparent authors of this revision.
@@ -144,9 +141,9 @@ class Revision:
 
         The return value will be a list containing at least one element.
         """
-        authors = self.properties.get('authors', None)
+        authors = self.properties.get("authors", None)
         if authors is None:
-            author = self.properties.get('author', self.committer)
+            author = self.properties.get("author", self.committer)
             if author is None:
                 return []
             return [author]
@@ -155,14 +152,17 @@ class Revision:
 
     def iter_bugs(self):
         """Iterate over the bugs associated with this revision."""
-        bug_property = self.properties.get('bugs', None)
+        bug_property = self.properties.get("bugs", None)
         if bug_property is None:
             return iter([])
         from . import bugtracker
+
         return bugtracker.decode_bug_urls(bug_property)
 
 
-def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool = False):
+def iter_ancestors(
+    revision_id: RevisionID, revision_source, only_present: bool = False
+):
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
@@ -184,15 +184,18 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
         distance += 1
 
 
-def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[RevisionID, Tuple[int, int]]:
+def find_present_ancestors(
+    revision_id: RevisionID, revision_source
+) -> Dict[RevisionID, Tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
     """
     found_ancestors: Dict[RevisionID, Tuple[int, int]] = {}
-    anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
-                                        only_present=True))
+    anc_iter = enumerate(
+        iter_ancestors(revision_id, revision_source, only_present=True)
+    )
     for anc_order, (anc_id, anc_distance) in anc_iter:
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
@@ -214,7 +217,7 @@ def is_reserved_id(revision_id: RevisionID) -> bool:
     Returns:
       True if the revision is reserved, False otherwise
     """
-    return isinstance(revision_id, bytes) and revision_id.endswith(b':')
+    return isinstance(revision_id, bytes) and revision_id.endswith(b":")
 
 
 def check_not_reserved_id(revision_id: RevisionID) -> None:
@@ -225,6 +228,7 @@ def check_not_reserved_id(revision_id: RevisionID) -> None:
 
 def is_null(revision_id: RevisionID) -> bool:
     if revision_id is None:
-        raise ValueError('NULL_REVISION should be used for the null'
-                         ' revision instead of None.')
-    return (revision_id == NULL_REVISION)
+        raise ValueError(
+            "NULL_REVISION should be used for the null revision instead of None."
+        )
+    return revision_id == NULL_REVISION

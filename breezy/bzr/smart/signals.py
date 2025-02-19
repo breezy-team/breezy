@@ -21,7 +21,6 @@ import weakref
 
 from ... import trace
 
-
 # I'm pretty sure this has to be global, since signal handling is per-process.
 _on_sighup = None
 # TODO: Using a dict means that the order of calls is unordered. We could use a
@@ -40,7 +39,7 @@ def _sighup_handler(signal_number, interrupted_frame):
     """
     if _on_sighup is None:
         return
-    trace.mutter('Caught SIGHUP, sending graceful shutdown requests.')
+    trace.mutter("Caught SIGHUP, sending graceful shutdown requests.")
     for ref in _on_sighup.valuerefs():
         try:
             cb = ref()
@@ -49,7 +48,7 @@ def _sighup_handler(signal_number, interrupted_frame):
         except KeyboardInterrupt:
             raise
         except Exception:
-            trace.mutter('Error occurred while running SIGHUP handlers:')
+            trace.mutter("Error occurred while running SIGHUP handlers:")
             trace.log_exception_quietly()
 
 
@@ -111,5 +110,5 @@ def unregister_on_hangup(identifier):
     except Exception:
         # This usually runs as a tear-down step. So we don't want to propagate
         # most exceptions.
-        trace.mutter('Error occurred during unregister_on_hangup:')
+        trace.mutter("Error occurred during unregister_on_hangup:")
         trace.log_exception_quietly()

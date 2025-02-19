@@ -16,67 +16,57 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+import os
+import posixpath
+import sys
 from io import BytesIO
 
-import os
-import sys
-import posixpath
-
-from dulwich.errors import (
-    NoIndexPresent,
-    )
-from dulwich.file import (
-    _GitFile,
-    FileLocked,
-    )
-from dulwich.objects import (
-    ShaFile,
-    )
+from dulwich.errors import NoIndexPresent
+from dulwich.file import FileLocked, _GitFile
 from dulwich.object_store import (
-    PackBasedObjectStore,
-    PACKDIR,
     PACK_MODE,
+    PACKDIR,
+    PackBasedObjectStore,
     read_packs_file,
-    )
+)
+from dulwich.objects import ShaFile
 from dulwich.pack import (
+    PACK_SPOOL_FILE_MAX_SIZE,
     MemoryPackIndex,
+    Pack,
     PackData,
     PackIndexer,
-    Pack,
+    PackInflater,
     PackStreamCopier,
+    compute_file_sha,
     extend_pack,
     iter_sha1,
     load_pack_index_file,
-    write_pack_objects,
-    write_pack_index,
     write_pack_header,
-    compute_file_sha,
+    write_pack_index,
     write_pack_object,
-    PackInflater,
-    PACK_SPOOL_FILE_MAX_SIZE,
+    write_pack_objects,
 )
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
-    BaseRepo,
-    InfoRefsContainer,
-    RefsContainer,
     BASE_DIRECTORIES,
     COMMONDIR,
     CONTROLDIR,
     INDEX_FILENAME,
     OBJECTDIR,
     SYMREF,
+    BaseRepo,
+    InfoRefsContainer,
+    RefsContainer,
     check_ref_format,
-    read_packed_refs_with_peeled,
     read_packed_refs,
+    read_packed_refs_with_peeled,
     write_packed_refs,
-    )
+)
 
-from .. import (
-    osutils,
-    transport as _mod_transport,
-    urlutils,
-    )
+from .. import osutils
+from .. import transport as _mod_transport
+from .. import ui, urlutils
 from ..errors import (
     AlreadyControlDirError,
     LockBroken,
@@ -84,20 +74,14 @@ from ..errors import (
     NotLocalUrl,
     ReadError,
     TransportNotPossible,
-    )
-
+)
 from ..lock import LogicalLockResult
 from ..trace import warning
-from ..transport import (
-    FileExists,
-    NoSuchFile,
-    )
+from ..transport import FileExists, NoSuchFile
 from ..transport.local import LocalTransport
-from .. import ui
 
 
 class _RemoteGitFile(object):
-
     def __init__(self, transport, filename, mode, bufsize, mask):
         self.transport = transport
         self.filename = filename
@@ -105,6 +89,7 @@ class _RemoteGitFile(object):
         self.bufsize = bufsize
         self.mask = mask
         import tempfile
+
         self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
         self._closed = False
         for method in _GitFile.PROXY_METHODS:
@@ -195,8 +180,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             keys.add(b"HEAD")
         try:
-            iter_files = list(self.transport.clone(
-                "refs").iter_files_recursive())
+            iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
                 unquoted_filename = urlutils.unquote_to_bytes(filename)
                 refname = osutils.pathjoin(b"refs", unquoted_filename)
@@ -227,8 +211,7 @@ class TransportRefsContainer(RefsContainer):
                 return {}
             try:
                 first_line = next(iter(f)).rstrip()
-                if (first_line.startswith(b"# pack-refs") and b" peeled" in
-                        first_line):
+                if first_line.startswith(b"# pack-refs") and b" peeled" in first_line:
                     for sha, name, peeled in read_packed_refs_with_peeled(f):
                         self._packed_refs[name] = sha
                         if peeled:
@@ -270,7 +253,7 @@ class TransportRefsContainer(RefsContainer):
             exist.
         :raises IOError: if any other error occurs
         """
-        if name == b'HEAD':
+        if name == b"HEAD":
             transport = self.worktree_transport
         else:
             transport = self.transport
@@ -316,13 +299,12 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         self._check_refname(other)
-        if name != b'HEAD':
+        if name != b"HEAD":
             transport = self.transport
             self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         else:
             transport = self.worktree_transport
-        transport.put_bytes(urlutils.quote_from_bytes(
-            name), SYMREF + other + b'\n')
+        transport.put_bytes(urlutils.quote_from_bytes(name), SYMREF + other + b"\n")
 
     def set_if_equals(self, name, old_ref, new_ref):
         """Set a refname to new_ref only if it currently equals old_ref.
@@ -342,13 +324,12 @@ class TransportRefsContainer(RefsContainer):
             realname = realnames[-1]
         except (KeyError, IndexError, SymrefLoop):
             realname = name
-        if realname == b'HEAD':
+        if realname == b"HEAD":
             transport = self.worktree_transport
         else:
             transport = self.transport
             self._ensure_dir_exists(urlutils.quote_from_bytes(realname))
-        transport.put_bytes(urlutils.quote_from_bytes(
-            realname), new_ref + b"\n")
+        transport.put_bytes(urlutils.quote_from_bytes(realname), new_ref + b"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -369,7 +350,7 @@ class TransportRefsContainer(RefsContainer):
         except (KeyError, IndexError):
             realname = name
         self._check_refname(realname)
-        if realname == b'HEAD':
+        if realname == b"HEAD":
             transport = self.worktree_transport
         else:
             transport = self.transport
@@ -390,7 +371,7 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         # may only be packed
-        if name == b'HEAD':
+        if name == b"HEAD":
             transport = self.worktree_transport
         else:
             transport = self.transport
@@ -426,20 +407,20 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = transport.local_abspath(
-                urlutils.quote_from_bytes(name))
+            local_path = transport.local_abspath(urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?
             if transport.has(lockname):
                 raise LockContention(name)
-            transport.put_bytes(lockname, b'Locked by brz-git')
+            transport.put_bytes(lockname, b"Locked by brz-git")
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
-                gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
+                gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), "wb")
             except FileLocked as e:
                 raise LockContention(name, e)
             else:
+
                 def unlock():
                     try:
                         transport.delete(lockname)
@@ -448,6 +429,7 @@ class TransportRefsContainer(RefsContainer):
                     # GitFile.abort doesn't care if the lock has already
                     # disappeared
                     gf.abort()
+
                 return LogicalLockResult(unlock)
 
 
@@ -464,11 +446,10 @@ def read_gitfile(f):
     cs = f.read()
     if not cs.startswith(b"gitdir: "):
         raise ValueError("Expected file to start with 'gitdir: '")
-    return cs[len(b"gitdir: "):].rstrip(b"\n")
+    return cs[len(b"gitdir: ") :].rstrip(b"\n")
 
 
 class TransportRepo(BaseRepo):
-
     def __init__(self, transport, bare, refs_text=None):
         self.transport = transport
         self.bare = bare
@@ -479,45 +460,50 @@ class TransportRepo(BaseRepo):
             if self.bare:
                 self._controltransport = self.transport
             else:
-                self._controltransport = self.transport.clone('.git')
+                self._controltransport = self.transport.clone(".git")
         else:
             self._controltransport = self.transport.clone(
-                urlutils.quote_from_bytes(path))
+                urlutils.quote_from_bytes(path)
+            )
         commondir = self.get_named_file(COMMONDIR)
         if commondir is not None:
             with commondir:
                 commondir = os.path.join(
                     self.controldir(),
-                    commondir.read().rstrip(b"\r\n").decode(
-                        sys.getfilesystemencoding()))
-                self._commontransport = \
-                    _mod_transport.get_transport_from_path(commondir)
+                    commondir.read()
+                    .rstrip(b"\r\n")
+                    .decode(sys.getfilesystemencoding()),
+                )
+                self._commontransport = _mod_transport.get_transport_from_path(
+                    commondir
+                )
         else:
             self._commontransport = self._controltransport
         config = self.get_config()
         object_store = TransportObjectStore.from_config(
-            self._commontransport.clone(OBJECTDIR),
-            config)
+            self._commontransport.clone(OBJECTDIR), config
+        )
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
-                head = TransportRefsContainer(
-                    self._commontransport).read_loose_ref(b"HEAD")
+                head = TransportRefsContainer(self._commontransport).read_loose_ref(
+                    b"HEAD"
+                )
             except KeyError:
                 pass
             else:
                 refs_container._refs[b"HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
-                self._commontransport, self._controltransport)
-        super().__init__(object_store,
-                                            refs_container)
+                self._commontransport, self._controltransport
+            )
+        super().__init__(object_store, refs_container)
 
     def controldir(self):
-        return self._controltransport.local_abspath('.')
+        return self._controltransport.local_abspath(".")
 
     def commondir(self):
-        return self._commontransport.local_abspath('.')
+        return self._commontransport.local_abspath(".")
 
     def close(self):
         """Close any files opened by this repository."""
@@ -525,13 +511,20 @@ class TransportRepo(BaseRepo):
 
     @property
     def path(self):
-        return self.transport.local_abspath('.')
+        return self.transport.local_abspath(".")
 
     def _determine_file_mode(self):
         # Be consistent with bzr
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             return False
         return True
+
+    def _determine_symlinks(self):
+        try:
+            return osutils.supports_symlinks(self.path)
+        except NotLocalUrl:
+            # TODO(jelmer): Query the transport
+            return sys.platform != "win32"
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
@@ -544,7 +537,7 @@ class TransportRepo(BaseRepo):
         :return: An open file object, or None if the file does not exist.
         """
         try:
-            return self._controltransport.get(path.lstrip('/'))
+            return self._controltransport.get(path.lstrip("/"))
         except NoSuchFile:
             return None
 
@@ -558,6 +551,7 @@ class TransportRepo(BaseRepo):
     def open_index(self):
         """Open the index for this repository."""
         from dulwich.index import Index
+
         if not self.has_index():
             raise NoIndexPresent()
         return Index(self.index_path())
@@ -570,14 +564,16 @@ class TransportRepo(BaseRepo):
 
     def get_config(self):
         from dulwich.config import ConfigFile
+
         try:
-            with self._controltransport.get('config') as f:
+            with self._controltransport.get("config") as f:
                 return ConfigFile.from_file(f)
         except NoSuchFile:
             return ConfigFile()
 
     def get_config_stack(self):
         from dulwich.config import StackedConfig
+
         backends = []
         p = self.get_config()
         if p is not None:
@@ -620,8 +616,9 @@ class TransportRepo(BaseRepo):
 class TransportObjectStore(PackBasedObjectStore):
     """Git-style object store that exists on disk."""
 
-    def __init__(self, transport,
-                 loose_compression_level=-1, pack_compression_level=-1):
+    def __init__(
+        self, transport, loose_compression_level=-1, pack_compression_level=-1
+    ):
         """Open an object store.
 
         :param transport: Transport to open data from
@@ -636,18 +633,21 @@ class TransportObjectStore(PackBasedObjectStore):
     @classmethod
     def from_config(cls, path, config):
         try:
-            default_compression_level = int(config.get(
-                (b'core', ), b'compression').decode())
+            default_compression_level = int(
+                config.get((b"core",), b"compression").decode()
+            )
         except KeyError:
             default_compression_level = -1
         try:
-            loose_compression_level = int(config.get(
-                (b'core', ), b'looseCompression').decode())
+            loose_compression_level = int(
+                config.get((b"core",), b"looseCompression").decode()
+            )
         except KeyError:
             loose_compression_level = default_compression_level
         try:
-            pack_compression_level = int(config.get(
-                (b'core', ), 'packCompression').decode())
+            pack_compression_level = int(
+                config.get((b"core",), "packCompression").decode()
+            )
         except KeyError:
             pack_compression_level = default_compression_level
         return cls(path, loose_compression_level, pack_compression_level)
@@ -696,12 +696,9 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
                     size = None
-                pd = PackData(
-                    pack_name, self.pack_transport.get(pack_name),
-                    size=size)
+                pd = PackData(pack_name, self.pack_transport.get(pack_name), size=size)
                 idxname = basename + ".idx"
-                idx = load_pack_index_file(
-                    idxname, self.pack_transport.get(idxname))
+                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 pack = Pack.from_objects(pd, idx)
                 pack._basename = basename
                 self._pack_cache[basename] = pack
@@ -724,15 +721,17 @@ class TransportObjectStore(PackBasedObjectStore):
                         pack_files.append(os.path.splitext(name)[0])
         except TransportNotPossible:
             try:
-                f = self.transport.get('info/packs')
+                f = self.transport.get("info/packs")
             except NoSuchFile:
-                warning('No info/packs on remote host;'
-                        'run \'git update-server-info\' on remote.')
+                warning(
+                    "No info/packs on remote host;"
+                    "run 'git update-server-info' on remote."
+                )
             else:
                 with f:
                     pack_files = [
-                        os.path.splitext(name)[0]
-                        for name in read_packs_file(f)]
+                        os.path.splitext(name)[0] for name in read_packs_file(f)
+                    ]
         except NoSuchFile:
             pass
         return pack_files
@@ -746,7 +745,7 @@ class TransportObjectStore(PackBasedObjectStore):
             pass
 
     def _iter_loose_objects(self):
-        for base in self.transport.list_dir('.'):
+        for base in self.transport.list_dir("."):
             if len(base) != 2:
                 continue
             for rest in self.transport.list_dir(base):
@@ -784,7 +783,8 @@ class TransportObjectStore(PackBasedObjectStore):
         # the compression_level parameter.
         if self.loose_compression_level not in (-1, None):
             raw_string = obj.as_legacy_object(
-                compression_level=self.loose_compression_level)
+                compression_level=self.loose_compression_level
+            )
         else:
             raw_string = obj.as_legacy_object()
         self.transport.put_bytes(path, raw_string)
@@ -792,7 +792,7 @@ class TransportObjectStore(PackBasedObjectStore):
     @classmethod
     def init(cls, transport):
         try:
-            transport.mkdir('info')
+            transport.mkdir("info")
         except FileExists:
             pass
         try:
@@ -815,12 +815,18 @@ class TransportObjectStore(PackBasedObjectStore):
         entries = []
         for i, entry in enumerate(indexer):
             if progress is not None:
-                progress(("generating index: %d/%d\r" % (i, num_objects)).encode('ascii'))
+                progress(
+                    ("generating index: %d/%d\r" % (i, num_objects)).encode("ascii")
+                )
             entries.append(entry)
 
         pack_sha, extra_entries = extend_pack(
-            f, indexer.ext_refs(), get_raw=self.get_raw, compression_level=self.pack_compression_level,
-            progress=progress)
+            f,
+            indexer.ext_refs(),
+            get_raw=self.get_raw,
+            compression_level=self.pack_compression_level,
+            progress=progress,
+        )
         f.flush()
         try:
             fileno = f.fileno()
@@ -833,7 +839,9 @@ class TransportObjectStore(PackBasedObjectStore):
 
         # Move the pack in.
         entries.sort()
-        pack_base_name = "pack-" + iter_sha1(entry[0] for entry in entries).decode('ascii')
+        pack_base_name = "pack-" + iter_sha1(entry[0] for entry in entries).decode(
+            "ascii"
+        )
 
         for pack in self.packs:
             if osutils.basename(pack._basename) == pack_base_name:
@@ -851,19 +859,29 @@ class TransportObjectStore(PackBasedObjectStore):
         if path:
             f.close()
             self.pack_transport.ensure_base()
-            os.rename(path, self.transport.local_abspath(osutils.pathjoin(PACKDIR, target_pack_name)))
+            os.rename(
+                path,
+                self.transport.local_abspath(
+                    osutils.pathjoin(PACKDIR, target_pack_name)
+                ),
+            )
         else:
             f.seek(0)
             self.pack_transport.put_file(target_pack_name, f, mode=PACK_MODE)
 
         # Write the index.
-        with TransportGitFile(self.pack_transport, target_pack_index, "wb", mask=PACK_MODE) as index_file:
+        with TransportGitFile(
+            self.pack_transport, target_pack_index, "wb", mask=PACK_MODE
+        ) as index_file:
             write_pack_index(index_file, entries, pack_sha)
 
         # Add the pack to the store and return it.
         final_pack = Pack.from_objects(
             PackData(target_pack_name, self.pack_transport.get(target_pack_name)),
-            load_pack_index_file(target_pack_index, self.pack_transport.get(target_pack_index)))
+            load_pack_index_file(
+                target_pack_index, self.pack_transport.get(target_pack_index)
+            ),
+        )
         final_pack._basename = pack_base_name
 
         final_pack.check_length_and_checksum()
@@ -888,7 +906,7 @@ class TransportObjectStore(PackBasedObjectStore):
         import tempfile
 
         try:
-            dir = self.transport.local_abspath('.')
+            dir = self.transport.local_abspath(".")
         except NotLocalUrl:
             f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
             path = None
@@ -919,7 +937,7 @@ class TransportObjectStore(PackBasedObjectStore):
         import tempfile
 
         try:
-            dir = self.transport.local_abspath('.')
+            dir = self.transport.local_abspath(".")
         except NotLocalUrl:
             f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
             path = None
@@ -931,7 +949,9 @@ class TransportObjectStore(PackBasedObjectStore):
             if f.tell() > 0:
                 f.seek(0)
                 with PackData(path, f) as pd:
-                    indexer = PackIndexer.for_pack_data(pd, resolve_ext_ref=self.get_raw)
+                    indexer = PackIndexer.for_pack_data(
+                        pd, resolve_ext_ref=self.get_raw
+                    )
                     return self._complete_pack(f, path, len(pd), indexer)
             else:
                 abort()

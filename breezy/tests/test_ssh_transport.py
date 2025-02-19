@@ -15,20 +15,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import config
-from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.errors import SSHVendorNotFound, UnknownSSH
+from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.transport.ssh import (
+    LSHSubprocessVendor,
     OpenSSHSubprocessVendor,
     PLinkSubprocessVendor,
     SSHCorpSubprocessVendor,
-    LSHSubprocessVendor,
     SSHVendorManager,
     StrangeHostname,
-    )
+)
 
 
 class TestSSHVendorManager(SSHVendorManager):
-
     _ssh_version_string = ""
 
     def set_ssh_version_string(self, version):
@@ -39,19 +38,18 @@ class TestSSHVendorManager(SSHVendorManager):
 
 
 class SSHVendorManagerTests(TestCaseWithTransport):
-
     def test_register_vendor(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.overrideEnv("BRZ_SSH", "vendor")
         self.assertIs(manager.get_vendor(), vendor)
 
     def test_default_vendor(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_default_vendor(vendor)
@@ -59,9 +57,9 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
     def test_get_vendor_by_environment(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
-        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.overrideEnv("BRZ_SSH", "vendor")
         self.assertRaises(UnknownSSH, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
@@ -69,9 +67,9 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
     def test_get_vendor_by_config(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
-        config.GlobalStack().set('ssh', 'vendor')
+        config.GlobalStack().set("ssh", "vendor")
         self.assertRaises(UnknownSSH, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
@@ -79,39 +77,39 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
     def test_get_vendor_by_inspection_openssh(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("OpenSSH")
         self.assertIsInstance(manager.get_vendor(), OpenSSHSubprocessVendor)
 
     def test_get_vendor_by_inspection_sshcorp(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("SSH Secure Shell")
         self.assertIsInstance(manager.get_vendor(), SSHCorpSubprocessVendor)
 
     def test_get_vendor_by_inspection_lsh(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("lsh")
         self.assertIsInstance(manager.get_vendor(), LSHSubprocessVendor)
 
     def test_get_vendor_by_inspection_plink(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("plink")
         # Auto-detect of plink vendor disabled, on Windows recommended
         # default ssh-client is paramiko
         # see https://bugs.launchpad.net/bugs/414743
-        #~self.assertIsInstance(manager.get_vendor(), PLinkSubprocessVendor)
+        # ~self.assertIsInstance(manager.get_vendor(), PLinkSubprocessVendor)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
@@ -119,13 +117,13 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         # Once the vendor is found the result is cached (mainly because of the
         # 'get_vendor' sometimes can be an expensive operation) and later
         # invocations of the 'get_vendor' just returns the cached value.
-        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.overrideEnv("BRZ_SSH", "vendor")
         self.assertIs(manager.get_vendor(), vendor)
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertIs(manager.get_vendor(), vendor)
         # The cache can be cleared by the 'clear_cache' method
         manager.clear_cache()
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
     def test_get_vendor_search_order(self):
@@ -141,7 +139,7 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
         manager = TestSSHVendorManager()
         # At first no vendors are found
-        self.overrideEnv('BRZ_SSH', None)
+        self.overrideEnv("BRZ_SSH", None)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
         # If the default vendor is registered it will be returned
@@ -159,18 +157,18 @@ class SSHVendorManagerTests(TestCaseWithTransport):
         manager.clear_cache()
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.overrideEnv("BRZ_SSH", "vendor")
         self.assertIs(manager.get_vendor(), vendor)
 
         # Last cached value always checked first
-        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.overrideEnv("BRZ_SSH", "vendor")
         self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_from_path_win32_plink(self):
         manager = TestSSHVendorManager()
         manager.set_ssh_version_string("plink: Release 0.60")
         plink_path = "C:/Program Files/PuTTY/plink.exe"
-        self.overrideEnv('BRZ_SSH', plink_path)
+        self.overrideEnv("BRZ_SSH", plink_path)
         vendor = manager.get_vendor()
         self.assertIsInstance(vendor, PLinkSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
@@ -179,9 +177,10 @@ class SSHVendorManagerTests(TestCaseWithTransport):
     def test_get_vendor_from_path_nix_openssh(self):
         manager = TestSSHVendorManager()
         manager.set_ssh_version_string(
-            "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007")
+            "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007"
+        )
         openssh_path = "/usr/bin/ssh"
-        self.overrideEnv('BRZ_SSH', openssh_path)
+        self.overrideEnv("BRZ_SSH", openssh_path)
         vendor = manager.get_vendor()
         self.assertIsInstance(vendor, OpenSSHSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
@@ -189,130 +188,167 @@ class SSHVendorManagerTests(TestCaseWithTransport):
 
 
 class SubprocessVendorsTests(TestCase):
-
     def test_openssh_command_tricked(self):
         vendor = OpenSSHSubprocessVendor()
         self.assertEqual(
             vendor._get_vendor_specific_argv(
-                "user", "-oProxyCommand=blah", 100, command=["bzr"]),
-            ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
+                "user", "-oProxyCommand=blah", 100, command=["bzr"]
+            ),
+            [
+                "ssh",
+                "-oForwardX11=no",
+                "-oForwardAgent=no",
                 "-oClearAllForwardings=yes",
                 "-oNoHostAuthenticationForLocalhost=yes",
-                "-p", "100",
-                "-l", "user",
+                "-p",
+                "100",
+                "-l",
+                "user",
                 "--",
-                "-oProxyCommand=blah", "bzr"])
+                "-oProxyCommand=blah",
+                "bzr",
+            ],
+        )
 
     def test_openssh_command_arguments(self):
         vendor = OpenSSHSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, command=["bzr"]),
-            ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
+            vendor._get_vendor_specific_argv("user", "host", 100, command=["bzr"]),
+            [
+                "ssh",
+                "-oForwardX11=no",
+                "-oForwardAgent=no",
                 "-oClearAllForwardings=yes",
                 "-oNoHostAuthenticationForLocalhost=yes",
-                "-p", "100",
-                "-l", "user",
+                "-p",
+                "100",
+                "-l",
+                "user",
                 "--",
-                "host", "bzr"]
-            )
+                "host",
+                "bzr",
+            ],
+        )
 
     def test_openssh_subsystem_arguments(self):
         vendor = OpenSSHSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, subsystem="sftp"),
-            ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
+            vendor._get_vendor_specific_argv("user", "host", 100, subsystem="sftp"),
+            [
+                "ssh",
+                "-oForwardX11=no",
+                "-oForwardAgent=no",
                 "-oClearAllForwardings=yes",
                 "-oNoHostAuthenticationForLocalhost=yes",
-                "-p", "100",
-                "-l", "user",
-                "-s", "--", "host", "sftp"]
-            )
+                "-p",
+                "100",
+                "-l",
+                "user",
+                "-s",
+                "--",
+                "host",
+                "sftp",
+            ],
+        )
 
     def test_openssh_command_strange_hostname(self):
         vendor = SSHCorpSubprocessVendor()
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-            "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user",
+            "-oProxyCommand=host",
+            100,
+            command=["bzr"],
+        )
 
     def test_sshcorp_command_arguments(self):
         vendor = SSHCorpSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, command=["bzr"]),
-            ["ssh", "-x",
-                "-p", "100",
-                "-l", "user",
-                "host", "bzr"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, command=["bzr"]),
+            ["ssh", "-x", "-p", "100", "-l", "user", "host", "bzr"],
+        )
 
     def test_sshcorp_subsystem_arguments(self):
         vendor = SSHCorpSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, subsystem="sftp"),
-            ["ssh", "-x",
-                "-p", "100",
-                "-l", "user",
-                "-s", "sftp", "host"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, subsystem="sftp"),
+            ["ssh", "-x", "-p", "100", "-l", "user", "-s", "sftp", "host"],
+        )
 
     def test_lsh_command_tricked(self):
         vendor = LSHSubprocessVendor()
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-            "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user",
+            "-oProxyCommand=host",
+            100,
+            command=["bzr"],
+        )
 
     def test_lsh_command_arguments(self):
         vendor = LSHSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, command=["bzr"]),
-            ["lsh",
-                "-p", "100",
-                "-l", "user",
-                "host", "bzr"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, command=["bzr"]),
+            ["lsh", "-p", "100", "-l", "user", "host", "bzr"],
+        )
 
     def test_lsh_subsystem_arguments(self):
         vendor = LSHSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, subsystem="sftp"),
-            ["lsh",
-                "-p", "100",
-                "-l", "user",
-                "--subsystem", "sftp", "host"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, subsystem="sftp"),
+            ["lsh", "-p", "100", "-l", "user", "--subsystem", "sftp", "host"],
+        )
 
     def test_plink_command_tricked(self):
         vendor = PLinkSubprocessVendor()
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-            "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user",
+            "-oProxyCommand=host",
+            100,
+            command=["bzr"],
+        )
 
     def test_plink_command_arguments(self):
         vendor = PLinkSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, command=["bzr"]),
-            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
-                "-P", "100",
-                "-l", "user",
-                "host", "bzr"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, command=["bzr"]),
+            [
+                "plink",
+                "-x",
+                "-a",
+                "-ssh",
+                "-2",
+                "-batch",
+                "-P",
+                "100",
+                "-l",
+                "user",
+                "host",
+                "bzr",
+            ],
+        )
 
     def test_plink_subsystem_arguments(self):
         vendor = PLinkSubprocessVendor()
         self.assertEqual(
-            vendor._get_vendor_specific_argv(
-                "user", "host", 100, subsystem="sftp"),
-            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
-                "-P", "100",
-                "-l", "user",
-                "-s", "host", "sftp"]
-            )
+            vendor._get_vendor_specific_argv("user", "host", 100, subsystem="sftp"),
+            [
+                "plink",
+                "-x",
+                "-a",
+                "-ssh",
+                "-2",
+                "-batch",
+                "-P",
+                "100",
+                "-l",
+                "user",
+                "-s",
+                "host",
+                "sftp",
+            ],
+        )

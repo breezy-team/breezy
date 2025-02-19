@@ -18,22 +18,21 @@
 
 from urllib.parse import urlparse, urlunparse
 
-
 # We use production as the default because edge has been deprecated circa
 # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-DEFAULT_INSTANCE = 'production'
+DEFAULT_INSTANCE = "production"
 
 LAUNCHPAD_DOMAINS = {
-    'production': 'launchpad.net',
-    'staging': 'staging.launchpad.net',
-    'qastaging': 'qastaging.launchpad.net',
-    'demo': 'demo.launchpad.net',
-    'test': 'launchpad.test',
-    }
+    "production": "launchpad.net",
+    "staging": "staging.launchpad.net",
+    "qastaging": "qastaging.launchpad.net",
+    "demo": "demo.launchpad.net",
+    "test": "launchpad.test",
+}
 
 LAUNCHPAD_BAZAAR_DOMAINS = [
-    'bazaar.%s' % domain
-    for domain in LAUNCHPAD_DOMAINS.values()]
+    "bazaar.%s" % domain for domain in LAUNCHPAD_DOMAINS.values()
+]
 
 LPNET_SERVICE_ROOT = "https://api.launchpad.net/"
 QASTAGING_SERVICE_ROOT = "https://api.qastaging.launchpad.net/"
@@ -70,7 +69,7 @@ def lookup_service_root(root):
 
     # It's not an alias or a valid URL.
     raise ValueError(
-        "%s is not a valid URL or an alias for any Launchpad " "server" % root
+        "%s is not a valid URL or an alias for any Launchpad server" % root
     )
 
 
@@ -83,14 +82,14 @@ def web_root_for_service_root(service_root):
     web_root_uri = urlparse(service_root)
     web_root_uri = web_root_uri._replace(path="")
     web_root_uri = web_root_uri._replace(
-        netloc=web_root_uri.netloc.replace("api.", "", 1))
-    return str(web_root_uri)
+        netloc=web_root_uri.netloc.replace("api.", "", 1)
+    )
+    return urlunparse(web_root_uri)
 
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
+    scheme, netloc, path, params, query, fragment = urlparse(str(object.self_link))
+    path = "/".join(path.split("/")[2:])
+    netloc = netloc.replace("api.", "code.")
     return urlunparse((scheme, netloc, path, params, query, fragment))

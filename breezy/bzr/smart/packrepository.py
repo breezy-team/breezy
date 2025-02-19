@@ -16,24 +16,17 @@
 
 """Server-side pack repository related request implmentations."""
 
-from .request import (
-    SuccessfulSmartServerResponse,
-    )
-
-
-from .repository import (
-    SmartServerRepositoryRequest,
-    )
+from .repository import SmartServerRepositoryRequest
+from .request import SuccessfulSmartServerResponse
 
 
 class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
-
     def do_repository_request(self, repository):
-        pack_collection = getattr(repository, '_pack_collection', None)
+        pack_collection = getattr(repository, "_pack_collection", None)
         if pack_collection is None:
             # This is a not a pack repo, so asking for an autopack is just a
             # no-op.
-            return SuccessfulSmartServerResponse((b'ok',))
+            return SuccessfulSmartServerResponse((b"ok",))
         with repository.lock_write():
             repository._pack_collection.autopack()
-        return SuccessfulSmartServerResponse((b'ok',))
+        return SuccessfulSmartServerResponse((b"ok",))

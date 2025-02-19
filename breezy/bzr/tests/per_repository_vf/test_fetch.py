@@ -16,13 +16,11 @@
 
 """Tests for fetch between repositories of the same type."""
 
-from breezy.bzr import (
-    vf_search,
-    )
+from breezy.bzr import vf_search
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
-    )
+)
 from breezy.tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -38,20 +36,26 @@ class TestSource(TestCaseWithRepository):
         # doesn't actually gain coverage there; need a specific set of
         # permutations to cover it.
         # bug lp:376255 was reported about this.
-        builder = self.make_branch_builder('repo')
+        builder = self.make_branch_builder("repo")
         builder.start_series()
-        builder.build_snapshot([b'ghost'],
-                               [('add', ('', b'ROOT_ID', 'directory', ''))],
-                               allow_leftmost_as_ghost=True, revision_id=b'tip')
+        builder.build_snapshot(
+            [b"ghost"],
+            [("add", ("", b"ROOT_ID", "directory", ""))],
+            allow_leftmost_as_ghost=True,
+            revision_id=b"tip",
+        )
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
         repo = b.repository
         source = repo._get_source(repo._format)
-        search = vf_search.PendingAncestryResult([b'tip'], repo)
+        search = vf_search.PendingAncestryResult([b"tip"], repo)
         stream = source.get_stream(search)
         for substream_type, substream in stream:
             for record in substream:
-                self.assertNotEqual('absent', record.storage_kind,
-                                    "Absent record for {}".format((substream_type,) + record.key))
+                self.assertNotEqual(
+                    "absent",
+                    record.storage_kind,
+                    "Absent record for {}".format((substream_type,) + record.key),
+                )

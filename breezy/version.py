@@ -21,13 +21,8 @@ import platform
 import sys
 
 import breezy
-from . import (
-    bedding,
-    controldir,
-    errors,
-    osutils,
-    trace,
-    )
+
+from . import bedding, controldir, errors, osutils, trace
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
@@ -54,49 +49,50 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # but sys.executable point to brz.exe itself)
     # however, sys.frozen exists if running from brz.exe
     # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
-    if getattr(sys, 'frozen', None) is None:  # if not brz.exe
-        to_file.write(sys.executable + ' ')
+    if getattr(sys, "frozen", None) is None:  # if not brz.exe
+        to_file.write(sys.executable + " ")
     else:
         # pythonXY.dll
         basedir = os.path.dirname(sys.executable)
         python_dll = "python%d%d.dll" % sys.version_info[:2]
-        to_file.write(os.path.join(basedir, python_dll) + ' ')
+        to_file.write(os.path.join(basedir, python_dll) + " ")
     # and now version of python interpreter
     to_file.write(breezy._format_version_tuple(sys.version_info))
-    to_file.write('\n')
+    to_file.write("\n")
 
-    to_file.write("  Python standard library:" + ' ')
-    to_file.write(os.path.dirname(os.__file__) + '\n')
+    to_file.write("  Python standard library:" + " ")
+    to_file.write(os.path.dirname(os.__file__) + "\n")
     platform_str = platform.platform(aliased=1)
     if not isinstance(platform_str, str):
-        platform_str = platform_str.decode('utf-8')
+        platform_str = platform_str.decode("utf-8")
     to_file.write("  Platform: %s\n" % platform_str)
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
         # more than one element (eg ['/foo/bar', '/foo/brz'])
-        to_file.write(repr(breezy.__path__) + '\n')
+        to_file.write(repr(breezy.__path__) + "\n")
     else:
-        to_file.write(breezy.__path__[0] + '\n')
+        to_file.write(breezy.__path__[0] + "\n")
     if show_config:
-        config_dir = osutils.normpath(
-            bedding.config_dir())  # use native slashes
+        config_dir = osutils.normpath(bedding.config_dir())  # use native slashes
         if not isinstance(config_dir, str):
             config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Breezy configuration: {}\n".format(config_dir))
         to_file.write("  Breezy log file: ")
-        to_file.write(trace._brz_log_filename + '\n')
+        to_file.write(trace._brz_log_filename + "\n")
     if show_copyright:
-        to_file.write('\n')
-        to_file.write(breezy.__copyright__ + '\n')
+        to_file.write("\n")
+        to_file.write(breezy.__copyright__ + "\n")
         to_file.write("https://www.breezy-vcs.org/\n")
-        to_file.write('\n')
+        to_file.write("\n")
         to_file.write(
-            "brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
+            "brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n"
+        )
         to_file.write(
-            "you may use, modify and redistribute it under the terms of the GNU\n")
+            "you may use, modify and redistribute it under the terms of the GNU\n"
+        )
         to_file.write("General Public License version 2 or later.\n")
-    to_file.write('\n')
+    to_file.write("\n")
 
 
 def _get_brz_source_tree():
@@ -107,6 +103,5 @@ def _get_brz_source_tree():
     try:
         control = controldir.ControlDir.open_containing(__file__)[0]
         return control.open_workingtree(recommend_upgrade=False)
-    except (errors.NotBranchError, errors.UnknownFormatError,
-            errors.NoWorkingTree):
+    except (errors.NotBranchError, errors.UnknownFormatError, errors.NoWorkingTree):
         return None

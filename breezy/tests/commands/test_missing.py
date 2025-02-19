@@ -20,18 +20,17 @@ from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestMissing(TestCaseWithConnectionHookedTransport):
-
     def test_missing(self):
-        wt1 = self.make_branch_and_tree('.')
-        wt1.commit('empty commit')
-        wt2 = self.make_branch_and_tree('branch2')
+        wt1 = self.make_branch_and_tree(".")
+        wt1.commit("empty commit")
+        wt2 = self.make_branch_and_tree("branch2")
         wt2.pull(wt1.branch)
-        wt2.commit('empty commit too')
+        wt2.commit("empty commit too")
 
         self.start_logging_connections()
 
         cmd = cmd_missing()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = self.make_utf8_encoded_stringio()
-        cmd.run(self.get_url('branch2'))
+        cmd.run(self.get_url("branch2"))
         self.assertEqual(1, len(self.connections))

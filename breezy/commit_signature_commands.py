@@ -14,18 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command that signs unsigned commits by the current user. """
+"""Command that signs unsigned commits by the current user."""
 
-from . import (
-    controldir,
-    errors,
-    gpg,
-    repository as _mod_repository,
-    revision as _mod_revision,
-    )
+from . import controldir, errors, gpg
+from . import repository as _mod_repository
+from . import revision as _mod_revision
 from .commands import Command
-from .option import Option
 from .i18n import gettext, ngettext
+from .option import Option
 
 
 class cmd_sign_my_commits(Command):
@@ -41,15 +37,17 @@ class cmd_sign_my_commits(Command):
     # repository
 
     takes_options = [
-        Option('dry-run',
-               help='Don\'t actually sign anything, just print'
-               ' the revisions that would be signed.'),
-        ]
-    takes_args = ['location?', 'committer?']
+        Option(
+            "dry-run",
+            help="Don't actually sign anything, just print"
+            " the revisions that would be signed.",
+        ),
+    ]
+    takes_args = ["location?", "committer?"]
 
     def run(self, location=None, committer=None, dry_run=False):
         if location is None:
-            bzrdir = controldir.ControlDir.open_containing('.')[0]
+            bzrdir = controldir.ControlDir.open_containing(".")[0]
         else:
             # Passed in locations should be exact
             bzrdir = controldir.ControlDir.open(location)
@@ -58,15 +56,14 @@ class cmd_sign_my_commits(Command):
         branch_config = branch.get_config_stack()
 
         if committer is None:
-            committer = branch_config.get('email')
+            committer = branch_config.get("email")
         gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
         with repo.lock_write():
             graph = repo.get_graph()
             with _mod_repository.WriteGroup(repo):
-                for rev_id, parents in graph.iter_ancestry(
-                        [branch.last_revision()]):
+                for rev_id, parents in graph.iter_ancestry([branch.last_revision()]):
                     if _mod_revision.is_null(rev_id):
                         continue
                     if parents is None:
@@ -84,8 +81,8 @@ class cmd_sign_my_commits(Command):
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
         self.outf.write(
-            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n',
-                     count) % count)
+            ngettext("Signed %d revision.\n", "Signed %d revisions.\n", count) % count
+        )
 
 
 class cmd_verify_signatures(Command):
@@ -95,18 +92,19 @@ class cmd_verify_signatures(Command):
     """
 
     takes_options = [
-        Option('acceptable-keys',
-               help='Comma separated list of GPG key patterns which are'
-               ' acceptable for verification.',
-               short_name='k',
-               type=str,),
-        'revision',
-        'verbose',
-        ]
-    takes_args = ['location?']
+        Option(
+            "acceptable-keys",
+            help="Comma separated list of GPG key patterns which are"
+            " acceptable for verification.",
+            short_name="k",
+            type=str,
+        ),
+        "revision",
+        "verbose",
+    ]
+    takes_args = ["location?"]
 
-    def run(self, acceptable_keys=None, revision=None, verbose=None,
-            location='.'):
+    def run(self, acceptable_keys=None, revision=None, verbose=None, location="."):
         bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
@@ -135,16 +133,17 @@ class cmd_verify_signatures(Command):
                     to_revno = branch.revno()
                 if from_revno is None or to_revno is None:
                     raise errors.CommandError(
-                        gettext('Cannot verify a range of non-revision-history'
-                                ' revisions'))
+                        gettext(
+                            "Cannot verify a range of non-revision-history revisions"
+                        )
+                    )
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:
             # all revisions by default including merges
             graph = repo.get_graph()
             revisions = []
-            for rev_id, parents in graph.iter_ancestry(
-                    [branch.last_revision()]):
+            for rev_id, parents in graph.iter_ancestry([branch.last_revision()]):
                 if _mod_revision.is_null(rev_id):
                     continue
                 if parents is None:
@@ -152,7 +151,8 @@ class cmd_verify_signatures(Command):
                     continue
                 revisions.append(rev_id)
         count, result, all_verifiable = gpg.bulk_verify_signatures(
-            repo, revisions, gpg_strategy)
+            repo, revisions, gpg_strategy
+        )
         if all_verifiable:
             write(gettext("All commits signed with verifiable keys"))
             if verbose:

@@ -14,21 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A collection of commonly used 'Features' to optionally run tests.
-"""
+"""A collection of commonly used 'Features' to optionally run tests."""
 
 import importlib
 import os
-import subprocess
 import stat
+import subprocess
 import sys
 import tempfile
 import warnings
 
-from .. import (
-    osutils,
-    symbol_versioning,
-    )
+from .. import osutils, symbol_versioning
 
 
 class Feature:
@@ -54,7 +50,7 @@ class Feature:
         raise NotImplementedError
 
     def __str__(self):
-        if getattr(self, 'feature_name', None):
+        if getattr(self, "feature_name", None):
             return self.feature_name()
         return self.__class__.__name__
 
@@ -70,11 +66,10 @@ class SymlinkFeature(Feature):
         return osutils.supports_symlinks(self.path)
 
     def feature_name(self):
-        return 'symlinks'
+        return "symlinks"
 
 
 class HardlinkFeature(Feature):
-
     def __init__(self, path):
         super().__init__()
         self.path = path
@@ -83,16 +78,15 @@ class HardlinkFeature(Feature):
         return osutils.supports_hardlinks(self.path)
 
     def feature_name(self):
-        return 'hardlinks'
+        return "hardlinks"
 
 
 class _OsFifoFeature(Feature):
-
     def _probe(self):
-        return getattr(os, 'mkfifo', None)
+        return getattr(os, "mkfifo", None)
 
     def feature_name(self):
-        return 'filesystem fifos'
+        return "filesystem fifos"
 
 
 OsFifoFeature = _OsFifoFeature()
@@ -107,7 +101,7 @@ class _UnicodeFilenameFeature(Feature):
             # single non-unicode encoding. We use the characters
             # - greek small letter alpha (U+03B1) and
             # - braille pattern dots-123456 (U+283F).
-            os.stat('\u03b1\u283f')
+            os.stat("\u03b1\u283f")
         except UnicodeEncodeError:
             return False
         except OSError:
@@ -130,8 +124,9 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, dep_version, module, name,
-                 replacement_name, replacement_module=None):
+    def __init__(
+        self, dep_version, module, name, replacement_name, replacement_module=None
+    ):
         super().__init__()
         self._module = module
         if replacement_module is None:
@@ -145,16 +140,17 @@ class _CompatabilityThunkFeature(Feature):
     def _ensure(self):
         if self._feature is None:
             from breezy import pyutils
-            depr_msg = self._dep_version % ('%s.%s'
-                                            % (self._module, self._name))
-            use_msg = ' Use {}.{} instead.'.format(self._replacement_module,
-                                               self._replacement_name)
-            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
-                                   stacklevel=5)
+
+            depr_msg = self._dep_version % ("%s.%s" % (self._module, self._name))
+            use_msg = " Use {}.{} instead.".format(
+                self._replacement_module, self._replacement_name
+            )
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning, stacklevel=5)
             # Import the new feature and use it as a replacement for the
             # deprecated one.
             self._feature = pyutils.get_named_object(
-                self._replacement_module, self._replacement_name)
+                self._replacement_module, self._replacement_name
+            )
 
     def _probe(self):
         self._ensure()
@@ -183,7 +179,7 @@ class ModuleAvailableFeature(Feature):
         if module is sentinel:
             with warnings.catch_warnings():
                 for warning_category in self.ignore_warnings:
-                    warnings.simplefilter('ignore', warning_category)
+                    warnings.simplefilter("ignore", warning_category)
                 try:
                     self._module = importlib.import_module(self.module_name)
                 except ImportError:
@@ -219,30 +215,32 @@ class PluginLoadedFeature(Feature):
 
     def _probe(self):
         from breezy.plugin import get_loaded_plugin
-        return (get_loaded_plugin(self.plugin_name) is not None)
+
+        return get_loaded_plugin(self.plugin_name) is not None
 
     @property
     def plugin(self):
         from breezy.plugin import get_loaded_plugin
+
         return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
-        return '%s plugin' % self.plugin_name
+        return "%s plugin" % self.plugin_name
 
 
 class _HTTPSServerFeature(Feature):
-    """Some tests want an https Server, check if one is available.
-    """
+    """Some tests want an https Server, check if one is available."""
 
     def _probe(self):
         try:
             import ssl  # noqa: F401
+
             return True
         except ModuleNotFoundError:
             return False
 
     def feature_name(self):
-        return 'HTTPSServer'
+        return "HTTPSServer"
 
 
 HTTPSServerFeature = _HTTPSServerFeature()
@@ -264,7 +262,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if sys.getfilesystemencoding().upper() in ('UTF-8', 'UTF8'):
+        if sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8"):
             return True
         return False
 
@@ -277,9 +275,10 @@ class _BreakinFeature(Feature):
 
     def _probe(self):
         from breezy import breakin
+
         if breakin.determine_signal() is None:
             return False
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
@@ -300,16 +299,18 @@ class _CaseInsCasePresFilenameFeature(Feature):
     """Is the file-system case insensitive, but case-preserving?"""
 
     def _probe(self):
-        fileno, name = tempfile.mkstemp(prefix='MixedCase')
+        fileno, name = tempfile.mkstemp(prefix="MixedCase")
         try:
             # first check truly case-preserving for created files, then check
             # case insensitive when opening existing files.
             name = osutils.normpath(name)
             base, rel = osutils.split(name)
             found_rel = osutils.canonical_relpath(base, name)
-            return (found_rel == rel and
-                    os.path.isfile(name.upper()) and
-                    os.path.isfile(name.lower()))
+            return (
+                found_rel == rel
+                and os.path.isfile(name.upper())
+                and os.path.isfile(name.lower())
+            )
         finally:
             os.close(fileno)
             os.remove(name)
@@ -325,6 +326,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
     """Check if underlying filesystem is case-insensitive but *not* case
     preserving.
     """
+
     # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
     # more likely to be case preserving, so this case is rare.
 
@@ -335,28 +337,26 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         from breezy import tests
 
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            root = tempfile.mkdtemp(prefix="testbzr-", suffix=".tmp")
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
         else:
             root = tests.TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = tempfile.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-                                dir=root)
-        name_a = osutils.pathjoin(tdir, 'a')
-        name_A = osutils.pathjoin(tdir, 'A')
+        tdir = tempfile.mkdtemp(prefix="case-sensitive-probe-", suffix="", dir=root)
+        name_a = osutils.pathjoin(tdir, "a")
+        name_A = osutils.pathjoin(tdir, "A")
         os.mkdir(name_a)
         result = osutils.isdir(name_A)
         tests._rmtree_temp_dir(tdir)
         return result
 
     def feature_name(self):
-        return 'case-insensitive filesystem'
+        return "case-insensitive filesystem"
 
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
 class _CaseSensitiveFilesystemFeature(Feature):
-
     def _probe(self):
         if CaseInsCasePresFilenameFeature.available():
             return False
@@ -366,7 +366,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
             return True
 
     def feature_name(self):
-        return 'case-sensitive filesystem'
+        return "case-sensitive filesystem"
 
 
 # new coding style is for feature instances to be lowercase
@@ -374,7 +374,6 @@ case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
 
 
 class _NotRunningAsRoot(Feature):
-
     def _probe(self):
         try:
             uid = os.getuid()
@@ -384,35 +383,33 @@ class _NotRunningAsRoot(Feature):
         return uid != 0
 
     def feature_name(self):
-        return 'Not running as root'
+        return "Not running as root"
 
 
 not_running_as_root = _NotRunningAsRoot()
 
 # Apport uses deprecated imp module on python3.
 apport = ModuleAvailableFeature(
-    'apport.report',
-    ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
-gpg = ModuleAvailableFeature('gpg')
-lzma = ModuleAvailableFeature('lzma')
-meliae = ModuleAvailableFeature('meliae.scanner')
-paramiko = ModuleAvailableFeature('paramiko')
-pywintypes = ModuleAvailableFeature('pywintypes')
-subunit = ModuleAvailableFeature('subunit')
-testtools = ModuleAvailableFeature('testtools')
-flake8 = ModuleAvailableFeature('flake8.api.legacy')
+    "apport.report", ignore_warnings=[DeprecationWarning, PendingDeprecationWarning]
+)
+gpg = ModuleAvailableFeature("gpg")
+lzma = ModuleAvailableFeature("lzma")
+meliae = ModuleAvailableFeature("meliae.scanner")
+paramiko = ModuleAvailableFeature("paramiko")
+pywintypes = ModuleAvailableFeature("pywintypes")
+subunit = ModuleAvailableFeature("subunit")
+testtools = ModuleAvailableFeature("testtools")
+flake8 = ModuleAvailableFeature("flake8.api.legacy")
 
-lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
-importlib_metadata_feature = ModuleAvailableFeature('importlib.metadata')
+lsprof_feature = ModuleAvailableFeature("breezy.lsprof")
 
-pyinotify = ModuleAvailableFeature('pyinotify')
+pyinotify = ModuleAvailableFeature("pyinotify")
 
 
 class _BackslashDirSeparatorFeature(Feature):
-
     def _probe(self):
         try:
-            os.lstat(os.getcwd() + '\\')
+            os.lstat(os.getcwd() + "\\")
         except OSError:
             return False
         else:
@@ -429,7 +426,7 @@ class _ChownFeature(Feature):
     """os.chown is supported"""
 
     def _probe(self):
-        return os.name == 'posix' and hasattr(os, 'chown')
+        return os.name == "posix" and hasattr(os, "chown")
 
 
 chown_feature = _ChownFeature()
@@ -454,51 +451,50 @@ class ExecutableFeature(Feature):
         return self._path is not None
 
     def feature_name(self):
-        return '%s executable' % self.name
+        return "%s executable" % self.name
 
 
-bash_feature = ExecutableFeature('bash')
-diff_feature = ExecutableFeature('diff')
-sed_feature = ExecutableFeature('sed')
-msgmerge_feature = ExecutableFeature('msgmerge')
+bash_feature = ExecutableFeature("bash")
+diff_feature = ExecutableFeature("diff")
+sed_feature = ExecutableFeature("sed")
+msgmerge_feature = ExecutableFeature("msgmerge")
 
 
 class _PosixPermissionsFeature(Feature):
-
     def _probe(self):
         def has_perms():
             # Create temporary file and check if specified perms are
             # maintained.
             write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
+            f = tempfile.mkstemp(prefix="bzr_perms_chk_")
             fd, name = f
             os.close(fd)
             osutils.chmod_if_possible(name, write_perms)
 
             read_perms = os.stat(name).st_mode & 0o777
             os.unlink(name)
-            return (write_perms == read_perms)
+            return write_perms == read_perms
 
-        return (os.name == 'posix') and has_perms()
+        return (os.name == "posix") and has_perms()
 
     def feature_name(self):
-        return 'POSIX permissions support'
+        return "POSIX permissions support"
 
 
 posix_permissions_feature = _PosixPermissionsFeature()
 
 
 class _StraceFeature(Feature):
-
     def _probe(self):
         try:
-            proc = subprocess.Popen(['strace'],
-                                    stderr=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
+            proc = subprocess.Popen(
+                ["strace"], stderr=subprocess.PIPE, stdout=subprocess.PIPE
+            )
             proc.communicate()
             return True
         except OSError as e:
             import errno
+
             if e.errno == errno.ENOENT:
                 # strace is not installed
                 return False
@@ -506,25 +502,24 @@ class _StraceFeature(Feature):
                 raise
 
     def feature_name(self):
-        return 'strace'
+        return "strace"
 
 
 strace_feature = _StraceFeature()
 
 
 class _AttribFeature(Feature):
-
     def _probe(self):
-        if (sys.platform not in ('cygwin', 'win32')):
+        if sys.platform not in ("cygwin", "win32"):
             return False
         try:
-            proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(["attrib", "."], stdout=subprocess.PIPE)
         except OSError:
             return False
-        return (0 == proc.wait())
+        return 0 == proc.wait()
 
     def feature_name(self):
-        return 'attrib Windows command-line tool'
+        return "attrib Windows command-line tool"
 
 
 AttribFeature = _AttribFeature()
@@ -536,7 +531,7 @@ class Win32Feature(Feature):
     """
 
     def _probe(self):
-        return sys.platform == 'win32'
+        return sys.platform == "win32"
 
     def feature_name(self):
         return "win32 platform"
@@ -549,9 +544,8 @@ class _BackslashFilenameFeature(Feature):
     """Does the filesystem support backslashes in filenames?"""
 
     def _probe(self):
-
         try:
-            fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
+            fileno, name = tempfile.mkstemp(prefix="bzr\\prefix")
         except OSError:
             return False
         else:

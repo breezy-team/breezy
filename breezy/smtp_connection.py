@@ -16,38 +16,38 @@
 
 """A convenience class around smtplib."""
 
-from email.utils import getaddresses, parseaddr
-
 import errno
 import smtplib
 import socket
+from email.utils import getaddresses, parseaddr
 
-from . import (
-    config,
-    osutils,
-    )
-from .errors import (
-    BzrError,
-    InternalBzrError,
-    )
+from . import config, osutils
+from .errors import BzrError, InternalBzrError
 
-
-smtp_password = config.Option('smtp_password', default=None,
-                              help='''\
+smtp_password = config.Option(
+    "smtp_password",
+    default=None,
+    help="""\
 Password to use for authentication to SMTP server.
-''')
-smtp_server = config.Option('smtp_server', default=None,
-                            help='''\
+""",
+)
+smtp_server = config.Option(
+    "smtp_server",
+    default=None,
+    help="""\
 Hostname of the SMTP server to use for sending email.
-''')
-smtp_username = config.Option('smtp_username', default=None,
-                              help='''\
+""",
+)
+smtp_username = config.Option(
+    "smtp_username",
+    default=None,
+    help="""\
 Username to use for authentication to SMTP server.
-''')
+""",
+)
 
 
 class SMTPError(BzrError):
-
     _fmt = "SMTP error: %(error)s"
 
     def __init__(self, error):
@@ -55,7 +55,6 @@ class SMTPError(BzrError):
 
 
 class SMTPConnectionRefused(SMTPError):
-
     _fmt = "SMTP connection to %(host)s refused"
 
     def __init__(self, error, host):
@@ -64,12 +63,10 @@ class SMTPConnectionRefused(SMTPError):
 
 
 class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
-
     _fmt = "Please specify smtp_server.  No server at default %(host)s."
 
 
 class NoDestinationAddress(InternalBzrError):
-
     _fmt = "Message does not have a destination address."
 
 
@@ -81,20 +78,20 @@ class SMTPConnection:
     smtp_username, and smtp_password.
     """
 
-    _default_smtp_server = 'localhost'
+    _default_smtp_server = "localhost"
 
     def __init__(self, config, _smtp_factory=None):
         self._smtp_factory = _smtp_factory
         if self._smtp_factory is None:
             self._smtp_factory = smtplib.SMTP
         self._config = config
-        self._config_smtp_server = config.get('smtp_server')
+        self._config_smtp_server = config.get("smtp_server")
         self._smtp_server = self._config_smtp_server
         if self._smtp_server is None:
             self._smtp_server = self._default_smtp_server
 
-        self._smtp_username = config.get('smtp_username')
-        self._smtp_password = config.get('smtp_password')
+        self._smtp_username = config.get("smtp_username")
+        self._smtp_password = config.get("smtp_password")
 
         self._connection = None
 
@@ -116,11 +113,9 @@ class SMTPConnection:
         except OSError as e:
             if e.args[0] == errno.ECONNREFUSED:
                 if self._config_smtp_server is None:
-                    raise DefaultSMTPConnectionRefused(socket.error,
-                                                       self._smtp_server)
+                    raise DefaultSMTPConnectionRefused(socket.error, self._smtp_server)
                 else:
-                    raise SMTPConnectionRefused(socket.error,
-                                                self._smtp_server)
+                    raise SMTPConnectionRefused(socket.error, self._smtp_server)
             else:
                 raise
 
@@ -135,8 +130,7 @@ class SMTPConnection:
         if self._connection.has_extn("starttls"):
             code, resp = self._connection.starttls()
             if not (200 <= code <= 299):
-                raise SMTPError("server refused STARTTLS: %d %s" %
-                                (code, resp))
+                raise SMTPError("server refused STARTTLS: %d %s" % (code, resp))
             # Say EHLO again, to check for newly revealed features
             code, resp = self._connection.ehlo()
             if not (200 <= code <= 299):
@@ -149,13 +143,14 @@ class SMTPConnection:
             # FIXME: Since _authenticate gets called even when no authentication
             # is necessary, it's not possible to use the default username
             # here yet.
-            self._smtp_username = auth.get_user('smtp', self._smtp_server)
+            self._smtp_username = auth.get_user("smtp", self._smtp_server)
             if self._smtp_username is None:
                 return
 
         if self._smtp_password is None:
             self._smtp_password = auth.get_password(
-                'smtp', self._smtp_server, self._smtp_username)
+                "smtp", self._smtp_server, self._smtp_username
+            )
 
         # smtplib requires that the username and password be byte
         # strings.  The CRAM-MD5 spec doesn't give any guidance on
@@ -177,14 +172,13 @@ class SMTPConnection:
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = parseaddr(message.get('From', None))[1]
+        from_email = parseaddr(message.get("From", None))[1]
         to_full_addresses = []
-        for header in ['To', 'Cc', 'Bcc']:
+        for header in ["To", "Cc", "Bcc"]:
             value = message.get(header, None)
             if value:
                 to_full_addresses.append(value)
-        to_emails = [pair[1] for pair in
-                     getaddresses(to_full_addresses)]
+        to_emails = [pair[1] for pair in getaddresses(to_full_addresses)]
 
         return from_email, to_emails
 
@@ -205,12 +199,12 @@ class SMTPConnection:
 
         try:
             self._connect()
-            self._connection.sendmail(from_email, to_emails,
-                                      message.as_string())
+            self._connection.sendmail(from_email, to_emails, message.as_string())
         except smtplib.SMTPRecipientsRefused as e:
-            raise SMTPError('server refused recipient: %d %s' %
-                            next(iter(e.recipients.values())))
+            raise SMTPError(
+                "server refused recipient: %d %s" % next(iter(e.recipients.values()))
+            )
         except smtplib.SMTPResponseException as e:
-            raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
+            raise SMTPError("%d %s" % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException as e:
             raise SMTPError(str(e))

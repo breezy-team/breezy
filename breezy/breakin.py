@@ -18,7 +18,6 @@ import os
 import signal
 from typing import Optional
 
-
 _breakin_signal_number: Optional[int] = None
 _breakin_signal_name: Optional[str] = None
 
@@ -26,10 +25,13 @@ _breakin_signal_name: Optional[str] = None
 def _debug(signal_number, interrupted_frame):
     import pdb
     import sys
-    sys.stderr.write("** %s received, entering debugger\n"
-                     "** Type 'c' to continue or 'q' to stop the process\n"
-                     "** Or %s again to quit (and possibly dump core)\n"
-                     % (_breakin_signal_name, _breakin_signal_name))
+
+    sys.stderr.write(
+        "** %s received, entering debugger\n"
+        "** Type 'c' to continue or 'q' to stop the process\n"
+        "** Or %s again to quit (and possibly dump core)\n"
+        % (_breakin_signal_name, _breakin_signal_name)
+    )
     # It seems that on Windows, when sys.stderr is to a PIPE, then we need to
     # flush. Not sure why it is buffered, but that seems to be the case.
     sys.stderr.flush()
@@ -53,14 +55,14 @@ def determine_signal():
     #       and other platforms defined SIGQUIT. There doesn't seem to be a
     #       platform that defines both.
     #       -- jam 2009-07-30
-    sigquit = getattr(signal, 'SIGQUIT', None)
-    sigbreak = getattr(signal, 'SIGBREAK', None)
+    sigquit = getattr(signal, "SIGQUIT", None)
+    sigbreak = getattr(signal, "SIGBREAK", None)
     if sigquit is not None:
         _breakin_signal_number = sigquit
-        _breakin_signal_name = 'SIGQUIT'
+        _breakin_signal_name = "SIGQUIT"
     elif sigbreak is not None:
         _breakin_signal_number = sigbreak
-        _breakin_signal_name = 'SIGBREAK'
+        _breakin_signal_name = "SIGBREAK"
 
     return _breakin_signal_number
 
@@ -73,7 +75,7 @@ def hook_debugger_to_signal():
     """
 
     # when sigquit (C-\) or sigbreak (C-Pause) is received go into pdb
-    if os.environ.get('BRZ_SIGQUIT_PDB', '1') == '0':
+    if os.environ.get("BRZ_SIGQUIT_PDB", "1") == "0":
         # User explicitly requested we don't support this
         return
     sig = determine_signal()

@@ -19,23 +19,24 @@
 The methods here allow for api symbol versioning.
 """
 
-__all__ = ['deprecated_function',
-           'deprecated_in',
-           'deprecated_list',
-           'deprecated_method',
-           'DEPRECATED_PARAMETER',
-           'deprecated_passed',
-           'set_warning_method',
-           'warn',
-           ]
+__all__ = [
+    "deprecated_function",
+    "deprecated_in",
+    "deprecated_list",
+    "deprecated_method",
+    "DEPRECATED_PARAMETER",
+    "deprecated_passed",
+    "set_warning_method",
+    "warn",
+]
 
 
 import warnings
+
 # Import the 'warn' symbol so breezy can call it even if we redefine it
 from warnings import warn
 
 import breezy
-
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 
@@ -46,8 +47,9 @@ def deprecated_in(version_tuple):
     >>> deprecated_in((1, 4, 0))
     '%s was deprecated in version 1.4.0.'
     """
-    return ("%%s was deprecated in version %s."
-            % breezy._format_version_tuple(version_tuple))
+    return "%%s was deprecated in version %s." % breezy._format_version_tuple(
+        version_tuple
+    )
 
 
 def set_warning_method(method):
@@ -73,16 +75,19 @@ def deprecation_string(a_callable, deprecation_version):
         should have a single %s operator in it. a_callable will be turned into
         a nice python symbol and then substituted into deprecation_version.
     """
-    if getattr(a_callable, '__self__', None) is not None:
-        symbol = "{}.{}.{}".format(a_callable.__self__.__class__.__module__,
-                               a_callable.__self__.__class__.__name__,
-                               a_callable.__name__)
-    elif getattr(a_callable, '__qualname__', None) is not None and '<' not in a_callable.__qualname__:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__qualname__)
+    if getattr(a_callable, "__self__", None) is not None:
+        symbol = "{}.{}.{}".format(
+            a_callable.__self__.__class__.__module__,
+            a_callable.__self__.__class__.__name__,
+            a_callable.__name__,
+        )
+    elif (
+        getattr(a_callable, "__qualname__", None) is not None
+        and "<" not in a_callable.__qualname__
+    ):
+        symbol = "{}.{}".format(a_callable.__module__, a_callable.__qualname__)
     else:
-        symbol = "{}.{}".format(a_callable.__module__,
-                            a_callable.__name__)
+        symbol = "{}.{}".format(a_callable.__module__, a_callable.__name__)
     return deprecation_version % symbol
 
 
@@ -95,13 +100,20 @@ def deprecated_function(deprecation_version):
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
             from . import trace
+
             trace.mutter_callsite(4, "Deprecated function called")
-            warn(deprecation_string(callable, deprecation_version),
-                 DeprecationWarning, stacklevel=2)
+            warn(
+                deprecation_string(callable, deprecation_version),
+                DeprecationWarning,
+                stacklevel=2,
+            )
             return callable(*args, **kwargs)
-        _populate_decorated(callable, deprecation_version, "function",
-                            decorated_function)
+
+        _populate_decorated(
+            callable, deprecation_version, "function", decorated_function
+        )
         return decorated_function
+
     return function_decorator
 
 
@@ -123,22 +135,25 @@ def deprecated_method(deprecation_version):
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
             from . import trace
-            if callable.__name__ == '__init__':
-                symbol = "{}.{}".format(self.__class__.__module__,
-                                    self.__class__.__name__,
-                                    )
+
+            if callable.__name__ == "__init__":
+                symbol = "{}.{}".format(
+                    self.__class__.__module__,
+                    self.__class__.__name__,
+                )
             else:
-                symbol = "{}.{}.{}".format(self.__class__.__module__,
-                                       self.__class__.__name__,
-                                       callable.__name__
-                                       )
+                symbol = "{}.{}.{}".format(
+                    self.__class__.__module__,
+                    self.__class__.__name__,
+                    callable.__name__,
+                )
             trace.mutter_callsite(4, "Deprecated method called")
-            warn(deprecation_version %
-                 symbol, DeprecationWarning, stacklevel=2)
+            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
-        _populate_decorated(callable, deprecation_version, "method",
-                            decorated_method)
+
+        _populate_decorated(callable, deprecation_version, "method", decorated_method)
         return decorated_method
+
     return method_decorator
 
 
@@ -161,18 +176,21 @@ def deprecated_passed(parameter_value):
     return parameter_value is not DEPRECATED_PARAMETER
 
 
-def _decorate_docstring(callable, deprecation_version, label,
-                        decorated_callable):
+def _decorate_docstring(callable, deprecation_version, label, decorated_callable):
     if callable.__doc__:
-        docstring_lines = callable.__doc__.split('\n')
+        docstring_lines = callable.__doc__.split("\n")
     else:
         docstring_lines = []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
         decorated_callable.__doc__ = (
-            callable.__doc__ + "\n" + "\n" +
-            deprecation_version % ("This " + label) + "\n")
+            callable.__doc__
+            + "\n"
+            + "\n"
+            + deprecation_version % ("This " + label)
+            + "\n"
+        )
     else:
         spaces = len(docstring_lines[-1])
         new_doc = callable.__doc__
@@ -182,12 +200,9 @@ def _decorate_docstring(callable, deprecation_version, label,
         decorated_callable.__doc__ = new_doc
 
 
-def _populate_decorated(callable, deprecation_version, label,
-                        decorated_callable):
-    """Populate attributes like __name__ and __doc__ on the decorated callable.
-    """
-    _decorate_docstring(callable, deprecation_version, label,
-                        decorated_callable)
+def _populate_decorated(callable, deprecation_version, label, decorated_callable):
+    """Populate attributes like __name__ and __doc__ on the decorated callable."""
+    _decorate_docstring(callable, deprecation_version, label, decorated_callable)
     decorated_callable.__module__ = callable.__module__
     decorated_callable.__name__ = callable.__name__
     decorated_callable.is_deprecated = True
@@ -195,13 +210,15 @@ def _populate_decorated(callable, deprecation_version, label,
 
 def _dict_deprecation_wrapper(wrapped_method):
     """Returns a closure that emits a warning and calls the superclass"""
+
     def cb(dep_dict, *args, **kwargs):
-        msg = 'access to {}'.format(dep_dict._variable_name)
+        msg = "access to {}".format(dep_dict._variable_name)
         msg = dep_dict._deprecation_version % (msg,)
         if dep_dict._advice:
-            msg += ' ' + dep_dict._advice
+            msg += " " + dep_dict._advice
         warn(msg, DeprecationWarning, stacklevel=2)
         return wrapped_method(dep_dict, *args, **kwargs)
+
     return cb
 
 
@@ -210,12 +227,13 @@ class DeprecatedDict(dict):
 
     is_deprecated = True
 
-    def __init__(self,
-                 deprecation_version,
-                 variable_name,
-                 initial_value,
-                 advice,
-                 ):
+    def __init__(
+        self,
+        deprecation_version,
+        variable_name,
+        initial_value,
+        advice,
+    ):
         """Create a dict that warns when read or modified.
 
         :param deprecation_version: string for the warning format to raise,
@@ -240,8 +258,7 @@ class DeprecatedDict(dict):
     __contains__ = _dict_deprecation_wrapper(dict.__contains__)
 
 
-def deprecated_list(deprecation_version, variable_name,
-                    initial_value, extra=None):
+def deprecated_list(deprecation_version, variable_name, initial_value, extra=None):
     """Create a list that warns when modified
 
     :param deprecation_version: string for the warning format to raise,
@@ -251,10 +268,10 @@ def deprecated_list(deprecation_version, variable_name,
     :param extra: Extra info to print when printing a warning
     """
 
-    subst_text = 'Modifying {}'.format(variable_name)
+    subst_text = "Modifying {}".format(variable_name)
     msg = deprecation_version % (subst_text,)
     if extra:
-        msg += ' ' + extra
+        msg += " " + extra
 
     class _DeprecatedList(list):
         __doc__ = list.__doc__ + msg
@@ -301,7 +318,7 @@ def _check_for_filter(error_only):
     for filter in warnings.filters:
         if issubclass(DeprecationWarning, filter[2]):
             # This filter will effect DeprecationWarning
-            if not error_only or filter[0] == 'error':
+            if not error_only or filter[0] == "error":
                 return True
     return False
 
@@ -313,12 +330,14 @@ def _remove_filter_callable(filter):
 
     :return: A callable that will remove filter from warnings.filters.
     """
+
     def cleanup():
         if filter:
             try:
                 warnings.filters.remove(filter)
             except (ValueError, IndexError):
                 pass
+
     return cleanup
 
 
@@ -339,7 +358,7 @@ def suppress_deprecation_warnings(override=True):
         # then skip it.
         filter = None
     else:
-        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         filter = warnings.filters[0]
     return _remove_filter_callable(filter)
 
@@ -366,6 +385,6 @@ def activate_deprecation_warnings(override=True):
         # them to 'default'.
         filter = None
     else:
-        warnings.filterwarnings('default', category=DeprecationWarning)
+        warnings.filterwarnings("default", category=DeprecationWarning)
         filter = warnings.filters[0]
     return _remove_filter_callable(filter)

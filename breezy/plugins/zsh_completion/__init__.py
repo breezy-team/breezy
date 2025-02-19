@@ -19,18 +19,19 @@ __doc__ = """Generate a shell function for zsh command line completion.
 
 from ... import commands, version_info  # noqa: F401
 
+bzr_plugin_name = "zsh_completion"
+bzr_commands = ["zsh-completion"]
 
-bzr_plugin_name = 'zsh_completion'
-bzr_commands = ['zsh-completion']
-
-commands.plugin_cmds.register_lazy('cmd_zsh_completion', [],
-                                   __name__ + '.zshcomp')
+commands.plugin_cmds.register_lazy("cmd_zsh_completion", [], __name__ + ".zshcomp")
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

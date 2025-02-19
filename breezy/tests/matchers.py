@@ -27,22 +27,19 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
-    'HasLayout',
-    'HasPathRelations',
-    'MatchesAncestry',
-    'ReturnsUnlockable',
-    'RevisionHistoryMatches',
-    'MatchesTreeChanges',
-    ]
+    "HasLayout",
+    "HasPathRelations",
+    "MatchesAncestry",
+    "ReturnsUnlockable",
+    "RevisionHistoryMatches",
+    "MatchesTreeChanges",
+]
 
-from .. import (
-    osutils,
-    revision as _mod_revision,
-    )
+from testtools.matchers import Equals, Matcher, Mismatch
 
+from .. import osutils
+from .. import revision as _mod_revision
 from ..tree import InterTree, TreeChange
-
-from testtools.matchers import Equals, Mismatch, Matcher
 
 
 class ReturnsUnlockable(Matcher):
@@ -60,8 +57,7 @@ class ReturnsUnlockable(Matcher):
         self.lockable_thing = lockable_thing
 
     def __str__(self):
-        return ('ReturnsUnlockable(lockable_thing=%s)' %
-                self.lockable_thing)
+        return "ReturnsUnlockable(lockable_thing=%s)" % self.lockable_thing
 
     def match(self, lock_method):
         lock_method().unlock()
@@ -90,7 +86,8 @@ class _AncestryMismatch(Mismatch):
 
     def describe(self):
         return "mismatched ancestry for revision {!r} was {!r}, expected {!r}".format(
-            self.tip_revision, self.got, self.expected)
+            self.tip_revision, self.got, self.expected
+        )
 
 
 class MatchesAncestry(Matcher):
@@ -106,8 +103,9 @@ class MatchesAncestry(Matcher):
         self.revision_id = revision_id
 
     def __str__(self):
-        return ('MatchesAncestry(repository={!r}, revision_id={!r})'.format(
-            self.repository, self.revision_id))
+        return "MatchesAncestry(repository={!r}, revision_id={!r})".format(
+            self.repository, self.revision_id
+        )
 
     def match(self, expected):
         with self.repository.lock_read():
@@ -116,8 +114,7 @@ class MatchesAncestry(Matcher):
             if _mod_revision.NULL_REVISION in got:
                 got.remove(_mod_revision.NULL_REVISION)
         if sorted(got) != sorted(expected):
-            return _AncestryMismatch(self.revision_id, sorted(got),
-                                     sorted(expected))
+            return _AncestryMismatch(self.revision_id, sorted(got), sorted(expected))
 
 
 class HasLayout(Matcher):
@@ -134,7 +131,7 @@ class HasLayout(Matcher):
         """Get the (path, file_id) pairs for the current tree."""
         with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if path != '':
+                if path != "":
                     path += ie.kind_character()
                 if include_file_ids:
                     yield (path, ie.file_id)
@@ -165,13 +162,11 @@ class HasLayout(Matcher):
                 yield entry
 
     def __str__(self):
-        return 'HasLayout(%r)' % self.entries
+        return "HasLayout(%r)" % self.entries
 
     def match(self, tree):
-        include_file_ids = self.entries and not isinstance(
-            self.entries[0], str)
-        actual = list(self.get_tree_layout(
-            tree, include_file_ids=include_file_ids))
+        include_file_ids = self.entries and not isinstance(self.entries[0], str)
+        actual = list(self.get_tree_layout(tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
@@ -205,9 +200,9 @@ class HasPathRelations(Matcher):
                         previous_path = None
                 if previous_path:
                     kind = self.previous_tree.kind(previous_path)
-                    if kind == 'directory':
-                        previous_path += '/'
-                if path == '':
+                    if kind == "directory":
+                        previous_path += "/"
+                if path == "":
                     yield ("", previous_path)
                 else:
                     yield (path + ie.kind_character(), previous_path)
@@ -220,7 +215,7 @@ class HasPathRelations(Matcher):
         """
         directory_used = set()
         directories = []
-        for (path, previous_path) in entries:
+        for path, previous_path in entries:
             if not path or path[-1] == "/":
                 # directory
                 directories.append((path, previous_path))
@@ -229,24 +224,26 @@ class HasPathRelations(Matcher):
                 for direntry in directories:
                     if osutils.is_inside(direntry[0], path):
                         directory_used.add(direntry[0])
-        for (path, previous_path) in entries:
+        for path, previous_path in entries:
             if (not path.endswith("/")) or path in directory_used:
                 yield (path, previous_path)
 
     def __str__(self):
-        return 'HasPathRelations({!r}, {!r})'.format(self.previous_tree, self.previous_entries)
+        return "HasPathRelations({!r}, {!r})".format(
+            self.previous_tree, self.previous_entries
+        )
 
     def match(self, tree):
         actual = list(self.get_path_map(tree))
         if not tree.has_versioned_directories():
-            entries = list(self._strip_unreferenced_directories(
-                self.previous_entries))
+            entries = list(self._strip_unreferenced_directories(self.previous_entries))
         else:
             entries = self.previous_entries
         if not tree.supports_rename_tracking():
             entries = [
                 (path, path if self.previous_tree.is_versioned(path) else None)
-                for (path, previous_path) in entries]
+                for (path, previous_path) in entries
+            ]
         return Equals(entries).match(actual)
 
 
@@ -261,13 +258,16 @@ class RevisionHistoryMatches(Matcher):
         self.expected = history
 
     def __str__(self):
-        return 'RevisionHistoryMatches(%r)' % self.expected
+        return "RevisionHistoryMatches(%r)" % self.expected
 
     def match(self, branch):
         with branch.lock_read():
             graph = branch.repository.get_graph()
-            history = list(graph.iter_lefthand_ancestry(
-                branch.last_revision(), [_mod_revision.NULL_REVISION]))
+            history = list(
+                graph.iter_lefthand_ancestry(
+                    branch.last_revision(), [_mod_revision.NULL_REVISION]
+                )
+            )
             history.reverse()
         return Equals(self.expected).match(history)
 
@@ -278,7 +278,9 @@ class MatchesTreeChanges(Matcher):
     def __init__(self, old_tree, new_tree, expected):
         Matcher.__init__(self)
         expected = [TreeChange(*x) if isinstance(x, tuple) else x for x in expected]
-        self.use_inventory_tree_changes = old_tree.supports_file_ids and new_tree.supports_file_ids
+        self.use_inventory_tree_changes = (
+            old_tree.supports_file_ids and new_tree.supports_file_ids
+        )
         self.expected = expected
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -286,6 +288,7 @@ class MatchesTreeChanges(Matcher):
     @staticmethod
     def _convert_to_inventory_tree_changes(old_tree, new_tree, expected):
         from ..bzr.inventorytree import InventoryTreeChange
+
         rich_expected = []
 
         def get_parent_id(t, p):
@@ -305,22 +308,34 @@ class MatchesTreeChanges(Matcher):
                 InventoryTreeChange(
                     file_id=file_id,
                     parent_id=(old_parent_id, new_parent_id),
-                    path=c.path, changed_content=c.changed_content,
-                    versioned=c.versioned, name=c.name,
-                    kind=c.kind, executable=c.executable,
-                    copied=c.copied))
+                    path=c.path,
+                    changed_content=c.changed_content,
+                    versioned=c.versioned,
+                    name=c.name,
+                    kind=c.kind,
+                    executable=c.executable,
+                    copied=c.copied,
+                )
+            )
         return rich_expected
 
     def __str__(self):
-        return '<MatchesTreeChanges(%r)>' % self.expected
+        return "<MatchesTreeChanges(%r)>" % self.expected
 
     def match(self, actual):
         from ..bzr.inventorytree import InventoryTreeChange
+
         actual = list(actual)
-        if self.use_inventory_tree_changes or (actual and isinstance(actual[0], InventoryTreeChange)):
-            expected = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, self.expected)
+        if self.use_inventory_tree_changes or (
+            actual and isinstance(actual[0], InventoryTreeChange)
+        ):
+            expected = self._convert_to_inventory_tree_changes(
+                self.old_tree, self.new_tree, self.expected
+            )
         else:
             expected = self.expected
         if self.use_inventory_tree_changes:
-            actual = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, actual)
+            actual = self._convert_to_inventory_tree_changes(
+                self.old_tree, self.new_tree, actual
+            )
         return Equals(expected).match(actual)

@@ -14,18 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Content-filtered view of any tree.
-"""
+"""Content-filtered view of any tree."""
 
 from io import BytesIO
 
-from . import (
-    tree,
-    )
-from .filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
+from . import tree
+from .filters import ContentFilterContext, filtered_output_bytes
 
 
 class ContentFilterTree(tree.Tree):
@@ -49,7 +43,7 @@ class ContentFilterTree(tree.Tree):
         filters = self.filter_stack_callback(path)
         context = ContentFilterContext(path, self)
         contents = filtered_output_bytes(chunks, filters, context)
-        content = b''.join(contents)
+        content = b"".join(contents)
         return content
 
     def get_file(self, path):
@@ -68,7 +62,8 @@ class ContentFilterTree(tree.Tree):
         # updated to a narrower interface that only provides things guaranteed
         # cheaply available across all trees. -- mbp 20110705
         return self.backing_tree.iter_entries_by_dir(
-            specific_files=specific_files, recurse_nested=recurse_nested)
+            specific_files=specific_files, recurse_nested=recurse_nested
+        )
 
     def lock_read(self):
         return self.backing_tree.lock_read()

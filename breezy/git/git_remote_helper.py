@@ -24,30 +24,15 @@ CAPABILITIES = ["fetch", "option", "push"]
 import os
 
 from ..controldir import ControlDir
-from ..errors import NotBranchError, NoRepositoryPresent
+from ..errors import NoRepositoryPresent, NotBranchError
+from ..plugins.fastimport import exporter as fastexporter
 from ..repository import InterRepository
 from ..transport import get_transport_from_path
-
-from . import (
-    LocalGitProber,
-    )
-from .dir import (
-    BareLocalGitControlDirFormat,
-    LocalGitControlDirFormat,
-    )
-
-from .object_store import (
-    get_object_store,
-    )
-from .refs import (
-    get_refs_container,
-    ref_to_branch_name,
-    )
-from .repository import (
-    GitRepository,
-    )
-
-from ..plugins.fastimport import exporter as fastexporter
+from . import LocalGitProber
+from .dir import BareLocalGitControlDirFormat, LocalGitControlDirFormat
+from .object_store import get_object_store
+from .refs import get_refs_container, ref_to_branch_name
+from .repository import GitRepository
 
 try:
     import fastimport  # noqa: F401
@@ -70,10 +55,9 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     local_repo = local_dir.find_repository()
     inter = InterRepository.get(remote_repo, local_repo)
     revs = []
-    for (sha1, ref) in wants:
+    for sha1, ref in wants:
         revs.append((sha1, None))
-    if (isinstance(remote_repo, GitRepository) and
-            isinstance(local_repo, GitRepository)):
+    if isinstance(remote_repo, GitRepository) and isinstance(local_repo, GitRepository):
         lossy = False
     else:
         lossy = True
@@ -82,7 +66,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
 
 
 def push(outf, wants, shortname, remote_dir, local_dir):
-    for (src_ref, dest_ref) in wants:
+    for src_ref, dest_ref in wants:
         local_branch = local_dir.open_branch(ref=src_ref)
         dest_branch_name = ref_to_branch_name(dest_ref)
         if dest_branch_name == "master":
@@ -140,15 +124,23 @@ class RemoteHelper:
     def cmd_import(self, outf, argv):
         if "fastimport" in CAPABILITIES:
             raise Exception("install fastimport for 'import' command support")
-        ref = argv[1].encode('utf-8')
+        ref = argv[1].encode("utf-8")
         dest_branch_name = ref_to_branch_name(ref)
         if dest_branch_name == "master":
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(
-            remote_branch, outf=outf, ref=ref, checkpoint=None,
-            import_marks_file=None, export_marks_file=None, revision=None,
-            verbose=None, plain_format=True, rewrite_tags=False)
+            remote_branch,
+            outf=outf,
+            ref=ref,
+            checkpoint=None,
+            import_marks_file=None,
+            export_marks_file=None,
+            revision=None,
+            verbose=None,
+            plain_format=True,
+            rewrite_tags=False,
+        )
         exporter.run()
 
     commands = {
@@ -158,7 +150,7 @@ class RemoteHelper:
         "fetch": cmd_fetch,
         "push": cmd_push,
         "import": cmd_import,
-        }
+    }
 
     def process(self, inf, outf):
         while True:
@@ -171,11 +163,9 @@ class RemoteHelper:
         argv = l.strip().split()
         if argv == []:
             if self.batchcmd == "fetch":
-                fetch(outf, self.wants, self.shortname,
-                      self.remote_dir, self.local_dir)
+                fetch(outf, self.wants, self.shortname, self.remote_dir, self.local_dir)
             elif self.batchcmd == "push":
-                push(outf, self.wants, self.shortname,
-                     self.remote_dir, self.local_dir)
+                push(outf, self.wants, self.shortname, self.remote_dir, self.local_dir)
             elif self.batchcmd is None:
                 return
             else:

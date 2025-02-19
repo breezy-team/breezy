@@ -19,16 +19,11 @@
 
 import os
 
-from ... import (
-    commands,
-    )
-from ..test_plugins import (
-    BaseTestPlugins,
-    )
+from ... import commands
+from ..test_plugins import BaseTestPlugins
 
 
 class TestPluginHelp(BaseTestPlugins):
-
     def run_bzr_utf8_out(self, *args, **kwargs):
         out, _ = self.run_bzr(*args, **kwargs)
         return out
@@ -36,11 +31,11 @@ class TestPluginHelp(BaseTestPlugins):
     def split_help_commands(self):
         help = {}
         current = None
-        out = self.run_bzr_utf8_out('--no-plugins help commands')
+        out = self.run_bzr_utf8_out("--no-plugins help commands")
         for line in out.splitlines():
-            if not line.startswith(' '):
+            if not line.startswith(" "):
                 current = line.split()[0]
-            help[current] = help.get(current, '') + line
+            help[current] = help.get(current, "") + line
 
         return help
 
@@ -65,7 +60,7 @@ class TestPluginHelp(BaseTestPlugins):
 
     def test_plugin_help_shows_plugin(self):
         # Create a test plugin
-        os.mkdir('plugin_test')
+        os.mkdir("plugin_test")
         source = (
             "from breezy import commands\n"
             "class cmd_myplug(commands.Command):\n"
@@ -74,14 +69,14 @@ class TestPluginHelp(BaseTestPlugins):
             "    def run(self):\n"
             "        print ('Hello from my plugin')\n"
         )
-        self.create_plugin('myplug', source, 'plugin_test')
+        self.create_plugin("myplug", source, "plugin_test")
 
         # Check its help
-        self.load_with_paths(['plugin_test'])
-        myplug = self.plugins['myplug'].module
+        self.load_with_paths(["plugin_test"])
+        myplug = self.plugins["myplug"].module
         commands.register_command(myplug.cmd_myplug)
-        self.addCleanup(commands.plugin_cmds.remove, 'myplug')
-        help = self.run_bzr_utf8_out('help myplug')
+        self.addCleanup(commands.plugin_cmds.remove, "myplug")
+        help = self.run_bzr_utf8_out("help myplug")
         self.assertContainsRe(help, 'plugin "myplug"')
-        help = self.split_help_commands()['myplug']
-        self.assertContainsRe(help, '\\[myplug\\]')
+        help = self.split_help_commands()["myplug"]
+        self.assertContainsRe(help, "\\[myplug\\]")

@@ -23,8 +23,7 @@ configuring_bazaar.txt.
 import re
 from typing import List, Optional, Tuple
 
-
-_whitespace_match = re.compile('\\s', re.UNICODE).match
+_whitespace_match = re.compile("\\s", re.UNICODE).match
 
 
 class _PushbackSequence:
@@ -57,7 +56,7 @@ class _Whitespace:
         elif next_char in context.allowed_quote_chars:
             context.quoted = True
             return _Quotes(next_char, self)
-        elif next_char == '\\':
+        elif next_char == "\\":
             return _Backslash(self)
         else:
             context.token.append(next_char)
@@ -70,10 +69,10 @@ class _Quotes:
         self.exit_state = exit_state
 
     def process(self, next_char, context):
-        if next_char == '\\':
+        if next_char == "\\":
             return _Backslash(self)
         elif next_char == self.quote_char:
-            context.token.append('')
+            context.token.append("")
             return self.exit_state
         else:
             context.token.append(next_char)
@@ -87,12 +86,12 @@ class _Backslash:
         self.count = 1
 
     def process(self, next_char, context):
-        if next_char == '\\':
+        if next_char == "\\":
             self.count += 1
             return self
         elif next_char in context.allowed_quote_chars:
             # 2N backslashes followed by a quote are N backslashes
-            context.token.append('\\' * (self.count // 2))
+            context.token.append("\\" * (self.count // 2))
             # 2N+1 backslashes follwed by a quote are N backslashes followed by
             # the quote which should not be processed as the start or end of
             # the quoted arg
@@ -107,7 +106,7 @@ class _Backslash:
         else:
             # N backslashes not followed by a quote are just N backslashes
             if self.count > 0:
-                context.token.append('\\' * self.count)
+                context.token.append("\\" * self.count)
                 self.count = 0
             # let exit_state handle next_char
             context.seq.pushback(next_char)
@@ -115,7 +114,7 @@ class _Backslash:
 
     def finish(self, context):
         if self.count > 0:
-            context.token.append('\\' * self.count)
+            context.token.append("\\" * self.count)
 
 
 class _Word:
@@ -124,7 +123,7 @@ class _Word:
             return None
         elif next_char in context.allowed_quote_chars:
             return _Quotes(next_char, self)
-        elif next_char == '\\':
+        elif next_char == "\\":
             return _Backslash(self)
         else:
             context.token.append(next_char)
@@ -157,10 +156,10 @@ class Splitter:
             state = state.process(next_char, self)
             if state is None:
                 break
-        if state is not None and hasattr(state, 'finish'):
+        if state is not None and hasattr(state, "finish"):
             state.finish(self)
-        result: Optional[str] = ''.join(self.token)
-        if not self.quoted and result == '':
+        result: Optional[str] = "".join(self.token)
+        if not self.quoted and result == "":
             result = None
         return self.quoted, result
 

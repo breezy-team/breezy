@@ -20,15 +20,11 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
-from ... import (
-    errors,
-    trace,
-    transport,
-    )
+from ... import errors, trace, transport
 from ...config import AuthenticationConfig, GlobalStack
 from ...i18n import gettext
 
-LAUNCHPAD_BASE = 'https://launchpad.net/'
+LAUNCHPAD_BASE = "https://launchpad.net/"
 
 
 class UnknownLaunchpadUsername(errors.BzrError):
@@ -36,14 +32,17 @@ class UnknownLaunchpadUsername(errors.BzrError):
 
 
 class NoRegisteredSSHKeys(errors.BzrError):
-    _fmt = "The user %(user)s has not registered any SSH keys with Launchpad.\n" \
+    _fmt = (
+        "The user %(user)s has not registered any SSH keys with Launchpad.\n"
         "See <https://launchpad.net/people/+me>"
+    )
 
 
 class MismatchedUsernames(errors.BzrError):
-
-    _fmt = ('breezy.conf and authentication.conf disagree about launchpad'
-            ' account name.  Please re-run launchpad-login.')
+    _fmt = (
+        "breezy.conf and authentication.conf disagree about launchpad"
+        " account name.  Please re-run launchpad-login."
+    )
 
 
 def get_lp_login(_config=None):
@@ -55,13 +54,13 @@ def get_lp_login(_config=None):
     if _config is None:
         _config = GlobalStack()
 
-    username = _config.get('launchpad_username')
+    username = _config.get("launchpad_username")
     if username is not None:
         auth = AuthenticationConfig()
         auth_username = _get_auth_user(auth)
         # Auto-upgrading
         if auth_username is None:
-            trace.note(gettext('Setting ssh/sftp usernames for launchpad.net.'))
+            trace.note(gettext("Setting ssh/sftp usernames for launchpad.net."))
             _set_auth_user(username, auth)
         elif auth_username != username:
             raise MismatchedUsernames()
@@ -72,9 +71,9 @@ def _set_global_option(username, _config=None):
     if _config is None:
         _config = GlobalStack()
     if username is None:
-        _config.remove('launchpad_username')
+        _config.remove("launchpad_username")
     else:
-        _config.set('launchpad_username', username)
+        _config.set("launchpad_username", username)
 
 
 def set_lp_login(username, _config=None):
@@ -87,15 +86,14 @@ def set_lp_login(username, _config=None):
 def _get_auth_user(auth=None):
     if auth is None:
         auth = AuthenticationConfig()
-    username = auth.get_user('ssh', '.launchpad.net')
+    username = auth.get_user("ssh", ".launchpad.net")
     return username
 
 
 def _set_auth_user(username, auth=None):
     if auth is None:
         auth = AuthenticationConfig()
-    auth.set_credentials(
-        'Launchpad', '.launchpad.net', username, 'ssh')
+    auth.set_credentials("Launchpad", ".launchpad.net", username, "ssh")
 
 
 def check_lp_login(username, _transport=None):
@@ -108,7 +106,7 @@ def check_lp_login(username, _transport=None):
         _transport = transport.get_transport_from_url(LAUNCHPAD_BASE)
 
     try:
-        data = _transport.get_bytes('~%s/+sshkeys' % username)
+        data = _transport.get_bytes("~%s/+sshkeys" % username)
     except transport.NoSuchFile:
         raise UnknownLaunchpadUsername(user=username)
 

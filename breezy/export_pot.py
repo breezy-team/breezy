@@ -31,48 +31,44 @@ import os
 import sys
 
 import breezy
-from . import (
-    commands as _mod_commands,
-    errors,
-    help_topics,
-    option,
-    plugin as _mod_plugin,
-    )
-from .trace import (
-    mutter,
-    note,
-    )
+
+from . import commands as _mod_commands
+from . import errors, help_topics, option
+from . import plugin as _mod_plugin
 from .i18n import gettext
+from .trace import mutter, note
 
 
 def _escape(s):
-    s = (s.replace('\\', '\\\\')
-         .replace('\n', '\\n')
-         .replace('\r', '\\r')
-         .replace('\t', '\\t')
-         .replace('"', '\\"')
-         )
+    s = (
+        s.replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace('"', '\\"')
+    )
     return s
 
 
 def _normalize(s):
     # This converts the various Python string types into a format that
     # is appropriate for .po files, namely much closer to C style.
-    lines = s.split('\n')
+    lines = s.split("\n")
     if len(lines) == 1:
         s = '"' + _escape(s) + '"'
     else:
         if not lines[-1]:
             del lines[-1]
-            lines[-1] = lines[-1] + '\n'
+            lines[-1] = lines[-1] + "\n"
         lineterm = '\\n"\n"'
         s = '""\n"' + lineterm.join(map(_escape, lines)) + '"'
     return s
 
 
-def _parse_source(source_text, filename='<unknown>'):
+def _parse_source(source_text, filename="<unknown>"):
     """Get object to lineno mappings from given source_text"""
     import ast
+
     cls_to_lineno = {}
     str_to_lineno = {}
     for node in ast.walk(ast.parse(source_text, filename)):
@@ -85,7 +81,7 @@ def _parse_source(source_text, filename='<unknown>'):
             # string terminates on. It's more useful to have the line the
             # string begins on. Unfortunately, counting back newlines is
             # only an approximation as the AST is ignorant of escaping.
-            str_to_lineno[node.s] = node.lineno - (0 if sys.version_info >= (3, 8) else node.s.count('\n'))
+            str_to_lineno[node.s] = node.lineno
     return cls_to_lineno, str_to_lineno
 
 
@@ -104,8 +100,12 @@ class _ModuleContext:
         sourcepath = inspect.getsourcefile(module)
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
-        return cls(relpath,
-                   _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
+        return cls(
+            relpath,
+            _source_info=_parse_source(
+                "".join(inspect.findsource(module)[0]), module.__file__
+            ),
+        )
 
     def from_class(self, cls):
         """Get new context with same details but lineno of class in source"""
@@ -114,8 +114,9 @@ class _ModuleContext:
         except (AttributeError, KeyError):
             mutter("Definition of %r not found in %r", cls, self.path)
             return self
-        return self.__class__(self.path, lineno,
-                              (self._cls_to_lineno, self._str_to_lineno))
+        return self.__class__(
+            self.path, lineno, (self._cls_to_lineno, self._str_to_lineno)
+        )
 
     def from_string(self, string):
         """Get new context with same details but lineno of string in source"""
@@ -124,8 +125,9 @@ class _ModuleContext:
         except (AttributeError, KeyError):
             mutter("String %r not found in %r", string[:20], self.path)
             return self
-        return self.__class__(self.path, lineno,
-                              (self._cls_to_lineno, self._str_to_lineno))
+        return self.__class__(
+            self.path, lineno, (self._cls_to_lineno, self._str_to_lineno)
+        )
 
 
 class _PotExporter:
@@ -145,17 +147,13 @@ class _PotExporter:
                 return
             self._msgids.add(s)
         if comment is None:
-            comment = ''
+            comment = ""
         else:
             comment = "# %s\n" % comment
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-        line = (
-            "#: {path}:{lineno}\n"
-            "{comment}"
-            "msgid {msg}\n"
-            "msgstr \"\"\n"
-            "\n".format(
-                path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+        line = '#: {path}:{lineno}\n{comment}msgid {msg}\nmsgstr ""\n\n'.format(
+            path=path, lineno=lineno, comment=comment, msg=_normalize(s)
+        )
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
@@ -164,12 +162,12 @@ class _PotExporter:
 
     def poentry_per_paragraph(self, path, lineno, msgid, include=None):
         # TODO: How to split long help?
-        paragraphs = msgid.split('\n\n')
+        paragraphs = msgid.split("\n\n")
         if include is not None:
             paragraphs = filter(include, paragraphs)
         for p in paragraphs:
             self.poentry(path, lineno, p)
-            lineno += p.count('\n') + 2
+            lineno += p.count("\n") + 2
 
     def get_context(self, obj):
         module = inspect.getmodule(obj)
@@ -184,20 +182,18 @@ class _PotExporter:
 
 
 def _write_option(exporter, context, opt, note):
-    if getattr(opt, 'hidden', False):
+    if getattr(opt, "hidden", False):
         return
     optname = opt.name
-    if getattr(opt, 'title', None):
-        exporter.poentry_in_context(context, opt.title,
-                                    f"title of {optname!r} {note}")
+    if getattr(opt, "title", None):
+        exporter.poentry_in_context(context, opt.title, f"title of {optname!r} {note}")
     for name, _, _, helptxt in opt.iter_switches():
         if name != optname:
             if opt.is_hidden(name):
                 continue
             name = "=".join([optname, name])
         if helptxt:
-            exporter.poentry_in_context(context, helptxt,
-                                        f"help of {name!r} {note}")
+            exporter.poentry_in_context(context, helptxt, f"help of {name!r} {note}")
 
 
 def _standard_options(exporter):
@@ -225,11 +221,10 @@ def _write_command_help(exporter, cmd):
     def exclude_usage(p):
         # ':Usage:' has special meaning in help topics.
         # This is usage example of command and should not be translated.
-        if p.splitlines()[0] != ':Usage:':
+        if p.splitlines()[0] != ":Usage:":
             return True
 
-    exporter.poentry_per_paragraph(dcontext.path, dcontext.lineno, doc,
-                                   exclude_usage)
+    exporter.poentry_per_paragraph(dcontext.path, dcontext.lineno, doc, exclude_usage)
     _command_options(exporter, context, cmd)
 
 
@@ -253,10 +248,10 @@ def _command_helps(exporter, plugin_name=None):
 
     plugins = _mod_plugin.plugins()
     if plugin_name is not None and plugin_name not in plugins:
-        raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
+        raise errors.BzrError(gettext("Plugin %s is not loaded" % plugin_name))
     core_plugins = {
-        name for name in plugins
-        if plugins[name].path().startswith(breezy.__path__[0])}
+        name for name in plugins if plugins[name].path().startswith(breezy.__path__[0])
+    }
     # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
@@ -270,8 +265,11 @@ def _command_helps(exporter, plugin_name=None):
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
-        note(gettext("Exporting messages from plugin command: {0} in {1}").format(
-             cmd_name, command.plugin_name()))
+        note(
+            gettext("Exporting messages from plugin command: {0} in {1}").format(
+                cmd_name, command.plugin_name()
+            )
+        )
         _write_command_help(exporter, command)
 
 
@@ -301,16 +299,15 @@ def _help_topics(exporter):
         doc = topic_registry.get(key)
         if isinstance(doc, str):
             exporter.poentry_per_paragraph(
-                'dummy/help_topics/' + key + '/detail.txt',
-                1, doc)
+                "dummy/help_topics/" + key + "/detail.txt", 1, doc
+            )
         elif callable(doc):  # help topics from files
             exporter.poentry_per_paragraph(
-                'en/help_topics/' + key + '.txt',
-                1, doc(key))
+                "en/help_topics/" + key + ".txt", 1, doc(key)
+            )
         summary = topic_registry.get_summary(key)
         if summary is not None:
-            exporter.poentry('dummy/help_topics/' + key + '/summary.txt',
-                             1, summary)
+            exporter.poentry("dummy/help_topics/" + key + "/summary.txt", 1, summary)
 
 
 def export_pot(outf, plugin=None, include_duplicates=False):

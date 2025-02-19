@@ -24,12 +24,10 @@ from . import errors
 
 
 class AlreadyBuilding(errors.BzrError):
-
     _fmt = "The tree builder is already building a tree."
 
 
 class NotBuilding(errors.BzrError):
-
     _fmt = "Not currently building a tree."
 
 
@@ -52,15 +50,15 @@ class TreeBuilder:
         """
         self._ensure_building()
         if not self._root_done:
-            self._tree.add('', 'directory', ids=b'root-id')
+            self._tree.add("", "directory", ids=b"root-id")
             self._root_done = True
         for name in recipe:
-            if name.endswith('/'):
+            if name.endswith("/"):
                 self._tree.mkdir(name[:-1])
             else:
-                end = b'\n'
-                content = b"contents of %s%s" % (name.encode('utf-8'), end)
-                self._tree.add(name, 'file')
+                end = b"\n"
+                content = b"contents of %s%s" % (name.encode("utf-8"), end)
+                self._tree.add(name, "file")
                 self._tree.put_file_bytes_non_atomic(name, content)
 
     def _ensure_building(self):

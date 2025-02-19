@@ -18,31 +18,21 @@
 
 import threading
 
-from . import (
-    errors,
-    trace,
-    urlutils,
-    )
+from . import errors, trace, urlutils
 from .branch import Branch
-from .controldir import (
-    ControlDir,
-    ControlDirFormat,
-    )
-from .transport import (
-    do_catching_redirections,
-    get_transport,
-    )
+from .controldir import ControlDir, ControlDirFormat
+from .transport import do_catching_redirections, get_transport
 
 
 class BadUrl(errors.BzrError):
-
     _fmt = "Tried to access a branch from bad URL %(url)s."
 
 
 class BranchReferenceForbidden(errors.BzrError):
-
-    _fmt = ("Trying to mirror a branch reference and the branch type "
-            "does not allow references.")
+    _fmt = (
+        "Trying to mirror a branch reference and the branch type "
+        "does not allow references."
+    )
 
 
 class BranchLoopError(errors.BzrError):
@@ -53,7 +43,7 @@ class BranchLoopError(errors.BzrError):
     and this exception is raised when we detect such a cycle.
     """
 
-    _fmt = "Encountered a branch cycle"""
+    _fmt = "Encountered a branch cycle"
 
 
 class BranchOpenPolicy:
@@ -140,18 +130,17 @@ class AcceptAnythingPolicy(_BlacklistPolicy):
 class WhitelistPolicy(BranchOpenPolicy):
     """Branch policy that only allows certain URLs."""
 
-    def __init__(self, should_follow_references, allowed_urls=None,
-                 check=False):
+    def __init__(self, should_follow_references, allowed_urls=None, check=False):
         if allowed_urls is None:
             allowed_urls = []
-        self.allowed_urls = {url.rstrip('/') for url in allowed_urls}
+        self.allowed_urls = {url.rstrip("/") for url in allowed_urls}
         self.check = check
 
     def should_follow_references(self):
         return self._should_follow_references
 
     def check_one_url(self, url):
-        if url.rstrip('/') not in self.allowed_urls:
+        if url.rstrip("/") not in self.allowed_urls:
             raise BadUrl(url)
 
     def transform_fallback_location(self, branch, url):
@@ -221,9 +210,10 @@ class BranchOpener:
         as breezy.tests.TestCase.setUp clears hooks.
         """
         Branch.hooks.install_named_hook(
-            'transform_fallback_location',
+            "transform_fallback_location",
             cls.transform_fallback_locationHook,
-            'BranchOpener.transform_fallback_locationHook')
+            "BranchOpener.transform_fallback_locationHook",
+        )
 
     def check_and_follow_branch_reference(self, url):
         """Check URL (and possibly the referenced URL).
@@ -269,9 +259,12 @@ class BranchOpener:
             return new_url
 
     def run_with_transform_fallback_location_hook_installed(
-            self, callable, *args, **kw):
-        if (self.transform_fallback_locationHook not in
-                Branch.hooks['transform_fallback_location']):
+        self, callable, *args, **kw
+    ):
+        if (
+            self.transform_fallback_locationHook
+            not in Branch.hooks["transform_fallback_location"]
+        ):
             raise AssertionError("hook not installed")
         self._threading_data.opener = self
         try:
@@ -288,15 +281,18 @@ class BranchOpener:
         :param url: URL to open
         :return: ControlDir instance
         """
+
         def redirected(transport, e, redirection_notice):
             self.policy.check_one_url(e.target)
-            redirected_transport = transport._redirected_to(
-                e.source, e.target)
+            redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(e.source)
             trace.note(
-                '%s is%s redirected to %s',
-                transport.base, e.permanently, redirected_transport.base)
+                "%s is%s redirected to %s",
+                transport.base,
+                e.permanently,
+                redirected_transport.base,
+            )
             return redirected_transport
 
         def find_format(transport):
@@ -309,9 +305,9 @@ class BranchOpener:
                     last_error = e
             else:
                 raise last_error
+
         transport = get_transport(url)
-        transport, format = do_catching_redirections(
-            find_format, transport, redirected)
+        transport, format = do_catching_redirections(find_format, transport, redirected)
         return format.open(transport)
 
     def follow_reference(self, url):
@@ -336,8 +332,10 @@ class BranchOpener:
         def open_branch(url, ignore_fallbacks):
             dir = self._open_dir(url)
             return dir.open_branch(ignore_fallbacks=ignore_fallbacks)
+
         return self.run_with_transform_fallback_location_hook_installed(
-            open_branch, url, ignore_fallbacks)
+            open_branch, url, ignore_fallbacks
+        )
 
 
 def open_only_scheme(allowed_scheme, url):

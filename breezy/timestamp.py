@@ -15,8 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import calendar
-import time
 import re
+import time
 
 from . import osutils
 
@@ -57,10 +57,14 @@ def format_highres_date(t, offset=0):
         offset = 0
     tt = time.gmtime(t + offset)
 
-    return (osutils.weekdays[tt[6]] + time.strftime(" %Y-%m-%d %H:%M:%S", tt) +
-            # Get the high-res seconds, but ignore the 0
-            ('%.9f' % (t - int(t)))[1:] +
-            ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
+    return (
+        osutils.weekdays[tt[6]]
+        + time.strftime(" %Y-%m-%d %H:%M:%S", tt)
+        +
+        # Get the high-res seconds, but ignore the 0
+        ("%.9f" % (t - int(t)))[1:]
+        + " %+03d%02d" % (offset / 3600, (offset / 60) % 60)
+    )
 
 
 def unpack_highres_date(date):
@@ -74,17 +78,17 @@ def unpack_highres_date(date):
 
     """
     # Weekday parsing is locale sensitive, so drop the weekday
-    space_loc = date.find(' ')
+    space_loc = date.find(" ")
     if space_loc == -1 or date[:space_loc] not in osutils.weekdays:
-        raise ValueError(
-            'Date string does not contain a day of week: %r' % date)
+        raise ValueError("Date string does not contain a day of week: %r" % date)
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
-    dot_loc = date.find('.')
+    dot_loc = date.find(".")
     if dot_loc == -1:
         raise ValueError(
-            'Date string does not contain high-precision seconds: %r' % date)
+            "Date string does not contain high-precision seconds: %r" % date
+        )
     base_time = time.strptime(date[space_loc:dot_loc], " %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
@@ -92,7 +96,7 @@ def unpack_highres_date(date):
     offset = int(offset)
 
     hours = int(offset / 100)
-    minutes = (offset % 100)
+    minutes = offset % 100
     seconds_offset = (hours * 3600) + (minutes * 60)
 
     # time.mktime returns localtime, but calendar.timegm returns UTC time
@@ -110,7 +114,8 @@ def format_patch_date(secs, offset=0):
     """
     if offset % 60 != 0:
         raise ValueError(
-            "can't represent timezone %s offset by fractional minutes" % offset)
+            "can't represent timezone %s offset by fractional minutes" % offset
+        )
     # so that we don't need to do calculations on pre-epoch times,
     # which doesn't work with win32 python gmtime, we always
     # give the epoch in utc
@@ -118,16 +123,16 @@ def format_patch_date(secs, offset=0):
         offset = 0
     if secs + offset < 0:
         from warnings import warn
-        warn("gmtime of negative time (%s, %s) may not work on Windows" %
-             (secs, offset))
-    return osutils.format_date(secs, offset=offset,
-                               date_fmt='%Y-%m-%d %H:%M:%S')
+
+        warn(
+            "gmtime of negative time (%s, %s) may not work on Windows" % (secs, offset)
+        )
+    return osutils.format_date(secs, offset=offset, date_fmt="%Y-%m-%d %H:%M:%S")
 
 
 # Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
 # Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
-RE_PATCHDATE = re.compile(
-    "(\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+)\\s*([+-]\\d\\d)(\\d\\d)$")
+RE_PATCHDATE = re.compile("(\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+)\\s*([+-]\\d\\d)(\\d\\d)$")
 RE_PATCHDATE_NOOFFSET = re.compile("\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+$")
 
 
@@ -139,18 +144,18 @@ def parse_patch_date(date_str):
     match = RE_PATCHDATE.match(date_str)
     if match is None:
         if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
-            raise ValueError("time data %r is missing a timezone offset"
-                             % date_str)
+            raise ValueError("time data %r is missing a timezone offset" % date_str)
         else:
-            raise ValueError("time data %r does not match format " % date_str +
-                             "'%Y-%m-%d %H:%M:%S %z'")
+            raise ValueError(
+                "time data %r does not match format " % date_str
+                + "'%Y-%m-%d %H:%M:%S %z'"
+            )
     secs_str = match.group(1)
     offset_hours, offset_mins = int(match.group(2)), int(match.group(3))
     if abs(offset_hours) >= 24 or offset_mins >= 60:
-        raise ValueError("invalid timezone %r" %
-                         (match.group(2) + match.group(3)))
+        raise ValueError("invalid timezone %r" % (match.group(2) + match.group(3)))
     offset = offset_hours * 3600 + offset_mins * 60
-    tm_time = time.strptime(secs_str, '%Y-%m-%d %H:%M:%S')
+    tm_time = time.strptime(secs_str, "%Y-%m-%d %H:%M:%S")
     # adjust seconds according to offset before converting to POSIX
     # timestamp, to avoid edge problems
     tm_time = tm_time[:5] + (tm_time[5] - offset,) + tm_time[6:]

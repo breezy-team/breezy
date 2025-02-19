@@ -23,30 +23,25 @@ import sys
 import warnings
 
 from ..lazy_import import lazy_import
-lazy_import(globals(), """
+
+lazy_import(
+    globals(),
+    """
 import time
 
 from breezy import (
     debug,
     progress,
     )
-""")
+""",
+)
 
-from .. import (
-    config,
-    osutils,
-    trace,
-    )
-from . import (
-    NullProgressView,
-    UIFactory,
-    )
+from .. import config, osutils, trace
+from . import NullProgressView, UIFactory
 
 
 class _ChooseUI:
-
-    """ Helper class for choose implementation.
-    """
+    """Helper class for choose implementation."""
 
     def __init__(self, ui, msg, choices, default):
         self.ui = ui
@@ -61,8 +56,11 @@ class _ChooseUI:
         terminal.
         """
         is_tty = self.ui.raw_stdin.isatty()
-        if (os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and
-                self.ui.raw_stdin == _unwrap_stream(sys.stdin) and is_tty):
+        if (
+            os.environ.get("BRZ_TEXTUI_INPUT") != "line-based"
+            and self.ui.raw_stdin == _unwrap_stream(sys.stdin)
+            and is_tty
+        ):
             self.line_based = False
             self.echo_back = True
         else:
@@ -78,41 +76,41 @@ class _ChooseUI:
         index = 0
         help_list = []
         self.alternatives = {}
-        choices = choices.split('\n')
+        choices = choices.split("\n")
         if default is not None and default not in range(0, len(choices)):
             raise ValueError("invalid default index")
         for c in choices:
-            name = c.replace('&', '').lower()
+            name = c.replace("&", "").lower()
             choice = (name, index)
             if name in self.alternatives:
                 raise ValueError("duplicated choice: %s" % name)
             self.alternatives[name] = choice
-            shortcut = c.find('&')
+            shortcut = c.find("&")
             if -1 != shortcut and (shortcut + 1) < len(c):
                 help = c[:shortcut]
-                help += '[' + c[shortcut + 1] + ']'
-                help += c[(shortcut + 2):]
+                help += "[" + c[shortcut + 1] + "]"
+                help += c[(shortcut + 2) :]
                 shortcut = c[shortcut + 1]
             else:
-                c = c.replace('&', '')
+                c = c.replace("&", "")
                 shortcut = c[0]
-                help = '[{}]{}'.format(shortcut, c[1:])
+                help = "[{}]{}".format(shortcut, c[1:])
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
                 raise ValueError("duplicated shortcut: %s" % shortcut)
             self.alternatives[shortcut] = choice
             # Add redirections for default.
             if index == default:
-                self.alternatives[''] = choice
-                self.alternatives['\r'] = choice
+                self.alternatives[""] = choice
+                self.alternatives["\r"] = choice
             help_list.append(help)
             index += 1
 
-        self.prompt = '{} ({}): '.format(msg, ', '.join(help_list))
+        self.prompt = "{} ({}): ".format(msg, ", ".join(help_list))
 
     def _getline(self):
         line = self.ui.stdin.readline()
-        if '' == line:
+        if "" == line:
             raise EOFError
         return line.strip()
 
@@ -123,12 +121,11 @@ class _ChooseUI:
         if char == chr(4):  # EOF (^d, C-d)
             raise EOFError
         if isinstance(char, bytes):
-            return char.decode('ascii', 'replace')
+            return char.decode("ascii", "replace")
         return char
 
     def interact(self):
-        """Keep asking the user until a valid choice is made.
-        """
+        """Keep asking the user until a valid choice is made."""
         if self.line_based:
             getchoice = self._getline
         else:
@@ -141,10 +138,10 @@ class _ChooseUI:
             try:
                 choice = getchoice()
             except EOFError:
-                self.ui.stderr.write('\n')
+                self.ui.stderr.write("\n")
                 return None
             except KeyboardInterrupt:
-                self.ui.stderr.write('\n')
+                self.ui.stderr.write("\n")
                 raise
             choice = choice.lower()
             if choice not in self.alternatives:
@@ -152,14 +149,17 @@ class _ChooseUI:
                 continue
             name, index = self.alternatives[choice]
             if self.echo_back:
-                self.ui.stderr.write(name + '\n')
+                self.ui.stderr.write(name + "\n")
             return index
 
 
 opt_progress_bar = config.Option(
-    'progress_bar', help='Progress bar type.',
-    default_from_env=['BRZ_PROGRESS_BAR'], default=None,
-    invalid='error')
+    "progress_bar",
+    help="Progress bar type.",
+    default_from_env=["BRZ_PROGRESS_BAR"],
+    default=None,
+    invalid="error",
+)
 
 
 class TextUIFactory(UIFactory):
@@ -236,23 +236,24 @@ class TextUIFactory(UIFactory):
                 pass
 
     def get_non_echoed_password(self):
-        isatty = getattr(self.stdin, 'isatty', None)
+        isatty = getattr(self.stdin, "isatty", None)
         if isatty is not None and isatty():
             import getpass
+
             # getpass() ensure the password is not echoed and other
             # cross-platform niceties
-            password = getpass.getpass('')
+            password = getpass.getpass("")
         else:
             # echo doesn't make sense without a terminal
             password = self.stdin.readline()
             if not password:
                 password = None
             else:
-                if password[-1] == '\n':
+                if password[-1] == "\n":
                     password = password[:-1]
         return password
 
-    def get_password(self, prompt='', **kwargs):
+    def get_password(self, prompt="", **kwargs):
         """Prompt the user for a password.
 
         :param prompt: The prompt to present the user
@@ -262,7 +263,7 @@ class TextUIFactory(UIFactory):
         :return: The password string, return None if the user
                  canceled the request.
         """
-        prompt += ': '
+        prompt += ": "
         self.prompt(prompt, **kwargs)
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
@@ -278,30 +279,31 @@ class TextUIFactory(UIFactory):
         :return: The username string, return None if the user
                  canceled the request.
         """
-        prompt += ': '
+        prompt += ": "
         self.prompt(prompt, **kwargs)
         username = self.stdin.readline()
         if not username:
             username = None
         else:
-            if username[-1] == '\n':
+            if username[-1] == "\n":
                 username = username[:-1]
         return username
 
     def make_progress_view(self):
-        """Construct and return a new ProgressView subclass for this UI.
-        """
+        """Construct and return a new ProgressView subclass for this UI."""
         # with --quiet, never any progress view
         # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
         # do that.  otherwise, guess based on $TERM and tty presence.
         if self.is_quiet():
             return NullProgressView()
-        pb_type = config.GlobalStack().get('progress_bar')
-        if pb_type == 'none':  # Explicit requirement
+        pb_type = config.GlobalStack().get("progress_bar")
+        if pb_type == "none":  # Explicit requirement
             return NullProgressView()
-        if (pb_type == 'text' or # Explicit requirement
-                progress._supports_progress(self.stderr)):  # Guess
+        if (
+            pb_type == "text"  # Explicit requirement
+            or progress._supports_progress(self.stderr)
+        ):  # Guess
             return TextProgressView(self.stderr)
         # No explicit requirement and no successful guess
         return NullProgressView()
@@ -312,7 +314,7 @@ class TextUIFactory(UIFactory):
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
         self.clear_term()
-        self.stdout.write(msg + '\n')
+        self.stdout.write(msg + "\n")
 
     def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI.
@@ -336,12 +338,11 @@ class TextUIFactory(UIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        self._progress_view.show_transport_activity(transport,
-                                                    direction, byte_count)
+        self._progress_view.show_transport_activity(transport, direction, byte_count)
 
     def log_transport_activity(self, display=False):
         """See UIFactory.log_transport_activity()"""
-        log = getattr(self._progress_view, 'log_transport_activity', None)
+        log = getattr(self._progress_view, "log_transport_activity", None)
         if log is not None:
             log(display=display)
 
@@ -357,11 +358,9 @@ class TextUIFactory(UIFactory):
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
-        """A task has been updated and wants to be displayed.
-        """
+        """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn("%r updated but no tasks are active" %
-                          (task,))
+            warnings.warn("%r updated but no tasks are active" % (task,))
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -384,17 +383,17 @@ class TextUIFactory(UIFactory):
         # new code can call this
         if warning_id not in self.suppressed_warnings:
             warning = self.format_user_warning(warning_id, message_args)
-            self.stderr.write(warning + '\n')
+            self.stderr.write(warning + "\n")
 
 
-def pad_to_width(line, width, encoding_hint='ascii'):
+def pad_to_width(line, width, encoding_hint="ascii"):
     """Truncate or pad unicode line to width.
 
     This is best-effort for now, and strings containing control codes or
     non-ascii text may be cut and padded incorrectly.
     """
-    s = line.encode(encoding_hint, 'replace')
-    return (b'%-*.*s' % (width, width, s)).decode(encoding_hint)
+    s = line.encode(encoding_hint, "replace")
+    return (b"%-*.*s" % (width, width, s)).decode(encoding_hint)
 
 
 class TextProgressView:
@@ -420,7 +419,7 @@ class TextProgressView:
             self._encoding = encoding
         # true when there's output on the screen we may need to clear
         self._have_output = False
-        self._last_transport_msg = ''
+        self._last_transport_msg = ""
         self._spin_pos = 0
         # time we last repainted the screen
         self._last_repaint = 0
@@ -429,7 +428,7 @@ class TextProgressView:
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
-        self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
+        self._bytes_by_direction = {"unknown": 0, "read": 0, "write": 0}
         self._first_byte_time = None
         self._fraction = 0
         # force the progress bar to be off, as at the moment it doesn't
@@ -448,45 +447,44 @@ class TextProgressView:
         width = self._avail_width()
         if width is not None:
             u = pad_to_width(u, width, encoding_hint=self._encoding)
-        self._term_file.write('\r' + u + '\r')
+        self._term_file.write("\r" + u + "\r")
 
     def clear(self):
         if self._have_output:
-            self._show_line('')
+            self._show_line("")
         self._have_output = False
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if self.enable_bar and (
-                (self._last_task is None) or self._last_task.show_bar):
+        if self.enable_bar and ((self._last_task is None) or self._last_task.show_bar):
             # If there's no task object, we show space for the bar anyhow.
             # That's because most invocations of bzr will end showing progress
             # at some point, though perhaps only after doing some initial IO.
             # It looks better to draw the progress bar initially rather than
             # to have what looks like an incomplete progress bar.
-            spin_str = r'/-\|'[self._spin_pos % 4]
+            spin_str = r"/-\|"[self._spin_pos % 4]
             self._spin_pos += 1
             cols = 20
             if self._last_task is None:
                 completion_fraction = 0
                 self._fraction = 0
             else:
-                completion_fraction = \
+                completion_fraction = (
                     self._last_task._overall_completion_fraction() or 0
-            if (completion_fraction < self._fraction and 'progress' in
-                    debug.debug_flags):
+                )
+            if completion_fraction < self._fraction and "progress" in debug.debug_flags:
                 debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
-            bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
+            bar_str = "[" + ("#" * markers + spin_str).ljust(cols) + "] "
             return bar_str
         elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
-            spin_str = r'/-\|'[self._spin_pos % 4]
+            spin_str = r"/-\|"[self._spin_pos % 4]
             self._spin_pos += 1
-            return spin_str + ' '
+            return spin_str + " "
         else:
-            return ''
+            return ""
 
     def _format_task(self, task):
         """Format task-specific parts of progress bar.
@@ -494,20 +492,20 @@ class TextProgressView:
         :returns: (text_part, counter_part) both unicode strings.
         """
         if not task.show_count:
-            s = ''
+            s = ""
         elif task.current_cnt is not None and task.total_cnt is not None:
-            s = ' %d/%d' % (task.current_cnt, task.total_cnt)
+            s = " %d/%d" % (task.current_cnt, task.total_cnt)
         elif task.current_cnt is not None:
-            s = ' %d' % (task.current_cnt)
+            s = " %d" % (task.current_cnt)
         else:
-            s = ''
+            s = ""
         # compose all the parent messages
         t = task
         m = task.msg
         while t._parent_task:
             t = t._parent_task
             if t.msg:
-                m = t.msg + ':' + m
+                m = t.msg + ":" + m
         return m, s
 
     def _render_line(self):
@@ -515,27 +513,28 @@ class TextProgressView:
         if self._last_task:
             task_part, counter_part = self._format_task(self._last_task)
         else:
-            task_part = counter_part = ''
+            task_part = counter_part = ""
         if self._last_task and not self._last_task.show_transport_activity:
-            trans = ''
+            trans = ""
         else:
             trans = self._last_transport_msg
         # the bar separates the transport activity from the message, so even
         # if there's no bar or spinner, we must show something if both those
         # fields are present
         if (task_part or trans) and not bar_string:
-            bar_string = '| '
+            bar_string = "| "
         # preferentially truncate the task message if we don't have enough
         # space
         avail_width = self._avail_width()
         if avail_width is not None:
             # if terminal avail_width is unknown, don't truncate
-            current_len = len(bar_string) + len(trans) + \
-                len(task_part) + len(counter_part)
+            current_len = (
+                len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            )
             # GZ 2017-04-22: Should measure and truncate task_part properly
             gap = current_len - avail_width
             if gap > 0:
-                task_part = task_part[:-gap - 2] + '..'
+                task_part = task_part[: -gap - 2] + ".."
         s = trans + bar_string + task_part + counter_part
         if avail_width is not None:
             if len(s) < avail_width:
@@ -562,7 +561,7 @@ class TextProgressView:
             return
         if now > self._transport_update_time + 10:
             # no recent activity; expire it
-            self._last_transport_msg = ''
+            self._last_transport_msg = ""
         self._last_repaint = now
         self._repaint()
 
@@ -584,8 +583,8 @@ class TextProgressView:
         if direction in self._bytes_by_direction:
             self._bytes_by_direction[direction] += byte_count
         else:
-            self._bytes_by_direction['unknown'] += byte_count
-        if 'no_activity' in debug.debug_flags:
+            self._bytes_by_direction["unknown"] += byte_count
+        if "no_activity" in debug.debug_flags:
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to
@@ -601,11 +600,12 @@ class TextProgressView:
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = (self._bytes_since_update /
-                    (now - self._transport_update_time))
+            rate = self._bytes_since_update / (now - self._transport_update_time)
             # using base-10 units (see HACKING.txt).
-            msg = ("%6dkB %5dkB/s " %
-                   (self._total_byte_count / 1000, int(rate) / 1000,))
+            msg = "%6dkB %5dkB/s " % (
+                self._total_byte_count / 1000,
+                int(rate) / 1000,
+            )
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
@@ -622,19 +622,16 @@ class TextProgressView:
             bps = self._total_byte_count / transfer_time
 
         # using base-10 units (see HACKING.txt).
-        msg = ('Transferred: %.0fkB'
-               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
-               % (self._total_byte_count / 1000.,
-                  bps / 1000.,
-                  self._bytes_by_direction['read'] / 1000.,
-                  self._bytes_by_direction['write'] / 1000.,
-                  ))
-        if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.0fkB)' % (
-                self._bytes_by_direction['unknown'] / 1000.
-                )
+        msg = "Transferred: %.0fkB (%.1fkB/s r:%.0fkB w:%.0fkB" % (
+            self._total_byte_count / 1000.0,
+            bps / 1000.0,
+            self._bytes_by_direction["read"] / 1000.0,
+            self._bytes_by_direction["write"] / 1000.0,
+        )
+        if self._bytes_by_direction["unknown"] > 0:
+            msg += " u:%.0fkB)" % (self._bytes_by_direction["unknown"] / 1000.0)
         else:
-            msg += ')'
+            msg += ")"
         return msg
 
     def log_transport_activity(self, display=False):
@@ -642,11 +639,11 @@ class TextProgressView:
         trace.mutter(msg)
         if display and self._total_byte_count > 0:
             self.clear()
-            self._term_file.write(msg + '\n')
+            self._term_file.write(msg + "\n")
 
 
 def _get_stream_encoding(stream):
-    encoding = config.GlobalStack().get('output_encoding')
+    encoding = config.GlobalStack().get("output_encoding")
     if encoding is None:
         encoding = getattr(stream, "encoding", None)
     if encoding is None:
@@ -661,7 +658,7 @@ def _unwrap_stream(stream):
     return inner
 
 
-def _wrap_in_stream(stream, encoding=None, errors='replace'):
+def _wrap_in_stream(stream, encoding=None, errors="replace"):
     if encoding is None:
         encoding = _get_stream_encoding(stream)
     # Attempt to wrap using io.open if possible, since that can do
@@ -676,7 +673,7 @@ def _wrap_in_stream(stream, encoding=None, errors='replace'):
         return open(fileno, encoding=encoding, errors=errors, buffering=1)
 
 
-def _wrap_out_stream(stream, encoding=None, errors='replace'):
+def _wrap_out_stream(stream, encoding=None, errors="replace"):
     if encoding is None:
         encoding = _get_stream_encoding(stream)
     encoded_stream = codecs.getwriter(encoding)(stream, errors=errors)
@@ -696,7 +693,7 @@ class TextUIOutputStream:
     written to the underlying stream.
     """
 
-    def __init__(self, ui_factory, stream, encoding=None, errors='strict'):
+    def __init__(self, ui_factory, stream, encoding=None, errors="strict"):
         self.ui_factory = ui_factory
         # GZ 2017-05-21: Clean up semantics when callers are made saner.
         inner = _unwrap_stream(stream)

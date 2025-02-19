@@ -16,28 +16,23 @@
 
 """Tests for profiling data collection."""
 
-
 import pickle
 import threading
 
-from .. import (
-    errors,
-    osutils,
-    tests,
-    )
+from .. import errors, osutils, tests
 from ..tests import features
-
 
 lsprof = features.lsprof_feature.module
 
 
-_TXT_HEADER = "   CallCount    Recursive    Total(ms)   " + \
-    "Inline(ms) module:lineno(function)\n"
+_TXT_HEADER = (
+    "   CallCount    Recursive    Total(ms)   " + "Inline(ms) module:lineno(function)\n"
+)
 
 
 def _junk_callable():
     "A simple routine to profile."
-    result = sorted(['abc', 'def', 'ghi'])
+    result = sorted(["abc", "def", "ghi"])
 
 
 def _collect_stats():
@@ -47,7 +42,6 @@ def _collect_stats():
 
 
 class TestStats(tests.TestCaseInTempDir):
-
     _test_needs_features = [features.lsprof_feature]
 
     def setUp(self):
@@ -84,7 +78,7 @@ class TestStats(tests.TestCaseInTempDir):
     def test_save_to_pickle(self):
         path = self._temppath("pkl")
         self.stats.save(path)
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             data1 = pickle.load(f)
             self.assertEqual(type(data1), lsprof.Stats)
 
@@ -94,42 +88,44 @@ class TestStats(tests.TestCaseInTempDir):
         self.assertEqual(code_list, sorted(code_list, reverse=True))
 
     def test_sort_totaltime(self):
-        self.stats.sort('totaltime')
+        self.stats.sort("totaltime")
         code_list = [d.totaltime for d in self.stats.data]
         self.assertEqual(code_list, sorted(code_list, reverse=True))
 
     def test_sort_code(self):
         """Cannot sort by code object would need to get filename etc."""
-        self.assertRaises(ValueError, self.stats.sort, 'code')
+        self.assertRaises(ValueError, self.stats.sort, "code")
 
 
 class TestBzrProfiler(tests.TestCase):
-
     _test_needs_features = [features.lsprof_feature]
 
     def test_start_call_stuff_stop(self):
         profiler = lsprof.BzrProfiler()
         profiler.start()
         try:
+
             def a_function():
                 pass
+
             a_function()
         finally:
             stats = profiler.stop()
         stats.freeze()
         lines = [str(data) for data in stats.data]
-        lines = [line for line in lines if 'a_function' in line]
+        lines = [line for line in lines if "a_function" in line]
         self.assertLength(1, lines)
 
     def test_block_0(self):
         # When profiler_block is 0, reentrant profile requests fail.
-        self.overrideAttr(lsprof.BzrProfiler, 'profiler_block', 0)
+        self.overrideAttr(lsprof.BzrProfiler, "profiler_block", 0)
         inner_calls = []
 
         def inner():
             profiler = lsprof.BzrProfiler()
             self.assertRaises(errors.BzrError, profiler.start)
             inner_calls.append(True)
+
         lsprof.profile(inner)
         self.assertLength(1, inner_calls)
 
@@ -145,11 +141,12 @@ class TestBzrProfiler(tests.TestCase):
         calls = []
 
         def profiled():
-            calls.append('profiled')
+            calls.append("profiled")
 
         def do_profile():
             lsprof.profile(profiled)
-            calls.append('after_profiled')
+            calls.append("after_profiled")
+
         thread = threading.Thread(target=do_profile)
         lsprof.BzrProfiler.profiler_lock.acquire()
         try:

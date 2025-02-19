@@ -14,18 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Union, Optional, Type
+from typing import Optional, Type, Union
 
-from . import (
-    counted_lock,
-    errors,
-    lock,
-    transactions,
-    urlutils,
-    )
-from .decorators import (
-    only_raises,
-    )
+from . import counted_lock, errors, lock, transactions, urlutils
+from .decorators import only_raises
 from .transport import Transport
 
 
@@ -57,7 +49,9 @@ class LockableFiles:
     _token_from_lock: Optional[lock.LockToken]
     _transaction: Optional[transactions.Transaction]
 
-    def __init__(self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]) -> None:
+    def __init__(
+        self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]
+    ) -> None:
         """Create a LockableFiles group
 
         :param transport: Transport pointing to the directory holding the
@@ -73,9 +67,12 @@ class LockableFiles:
         self._lock_count = 0
         self._find_modes()
         esc_name = self._escape(lock_name)
-        self._lock = lock_class(transport, esc_name,
-                                file_modebits=self._file_mode,
-                                dir_modebits=self._dir_mode)
+        self._lock = lock_class(
+            transport,
+            esc_name,
+            file_modebits=self._file_mode,
+            dir_modebits=self._dir_mode,
+        )
         self._counted_lock = counted_lock.CountedLock(self._lock)
 
     def create_lock(self) -> None:
@@ -87,11 +84,10 @@ class LockableFiles:
         self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__,
-                           self._transport)
+        return "{}({!r})".format(self.__class__.__name__, self._transport)
 
     def __str__(self):
-        return 'LockableFiles({}, {})'.format(self.lock_name, self._transport.base)
+        return "LockableFiles({}, {})".format(self.lock_name, self._transport.base)
 
     def break_lock(self) -> None:
         """Break the lock of this lockable files group if it is held.
@@ -102,8 +98,8 @@ class LockableFiles:
 
     def _escape(self, file_or_path: str) -> str:
         """DEPRECATED: Do not use outside this class"""
-        if file_or_path == '':
-            return ''
+        if file_or_path == "":
+            return ""
         return urlutils.escape(file_or_path)
 
     def _find_modes(self) -> None:
@@ -115,7 +111,7 @@ class LockableFiles:
         # once all the _get_text_store methods etc no longer use them.
         # -- mbp 20080512
         try:
-            st = self._transport.stat('.')
+            st = self._transport.stat(".")
         except errors.TransportNotPossible:
             self._dir_mode = 0o755
             self._file_mode = 0o644
@@ -136,7 +132,9 @@ class LockableFiles:
         """Set this LockableFiles to clear the physical lock on unlock."""
         self._lock.dont_leave_in_place()
 
-    def lock_write(self, token: Optional[lock.LockToken] = None) -> Optional[lock.LockToken]:
+    def lock_write(
+        self, token: Optional[lock.LockToken] = None
+    ) -> Optional[lock.LockToken]:
         """Lock this group of files for writing.
 
         :param token: if this is already locked, then lock_write will fail
@@ -152,8 +150,7 @@ class LockableFiles:
         fact.
         """
         if self._lock_mode:
-            if (self._lock_mode != 'w'
-                    or not self.get_transaction().writeable()):
+            if self._lock_mode != "w" or not self.get_transaction().writeable():
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
             self._lock_count += 1
@@ -161,7 +158,7 @@ class LockableFiles:
         else:
             token_from_lock = self._lock.lock_write(token=token)
             # traceback.print_stack()
-            self._lock_mode = 'w'
+            self._lock_mode = "w"
             self._lock_count = 1
             self._set_write_transaction()
             self._token_from_lock = token_from_lock
@@ -169,13 +166,13 @@ class LockableFiles:
 
     def lock_read(self) -> None:
         if self._lock_mode:
-            if self._lock_mode not in ('r', 'w'):
+            if self._lock_mode not in ("r", "w"):
                 raise ValueError("invalid lock mode {!r}".format(self._lock_mode))
             self._lock_count += 1
         else:
             self._lock.lock_read()
             # traceback.print_stack()
-            self._lock_mode = 'r'
+            self._lock_mode = "r"
             self._lock_count = 1
             self._set_read_transaction()
 
@@ -234,15 +231,13 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError('Branch %s is in a transaction already.' %
-                                   self)
+            raise errors.LockError("Branch %s is in a transaction already." % self)
         self._transaction = new_transaction
 
     def _finish_transaction(self):
         """Exit the current transaction."""
         if self._transaction is None:
-            raise errors.LockError('Branch %s is not in a transaction' %
-                                   self)
+            raise errors.LockError("Branch %s is not in a transaction" % self)
         transaction = self._transaction
         self._transaction = None
         transaction.finish()
@@ -260,7 +255,9 @@ class TransportLock:
     always local).
     """
 
-    def __init__(self, transport: Transport, escaped_name: str, file_modebits, dir_modebits):
+    def __init__(
+        self, transport: Transport, escaped_name: str, file_modebits, dir_modebits
+    ):
         self._transport = transport
         self._escaped_name = escaped_name
         self._file_modebits = file_modebits
@@ -293,8 +290,7 @@ class TransportLock:
     def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
-        self._transport.put_bytes(self._escaped_name, b'',
-                                  mode=self._file_modebits)
+        self._transport.put_bytes(self._escaped_name, b"", mode=self._file_modebits)
 
     def validate_token(self, token):
         if token is not None:

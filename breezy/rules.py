@@ -21,20 +21,13 @@ See ``bzr help rules`` for details.
 
 import configobj
 
-from . import (
-    bedding,
-    cmdline,
-    errors,
-    globbing,
-    osutils,
-    )
-
+from . import bedding, cmdline, errors, globbing, osutils
 
 # Name of the file holding rules in a tree
 RULES_TREE_FILENAME = ".bzrrules"
 
 # Namespace prefix for per file preferences
-FILE_PREFS_PREFIX = 'name '
+FILE_PREFS_PREFIX = "name "
 FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 
 # The object providing default rules
@@ -42,8 +35,7 @@ _per_user_searcher = None
 
 
 class UnknownRules(errors.BzrError):
-
-    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+    _fmt = "Unknown rules detected: %(unknowns_str)s."
 
     def __init__(self, unknowns):
         errors.BzrError.__init__(self, unknowns_str=", ".join(unknowns))
@@ -84,7 +76,6 @@ class _RulesSearcher:
 
 
 class _IniBasedRulesSearcher(_RulesSearcher):
-
     def __init__(self, inifile):
         """Construct a _RulesSearcher based on an ini file.
 
@@ -92,7 +83,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
 
         :param inifile: the name of the file or a sequence of lines.
         """
-        self._cfg = configobj.ConfigObj(inifile, encoding='utf-8')
+        self._cfg = configobj.ConfigObj(inifile, encoding="utf-8")
         sections = self._cfg.keys()
         patterns = []
         self.pattern_to_section = {}
@@ -103,8 +94,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
                 for fp in file_patterns:
                     self.pattern_to_section[fp] = s
         if len(patterns) < len(sections):
-            unknowns = [s for s in sections
-                        if not s.startswith(FILE_PREFS_PREFIX)]
+            unknowns = [s for s in sections if not s.startswith(FILE_PREFS_PREFIX)]
             raise UnknownRules(unknowns)
         elif patterns:
             self._globster = globbing._OrderedGlobster(patterns)
@@ -135,7 +125,6 @@ class _IniBasedRulesSearcher(_RulesSearcher):
 
 
 class _StackedRulesSearcher(_RulesSearcher):
-
     def __init__(self, searchers):
         """Construct a _RulesSearcher based on a stack of other ones.
 
@@ -162,7 +151,7 @@ class _StackedRulesSearcher(_RulesSearcher):
 
 def rules_path():
     """Return the default rules file path."""
-    return osutils.pathjoin(bedding.config_dir(), 'rules')
+    return osutils.pathjoin(bedding.config_dir(), "rules")
 
 
 def reset_rules():

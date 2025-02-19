@@ -21,18 +21,22 @@ from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_land_merge_proposal", ["land"], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_publish_derived", ["publish"], __name__ + ".cmds")
 plugin_cmds.register_lazy(
-    "cmd_my_merge_proposals", ["my-proposals"],
-    __name__ + ".cmds")
+    "cmd_find_merge_proposal", ["find-proposal"], __name__ + ".cmds"
+)
+plugin_cmds.register_lazy(
+    "cmd_my_merge_proposals", ["my-proposals"], __name__ + ".cmds"
+)
 plugin_cmds.register_lazy("cmd_forges", [], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_web_open", [], __name__ + ".cmds")
 
 
 def test_suite():
     from unittest import TestSuite
+
     from .tests import test_suite
+
     result = TestSuite()
     result.addTest(test_suite())
     return result

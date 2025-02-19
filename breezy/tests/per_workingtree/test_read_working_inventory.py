@@ -18,32 +18,32 @@
 
 from breezy import errors
 from breezy.bzr import inventory
+from breezy.bzr.workingtree import InventoryModified, InventoryWorkingTree
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.bzr.workingtree import InventoryWorkingTree, InventoryModified
 
 
 class TestReadWorkingInventory(TestCaseWithWorkingTree):
-
     def test_trivial_read(self):
-        tree = self.make_branch_and_tree('t1')
+        tree = self.make_branch_and_tree("t1")
         if not isinstance(tree, InventoryWorkingTree):
-            raise TestNotApplicable("read_working_inventory not usable on "
-                                    "non-inventory working trees")
+            raise TestNotApplicable(
+                "read_working_inventory not usable on non-inventory working trees"
+            )
         tree.lock_read()
-        self.assertIsInstance(
-            tree.read_working_inventory(), inventory.Inventory)
+        self.assertIsInstance(tree.read_working_inventory(), inventory.Inventory)
         tree.unlock()
 
     def test_read_after_inventory_modification(self):
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_branch_and_tree("tree")
         if not isinstance(tree, InventoryWorkingTree):
-            raise TestNotApplicable("read_working_inventory not usable on "
-                                    "non-inventory working trees")
+            raise TestNotApplicable(
+                "read_working_inventory not usable on non-inventory working trees"
+            )
         # prepare for a series of changes that will modify the
         # inventory
         with tree.lock_write():
-            tree.set_root_id(b'new-root')
+            tree.set_root_id(b"new-root")
             # having dirtied the inventory, we can now expect an
             # InventoryModified exception when doing a read_working_inventory()
             # OR, the call can be ignored and the changes preserved
@@ -52,4 +52,4 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
             except InventoryModified:
                 pass
             else:
-                self.assertEqual(b'new-root', tree.path2id(''))
+                self.assertEqual(b"new-root", tree.path2id(""))

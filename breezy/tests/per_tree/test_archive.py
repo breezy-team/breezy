@@ -18,54 +18,45 @@ import os
 import tarfile
 import zipfile
 
-from breezy import (
-    errors,
-    osutils,
-    tests,
-    )
+from breezy import errors, osutils, tests
+from breezy.tests import features
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.tests import (
-    features,
-    )
 
 
 class ArchiveTests:
-
     def test_export(self):
-        work_a = self.make_branch_and_tree('wta')
-        self.build_tree_contents(
-            [('wta/file', b'a\nb\nc\nd\n'), ('wta/dir', b'')])
-        work_a.add('file')
-        work_a.add('dir')
-        work_a.commit('add file')
+        work_a = self.make_branch_and_tree("wta")
+        self.build_tree_contents([("wta/file", b"a\nb\nc\nd\n"), ("wta/dir", b"")])
+        work_a.add("file")
+        work_a.add("dir")
+        work_a.commit("add file")
         tree_a = self.workingtree_to_test_tree(work_a)
-        output_path = 'output'
-        with open(output_path, 'wb') as f:
+        output_path = "output"
+        with open(output_path, "wb") as f:
             f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('file', names)
-        self.assertIn('dir', names)
+        self.assertIn("file", names)
+        self.assertIn("dir", names)
 
     def test_export_symlink(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
-        work_a = self.make_branch_and_tree('wta')
-        os.symlink('target', 'wta/link')
-        work_a.add('link')
-        work_a.commit('add link')
+        work_a = self.make_branch_and_tree("wta")
+        os.symlink("target", "wta/link")
+        work_a.add("link")
+        work_a.commit("add link")
         tree_a = self.workingtree_to_test_tree(work_a)
-        output_path = 'output'
-        with open(output_path, 'wb') as f:
+        output_path = "output"
+        with open(output_path, "wb") as f:
             f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('link', names)
+        self.assertIn("link", names)
 
     def get_output_names(self, path):
         raise NotImplementedError(self.get_output_names)
 
 
 class TestTar(ArchiveTests, TestCaseWithTree):
-
-    format = 'tar'
+    format = "tar"
 
     def get_export_names(self, path):
         tf = tarfile.open(path)
@@ -76,8 +67,7 @@ class TestTar(ArchiveTests, TestCaseWithTree):
 
 
 class TestTgz(ArchiveTests, TestCaseWithTree):
-
-    format = 'tgz'
+    format = "tgz"
 
     def get_export_names(self, path):
         tf = tarfile.open(path)
@@ -88,8 +78,7 @@ class TestTgz(ArchiveTests, TestCaseWithTree):
 
 
 class TestZip(ArchiveTests, TestCaseWithTree):
-
-    format = 'zip'
+    format = "zip"
 
     def get_export_names(self, path):
         zf = zipfile.ZipFile(path)
@@ -100,29 +89,25 @@ class TestZip(ArchiveTests, TestCaseWithTree):
 
     def test_export_symlink(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
-        work_a = self.make_branch_and_tree('wta')
-        os.symlink('target', 'wta/link')
-        work_a.add('link')
-        work_a.commit('add link')
+        work_a = self.make_branch_and_tree("wta")
+        os.symlink("target", "wta/link")
+        work_a.add("link")
+        work_a.commit("add link")
         tree_a = self.workingtree_to_test_tree(work_a)
-        output_path = 'output'
-        with open(output_path, 'wb') as f:
+        output_path = "output"
+        with open(output_path, "wb") as f:
             f.writelines(tree_a.archive(self.format, output_path))
         names = self.get_export_names(output_path)
-        self.assertIn('link.lnk', names)
+        self.assertIn("link.lnk", names)
 
 
 class GenericArchiveTests(TestCaseWithTree):
-
     def test_dir_invalid(self):
-        work_a = self.make_branch_and_tree('wta')
-        self.build_tree_contents(
-            [('wta/file', b'a\nb\nc\nd\n'), ('wta/dir', b'')])
-        work_a.add('file')
-        work_a.add('dir')
-        work_a.commit('add file')
+        work_a = self.make_branch_and_tree("wta")
+        self.build_tree_contents([("wta/file", b"a\nb\nc\nd\n"), ("wta/dir", b"")])
+        work_a.add("file")
+        work_a.add("dir")
+        work_a.commit("add file")
         tree_a = self.workingtree_to_test_tree(work_a)
 
-        self.assertRaises(
-            errors.NoSuchExportFormat,
-            tree_a.archive, 'dir', 'foo')
+        self.assertRaises(errors.NoSuchExportFormat, tree_a.archive, "dir", "foo")

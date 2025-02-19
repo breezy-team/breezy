@@ -21,48 +21,49 @@
 import os
 
 from breezy import osutils
+from breezy.bzr.testament import StrictTestament, StrictTestament3, Testament
 from breezy.tests import TestCaseWithTransport
-from breezy.bzr.testament import (
-    Testament,
-    StrictTestament,
-    StrictTestament3,
-    )
-from breezy.tests.features import (
-    SymlinkFeature,
-    )
+from breezy.tests.features import SymlinkFeature
 
 
 class TestamentSetup(TestCaseWithTransport):
-
     def setUp(self):
         super().setUp()
-        self.wt = self.make_branch_and_tree('.', format='development-subtree')
-        self.wt.set_root_id(b'TREE_ROT')
+        self.wt = self.make_branch_and_tree(".")
+        self.wt.set_root_id(b"TREE_ROT")
         b = self.b = self.wt.branch
         b.nick = "test branch"
-        self.wt.commit(message='initial null commit',
-                       committer='test@user',
-                       timestamp=1129025423,  # 'Tue Oct 11 20:10:23 2005'
-                       timezone=0,
-                       rev_id=b'test@user-1')
-        self.build_tree_contents([('hello', b'contents of hello file'),
-                                  ('src/', ),
-                                  ('src/foo.c', b'int main()\n{\n}\n')])
-        self.wt.add(['hello', 'src', 'src/foo.c'],
-                    ids=[b'hello-id', b'src-id', b'foo.c-id'])
+        self.wt.commit(
+            message="initial null commit",
+            committer="test@user",
+            timestamp=1129025423,  # 'Tue Oct 11 20:10:23 2005'
+            timezone=0,
+            rev_id=b"test@user-1",
+        )
+        self.build_tree_contents(
+            [
+                ("hello", b"contents of hello file"),
+                ("src/",),
+                ("src/foo.c", b"int main()\n{\n}\n"),
+            ]
+        )
+        self.wt.add(
+            ["hello", "src", "src/foo.c"], ids=[b"hello-id", b"src-id", b"foo.c-id"]
+        )
         tt = self.wt.transform()
-        trans_id = tt.trans_id_tree_path('hello')
+        trans_id = tt.trans_id_tree_path("hello")
         tt.set_executability(True, trans_id)
         tt.apply()
-        self.wt.commit(message='add files and directories',
-                       timestamp=1129025483,
-                       timezone=36000,
-                       rev_id=b'test@user-2',
-                       committer='test@user')
+        self.wt.commit(
+            message="add files and directories",
+            timestamp=1129025483,
+            timezone=36000,
+            rev_id=b"test@user-2",
+            committer="test@user",
+        )
 
 
 class TestamentTests(TestamentSetup):
-
     def testament_class(self):
         return Testament
 
@@ -74,100 +75,102 @@ class TestamentTests(TestamentSetup):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
-        t = self.from_revision(self.b.repository, b'test@user-1')
+        t = self.from_revision(self.b.repository, b"test@user-1")
         ass = self.assertTrue
         eq = self.assertEqual
         ass(isinstance(t, Testament))
-        eq(t.revision_id, b'test@user-1')
-        eq(t.committer, 'test@user')
+        eq(t.revision_id, b"test@user-1")
+        eq(t.committer, "test@user")
         eq(t.timestamp, 1129025423)
         eq(t.timezone, 0)
 
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
-        t = self.from_revision(self.b.repository, b'test@user-1')
+        t = self.from_revision(self.b.repository, b"test@user-1")
         text_form = t.as_text()
-        self.log('testament text form:\n%s' % text_form)
-        self.assertEqualDiff(text_form, self.expected('rev_1'))
+        self.log("testament text form:\n%s" % text_form)
+        self.assertEqualDiff(text_form, self.expected("rev_1"))
         short_text_form = t.as_short_text()
-        self.assertEqualDiff(short_text_form, self.expected('rev_1_short'))
+        self.assertEqualDiff(short_text_form, self.expected("rev_1_short"))
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        t = self.from_revision(self.b.repository, b'test@user-2')
+        t = self.from_revision(self.b.repository, b"test@user-2")
         text_form = t.as_text()
-        self.log('testament text form:\n%s' % text_form)
-        self.assertEqualDiff(text_form, self.expected('rev_2'))
+        self.log("testament text form:\n%s" % text_form)
+        self.assertEqualDiff(text_form, self.expected("rev_2"))
         actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, self.expected('rev_2_short'))
+        self.assertEqualDiff(actual_short, self.expected("rev_2_short"))
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
         self.requireFeature(SymlinkFeature(self.test_dir))
-        os.symlink('wibble/linktarget', 'link')
-        self.wt.add(['link'], ids=[b'link-id'])
-        self.wt.commit(message='add symlink',
-                       timestamp=1129025493,
-                       timezone=36000,
-                       rev_id=b'test@user-3',
-                       committer='test@user')
-        t = self.from_revision(self.b.repository, b'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
+        os.symlink("wibble/linktarget", "link")
+        self.wt.add(["link"], ids=[b"link-id"])
+        self.wt.commit(
+            message="add symlink",
+            timestamp=1129025493,
+            timezone=36000,
+            rev_id=b"test@user-3",
+            committer="test@user",
+        )
+        t = self.from_revision(self.b.repository, b"test@user-3")
+        self.assertEqualDiff(t.as_text(), self.expected("rev_3"))
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
-        props = {'flavor': 'sour cherry\ncream cheese',
-                 'size': 'medium',
-                 'empty': '',
-                 }
-        self.wt.commit(message='revision with properties',
-                       timestamp=1129025493,
-                       timezone=36000,
-                       rev_id=b'test@user-3',
-                       committer='test@user',
-                       revprops=props)
-        t = self.from_revision(self.b.repository, b'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected('rev_props'))
+        props = {
+            "flavor": "sour cherry\ncream cheese",
+            "size": "medium",
+            "empty": "",
+        }
+        self.wt.commit(
+            message="revision with properties",
+            timestamp=1129025493,
+            timezone=36000,
+            rev_id=b"test@user-3",
+            committer="test@user",
+            revprops=props,
+        )
+        t = self.from_revision(self.b.repository, b"test@user-3")
+        self.assertEqualDiff(t.as_text(), self.expected("rev_props"))
 
     def test_testament_unicode_commit_message(self):
         self.wt.commit(
-            message='non-ascii commit \N{COPYRIGHT SIGN} me',
+            message="non-ascii commit \N{COPYRIGHT SIGN} me",
             timestamp=1129025493,
             timezone=36000,
-            rev_id=b'test@user-3',
-            committer='Erik B\xe5gfors <test@user>',
-            revprops={'uni': '\xb5'}
-            )
-        t = self.from_revision(self.b.repository, b'test@user-3')
+            rev_id=b"test@user-3",
+            committer="Erik B\xe5gfors <test@user>",
+            revprops={"uni": "\xb5"},
+        )
+        t = self.from_revision(self.b.repository, b"test@user-3")
         self.assertEqualDiff(
-            self.expected('sample_unicode').encode('utf-8'), t.as_text())
+            self.expected("sample_unicode").encode("utf-8"), t.as_text()
+        )
 
     def test_from_tree(self):
-        tree = self.b.repository.revision_tree(b'test@user-2')
+        tree = self.b.repository.revision_tree(b"test@user-2")
         testament = self.testament_class().from_revision_tree(tree)
         text_1 = testament.as_short_text()
-        text_2 = self.from_revision(self.b.repository,
-                                    b'test@user-2').as_short_text()
+        text_2 = self.from_revision(self.b.repository, b"test@user-2").as_short_text()
         self.assertEqual(text_1, text_2)
 
     def test___init__(self):
-        revision = self.b.repository.get_revision(b'test@user-2')
-        tree = self.b.repository.revision_tree(b'test@user-2')
+        revision = self.b.repository.get_revision(b"test@user-2")
+        tree = self.b.repository.revision_tree(b"test@user-2")
         testament_1 = self.testament_class()(revision, tree)
         text_1 = testament_1.as_short_text()
-        text_2 = self.from_revision(self.b.repository,
-                                    b'test@user-2').as_short_text()
+        text_2 = self.from_revision(self.b.repository, b"test@user-2").as_short_text()
         self.assertEqual(text_1, text_2)
 
 
 class TestamentTestsStrict(TestamentTests):
-
     def testament_class(self):
         return StrictTestament
 
 
 class TestamentTestsStrict2(TestamentTests):
-
     def testament_class(self):
         return StrictTestament3
 
@@ -535,28 +538,31 @@ properties:
 
 
 texts = {
-    Testament: {'rev_1': REV_1_TESTAMENT,
-                'rev_1_short': REV_1_SHORT,
-                'rev_2': REV_2_TESTAMENT,
-                'rev_2_short': REV_2_SHORT,
-                'rev_3': REV_3_TESTAMENT,
-                'rev_props': REV_PROPS_TESTAMENT,
-                'sample_unicode': SAMPLE_UNICODE_TESTAMENT,
-                },
-    StrictTestament: {'rev_1': REV_1_STRICT_TESTAMENT,
-                      'rev_1_short': REV_1_SHORT_STRICT,
-                      'rev_2': REV_2_STRICT_TESTAMENT,
-                      'rev_2_short': REV_2_SHORT_STRICT,
-                      'rev_3': REV_3_TESTAMENT_STRICT,
-                      'rev_props': REV_PROPS_TESTAMENT_STRICT,
-                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT,
-                      },
-    StrictTestament3: {'rev_1': REV_1_STRICT_TESTAMENT3,
-                       'rev_1_short': REV_1_SHORT_STRICT3,
-                       'rev_2': REV_2_STRICT_TESTAMENT3,
-                       'rev_2_short': REV_2_SHORT_STRICT3,
-                       'rev_3': REV_3_TESTAMENT_STRICT3,
-                       'rev_props': REV_PROPS_TESTAMENT_STRICT3,
-                       'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT3,
-                       },
+    Testament: {
+        "rev_1": REV_1_TESTAMENT,
+        "rev_1_short": REV_1_SHORT,
+        "rev_2": REV_2_TESTAMENT,
+        "rev_2_short": REV_2_SHORT,
+        "rev_3": REV_3_TESTAMENT,
+        "rev_props": REV_PROPS_TESTAMENT,
+        "sample_unicode": SAMPLE_UNICODE_TESTAMENT,
+    },
+    StrictTestament: {
+        "rev_1": REV_1_STRICT_TESTAMENT,
+        "rev_1_short": REV_1_SHORT_STRICT,
+        "rev_2": REV_2_STRICT_TESTAMENT,
+        "rev_2_short": REV_2_SHORT_STRICT,
+        "rev_3": REV_3_TESTAMENT_STRICT,
+        "rev_props": REV_PROPS_TESTAMENT_STRICT,
+        "sample_unicode": SAMPLE_UNICODE_TESTAMENT_STRICT,
+    },
+    StrictTestament3: {
+        "rev_1": REV_1_STRICT_TESTAMENT3,
+        "rev_1_short": REV_1_SHORT_STRICT3,
+        "rev_2": REV_2_STRICT_TESTAMENT3,
+        "rev_2_short": REV_2_SHORT_STRICT3,
+        "rev_3": REV_3_TESTAMENT_STRICT3,
+        "rev_props": REV_PROPS_TESTAMENT_STRICT3,
+        "sample_unicode": SAMPLE_UNICODE_TESTAMENT_STRICT3,
+    },
 }

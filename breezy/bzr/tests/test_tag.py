@@ -16,17 +16,11 @@
 
 """Tests for breezy.bzr.tag."""
 
-
-from breezy.bzr.tag import (
-    BasicTags,
-    )
-from breezy.tests import (
-    TestCase,
-    )
+from breezy.bzr.tag import BasicTags
+from breezy.tests import TestCase
 
 
 class TestTagSerialization(TestCase):
-
     def test_tag_serialization(self):
         """Test the precise representation of tag dicts."""
         # Don't change this after we commit to this format, as it checks
@@ -35,8 +29,8 @@ class TestTagSerialization(TestCase):
         # This release stores them in bencode as a dictionary from name to
         # target.
         store = BasicTags(branch=None)
-        td = dict(stable=b'stable-revid', boring=b'boring-revid')
+        td = dict(stable=b"stable-revid", boring=b"boring-revid")
         packed = store._serialize_tag_dict(td)
-        expected = br'd6:boring12:boring-revid6:stable12:stable-revide'
+        expected = rb"d6:boring12:boring-revid6:stable12:stable-revide"
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)

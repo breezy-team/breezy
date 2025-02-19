@@ -16,27 +16,32 @@
 
 import sys
 
-from . import (
-    delta as _mod_delta,
-    hooks as _mod_hooks,
-    log,
-    osutils,
-    tsort,
-    revision as _mod_revision,
-    )
+from . import delta as _mod_delta
 from . import errors as errors
+from . import hooks as _mod_hooks
+from . import log, osutils
+from . import revision as _mod_revision
+from . import tsort
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
-
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
 
 
-def report_changes(to_file, old, new, specific_files,
-                   show_short_reporter, show_long_callback,
-                   short=False, want_unchanged=False,
-                   want_unversioned=False, show_ids=False, classify=True):
+def report_changes(
+    to_file,
+    old,
+    new,
+    specific_files,
+    show_short_reporter,
+    show_long_callback,
+    short=False,
+    want_unchanged=False,
+    want_unversioned=False,
+    show_ids=False,
+    classify=True,
+):
     """Display summary of changes.
 
     This compares two trees with regards to a list of files, and delegates
@@ -65,34 +70,48 @@ def report_changes(to_file, old, new, specific_files,
     """
 
     if short:
-        changes = new.iter_changes(old, want_unchanged, specific_files,
-                                   require_versioned=False, want_unversioned=want_unversioned)
+        changes = new.iter_changes(
+            old,
+            want_unchanged,
+            specific_files,
+            require_versioned=False,
+            want_unversioned=want_unversioned,
+        )
         _mod_delta.report_changes(changes, show_short_reporter)
     else:
-        delta = new.changes_from(old, want_unchanged=want_unchanged,
-                                 specific_files=specific_files,
-                                 want_unversioned=want_unversioned)
+        delta = new.changes_from(
+            old,
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            want_unversioned=want_unversioned,
+        )
         # filter out unknown files. We may want a tree method for
         # this
-        delta.unversioned = [change for change in delta.unversioned
-                             if not new.is_ignored(change.path[1])]
-        show_long_callback(to_file, delta,
-                           show_ids=show_ids,
-                           show_unchanged=want_unchanged,
-                           classify=classify)
+        delta.unversioned = [
+            change for change in delta.unversioned if not new.is_ignored(change.path[1])
+        ]
+        show_long_callback(
+            to_file,
+            delta,
+            show_ids=show_ids,
+            show_unchanged=want_unchanged,
+            classify=classify,
+        )
 
 
-def show_tree_status(wt,
-                     specific_files=None,
-                     show_ids=False,
-                     to_file=None,
-                     show_pending=True,
-                     revision=None,
-                     short=False,
-                     verbose=False,
-                     versioned=False,
-                     classify=True,
-                     show_long_callback=_mod_delta.report_delta):
+def show_tree_status(
+    wt,
+    specific_files=None,
+    show_ids=False,
+    to_file=None,
+    show_pending=True,
+    revision=None,
+    short=False,
+    verbose=False,
+    versioned=False,
+    classify=True,
+    show_long_callback=_mod_delta.report_delta,
+):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision.
@@ -147,35 +166,54 @@ def show_tree_status(wt,
             else:
                 new = wt
         with old.lock_read(), new.lock_read():
-            for hook in hooks['pre_status']:
-                hook(StatusHookParams(
-                    old, new, to_file, versioned, show_ids, short, verbose,
-                    specific_files=specific_files))
+            for hook in hooks["pre_status"]:
+                hook(
+                    StatusHookParams(
+                        old,
+                        new,
+                        to_file,
+                        versioned,
+                        show_ids,
+                        short,
+                        verbose,
+                        specific_files=specific_files,
+                    )
+                )
 
-            specific_files, nonexistents \
-                = _filter_nonexistent(specific_files, old, new)
+            specific_files, nonexistents = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
 
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(
-                output_file=to_file, unversioned_filter=new.is_ignored,
-                classify=classify)
-            report_changes(to_file, old, new, specific_files,
-                           reporter, show_long_callback,
-                           short=short, want_unversioned=want_unversioned,
-                           show_ids=show_ids, classify=classify)
+                output_file=to_file,
+                unversioned_filter=new.is_ignored,
+                classify=classify,
+            )
+            report_changes(
+                to_file,
+                old,
+                new,
+                specific_files,
+                reporter,
+                show_long_callback,
+                short=short,
+                want_unversioned=want_unversioned,
+                show_ids=show_ids,
+                classify=classify,
+            )
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore).
             if specific_files is not None:
                 # Ignored files is sorted because specific_files is already sorted
-                ignored_files = [specific for specific in
-                                 specific_files if new.is_ignored(specific)]
+                ignored_files = [
+                    specific for specific in specific_files if new.is_ignored(specific)
+                ]
                 if len(ignored_files) > 0 and not short:
                     to_file.write("ignored:\n")
-                    prefix = ' '
+                    prefix = " "
                 else:
-                    prefix = 'I  '
+                    prefix = "I  "
                 for ignored_file in ignored_files:
                     to_file.write("{} {}\n".format(prefix, ignored_file))
 
@@ -184,14 +222,15 @@ def show_tree_status(wt,
             conflicts = new.conflicts()
             if specific_files is not None:
                 conflicts = conflicts.select_conflicts(
-                    new, specific_files, ignore_misses=True, recurse=True)[1]
+                    new, specific_files, ignore_misses=True, recurse=True
+                )[1]
             if len(conflicts) > 0 and not short:
                 to_file.write("conflicts:\n")
             for conflict in conflicts:
                 if short:
-                    prefix = 'C  '
+                    prefix = "C  "
                 else:
-                    prefix = ' '
+                    prefix = " "
                 to_file.write("{} {}\n".format(prefix, conflict.describe()))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
@@ -205,18 +244,27 @@ def show_tree_status(wt,
                 # how rarely this ought to happen, it's OK and arguably
                 # slightly faster to do it here (ala conflicts above)
                 if short:
-                    prefix = 'X  '
+                    prefix = "X  "
                 else:
-                    prefix = ' '
+                    prefix = " "
                 to_file.write("{} {}\n".format(prefix, nonexistent))
-            if (new_is_working_tree and show_pending):
+            if new_is_working_tree and show_pending:
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
-            for hook in hooks['post_status']:
-                hook(StatusHookParams(
-                    old, new, to_file, versioned, show_ids, short, verbose,
-                    specific_files=specific_files))
+            for hook in hooks["post_status"]:
+                hook(
+                    StatusHookParams(
+                        old,
+                        new,
+                        to_file,
+                        versioned,
+                        show_ids,
+                        short,
+                        verbose,
+                        specific_files=specific_files,
+                    )
+                )
 
 
 def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
@@ -239,8 +287,9 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
             parent_graph[revision_id] = []
         else:
             # Only include parents which are in this sub-graph
-            parent_graph[revision_id] = [p for p in parent_map[revision_id]
-                                         if p in revision_ids]
+            parent_graph[revision_id] = [
+                p for p in parent_map[revision_id] if p in revision_ids
+            ]
     sorter = tsort.MergeSorter(parent_graph, tip_revision)
     return sorter.iter_topo_order()
 
@@ -256,11 +305,11 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         # we need one extra space for terminals that wrap on last char
         term_width = term_width - 1
     if short:
-        first_prefix = 'P   '
-        sub_prefix = 'P.   '
+        first_prefix = "P   "
+        sub_prefix = "P.   "
     else:
-        first_prefix = '  '
-        sub_prefix = '    '
+        first_prefix = "  "
+        sub_prefix = "    "
 
     def show_log_message(rev, prefix):
         if term_width is None:
@@ -268,17 +317,16 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         else:
             width = term_width - len(prefix)
         log_message = log_formatter.log_string(None, rev, width, prefix=prefix)
-        to_file.write(log_message + '\n')
+        to_file.write(log_message + "\n")
 
     pending = parents[1:]
     branch = new.branch
     last_revision = parents[0]
     if not short:
         if verbose:
-            to_file.write('pending merges:\n')
+            to_file.write("pending merges:\n")
         else:
-            to_file.write('pending merge tips:'
-                          ' (use -v to see all merge revisions)\n')
+            to_file.write("pending merge tips: (use -v to see all merge revisions)\n")
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -287,8 +335,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             rev = branch.repository.get_revision(merge)
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
-            to_file.write(first_prefix + '(ghost) ' +
-                          merge.decode('utf-8') + '\n')
+            to_file.write(first_prefix + "(ghost) " + merge.decode("utf-8") + "\n")
             other_revisions.append(merge)
             continue
 
@@ -307,18 +354,22 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         revisions = dict(branch.repository.iter_revisions(merge_extra))
 
         # Display the revisions brought in by this merge.
-        rev_id_iterator = _get_sorted_revisions(merge, merge_extra,
-                                                branch.repository.get_parent_map(merge_extra))
+        rev_id_iterator = _get_sorted_revisions(
+            merge, merge_extra, branch.repository.get_parent_map(merge_extra)
+        )
         # Skip the first node
         num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
-            raise AssertionError('Somehow we misunderstood how'
-                                 ' iter_topo_order works %s != %s' % (first, merge))
+            raise AssertionError(
+                "Somehow we misunderstood how"
+                " iter_topo_order works %s != %s" % (first, merge)
+            )
         for num, sub_merge, depth, eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
-                to_file.write(sub_prefix + '(ghost) ' +
-                              sub_merge.decode('utf-8') + '\n')
+                to_file.write(
+                    sub_prefix + "(ghost) " + sub_merge.decode("utf-8") + "\n"
+                )
                 continue
             show_log_message(revisions[sub_merge], sub_prefix)
 
@@ -365,23 +416,25 @@ class StatusHooks(_mod_hooks.Hooks):
         """
         _mod_hooks.Hooks.__init__(self, "breezy.status", "hooks")
         self.add_hook(
-            'post_status',
+            "post_status",
             "Called with argument StatusHookParams after Breezy has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3))
+            (2, 3),
+        )
         self.add_hook(
-            'pre_status',
+            "pre_status",
             "Called with argument StatusHookParams before Breezy "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3))
+            (2, 3),
+        )
 
 
 class StatusHookParams:
@@ -396,8 +449,17 @@ class StatusHookParams:
     :ivar verbose: Verbose flag.
     """
 
-    def __init__(self, old_tree, new_tree, to_file, versioned, show_ids,
-                 short, verbose, specific_files=None):
+    def __init__(
+        self,
+        old_tree,
+        new_tree,
+        to_file,
+        versioned,
+        show_ids,
+        short,
+        verbose,
+        specific_files=None,
+    ):
         """Create a group of post_status hook parameters.
 
         :param old_tree: Start tree (basis tree) for comparison.
@@ -425,9 +487,16 @@ class StatusHookParams:
 
     def __repr__(self):
         return "<{}({}, {}, {}, {}, {}, {}, {}, {})>".format(
-            self.__class__.__name__, self.old_tree, self.new_tree,
-            self.to_file, self.versioned, self.show_ids, self.short,
-            self.verbose, self.specific_files)
+            self.__class__.__name__,
+            self.old_tree,
+            self.new_tree,
+            self.to_file,
+            self.versioned,
+            self.show_ids,
+            self.short,
+            self.verbose,
+            self.specific_files,
+        )
 
 
 def _show_shelve_summary(params):
@@ -439,18 +508,18 @@ def _show_shelve_summary(params):
     # no file arguments have been passed
     if params.specific_files:
         return
-    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
+    get_shelf_manager = getattr(params.new_tree, "get_shelf_manager", None)
     if get_shelf_manager is None:
         return
     try:
         manager = get_shelf_manager()
     except ShelvingUnsupported:
-        mutter('shelving not supported by tree, not displaying shelves.')
+        mutter("shelving not supported by tree, not displaying shelves.")
     else:
         shelves = manager.active_shelves()
         if shelves:
-            singular = '%d shelf exists. '
-            plural = '%d shelves exist. '
+            singular = "%d shelf exists. "
+            plural = "%d shelves exist. "
             if len(shelves) == 1:
                 fmt = singular
             else:
@@ -462,5 +531,4 @@ def _show_shelve_summary(params):
 hooks = StatusHooks()
 
 
-hooks.install_named_hook('post_status', _show_shelve_summary,
-                         'brz status')
+hooks.install_named_hook("post_status", _show_shelve_summary, "brz status")

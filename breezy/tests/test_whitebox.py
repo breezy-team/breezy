@@ -18,16 +18,12 @@ import os
 import tempfile
 
 import breezy
-from .. import (
-    errors,
-    osutils,
-    tests,
-    )
-from ..osutils import relpath, pathjoin, abspath, realpath
+
+from .. import errors, osutils, tests
+from ..osutils import abspath, pathjoin, realpath, relpath
 
 
 class MoreTests(tests.TestCaseWithTransport):
-
     def test_relpath(self):
         """test for branch path lookups
 
@@ -44,24 +40,23 @@ class MoreTests(tests.TestCaseWithTransport):
             return relpath(dtmp, p)
 
         # check paths inside dtmp while standing outside it
-        self.assertEqual('foo', rp(pathjoin(dtmp, 'foo')))
+        self.assertEqual("foo", rp(pathjoin(dtmp, "foo")))
 
         # root = nothing
-        self.assertEqual('', rp(dtmp))
-        self.assertRaises(errors.PathNotChild, rp, '/etc')
+        self.assertEqual("", rp(dtmp))
+        self.assertRaises(errors.PathNotChild, rp, "/etc")
 
         # now some near-miss operations -- note that
         # os.path.commonprefix gets these wrong!
-        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip('\\/') + '2')
-        self.assertRaises(errors.PathNotChild, rp,
-                          dtmp.rstrip('\\/') + '2/foo')
+        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2")
+        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2/foo")
 
         # now operations based on relpath of files in current
         # directory, or nearby
 
         os.chdir(dtmp)
-        self.assertEqual('foo/bar/quux', rp('foo/bar/quux'))
-        self.assertEqual('foo', rp('foo'))
-        self.assertEqual('foo', rp('./foo'))
-        self.assertEqual('foo', rp(abspath('foo')))
-        self.assertRaises(errors.PathNotChild, rp, '../foo')
+        self.assertEqual("foo/bar/quux", rp("foo/bar/quux"))
+        self.assertEqual("foo", rp("foo"))
+        self.assertEqual("foo", rp("./foo"))
+        self.assertEqual("foo", rp(abspath("foo")))
+        self.assertRaises(errors.PathNotChild, rp, "../foo")

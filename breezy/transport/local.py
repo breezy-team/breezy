@@ -21,19 +21,17 @@ This is a fairly thin wrapper on regular file IO.
 
 import errno
 import os
-from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
+from stat import S_IMODE, S_ISDIR, ST_MODE
 
-from .. import (
-    osutils,
-    urlutils,
-    )
+from .. import osutils, transport, urlutils
 
-from .. import transport
-
-
-_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
-_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+_append_flags = (
+    os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+)
+_put_non_atomic_flags = (
+    os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+)
 
 
 class LocalTransport(transport.Transport):
@@ -41,23 +39,23 @@ class LocalTransport(transport.Transport):
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        if not base.startswith('file://'):
+        if not base.startswith("file://"):
             raise AssertionError("not a file:// url: %r" % base)
-        if base[-1] != '/':
-            base = base + '/'
+        if base[-1] != "/":
+            base = base + "/"
 
         # Special case : windows has no "root", but does have
         # multiple lettered drives inside it. #240910
-        if sys.platform == 'win32' and base == 'file:///':
-            base = ''
-            self._local_base = ''
+        if sys.platform == "win32" and base == "file:///":
+            base = ""
+            self._local_base = ""
             super().__init__(base)
             return
 
         super().__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-        if self._local_base[-1] != '/':
-            self._local_base = self._local_base + '/'
+        if self._local_base[-1] != "/":
+            self._local_base = self._local_base + "/"
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
@@ -68,7 +66,7 @@ class LocalTransport(transport.Transport):
             return LocalTransport(self.base)
         else:
             abspath = self.abspath(offset)
-            if abspath == 'file://':
+            if abspath == "file://":
                 # fix upwalk for UNC path
                 # when clone from //HOST/path updir recursively
                 # we should stop at least at //HOST part
@@ -82,7 +80,7 @@ class LocalTransport(transport.Transport):
          - relative_reference does not contain '..'
          - relative_reference is url escaped.
         """
-        if relative_reference in ('.', ''):
+        if relative_reference in (".", ""):
             # _local_base normally has a trailing slash; strip it so that stat
             # on a transport pointing to a symlink reads the link not the
             # referent but be careful of / and c:\
@@ -94,16 +92,16 @@ class LocalTransport(transport.Transport):
         # TODO: url escape the result. RBC 20060523.
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
-        path = osutils.normpath(osutils.pathjoin(
-            self._local_base, urlutils.unescape(relpath)))
+        path = osutils.normpath(
+            osutils.pathjoin(self._local_base, urlutils.unescape(relpath))
+        )
         # on windows, our _local_base may or may not have a drive specified
         # (ie, it may be "/" or "c:/foo").
         # If 'relpath' is '/' we *always* get back an abspath without
         # the drive letter - but if our transport already has a drive letter,
         # we want our abspaths to have a drive letter too - so handle that
         # here.
-        if (sys.platform == "win32" and self._local_base[1:2] == ":"
-                and path == '/'):
+        if sys.platform == "win32" and self._local_base[1:2] == ":" and path == "/":
             path = self._local_base[:3]
 
         return urlutils.local_path_to_url(path)
@@ -125,10 +123,9 @@ class LocalTransport(transport.Transport):
         return urlutils.local_path_from_url(absurl)
 
     def relpath(self, abspath):
-        """Return the local path portion from a given absolute path.
-        """
+        """Return the local path portion from a given absolute path."""
         if abspath is None:
-            abspath = '.'
+            abspath = "."
 
         return urlutils.file_relpath(self.base, abspath)
 
@@ -145,7 +142,7 @@ class LocalTransport(transport.Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return open(path, 'rb')
+            return open(path, "rb")
         except OSError as e:
             if e.errno == errno.EISDIR:
                 return transport.LateReadError(relpath)
@@ -165,7 +162,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, "wb", new_mode=mode)
         except OSError as e:
             self._translate_error(e, path)
         try:
@@ -182,14 +179,14 @@ class LocalTransport(transport.Transport):
         :param raw_bytes:   String
         """
         from ..atomicfile import AtomicFile
+
         if not isinstance(raw_bytes, bytes):
-            raise TypeError(
-                'raw_bytes must be bytes, not %s' % type(raw_bytes))
+            raise TypeError("raw_bytes must be bytes, not %s" % type(raw_bytes))
         path = relpath
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, "wb", new_mode=mode)
         except OSError as e:
             self._translate_error(e, path)
         try:
@@ -199,10 +196,9 @@ class LocalTransport(transport.Transport):
         finally:
             fp.close()
 
-    def _put_non_atomic_helper(self, relpath, writer,
-                               mode=None,
-                               create_parent_dir=False,
-                               dir_mode=None):
+    def _put_non_atomic_helper(
+        self, relpath, writer, mode=None, create_parent_dir=False, dir_mode=None
+    ):
         """Common functionality information for the put_*_non_atomic.
 
         This tracks all the create_parent_dir stuff.
@@ -225,8 +221,7 @@ class LocalTransport(transport.Transport):
         except OSError as e:
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
-            if (not create_parent_dir
-                    or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
+            if not create_parent_dir or e.errno not in (errno.ENOENT, errno.ENOTDIR):
                 self._translate_error(e, relpath)
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:
@@ -248,9 +243,9 @@ class LocalTransport(transport.Transport):
         finally:
             os.close(fd)
 
-    def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False,
-                            dir_mode=None):
+    def put_file_non_atomic(
+        self, relpath, f, mode=None, create_parent_dir=False, dir_mode=None
+    ):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -266,30 +261,47 @@ class LocalTransport(transport.Transport):
                         the parent directory does not exist, go ahead and
                         create it, and then try again.
         """
+
         def writer(fd):
             self._pump_to_fd(f, fd)
-        self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir,
-                                    dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
-                             create_parent_dir=False, dir_mode=None):
+        self._put_non_atomic_helper(
+            relpath,
+            writer,
+            mode=mode,
+            create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode,
+        )
+
+    def put_bytes_non_atomic(
+        self,
+        relpath: str,
+        raw_bytes: bytes,
+        mode=None,
+        create_parent_dir=False,
+        dir_mode=None,
+    ):
         def writer(fd):
             if raw_bytes:
                 os.write(fd, raw_bytes)
-        self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir,
-                                    dir_mode=dir_mode)
+
+        self._put_non_atomic_helper(
+            relpath,
+            writer,
+            mode=mode,
+            create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode,
+        )
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
-        queue = list(self.list_dir('.'))
+        queue = list(self.list_dir("."))
         while queue:
             relpath = queue.pop(0)
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):
-                    queue.insert(i, relpath + '/' + basename)
+                    queue.insert(i, relpath + "/" + basename)
             else:
                 yield relpath
 
@@ -318,7 +330,7 @@ class LocalTransport(transport.Transport):
         """See Transport.open_write_stream."""
         abspath = self._abspath(relpath)
         try:
-            handle = open(abspath, 'wb')
+            handle = open(abspath, "wb")
         except OSError as e:
             self._translate_error(e, abspath)
         handle.truncate()
@@ -384,6 +396,7 @@ class LocalTransport(transport.Transport):
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
         import shutil
+
         try:
             shutil.copy(path_from, path_to)
         except OSError as e:
@@ -435,13 +448,14 @@ class LocalTransport(transport.Transport):
         """
         if isinstance(other, LocalTransport):
             import shutil
+
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(
             total = self._get_total(relpaths)
             count = 0
             for path in relpaths:
-                self._update_pb(pb, 'copy-to', count, total)
+                self._update_pb(pb, "copy-to", count, total)
                 try:
                     mypath = self._abspath(path)
                     otherpath = other._abspath(path)
@@ -472,8 +486,7 @@ class LocalTransport(transport.Transport):
         return [urlutils.escape(entry) for entry in entries]
 
     def stat(self, relpath):
-        """Return the stat information for a file.
-        """
+        """Return the stat information for a file."""
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -486,6 +499,7 @@ class LocalTransport(transport.Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         from breezy.lock import ReadLock
+
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -500,6 +514,7 @@ class LocalTransport(transport.Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         from breezy.lock import WriteLock
+
         return WriteLock(self._abspath(relpath))
 
     def rmdir(self, relpath):
@@ -514,8 +529,7 @@ class LocalTransport(transport.Transport):
     def symlink(self, source, link_name):
         """See Transport.symlink."""
         abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
-        source_rel = urlutils.file_relpath(
-            abs_link_dirpath, self.abspath(source))
+        source_rel = urlutils.file_relpath(abs_link_dirpath, self.abspath(source))
 
         try:
             os.symlink(source_rel, self._abspath(link_name))
@@ -530,6 +544,7 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, relpath)
 
     if osutils.hardlinks_good():
+
         def hardlink(self, source, link_name):
             """See Transport.link."""
             try:
@@ -538,7 +553,7 @@ class LocalTransport(transport.Transport):
                 self._translate_error(e, source)
 
     def _can_roundtrip_unix_modebits(self):
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             # anyone else?
             return False
         else:
@@ -549,14 +564,15 @@ class EmulatedWin32LocalTransport(LocalTransport):
     """Special transport for testing Win32 [UNC] paths on non-windows"""
 
     def __init__(self, base):
-        if base[-1] != '/':
-            base = base + '/'
+        if base[-1] != "/":
+            base = base + "/"
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        path = osutils._win32_normpath(osutils.pathjoin(
-            self._local_base, urlutils.unescape(relpath)))
+        path = osutils._win32_normpath(
+            osutils.pathjoin(self._local_base, urlutils.unescape(relpath))
+        )
         return urlutils._win32_local_path_to_url(path)
 
     def clone(self, offset=None):
@@ -568,7 +584,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
             return EmulatedWin32LocalTransport(self.base)
         else:
             abspath = self.abspath(offset)
-            if abspath == 'file://':
+            if abspath == "file://":
                 # fix upwalk for UNC path
                 # when clone from //HOST/path updir recursively
                 # we should stop at least at //HOST part
@@ -579,4 +595,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
-    return [(LocalTransport, test_server.LocalURLServer), ]
+
+    return [
+        (LocalTransport, test_server.LocalURLServer),
+    ]

@@ -15,32 +15,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from breezy import (
-    branch,
-    builtins,
-    errors,
-    lock,
-    )
-from breezy.tests import (
-    transport_util,
-    TestCaseInTempDir,
-    )
+
+from breezy import branch, builtins, errors, lock
+from breezy.tests import TestCaseInTempDir, transport_util
 
 
 class TestRevert(TestCaseInTempDir):
-
     def setUp(self):
         super().setUp()
 
     def test_revert_tree_write_lock_and_branch_read_lock(self):
-
         # install lock hooks to find out about cmd_revert's locking actions
         locks_acquired = []
         locks_released = []
-        lock.Lock.hooks.install_named_hook('lock_acquired',
-                                           locks_acquired.append, None)
-        lock.Lock.hooks.install_named_hook('lock_released',
-                                           locks_released.append, None)
+        lock.Lock.hooks.install_named_hook("lock_acquired", locks_acquired.append, None)
+        lock.Lock.hooks.install_named_hook("lock_released", locks_released.append, None)
 
         # execute the revert command (There is nothing to actually revert,
         # but locks are acquired either way.)

@@ -51,39 +51,46 @@ merge the ``.po`` files again with::
 
 """
 
-from ... import (
-    config,
-    # Since we are a built-in plugin we share the breezy version
-    version_info,  # noqa: F401
-    )
+from ... import config  # Since we are a built-in plugin we share the breezy version
+from ... import version_info  # noqa: F401
 from ...hooks import install_lazy_named_hook
 
 
 def register_lazy_option(key, member):
     config.option_registry.register_lazy(
-        key, 'breezy.plugins.po_merge.po_merge', member)
+        key, "breezy.plugins.po_merge.po_merge", member
+    )
 
 
-register_lazy_option('po_merge.command', 'command_option')
-register_lazy_option('po_merge.po_dirs', 'po_dirs_option')
-register_lazy_option('po_merge.po_glob', 'po_glob_option')
-register_lazy_option('po_merge.pot_glob', 'pot_glob_option')
+register_lazy_option("po_merge.command", "command_option")
+register_lazy_option("po_merge.po_dirs", "po_dirs_option")
+register_lazy_option("po_merge.po_glob", "po_glob_option")
+register_lazy_option("po_merge.pot_glob", "pot_glob_option")
 
 
 def po_merge_hook(merger):
     """Merger.merge_file_content hook for po files."""
     from .po_merge import PoMerger
+
     return PoMerger(merger)
 
 
-install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-                        po_merge_hook, ".po file merge")
+install_lazy_named_hook(
+    "breezy.merge",
+    "Merger.hooks",
+    "merge_file_content",
+    po_merge_hook,
+    ".po file merge",
+)
 
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
+        "tests",
+    ]
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames(
+            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
+        )
+    )
     return basic_tests

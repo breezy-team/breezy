@@ -16,8 +16,7 @@
 
 """Transport implementation that disables listing to simulate HTTP cheaply."""
 
-from ..transport import Transport
-from ..transport import decorator
+from ..transport import Transport, decorator
 
 
 class UnlistableTransportDecorator(decorator.TransportDecorator):
@@ -26,7 +25,7 @@ class UnlistableTransportDecorator(decorator.TransportDecorator):
     @classmethod
     def _get_url_prefix(self):
         """Unlistable transports are identified by 'unlistable+'"""
-        return 'unlistable+'
+        return "unlistable+"
 
     def iter_files_recursive(self):
         Transport.iter_files_recursive(self)
@@ -41,4 +40,7 @@ class UnlistableTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
-    return [(UnlistableTransportDecorator, test_server.UnlistableServer), ]
+
+    return [
+        (UnlistableTransportDecorator, test_server.UnlistableServer),
+    ]

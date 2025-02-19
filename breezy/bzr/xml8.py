@@ -16,11 +16,11 @@
 
 from typing import List, Optional
 
-from .. import (
-    lazy_regex,
-    revision as _mod_revision,
-    trace,
-    )
+from .. import lazy_regex
+from .. import revision as _mod_revision
+from .. import trace
+from ..errors import BzrError
+from ..revision import Revision
 from .xml_serializer import (
     Element,
     SubElement,
@@ -31,17 +31,14 @@ from .xml_serializer import (
     serialize_inventory_flat,
     unpack_inventory_entry,
     unpack_inventory_flat,
-    )
-from ..revision import Revision
-from ..errors import BzrError
-
+)
 
 _xml_unescape_map = {
-    b'apos': b"'",
-    b'quot': b'"',
-    b'amp': b'&',
-    b'lt': b'<',
-    b'gt': b'>'
+    b"apos": b"'",
+    b"quot": b'"',
+    b"amp": b"&",
+    b"lt": b"<",
+    b"gt": b">",
 }
 
 
@@ -50,12 +47,12 @@ def _unescaper(match, _map=_xml_unescape_map):
     try:
         return _map[code]
     except KeyError:
-        if not code.startswith(b'#'):
+        if not code.startswith(b"#"):
             raise
-        return chr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode("utf8")
 
 
-_unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile(b"\\&([^;]*);")
 
 
 def _unescape_xml(data):
@@ -76,16 +73,15 @@ class Serializer_v8(XMLSerializer):
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
-    supported_kinds = {'file', 'directory', 'symlink'}
-    format_num = b'8'
+    supported_kinds = {"file", "directory", "symlink"}
+    format_num = b"8"
     revision_format_num: Optional[bytes] = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
-        b'file_id="(?P<file_id>[^"]+)"'
-        b'.* revision="(?P<revision_id>[^"]+)"'
-        )
+        b'file_id="(?P<file_id>[^"]+)".* revision="(?P<revision_id>[^"]+)"'
+    )
 
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
@@ -122,8 +118,11 @@ class Serializer_v8(XMLSerializer):
         recommended_min_cache_size = inv_size * 1.5
         if entry_cache.cache_size() < recommended_min_cache_size:
             recommended_cache_size = inv_size * 2
-            trace.mutter('Resizing the inventory entry cache from %d to %d',
-                         entry_cache.cache_size(), recommended_cache_size)
+            trace.mutter(
+                "Resizing the inventory entry cache from %d to %d",
+                entry_cache.cache_size(),
+                recommended_cache_size,
+            )
             entry_cache.resize(recommended_cache_size)
 
     def write_inventory_to_lines(self, inv):
@@ -146,8 +145,9 @@ class Serializer_v8(XMLSerializer):
         output = []
         append = output.append
         self._append_inventory_root(append, inv)
-        serialize_inventory_flat(inv, append,
-                                 self.root_id, self.supported_kinds, working)
+        serialize_inventory_flat(
+            inv, append, self.root_id, self.supported_kinds, working
+        )
         if f is not None:
             f.writelines(output)
         # Just to keep the cache from growing without bounds
@@ -158,16 +158,20 @@ class Serializer_v8(XMLSerializer):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.revision_id is not None:
-            revid1 = b''.join(
-                [b' revision_id="', encode_and_escape(inv.revision_id), b'"'])
+            revid1 = b"".join(
+                [b' revision_id="', encode_and_escape(inv.revision_id), b'"']
+            )
         else:
             revid1 = b""
-        append(b'<inventory format="%s"%s>\n' % (
-            self.format_num, revid1))
-        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
-            encode_and_escape(inv.root.file_id),
-            encode_and_escape(inv.root.name),
-            encode_and_escape(inv.root.revision)))
+        append(b'<inventory format="%s"%s>\n' % (self.format_num, revid1))
+        append(
+            b'<directory file_id="%s" name="%s" revision="%s" />\n'
+            % (
+                encode_and_escape(inv.root.file_id),
+                encode_and_escape(inv.root.name),
+                encode_and_escape(inv.root.revision),
+            )
+        )
 
     def write_revision_to_lines(self, rev):
         """Revision object -> xml tree"""
@@ -175,100 +179,113 @@ class Serializer_v8(XMLSerializer):
         # utf-8 strings. So that cElementTree can handle properly escaping
         # them.
         lines = []
-        el = (b'<revision committer="%s" format="%s" '
-              b'inventory_sha1="%s" revision_id="%s" '
-              b'timestamp="%.3f"' % (
-                  encode_and_escape(rev.committer),
-                  self.revision_format_num or self.format_num,
-                  rev.inventory_sha1,
-                  encode_and_escape(rev.revision_id.decode('utf-8')),
-                  rev.timestamp))
+        el = (
+            b'<revision committer="%s" format="%s" '
+            b'inventory_sha1="%s" revision_id="%s" '
+            b'timestamp="%.3f"'
+            % (
+                encode_and_escape(rev.committer),
+                self.revision_format_num or self.format_num,
+                rev.inventory_sha1,
+                encode_and_escape(rev.revision_id.decode("utf-8")),
+                rev.timestamp,
+            )
+        )
         if rev.timezone is not None:
-            el += b' timezone="%s"' % str(rev.timezone).encode('ascii')
-        lines.append(el + b'>\n')
+            el += b' timezone="%s"' % str(rev.timezone).encode("ascii")
+        lines.append(el + b">\n")
         message = encode_and_escape(escape_invalid_chars(rev.message)[0])
-        lines.extend((b'<message>' + message + b'</message>\n').splitlines(True))
+        lines.extend((b"<message>" + message + b"</message>\n").splitlines(True))
         if rev.parent_ids:
-            lines.append(b'<parents>\n')
+            lines.append(b"<parents>\n")
             for parent_id in rev.parent_ids:
                 _mod_revision.check_not_reserved_id(parent_id)
                 lines.append(
                     b'<revision_ref revision_id="%s" />\n'
-                    % encode_and_escape(parent_id.decode('utf-8')))
-            lines.append(b'</parents>\n')
+                    % encode_and_escape(parent_id.decode("utf-8"))
+                )
+            lines.append(b"</parents>\n")
         if rev.properties:
-            preamble = b'<properties>'
+            preamble = b"<properties>"
             for prop_name, prop_value in sorted(rev.properties.items()):
                 if prop_value:
-                    proplines = (preamble + b'<property name="%s">%s</property>\n' % (
-                        encode_and_escape(prop_name),
-                        encode_and_escape(escape_invalid_chars(prop_value)[0]))).splitlines(True)
+                    proplines = (
+                        preamble
+                        + b'<property name="%s">%s</property>\n'
+                        % (
+                            encode_and_escape(prop_name),
+                            encode_and_escape(escape_invalid_chars(prop_value)[0]),
+                        )
+                    ).splitlines(True)
                 else:
-                    proplines = [preamble + b'<property name="%s" />\n' % (encode_and_escape(prop_name), )]
-                preamble = b''
+                    proplines = [
+                        preamble
+                        + b'<property name="%s" />\n' % (encode_and_escape(prop_name),)
+                    ]
+                preamble = b""
                 lines.extend(proplines)
-            lines.append(b'</properties>\n')
-        lines.append(b'</revision>\n')
+            lines.append(b"</properties>\n")
+        lines.append(b"</revision>\n")
         return lines
 
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         # This is here because it's overridden by xml7
-        return unpack_inventory_entry(elt, entry_cache,
-                                      return_from_cache)
+        return unpack_inventory_entry(elt, entry_cache, return_from_cache)
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
-                          return_from_cache=False):
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
         """Construct from XML Element"""
-        inv = unpack_inventory_flat(elt, self.format_num, self._unpack_entry,
-                                    entry_cache, return_from_cache)
+        inv = unpack_inventory_flat(
+            elt, self.format_num, self._unpack_entry, entry_cache, return_from_cache
+        )
         self._check_cache_size(len(inv), entry_cache)
         return inv
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        format = elt.get('format')
+        format = elt.get("format")
         format_num = self.format_num
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         if format is not None:
             if format.encode() != format_num:
-                raise BzrError("invalid format version %r on revision"
-                               % format)
+                raise BzrError("invalid format version %r on revision" % format)
         get_cached = get_utf8_or_ascii
-        rev = Revision(committer=elt.get('committer'),
-                       timestamp=float(elt.get('timestamp')),
-                       revision_id=get_cached(elt.get('revision_id')),
-                       inventory_sha1=elt.get('inventory_sha1').encode('ascii')
-                       )
-        parents = elt.find('parents')
+        rev = Revision(
+            committer=elt.get("committer"),
+            timestamp=float(elt.get("timestamp")),
+            revision_id=get_cached(elt.get("revision_id")),
+            inventory_sha1=elt.get("inventory_sha1").encode("ascii"),
+        )
+        parents = elt.find("parents")
         if parents is not None:
             for p in parents:
-                rev.parent_ids.append(get_cached(p.get('revision_id')))
+                rev.parent_ids.append(get_cached(p.get("revision_id")))
         self._unpack_revision_properties(elt, rev)
-        v = elt.get('timezone')
+        v = elt.get("timezone")
         if v is None:
             rev.timezone = 0
         else:
             rev.timezone = int(v)
-        rev.message = elt.findtext('message')  # text of <message>
+        rev.message = elt.findtext("message")  # text of <message>
         return rev
 
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
-        props_elt = elt.find('properties')
+        props_elt = elt.find("properties")
         if props_elt is None:
             return
         for prop_elt in props_elt:
-            if prop_elt.tag != 'property':
-                raise AssertionError(
-                    "bad tag under properties list: %r" % prop_elt.tag)
-            name = prop_elt.get('name')
+            if prop_elt.tag != "property":
+                raise AssertionError("bad tag under properties list: %r" % prop_elt.tag)
+            name = prop_elt.get("name")
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads
             # that back as None, convert it back to '', so that all
             # properties have string values
             if value is None:
-                value = ''
+                value = ""
             if name in rev.properties:
                 raise AssertionError("repeated property %r" % name)
             rev.properties[name] = value
@@ -289,7 +306,8 @@ class Serializer_v8(XMLSerializer):
             raise AssertionError(
                 "_find_text_key_references only "
                 "supported for branches which store inventory as unnested xml"
-                ", not on %r" % self)
+                ", not on %r" % self
+            )
         result = {}
 
         # this code needs to read every new line in every inventory for the
@@ -317,7 +335,7 @@ class Serializer_v8(XMLSerializer):
                 continue
             # One call to match.group() returning multiple items is quite a
             # bit faster than 2 calls to match.group() each returning 1
-            file_id, revision_id = match.group('file_id', 'revision_id')
+            file_id, revision_id = match.group("file_id", "revision_id")
 
             # Inlining the cache lookups helps a lot when you make 170,000
             # lines and 350k ids, versus 8.4 unique ids.

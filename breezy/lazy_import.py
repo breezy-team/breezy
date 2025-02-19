@@ -45,9 +45,7 @@ from .errors import BzrError, InternalBzrError
 
 
 class ImportNameCollision(InternalBzrError):
-
-    _fmt = ("Tried to import an object to the same name as"
-            " an existing object. %(name)s")
+    _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
 
     def __init__(self, name):
         BzrError.__init__(self)
@@ -55,22 +53,19 @@ class ImportNameCollision(InternalBzrError):
 
 
 class IllegalUseOfScopeReplacer(InternalBzrError):
-
-    _fmt = ("ScopeReplacer object %(name)r was used incorrectly:"
-            " %(msg)s%(extra)s")
+    _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
 
     def __init__(self, name, msg, extra=None):
         BzrError.__init__(self)
         self.name = name
         self.msg = msg
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra = ": " + str(extra)
         else:
-            self.extra = ''
+            self.extra = ""
 
 
 class InvalidImportLine(InternalBzrError):
-
     _fmt = "Not a valid import statement: %(msg)\n%(text)s"
 
     def __init__(self, text, msg):
@@ -86,7 +81,7 @@ class ScopeReplacer:
     needed.
     """
 
-    __slots__ = ('_scope', '_factory', '_name', '_real_obj')
+    __slots__ = ("_scope", "_factory", "_name", "_real_obj")
 
     # If you to do x = y, setting this to False will disallow access to
     # members from the second variable (i.e. x). This should normally
@@ -103,53 +98,56 @@ class ScopeReplacer:
             It will be passed (self, scope, name)
         :param name: The variable name in the given scope.
         """
-        object.__setattr__(self, '_scope', scope)
-        object.__setattr__(self, '_factory', factory)
-        object.__setattr__(self, '_name', name)
-        object.__setattr__(self, '_real_obj', None)
+        object.__setattr__(self, "_scope", scope)
+        object.__setattr__(self, "_factory", factory)
+        object.__setattr__(self, "_name", name)
+        object.__setattr__(self, "_real_obj", None)
         scope[name] = self
 
     def _resolve(self):
         """Return the real object for which this is a placeholder"""
-        name = object.__getattribute__(self, '_name')
-        real_obj = object.__getattribute__(self, '_real_obj')
+        name = object.__getattribute__(self, "_name")
+        real_obj = object.__getattribute__(self, "_real_obj")
         if real_obj is None:
             # No obj generated previously, so generate from factory and scope.
-            factory = object.__getattribute__(self, '_factory')
-            scope = object.__getattribute__(self, '_scope')
+            factory = object.__getattribute__(self, "_factory")
+            scope = object.__getattribute__(self, "_scope")
             obj = factory(self, scope, name)
             if obj is self:
                 raise IllegalUseOfScopeReplacer(
-                    name, msg="Object tried"
-                    " to replace itself, check it's not using its own scope.")
+                    name,
+                    msg="Object tried"
+                    " to replace itself, check it's not using its own scope.",
+                )
 
             # Check if another thread has jumped in while obj was generated.
-            real_obj = object.__getattribute__(self, '_real_obj')
+            real_obj = object.__getattribute__(self, "_real_obj")
             if real_obj is None:
                 # Still no prexisting obj, so go ahead and assign to scope and
                 # return. There is still a small window here where races will
                 # not be detected, but safest to avoid additional locking.
-                object.__setattr__(self, '_real_obj', obj)
+                object.__setattr__(self, "_real_obj", obj)
                 scope[name] = obj
                 return obj
 
         # Raise if proxying is disabled as obj has already been generated.
         if not ScopeReplacer._should_proxy:
             raise IllegalUseOfScopeReplacer(
-                name, msg="Object already replaced, did you assign it"
-                          " to another variable?")
+                name,
+                msg="Object already replaced, did you assign it to another variable?",
+            )
         return real_obj
 
     def __getattribute__(self, attr):
-        obj = object.__getattribute__(self, '_resolve')()
+        obj = object.__getattribute__(self, "_resolve")()
         return getattr(obj, attr)
 
     def __setattr__(self, attr, value):
-        obj = object.__getattribute__(self, '_resolve')()
+        obj = object.__getattribute__(self, "_resolve")()
         return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
-        obj = object.__getattribute__(self, '_resolve')()
+        obj = object.__getattribute__(self, "_resolve")()
         return obj(*args, **kwargs)
 
 
@@ -184,7 +182,7 @@ class ImportReplacer(ScopeReplacer):
     # We can't just use 'isinstance(obj, ImportReplacer)', because that
     # accesses .__class__, which goes through __getattribute__, and triggers
     # the replacement.
-    __slots__ = ('_import_replacer_children', '_member', '_module_path')
+    __slots__ = ("_import_replacer_children", "_member", "_module_path")
 
     def __init__(self, scope, name, module_path, member=None, children={}):
         """Upon request import 'module_path' as the name 'module_name'.
@@ -218,23 +216,22 @@ class ImportReplacer(ScopeReplacer):
             requests. On for 'name=bar' and one for 'name=baz'
         """
         if (member is not None) and children:
-            raise ValueError('Cannot supply both a member and children')
+            raise ValueError("Cannot supply both a member and children")
 
-        object.__setattr__(self, '_import_replacer_children', children)
-        object.__setattr__(self, '_member', member)
-        object.__setattr__(self, '_module_path', module_path)
+        object.__setattr__(self, "_import_replacer_children", children)
+        object.__setattr__(self, "_member", member)
+        object.__setattr__(self, "_module_path", module_path)
 
         # Indirecting through __class__ so that children can
         # override _import (especially our instrumented version)
-        cls = object.__getattribute__(self, '__class__')
-        ScopeReplacer.__init__(self, scope=scope, name=name,
-                               factory=cls._import)
+        cls = object.__getattribute__(self, "__class__")
+        ScopeReplacer.__init__(self, scope=scope, name=name, factory=cls._import)
 
     def _import(self, scope, name):
-        children = object.__getattribute__(self, '_import_replacer_children')
-        member = object.__getattribute__(self, '_member')
-        module_path = object.__getattribute__(self, '_module_path')
-        name = '.'.join(module_path)
+        children = object.__getattribute__(self, "_import_replacer_children")
+        member = object.__getattribute__(self, "_member")
+        module_path = object.__getattribute__(self, "_module_path")
+        name = ".".join(module_path)
         if member is not None:
             module = _builtin_import(name, scope, scope, [member], level=0)
             return getattr(module, member)
@@ -244,14 +241,17 @@ class ImportReplacer(ScopeReplacer):
                 module = getattr(module, path)
 
         # Prepare the children to be imported
-        for child_name, (child_path, child_member, grandchildren) in \
-                children.items():
+        for child_name, (child_path, child_member, grandchildren) in children.items():
             # Using self.__class__, so that children get children classes
             # instantiated. (This helps with instrumented tests)
-            cls = object.__getattribute__(self, '__class__')
-            cls(module.__dict__, name=child_name,
-                module_path=child_path, member=child_member,
-                children=grandchildren)
+            cls = object.__getattribute__(self, "__class__")
+            cls(
+                module.__dict__,
+                name=child_name,
+                module_path=child_path,
+                member=child_member,
+                children=grandchildren,
+            )
         return module
 
 
@@ -264,7 +264,7 @@ class ImportProcessor:
     #       For now, it should be supporting a superset of python import
     #       syntax which is all we really care about.
 
-    __slots__ = ['imports', '_lazy_import_class']
+    __slots__ = ["imports", "_lazy_import_class"]
 
     def __init__(self, lazy_import_class=None):
         self.imports = {}
@@ -285,19 +285,19 @@ class ImportProcessor:
     def _convert_imports(self, scope):
         # Now convert the map into a set of imports
         for name, info in self.imports.items():
-            self._lazy_import_class(scope, name=name, module_path=info[0],
-                                    member=info[1], children=info[2])
+            self._lazy_import_class(
+                scope, name=name, module_path=info[0], member=info[1], children=info[2]
+            )
 
     def _build_map(self, text):
         """Take a string describing imports, and build up the internal map"""
         for line in self._canonicalize_import_text(text):
-            if line.startswith('import '):
+            if line.startswith("import "):
                 self._convert_import_str(line)
-            elif line.startswith('from '):
+            elif line.startswith("from "):
                 self._convert_from_str(line)
             else:
-                raise InvalidImportLine(
-                    line, "doesn't start with 'import ' or 'from '")
+                raise InvalidImportLine(line, "doesn't start with 'import ' or 'from '")
 
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
@@ -306,21 +306,21 @@ class ImportProcessor:
 
         :param import_str: The import string to process
         """
-        if not import_str.startswith('import '):
-            raise ValueError('bad import string {!r}'.format(import_str))
-        import_str = import_str[len('import '):]
+        if not import_str.startswith("import "):
+            raise ValueError("bad import string {!r}".format(import_str))
+        import_str = import_str[len("import ") :]
 
-        for path in import_str.split(','):
+        for path in import_str.split(","):
             path = path.strip()
             if not path:
                 continue
-            as_hunks = path.split(' as ')
+            as_hunks = path.split(" as ")
             if len(as_hunks) == 2:
                 # We have 'as' so this is a different style of import
                 # 'import foo.bar.baz as bing' creates a local variable
                 # named 'bing' which points to 'foo.bar.baz'
                 name = as_hunks[1].strip()
-                module_path = as_hunks[0].strip().split('.')
+                module_path = as_hunks[0].strip().split(".")
                 if name in self.imports:
                     raise ImportNameCollision(name)
                 if not module_path[0]:
@@ -329,7 +329,7 @@ class ImportProcessor:
                 self.imports[name] = (module_path, None, {})
             else:
                 # Now we need to handle
-                module_path = path.split('.')
+                module_path = path.split(".")
                 name = module_path[0]
                 if not name:
                     raise ImportError(path)
@@ -356,22 +356,22 @@ class ImportProcessor:
 
         :param from_str: The import string to process
         """
-        if not from_str.startswith('from '):
-            raise ValueError('bad from/import %r' % from_str)
-        from_str = from_str[len('from '):]
+        if not from_str.startswith("from "):
+            raise ValueError("bad from/import %r" % from_str)
+        from_str = from_str[len("from ") :]
 
-        from_module, import_list = from_str.split(' import ')
+        from_module, import_list = from_str.split(" import ")
 
-        from_module_path = from_module.split('.')
+        from_module_path = from_module.split(".")
 
         if not from_module_path[0]:
             raise ImportError(from_module)
 
-        for path in import_list.split(','):
+        for path in import_list.split(","):
             path = path.strip()
             if not path:
                 continue
-            as_hunks = path.split(' as ')
+            as_hunks = path.split(" as ")
             if len(as_hunks) == 2:
                 # We have 'as' so this is a different style of import
                 # 'import foo.bar.baz as bing' creates a local variable
@@ -393,27 +393,27 @@ class ImportProcessor:
         out = []
         cur = None
 
-        for line in text.split('\n'):
+        for line in text.split("\n"):
             line = line.strip()
-            loc = line.find('#')
+            loc = line.find("#")
             if loc != -1:
                 line = line[:loc].strip()
 
             if not line:
                 continue
             if cur is not None:
-                if line.endswith(')'):
-                    out.append(cur + ' ' + line[:-1])
+                if line.endswith(")"):
+                    out.append(cur + " " + line[:-1])
                     cur = None
                 else:
-                    cur += ' ' + line
+                    cur += " " + line
             else:
-                if '(' in line and ')' not in line:
-                    cur = line.replace('(', '')
+                if "(" in line and ")" not in line:
+                    cur = line.replace("(", "")
                 else:
-                    out.append(line.replace('(', '').replace(')', ''))
+                    out.append(line.replace("(", "").replace(")", ""))
         if cur is not None:
-            raise InvalidImportLine(cur, 'Unmatched parenthesis')
+            raise InvalidImportLine(cur, "Unmatched parenthesis")
         return out
 
 

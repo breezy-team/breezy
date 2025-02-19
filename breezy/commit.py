@@ -48,41 +48,33 @@
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
-from . import (
-    debug,
-    errors,
-    trace,
-    ui,
-    )
-from .branch import Branch
 from contextlib import ExitStack
+
 import breezy.config
-from .errors import (BzrError,
-                     ConflictsInTree,
-                     StrictCommitFailed
-                     )
-from .osutils import (get_user_encoding,
-                      supports_symlinks,
-                      is_inside_any,
-                      minimum_path_selection,
-                      )
-from .trace import mutter, note, is_quiet
-from .urlutils import unescape_for_display
+
+from . import debug, errors, trace, ui
+from .branch import Branch
+from .errors import BzrError, ConflictsInTree, StrictCommitFailed
 from .i18n import gettext
+from .osutils import (
+    get_user_encoding,
+    is_inside_any,
+    minimum_path_selection,
+    supports_symlinks,
+)
+from .trace import is_quiet, mutter, note
+from .urlutils import unescape_for_display
 
 
 class PointlessCommit(BzrError):
-
     _fmt = "No changes to commit"
 
 
 class CannotCommitSelectedFileMerge(BzrError):
-
-    _fmt = 'Selected-file commit of merges is not supported yet:'\
-        ' files %(files_str)s'
+    _fmt = "Selected-file commit of merges is not supported yet: files %(files_str)s"
 
     def __init__(self, files):
-        files_str = ', '.join(files)
+        files_str = ", ".join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
@@ -94,11 +86,13 @@ def filter_excluded(iter_changes, exclude):
     :return: iter_changes function
     """
     for change in iter_changes:
-        new_excluded = (change.path[1] is not None and
-                        is_inside_any(exclude, change.path[1]))
+        new_excluded = change.path[1] is not None and is_inside_any(
+            exclude, change.path[1]
+        )
 
-        old_excluded = (change.path[0] is not None and
-                        is_inside_any(exclude, change.path[0]))
+        old_excluded = change.path[0] is not None and is_inside_any(
+            exclude, change.path[0]
+        )
 
         if old_excluded and new_excluded:
             continue
@@ -136,7 +130,6 @@ class NullCommitReporter:
 
 
 class ReportCommitToLog(NullCommitReporter):
-
     def _note(self, format, *args):
         """Output a message.
 
@@ -145,35 +138,35 @@ class ReportCommitToLog(NullCommitReporter):
         note(format, *args)
 
     def snapshot_change(self, change, path):
-        if path == '' and change in (gettext('added'), gettext('modified')):
+        if path == "" and change in (gettext("added"), gettext("modified")):
             return
         self._note("%s %s", change, path)
 
     def started(self, revno, rev_id, location):
         self._note(
-            gettext('Committing to: %s'),
-            unescape_for_display(location, 'utf-8'))
+            gettext("Committing to: %s"), unescape_for_display(location, "utf-8")
+        )
 
     def completed(self, revno, rev_id):
         if revno is not None:
-            self._note(gettext('Committed revision %d.'), revno)
+            self._note(gettext("Committed revision %d."), revno)
             # self._note goes to the console too; so while we want to log the
             # rev_id, we can't trivially only log it. (See bug 526425). Long
             # term we should rearrange the reporting structure, but for now
             # we just mutter seperately. We mutter the revid and revno together
             # so that concurrent bzr invocations won't lead to confusion.
-            mutter('Committed revid %s as revno %d.', rev_id, revno)
+            mutter("Committed revid %s as revno %d.", rev_id, revno)
         else:
-            self._note(gettext('Committed revid %s.'), rev_id)
+            self._note(gettext("Committed revid %s."), rev_id)
 
     def deleted(self, path):
-        self._note(gettext('deleted %s'), path)
+        self._note(gettext("deleted %s"), path)
 
     def missing(self, path):
-        self._note(gettext('missing %s'), path)
+        self._note(gettext("missing %s"), path)
 
     def renamed(self, change, old_path, new_path):
-        self._note('%s %s => %s', change, old_path, new_path)
+        self._note("%s %s => %s", change, old_path, new_path)
 
     def is_verbose(self):
         return True
@@ -192,9 +185,7 @@ class Commit:
             working inventory.
     """
 
-    def __init__(self,
-                 reporter=None,
-                 config_stack=None):
+    def __init__(self, reporter=None, config_stack=None):
         """Create a Commit object.
 
         :param reporter: the default reporter to use or None to decide later
@@ -203,49 +194,55 @@ class Commit:
         self.config_stack = config_stack
 
     @staticmethod
-    def update_revprops(revprops, branch, authors=None,
-                        local=False, possible_master_transports=None):
+    def update_revprops(
+        revprops, branch, authors=None, local=False, possible_master_transports=None
+    ):
         if revprops is None:
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if ('branch-nick' not in revprops and
-                branch.repository._format.supports_storing_branch_nick):
-            revprops['branch-nick'] = branch._get_nick(
-                local,
-                possible_master_transports)
+        if (
+            "branch-nick" not in revprops
+            and branch.repository._format.supports_storing_branch_nick
+        ):
+            revprops["branch-nick"] = branch._get_nick(
+                local, possible_master_transports
+            )
         if authors is not None:
-            if 'author' in revprops or 'authors' in revprops:
+            if "author" in revprops or "authors" in revprops:
                 # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
+                raise AssertionError("author property given twice")
             if authors:
                 for individual in authors:
-                    if '\n' in individual:
-                        raise AssertionError('\\n is not a valid character '
-                                             'in an author identity')
-                revprops['authors'] = '\n'.join(authors)
+                    if "\n" in individual:
+                        raise AssertionError(
+                            "\\n is not a valid character in an author identity"
+                        )
+                revprops["authors"] = "\n".join(authors)
         return revprops
 
-    def commit(self,
-               message=None,
-               timestamp=None,
-               timezone=None,
-               committer=None,
-               specific_files=None,
-               rev_id=None,
-               allow_pointless=True,
-               strict=False,
-               verbose=False,
-               revprops=None,
-               working_tree=None,
-               local=False,
-               reporter=None,
-               config=None,
-               message_callback=None,
-               recursive='down',
-               exclude=None,
-               possible_master_transports=None,
-               lossy=False):
+    def commit(
+        self,
+        message=None,
+        timestamp=None,
+        timezone=None,
+        committer=None,
+        specific_files=None,
+        rev_id=None,
+        allow_pointless=True,
+        strict=False,
+        verbose=False,
+        revprops=None,
+        working_tree=None,
+        local=False,
+        reporter=None,
+        config=None,
+        message_callback=None,
+        recursive="down",
+        exclude=None,
+        possible_master_transports=None,
+        lossy=False,
+    ):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -286,14 +283,14 @@ class Commit:
             self.revprops = revprops or {}
             # XXX: Can be set on __init__ or passed in - this is a bit ugly.
             self.config_stack = config or self.config_stack
-            mutter('preparing to commit')
+            mutter("preparing to commit")
 
             if working_tree is None:
                 raise BzrError("working_tree must be passed into commit().")
             else:
                 self.work_tree = working_tree
                 self.branch = self.work_tree.branch
-                if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
+                if getattr(self.work_tree, "requires_rich_root", lambda: False)():
                     if not self.branch.repository.supports_rich_root():
                         raise errors.RootNotRich()
             if message_callback is None:
@@ -304,14 +301,15 @@ class Commit:
                     def message_callback(x):
                         return message
                 else:
-                    raise BzrError("The message or message_callback keyword"
-                                   " parameter is required for commit().")
+                    raise BzrError(
+                        "The message or message_callback keyword"
+                        " parameter is required for commit()."
+                    )
 
             self.bound_branch = None
             self.any_entries_deleted = False
             if exclude is not None:
-                self.exclude = sorted(
-                    minimum_path_selection(exclude))
+                self.exclude = sorted(minimum_path_selection(exclude))
             else:
                 self.exclude = []
             self.local = local
@@ -321,8 +319,7 @@ class Commit:
             # self.specific_files is None to indicate no filter, or any iterable to
             # indicate a filter - [] means no files at all, as per iter_changes.
             if specific_files is not None:
-                self.specific_files = sorted(
-                    minimum_path_selection(specific_files))
+                self.specific_files = sorted(minimum_path_selection(specific_files))
             else:
                 self.specific_files = None
 
@@ -388,14 +385,22 @@ class Commit:
             self._set_progress_stage("Collecting changes", counter=True)
             self._lossy = lossy
             self.builder = self.branch.get_commit_builder(
-                self.parents, self.config_stack, timestamp, timezone, committer,
-                self.revprops, rev_id, lossy=lossy)
+                self.parents,
+                self.config_stack,
+                timestamp,
+                timezone,
+                committer,
+                self.revprops,
+                rev_id,
+                lossy=lossy,
+            )
 
             if self.builder.updates_branch and self.bound_branch:
                 self.builder.abort()
                 raise AssertionError(
                     "bound branches not supported for commit builders "
-                    "that update the branch")
+                    "that update the branch"
+                )
 
             try:
                 # find the location being committed to
@@ -438,7 +443,8 @@ class Commit:
             self.work_tree.unversion(self.deleted_paths)
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(
-                self.rev_id, self.builder.get_basis_delta())
+                self.rev_id, self.builder.get_basis_delta()
+            )
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
             return self.rev_id
@@ -463,8 +469,11 @@ class Commit:
                 self._set_progress_stage("Uploading data to master branch")
                 # 'commit' to the master first so a timeout here causes the
                 # local branch to be out of date
-                (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
-                    self.branch, new_revno, self.rev_id, lossy=self._lossy)
+                (new_revno, self.rev_id) = (
+                    self.master_branch.import_last_revision_info_and_tags(
+                        self.branch, new_revno, self.rev_id, lossy=self._lossy
+                    )
+                )
                 if self._lossy:
                     self.branch.fetch(self.master_branch, self.rev_id)
 
@@ -486,11 +495,17 @@ class Commit:
         if self.bound_branch:
             self._set_progress_stage("Merging tags to master branch")
             tag_updates, tag_conflicts = self.branch.tags.merge_to(
-                self.master_branch.tags)
+                self.master_branch.tags
+            )
             if tag_conflicts:
-                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{}".format(
-                    "\n".join(warning_lines))))
+                warning_lines = ["    " + name for name, _, _ in tag_conflicts]
+                note(
+                    gettext(
+                        "Conflicting tags in bound branch:\n{}".format(
+                            "\n".join(warning_lines)
+                        )
+                    )
+                )
 
     def _select_reporter(self):
         """Select the CommitReporter to use."""
@@ -520,7 +535,8 @@ class Commit:
 
         if not self.local:
             self.master_branch = self.branch.get_master_branch(
-                possible_master_transports)
+                possible_master_transports
+            )
 
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.
@@ -531,7 +547,8 @@ class Commit:
         master_bound_location = self.master_branch.get_bound_location()
         if master_bound_location:
             raise errors.CommitToDoubleBoundBranch(
-                self.branch, self.master_branch, master_bound_location)
+                self.branch, self.master_branch, master_bound_location
+            )
 
         # TODO: jam 20051230 We could automatically push local
         #       commits to the remote branch if they would fit.
@@ -542,8 +559,7 @@ class Commit:
         master_revid = self.master_branch.last_revision()
         local_revid = self.branch.last_revision()
         if local_revid != master_revid:
-            raise errors.BoundBranchOutOfDate(self.branch,
-                                              self.master_branch)
+            raise errors.BoundBranchOutOfDate(self.branch, self.master_branch)
 
         # Now things are ready to change the master branch
         # so grab the lock
@@ -564,8 +580,9 @@ class Commit:
             # - in a checkout scenario the tree may have no
             # parents but the branch may do.
             first_tree_parent = breezy.revision.NULL_REVISION
-        if (self.master_branch._format.stores_revno() or
-                self.config_stack.get('calculate_revnos')):
+        if self.master_branch._format.stores_revno() or self.config_stack.get(
+            "calculate_revnos"
+        ):
             try:
                 old_revno, master_last = self.master_branch.last_revision_info()
             except errors.UnsupportedOperation:
@@ -577,8 +594,9 @@ class Commit:
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
-        if (old_revno is not None and
-                self.branch.repository.has_revision(first_tree_parent)):
+        if old_revno is not None and self.branch.repository.has_revision(
+            first_tree_parent
+        ):
             new_revno = old_revno + 1
         else:
             # ghost parents never appear in revision history.
@@ -596,15 +614,15 @@ class Commit:
         self._set_progress_stage("Running post_commit hooks")
         # old style commit hooks - should be deprecated ? (obsoleted in
         # 0.15^H^H^H^H 2.5.0)
-        post_commit = self.config_stack.get('post_commit')
+        post_commit = self.config_stack.get("post_commit")
         if post_commit is not None:
-            hooks = post_commit.split(' ')
+            hooks = post_commit.split(" ")
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                result = eval(hook + '(branch, rev_id)',
-                              {'branch': self.branch,
-                               'breezy': breezy,
-                               'rev_id': self.rev_id})
+                result = eval(
+                    hook + "(branch, rev_id)",
+                    {"branch": self.branch, "breezy": breezy, "rev_id": self.rev_id},
+                )
         # process new style post commit hooks
         self._process_hooks("post_commit", old_revno, new_revno)
 
@@ -629,8 +647,7 @@ class Commit:
 
         if hook_name == "pre_commit":
             future_tree = self.builder.revision_tree()
-            tree_delta = future_tree.changes_from(self.basis_tree,
-                                                  include_root=True)
+            tree_delta = future_tree.changes_from(self.basis_tree, include_root=True)
 
         for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
@@ -638,33 +655,49 @@ class Commit:
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running %s hooks [%s]" % \
-                (hook_name, Branch.hooks.get_hook_name(hook))
+            self.pb_stage_name = "Running %s hooks [%s]" % (
+                hook_name,
+                Branch.hooks.get_hook_name(hook),
+            )
             self._emit_progress()
-            if 'hooks' in debug.debug_flags:
+            if "hooks" in debug.debug_flags:
                 mutter("Invoking commit hook: %r", hook)
             if hook_name == "post_commit":
-                hook(hook_local, hook_master, old_revno, old_revid, new_revno,
-                     self.rev_id)
+                hook(
+                    hook_local,
+                    hook_master,
+                    old_revno,
+                    old_revid,
+                    new_revno,
+                    self.rev_id,
+                )
             elif hook_name == "pre_commit":
-                hook(hook_local, hook_master,
-                     old_revno, old_revid, new_revno, self.rev_id,
-                     tree_delta, future_tree)
+                hook(
+                    hook_local,
+                    hook_master,
+                    old_revno,
+                    old_revid,
+                    new_revno,
+                    self.rev_id,
+                    tree_delta,
+                    future_tree,
+                )
 
     def _update_builder_with_changes(self):
-        """Update the commit builder with the data about what has changed.
-        """
+        """Update the commit builder with the data about what has changed."""
         specific_files = self.specific_files
         mutter("Selecting files for commit with filter %r", specific_files)
 
         self._check_strict()
         iter_changes = self.work_tree.iter_changes(
-            self.basis_tree, specific_files=specific_files)
+            self.basis_tree, specific_files=specific_files
+        )
         if self.exclude:
             iter_changes = filter_excluded(iter_changes, self.exclude)
         iter_changes = self._filter_iter_changes(iter_changes)
         for path, fs_hash in self.builder.record_iter_changes(
-                self.work_tree, self.basis_revid, iter_changes):
+            self.work_tree, self.basis_revid, iter_changes
+        ):
             self.work_tree._observed_sha1(path, fs_hash)
 
     def _filter_iter_changes(self, iter_changes):
@@ -691,17 +724,22 @@ class Commit:
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
-                if change.kind[0] == 'symlink' and not self.work_tree.supports_symlinks():
-                    trace.warning('Ignoring "%s" as symlinks are not '
-                                  'supported on this filesystem.' % (change.path[0],))
+                if (
+                    change.kind[0] == "symlink"
+                    and not self.work_tree.supports_symlinks()
+                ):
+                    trace.warning(
+                        'Ignoring "%s" as symlinks are not '
+                        "supported on this filesystem." % (change.path[0],)
+                    )
                     continue
                 deleted_paths.append(change.path[1])
                 # Reset the new path (None) and new versioned flag (False)
                 change = change.discard_new()
                 new_path = change.path[1]
                 versioned = False
-            elif kind == 'tree-reference':
-                if self.recursive == 'down':
+            elif kind == "tree-reference":
+                if self.recursive == "down":
                     self._commit_nested_tree(change.path[1])
             if change.versioned[0] or change.versioned[1]:
                 yield change
@@ -709,17 +747,17 @@ class Commit:
                     if new_path is None:
                         reporter.deleted(old_path)
                     elif old_path is None:
-                        reporter.snapshot_change(gettext('added'), new_path)
+                        reporter.snapshot_change(gettext("added"), new_path)
                     elif old_path != new_path:
-                        reporter.renamed(gettext('renamed'),
-                                         old_path, new_path)
+                        reporter.renamed(gettext("renamed"), old_path, new_path)
                     else:
-                        if (new_path
-                                or self.work_tree.branch.repository._format.rich_root_data):
+                        if (
+                            new_path
+                            or self.work_tree.branch.repository._format.rich_root_data
+                        ):
                             # Don't report on changes to '' in non rich root
                             # repositories.
-                            reporter.snapshot_change(
-                                gettext('modified'), new_path)
+                            reporter.snapshot_change(gettext("modified"), new_path)
             self._next_progress_entry()
         # Unversion files that were found to be deleted
         self.deleted_paths = deleted_paths
@@ -743,19 +781,24 @@ class Commit:
         # finally implement the explicit-caches approach design
         # a while back - RBC 20070306.
         if sub_tree.branch.repository.has_same_location(
-                self.work_tree.branch.repository):
-            sub_tree.branch.repository = \
-                self.work_tree.branch.repository
+            self.work_tree.branch.repository
+        ):
+            sub_tree.branch.repository = self.work_tree.branch.repository
         try:
-            return sub_tree.commit(message=None, revprops=self.revprops,
-                                   recursive=self.recursive,
-                                   message_callback=self.message_callback,
-                                   timestamp=self.timestamp,
-                                   timezone=self.timezone,
-                                   committer=self.committer,
-                                   allow_pointless=self.allow_pointless,
-                                   strict=self.strict, verbose=self.verbose,
-                                   local=self.local, reporter=self.reporter)
+            return sub_tree.commit(
+                message=None,
+                revprops=self.revprops,
+                recursive=self.recursive,
+                message_callback=self.message_callback,
+                timestamp=self.timestamp,
+                timezone=self.timezone,
+                committer=self.committer,
+                allow_pointless=self.allow_pointless,
+                strict=self.strict,
+                verbose=self.verbose,
+                local=self.local,
+                reporter=self.reporter,
+            )
         except PointlessCommit:
             return self.work_tree.get_reference_revision(path)
 
@@ -776,8 +819,9 @@ class Commit:
 
     def _emit_progress(self):
         if self.pb_entries_count is not None:
-            text = gettext("{0} [{1}] - Stage").format(self.pb_stage_name,
-                                                       self.pb_entries_count)
+            text = gettext("{0} [{1}] - Stage").format(
+                self.pb_stage_name, self.pb_entries_count
+            )
         else:
-            text = gettext("%s - Stage") % (self.pb_stage_name, )
+            text = gettext("%s - Stage") % (self.pb_stage_name,)
         self.pb.update(text, self.pb_stage_count, self.pb_stage_total)

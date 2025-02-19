@@ -16,13 +16,12 @@
 
 """Tests for msg editor interactions.."""
 
-from ... import commitfromnews
 from .... import msgeditor
 from ....tests import TestCaseWithTransport
+from ... import commitfromnews
 
 
 class TestRegisters(TestCaseWithTransport):
-
     def test_registered_at_import(self):
         self.assertTrue(commitfromnews._registered)
 
@@ -30,5 +29,5 @@ class TestRegisters(TestCaseWithTransport):
         commitfromnews._registered = False
         # Registers only within the plugin
         commitfromnews.register()
-        self.assertLength(1, msgeditor.hooks['commit_message_template'])
+        self.assertLength(1, msgeditor.hooks["commit_message_template"])
         self.assertTrue(commitfromnews._registered)

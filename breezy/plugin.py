@@ -39,16 +39,11 @@ plugins.
 import os
 import re
 import sys
-
 from importlib import util as importlib_util
 
 import breezy
-from . import (
-    debug,
-    errors,
-    osutils,
-    trace,
-    )
+
+from . import debug, errors, osutils, trace
 
 _MODULE_PREFIX = "breezy.plugins."
 
@@ -83,7 +78,7 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
     """
     if state is None:
         state = breezy.get_global_state()
-    if getattr(state, 'plugins', None) is not None:
+    if getattr(state, "plugins", None) is not None:
         # People can make sure plugins are loaded, they just won't be twice
         return
 
@@ -92,33 +87,12 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
         from breezy.plugins import __path__ as path
 
     state.plugin_warnings = {}
-    _load_plugins_from_path(state, path)
-    if (None, 'entrypoints') in _env_plugin_path():
-        _load_plugins_from_entrypoints(state)
+    _load_plugins(state, path)
     state.plugins = plugins()
     if warn_load_problems:
         for plugin, errors in state.plugin_warnings.items():
             for error in errors:
-                trace.warning('%s', error)
-
-
-def _load_plugins_from_entrypoints(state):
-    try:
-        from importlib.metadata import entry_points
-    except ModuleNotFoundError:
-        # No importlib.metadata, no entrypoints.
-        pass
-    else:
-        try:
-            eps = entry_points(group='breezy.plugin')
-        except TypeError:  # python < 3.10 didn't support group argument
-            eps = [ep[0] for ep in entry_points().values()
-                    if ep[0].group == 'breezy.plugin']
-        for ep in eps:
-            fullname = _MODULE_PREFIX + ep.name
-            if fullname in sys.modules:
-                continue
-            sys.modules[fullname] = ep.load()
+                trace.warning("%s", error)
 
 
 def plugin_name(module_name):
@@ -170,8 +144,12 @@ class _Path(list):
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {})".format(
-            self.__class__.__name__, self.package_name, self.blocked_names,
-            self.extra_details, list.__repr__(self))
+            self.__class__.__name__,
+            self.package_name,
+            self.blocked_names,
+            self.extra_details,
+            list.__repr__(self),
+        )
 
 
 def _expect_identifier(name, env_key, env_value):
@@ -188,7 +166,7 @@ def _expect_identifier(name, env_key, env_value):
     return str(name)
 
 
-def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
+def _env_disable_plugins(key="BRZ_DISABLE_PLUGINS"):
     """Gives list of names for plugins to disable from environ key."""
     disabled_names = []
     env = os.environ.get(key)
@@ -200,28 +178,28 @@ def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
     return disabled_names
 
 
-def _env_plugins_at(key='BRZ_PLUGINS_AT'):
+def _env_plugins_at(key="BRZ_PLUGINS_AT"):
     """Gives list of names and paths of specific plugins from environ key."""
     plugin_details = []
     env = os.environ.get(key)
     if env:
         for pair in env.split(os.pathsep):
-            if '@' in pair:
-                name, path = pair.split('@', 1)
+            if "@" in pair:
+                name, path = pair.split("@", 1)
             else:
                 path = pair
-                name = osutils.basename(path).split('.', 1)[0]
+                name = osutils.basename(path).split(".", 1)[0]
             name = _expect_identifier(name, key, env)
             if name is not None:
                 plugin_details.append((name, os.path.abspath(path)))
     return plugin_details
 
 
-def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
+def _env_plugin_path(key="BRZ_PLUGIN_PATH"):
     """Gives list of paths and contexts for plugins from environ key.
 
     Each entry is either a specific path to load plugins from and the value
-    'path', or None and one of the values 'user', 'core', 'entrypoints', 'site'.
+    'path', or None and one of the three values 'user', 'core', 'site'.
     """
     path_details = []
     env = os.environ.get(key)
@@ -229,8 +207,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
         "user": not env,
         "core": True,
         "site": True,
-        'entrypoints': False,
-        }
+    }
     if env:
         # Add paths specified by user in order
         for p in env.split(os.pathsep):
@@ -240,10 +217,10 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
                     path_details.append((None, name))
                 defaults[name] = None
             else:
-                path_details.append((p, 'path'))
+                path_details.append((p, "path"))
 
     # Add any remaining default paths
-    for name in ('user', 'core', 'entrypoints', 'site'):
+    for name in ("user", "core", "site"):
         if defaults[name]:
             path_details.append((None, name))
 
@@ -254,16 +231,16 @@ def _iter_plugin_paths(paths_from_env, core_paths):
     """Generate paths using paths_from_env and core_paths."""
     # GZ 2017-06-02: This is kinda horrid, should make better.
     for path, context in paths_from_env:
-        if context == 'path':
+        if context == "path":
             yield os.path.abspath(path)
-        elif context == 'user':
+        elif context == "user":
             path = get_user_plugin_path()
             if os.path.isdir(path):
                 yield path
-        elif context == 'core':
+        elif context == "core":
             for path in _get_core_plugin_paths(core_paths):
                 yield path
-        elif context == 'site':
+        elif context == "site":
             for path in _get_site_plugin_paths(sys.path):
                 if os.path.isdir(path):
                     yield path
@@ -277,16 +254,18 @@ def _install_importer_if_needed(plugin_details):
         sys.meta_path.insert(2, finder)
 
 
-def _load_plugins_from_path(state, paths):
+def _load_plugins(state, paths):
     """Do the importing all plugins from paths."""
     imported_names = set()
     for name, path in _iter_possible_plugins(paths):
         if name not in imported_names:
             if not valid_plugin_name(name):
                 sanitised_name = sanitise_plugin_name(name)
-                trace.warning("Unable to load %r in %r as a plugin because the "
-                              "file path isn't a valid module name; try renaming "
-                              "it to %r." % (name, path, sanitised_name))
+                trace.warning(
+                    "Unable to load %r in %r as a plugin because the "
+                    "file path isn't a valid module name; try renaming "
+                    "it to %r." % (name, path, sanitised_name)
+                )
                 continue
             msg = _load_plugin_module(name, path)
             if msg is not None:
@@ -360,21 +339,21 @@ def describe_plugins(show_paths=False, state=None):
     """
     if state is None:
         state = breezy.get_global_state()
-    loaded_plugins = getattr(state, 'plugins', {})
-    plugin_warnings = set(getattr(state, 'plugin_warnings', []))
+    loaded_plugins = getattr(state, "plugins", {})
+    plugin_warnings = set(getattr(state, "plugin_warnings", []))
     all_names = sorted(set(loaded_plugins.keys()).union(plugin_warnings))
     for name in all_names:
         if name in loaded_plugins:
             plugin = loaded_plugins[name]
             version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            yield '{} {}\n'.format(name, version)
+            if version == "unknown":
+                version = ""
+            yield "{} {}\n".format(name, version)
             d = plugin.module.__doc__
             if d:
-                doc = d.split('\n')[0]
+                doc = d.split("\n")[0]
             else:
-                doc = '(no description)'
+                doc = "(no description)"
             yield ("  %s\n" % doc)
             if show_paths:
                 yield ("   %s\n" % plugin.path())
@@ -382,13 +361,13 @@ def describe_plugins(show_paths=False, state=None):
             yield "%s (failed to load)\n" % name
         if name in state.plugin_warnings:
             for line in state.plugin_warnings[name]:
-                yield "  ** " + line + '\n'
-        yield '\n'
+                yield "  ** " + line + "\n"
+        yield "\n"
 
 
 def _get_core_plugin_paths(existing_paths):
     """Generate possible locations for plugins based on existing_paths."""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # We need to use relative path to system-wide plugin
         # directory because breezy from standalone brz.exe
         # could be imported by another standalone program
@@ -399,9 +378,10 @@ def _get_core_plugin_paths(existing_paths):
         # then plugins directory is
         # C:\Program Files\Bazaar\plugins
         # so relative path is ../../../plugins
-        yield osutils.abspath(osutils.pathjoin(
-            osutils.dirname(__file__), '../../../plugins'))
-    else:     # don't look inside library.zip
+        yield osutils.abspath(
+            osutils.pathjoin(osutils.dirname(__file__), "../../../plugins")
+        )
+    else:  # don't look inside library.zip
         for path in existing_paths:
             yield osutils.abspath(path)
 
@@ -409,13 +389,14 @@ def _get_core_plugin_paths(existing_paths):
 def _get_site_plugin_paths(sys_paths):
     """Generate possible locations for plugins from given sys_paths."""
     for path in sys_paths:
-        if os.path.basename(path) in ('dist-packages', 'site-packages'):
-            yield osutils.pathjoin(path, 'breezy', 'plugins')
+        if os.path.basename(path) in ("dist-packages", "site-packages"):
+            yield osutils.pathjoin(path, "breezy", "plugins")
 
 
 def get_user_plugin_path():
     from breezy.bedding import config_dir
-    return osutils.pathjoin(config_dir(), 'plugins')
+
+    return osutils.pathjoin(config_dir(), "plugins")
 
 
 def record_plugin_warning(warning_message):
@@ -424,13 +405,13 @@ def record_plugin_warning(warning_message):
 
 
 def valid_plugin_name(name):
-    return not re.search('\\.|-| ', name)
+    return not re.search("\\.|-| ", name)
 
 
 def sanitise_plugin_name(name):
-    sanitised_name = re.sub('[-. ]', '_', name)
-    if sanitised_name.startswith('brz_'):
-        sanitised_name = sanitised_name[len('brz_'):]
+    sanitised_name = re.sub("[-. ]", "_", name)
+    if sanitised_name.startswith("brz_"):
+        sanitised_name = sanitised_name[len("brz_") :]
     return sanitised_name
 
 
@@ -448,15 +429,17 @@ def _load_plugin_module(name, dir):
     except errors.IncompatibleVersion as e:
         warning_message = (
             "Unable to load plugin %r. It supports %s "
-            "versions %r but the current version is %s" %
-            (name, e.api.__name__, e.wanted, e.current))
+            "versions %r but the current version is %s"
+            % (name, e.api.__name__, e.wanted, e.current)
+        )
         return record_plugin_warning(warning_message)
     except Exception as e:
         trace.log_exception_quietly()
-        if 'error' in debug.debug_flags:
+        if "error" in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
         return record_plugin_warning(
-            'Unable to load plugin {!r} from {!r}: {}'.format(name, dir, e))
+            "Unable to load plugin {!r} from {!r}: {}".format(name, dir, e)
+        )
 
 
 def plugins():
@@ -467,7 +450,7 @@ def plugins():
     result = {}
     for fullname in sys.modules:
         if fullname.startswith(_MODULE_PREFIX):
-            name = fullname[len(_MODULE_PREFIX):]
+            name = fullname[len(_MODULE_PREFIX) :]
             if "." not in name and sys.modules[fullname] is not None:
                 result[name] = PlugIn(name, sys.modules[fullname])
     return result
@@ -488,22 +471,20 @@ def get_loaded_plugin(name):
 
 
 def format_concise_plugin_list(state=None):
-    """Return a string holding a concise list of plugins and their version.
-    """
+    """Return a string holding a concise list of plugins and their version."""
     if state is None:
         state = breezy.get_global_state()
     items = []
-    for name, a_plugin in sorted(getattr(state, 'plugins', {}).items()):
-        items.append("%s[%s]" %
-                     (name, a_plugin.__version__))
-    return ', '.join(items)
+    for name, a_plugin in sorted(getattr(state, "plugins", {}).items()):
+        items.append("%s[%s]" % (name, a_plugin.__version__))
+    return ", ".join(items)
 
 
 class PluginsHelpIndex:
     """A help index that returns help topics for plugins."""
 
     def __init__(self):
-        self.prefix = 'plugins/'
+        self.prefix = "plugins/"
 
     def get_topics(self, topic):
         """Search for topic in the loaded plugins.
@@ -520,7 +501,7 @@ class PluginsHelpIndex:
         if not topic:
             return []
         if topic.startswith(self.prefix):
-            topic = topic[len(self.prefix):]
+            topic = topic[len(self.prefix) :]
         plugin_module_name = _MODULE_PREFIX + topic
         try:
             module = sys.modules[plugin_module_name]
@@ -549,18 +530,19 @@ class ModuleHelpTopic:
             cross-referenced.
         """
         from . import help_topics
+
         if not self.module.__doc__:
             result = "Plugin '%s' has no docstring.\n" % self.module.__name__
         else:
             result = self.module.__doc__
-        if result[-1] != '\n':
-            result += '\n'
+        if result[-1] != "\n":
+            result += "\n"
         result += help_topics._format_see_also(additional_see_also)
         return result
 
     def get_help_topic(self):
         """Return the module help topic: its basename."""
-        return self.module.__name__[len(_MODULE_PREFIX):]
+        return self.module.__name__[len(_MODULE_PREFIX) :]
 
 
 class PlugIn:
@@ -576,12 +558,12 @@ class PlugIn:
 
     def path(self):
         """Get the path that this plugin was loaded from."""
-        if getattr(self.module, '__path__', None) is not None:
+        if getattr(self.module, "__path__", None) is not None:
             return os.path.abspath(self.module.__path__[0])
-        elif getattr(self.module, '__file__', None) is not None:
+        elif getattr(self.module, "__file__", None) is not None:
             path = os.path.abspath(self.module.__file__)
             if path[-4:] == COMPILED_EXT:
-                pypath = path[:-4] + '.py'
+                pypath = path[:-4] + ".py"
                 if os.path.isfile(pypath):
                     path = pypath
             return path
@@ -590,12 +572,12 @@ class PlugIn:
 
     def __repr__(self):
         return "<{}.{} name={}, module={}>".format(
-            self.__class__.__module__, self.__class__.__name__,
-            self.name, self.module)
+            self.__class__.__module__, self.__class__.__name__, self.name, self.module
+        )
 
     def test_suite(self):
         """Return the plugin's test suite."""
-        if getattr(self.module, 'test_suite', None) is not None:
+        if getattr(self.module, "test_suite", None) is not None:
             return self.module.test_suite()
         else:
             return None
@@ -607,20 +589,20 @@ class PlugIn:
           loader: The custom loader that should be used to load additional
             tests.
         """
-        if getattr(self.module, 'load_tests', None) is not None:
+        if getattr(self.module, "load_tests", None) is not None:
             return loader.loadTestsFromModule(self.module)
         else:
             return None
 
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
-        version_info = getattr(self.module, 'version_info', None)
+        version_info = getattr(self.module, "version_info", None)
         if version_info is not None:
             try:
                 if isinstance(version_info, str):
-                    version_info = version_info.split('.')
+                    version_info = version_info.split(".")
                 elif len(version_info) == 3:
-                    version_info = tuple(version_info) + ('final', 0)
+                    version_info = tuple(version_info) + ("final", 0)
             except TypeError:
                 # The given version_info isn't even iteratible
                 trace.log_exception_quietly()
@@ -637,7 +619,7 @@ class PlugIn:
         except (ValueError, TypeError, IndexError):
             trace.log_exception_quietly()
             # Try to show something for the version anyway
-            version_string = '.'.join(map(str, version_info))
+            version_string = ".".join(map(str, version_info))
         return version_string
 
 
@@ -661,6 +643,7 @@ class _PluginsAtFinder:
             if path is None:
                 # GZ 2017-06-02: Any reason to block loading of the name from
                 # further down the path like this?
-                raise ImportError("Not loading namespace package {} as {}".format(
-                    path, fullname))
+                raise ImportError(
+                    "Not loading namespace package {} as {}".format(path, fullname)
+                )
         return importlib_util.spec_from_file_location(fullname, path)

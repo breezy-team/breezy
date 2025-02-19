@@ -25,34 +25,31 @@ import os
 import ssl
 import sys
 
-
-from ... import (
-    version_string as breezy_version,
-    config,
-    )
+from ... import config
+from ... import version_string as breezy_version
 
 
 def default_user_agent():
-    return 'Breezy/%s' % breezy_version
+    return "Breezy/%s" % breezy_version
 
 
 # Note for packagers: if there is no package providing certs for your platform,
 # the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
 _ssl_ca_certs_known_locations = [
-    '/etc/ssl/certs/ca-certificates.crt',  # Ubuntu/debian/gentoo
-    '/etc/pki/tls/certs/ca-bundle.crt',  # Fedora/CentOS/RH
-    '/etc/ssl/ca-bundle.pem',  # OpenSuse
-    '/etc/ssl/cert.pem',  # OpenSuse
+    "/etc/ssl/certs/ca-certificates.crt",  # Ubuntu/debian/gentoo
+    "/etc/pki/tls/certs/ca-bundle.crt",  # Fedora/CentOS/RH
+    "/etc/ssl/ca-bundle.pem",  # OpenSuse
+    "/etc/ssl/cert.pem",  # OpenSuse
     "/usr/local/share/certs/ca-root-nss.crt",  # FreeBSD
     # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
-    '/etc/openssl/certs/ca-certificates.crt',  # Solaris
+    "/etc/openssl/certs/ca-certificates.crt",  # Solaris
 ]
 
 
 def default_ca_certs():
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         return os.path.join(os.path.dirname(sys.executable), "cacert.pem")
-    elif sys.platform == 'darwin':
+    elif sys.platform == "darwin":
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25
         pass
@@ -76,43 +73,47 @@ def ca_certs_from_store(path):
 
 def cert_reqs_from_store(unicode_str):
     import ssl
+
     try:
-        return {"required": ssl.CERT_REQUIRED,
-                "none": ssl.CERT_NONE}[unicode_str]
+        return {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
     except KeyError:
         raise ValueError("invalid value %s" % unicode_str)
 
 
 def default_ca_reqs():
-    if sys.platform in ('win32', 'darwin'):
+    if sys.platform in ("win32", "darwin"):
         # FIXME: Once we get a native access to root certificates there, this
         # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15
-        return 'none'
+        return "none"
     else:
-        return 'required'
+        return "required"
 
 
-opt_ssl_ca_certs = config.Option('ssl.ca_certs',
-                                 from_unicode=ca_certs_from_store,
-                                 default=default_ca_certs,
-                                 invalid='warning',
-                                 help="""\
+opt_ssl_ca_certs = config.Option(
+    "ssl.ca_certs",
+    from_unicode=ca_certs_from_store,
+    default=default_ca_certs,
+    invalid="warning",
+    help="""\
 Path to certification authority certificates to trust.
 
 This should be a valid path to a bundle containing all root Certificate
 Authorities used to verify an https server certificate.
 
 Use ssl.cert_reqs=none to disable certificate verification.
-""")
+""",
+)
 
-opt_ssl_cert_reqs = config.Option('ssl.cert_reqs',
-                                  default=default_ca_reqs,
-                                  from_unicode=cert_reqs_from_store,
-                                  invalid='error',
-                                  help="""\
+opt_ssl_cert_reqs = config.Option(
+    "ssl.cert_reqs",
+    default=default_ca_reqs,
+    from_unicode=cert_reqs_from_store,
+    invalid="error",
+    help="""\
 Whether to require a certificate from the remote side. (default:required)
 
 Possible values:
  * none: Certificates ignored
  * required: Certificates required and validated
-""")
+""",
+)

@@ -17,18 +17,10 @@
 
 """Tests specific to Branch implementations that use foreign VCS'es."""
 
-from breezy.branch import (
-    UnstackableBranchFormat,
-    )
-from breezy.errors import (
-    IncompatibleFormat,
-    )
-from breezy.revision import (
-    NULL_REVISION,
-    )
-from breezy.tests import (
-    TestCaseWithTransport,
-    )
+from breezy.branch import UnstackableBranchFormat
+from breezy.errors import IncompatibleFormat
+from breezy.revision import NULL_REVISION
+from breezy.tests import TestCaseWithTransport
 
 
 class ForeignBranchFactory:
@@ -49,6 +41,7 @@ class ForeignBranchTests(TestCaseWithTransport):
     These tests mainly make sure that the implementation covers the required
     bits of the API and returns reasonable values.
     """
+
     branch_factory = None  # Set to an instance of ForeignBranchFactory by scenario
 
     def make_empty_branch(self):
@@ -111,8 +104,7 @@ class ForeignBranchTests(TestCaseWithTransport):
         should raise UnstackableBranchFormat at the moment.
         """
         branch = self.make_branch()
-        self.assertRaises(UnstackableBranchFormat,
-                          branch.get_stacked_on_url)
+        self.assertRaises(UnstackableBranchFormat, branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
         branch = self.make_branch()
@@ -136,9 +128,8 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
-        bzrdir = self.make_controldir('dir')
-        self.assertRaises(IncompatibleFormat,
-                          self.branch_format.initialize, bzrdir)
+        bzrdir = self.make_controldir("dir")
+        self.assertRaises(IncompatibleFormat, self.branch_format.initialize, bzrdir)
 
     def test_get_format_description_type(self):
         self.assertIsInstance(self.branch_format.get_format_description(), str)

@@ -17,14 +17,10 @@
 """Test the git revision specifiers."""
 
 from ...tests import TestCase
-
-from ..revspec import (
-    valid_git_sha1,
-    )
+from ..revspec import valid_git_sha1
 
 
 class Sha1ValidTests(TestCase):
-
     def test_invalid(self):
         self.assertFalse(valid_git_sha1(b"git-v1:abcde"))
 

@@ -1,6 +1,6 @@
 [package]
 name = "breezy"
-version = "3.3.2"
+version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 publish = false
@@ -14,9 +14,15 @@ documentation = "https://www.breezy-vcs.org/doc/"
 [workspace]
 members = ["lib-rio"]
 
+[workspace.package]
+version = "3.3.10"
+
 [[bin]]
 name = "brz"
 path = "breezy/main.rs"
 
 [dependencies]
-pyo3 = ">=0.14,<0.16"
+pyo3 = { workspace = true }
+
+[workspace.dependencies]
+pyo3 = ">=0.22,<0.23"

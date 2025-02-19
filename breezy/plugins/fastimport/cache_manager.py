@@ -21,16 +21,11 @@ import shutil
 import tempfile
 import weakref
 
+from fastimport.reftracker import RefTracker
+
 from ... import lru_cache, trace
-from . import (
-    branch_mapper,
-    )
-from fastimport.reftracker import (
-    RefTracker,
-    )
-from .helpers import (
-    single_plural,
-    )
+from . import branch_mapper
+from .helpers import single_plural
 
 
 class _Cleanup:
@@ -61,7 +56,6 @@ class _Cleanup:
 
 
 class CacheManager:
-
     _small_blob_threshold = 25 * 1024
     _sticky_cache_size = 300 * 1024 * 1024
     _sticky_flushed_size = 100 * 1024 * 1024
@@ -104,7 +98,7 @@ class CacheManager:
         self._blob_ref_counts = {}
         if info is not None:
             try:
-                blobs_by_counts = info['Blob reference counts']
+                blobs_by_counts = info["Blob reference counts"]
                 # The parser hands values back as lists, already parsed
                 for count, blob_list in blobs_by_counts.items():
                     n = int(count)
@@ -121,9 +115,9 @@ class CacheManager:
         self.reftracker = RefTracker()
 
     def add_mark(self, mark, commit_id):
-        if mark.startswith(b':'):
+        if mark.startswith(b":"):
             raise ValueError(mark)
-        is_new = (mark in self.marks)
+        is_new = mark in self.marks
         self.marks[mark] = commit_id
         return is_new
 
@@ -133,9 +127,9 @@ class CacheManager:
         :param committish: A "committish" string
         :return: Bazaar revision id
         """
-        if not committish.startswith(b':'):
+        if not committish.startswith(b":"):
             raise ValueError(committish)
-        return self.marks[committish.lstrip(b':')]
+        return self.marks[committish.lstrip(b":")]
 
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
@@ -144,7 +138,7 @@ class CacheManager:
         self._show_stats_for(self._sticky_blobs, "sticky blobs", note=note)
         self._show_stats_for(self.marks, "revision-ids", note=note)
         # These aren't interesting so omit from the output, at least for now
-        #self._show_stats_for(self._blobs, "other blobs", note=note)
+        # self._show_stats_for(self._blobs, "other blobs", note=note)
         # self.reftracker.dump_stats(note=note)
 
     def _show_stats_for(self, a_dict, label, note, tuple_key=False):
@@ -154,20 +148,22 @@ class CacheManager:
         """
         count = len(a_dict)
         if tuple_key:
-            size = sum(map(len, (''.join(k) for k in a_dict)))
+            size = sum(map(len, ("".join(k) for k in a_dict)))
         else:
             size = sum(map(len, a_dict))
         size += sum(map(len, a_dict.values()))
         size = size * 1.0 / 1024
-        unit = 'K'
+        unit = "K"
         if size > 1024:
             size = size / 1024
-            unit = 'M'
+            unit = "M"
             if size > 1024:
                 size = size / 1024
-                unit = 'G'
-        note("    %-12s: %8.1f %s (%d %s)" % (label, size, unit, count,
-                                              single_plural(count, "item", "items")))
+                unit = "G"
+        note(
+            "    %-12s: %8.1f %s (%d %s)"
+            % (label, size, unit, count, single_plural(count, "item", "items"))
+        )
 
     def clear_all(self):
         """Free up any memory used by the caches."""
@@ -183,11 +179,12 @@ class CacheManager:
         total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k: len(sticky_blobs[k]))
         if self._tempdir is None:
-            tempdir = tempfile.mkdtemp(prefix='fastimport_blobs-')
+            tempdir = tempfile.mkdtemp(prefix="fastimport_blobs-")
             self._tempdir = tempdir
             self._cleanup.tempdir = self._tempdir
             self._cleanup.small_blobs = tempfile.TemporaryFile(
-                prefix='small-blobs-', dir=self._tempdir)
+                prefix="small-blobs-", dir=self._tempdir
+            )
             small_blob_ref = weakref.ref(self._cleanup.small_blobs)
             # Even though we add it to _Cleanup it seems that the object can be
             # destroyed 'too late' for cleanup to actually occur. Probably a
@@ -199,6 +196,7 @@ class CacheManager:
                 if small_blob is not None:
                     small_blob.close()
                 shutil.rmtree(tempdir, ignore_errors=True)
+
             atexit.register(exit_cleanup)
         count = 0
         bytes = 0
@@ -215,16 +213,17 @@ class CacheManager:
                 f.write(blob)
                 n_small_bytes += n_bytes
             else:
-                fd, name = tempfile.mkstemp(prefix='blob-', dir=self._tempdir)
+                fd, name = tempfile.mkstemp(prefix="blob-", dir=self._tempdir)
                 os.write(fd, blob)
                 os.close(fd)
                 self._disk_blobs[id] = (0, n_bytes, name)
             bytes += n_bytes
             del blob
             count += 1
-        trace.note('flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk'
-                   % (count, total_blobs, bytes / 1024. / 1024,
-                      n_small_bytes / 1024. / 1024))
+        trace.note(
+            "flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk"
+            % (count, total_blobs, bytes / 1024.0 / 1024, n_small_bytes / 1024.0 / 1024)
+        )
 
     def store_blob(self, id, data):
         """Store a blob of data."""
@@ -234,7 +233,7 @@ class CacheManager:
             self._sticky_memory_bytes += len(data)
             if self._sticky_memory_bytes > self._sticky_cache_size:
                 self._flush_blobs_to_disk()
-        elif data == b'':
+        elif data == b"":
             # Empty data is always sticky
             self._sticky_blobs[id] = data
         else:
@@ -267,7 +266,7 @@ class CacheManager:
                 f.seek(offset)
                 content = f.read(n_bytes)
             else:
-                with open(fn, 'rb') as fp:
+                with open(fn, "rb") as fp:
                     content = fp.read()
             self._decref(id, self._disk_blobs, fn)
             return content

@@ -27,7 +27,7 @@ def save_id_map(filename, revision_ids):
     :param filename: name of the file to save the data to
     :param revision_ids: a dictionary of commit ids to revision ids.
     """
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         for commit_id in revision_ids:
             f.write(b"%s %s\n" % (commit_id, revision_ids[commit_id]))
 
@@ -51,7 +51,7 @@ def load_id_map(filename):
     if os.path.exists(filename):
         with open(filename) as f:
             for line in f:
-                parts = line[:-1].split(' ', 1)
+                parts = line[:-1].split(" ", 1)
                 result[parts[0]] = parts[1]
                 count += 1
     return result, count

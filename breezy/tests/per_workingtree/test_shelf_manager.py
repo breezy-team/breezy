@@ -16,18 +16,14 @@
 
 """Tests for interface conformance of 'WorkingTree.get_shelf_manager'"""
 
-from breezy import (
-    errors,
-    tests,
-    )
-from breezy.workingtree import ShelvingUnsupported
+from breezy import errors, tests
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from breezy.workingtree import ShelvingUnsupported
 
 
 class TestShelfManager(TestCaseWithWorkingTree):
-
     def test_shelf_manager(self):
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree(".")
         if self.workingtree_format.supports_store_uncommitted:
             self.assertIsNot(None, tree.get_shelf_manager())
         else:
