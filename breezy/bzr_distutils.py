@@ -21,7 +21,7 @@
 
 import os
 import re
-from distutils import log
+from distutils import log  # type: ignore
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.spawn import find_executable
