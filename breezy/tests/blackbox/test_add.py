@@ -36,7 +36,7 @@ class TestAdd(tests.TestCaseWithTransport):
         return super().make_branch_and_tree(dir, format=self.branch_tree_format)
 
     def test_add_reports(self):
-        """add command prints the names of added files."""
+        """Add command prints the names of added files."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["top.txt", "dir/", "dir/sub.txt", "CVS"])
         self.build_tree_contents([(".bzrignore", b"CVS\n")])
@@ -52,7 +52,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(['ignored CVS matching "CVS"'], results)
 
     def test_add_quiet_is(self):
-        """add -q does not print the names of added files."""
+        """Add -q does not print the names of added files."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["top.txt", "dir/", "dir/sub.txt"])
         out = self.run_bzr("add -q")[0]
@@ -133,7 +133,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.run_bzr("check")
 
     def test_add_missing(self):
-        """brz add foo where foo is missing should error."""
+        """Brz add foo where foo is missing should error."""
         self.make_branch_and_tree(".")
         self.run_bzr("add missing-file", retcode=3)
 

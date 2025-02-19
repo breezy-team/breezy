@@ -19,7 +19,7 @@
 
 import os
 
-from breezy import bedding, tests, workingtree
+from breezy import bedding, tests
 
 
 class TestLogFormats(tests.TestCaseWithTransport):

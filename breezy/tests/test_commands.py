@@ -18,7 +18,7 @@ import errno
 import inspect
 import sys
 
-from .. import builtins, commands, config, errors, option, tests, trace
+from .. import builtins, commands, config, errors, option, tests
 from ..commands import display_command
 from . import TestSkipped
 
@@ -197,7 +197,6 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
     def setUp(self):
         super().setUp()
-        import breezy.tests.fake_command
 
         del sys.modules["breezy.tests.fake_command"]
         global lazy_command_imported
@@ -450,7 +449,6 @@ class TestPreAndPostCommandHooks(tests.TestCase):
 
     def test_pre_command_error(self):
         """Ensure an CommandError in pre_command aborts the command"""
-
         hook_calls = []
 
         def pre_command(cmd):

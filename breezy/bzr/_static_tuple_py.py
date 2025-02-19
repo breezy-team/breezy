@@ -20,7 +20,6 @@ Note that it is generally just implemented as using tuples of tuples of
 strings.
 """
 
-import sys
 from typing import Dict
 
 

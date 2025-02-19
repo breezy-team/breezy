@@ -30,9 +30,9 @@ __all__ = [
     "HasLayout",
     "HasPathRelations",
     "MatchesAncestry",
+    "MatchesTreeChanges",
     "ReturnsUnlockable",
     "RevisionHistoryMatches",
-    "MatchesTreeChanges",
 ]
 
 from testtools.matchers import Equals, Matcher, Mismatch

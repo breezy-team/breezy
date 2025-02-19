@@ -20,7 +20,6 @@ from breezy.tests.per_controldir import TestCaseWithControlDir
 
 from ...controldir import NoColocatedBranchSupport
 from ...errors import LossyPushToSameVCS, NoSuchRevision, TagsNotSupported
-from ...revision import NULL_REVISION
 from .. import TestNotApplicable
 
 

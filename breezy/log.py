@@ -72,9 +72,8 @@ from breezy.i18n import gettext, ngettext
 """,
 )
 
-from . import errors, registry
+from . import errors, registry, revisionspec, trace
 from . import revision as _mod_revision
-from . import revisionspec, trace
 from . import transport as _mod_transport
 from .osutils import (
     format_date,
@@ -84,7 +83,7 @@ from .osutils import (
     is_inside,
     terminal_width,
 )
-from .tree import InterTree, find_previous_path
+from .tree import InterTree
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):
@@ -326,7 +325,7 @@ def _apply_log_request_defaults(rqst):
 
 
 def format_signature_validity(rev_id, branch):
-    """get the signature validity
+    """Get the signature validity
 
     :param rev_id: revision id to validate
     :param branch: branch of revision

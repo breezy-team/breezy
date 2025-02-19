@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import errno
-import os
 import sys
 from io import StringIO
 

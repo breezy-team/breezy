@@ -447,7 +447,6 @@ class TestRangeFileVarious(tests.TestCase):
 
     def test_range_syntax(self):
         """Test the Content-Range scanning."""
-
         f = response.RangeFile("foo", BytesIO())
 
         def ok(expected, header_value):

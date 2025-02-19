@@ -21,9 +21,8 @@
 
 import os
 
-from breezy.branch import Branch
 from breezy.osutils import pathjoin
-from breezy.tests import TestCaseInTempDir, TestCaseWithTransport
+from breezy.tests import TestCaseWithTransport
 from breezy.trace import mutter
 from breezy.workingtree import WorkingTree
 
@@ -41,7 +40,6 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir(self):
         """Basic 'brz mkdir' operation"""
-
         self.make_branch_and_tree(".")
         self.run_bzr(["mkdir", "foo"])
         self.assertTrue(os.path.isdir("foo"))
@@ -60,7 +58,6 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir_in_subdir(self):
         """'brz mkdir' operation in subdirectory"""
-
         self.make_branch_and_tree(".")
         self.run_bzr(["mkdir", "dir"])
         self.assertTrue(os.path.isdir("dir"))
@@ -82,7 +79,6 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir_w_nested_trees(self):
         """'brz mkdir' with nested trees"""
-
         self.make_branch_and_tree(".")
         self.make_branch_and_tree("a")
         self.make_branch_and_tree("a/b")
@@ -113,7 +109,6 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir_quiet(self):
         """'brz mkdir --quiet' should not print a status message"""
-
         self.make_branch_and_tree(".")
         out, err = self.run_bzr(["mkdir", "--quiet", "foo"])
         self.assertEqual("", err)

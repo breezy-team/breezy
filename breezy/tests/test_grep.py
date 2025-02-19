@@ -48,7 +48,7 @@ class GrepTestBase(tests.TestCaseWithTransport):
             self.run_bzr(["ci", "-m", '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
-        """append text to file 'path' and check it in"""
+        """Append text to file 'path' and check it in"""
         with open(path, "a") as f:
             f.write(text)
         if checkin:
@@ -79,7 +79,8 @@ class TestGrep(GrepTestBase):
     def test_basic_unknown_file(self):
         """Search for pattern in specfic file.
 
-        If specified file is unknown, grep it anyway."""
+        If specified file is unknown, grep it anyway.
+        """
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -2158,7 +2159,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         return tree
 
     def test_grep_diff_basic(self):
-        """grep -p basic test."""
+        """Grep -p basic test."""
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
@@ -2180,7 +2181,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         )
 
     def test_grep_diff_revision(self):
-        """grep -p specific revision."""
+        """Grep -p specific revision."""
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
@@ -2198,7 +2199,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         )
 
     def test_grep_diff_revision_range(self):
-        """grep -p revision range."""
+        """Grep -p revision range."""
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!1\n")])  # rev 3
         tree.commit("rev3")
@@ -2231,7 +2232,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         )
 
     def test_grep_diff_color(self):
-        """grep -p color test."""
+        """Grep -p color test."""
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
@@ -2253,7 +2254,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.assertEqualDiff(subst_dates(out), revno + filename + diffstr)
 
     def test_grep_norevs(self):
-        """grep -p with zero revisions."""
+        """Grep -p with zero revisions."""
         out, err = self.run_bzr(["init"])
         out, err = self.run_bzr(["grep", "--diff", "foo"], 3)
         self.assertEqual(out, "")

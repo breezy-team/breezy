@@ -19,8 +19,8 @@
 
 import os
 
-from ... import osutils, tests, urlutils
-from .. import features, script
+from ... import tests
+from .. import features
 
 LzmaFeature = features.ModuleAvailableFeature("lzma")
 

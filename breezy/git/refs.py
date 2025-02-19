@@ -16,7 +16,6 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from dulwich.objects import Tag, object_class
 from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX
 
 try:

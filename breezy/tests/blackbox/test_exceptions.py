@@ -17,7 +17,6 @@
 """Tests for display of exceptions."""
 
 import os
-import re
 import unittest
 
 from breezy import bzr, config, controldir, errors, osutils, repository, tests
@@ -47,7 +46,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
 
 
 class TestOptParseBugHandling(tests.TestCase):
-    "Test that we handle http://bugs.python.org/issue2931"
+    """Test that we handle http://bugs.python.org/issue2931"""
 
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name on Python 2"""
@@ -90,11 +89,11 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
-        """repo is not used yet since _deprecation_warning_done is a global"""
+        """Repo is not used yet since _deprecation_warning_done is a global"""
         repository._deprecation_warning_done = False
 
     def disable_deprecation_warning(self, repo=None):
-        """repo is not used yet since _deprecation_warning_done is a global"""
+        """Repo is not used yet since _deprecation_warning_done is a global"""
         repository._deprecation_warning_done = True
 
     def make_obsolete_repo(self, path):

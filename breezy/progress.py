@@ -136,7 +136,8 @@ class ProgressTask:
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
 
-        Returns None if no completion can be computed."""
+        Returns None if no completion can be computed.
+        """
         if self.current_cnt is not None and self.total_cnt:
             own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
         else:

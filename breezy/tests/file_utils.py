@@ -19,7 +19,8 @@ from io import BytesIO
 
 class FakeReadFile:
     """A file-like object that can be given predefined content and read
-    like a file.  The maximum size and number of the reads is recorded."""
+    like a file.  The maximum size and number of the reads is recorded.
+    """
 
     def __init__(self, data):
         """Initialize the mock file object with the provided data."""
@@ -29,7 +30,8 @@ class FakeReadFile:
 
     def read(self, size=-1):
         """Reads size characters from the input (or the rest of the string if
-        size is -1)."""
+        size is -1).
+        """
         data = self.data.read(size)
         self.max_read_size = max(self.max_read_size or 0, len(data))
         self.read_count += 1

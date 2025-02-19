@@ -104,7 +104,7 @@ class TestHashCache(TestCaseInTempDir):
             hc = self.reopen_hashcache()
 
     def test_hashcache_raise(self):
-        """check that hashcache can raise BzrError"""
+        """Check that hashcache can raise BzrError"""
         self.requireFeature(OsFifoFeature)
         hc = self.make_hashcache()
         os.mkfifo("a")

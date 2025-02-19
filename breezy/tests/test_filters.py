@@ -16,7 +16,7 @@
 
 from io import BytesIO
 
-from .. import errors, filters
+from .. import filters
 from ..filters import (
     ContentFilter,
     ContentFilterContext,

@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import time
 
 from . import debug, errors, osutils, revision, trace
 
@@ -478,7 +477,6 @@ class Graph:
 
         :return: (unique_searcher, common_searcher)
         """
-
         unique_searcher = self._make_breadth_first_searcher(unique_revisions)
         # we know that unique_revisions aren't in common_revisions, so skip
         # past them.
@@ -1262,7 +1260,7 @@ class Graph:
                 return
 
     def _remove_simple_descendants(self, revisions, parent_map):
-        """remove revisions which are children of other ones in the set
+        """Remove revisions which are children of other ones in the set
 
         This doesn't do any graph searching, it just checks the immediate
         parent_map to find if there are any children which can be removed.
@@ -1553,8 +1551,7 @@ class _BreadthFirstSearcher:
         return seen_ancestors
 
     def stop_searching_any(self, revisions):
-        """
-        Remove any of the specified revisions from the search list.
+        """Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
         search list.

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"bash_completion.py - create bash completion script from built-in brz help"
+"""bash_completion.py - create bash completion script from built-in brz help"""
 
 import breezy
 import breezy.commands

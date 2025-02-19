@@ -17,9 +17,7 @@
 
 """Black-box tests for 'brz deleted', which shows newly deleted files."""
 
-import os
 
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
 
 

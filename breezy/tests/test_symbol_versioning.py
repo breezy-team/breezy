@@ -276,7 +276,7 @@ class TestSuppressAndActivate(TestCase):
         self.assertEqual(original_filters, warnings.filters)
 
     def test_suppress_deprecation_with_warning_filter(self):
-        """don't suppress if we already have a filter"""
+        """Don't suppress if we already have a filter"""
         warnings.filterwarnings("error", category=Warning)
         self.assertFirstWarning("error", Warning)
         self.assertEqual(1, len(warnings.filters))
@@ -285,7 +285,7 @@ class TestSuppressAndActivate(TestCase):
         self.assertEqual(1, len(warnings.filters))
 
     def test_suppress_deprecation_with_filter(self):
-        """don't suppress if we already have a filter"""
+        """Don't suppress if we already have a filter"""
         warnings.filterwarnings("error", category=DeprecationWarning)
         self.assertFirstWarning("error", DeprecationWarning)
         self.assertEqual(1, len(warnings.filters))

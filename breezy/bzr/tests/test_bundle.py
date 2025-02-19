@@ -20,20 +20,18 @@ import sys
 import tempfile
 from io import BytesIO
 
-from ... import diff, errors, merge, osutils
+from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
-from ... import tests
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ...tests import features, test_commit
 from ...tree import InterTree
 from .. import bzrdir, inventory, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import read_bundle, v4, v09, write_bundle
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bundle.serializer import read_bundle, v09, v4, write_bundle
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
+from ..bundle.serializer.v4 import BundleSerializerV4
 from ..inventorytree import InventoryTree
 
 
@@ -304,7 +302,7 @@ class BTreeTester(tests.TestCase):
         self.get_file_test(btree)
 
     def test_delete(self):
-        "Deletion by bundle"
+        """Deletion by bundle"""
         btree = self.make_tree_1()[0]
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
@@ -476,7 +474,6 @@ class BundleTester:
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it."""
-
         if checkout_dir is None:
             checkout_dir = tempfile.mkdtemp(prefix="test-branch-", dir=".")
             checkout_dir = os.path.relpath(checkout_dir, os.getcwd())
@@ -1466,7 +1463,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id=b"A")
         self.assertFalse(branch.repository.has_signature_for_revision_id(b"A"))
         try:
-            from ..testament import Testament
 
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy

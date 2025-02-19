@@ -18,7 +18,7 @@
 
 import os
 
-from breezy import osutils, tests, workingtree
+from breezy import osutils, workingtree
 from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

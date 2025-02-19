@@ -516,7 +516,7 @@ class _AttribFeature(Feature):
             proc = subprocess.Popen(["attrib", "."], stdout=subprocess.PIPE)
         except OSError:
             return False
-        return 0 == proc.wait()
+        return proc.wait() == 0
 
     def feature_name(self):
         return "attrib Windows command-line tool"

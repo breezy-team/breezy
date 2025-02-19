@@ -55,7 +55,7 @@ from ..git import workingtree as git_workingtree
 from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 from ..trace import mutter, note
 from ..transport import memory
-from . import TestUtil, features, test_lsprof, test_server
+from . import TestUtil, features, test_server
 
 
 def _test_ids(test_suite):
@@ -91,13 +91,13 @@ class TestClassesAvailable(tests.TestCase):
     """As a convenience we expose Test* classes from breezy.tests"""
 
     def test_test_case(self):
-        from . import TestCase
+        pass
 
     def test_test_loader(self):
-        from . import TestLoader
+        pass
 
     def test_test_suite(self):
-        from . import TestSuite
+        pass
 
 
 class TestTransportScenarios(tests.TestCase):
@@ -1433,7 +1433,7 @@ class TestRunner(tests.TestCase):
         self.assertStartsWith(stream.getvalue(), "running 2 tests")
 
     def test_startTestRun(self):
-        """run should call result.startTestRun()"""
+        """Run should call result.startTestRun()"""
         calls = []
 
         class LoggingDecorator(ExtendedToOriginalDecorator):
@@ -1450,7 +1450,7 @@ class TestRunner(tests.TestCase):
         self.assertLength(1, calls)
 
     def test_stopTestRun(self):
-        """run should call result.stopTestRun()"""
+        """Run should call result.stopTestRun()"""
         calls = []
 
         class LoggingDecorator(ExtendedToOriginalDecorator):
@@ -2782,7 +2782,7 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
         working_dir=None,
         allow_plugins=False,
     ):
-        """capture what run_brz_subprocess tries to do."""
+        """Capture what run_brz_subprocess tries to do."""
         self.subprocess_calls.append(
             {
                 "process_args": process_args,

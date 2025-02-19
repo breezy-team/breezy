@@ -348,7 +348,7 @@ class DataCollector:
         for optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
-        if "help" == name or "help" in cmd.aliases:
+        if name == "help" or "help" in cmd.aliases:
             cmd_data.fixed_words = "($cmds %s)" % " ".join(
                 sorted(help_topics.topic_registry.keys())
             )

@@ -18,9 +18,8 @@
 import time
 
 import configobj
-from fastimport import commands
+from fastimport import commands, processor
 from fastimport import errors as plugin_errors
-from fastimport import processor
 from fastimport.helpers import invert_dictset
 
 from .... import debug, delta, errors, osutils, progress

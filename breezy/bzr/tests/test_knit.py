@@ -22,7 +22,7 @@ from io import BytesIO
 
 from patiencediff import PatienceSequenceMatcher
 
-from ... import errors, multiparent, osutils, tests
+from ... import errors, multiparent, osutils
 from ... import transport as _mod_transport
 from ...tests import (
     TestCase,
@@ -503,7 +503,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # populated
         try:
             raise _TestException("foobar")
-        except _TestException as e:
+        except _TestException:
             retry_exc = pack_repo.RetryWithNewPacks(
                 None, reload_occurred=False, exc_info=sys.exc_info()
             )

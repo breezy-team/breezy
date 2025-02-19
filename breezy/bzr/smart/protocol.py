@@ -21,7 +21,6 @@ client and server.
 import _thread
 import struct
 import sys
-import time
 from collections import deque
 from io import BytesIO
 
@@ -295,7 +294,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
         if response.body is not None:
             if not isinstance(response.body, bytes):
                 raise AssertionError("body must be bytes")
-            if not (response.body_stream is None):
+            if response.body_stream is not None:
                 raise AssertionError("body_stream and body cannot both be set")
             data = self._encode_bulk_data(response.body)
             self._write_func(data)

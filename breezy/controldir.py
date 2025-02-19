@@ -24,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Type, cast
 
 from .lazy_import import lazy_import
 
@@ -43,9 +43,8 @@ from breezy.i18n import gettext
 """,
 )
 
-from . import errors, hooks, registry
+from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
-from . import trace
 from . import transport as _mod_transport
 
 if TYPE_CHECKING:
@@ -135,7 +134,8 @@ class ControlDir(ControlComponent):
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
-        from."""
+        from.
+        """
         return True
 
     def list_branches(self) -> List["Branch"]:

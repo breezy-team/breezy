@@ -111,7 +111,6 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE, start_message=
 
     :return:    commit message or None.
     """
-
     if start_message is not None:
         start_message = start_message.encode(osutils.get_user_encoding())
     infotext = infotext.encode(osutils.get_user_encoding(), "replace")

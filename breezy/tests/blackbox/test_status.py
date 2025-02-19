@@ -22,19 +22,16 @@ tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
 
-import codecs
 import sys
 from io import BytesIO, StringIO
 from os import chdir, mkdir, rmdir, unlink
 
-import breezy.branch
 from breezy.bzr import bzrdir, conflicts
 
 from ... import errors, osutils, status
 from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
 from ...status import show_tree_status
-from ...workingtree import WorkingTree
 from .. import TestCaseWithTransport, TestSkipped
 
 

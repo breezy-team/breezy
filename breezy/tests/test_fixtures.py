@@ -16,7 +16,4 @@
 
 """Tests for test fixtures"""
 
-import codecs
 
-from .. import tests
-from . import fixtures

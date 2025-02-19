@@ -40,8 +40,7 @@ EXIT_INTERNAL_ERROR = 4
 
 
 class BzrError(Exception):
-    """
-    Base class for errors raised by breezy.
+    """Base class for errors raised by breezy.
 
     Attributes:
       internal_error: if True this was probably caused by a brz bug and

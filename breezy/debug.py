@@ -28,7 +28,6 @@ debug_flags = set()
 
 def set_debug_flags_from_config():
     """Turn on debug flags based on the global configuration"""
-
     from breezy import config
 
     c = config.GlobalStack()

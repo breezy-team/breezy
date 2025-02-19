@@ -44,7 +44,7 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(branch, _mod_bzrbranch.BzrBranch6)
 
     def test_build_one_commit(self):
-        """doing build_commit causes a commit to happen."""
+        """Doing build_commit causes a commit to happen."""
         builder = BranchBuilder(self.get_transport().clone("foo"))
         rev_id = builder.build_commit()
         branch = builder.get_branch()

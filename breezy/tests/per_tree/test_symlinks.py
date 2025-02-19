@@ -16,7 +16,7 @@
 
 """Tests for interface conformance of inventories of trees."""
 
-from breezy import osutils, tests
+from breezy import osutils
 from breezy.git.branch import GitBranch
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped, features, per_tree

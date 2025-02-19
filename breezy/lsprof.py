@@ -10,13 +10,12 @@ import os
 import pickle
 import sys
 import threading
-from typing import Dict, TextIO
-
 from _lsprof import Profiler, profiler_entry
+from typing import Dict, TextIO
 
 from . import errors
 
-__all__ = ["profile", "Stats"]
+__all__ = ["Stats", "profile"]
 
 
 def profile(f, *args, **kwds):
@@ -130,7 +129,8 @@ class Stats:
     def sort(self, crit="inlinetime", reverse=True):
         """Sort the data by the supplied critera.
 
-        :param crit: the data attribute used as the sort key."""
+        :param crit: the data attribute used as the sort key.
+        """
         if crit not in profiler_entry.__dict__ or crit == "code":
             raise ValueError("Can't sort by %s" % crit)
 
@@ -147,7 +147,8 @@ class Stats:
         :param top: only output the top n entries.
             The default value of None means output all data.
         :param file: the output file; if None, output will
-            default to stdout."""
+            default to stdout.
+        """
         if file is None:
             file = sys.stdout
         d = self.data
@@ -191,8 +192,8 @@ class Stats:
 
     def freeze(self):
         """Replace all references to code objects with string
-        descriptions; this makes it possible to pickle the instance."""
-
+        descriptions; this makes it possible to pickle the instance.
+        """
         # this code is probably rather ickier than it needs to be!
         for i in range(len(self.data)):
             e = self.data[i]

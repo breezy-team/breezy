@@ -16,9 +16,7 @@
 
 """Export a Tree to a zip file."""
 
-import os
 import stat
-import sys
 import tempfile
 import time
 import zipfile

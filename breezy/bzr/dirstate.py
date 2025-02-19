@@ -3721,24 +3721,24 @@ def py_update_entry(
 
 class ProcessEntryPython:
     __slots__ = [
-        "old_dirname_to_file_id",
-        "new_dirname_to_file_id",
+        "include_unchanged",
         "last_source_parent",
         "last_target_parent",
-        "include_unchanged",
+        "new_dirname_to_file_id",
+        "old_dirname_to_file_id",
         "partial",
-        "use_filesystem_for_exec",
-        "utf8_decode",
-        "searched_specific_files",
+        "search_specific_file_parents",
         "search_specific_files",
         "searched_exact_paths",
-        "search_specific_file_parents",
+        "searched_specific_files",
         "seen_ids",
-        "state",
         "source_index",
+        "state",
         "target_index",
-        "want_unversioned",
         "tree",
+        "use_filesystem_for_exec",
+        "utf8_decode",
+        "want_unversioned",
     ]
 
     def __init__(

@@ -33,8 +33,10 @@ commitfromnews attempts to create a sensible default commit message by
 including sections from a NEWS or ChangeLog file.
 """
 
-from ... import version_info  # noqa: F401
-from ... import hooks
+from ... import (
+    hooks,
+    version_info,  # noqa: F401
+)
 from ...config import ListOption, option_registry
 
 option_registry.register(

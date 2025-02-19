@@ -21,7 +21,7 @@ See MutableTree for more details.
 
 from typing import List, Optional, Union
 
-from . import errors, hooks, osutils, trace, tree
+from . import errors, hooks, trace, tree
 
 
 class BadReferenceTarget(errors.InternalBzrError):

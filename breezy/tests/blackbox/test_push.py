@@ -40,7 +40,7 @@ load_tests = scenarios.load_tests_apply_scenarios
 
 class TestPush(tests.TestCaseWithTransport):
     def test_push_error_on_vfs_http(self):
-        """pushing a branch to a HTTP server fails cleanly."""
+        """Pushing a branch to a HTTP server fails cleanly."""
         # the trunk is published on a web server
         self.transport_readonly_server = http_server.HttpServer
         self.make_branch("source")

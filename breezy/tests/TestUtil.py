@@ -40,7 +40,8 @@ class LogCollector(logging.Handler):
 
 def makeCollectingLogger():
     """I make a logger instance that collects its logs for programmatic analysis
-    -> (logger, collector)"""
+    -> (logger, collector)
+    """
     logger = logging.Logger("collector")
     handler = LogCollector()
     handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
@@ -90,11 +91,13 @@ class FailedCollectionCase(unittest.TestCase):
 class TestSuite(unittest.TestSuite):
     """I am an extended TestSuite with a visitor interface.
     This is primarily to allow filtering of tests - and suites or
-    more in the future. An iterator of just tests wouldn't scale..."""
+    more in the future. An iterator of just tests wouldn't scale...
+    """
 
     def visit(self, visitor):
-        """visit the composite. Visiting is depth-first.
-        current callbacks are visitSuite and visitCase."""
+        """Visit the composite. Visiting is depth-first.
+        current callbacks are visitSuite and visitCase.
+        """
         visitor.visitSuite(self)
         visitTests(self, visitor)
 
@@ -140,7 +143,7 @@ class TestLoader(unittest.TestLoader):
     test_func_names: Dict[str, List[str]] = {}
 
     def loadTestsFromModuleNames(self, names):
-        """use a custom means to load tests from modules.
+        """Use a custom means to load tests from modules.
 
         There is an undesirable glitch in the python TestLoader where a
         import error is ignore. We think this can be solved by ensuring the

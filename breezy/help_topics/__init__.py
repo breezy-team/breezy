@@ -118,7 +118,6 @@ topic_registry = HelpTopicRegistry()
 
 def _help_on_topics(dummy):
     """Write out the help for topics to outfile"""
-
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
 

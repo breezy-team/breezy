@@ -105,7 +105,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
         :param result: A parents list for the inventories.get_parent_map call.
         :param snapshots: An iterable of snapshot parameters for
             BranchBuilder.build_snapshot.
-        '"""
+        '
+        """
         # This overlaps slightly with the tests for commit builder about graph
         # consistency.
         # Cases:

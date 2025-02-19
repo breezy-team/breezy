@@ -21,7 +21,6 @@ import os
 
 from testtools import content
 
-from .. import plugins as _mod_plugins
 from .. import trace
 from ..bzr.smart import medium
 from ..controldir import ControlDir

@@ -18,7 +18,7 @@ import os
 import tarfile
 import zipfile
 
-from breezy import osutils, tests
+from breezy import osutils
 from breezy.errors import UnsupportedOperation
 from breezy.export import export
 from breezy.tests import TestNotApplicable, features

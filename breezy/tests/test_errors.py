@@ -18,8 +18,6 @@
 
 import inspect
 import re
-import socket
-import sys
 
 from .. import controldir, errors, osutils, tests, urlutils
 
@@ -250,7 +248,6 @@ class TestErrors(tests.TestCase):
 
     def test_socket_connection_error(self):
         """Test the formatting of SocketConnectionError"""
-
         # There should be a default msg about failing to connect
         # we only require a host name.
         self.assertSocketConnectionError("Failed to connect to ahost", "ahost")
@@ -440,7 +437,7 @@ class TestErrorFormatting(tests.TestCase):
     def test_cannot_bind_address(self):
         # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress(
-            "example.com", 22, socket.error(13, "Permission denied")
+            "example.com", 22, OSError(13, "Permission denied")
         )
         self.assertContainsRe(
             str(e), r'Cannot bind address "example\.com:22":.*Permission denied'

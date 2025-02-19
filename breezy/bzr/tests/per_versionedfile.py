@@ -25,9 +25,8 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-from ... import errors
+from ... import errors, osutils, progress, transport, ui
 from ... import graph as _mod_graph
-from ... import osutils, progress, transport, ui
 from ...errors import RevisionAlreadyPresent, RevisionNotPresent
 from ...tests import (
     TestCase,
@@ -457,8 +456,6 @@ class VersionedFileTestMixIn:
 
     def test_add_lines_with_matching_blocks_noeol_last_line(self):
         """Add a text with an unchanged last line with no eol should work."""
-        from breezy import multiparent
-
         # Hand verified sha1 of the text we're adding.
         sha1 = "6a1d115ec7b60afb664dc14890b5af5ce3c827a4"
         # Create a mpdiff which adds a new line before the trailing line, and
@@ -718,7 +715,7 @@ class VersionedFileTestMixIn:
             ):
                 lines.setdefault(line, 0)
                 lines[line] += 1
-            if [] != progress.updates:
+            if progress.updates != []:
                 self.assertEqual(expected, progress.updates)
             return lines
 
@@ -1025,7 +1022,6 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
 class MergeCasesMixin:
     def doMerge(self, base, a, b, mp):
-        from textwrap import dedent
 
         def addcrlf(x):
             return x + b"\n"
@@ -1109,7 +1105,6 @@ class MergeCasesMixin:
         If one side modifies a region and the other deletes it then
         there should be a conflict with one side blank.
         """
-
         #######################################
         # skippd, not working yet
         return
@@ -2040,7 +2035,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 factory.get_bytes_as("fulltext")
 
     def test_get_record_stream_interface(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         keys, _ = self.get_keys_and_sort_order()
@@ -2107,7 +2102,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         return keys, sort_order
 
     def test_get_record_stream_interface_ordered(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         keys, sort_order = self.get_keys_and_sort_order()
@@ -2118,7 +2113,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertStreamOrder(sort_order, seen, keys)
 
     def test_get_record_stream_interface_ordered_with_delta_closure(self):
-        """each item must be accessible as a fulltext."""
+        """Each item must be accessible as a fulltext."""
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         keys, sort_order = self.get_keys_and_sort_order()
@@ -2143,7 +2138,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertStreamOrder(sort_order, seen, keys)
 
     def test_get_record_stream_interface_groupcompress(self):
-        """each item in a stream has to provide a regular interface."""
+        """Each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
         keys, sort_order = self.get_keys_and_groupcompress_sort_order()
@@ -2899,7 +2894,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             for line in files.iter_lines_added_or_present_in_keys(keys, pb=progress):
                 lines.setdefault(line, 0)
                 lines[line] += 1
-            if [] != progress.updates:
+            if progress.updates != []:
                 self.assertEqual(expected, progress.updates)
             return lines
 

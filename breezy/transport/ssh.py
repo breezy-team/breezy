@@ -25,13 +25,13 @@ import socket
 import subprocess
 import sys
 from binascii import hexlify
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Dict, Set, Tuple, Type
 
 from .. import bedding, config, errors, osutils, trace, ui
 
 try:
     import paramiko
-except ModuleNotFoundError as e:
+except ModuleNotFoundError:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
     paramiko = None  # type: ignore
@@ -536,7 +536,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         try:
             paramiko_transport.auth_publickey(username, key)
             return
-        except paramiko.SSHException as e:
+        except paramiko.SSHException:
             pass
 
     # okay, try finding id_rsa or id_dss?  (posix only)
@@ -561,7 +561,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     except paramiko.BadAuthenticationType as e:
         # Supported methods are in the exception
         supported_auth_types = e.allowed_types
-    except paramiko.SSHException as e:
+    except paramiko.SSHException:
         # Don't know what happened, but just ignore it
         pass
     # We treat 'keyboard-interactive' and 'password' auth methods identically,
@@ -586,7 +586,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         try:
             paramiko_transport.auth_password(username, password)
             return
-        except paramiko.SSHException as e:
+        except paramiko.SSHException:
             pass
 
     # give up and ask for a password
@@ -638,8 +638,7 @@ def _ssh_host_keys_config_dir():
 
 
 def load_host_keys():
-    """
-    Load system host keys (probably doesn't work on windows) and any
+    """Load system host keys (probably doesn't work on windows) and any
     "discovered" keys from previous sessions.
     """
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
@@ -658,8 +657,7 @@ def load_host_keys():
 
 
 def save_host_keys():
-    """
-    Save "discovered" host keys in $(config)/ssh_host_keys/.
+    """Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     bzr_hostkey_path = _ssh_host_keys_config_dir()

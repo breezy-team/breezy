@@ -49,7 +49,6 @@ _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
-from breezy import osutils
 from breezy.tests import ssl_certs
 
 
@@ -66,7 +65,7 @@ def needs(request, *paths):
 
 
 def rm_f(path):
-    """rm -f path"""
+    """Rm -f path"""
     try:
         os.unlink(path)
     except:

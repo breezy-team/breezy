@@ -25,17 +25,13 @@
 import re
 from typing import Dict, Union
 from xml.etree.ElementTree import (
-    Element,
     ElementTree,
     ParseError,
-    SubElement,
     fromstring,
     fromstringlist,
-    tostring,
-    tostringlist,
 )
 
-from .. import errors, lazy_regex
+from .. import lazy_regex
 from . import inventory, serializer
 
 

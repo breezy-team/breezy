@@ -25,7 +25,7 @@ from typing import Dict
 
 
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
-    """wrap _utf8_decode to support None->None for optional strings.
+    """Wrap _utf8_decode to support None->None for optional strings.
 
     Also, only return the Unicode portion, since we don't care about the second
     return value.

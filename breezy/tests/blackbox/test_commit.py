@@ -24,7 +24,7 @@ import sys
 
 from testtools.matchers import DocTestMatches
 
-from ... import config, ignores, msgeditor, osutils
+from ... import ignores, msgeditor, osutils
 from ...controldir import ControlDir
 from .. import TestCaseWithTransport, features, test_foreign
 from ..test_bedding import override_whoami
@@ -501,7 +501,7 @@ altered in u2
         self.run_bzr("commit --strict -m adding-a", working_dir="tree")
 
     def test_strict_commit_no_changes(self):
-        """commit --strict gives "no changes" if there is nothing to commit"""
+        """Commit --strict gives "no changes" if there is nothing to commit"""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
         tree.add("a")
@@ -519,7 +519,7 @@ altered in u2
         self.run_bzr("commit --strict --unchanged -m no-changes", working_dir="tree")
 
     def test_strict_commit_unknown(self):
-        """commit --strict fails if a file is unknown"""
+        """Commit --strict fails if a file is unknown"""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
         tree.add("a")
@@ -538,7 +538,7 @@ altered in u2
         self.run_bzr("commit --strict -m add-b --no-strict", working_dir="tree")
 
     def test_fixes_bug_output(self):
-        """commit --fixes=lp:23452 succeeds without output."""
+        """Commit --fixes=lp:23452 succeeds without output."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
@@ -549,7 +549,7 @@ altered in u2
         )
 
     def test_fixes_bug_unicode(self):
-        """commit --fixes=lp:unicode succeeds without output."""
+        """Commit --fixes=lp:unicode succeeds without output."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
@@ -581,7 +581,7 @@ altered in u2
         self.assertFalse("bugs" in properties)
 
     def test_bugs_sets_property(self):
-        """commit --bugs=lp:234 sets the lp:234 revprop to 'related'."""
+        """Commit --bugs=lp:234 sets the lp:234 revprop to 'related'."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
@@ -596,7 +596,7 @@ altered in u2
         self.assertEqual({"bugs": "https://launchpad.net/bugs/234 related"}, properties)
 
     def test_fixes_bug_sets_property(self):
-        """commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
+        """Commit --fixes=lp:234 sets the lp:234 revprop to 'fixed'."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
@@ -668,7 +668,7 @@ altered in u2
         )
 
     def test_fixes_bug_with_default_tracker(self):
-        """commit --fixes=234 uses the default bug tracker."""
+        """Commit --fixes=234 uses the default bug tracker."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
@@ -730,7 +730,7 @@ altered in u2
         self.assertFalse("author" in properties)
 
     def test_author_sets_property(self):
-        """commit --author='John Doe <jdoe@example.com>' sets the author
+        """Commit --author='John Doe <jdoe@example.com>' sets the author
         revprop.
         """
         tree = self.make_branch_and_tree("tree")

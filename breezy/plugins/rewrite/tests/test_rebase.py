@@ -16,7 +16,6 @@
 
 """Tests for the rebase code."""
 
-from ....conflicts import ConflictList
 from ....errors import ConflictsInTree, UnknownFormatError
 from ....graph import DictParentsProvider, Graph
 from ....revision import NULL_REVISION

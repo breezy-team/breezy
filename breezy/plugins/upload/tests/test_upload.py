@@ -200,7 +200,7 @@ class UploadUtilsMixin:
     def do_full_upload(self, *args, **kwargs):
         upload = self._get_cmd_upload()
         up_url = self.get_url(self.upload_dir)
-        if kwargs.get("directory", None) is None:
+        if kwargs.get("directory") is None:
             kwargs["directory"] = self.branch_dir
         kwargs["full"] = True
         kwargs["quiet"] = True
@@ -209,7 +209,7 @@ class UploadUtilsMixin:
     def do_incremental_upload(self, *args, **kwargs):
         upload = self._get_cmd_upload()
         up_url = self.get_url(self.upload_dir)
-        if kwargs.get("directory", None) is None:
+        if kwargs.get("directory") is None:
             kwargs["directory"] = self.branch_dir
         kwargs["quiet"] = True
         upload.run(up_url, *args, **kwargs)

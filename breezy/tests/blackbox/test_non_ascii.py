@@ -57,7 +57,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
                 args, encoding=encoding, retcode=retcode, working_dir=working_dir
             )[0]
             return out.decode(encoding)
-        except UnicodeError as e:
+        except UnicodeError:
             if not fail:
                 raise
         else:

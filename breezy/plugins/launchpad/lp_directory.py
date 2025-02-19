@@ -19,10 +19,9 @@
 from urllib.parse import urlsplit
 
 from ... import debug, errors, trace, transport
-from ...i18n import gettext
 from ...urlutils import InvalidURL, join, split
 from .account import get_lp_login
-from .uris import DEFAULT_INSTANCE, LAUNCHPAD_DOMAINS, LPNET_SERVICE_ROOT
+from .uris import LPNET_SERVICE_ROOT
 
 # As breezy.transport.remote may not be loaded yet, make sure bzr+ssh
 # is counted as a netloc protocol.

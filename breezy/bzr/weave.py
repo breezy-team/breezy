@@ -78,10 +78,10 @@ lazy_import(
 from breezy import tsort
 """,
 )
-from .. import errors, osutils
+from .. import errors
 from .. import transport as _mod_transport
 from ..errors import RevisionAlreadyPresent, RevisionNotPresent
-from ..osutils import dirname, sha, sha_strings, split_lines
+from ..osutils import dirname, sha, sha_strings
 from ..revision import NULL_REVISION
 from ..trace import mutter
 from .versionedfile import (
@@ -272,14 +272,14 @@ class Weave(VersionedFile):
     """
 
     __slots__ = [
-        "_weave",
+        "_allow_reserved",
+        "_matcher",
+        "_name_map",
+        "_names",
         "_parents",
         "_sha1s",
-        "_names",
-        "_name_map",
+        "_weave",
         "_weave_name",
-        "_matcher",
-        "_allow_reserved",
     ]
 
     def __init__(
@@ -330,7 +330,8 @@ class Weave(VersionedFile):
     def copy(self):
         """Return a deep copy of self.
 
-        The copy can be modified without affecting the original weave."""
+        The copy can be modified without affecting the original weave.
+        """
         other = Weave()
         other._weave = self._weave[:]
         other._parents = self._parents[:]
@@ -632,7 +633,8 @@ class Weave(VersionedFile):
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
 
-        The index indicates when the line originated in the weave."""
+        The index indicates when the line originated in the weave.
+        """
         incls = [self._lookup(version_id)]
         return [
             (self._idx_to_name(origin), text)
@@ -654,7 +656,6 @@ class Weave(VersionedFile):
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""
-
         istack = []
         dset = set()
 
@@ -943,7 +944,8 @@ class Weave(VersionedFile):
 
         If present & correct return True;
         if not present in self return False;
-        if inconsistent raise error."""
+        if inconsistent raise error.
+        """
         this_idx = self._name_map.get(name, -1)
         if this_idx != -1:
             if self._sha1s[this_idx] != other._sha1s[other_idx]:
@@ -972,7 +974,7 @@ class Weave(VersionedFile):
         self._copy_weave_content(new_weave)
 
     def _copy_weave_content(self, otherweave):
-        """adsorb the content from otherweave."""
+        """Adsorb the content from otherweave."""
         for attr in self.__slots__:
             if attr != "_weave_name":
                 setattr(self, attr, copy(getattr(otherweave, attr)))
@@ -1120,7 +1122,8 @@ def _reweave(wa, wb, pb=None, msg=None):
 def _reweave_parent_graphs(wa, wb):
     """Return combined parent ancestry for two weaves.
 
-    Returned as a list of (version_name, set(parent_names))"""
+    Returned as a list of (version_name, set(parent_names))
+    """
     combined = {}
     for weave in [wa, wb]:
         for idx, name in enumerate(weave._names):

@@ -31,21 +31,14 @@ from dulwich.object_store import (
 )
 from dulwich.objects import ShaFile
 from dulwich.pack import (
-    PACK_SPOOL_FILE_MAX_SIZE,
-    MemoryPackIndex,
     Pack,
     PackData,
     PackIndexer,
-    PackInflater,
     PackStreamCopier,
-    compute_file_sha,
     extend_pack,
     iter_sha1,
     load_pack_index_file,
-    write_pack_header,
     write_pack_index,
-    write_pack_object,
-    write_pack_objects,
 )
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
@@ -64,9 +57,8 @@ from dulwich.repo import (
     write_packed_refs,
 )
 
-from .. import osutils
+from .. import osutils, urlutils
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..errors import (
     AlreadyControlDirError,
     LockBroken,
@@ -78,10 +70,9 @@ from ..errors import (
 from ..lock import LogicalLockResult
 from ..trace import warning
 from ..transport import FileExists, NoSuchFile
-from ..transport.local import LocalTransport
 
 
-class _RemoteGitFile(object):
+class _RemoteGitFile:
     def __init__(self, transport, filename, mode, bufsize, mask):
         self.transport = transport
         self.filename = filename

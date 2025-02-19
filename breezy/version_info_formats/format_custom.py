@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A generator which creates a template-based output from the current
-tree info."""
+tree info.
+"""
 
 import codecs
 

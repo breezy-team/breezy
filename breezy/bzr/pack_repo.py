@@ -73,7 +73,7 @@ class RetryWithNewPacks(errors.BzrError):
     )
 
     def __init__(self, context, reload_occurred, exc_info):
-        """create a new RetryWithNewPacks error.
+        """Create a new RetryWithNewPacks error.
 
         :param reload_occurred: Set to True if we know that the packs have
             already been reloaded, and we are failing because of an in-memory

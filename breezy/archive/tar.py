@@ -17,7 +17,6 @@
 """Export a tree to a tarball."""
 
 import os
-import sys
 import tarfile
 from contextlib import closing
 from io import BytesIO

@@ -26,7 +26,7 @@ import sys
 
 import breezy.branch
 from breezy import osutils
-from breezy.tests import TestCase, TestSkipped, features
+from breezy.tests import TestCase, TestSkipped
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
@@ -325,7 +325,7 @@ class TestSource(TestSourceHelper):
             self.fail("\n\n".join(problems))
 
     def test_no_asserts(self):
-        """bzr shouldn't use the 'assert' statement."""
+        """Bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
         badfiles = []

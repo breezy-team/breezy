@@ -222,7 +222,6 @@ class TestMissing(tests.TestCaseWithTransport):
 
     def test_missing_directory(self):
         """Test --directory option"""
-
         # create a source branch
         a_tree = self.make_branch_and_tree("a")
         self.build_tree_contents([("a/a", b"initial\n")])
@@ -241,7 +240,6 @@ class TestMissing(tests.TestCaseWithTransport):
 
     def test_missing_tags(self):
         """Test showing tags"""
-
         # create a source branch
         a_tree = self.make_branch_and_tree("a")
         self.build_tree_contents([("a/a", b"initial\n")])

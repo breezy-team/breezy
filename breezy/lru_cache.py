@@ -24,7 +24,7 @@ _null_key = object()
 class _LRUNode:
     """This maintains the linked-list which is the lru internals."""
 
-    __slots__ = ("prev", "next_key", "key", "value")
+    __slots__ = ("key", "next_key", "prev", "value")
 
     def __init__(self, key, value):
         self.prev = None

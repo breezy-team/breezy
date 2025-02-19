@@ -16,9 +16,8 @@
 
 """Serializer factory for reading and writing bundles."""
 
-from .... import errors
+from .... import errors, ui
 from .... import transport as _mod_transport
-from .... import ui
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
 from ....textfile import text_file
@@ -165,7 +164,6 @@ class BundleSerializerV08(BundleSerializer):
 
     def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
-
         # Optimize for the case of revisions in order
         last_rev_id = None
         last_rev_tree = None
@@ -395,7 +393,7 @@ class BundleReader:
         self.info.complete_info()
 
     def _next(self):
-        """yield the next line, but secretly
+        """Yield the next line, but secretly
         keep 1 extra line for peeking.
         """
         for line in self.from_file:

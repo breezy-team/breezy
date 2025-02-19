@@ -18,9 +18,8 @@
 
 import os
 
-from breezy import config, errors, osutils, repository
+from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventorytree
 from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import features, per_repository

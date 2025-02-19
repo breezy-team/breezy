@@ -31,9 +31,8 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from ... import branch, config, controldir, errors, repository, tests
+from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ... import treebuilder
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
@@ -2654,7 +2653,7 @@ class TestTransportIsReadonly(tests.TestCase):
         self.assertEqual([("call", b"Transport.is_readonly", ())], client._calls)
 
     def test_error_from_old_server(self):
-        """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
+        """Bzr 0.15 and earlier servers don't recognise the is_readonly verb.
 
         Clients should treat it as a "no" response, because is_readonly is only
         advisory anyway (a transport could be read-write, but then the

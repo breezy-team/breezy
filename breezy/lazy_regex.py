@@ -99,8 +99,8 @@ class LazyRegex:
     def __setstate__(self, dict):
         """Restore from a pickled state."""
         self._real_regex = None
-        setattr(self, "_regex_args", dict["args"])
-        setattr(self, "_regex_kwargs", dict["kwargs"])
+        self._regex_args = dict["args"]
+        self._regex_kwargs = dict["kwargs"]
 
     def __getattr__(self, attr):
         """Return a member from the proxied regex object.

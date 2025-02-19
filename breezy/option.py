@@ -23,9 +23,8 @@ import optparse
 import re
 from typing import Callable, Dict
 
-from . import errors
+from . import errors, revisionspec
 from . import registry as _mod_registry
-from . import revisionspec
 
 
 class BadOptionValue(errors.BzrError):
@@ -257,7 +256,7 @@ class Option:
     def _optparse_callback(self, option, opt, value, parser):
         try:
             v = self.type(value)
-        except ValueError as e:
+        except ValueError:
             raise optparse.OptionValueError(
                 "invalid value for option {}: {}".format(option, value)
             )
@@ -350,8 +349,7 @@ class RegistryOption(Option):
         short_name=None,
         short_value_switches=None,
     ):
-        """
-        Constructor.
+        """Constructor.
 
         Args:
           name: The option name.
@@ -503,7 +501,7 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
         optparse.IndentedHelpFormatter.__init__(self)
 
     def format_option(self, option):
-        """code taken from Python's optparse.py"""
+        """Code taken from Python's optparse.py"""
         if option.help:
             from .i18n import gettext
 
@@ -513,7 +511,6 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
 
 def get_optparser(options):
     """Generate an optparse parser for breezy-style options"""
-
     parser = OptionParser()
     parser.remove_option("--help")
     for option in options:

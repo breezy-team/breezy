@@ -212,8 +212,7 @@ class GPGStrategy:
 
     @staticmethod
     def verify_signatures_available():
-        """
-        check if this strategy can verify signatures
+        """Check if this strategy can verify signatures
 
         :return: boolean if this strategy can verify signatures
         """
@@ -227,7 +226,7 @@ class GPGStrategy:
     def sign(self, content, mode):
         try:
             import gpg
-        except ModuleNotFoundError as error:
+        except ModuleNotFoundError:
             raise GpgNotInstalled(
                 "Set create_signatures=no to disable creating signatures."
             )
@@ -262,7 +261,7 @@ class GPGStrategy:
         """
         try:
             import gpg
-        except ModuleNotFoundError as error:
+        except ModuleNotFoundError:
             raise GpgNotInstalled(
                 "Set check_signatures=ignore to disable verifying signatures."
             )
@@ -368,12 +367,12 @@ class GPGStrategy:
 
 
 def valid_commits_message(count):
-    """returns message for number of commits"""
+    """Returns message for number of commits"""
     return gettext("{0} commits with valid signatures").format(count[SIGNATURE_VALID])
 
 
 def unknown_key_message(count):
-    """returns message for number of commits"""
+    """Returns message for number of commits"""
     return ngettext(
         "{0} commit with unknown key",
         "{0} commits with unknown keys",
@@ -382,21 +381,21 @@ def unknown_key_message(count):
 
 
 def commit_not_valid_message(count):
-    """returns message for number of commits"""
+    """Returns message for number of commits"""
     return ngettext(
         "{0} commit not valid", "{0} commits not valid", count[SIGNATURE_NOT_VALID]
     ).format(count[SIGNATURE_NOT_VALID])
 
 
 def commit_not_signed_message(count):
-    """returns message for number of commits"""
+    """Returns message for number of commits"""
     return ngettext(
         "{0} commit not signed", "{0} commits not signed", count[SIGNATURE_NOT_SIGNED]
     ).format(count[SIGNATURE_NOT_SIGNED])
 
 
 def expired_commit_message(count):
-    """returns message for number of commits"""
+    """Returns message for number of commits"""
     return ngettext(
         "{0} commit with key now expired",
         "{0} commits with key now expired",
@@ -405,7 +404,7 @@ def expired_commit_message(count):
 
 
 def verbose_expired_key_message(result, repo) -> List[str]:
-    """takes a verify result and returns list of expired key info"""
+    """Takes a verify result and returns list of expired key info"""
     signers: Dict[str, int] = {}
     fingerprint_to_authors = {}
     for rev_id, validity, fingerprint in result:
@@ -428,7 +427,7 @@ def verbose_expired_key_message(result, repo) -> List[str]:
 
 
 def verbose_valid_message(result) -> List[str]:
-    """takes a verify result and returns list of signed commits strings"""
+    """Takes a verify result and returns list of signed commits strings"""
     signers: Dict[str, int] = {}
     for rev_id, validity, uid in result:
         if validity == SIGNATURE_VALID:
@@ -445,7 +444,7 @@ def verbose_valid_message(result) -> List[str]:
 
 
 def verbose_not_valid_message(result, repo) -> List[str]:
-    """takes a verify result and returns list of not valid commit info"""
+    """Takes a verify result and returns list of not valid commit info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_VALID:
@@ -464,7 +463,7 @@ def verbose_not_valid_message(result, repo) -> List[str]:
 
 
 def verbose_not_signed_message(result, repo) -> List[str]:
-    """takes a verify result and returns list of not signed commit info"""
+    """Takes a verify result and returns list of not signed commit info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_SIGNED:
@@ -483,7 +482,7 @@ def verbose_not_signed_message(result, repo) -> List[str]:
 
 
 def verbose_missing_key_message(result) -> List[str]:
-    """takes a verify result and returns list of missing key info"""
+    """Takes a verify result and returns list of missing key info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_KEY_MISSING:

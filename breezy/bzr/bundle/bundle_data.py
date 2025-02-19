@@ -21,12 +21,12 @@ import os
 import pprint
 from io import BytesIO
 
-from ... import cache_utf8, osutils, timestamp
+from ... import cache_utf8, timestamp
 from ...errors import BzrError, NoSuchId, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
-from ...tree import InterTree, Tree
+from ...tree import InterTree
 from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
@@ -285,7 +285,6 @@ class BundleInfo:
 
     def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
-
         # This is a mapping from each revision id to its sha hash
         rev_to_sha1 = {}
 

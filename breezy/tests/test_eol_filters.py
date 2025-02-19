@@ -56,15 +56,13 @@ class TestEolRulesSpecifications(TestCase):
             self.assertNotEqual([], _get_filter_stack_for(prefs))
 
     def test_unknown_value(self):
-        """
-        Unknown eol values should raise an error.
+        """Unknown eol values should raise an error.
         """
         prefs = (("eol", "unknown-value"),)
         self.assertRaises(errors.BzrError, _get_filter_stack_for, prefs)
 
     def test_eol_missing_altogether_is_ok(self):
-        """
-        Not having eol in the set of preferences should be ok.
+        """Not having eol in the set of preferences should be ok.
         """
         # In this case, 'eol' is looked up with a value of None.
         prefs = (("eol", None),)

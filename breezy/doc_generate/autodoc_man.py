@@ -16,7 +16,7 @@
 
 """man.py - create man page from built-in brz help and static text
 
-TODO:
+Todo:
   * use usage information instead of simple "brz foo" in COMMAND OVERVIEW
   * add command aliases
 """

@@ -33,17 +33,13 @@ rather starts again from the run_brz function.
 # UI command/aspect that is being tested.
 
 import os
-import re
 import sys
 
-import breezy
 from breezy import osutils
 from breezy.branch import Branch
-from breezy.errors import CommandError
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.http_utils import TestCaseWithWebserver
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
 
 
 class TestCommands(TestCaseWithTransport):
@@ -119,7 +115,6 @@ class TestCommands(TestCaseWithTransport):
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
-
         os.mkdir("a")
         os.chdir("a")
 
@@ -358,7 +353,6 @@ class OldTests(TestCaseWithTransport):
 
     def test_bzr(self):
         from os import chdir, mkdir
-        from os.path import exists
 
         progress = self.log
 

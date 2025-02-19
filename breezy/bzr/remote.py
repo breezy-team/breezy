@@ -17,20 +17,30 @@
 import bz2
 import os
 import re
-import sys
 import zlib
 from typing import Callable, List, Optional
 
 import fastbencode as bencode
 
-from .. import branch
+from .. import (
+    branch,
+    controldir,
+    debug,
+    errors,
+    gpg,
+    graph,
+    lock,
+    lockdir,
+    osutils,
+    registry,
+    ui,
+    urlutils,
+)
 from .. import bzr as _mod_bzr
 from .. import config as _mod_config
-from .. import controldir, debug, errors, gpg, graph, lock, lockdir, osutils, registry
 from .. import repository as _mod_repository
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..branch import BranchWriteLockResult
 from ..decorators import only_raises
 from ..errors import NoSuchRevision, SmartProtocolError
@@ -41,19 +51,15 @@ from ..revision import NULL_REVISION
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from . import inventory_delta
-from . import repository as bzrrepository
+from . import inventory_delta, vf_repository, vf_search
 from . import testament as _mod_testament
-from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventory import Inventory
 from .inventorytree import InventoryRevisionTree
 from .serializer import format_registry as serializer_format_registry
-from .smart import client
+from .smart import client, vfs
 from .smart import repository as smart_repo
-from .smart import vfs
 from .smart.client import _SmartClient
-from .versionedfile import FulltextContentFactory
 
 _DEFAULT_SEARCH_DEPTH = 100
 
@@ -3253,7 +3259,6 @@ class RemoteStreamSink(vf_repository.StreamSink):
         self._last_substream and self._last_stream so that the stream can be
         resumed by _resume_stream_with_vfs.
         """
-
         stream_iter = iter(stream)
         for substream_kind, substream in stream_iter:
             if substream_kind == "inventory-deltas":
@@ -3810,7 +3815,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             errors.NotStacked,
             branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat,
-        ) as e:
+        ):
             return
         self._is_stacked = True
         if possible_transports is None:
@@ -3952,7 +3957,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             # there may not be a repository yet, so we can't call through
             # its _translate_error
             _translate_error(err, branch=self)
-        except errors.UnknownSmartMethod as err:
+        except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_branch.get_stacked_on_url()
         if response[0] != b"ok":
@@ -4158,7 +4163,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 repo_token or b"",
                 **err_context,
             )
-        except errors.LockContention as e:
+        except errors.LockContention:
             # The LockContention from the server doesn't have any
             # information about the lock_url. We re-raise LockContention
             # with valid lock_url.

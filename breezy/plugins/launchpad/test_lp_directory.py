@@ -16,25 +16,15 @@
 
 """Tests for directory lookup through Launchpad.net"""
 
-import os
-from http.client import parse_headers
-from xmlrpc.client import Fault
 
-import breezy
 
-from ... import debug, tests, transport, urlutils
+from ... import transport
 from ...branch import Branch
 from ...directory_service import directories
 from ...tests import (
-    TestCaseInTempDir,
     TestCaseWithMemoryTransport,
-    features,
-    http_server,
-    ssl_certs,
 )
 from . import _register_directory
-from .account import get_lp_login, set_lp_login
-from .lp_directory import LaunchpadDirectory, _resolve
 
 
 class FakeResolveFactory:
@@ -57,7 +47,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
             """A directory service that maps the name to a FILE url"""
 
             def look_up(self, name, url, purpose=None):
-                if "lp:///apt" == url:
+                if url == "lp:///apt":
                     return target_branch.base.rstrip("/")
                 return "!unexpected look_up value!"
 

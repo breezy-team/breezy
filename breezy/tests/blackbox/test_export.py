@@ -24,7 +24,7 @@ import time
 import zipfile
 from io import BytesIO
 
-from ... import export, osutils
+from ... import osutils
 from ...archive import zip
 from .. import TestCaseWithTransport, features
 

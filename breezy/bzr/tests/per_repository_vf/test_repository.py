@@ -16,10 +16,9 @@
 
 """Tests for repository implementations - tests a repository format."""
 
-from breezy import errors, gpg
+from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
-from breezy import tests
 from breezy.bzr import inventory, versionedfile, vf_repository
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,

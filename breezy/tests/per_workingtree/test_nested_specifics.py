@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy.bzr import inventory, inventorytree
+from breezy.bzr import inventorytree
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

@@ -16,7 +16,7 @@
 
 """Tests for indices."""
 
-from ... import errors, tests, transport
+from ... import tests, transport
 from .. import index as _mod_index
 
 

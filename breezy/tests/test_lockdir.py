@@ -30,7 +30,7 @@ from ..errors import (
     LockNotHeld,
 )
 from ..lockdir import LockDir, LockHeldInfo
-from . import TestCase, TestCaseInTempDir, TestCaseWithTransport, features
+from . import TestCaseInTempDir, TestCaseWithTransport, features
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
@@ -648,7 +648,8 @@ class TestLockDirHooks(TestCaseWithTransport):
 
 class TestLockHeldInfo(TestCaseInTempDir):
     """Can get information about the lock holder, and detect whether they're
-    still alive."""
+    still alive.
+    """
 
     def test_repr(self):
         info = LockHeldInfo.for_this_process(None)

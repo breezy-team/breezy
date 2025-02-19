@@ -59,7 +59,7 @@ def _change_key(change):
 
 class TestCompare(TestCaseWithTwoTrees):
     def _make_abc_tree(self, tree):
-        """setup an abc content tree."""
+        """Setup an abc content tree."""
         files = ["a", "b/", "b/c"]
         self.build_tree(
             files, line_endings="binary", transport=tree.controldir.root_transport
@@ -68,7 +68,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree.add(files, ids=[b"a-id", b"b-id", b"c-id"])
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents."""
+        """Return a test tree with a, b/, b/c contents."""
         self._make_abc_tree(tree)
         return self._convert_tree(tree, converter)
 
@@ -445,7 +445,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     """Test the comparison iterator"""
 
     def _make_abc_tree(self, tree):
-        """setup an abc content tree."""
+        """Setup an abc content tree."""
         files = ["a", "b/", "b/c"]
         self.build_tree(
             files, line_endings="binary", transport=tree.controldir.root_transport
@@ -454,12 +454,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree.add(files, ids=[b"a-id", b"b-id", b"c-id"])
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
-        """return a test tree with a, b/, b/c contents."""
+        """Return a test tree with a, b/, b/c contents."""
         self._make_abc_tree(tree)
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
-        """return a test tree with a, b/, d/e contents.
+        """Return a test tree with a, b/, d/e contents.
 
         This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
@@ -900,7 +900,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         )
 
     def test_empty_dir(self):
-        """an empty dir should not cause glitches to surrounding files."""
+        """An empty dir should not cause glitches to surrounding files."""
         tree1 = self.make_branch_and_tree("1")
         tree2 = self.make_to_branch_and_tree("2")
         tree1 = self.get_tree_no_parents_abc_content(tree1)
@@ -1244,7 +1244,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(["a"], ["file"], [b"a-id"])
         try:
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
-        except (KeyError,):
+        except KeyError:
             raise tests.TestNotApplicable(
                 "Cannot represent a FIFO in this case %s" % self.id()
             )
@@ -1460,7 +1460,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         )
 
     def test_disk_in_subtrees_skipped(self):
-        """subtrees are considered not-in-the-current-tree.
+        """Subtrees are considered not-in-the-current-tree.
 
         This test tests the trivial case, where the basis has no paths in the
         current trees subtree.

@@ -218,7 +218,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_versioned(self):
-        """using after with an already versioned file should fail"""
+        """Using after with an already versioned file should fail"""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "b"])
         tree.add(["a", "b"])
@@ -235,7 +235,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_added(self):
-        """using after with a newly added file should work"""
+        """Using after with a newly added file should work"""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a"])
         tree.add(["a"])

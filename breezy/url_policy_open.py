@@ -20,7 +20,7 @@ import threading
 
 from . import errors, trace, urlutils
 from .branch import Branch
-from .controldir import ControlDir, ControlDirFormat
+from .controldir import ControlDirFormat
 from .transport import do_catching_redirections, get_transport
 
 
@@ -249,7 +249,7 @@ class BranchOpener:
         check_and_follow_branch_reference.
         """
         try:
-            opener = getattr(cls._threading_data, "opener")
+            opener = cls._threading_data.opener
         except AttributeError:
             return url
         new_url, check = opener.policy.transform_fallback_location(branch, url)

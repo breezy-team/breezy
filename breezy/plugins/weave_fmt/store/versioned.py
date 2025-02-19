@@ -20,10 +20,8 @@
 
 import os
 
-from .... import errors, osutils
+from .... import osutils
 from .... import transport as _mod_transport
-from .... import ui
-from ....trace import mutter
 from . import TransportStore
 
 

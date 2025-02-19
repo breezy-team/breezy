@@ -18,9 +18,8 @@
 
 import os
 
-from breezy import branch, errors
+from breezy import branch, errors, switch, tests, workingtree
 from breezy import merge as _mod_merge
-from breezy import switch, tests, workingtree
 
 
 class TestSwitch(tests.TestCaseWithTransport):

@@ -20,7 +20,7 @@ from . import errors
 from . import graph as _mod_graph
 from . import revision as _mod_revision
 
-__all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
+__all__ = ["MergeSorter", "TopoSorter", "merge_sort", "topo_sort"]
 
 
 def topo_sort(graph):
@@ -179,20 +179,20 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
 
 class MergeSorter:
     __slots__ = [
-        "_node_name_stack",
-        "_node_merge_depth_stack",
-        "_pending_parents_stack",
+        "_completed_node_names",
         "_first_child_stack",
-        "_left_subtree_pushed_stack",
         "_generate_revno",
         "_graph",
+        "_left_subtree_pushed_stack",
         "_mainline_revisions",
-        "_stop_revision",
+        "_node_merge_depth_stack",
+        "_node_name_stack",
         "_original_graph",
-        "_revnos",
+        "_pending_parents_stack",
         "_revno_to_branch_count",
-        "_completed_node_names",
+        "_revnos",
         "_scheduled_nodes",
+        "_stop_revision",
     ]
 
     def __init__(

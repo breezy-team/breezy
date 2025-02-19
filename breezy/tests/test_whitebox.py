@@ -17,15 +17,13 @@
 import os
 import tempfile
 
-import breezy
-
 from .. import errors, osutils, tests
 from ..osutils import abspath, pathjoin, realpath, relpath
 
 
 class MoreTests(tests.TestCaseWithTransport):
     def test_relpath(self):
-        """test for branch path lookups
+        """Test for branch path lookups
 
         breezy.osutils._relpath do a simple but subtle
         job: given a path (either relative to cwd or absolute), work out

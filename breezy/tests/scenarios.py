@@ -24,7 +24,7 @@ This is similar to the interface provided by
 <http://launchpad.net/testscenarios/>.
 """
 
-from . import iter_suite_tests, multiply_scenarios, multiply_tests
+from . import iter_suite_tests, multiply_tests
 
 
 def load_tests_apply_scenarios(loader, standard_tests, pattern):

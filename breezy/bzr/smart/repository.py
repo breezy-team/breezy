@@ -27,9 +27,8 @@ import zlib
 
 import fastbencode as bencode
 
-from ... import errors, estimate_compressed_size, osutils
+from ... import errors, estimate_compressed_size, osutils, trace, ui
 from ... import revision as _mod_revision
-from ... import trace, ui
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import inventory as _mod_inventory
 from .. import inventory_delta, pack, vf_search
@@ -488,7 +487,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention as e:
+        except errors.LockContention:
             return FailedSmartServerResponse((b"LockContention",))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b"UnlockableTransport",))
@@ -765,7 +764,7 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, token):
         try:
             repository.lock_write(token=token)
-        except errors.TokenMismatch as e:
+        except errors.TokenMismatch:
             return FailedSmartServerResponse((b"TokenMismatch",))
         repository.dont_leave_lock_in_place()
         repository.unlock()
@@ -1117,7 +1116,7 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, lock_token):
         try:
             repository.lock_write(token=lock_token)
-        except errors.TokenLockingNotSupported as e:
+        except errors.TokenLockingNotSupported:
             return FailedSmartServerResponse((b"TokenLockingNotSupported",))
         try:
             reconciler = repository.reconcile()

@@ -22,9 +22,8 @@ import sys
 import tempfile
 from io import BytesIO
 
-from .. import diff, errors, osutils
+from .. import diff, errors, osutils, revisionspec, revisiontree, tests
 from .. import revision as _mod_revision
-from .. import revisionspec, revisiontree, tests
 from ..tests import EncodingAdapter, features
 from ..tests.scenarios import load_tests_apply_scenarios
 
@@ -104,14 +103,14 @@ class TestDiffOptionsScenarios(tests.TestCase):
 
 class TestDiff(tests.TestCase):
     def test_add_nl(self):
-        """diff generates a valid diff for patches that add a newline"""
+        """Diff generates a valid diff for patches that add a newline"""
         lines = udiff_lines([b"boo"], [b"boo\n"])
         self.check_patch(lines)
         self.assertEqual(lines[4], b"\\ No newline at end of file\n")
         ## "expected no-nl, got %r" % lines[4]
 
     def test_add_nl_2(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b"boo"], [b"goo\n"])
@@ -120,7 +119,7 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[4]
 
     def test_remove_nl(self):
-        """diff generates a valid diff for patches that change last line and
+        """Diff generates a valid diff for patches that change last line and
         add a newline.
         """
         lines = udiff_lines([b"boo\n"], [b"boo"])

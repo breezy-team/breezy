@@ -86,7 +86,7 @@ class _ChooseUI:
                 raise ValueError("duplicated choice: %s" % name)
             self.alternatives[name] = choice
             shortcut = c.find("&")
-            if -1 != shortcut and (shortcut + 1) < len(c):
+            if shortcut != -1 and (shortcut + 1) < len(c):
                 help = c[:shortcut]
                 help += "[" + c[shortcut + 1] + "]"
                 help += c[(shortcut + 2) :]
@@ -110,7 +110,7 @@ class _ChooseUI:
 
     def _getline(self):
         line = self.ui.stdin.readline()
-        if "" == line:
+        if line == "":
             raise EOFError
         return line.strip()
 
@@ -133,7 +133,7 @@ class _ChooseUI:
         iter = 0
         while True:
             iter += 1
-            if 1 == iter or self.line_based:
+            if iter == 1 or self.line_based:
                 self.ui.prompt(self.prompt)
             try:
                 choice = getchoice()
@@ -205,7 +205,6 @@ class TextUIFactory(UIFactory):
           and osutils.getchar is used
         - input is line-based, and no controlling terminal is available
         """
-
         choose_ui = _ChooseUI(self, msg, choices, default)
         return choose_ui.interact()
 
@@ -219,7 +218,8 @@ class TextUIFactory(UIFactory):
         """Prepare the terminal for output.
 
         This will, clear any progress bars, and leave the cursor at the
-        leftmost position."""
+        leftmost position.
+        """
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need

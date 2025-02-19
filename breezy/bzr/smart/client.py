@@ -213,7 +213,7 @@ class _SmartClientRequest:
             response_tuple = response_handler.read_response_tuple(
                 expect_body=self.expect_response_body
             )
-        except errors.ConnectionReset as e:
+        except errors.ConnectionReset:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
@@ -294,7 +294,7 @@ class _SmartClientRequest:
         encoder, response_handler = self._construct_protocol(protocol_version)
         try:
             self._send_no_retry(encoder)
-        except errors.ConnectionReset as e:
+        except errors.ConnectionReset:
             # If we fail during the _send_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request

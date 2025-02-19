@@ -19,7 +19,7 @@
 Note that uncommit currently is not a branch method; it should be.
 """
 
-from breezy import branch, errors, uncommit
+from breezy import branch, uncommit
 from breezy.tests import per_branch
 
 

@@ -79,7 +79,8 @@ class OldService:
 
 class TestOldDirectoryLookup(TestCase):
     """Test compatibility with older implementations of Directory
-    that don't support the purpose argument."""
+    that don't support the purpose argument.
+    """
 
     def setUp(self):
         super().setUp()

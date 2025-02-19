@@ -20,11 +20,11 @@ The methods here allow for api symbol versioning.
 """
 
 __all__ = [
+    "DEPRECATED_PARAMETER",
     "deprecated_function",
     "deprecated_in",
     "deprecated_list",
     "deprecated_method",
-    "DEPRECATED_PARAMETER",
     "deprecated_passed",
     "set_warning_method",
     "warn",
@@ -267,7 +267,6 @@ def deprecated_list(deprecation_version, variable_name, initial_value, extra=Non
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
     """
-
     subst_text = "Modifying {}".format(variable_name)
     msg = deprecation_version % (subst_text,)
     if extra:

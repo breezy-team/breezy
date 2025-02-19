@@ -160,7 +160,7 @@ rev-E fourth-E
 
 class TestAnnotate(tests.TestCaseWithTransport):
     def create_merged_trees(self):
-        """create 2 trees with merges between them.
+        """Create 2 trees with merges between them.
 
         rev-1 --+
          |      |

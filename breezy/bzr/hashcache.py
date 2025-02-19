@@ -32,9 +32,8 @@ import os
 import stat
 import time
 
-from .. import atomicfile, errors
+from .. import atomicfile, errors, osutils, trace
 from .. import filters as _mod_filters
-from .. import osutils, trace
 
 FP_MTIME_COLUMN = 1
 FP_CTIME_COLUMN = 2
@@ -108,7 +107,8 @@ class HashCache:
     def clear(self):
         """Discard all cached information.
 
-        This does not reset the counters."""
+        This does not reset the counters.
+        """
         if self._cache:
             self.needs_write = True
             self._cache = {}
@@ -233,7 +233,8 @@ class HashCache:
         Overwrites existing cache.
 
         If the cache file has the wrong version marker, this just clears
-        the cache."""
+        the cache.
+        """
         self._cache = {}
 
         fn = self.cache_file_name()

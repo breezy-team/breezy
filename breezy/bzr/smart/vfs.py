@@ -71,7 +71,7 @@ class VfsRequest(request.SmartServerRequest):
 class HasRequest(VfsRequest):
     def do(self, relpath):
         relpath = self.translate_client_path(relpath)
-        r = self._backing_transport.has(relpath) and b"yes" or b"no"
+        r = (self._backing_transport.has(relpath) and b"yes") or b"no"
         return request.SuccessfulSmartServerResponse((r,))
 
 
@@ -177,7 +177,7 @@ class ReadvRequest(VfsRequest):
         self._relpath = relpath
 
     def do_body(self, body_bytes):
-        """accept offsets for a readv request."""
+        """Accept offsets for a readv request."""
         offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = b"".join(
             bytes

@@ -17,9 +17,7 @@
 
 """Black-box tests for 'brz added', which shows newly-added files."""
 
-import os
 
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
 
 

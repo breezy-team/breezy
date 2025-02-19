@@ -218,7 +218,7 @@ class Hooks(dict):
         except KeyError:
             raise UnknownHook(self.__class__.__name__, hook_name)
         try:
-            hook_lazy = getattr(hook, "hook_lazy")
+            hook_lazy = hook.hook_lazy
         except AttributeError:
             raise errors.UnsupportedOperation(self.install_named_hook_lazy, self)
         else:
@@ -260,7 +260,7 @@ class Hooks(dict):
         except KeyError:
             raise UnknownHook(self.__class__.__name__, hook_name)
         try:
-            uninstall = getattr(hook, "uninstall")
+            uninstall = hook.uninstall
         except AttributeError:
             raise errors.UnsupportedOperation(self.uninstall_named_hook, self)
         else:

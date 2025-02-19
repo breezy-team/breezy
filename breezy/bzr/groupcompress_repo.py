@@ -18,12 +18,10 @@
 
 import time
 
-from .. import controldir, debug, errors, osutils
+from .. import controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from .. import trace, ui
-from ..bzr import chk_map, chk_serializer
+from ..bzr import chk_map, chk_serializer, inventory, pack, versionedfile
 from ..bzr import index as _mod_index
-from ..bzr import inventory, pack, versionedfile
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
@@ -560,7 +558,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
             self._data_changed = True
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         source_vf, target_vf = self._build_vfs("text", True, True)
         trace.mutter("repacking %d texts", len(self._text_refs))
         self.pb.update("repacking texts", 4)
@@ -840,7 +838,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 chk_diff, text_keys, chk_map._bytes_to_text_key
             ):
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
@@ -851,7 +849,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         try:
             for interesting_rec, interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision:
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps"
             )

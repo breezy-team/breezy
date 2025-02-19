@@ -67,7 +67,7 @@ class TestDiff(DiffBase):
         self.run_bzr("diff")
 
     def test_diff_prefix(self):
-        """diff --prefix appends to filenames in output"""
+        """Diff --prefix appends to filenames in output"""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff --prefix old/:new/", retcode=1)
@@ -91,7 +91,7 @@ class TestDiff(DiffBase):
         self.assertContainsRe(err, "--prefix expects two values separated by a colon")
 
     def test_diff_p1(self):
-        """diff -p1 produces lkml-style diffs"""
+        """Diff -p1 produces lkml-style diffs"""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff -p1", retcode=1)
@@ -110,7 +110,7 @@ class TestDiff(DiffBase):
         )
 
     def test_diff_p0(self):
-        """diff -p0 produces diffs with no prefix"""
+        """Diff -p0 produces diffs with no prefix"""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff -p0", retcode=1)

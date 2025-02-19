@@ -29,7 +29,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
     These don't currently test the merge code, which is intentional to
     reduce the scope of testing.  We just mark the revision as merged
-    without bothering about the contents much."""
+    without bothering about the contents much.
+    """
 
     def test_merge_commit_empty(self):
         """Simple commit of two-way merge of empty trees."""

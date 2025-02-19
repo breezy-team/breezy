@@ -70,30 +70,30 @@ class MapTree:
             return file_id
 
     def get_file_sha1(self, path, file_id=None):
-        "See Tree.get_file_sha1()."
+        """See Tree.get_file_sha1()."""
         return self.oldtree.get_file_sha1(path)
 
     def get_file_with_stat(self, path, file_id=None):
-        "See Tree.get_file_with_stat()."
+        """See Tree.get_file_with_stat()."""
         if getattr(self.oldtree, "get_file_with_stat", None) is not None:
             return self.oldtree.get_file_with_stat(path=path)
         else:
             return self.get_file(path), None
 
     def get_file(self, path, file_id=None):
-        "See Tree.get_file()."
+        """See Tree.get_file()."""
         return self.oldtree.get_file(path)
 
     def is_executable(self, path, file_id=None):
-        "See Tree.is_executable()."
+        """See Tree.is_executable()."""
         return self.oldtree.is_executable(path)
 
     def has_filename(self, filename):
-        "See Tree.has_filename()."
+        """See Tree.has_filename()."""
         return self.oldtree.has_filename(filename)
 
     def path_content_summary(self, path):
-        "See Tree.path_content_summary()."
+        """See Tree.path_content_summary()."""
         return self.oldtree.path_content_summary(path)
 
     def map_ie(self, ie):

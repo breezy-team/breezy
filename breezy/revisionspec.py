@@ -19,9 +19,8 @@ from typing import List, Optional, Type
 from breezy import revision, workingtree
 from breezy.i18n import gettext
 
-from . import errors, lazy_regex, registry
+from . import errors, lazy_regex, registry, trace
 from . import revision as _mod_revision
-from . import trace
 
 
 class InvalidRevisionSpec(errors.BzrError):
@@ -298,7 +297,6 @@ class RevisionSpec_dwim(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Run the lookup and see what we can get."""
-
         # First, see if it's a revno
         if self._revno_regex.match(self.spec) is not None:
             try:

@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-import operator
 
 from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
 from ...revision import NULL_REVISION
@@ -135,7 +134,6 @@ def collapse_email_and_users(email_users, combo_count):
 
 def get_revisions_and_committers(a_repo, revids):
     """Get the Revision information, and the best-match for committer."""
-
     email_users = {}  # user@email.com => User Name
     combo_count = {}
     with ui.ui_factory.nested_progress_bar() as pb:
@@ -187,7 +185,6 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
 def display_info(info, to_file, gather_class_stats=None):
     """Write out the information"""
-
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(

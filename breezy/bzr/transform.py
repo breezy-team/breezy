@@ -22,11 +22,19 @@ import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
 
-from .. import annotate, conflicts, controldir, errors, lock, multiparent, osutils
+from .. import (
+    annotate,
+    controldir,
+    errors,
+    multiparent,
+    osutils,
+    trace,
+    tree,
+    ui,
+    urlutils,
+)
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, ui, urlutils
 from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree

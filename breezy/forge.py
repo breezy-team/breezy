@@ -16,7 +16,6 @@
 
 """Helper functions for proposing merges."""
 
-import re
 from typing import Optional, Type
 
 from . import errors, hooks, registry, urlutils

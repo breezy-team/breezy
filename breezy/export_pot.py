@@ -28,7 +28,6 @@ is also left to that stage of the process.
 
 import inspect
 import os
-import sys
 
 import breezy
 
@@ -234,7 +233,6 @@ def _command_helps(exporter, plugin_name=None):
     This respects the Bazaar cmdtable/table convention and will
     only extract docstrings from functions mentioned in these tables.
     """
-
     # builtin commands
     for cmd_name in _mod_commands.builtin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)

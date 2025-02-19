@@ -21,9 +21,8 @@ These tests are repeated for all pack-based repository formats.
 
 from stat import S_ISDIR
 
-from ... import controldir, errors, gpg, osutils, repository
+from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
-from ... import tests, transport, ui
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
 from ...transport import memory
 from .. import inventory
@@ -94,7 +93,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(t.has(knit_name + ".knit"))
 
     def check_databases(self, t):
-        """check knit content for a repository."""
+        """Check knit content for a repository."""
         # check conversion worked
         self.assertHasNoKndx(t, "inventory")
         self.assertHasNoKnit(t, "inventory")

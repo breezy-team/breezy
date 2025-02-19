@@ -25,9 +25,8 @@ import stat
 import sys
 from io import BytesIO
 
-from .. import errors, osutils, pyutils, tests
+from .. import errors, osutils, pyutils, urlutils
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..errors import ConnectionError, PathError, TransportNotPossible
 from ..osutils import getcwd
 from ..transport import (
@@ -68,7 +67,7 @@ def transport_test_permutations():
                     {"transport_class": klass, "transport_server": server_factory},
                 )
                 result.append(scenario)
-        except errors.DependencyNotPresent as e:
+        except errors.DependencyNotPresent:
             # Continue even if a dependency prevents us
             # from adding this test
             pass
@@ -183,7 +182,7 @@ class TransportTests(TestTransportImplementation):
                 f.close()
 
     def test_get_directory_read_gives_ReadError(self):
-        """consistent errors for read() on a file returned by get()."""
+        """Consistent errors for read() on a file returned by get()."""
         t = self.get_transport()
         if t.is_readonly():
             self.build_tree(["a directory/"])
@@ -807,7 +806,7 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(PathError, t.rmdir, "adir")
 
     def test_rmdir_empty_but_similar_prefix(self):
-        """rmdir does not get confused by sibling paths.
+        """Rmdir does not get confused by sibling paths.
 
         A naive implementation of MemoryTransport would refuse to rmdir
         ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
@@ -977,7 +976,7 @@ class TransportTests(TestTransportImplementation):
 
         try:
             st = t.stat(".")
-        except TransportNotPossible as e:
+        except TransportNotPossible:
             # This transport cannot stat
             return
 
@@ -1774,13 +1773,15 @@ class TransportTests(TestTransportImplementation):
 
     def test_no_segment_parameters(self):
         """Segment parameters should be stripped and stored in
-        transport.segment_parameters."""
+        transport.segment_parameters.
+        """
         transport = self.get_transport("foo")
         self.assertEqual({}, transport.get_segment_parameters())
 
     def test_segment_parameters(self):
         """Segment parameters should be stripped and stored in
-        transport.get_segment_parameters()."""
+        transport.get_segment_parameters().
+        """
         base_url = self._server.get_url()
         parameters = {"key1": "val1", "key2": "val2"}
         url = urlutils.join_segment_parameters(base_url, parameters)

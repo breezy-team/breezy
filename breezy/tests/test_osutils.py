@@ -18,11 +18,9 @@
 
 import errno
 import os
-import select
 import socket
 import sys
 import tempfile
-import time
 from io import BytesIO
 
 from .. import errors, osutils, tests, trace, win32utils
@@ -591,7 +589,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_bracket_block_size(self):
         """Read data in blocks with the requested read size bracketing the
-        block size."""
+        block size.
+        """
         # make sure test data is larger than max read size
         self.assertTrue(self.test_data_len > self.block_size)
 
@@ -631,7 +630,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_specified_size(self):
         """Request a transfer larger than the maximum block size and verify
-        that the maximum read doesn't exceed the block_size."""
+        that the maximum read doesn't exceed the block_size.
+        """
         # make sure test data is larger than max read size
         self.assertTrue(self.test_data_len > self.block_size)
 
@@ -654,7 +654,8 @@ class TestPumpFile(tests.TestCase):
 
     def test_to_eof(self):
         """Read to end-of-file and verify that the reads are not larger than
-        the maximum read size."""
+        the maximum read size.
+        """
         # make sure test data is larger than max read size
         self.assertTrue(self.test_data_len > self.block_size)
 
@@ -677,7 +678,8 @@ class TestPumpFile(tests.TestCase):
     def test_defaults(self):
         """Verifies that the default arguments will read to EOF -- this
         test verifies that any existing usages of pumpfile will not be broken
-        with this new version."""
+        with this new version.
+        """
         # retrieve data using default (old) pumpfile method
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
@@ -860,7 +862,8 @@ class TestSendAll(tests.TestCase):
 
 class TestPosixFuncs(tests.TestCase):
     """Test that the posix version of normpath returns an appropriate path
-    when used with 2 leading slashes."""
+    when used with 2 leading slashes.
+    """
 
     def test_normpath(self):
         self.assertEqual("/etc/shadow", osutils._posix_normpath("/etc/shadow"))
@@ -1408,7 +1411,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(os_stat.st_mode, win32stat.st_mode)
 
     def assertPathCompare(self, path_less, path_greater):
-        """check that path_less and path_greater compare correctly."""
+        """Check that path_less and path_greater compare correctly."""
         self.assertEqual(0, osutils.compare_paths_prefix_order(path_less, path_less))
         self.assertEqual(
             0, osutils.compare_paths_prefix_order(path_greater, path_greater)

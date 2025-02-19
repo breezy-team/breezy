@@ -464,7 +464,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, rev2)
-        except (errors.BzrCheckError, errors.RevisionNotPresent) as e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent):
             # If an exception is raised, the revision should not be in the
             # target.
             #

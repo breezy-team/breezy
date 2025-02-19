@@ -280,7 +280,7 @@ class OptionTests(TestCase):
         )
 
     def test_option_callback_bool(self):
-        "Test booleans get True and False passed correctly to a callback."
+        """Test booleans get True and False passed correctly to a callback."""
         cb_calls = []
 
         def cb(option, name, value, parser):

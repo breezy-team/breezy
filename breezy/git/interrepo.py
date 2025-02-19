@@ -470,7 +470,8 @@ class InterFromGitRepository(InterRepository):
 
 class InterGitNonGitRepository(InterFromGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def _target_has_shas(self, shas):
         revids = {}
@@ -563,7 +564,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def get_target_heads(self):
         # FIXME: This should be more efficient
@@ -618,7 +620,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
-    repository."""
+    repository.
+    """
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
         """See `InterGitNonGitRepository`."""

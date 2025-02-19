@@ -390,10 +390,10 @@ $ brz update -r revid:m2
         )
 
     def test_update_show_base(self):
-        """brz update support --show-base
+        """Brz update support --show-base
 
-        see https://bugs.launchpad.net/bzr/+bug/202374"""
-
+        see https://bugs.launchpad.net/bzr/+bug/202374
+        """
         tree = self.make_branch_and_tree(".")
 
         with open("hello", "w") as f:
@@ -429,7 +429,8 @@ $ brz update -r revid:m2
 
     def test_update_checkout_prevent_double_merge(self):
         """ "Launchpad bug 113809 in brz "update performs two merges"
-        https://launchpad.net/bugs/113809"""
+        https://launchpad.net/bugs/113809
+        """
         master = self.make_branch_and_tree("master")
         self.build_tree_contents([("master/file", b"initial contents\n")])
         master.add(["file"])

@@ -25,8 +25,6 @@ import os
 from io import BytesIO
 
 from .... import osutils
-from ....errors import BzrError
-from ....trace import mutter
 from ....transport import FileExists, NoSuchFile
 from . import TransportStore
 

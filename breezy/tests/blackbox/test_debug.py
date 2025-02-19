@@ -16,12 +16,8 @@
 
 """Blackbox tests for -D debug options"""
 
-import os
-import signal
-import sys
-import time
 
-from breezy import debug, tests
+from breezy import tests
 
 
 class TestDebugOption(tests.TestCaseInTempDir):

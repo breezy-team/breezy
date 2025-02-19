@@ -363,7 +363,7 @@ class UIFactory:
           True or False for y/yes or n/no.
         """
         choice = self.choose(prompt + "?", "&yes\n&no", default=None)
-        return 0 == choice
+        return choice == 0
 
     def get_integer(self, prompt):
         """Get an integer from the user.

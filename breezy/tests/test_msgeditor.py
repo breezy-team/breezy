@@ -19,7 +19,7 @@
 import os
 import sys
 
-from .. import commit, config, errors, msgeditor, osutils, trace
+from .. import commit, config, msgeditor, osutils, trace
 from .. import transport as _mod_transport
 from ..msgeditor import (
     edit_commit_message_encoded,

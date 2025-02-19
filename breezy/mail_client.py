@@ -21,8 +21,6 @@ import sys
 import tempfile
 from typing import Type
 
-import breezy
-
 from . import config as _mod_config
 from . import email_message, errors, msgeditor, osutils, registry, urlutils
 
@@ -514,7 +512,6 @@ class EmacsMail(ExternalMailClient):
         function to work.  (The file is deleted by some elisp code
         after being read by Emacs.)
         """
-
         _defun = rb"""(defun bzr-add-mime-att (file)
   "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
@@ -629,7 +626,6 @@ class MailApp(BodyExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None, from_=None):
         """See ExternalMailClient._get_compose_commandline"""
-
         fd, self.temp_file = tempfile.mkstemp(prefix="bzr-send-", suffix=".scpt")
         try:
             os.write(fd, 'tell application "Mail"\n')

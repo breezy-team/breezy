@@ -50,7 +50,6 @@ from breezy.i18n import gettext
 """,
 )
 
-from hashlib import md5
 from hashlib import sha1 as sha
 
 import breezy
@@ -105,7 +104,7 @@ def chmod_if_possible(filename, mode):
         # Permission/access denied seems to commonly happen on smbfs; there's
         # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
-        if getattr(e, "errno") in (errno.EPERM, errno.EACCES):
+        if e.errno in (errno.EPERM, errno.EACCES):
             trace.mutter("ignore error on chmod of {!r}: {!r}".format(filename, e))
             return
         raise
@@ -145,7 +144,8 @@ def quotefn(f):
     """Return a quoted filename filename
 
     This previously used backslash quoting, but that works poorly on
-    Windows."""
+    Windows.
+    """
     # TODO: I'm not really sure this is the best format either.x
     global _QUOTE_RE
     if _QUOTE_RE is None:
@@ -1228,7 +1228,6 @@ def relpath(base, path):
     NOTE: `base` should not have a trailing slash otherwise you'll get
     PathNotChild exceptions regardless of `path`.
     """
-
     if len(base) < MIN_ABS_PATHLENGTH:
         # must have space for e.g. a drive letter
         raise ValueError(
@@ -1383,7 +1382,6 @@ def _accessible_normalized_filename(path):
     So return the normalized path, and a flag indicating if the file
     can be accessed by that path.
     """
-
     if isinstance(path, bytes):
         path = path.decode(sys.getfilesystemencoding())
     return unicodedata.normalize("NFC", path), True
@@ -1713,7 +1711,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
                 statvalue = entry.stat(follow_symlinks=False)
                 kind = file_kind_from_stat_mode(statvalue.st_mode)
                 dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
-        except NotADirectoryError as e:
+        except NotADirectoryError:
             pass
         dirblock.sort()
         yield (relroot, top), dirblock

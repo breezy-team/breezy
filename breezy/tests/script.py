@@ -25,10 +25,9 @@ import glob
 import logging
 import os
 import shlex
-import sys
 import textwrap
 
-from .. import osutils, tests, trace
+from .. import osutils, tests
 from ..tests import ui_testing
 
 
@@ -59,7 +58,6 @@ def _script_to_commands(text, file_name=None):
         split in to words, and the input, output, and errors are just strings,
         typically containing newlines.
     """
-
     commands = []
 
     def add_command(cmd, input, output, error):

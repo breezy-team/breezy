@@ -596,7 +596,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(dict):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ("min_key", "max_key", "_keys")
+    __slots__ = ("_keys", "max_key", "min_key")
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""

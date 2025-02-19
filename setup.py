@@ -31,7 +31,6 @@ except ImportError:
     from distutils.version import LooseVersion as Version
 
 from distutils.command.build_scripts import build_scripts
-from distutils.command.install import install
 
 from setuptools import Command
 
@@ -85,8 +84,6 @@ command_classes = {
     "build_man": build_man,
 }
 
-from distutils import log
-from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 
 ext_modules = []

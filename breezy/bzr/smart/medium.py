@@ -353,7 +353,7 @@ class SmartServerStreamMedium(SmartMedium):
             self._serve_one_request_unguarded(protocol)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
+        except Exception:
             self.terminate_due_to_error()
 
     def terminate_due_to_error(self):

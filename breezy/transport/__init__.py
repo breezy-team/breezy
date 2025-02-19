@@ -174,7 +174,7 @@ def unregister_transport(scheme, factory):
 class _CoalescedOffset:
     """A data container for keeping track of coalesced offsets."""
 
-    __slots__ = ["start", "length", "ranges"]
+    __slots__ = ["length", "ranges", "start"]
 
     def __init__(self, start, length, ranges):
         self.start = start
@@ -211,7 +211,7 @@ class LateReadError:
         self._path = path
 
     def close(self):
-        """a no-op - do nothing."""
+        """A no-op - do nothing."""
 
     def __enter__(self):
         return self
@@ -544,7 +544,6 @@ class Transport:
 
         :param relpath: a string of a relative path
         """
-
         # XXX: Robert Collins 20051016 - is this really needed in the public
         # interface ?
         raise NotImplementedError(self.abspath)
@@ -1247,7 +1246,8 @@ class Transport:
 
         Warning: this is not guaranteed to be accurate as sometimes we can't
         be sure: for example with vfat mounted on unix, or a windows sftp
-        server."""
+        server.
+        """
         # TODO: Perhaps return a e.g. TransportCharacteristics that can answer
         # several questions about the transport.
         return False

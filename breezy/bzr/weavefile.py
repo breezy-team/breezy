@@ -154,9 +154,9 @@ def _read_weave_v5(f, w):
         l = next(lines)
         if l == b"W\n":
             break
-        elif b". " == l[0:2]:
+        elif l[0:2] == b". ":
             w._weave.append(l[2:])  # include newline
-        elif b", " == l[0:2]:
+        elif l[0:2] == b", ":
             w._weave.append(l[2:-1])  # exclude newline
         elif l == b"}\n":
             w._weave.append((b"}", None))

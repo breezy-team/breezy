@@ -33,8 +33,7 @@ from breezy.tests import http_server
 
 
 class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
-    """
-    Subclass of TestingHTTPRequestHandler handling DAV requests.
+    """Subclass of TestingHTTPRequestHandler handling DAV requests.
 
     This is not a full implementation of a DAV server, only the parts
     really used by the plugin are.
@@ -205,8 +204,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         self.end_headers()
 
     def do_MKCOL(self):
-        """
-        Serve a MKCOL request.
+        """Serve a MKCOL request.
 
         MKCOL is an mkdir in DAV terminology for our part.
         """
@@ -228,7 +226,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_COPY(self):
         """Serve a COPY request."""
-
         url_to = self.headers.get("Destination")
         if url_to is None:
             self.send_error(400, "Destination header missing")
@@ -286,7 +283,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_MOVE(self):
         """Serve a MOVE request."""
-
         url_to = self.headers.get("Destination")
         if url_to is None:
             self.send_error(400, "Destination header missing")

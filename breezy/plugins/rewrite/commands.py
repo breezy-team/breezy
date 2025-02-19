@@ -119,7 +119,6 @@ class cmd_rebase(Command):
             RebaseState1,
             WorkingTreeRevisionRewriter,
             generate_simple_plan,
-            rebase,
             rebase_todo,
             regenerate_default_revid,
         )

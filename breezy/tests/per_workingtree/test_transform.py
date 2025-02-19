@@ -24,7 +24,7 @@ from breezy.bzr.transform import resolve_checkout
 from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
-from ... import osutils, tests, trace, transform, urlutils
+from ... import osutils, tests, trace, urlutils
 from ...bzr.conflicts import (
     DeletingParent,
     DuplicateEntry,

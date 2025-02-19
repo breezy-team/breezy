@@ -274,7 +274,7 @@ class TestStacking(TestCaseWithBranch):
                 stacked_bzrdir.open_branch().get_stacked_on_url(),
                 cloned_bzrdir.open_branch().get_stacked_on_url(),
             )
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
@@ -385,7 +385,7 @@ class TestStacking(TestCaseWithBranch):
         rev1 = stack_on.commit("first commit")
         try:
             stacked_dir = stack_on.controldir.sprout("stacked", stacked=True)
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable("Format does not support stacking.")
         unstacked = self.make_repository("unstacked")
         return stacked_dir.open_workingtree(), unstacked, rev1
@@ -469,7 +469,7 @@ class TestStacking(TestCaseWithBranch):
         target = self.make_branch("target")
         try:
             target.set_stacked_on_url("../stacked-on")
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable("Format does not support stacking.")
 
         # Change the source branch.
@@ -491,7 +491,7 @@ class TestStacking(TestCaseWithBranch):
         stacked = self.make_branch("stacked")
         try:
             stacked.set_stacked_on_url("../stack-on")
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable("Format does not support stacking.")
         self.get_transport().rename("stack-on", "new-stack-on")
         hook_calls = []
@@ -534,7 +534,7 @@ class TestStacking(TestCaseWithBranch):
             stacked_dir = stack_on.controldir.sprout(
                 self.get_url("stacked"), stacked=True
             )
-        except unstackable_format_errors as e:
+        except unstackable_format_errors:
             raise TestNotApplicable("Format does not support stacking.")
         try:
             stacked = stacked_dir.open_workingtree()

@@ -122,7 +122,7 @@ class TestStatus(TestCaseWithTransport):
         )
 
     def tests_revision_to_revision(self):
-        """doing a status between two revision trees should work."""
+        """Doing a status between two revision trees should work."""
         tree = self.make_branch_and_tree(".")
         r1_id = tree.commit("one", allow_pointless=True)
         r2_id = tree.commit("two", allow_pointless=True)

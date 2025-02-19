@@ -669,7 +669,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         )
 
     def test_revnos_are_globally_assigned(self):
-        """revnos are assigned according to the revision they derive from."""
+        """Revnos are assigned according to the revision they derive from."""
         # in this test we setup a number of branches that all derive from
         # the first revision, and then merge them one at a time, which
         # should give the revisions as they merge numbers still deriving from

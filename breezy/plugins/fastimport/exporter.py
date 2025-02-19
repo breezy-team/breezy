@@ -51,7 +51,7 @@ from email.utils import parseaddr
 import breezy.branch
 import breezy.revision
 
-from ... import builtins, errors, lazy_import, lru_cache, osutils, progress, trace
+from ... import builtins, lazy_import, lru_cache, osutils, progress, trace
 from ... import transport as _mod_transport
 from . import helpers, marks_file
 
@@ -122,8 +122,6 @@ def sanitize_ref_name_for_git(refname):
     :param refname: refname to rewrite
     :return: new refname
     """
-    import struct
-
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
         rb"/\.|^\."

@@ -139,6 +139,7 @@ def join(base: str, *args) -> str:
     (it assumes no symlinks in either path)
 
     If any of *args is an absolute URL, it will be treated correctly.
+
     Example:
         join('http://foo', 'http://bar') => 'http://bar'
         join('http://foo', 'bar') => 'http://foo/bar'

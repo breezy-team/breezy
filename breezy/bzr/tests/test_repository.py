@@ -25,9 +25,17 @@ also see this file.
 from stat import S_ISDIR
 
 import breezy
-from breezy import controldir, errors, osutils, repository
+from breezy import (
+    controldir,
+    errors,
+    osutils,
+    repository,
+    tests,
+    transport,
+    upgrade,
+    workingtree,
+)
 from breezy import revision as _mod_revision
-from breezy import tests, transport, upgrade, workingtree
 from breezy.bzr import (
     btree_index,
     bzrdir,
@@ -36,9 +44,11 @@ from breezy.bzr import (
     knitpack_repo,
     knitrepo,
     pack_repo,
+    versionedfile,
+    vf_repository,
+    vf_search,
 )
 from breezy.bzr import repository as bzrrepository
-from breezy.bzr import versionedfile, vf_repository, vf_search
 from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from breezy.bzr.index import GraphIndex
 from breezy.errors import UnknownFormatError
@@ -257,7 +267,7 @@ class TestFormatKnit1(TestCaseWithTransport):
             self.assertEqualDiff(b"# bzr knit index 8\n" + extra_content, f.read())
 
     def check_knits(self, t):
-        """check knit content for a repository."""
+        """Check knit content for a repository."""
         self.assertHasKnit(t, "inventory")
         self.assertHasKnit(t, "revisions")
         self.assertHasKnit(t, "signatures")
@@ -1383,7 +1393,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_no_obsolete_packs_directory(self):
         """Bug #314314, don't fail if obsolete_packs directory does
-        not exist."""
+        not exist.
+        """
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
         r.control_transport.rmdir("obsolete_packs")
         packs._clear_obsolete_packs()
@@ -1556,7 +1567,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         return builder.get_branch()
 
     def make_branch_with_disjoint_inventory_and_revision(self):
-        """a repo with separate packs for a revisions Revision and Inventory.
+        """A repo with separate packs for a revisions Revision and Inventory.
 
         There will be one pack file that holds the Revision content, and one
         for the Inventory content.

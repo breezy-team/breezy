@@ -151,7 +151,6 @@ class _Serializer_v4(XMLSerializer):
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-
         # <changeset> is deprecated...
         if elt.tag not in ("revision", "changeset"):
             raise BzrError("unexpected tag in revision file: %r" % elt)

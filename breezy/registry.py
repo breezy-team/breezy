@@ -67,7 +67,7 @@ class _LazyObjectGetter(_ObjectGetter[T]):
     When requested, load and return it.
     """
 
-    __slots__ = ["_module_name", "_member_name", "_imported"]
+    __slots__ = ["_imported", "_member_name", "_module_name"]
 
     def __init__(self, module_name, member_name):
         self._module_name = module_name

@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import re
-from io import BytesIO, StringIO
+from io import StringIO
 
 from .. import (
     branchbuilder,
@@ -27,7 +26,6 @@ from .. import (
     revision,
     revisionspec,
     tests,
-    trace,
 )
 from . import features
 
@@ -337,7 +335,8 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
 
     def test_format_signature_validity_utf(self):
         """Check that GPG signatures containing UTF-8 names are formatted
-        correctly."""
+        correctly.
+        """
         self.requireFeature(features.gpg)
         wt = self.make_branch_and_tree(".")
         revid = wt.commit("empty commit")
@@ -1983,8 +1982,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
 class TestLogDefaults(TestCaseForLogFormatter):
     def test_default_log_level(self):
-        """
-        Test to ensure that specifying 'levels=1' to make_log_request_dict
+        """Test to ensure that specifying 'levels=1' to make_log_request_dict
         doesn't get overwritten when using a LogFormatter that supports more
         detail.
         Fixes bug #747958.

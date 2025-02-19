@@ -23,9 +23,8 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, urlutils
 from ...forge import (
     Forge,
     ForgeLoginRequired,
@@ -883,7 +882,7 @@ class GitLab(Forge):
                     host, urlutils.quote(str(project), "")
                 ),
             )
-        except errors.UnexpectedHttpStatus as e:
+        except errors.UnexpectedHttpStatus:
             raise UnsupportedForge(url)
         except errors.RedirectRequested:
             # GitLab doesn't send redirects for these URLs

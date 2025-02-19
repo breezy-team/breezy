@@ -17,7 +17,6 @@
 
 """A grouping of Exceptions for bzr-git"""
 
-from dulwich import errors as git_errors
 
 from .. import errors as brz_errors
 

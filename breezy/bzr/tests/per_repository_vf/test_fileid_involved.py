@@ -17,9 +17,8 @@
 import sys
 import time
 
-from breezy import errors
+from breezy import errors, tests
 from breezy import revision as _mod_revision
-from breezy import tests, transform
 from breezy.bzr import inventory, remote
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,

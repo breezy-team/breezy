@@ -26,7 +26,6 @@ several different output formats:
     ...
 
 Examples:
-
     python generated-docs.py man
     python generated-docs.py bash_completion
 
@@ -94,7 +93,6 @@ Available OUTPUT_FORMAT:
 
     with breezy.initialize(), ExitStack() as es:
         # Import breezy.bzr for format registration, see <http://pad.lv/956860>
-        from breezy import bzr as _
 
         commands.install_bzr_command_hooks()
         infogen_type = args[1]

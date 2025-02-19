@@ -23,7 +23,7 @@ from typing import Set
 
 from .. import osutils
 from . import TestCase
-from .ui_testing import BytesIOWithEncoding, StringIOWithEncoding
+from .ui_testing import StringIOWithEncoding
 
 
 class FakeCodec:

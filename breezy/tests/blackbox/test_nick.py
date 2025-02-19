@@ -16,7 +16,6 @@
 
 """Black-box tests for brz nick."""
 
-import breezy
 from breezy import branch, osutils, tests
 
 
@@ -36,7 +35,7 @@ class TestNick(tests.TestCaseWithTransport):
                 self.assertEqual(expected, conf._get_explicit_nickname())
 
     def test_nick_command(self):
-        """brz nick for viewing, setting nicknames"""
+        """Brz nick for viewing, setting nicknames"""
         self.make_branch_and_tree("me.dev")
         self.assertNick("me.dev", working_dir="me.dev")
         # set the nickname

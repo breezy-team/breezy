@@ -31,7 +31,6 @@ from ..transport import (
     UnsupportedProtocol,
     chroot,
     fakenfs,
-    http,
     local,
     memory,
     pathfilter,
@@ -545,7 +544,8 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         """Make a PathFilteringTransport backed by a MemoryTransport.
 
         :param filter_func: by default this will be a no-op function.  Use this
-            parameter to override it."""
+            parameter to override it.
+        """
         if filter_func is None:
 
             def filter_func(x):

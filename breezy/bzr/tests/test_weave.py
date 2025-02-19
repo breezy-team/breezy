@@ -127,7 +127,8 @@ class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
 
     Look at the annotations to make sure that the first line is matched
-    and not stored repeatedly."""
+    and not stored repeatedly.
+    """
 
     def runTest(self):
         k = Weave()
@@ -185,7 +186,8 @@ class InsertLines(TestBase):
 class DeleteLines(TestBase):
     """Deletion of lines from existing text.
 
-    Try various texts all based on a common ancestor."""
+    Try various texts all based on a common ancestor.
+    """
 
     def runTest(self):
         k = Weave()
@@ -445,7 +447,8 @@ class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
 
     This relies on the weave having a way to represent lines knocked
-    out by a later revision."""
+    out by a later revision.
+    """
 
     def runTest(self):
         k = Weave()
@@ -596,7 +599,8 @@ class Conflicts(TestBase):
 
     A base version is inserted, then two descendents try to
     insert different lines in the same place.  These should be
-    reported as a possible conflict and forwarded to the user."""
+    reported as a possible conflict and forwarded to the user.
+    """
 
     def runTest(self):
         return  # NOT RUN
@@ -614,7 +618,8 @@ class Conflicts(TestBase):
 class NonConflict(TestBase):
     """Two descendants insert compatible changes.
 
-    No conflict should be reported."""
+    No conflict should be reported.
+    """
 
     def runTest(self):
         return  # NOT RUN

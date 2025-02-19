@@ -39,8 +39,6 @@ from bisect import bisect_left
 from collections import deque
 from io import BytesIO
 
-import breezy
-
 from .. import lazy_import
 
 # Explicitly import breezy.bzrdir so that the BzrProber
@@ -73,7 +71,6 @@ from breezy.bzr import (
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
 from ..tree import (
@@ -653,7 +650,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
+        boolean if desired.
+        """
         if getattr(self, "_ignoreglobster", None) is None:
             self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
         return self._ignoreglobster.match(filename)
