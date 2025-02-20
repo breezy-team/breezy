@@ -499,7 +499,7 @@ class BundleTester:
                 delta = new.changes_from(old)
                 self.assertFalse(
                     delta.has_changed(),
-                    "Revision %s not copied correctly." % (ancestor,),
+                    "Revision {} not copied correctly.".format(ancestor),
                 )
 
                 # Now check that the file contents are all correct

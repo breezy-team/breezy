@@ -148,7 +148,7 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree(".")
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual("HasPathRelations(%r, %r)" % (t, [("a", "b")]), str(matcher))
+        self.assertEqual("HasPathRelations({!r}, {!r})".format(t, [("a", "b")]), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree(".")

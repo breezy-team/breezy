@@ -79,7 +79,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         )
         err_msg = "Upgrade URL cannot work with readonly URLs."
         self.assertEqualDiff(
-            "conversion error: %s\nbrz: ERROR: %s\n" % (err_msg, err_msg), err
+            "conversion error: {}\nbrz: ERROR: {}\n".format(err_msg, err_msg), err
         )
 
     def test_upgrade_up_to_date(self):

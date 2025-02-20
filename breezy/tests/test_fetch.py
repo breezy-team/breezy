@@ -428,7 +428,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         to_add = [("add", ("", b"TREE_ROOT", "directory", None))]
         for i in range(10):
             fname = "file%03d" % (i,)
-            fileid = ("%s-%s" % (fname, osutils.rand_chars(64))).encode("ascii")
+            fileid = ("{}-{}".format(fname, osutils.rand_chars(64))).encode("ascii")
             to_add.append(("add", (fname, fileid, "file", b"content\n")))
         builder.build_snapshot(None, to_add, revision_id=b"A")
         builder.build_snapshot([b"A"], [], revision_id=b"B")
