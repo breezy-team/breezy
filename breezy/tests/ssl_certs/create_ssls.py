@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""create_ssls.py -- create sll keys and certificates for tests.
+"""create_ssls.py -- create ssl keys and certificates for tests.
 
 The https server requires at least a key and a certificate to start.
 
@@ -117,7 +117,7 @@ def build_ca_key():
     key_path = ssl_certs.build_path("ca.key")
     rm_f(key_path)
     _openssl(
-        ["genrsa", "-passout", "stdin", "-des3", "-out", key_path, "4096"],
+        ["genrsa", "-passout", "stdin", "-aes256", "-out", key_path, "4096"],
         input="%(ca_pass)s\n%(ca_pass)s\n" % ssl_params,
     )
 
@@ -131,6 +131,8 @@ def build_ca_certificate():
     _openssl(
         [
             "req",
+            "-addext",
+            "keyUsage = keyCertSign",
             "-passin",
             "stdin",
             "-new",

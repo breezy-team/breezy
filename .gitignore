@@ -13,3 +13,4 @@ build/
 /target
 /brz
 /Cargo.lock
+*.cpython-*.so
