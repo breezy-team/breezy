@@ -261,12 +261,6 @@ else:
 
 # std setup
 setup(
-    scripts=[  # TODO(jelmer): Only install the git scripts if
-        # Dulwich was found.
-        "breezy/git/git-remote-bzr",
-        "breezy/git/bzr-receive-pack",
-        "breezy/git/bzr-upload-pack",
-    ],
     data_files=DATA_FILES,
     cmdclass=command_classes,
     ext_modules=ext_modules,

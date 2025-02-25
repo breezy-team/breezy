@@ -298,6 +298,10 @@ impl Revision {
     fn bug_urls(&self) -> Vec<String> {
         self.0.bug_urls()
     }
+
+    fn iter_bugs(&self) -> Vec<String> {
+        self.0.iter_bugs()
+    }
 }
 
 fn serializer_err_to_py_err(e: bazaar::serializer::Error) -> PyErr {

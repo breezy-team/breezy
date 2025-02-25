@@ -1,0 +1,11 @@
+[package]
+name = "breezy-debian"
+version = "2.8.78"
+authors = [ "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2021"
+license = "GPL-2.0+"
+description = "Debian support for Breezy"
+
+[dependencies]
+debian-changelog = "0.1.10"
+debian-control = "0.1.4"

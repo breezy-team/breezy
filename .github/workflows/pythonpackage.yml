@@ -39,7 +39,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
           python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
-          python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
+          python -m pip install git+https://salsa.debian.org/apt-team/python-apt
+          python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport,debian]"
       - name: Install dependencies (linux/pip)
         run: |
           sudo apt install libgpgme-dev libgpg-error-dev
