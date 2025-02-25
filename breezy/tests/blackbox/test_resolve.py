@@ -16,7 +16,7 @@
 
 from breezy import tests
 from breezy.bzr import conflicts as _mod_bzr_conflicts
-from breezy.tests import KnownFailure, script
+from breezy.tests import expectedFailure, script
 from breezy.tests.blackbox import test_conflicts
 
 
@@ -79,6 +79,8 @@ $ brz conflicts -d branch
 """
         )
 
+    # bug #842575
+    @expectedFailure
     def test_bug_842575_manual_rm(self):
         self.run_script(
             """\
@@ -100,15 +102,14 @@ $ brz resolve --all -d tree
 2>1 conflict resolved, 0 remaining
 """
         )
-        try:
-            self.run_script(
-                """\
+        self.run_script(
+            """\
 $ brz status tree
 """
-            )
-        except AssertionError as err:
-            raise KnownFailure("bug #842575") from err
+        )
 
+    # bug 842575
+    @expectedFailure
     def test_bug_842575_take_other(self):
         self.run_script(
             """\
@@ -131,16 +132,13 @@ $ brz resolve --take-other --all -d tree
 2>1 conflict resolved, 0 remaining
 """
         )
-        try:
-            self.run_script(
-                """\
+        self.run_script(
+            """\
 $ brz status tree
 $ echo mustignore > tree/foo
 $ brz status tree
 """
-            )
-        except AssertionError as err:
-            raise KnownFailure("bug 842575") from err
+        )
 
 
 class TestBug788000(script.TestCaseWithTransportAndScript):

@@ -723,7 +723,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.IncompatibleFormat as err:
             raise tests.TestNotApplicable("Cannot make a shared repository") from err
         if repo.controldir._format.fixed_components:
-            self.knownFailure(
+            raise tests.TestSkipped(
                 "pre metadir branches do not upgrade on push with stacking policy"
             )
         if isinstance(

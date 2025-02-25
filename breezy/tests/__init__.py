@@ -870,6 +870,8 @@ traceback._some_str = _clever_some_str  # type: ignore
 # deprecated - use self.knownFailure(), or self.expectFailure.
 KnownFailure = testtools.testcase._ExpectedFailure
 
+expectedFailure = unittest.case.expectedFailure
+
 
 class UnavailableFeature(Exception):
     """A feature required for this test was not available.
