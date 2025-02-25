@@ -90,10 +90,10 @@ class UpstreamBranchAlreadyMerged(BzrError):
 
 
 class UpstreamAlreadyImported(BzrError):
-    _fmt = 'Upstream version "%(version)s" has already been imported.'
+    _fmt = 'Upstream version "%(version)s" has already been imported (tag: %(tag)s).'
 
-    def __init__(self, version):
-        BzrError.__init__(self, version=str(version))
+    def __init__(self, version, tag):
+        BzrError.__init__(self, version=str(version), tag=tag)
 
 
 class VersionAlreadyImported(BzrError):
@@ -1500,8 +1500,9 @@ class DistributionBranch:
                 self._export_previous_upstream_tree(package, previous_version, tempdir)
             else:
                 self.create_empty_upstream_tree(tempdir)
-            if self.pristine_upstream_source.has_version(package, version):
-                raise UpstreamAlreadyImported(version)
+            tag = self.pristine_upstream_source.version_tag(package, version)
+            if tag is not None:
+                raise UpstreamAlreadyImported(version, tag)
             if upstream_branch is not None:
                 es.enter_context(upstream_branch.lock_read())
             if upstream_branch is not None:

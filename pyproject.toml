@@ -25,6 +25,14 @@ classifiers = [
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
+dependencies = [
+    "pyyaml",
+    "breezy>=3.3.0.dev.0",
+    "debmutate[watch]>=0.60",
+    "python_debian",
+    "python-apt@git+https://salsa.debian.org/apt-team/python-apt",
+    "distro-info",
+]
 requires-python = ">=3.9"
 dependencies = [
     "configobj",

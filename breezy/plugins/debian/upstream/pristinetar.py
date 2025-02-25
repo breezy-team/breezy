@@ -355,20 +355,27 @@ class BasePristineTarSource(UpstreamSource):
             )
         return ret
 
-    def has_version(
+    def version_tag(
         self, package: Optional[str], version: str, tarballs=None, try_hard=True
-    ):
+    ) -> Optional[str]:
         if tarballs is None:
             return self.has_version_component(
                 package, version, component=None, try_hard=try_hard
             )
         else:
+            tag = None
             for _tarball, component, md5 in tarballs:
-                if not self.has_version_component(
+                tag = self.has_version_component(
                     package, version, component, md5, try_hard=try_hard
-                ):
-                    return False
-            return True
+                )
+                if tag is None:
+                    return None
+            return tag
+
+    def has_version(
+            self, package: Optional[str], version: str, tarballs=None,
+            try_hard=True) -> bool:
+        return self.version_tag(package, version, tarballs=tarballs, try_hard=try_hard) is not None
 
     def _components_by_version(self):
         ret = {}
@@ -426,8 +433,8 @@ class BasePristineTarSource(UpstreamSource):
         raise NotImplementedError(self._search_for_upstream_version)
 
     def has_version_component(
-        self, package: Optional[str], version: str, component, md5=None, try_hard=True
-    ):
+        self, package: Optional[str], version: str, component, md5=None, try_hard: bool = True
+    ) -> Optional[str]:
         for tag_name in self.possible_tag_names(
             package, version, component=component, try_hard=try_hard
         ):
@@ -437,8 +444,8 @@ class BasePristineTarSource(UpstreamSource):
                 continue
             else:
                 if self._has_revision(revid, md5=md5):
-                    return True
-        return False
+                    return tag_name
+        return None
 
 
 class BzrPristineTarSource(BasePristineTarSource):

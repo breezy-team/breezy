@@ -135,7 +135,7 @@ def do_import(
         else:
             db.create_empty_upstream_tree(tempdir)
         if db.pristine_upstream_source.has_version(package, version, try_hard=False):
-            raise UpstreamAlreadyImported(version)
+            raise UpstreamAlreadyImported(version, tag)
 
         parents = {None: []}
         if db.pristine_upstream_branch.last_revision() != NULL_REVISION:

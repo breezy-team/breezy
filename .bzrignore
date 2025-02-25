@@ -63,9 +63,12 @@ breezy/_readdir_pyx.c
 breezy/bzr/_simple_set_pyx.c
 breezy/bzr/_simple_set_pyx.h
 breezy/bzr/_simple_set_pyx_api.h
+.pytest_cache
+.ruff_cache
+locale
+target
 # built extension modules
 breezy/_*.dll
-breezy/_*.so
 breezy/_*.pyd
 ./.ccache
 .testrepository
@@ -78,6 +81,3 @@ __pycache__
 ./target
 ./brz
 *.so
-.pytest_cache
-.ruff_cache
-locale
