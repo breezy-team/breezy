@@ -110,7 +110,7 @@ class TestFormat7(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat("revision-store").st_mode))
         self.assertTrue(S_ISDIR(t.stat("weaves").st_mode))
         with t.get("inventory.weave") as f:
-            self.assertEqualDiff(b"# bzr weave file v5\n" b"w\n" b"W\n", f.read())
+            self.assertEqualDiff(b"# bzr weave file v5\nw\nW\n", f.read())
         # Creating a file with id Foo:Bar results in a non-escaped file name on
         # disk.
         control.create_branch()
@@ -123,7 +123,7 @@ class TestFormat7(TestCaseWithTransport):
             if sys.platform != "win32":
                 raise
             self.knownFailure(
-                "Foo:Bar cannot be used as a file-id on windows" " in repo format 7"
+                "Foo:Bar cannot be used as a file-id on windows in repo format 7"
             )
             return
         with t.get("weaves/74/Foo%3ABar.weave") as f:
@@ -159,7 +159,7 @@ class TestFormat7(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat("revision-store").st_mode))
         self.assertTrue(S_ISDIR(t.stat("weaves").st_mode))
         with t.get("inventory.weave") as f:
-            self.assertEqualDiff(b"# bzr weave file v5\n" b"w\n" b"W\n", f.read())
+            self.assertEqualDiff(b"# bzr weave file v5\nw\nW\n", f.read())
         self.assertFalse(t.has("branch-lock"))
 
     def test_creates_lockdir(self):
@@ -213,7 +213,7 @@ class TestFormat7(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat("revision-store").st_mode))
         self.assertTrue(S_ISDIR(t.stat("weaves").st_mode))
         with t.get("inventory.weave") as f:
-            self.assertEqualDiff(b"# bzr weave file v5\n" b"w\n" b"W\n", f.read())
+            self.assertEqualDiff(b"# bzr weave file v5\nw\nW\n", f.read())
 
     def test_supports_external_lookups(self):
         control = BzrDirMetaFormat1().initialize(self.get_url())

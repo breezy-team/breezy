@@ -238,7 +238,7 @@ def _show_missing_revisions_branch(branch, outfile):
         if remote_extra:
             outfile.write("\n")
             outfile.write(
-                ("Branch is out of date: missing %d " "revision%s.\n")
+                ("Branch is out of date: missing %d revision%s.\n")
                 % (len(remote_extra), plural(len(remote_extra)))
             )
 
@@ -260,7 +260,7 @@ def _show_missing_revisions_working(working, outfile):
         missing_count = branch_revno - tree_last_revno
         outfile.write("\n")
         outfile.write(
-            ("Working tree is out of date: missing %d " "revision%s.\n")
+            ("Working tree is out of date: missing %d revision%s.\n")
             % (missing_count, plural(missing_count))
         )
 
@@ -329,9 +329,7 @@ def _show_repository_info(repository, outfile):
     """Show settings of a repository."""
     if repository.make_working_trees():
         outfile.write("\n")
-        outfile.write(
-            "Create working tree for new branches inside " "the repository.\n"
-        )
+        outfile.write("Create working tree for new branches inside the repository.\n")
 
 
 def _show_repository_stats(repository, stats, outfile):

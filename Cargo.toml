@@ -33,8 +33,8 @@ i18n = ["dep:gettext-rs"]
 pyo3 = []
 
 [dependencies]
-pyo3 = { workspace = true }
-gettext-rs = { version = "0.7", optional = true }
+pyo3 = { workspace = true, features = ["abi3"] }
+gettext-rs = { workspace = true, optional = true }
 log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
@@ -55,9 +55,10 @@ nix = { workspace = true, features = ["fs"] }
 
 [workspace.dependencies]
 nix = ">=0.26"
-pyo3 = ">=0.20"
+pyo3 = "=0.21"
 pyo3-filelike = "0.2.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"
 log = "0.4"
 whoami = { version = "1", default-features = false }
+gettext-rs = { version = "0.7" }

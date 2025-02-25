@@ -50,7 +50,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
             isinstance(format, remote.RemoteRepositoryFormat) or format.supports_chks
         ):
             raise tests.TestNotApplicable(
-                "stacked commit only supported" " for chk repositories"
+                "stacked commit only supported for chk repositories"
             )
 
     def get_only_repo(self, tree):

@@ -918,7 +918,7 @@ class TestRebaseURL(TestCase):
         )
         self.assertEqual(
             str(e),
-            "URLs differ by more than path:" " 'http://bar:80' and 'http://bar:81'",
+            "URLs differ by more than path: 'http://bar:80' and 'http://bar:81'",
         )
 
     def test_different_hosts(self):
@@ -930,7 +930,7 @@ class TestRebaseURL(TestCase):
             "http://baz",
         )
         self.assertEqual(
-            str(e), "URLs differ by more than path: 'http://bar'" " and 'http://baz'"
+            str(e), "URLs differ by more than path: 'http://bar' and 'http://baz'"
         )
 
     def test_different_protocol(self):
@@ -942,7 +942,7 @@ class TestRebaseURL(TestCase):
             "ftp://bar",
         )
         self.assertEqual(
-            str(e), "URLs differ by more than path: 'http://bar'" " and 'ftp://bar'"
+            str(e), "URLs differ by more than path: 'http://bar' and 'ftp://bar'"
         )
 
     def test_rebase_success(self):

@@ -870,7 +870,7 @@ impl MutableInventory {
         &'a self,
         from_dir: Option<&'a FileId>,
         specific_file_ids: Option<&'a HashSet<&FileId>>,
-    ) -> impl Iterator<Item = (String, &'a Entry)> + '_ {
+    ) -> impl Iterator<Item = (String, &'a Entry)> + 'a {
         let parents = specific_file_ids
             .map(|specific_file_ids| find_interesting_parents(self, specific_file_ids));
 

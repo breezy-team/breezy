@@ -25,7 +25,7 @@ classifiers = [
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 dependencies = [
     "configobj",
     "fastbencode",
@@ -34,6 +34,7 @@ dependencies = [
     "dulwich>=0.21.6",
     "urllib3>=1.24.1",
     "pyyaml",
+    "tzlocal",
 ]
 dynamic = ["version"]
 
@@ -66,7 +67,7 @@ debian = [
 fastimport = ["fastimport"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
-workspace = ["pyinotify"]
+workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
 doc = [
     "docutils",
     "setuptools",

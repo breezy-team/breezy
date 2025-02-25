@@ -395,7 +395,7 @@ class TestDeltaIndex(tests.TestCase):
         result = _groupcompress_rs.apply_delta(_first_text + _second_text, delta)
         self.assertEqualDiff(_third_text, result)
         self.assertEqual(
-            b"\x85\x01\x90\x14\x0chas some in " b'\x91v6\x03and\x91d"\x91:\n', delta
+            b'\x85\x01\x90\x14\x0chas some in \x91v6\x03and\x91d"\x91:\n', delta
         )
 
     def test_delta_with_offsets(self):
@@ -412,7 +412,7 @@ class TestDeltaIndex(tests.TestCase):
         self.assertIsNot(None, result)
         self.assertEqualDiff(_third_text, result)
         self.assertEqual(
-            b"\x85\x01\x91\x05\x14\x0chas some in " b'\x91\x856\x03and\x91s"\x91?\n',
+            b'\x85\x01\x91\x05\x14\x0chas some in \x91\x856\x03and\x91s"\x91?\n',
             delta,
         )
 
@@ -423,7 +423,7 @@ class TestDeltaIndex(tests.TestCase):
         self.assertEqual(len(_first_text), di._source_offset)
         delta = di.make_delta(_second_text)
         self.assertEqual(
-            b"h\tsome more\x91\x019" b"&previous text\nand has some extra text\n", delta
+            b"h\tsome more\x91\x019&previous text\nand has some extra text\n", delta
         )
         di.add_delta_source(delta, 0)
         source += delta
@@ -437,8 +437,7 @@ class TestDeltaIndex(tests.TestCase):
         # enough to match in the original text, and those bytes are not present
         # in the delta for the second text.
         self.assertEqual(
-            b"\x85\x01\x90\x14\x1chas some in common with the "
-            b"\x91S&\x03and\x91\x18,",
+            b"\x85\x01\x90\x14\x1chas some in common with the \x91S&\x03and\x91\x18,",
             second_delta,
         )
         # Add this delta, and create a new delta for the same text. We should
@@ -449,7 +448,7 @@ class TestDeltaIndex(tests.TestCase):
         result = _groupcompress_rs.apply_delta(source, third_delta)
         self.assertEqualDiff(_third_text, result)
         self.assertEqual(
-            b"\x85\x01\x90\x14\x91\x7e\x1c" b"\x91S&\x03and\x91\x18,", third_delta
+            b"\x85\x01\x90\x14\x91\x7e\x1c\x91S&\x03and\x91\x18,", third_delta
         )
         # Now create a delta, which we know won't be able to be 'fit' into the
         # existing index

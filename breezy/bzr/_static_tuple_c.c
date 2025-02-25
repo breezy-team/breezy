@@ -809,7 +809,7 @@ StaticTuple_sizeof(StaticTuple *self)
     Py_ssize_t res;
 
     res = _PyObject_SIZE(&StaticTuple_Type) + (int)self->size * sizeof(void*);
-    return PyInt_FromSsize_t(res);
+    return PyLong_FromSsize_t(res);
 }
 
 
@@ -906,10 +906,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
-    /* Py_TPFLAGS_CHECKTYPES tells the number operations that they shouldn't
-     * try to 'coerce' but instead stuff like 'add' will check it arguments.
-     */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES,  /* tp_flags*/
+    Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
     StaticTuple_doc,                             /* tp_doc */
     /* gc.get_referents checks the IS_GC flag before it calls tp_traverse
      * And we don't include this object in the garbage collector because we
@@ -993,32 +990,36 @@ setup_c_api(PyObject *m)
 }
 
 
-PYMOD_INIT_FUNC(_static_tuple_c)
+PyMODINIT_FUNC PyInit_static_tuple_c(void)
 {
     PyObject* m;
 
     StaticTuple_Type.tp_getattro = PyObject_GenericGetAttr;
     if (PyType_Ready(&StaticTuple_Type) < 0) {
-        return PYMOD_ERROR;
+        return NULL;
     }
 
-    PYMOD_CREATE(m, "_static_tuple_c",
-                 "C implementation of a StaticTuple structure",
-                 static_tuple_c_methods);
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "_static_tuple_c",
+        "C implementation of a StaticTuple structure", -1,
+        static_tuple_c_methods
+    };
+    m = PyModule_Create(&moduledef);
     if (m == NULL) {
-      return PYMOD_ERROR;
+      return NULL;
     }
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
     if (import_breezy__bzr___simple_set_pyx() == -1) {
-        return PYMOD_ERROR;
+        return NULL;
     }
     setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);
 
-    return PYMOD_SUCCESS(m);
+    return m;
 }
 
 // vim: tabstop=4 sw=4 expandtab

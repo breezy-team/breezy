@@ -66,7 +66,7 @@ class PointlessCommit(BzrError):
 
 
 class CannotCommitSelectedFileMerge(BzrError):
-    _fmt = "Selected-file commit of merges is not supported yet:" " files %(files_str)s"
+    _fmt = "Selected-file commit of merges is not supported yet: files %(files_str)s"
 
     def __init__(self, files):
         files_str = ", ".join(files)
@@ -211,7 +211,7 @@ class Commit:
                 for individual in authors:
                     if "\n" in individual:
                         raise AssertionError(
-                            "\\n is not a valid character " "in an author identity"
+                            "\\n is not a valid character in an author identity"
                         )
                 revprops["authors"] = "\n".join(authors)
         return revprops

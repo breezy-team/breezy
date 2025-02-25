@@ -96,7 +96,7 @@ class BzrTCPGitServer(TCPGitServer):
     def handle_error(self, request, client_address):
         trace.log_exception_quietly()
         trace.warning(
-            "Exception happened during processing of request " "from %s", client_address
+            "Exception happened during processing of request from %s", client_address
         )
 
 

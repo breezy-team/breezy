@@ -175,7 +175,7 @@ def main():
                 r'.*(?<!\\)brz\.exe([ "].*)?$', s.rstrip("\r\n"), re.IGNORECASE
             ):
                 content[ix] = s.replace(
-                    "brz.exe", f"\"{os.path.join(brz_dir, 'brz.exe')}\""
+                    "brz.exe", f'"{os.path.join(brz_dir, "brz.exe")}"'
                 )
             elif s.find(r"C:\Program Files\Breezy") != -1:
                 content[ix] = s.replace(r"C:\Program Files\Breezy", brz_dir)

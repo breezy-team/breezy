@@ -136,7 +136,7 @@ class TestContainerWriter(tests.TestCase):
         )
         self.assertEqual((42, 13), (offset, length))
         self.assertOutput(
-            b"Bazaar pack format 1 (introduced in 0.18)\n" b"B3\nname1\n\nabc"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB3\nname1\n\nabc"
         )
 
     def test_add_bytes_record_split_writes(self):
@@ -157,7 +157,7 @@ class TestContainerWriter(tests.TestCase):
         )
         self.assertEqual((42, 16), (offset, length))
         self.assertOutput(
-            b"Bazaar pack format 1 (introduced in 0.18)\n" b"B6\nname1\n\nabcabc"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB6\nname1\n\nabcabc"
         )
 
         self.assertEqual(
@@ -177,7 +177,7 @@ class TestContainerWriter(tests.TestCase):
         )
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
-            b"Bazaar pack format 1 (introduced in 0.18)\n" b"B3\nname1\nname2\n\nabc"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB3\nname1\nname2\n\nabc"
         )
 
     def test_add_bytes_record_two_element_name(self):
@@ -188,7 +188,7 @@ class TestContainerWriter(tests.TestCase):
         )
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
-            b"Bazaar pack format 1 (introduced in 0.18)\n" b"B3\nname1\x00name2\n\nabc"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB3\nname1\x00name2\n\nabc"
         )
 
     def test_add_second_bytes_record_gets_higher_offset(self):
@@ -197,7 +197,7 @@ class TestContainerWriter(tests.TestCase):
         offset, length = self.writer.add_bytes_record([b"abc"], len(b"abc"), names=[])
         self.assertEqual((49, 7), (offset, length))
         self.assertOutput(
-            b"Bazaar pack format 1 (introduced in 0.18)\n" b"B3\n\nabc" b"B3\n\nabc"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabcB3\n\nabc"
         )
 
     def test_add_bytes_record_invalid_name(self):
@@ -343,10 +343,7 @@ class TestContainerReader(tests.TestCase):
         multiple times in the container.
         """
         reader = self.get_reader_for(
-            b"Bazaar pack format 1 (introduced in 0.18)\n"
-            b"B0\nname\n\n"
-            b"B0\nname\n\n"
-            b"E"
+            b"Bazaar pack format 1 (introduced in 0.18)\nB0\nname\n\nB0\nname\n\nE"
         )
         self.assertRaises(pack.DuplicateRecordNameError, reader.validate)
 

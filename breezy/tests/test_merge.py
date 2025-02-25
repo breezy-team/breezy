@@ -425,7 +425,7 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
         self.assertFileEqual(
-            b"a\n" b"<<<<<<< TREE\n" b"=======\n" b"c\n" b">>>>>>> MERGE-SOURCE\n",
+            b"a\n<<<<<<< TREE\n=======\nc\n>>>>>>> MERGE-SOURCE\n",
             "this/file",
         )
 
@@ -2177,7 +2177,7 @@ class TestMergerEntriesLCA(TestMergerBase):
 
         entries = list(merge_obj._entries_lca())
         self.expectFailure(
-            "We don't detect that LCA resolution was the" " same on both sides",
+            "We don't detect that LCA resolution was the same on both sides",
             self.assertEqual,
             [],
             entries,
@@ -2678,11 +2678,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt, conflicts = self.do_merge(builder, b"E-id")
         self.assertEqual(1, len(conflicts))
         self.assertEqualDiff(
-            b"<<<<<<< TREE\n"
-            b"B content\n"
-            b"=======\n"
-            b"C content\n"
-            b">>>>>>> MERGE-SOURCE\n",
+            b"<<<<<<< TREE\nB content\n=======\nC content\n>>>>>>> MERGE-SOURCE\n",
             wt.get_file_text("foo"),
         )
 

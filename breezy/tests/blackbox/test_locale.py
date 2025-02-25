@@ -27,9 +27,7 @@ class TestLocale(tests.TestCaseWithTransport):
         super().setUp()
 
         if sys.platform in ("win32",):
-            raise tests.TestSkipped(
-                "Windows does not respond to the LANG" " env variable"
-            )
+            raise tests.TestSkipped("Windows does not respond to the LANG env variable")
 
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
@@ -37,7 +35,7 @@ class TestLocale(tests.TestCaseWithTransport):
         tree.commit(
             "Unicode \xb5 commit",
             rev_id=b"r1",
-            committer="\u062c\u0648\u062c\u0648" " Meinel <juju@info.com>",
+            committer="\u062c\u0648\u062c\u0648 Meinel <juju@info.com>",
             timestamp=1156451297.96,
             timezone=0,
         )

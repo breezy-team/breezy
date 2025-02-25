@@ -41,7 +41,7 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         self.assertEqual([], wt.get_parent_ids())
         if not wt._format.supports_righthand_parent_id_as_ghost:
             raise TestNotApplicable(
-                "format does not support right hand side parents " "that are ghosts"
+                "format does not support right hand side parents that are ghosts"
             )
         # the first pending merge replaces the 'last revision' because
         # 'last revision' is shorthand for 'left most parent'

@@ -165,7 +165,7 @@ def _set_gpg_tty():
         # This is not quite worthy of a warning, because some people
         # don't need GPG_TTY to be set. But it is worthy of a big mark
         # in brz.log, so that people can debug it if it happens to them
-        trace.mutter("** Env var TTY empty, cannot set GPG_TTY." "  Is TTY exported?")
+        trace.mutter("** Env var TTY empty, cannot set GPG_TTY.  Is TTY exported?")
 
 
 class GPGStrategy:

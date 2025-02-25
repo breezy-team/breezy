@@ -100,7 +100,7 @@ class TestCat(tests.TestCaseWithTransport):
 
         # 'b-tree' is not present in the old tree.
         self.run_bzr_error(
-            ["^brz: ERROR: u?'b-tree' " "is not present in revision .+$"],
+            ["^brz: ERROR: u?'b-tree' is not present in revision .+$"],
             "cat b-tree --name-from-revision",
         )
 

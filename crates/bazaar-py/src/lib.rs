@@ -275,8 +275,8 @@ impl Revision {
         self.0.timezone
     }
 
-    fn datetime(&self) -> PyResult<NaiveDateTime> {
-        Ok(self.0.datetime())
+    fn datetime(&self) -> NaiveDateTime {
+        self.0.datetime()
     }
 
     fn check_properties(&self) -> PyResult<()> {
@@ -297,6 +297,10 @@ impl Revision {
 
     fn bug_urls(&self) -> Vec<String> {
         self.0.bug_urls()
+    }
+
+    fn iter_bugs(&self) -> Vec<String> {
+        self.0.iter_bugs()
     }
 }
 
@@ -442,10 +446,10 @@ fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
 
 #[pyfunction]
 fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyBytes> {
-    let ret = if let Ok(text) = unicode_or_utf8_str.extract::<&str>(py) {
-        bazaar::xml_serializer::encode_and_escape_string(text)
-    } else if let Ok(bytes) = unicode_or_utf8_str.extract::<&[u8]>(py) {
-        bazaar::xml_serializer::encode_and_escape_bytes(bytes)
+    let ret = if let Ok(text) = unicode_or_utf8_str.extract::<String>(py) {
+        bazaar::xml_serializer::encode_and_escape_string(&text)
+    } else if let Ok(bytes) = unicode_or_utf8_str.extract::<Vec<u8>>(py) {
+        bazaar::xml_serializer::encode_and_escape_bytes(&bytes)
     } else {
         return Err(PyTypeError::new_err("expected str or bytes"));
     };

@@ -44,7 +44,10 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
+        with (
+            self.repository.lock_read(),
+            ui.ui_factory.nested_progress_bar() as self.progress,
+        ):
             shas = set(self.repository._git.object_store)
             self.object_count = len(shas)
             # TODO(jelmer): Check more things

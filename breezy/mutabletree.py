@@ -25,7 +25,7 @@ from . import errors, hooks, trace, tree
 
 
 class BadReferenceTarget(errors.InternalBzrError):
-    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." "%(reason)s"
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s.%(reason)s"
 
     def __init__(self, tree, other_tree, reason):
         self.tree = tree

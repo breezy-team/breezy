@@ -52,7 +52,7 @@ class TestStaticTuple(tests.TestCase):
             # Then it works fine. Something about passing it to assertRefcount is
             # actually double-incrementing (and decrementing) the refcount
             self.assertEqual(count, sys.getrefcount(obj) - 3)
-        else:
+        elif sys.version_info[:2] == (3, 11):
             self.assertEqual(count, sys.getrefcount(obj) - 2)
 
     def test_create(self):

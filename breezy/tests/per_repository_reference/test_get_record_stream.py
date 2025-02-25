@@ -50,14 +50,14 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         builder.build_snapshot(
             [b"A"],
             [
-                ("modify", ("file", b"initial content\n" b"and B content\n")),
+                ("modify", ("file", b"initial content\nand B content\n")),
             ],
             revision_id=b"B",
         )
         builder.build_snapshot(
             [b"A"],
             [
-                ("modify", ("file", b"initial content\n" b"and C content\n")),
+                ("modify", ("file", b"initial content\nand C content\n")),
             ],
             revision_id=b"C",
         )
@@ -68,7 +68,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
                     "modify",
                     (
                         "file",
-                        b"initial content\n" b"and B content\n" b"and C content\n",
+                        b"initial content\nand B content\nand C content\n",
                     ),
                 ),
             ],
@@ -81,7 +81,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
                     "modify",
                     (
                         "file",
-                        b"initial content\n" b"and C content\n" b"and E content\n",
+                        b"initial content\nand C content\nand E content\n",
                     ),
                 ),
             ],

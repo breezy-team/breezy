@@ -107,7 +107,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         out = self.run_bzr("verify-signatures --verbose")
         self.assertEqual(
             (
-                "All commits signed with verifiable keys\n" "  None signed 5 commits\n",
+                "All commits signed with verifiable keys\n  None signed 5 commits\n",
                 "",
             ),
             out,

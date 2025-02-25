@@ -75,13 +75,11 @@ class AlreadyStandalone(BzrDirError):
 
 
 class AlreadyWithTrees(BzrDirError):
-    _fmt = "Shared repository '%(display_url)s' already creates " "working trees."
+    _fmt = "Shared repository '%(display_url)s' already creates working trees."
 
 
 class AlreadyWithNoTrees(BzrDirError):
-    _fmt = (
-        "Shared repository '%(display_url)s' already doesn't create " "working trees."
-    )
+    _fmt = "Shared repository '%(display_url)s' already doesn't create working trees."
 
 
 class ReconfigurationNotSupported(BzrDirError):

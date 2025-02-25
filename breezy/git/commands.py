@@ -305,7 +305,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                 gitid = git_store._lookup_revision_sha1(revid)
                 if not (name.startswith("upstream/") or name.startswith("upstream-")):
                     warning(
-                        "Unexpected pristine tar revision tagged %s. " "Ignoring.", name
+                        "Unexpected pristine tar revision tagged %s. Ignoring.", name
                     )
                     continue
                 upstream_version = name[len("upstream/") :]

@@ -83,7 +83,7 @@ def _get_transport_modules():
 
 
 class UnusableRedirect(errors.BzrError):
-    _fmt = "Unable to follow redirect from %(source)s to %(target)s: " "%(reason)s."
+    _fmt = "Unable to follow redirect from %(source)s to %(target)s: %(reason)s."
 
     def __init__(self, source, target, reason):
         super().__init__(source=source, target=target, reason=reason)

@@ -424,8 +424,7 @@ class TestInfo(tests.TestCaseWithTransport):
             ],
         )
         self.assertEqualDiff(
-            "  a: .\n  b: bar\n  c: /home/bar/bar\n"
-            "  d: http://example.com/example/\n",
+            "  a: .\n  b: bar\n  c: /home/bar/bar\n  d: http://example.com/example/\n",
             "".join(locs.get_lines()),
         )
 

@@ -113,7 +113,7 @@ class Testament:
         self.parent_ids = rev.parent_ids[:]
         if not isinstance(tree, Tree):
             raise TypeError(
-                "As of bzr 2.4 Testament.__init__() takes a " "Revision and a Tree."
+                "As of bzr 2.4 Testament.__init__() takes a Revision and a Tree."
             )
         self.tree = tree
         self.revprops = copy(rev.properties)
@@ -198,9 +198,10 @@ class Testament:
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return self.short_header.encode(
-            "ascii"
-        ) + b"revision-id: %s\n" b"sha1: %s\n" % (self.revision_id, self.as_sha1())
+        return self.short_header.encode("ascii") + b"revision-id: %s\nsha1: %s\n" % (
+            self.revision_id,
+            self.as_sha1(),
+        )
 
     def _revprops_to_lines(self):
         """Pack up revision properties."""

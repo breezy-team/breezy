@@ -324,7 +324,7 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
+        self.assertRaises(gpg.SignatureVerificationFailed, my_gpg.verify, content)
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpg)

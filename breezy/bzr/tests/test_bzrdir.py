@@ -1590,10 +1590,10 @@ class TestBzrFormat(TestCase):
     def test_as_string(self):
         format = SampleBzrFormat()
         format.features = {b"foo": b"required"}
-        self.assertEqual(format.as_string(), b"First line\n" b"required foo\n")
+        self.assertEqual(format.as_string(), b"First line\nrequired foo\n")
         format.features[b"another"] = b"optional"
         self.assertEqual(
-            format.as_string(), b"First line\n" b"optional another\n" b"required foo\n"
+            format.as_string(), b"First line\noptional another\nrequired foo\n"
         )
 
     def test_network_name(self):

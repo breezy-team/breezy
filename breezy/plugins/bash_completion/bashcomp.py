@@ -342,9 +342,9 @@ class DataCollector:
             cmd_data.options.extend(self.option(opt))
 
         if name == "help" or "help" in cmd.aliases:
-            cmd_data.fixed_words = "($cmds {})".format(" ".join(
-                sorted(help_topics.topic_registry.keys())
-            ))
+            cmd_data.fixed_words = "($cmds {})".format(
+                " ".join(sorted(help_topics.topic_registry.keys()))
+            )
 
         return cmd_data
 

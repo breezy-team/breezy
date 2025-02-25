@@ -142,9 +142,7 @@ class MergeRequestConflict(Exception):
 
 
 class ProjectCreationTimeout(errors.BzrError):
-    _fmt = (
-        "Timeout (%(timeout)ds) while waiting for project " "%(project)s to be created."
-    )
+    _fmt = "Timeout (%(timeout)ds) while waiting for project %(project)s to be created."
 
     def __init__(self, project, timeout):
         self.project = project

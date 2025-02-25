@@ -214,7 +214,7 @@ class TestBTreeBuilder(BTreeTestCase):
         leaf1 = content[4096:8192]
         leaf2 = content[8192:]
         root_bytes = zlib.decompress(root)
-        expected_root = (b"type=internal\n" b"offset=0\n") + (b"307" * 40) + b"\n"
+        expected_root = (b"type=internal\noffset=0\n") + (b"307" * 40) + b"\n"
         self.assertEqual(expected_root, root_bytes)
         # We already know serialisation works for leaves, check key selection:
         leaf1_bytes = zlib.decompress(leaf1)

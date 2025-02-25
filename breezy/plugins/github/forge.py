@@ -601,7 +601,7 @@ class GitHub(Forge):
     def __init__(self, transport):
         self._token = retrieve_github_token()
         if self._token is None:
-            note("Accessing GitHub anonymously. " "To log in, run 'brz gh-login'.")
+            note("Accessing GitHub anonymously. To log in, run 'brz gh-login'.")
         self.transport = transport
         self._current_user = None
 

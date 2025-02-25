@@ -1293,7 +1293,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
         self.assertEqual(
-            b"file: file-id\nparent-id\nfilename\n" b"file-rev-id\nabcdefgh\n100\nY",
+            b"file: file-id\nparent-id\nfilename\nfile-rev-id\nabcdefgh\n100\nY",
             bytes,
         )
         ie2 = _chk_inventory_bytes_to_entry(bytes)
@@ -1318,7 +1318,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
         self.assertEqual(
-            b"file: file-id\nparent-id\n\xce\xa9name\n" b"file-rev-id\n123456\n25\nN",
+            b"file: file-id\nparent-id\n\xce\xa9name\nfile-rev-id\n123456\n25\nN",
             bytes,
         )
         ie2 = _chk_inventory_bytes_to_entry(bytes)
@@ -1350,7 +1350,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
             b"dir-id", "dir\u03a9name", b"pid", revision=b"dir-rev-id"
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
-        self.assertEqual(b"dir: dir-id\npid\ndir\xce\xa9name\n" b"dir-rev-id", bytes)
+        self.assertEqual(b"dir: dir-id\npid\ndir\xce\xa9name\ndir-rev-id", bytes)
         ie2 = _chk_inventory_bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
@@ -1371,7 +1371,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
         self.assertEqual(
-            b"symlink: link-id\nparent-id\nlinkname\n" b"link-rev-id\ntarget/path",
+            b"symlink: link-id\nparent-id\nlinkname\nlink-rev-id\ntarget/path",
             bytes,
         )
         ie2 = _chk_inventory_bytes_to_entry(bytes)
@@ -1418,8 +1418,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
         self.assertEqual(
-            b"tree: tree-root-id\nparent-id\ntree\xce\xa9name\n"
-            b"tree-rev-id\nref-rev-id",
+            b"tree: tree-root-id\nparent-id\ntree\xce\xa9name\ntree-rev-id\nref-rev-id",
             bytes,
         )
         ie2 = _chk_inventory_bytes_to_entry(bytes)

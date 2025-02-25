@@ -1410,7 +1410,9 @@ class DirState:
                 self._raise_invalid(
                     path,
                     file_id,
-                    "Attempt to remove path has wrong id - found {!r}.".format(entry[0][2]),
+                    "Attempt to remove path has wrong id - found {!r}.".format(
+                        entry[0][2]
+                    ),
                 )
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
@@ -1573,7 +1575,7 @@ class DirState:
                         target_path = new_path_utf8 + source_path[len(old_path_utf8) :]
                     else:
                         if old_path_utf8 == b"":
-                            raise AssertionError("cannot rename directory to" " itself")
+                            raise AssertionError("cannot rename directory to itself")
                         target_path = source_path[len(old_path_utf8) + 1 :]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append((source_path, target_path, entry[0][2], None, False))
@@ -1671,8 +1673,7 @@ class DirState:
                     self._raise_invalid(
                         new_path,
                         file_id,
-                        "Unable to find block for this record."
-                        " Was the parent added?",
+                        "Unable to find block for this record. Was the parent added?",
                     )
                 self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
 
@@ -1849,7 +1850,7 @@ class DirState:
                         self._raise_invalid(
                             old_path,
                             file_id,
-                            "Dirstate had a rename pointing at an inactive" " tree0",
+                            "Dirstate had a rename pointing at an inactive tree0",
                         )
                     active_entry[1][1] = null
                 del self._dirblocks[block_index][1][entry_index]
@@ -1880,7 +1881,7 @@ class DirState:
                     self._raise_invalid(
                         old_path,
                         file_id,
-                        "The file id was deleted but its children were " "not deleted.",
+                        "The file id was deleted but its children were not deleted.",
                     )
 
     def _after_delta_check_parents(self, parents, index):
@@ -2195,7 +2196,7 @@ class DirState:
             if fileid_utf8 and entry[0][2] != fileid_utf8:
                 self._changes_aborted = True
                 raise errors.BzrError(
-                    "integrity error ? : mismatching" " tree_index, file_id and path"
+                    "integrity error ? : mismatching tree_index, file_id and path"
                 )
             return entry
         else:
@@ -2480,7 +2481,7 @@ class DirState:
         if self._changes_aborted:
             # Should this be a warning? For now, I'm expecting that places that
             # mark it inconsistent will warn, making a warning here redundant.
-            trace.mutter("Not saving DirState because " "_changes_aborted is set.")
+            trace.mutter("Not saving DirState because _changes_aborted is set.")
             return
         # TODO: Since we now distinguish IN_MEMORY_MODIFIED from
         #       IN_MEMORY_HASH_MODIFIED, we should only fail quietly if we fail

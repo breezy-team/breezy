@@ -35,7 +35,7 @@ from ..mapping import (
 class TestRevidConversionV1(tests.TestCase):
     def test_simple_git_to_bzr_revision_id(self):
         self.assertEqual(
-            b"git-v1:" b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
+            b"git-v1:c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
             BzrGitMappingv1().revision_id_foreign_to_bzr(
                 b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"
             ),
@@ -45,7 +45,7 @@ class TestRevidConversionV1(tests.TestCase):
         self.assertEqual(
             (b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356", BzrGitMappingv1()),
             BzrGitMappingv1().revision_id_bzr_to_foreign(
-                b"git-v1:" b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"
+                b"git-v1:c6a4d8f1fa4ac650748e647c4b1b368f589a7356"
             ),
         )
 

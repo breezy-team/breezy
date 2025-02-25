@@ -143,7 +143,7 @@ def _show_push_branch(
             raise
         except errors.TooManyRedirections as err:
             raise errors.CommandError(
-                gettext("Too many redirections trying " "to make %s.") % location
+                gettext("Too many redirections trying to make %s.") % location
             ) from err
         push_result = PushResult()
         # TODO: Some more useful message about what was copied

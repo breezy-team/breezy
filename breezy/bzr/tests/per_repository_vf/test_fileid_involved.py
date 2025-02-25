@@ -193,7 +193,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
-                    "Old repository formats do not" " support file ids with <> on win32"
+                    "Old repository formats do not support file ids with <> on win32"
                 ) from e
             # This is not a known error condition
             raise
@@ -370,7 +370,9 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
             main_wt.commit("a", rev_id=revision_id)
         except errors.NonAsciiRevisionId as e:
             raise tests.TestSkipped(
-                "non-ascii revision ids not supported by {}".format(self.repository_format)
+                "non-ascii revision ids not supported by {}".format(
+                    self.repository_format
+                )
             ) from e
 
         repo = main_wt.branch.repository
@@ -411,7 +413,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
-                    "Old repository formats do not" " support file ids with <> on win32"
+                    "Old repository formats do not support file ids with <> on win32"
                 ) from e
             # This is not a known error condition
             raise

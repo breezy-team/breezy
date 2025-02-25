@@ -853,7 +853,7 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
     ):
         if base_revision_id is not None:
             raise tests.TestNotApplicable(
-                "This format does not support" " explicit bases."
+                "This format does not support explicit bases."
             )
         with repository.lock_write():
             return merge_directive.MergeDirective.from_objects(

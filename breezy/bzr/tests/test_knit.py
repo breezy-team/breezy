@@ -74,13 +74,13 @@ class ErrorTests(TestCase):
     def test_knit_data_stream_unknown(self):
         error = KnitDataStreamUnknown("stream format")
         self.assertEqual(
-            "Cannot parse knit data stream of format " '"stream format".', str(error)
+            'Cannot parse knit data stream of format "stream format".', str(error)
         )
 
     def test_knit_header_error(self):
         error = KnitHeaderError("line foo\n", "path/to/file")
         self.assertEqual(
-            "Knit header error: 'line foo\\n' unexpected" ' for file "path/to/file".',
+            "Knit header error: 'line foo\\n' unexpected for file \"path/to/file\".",
             str(error),
         )
 
@@ -801,13 +801,13 @@ class LowLevelKnitDataTests(TestCase):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
         total_txt = []
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 2 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 2 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         )
         record_1 = (0, len(gz_txt), sha1sum)
         total_txt.append(gz_txt)
         sha1sum = osutils.sha_string(b"baz\n")
         gz_txt = self.create_gz_content(
-            b"version rev-id-2 1 %s\n" b"baz\n" b"end rev-id-2\n" % (sha1sum,)
+            b"version rev-id-2 1 %s\nbaz\nend rev-id-2\n" % (sha1sum,)
         )
         record_2 = (record_1[1], len(gz_txt), sha1sum)
         total_txt.append(gz_txt)
@@ -816,7 +816,7 @@ class LowLevelKnitDataTests(TestCase):
     def test_valid_knit_data(self):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 2 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 2 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         )
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper("filename"))
@@ -870,7 +870,7 @@ class LowLevelKnitDataTests(TestCase):
         sha1sum = osutils.sha_string(b"foo\n")
         # record says 2 lines data says 1
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 2 %s\n" b"foo\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 2 %s\nfoo\nend rev-id-1\n" % (sha1sum,)
         )
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper("filename"))
@@ -886,7 +886,7 @@ class LowLevelKnitDataTests(TestCase):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
         # record says 1 lines data says 2
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 1 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 1 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         )
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper("filename"))
@@ -901,7 +901,7 @@ class LowLevelKnitDataTests(TestCase):
     def test_mismatched_version_id(self):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 2 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 2 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         )
         transport = MockTransport([gz_txt])
         access = _KnitKeyAccess(transport, ConstantMapper("filename"))
@@ -915,9 +915,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def test_uncompressed_data(self):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
-        txt = b"version rev-id-1 2 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (
-            sha1sum,
-        )
+        txt = b"version rev-id-1 2 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         transport = MockTransport([txt])
         access = _KnitKeyAccess(transport, ConstantMapper("filename"))
         knit = KnitVersionedFiles(None, access)
@@ -932,7 +930,7 @@ class LowLevelKnitDataTests(TestCase):
     def test_corrupted_data(self):
         sha1sum = osutils.sha_string(b"foo\nbar\n")
         gz_txt = self.create_gz_content(
-            b"version rev-id-1 2 %s\n" b"foo\n" b"bar\n" b"end rev-id-1\n" % (sha1sum,)
+            b"version rev-id-1 2 %s\nfoo\nbar\nend rev-id-1\n" % (sha1sum,)
         )
         # Change 2 bytes in the middle to \xff
         gz_txt = gz_txt[:10] + b"\xff\xff" + gz_txt[12:]
@@ -1530,9 +1528,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
             [rev1_key],
             [b"initial content\n", b"common content\n", b"content in 3\n"],
         )
-        spec_text = (
-            b"initial content\n" b"common content\n" b"content in 2\n" b"content in 3\n"
-        )
+        spec_text = b"initial content\ncommon content\ncontent in 2\ncontent in 3\n"
         ann.add_special_text(spec_key, [rev2_key, rev3_key], spec_text)
         anns, lines = ann.annotate(spec_key)
         self.assertEqual(
@@ -1593,7 +1589,7 @@ class TestKnitIndex(KnitTests):
         idx = knit._index
         idx.add_records([((b"a-1",), [b"fulltext"], ((b"a-1",), 0, 0), [])])
         self.check_file_contents(
-            "test.kndx", b"# bzr knit index 8\n" b"\n" b"a-1 fulltext 0 0  :"
+            "test.kndx", b"# bzr knit index 8\n\na-1 fulltext 0 0  :"
         )
         idx.add_records(
             [
@@ -3011,7 +3007,6 @@ class TestErrors(TestCase):
             "{context}", reload_occurred=False, exc_info=fake_exc_info
         )
         self.assertEqual(
-            "Pack files have changed, reload and retry. context: "
-            "{context} {exc value}",
+            "Pack files have changed, reload and retry. context: {context} {exc value}",
             str(error),
         )

@@ -69,12 +69,12 @@ class TestOSLock(tests.TestCaseInTempDir):
                 else:
                     w_lock.unlock()
                     self.knownFailure(
-                        "fcntl read locks don't" " block write locks without -Dlock"
+                        "fcntl read locks don't block write locks without -Dlock"
                     )
             else:
                 w_lock.unlock()
                 self.knownFailure(
-                    "fcntl read locks don't" " block write locks without -Dlock"
+                    "fcntl read locks don't block write locks without -Dlock"
                 )
         finally:
             r_lock.unlock()
@@ -98,12 +98,12 @@ class TestOSLock(tests.TestCaseInTempDir):
                 else:
                     r_lock.unlock()
                     self.knownFailure(
-                        "fcntl write locks don't" " block read locks without -Dlock"
+                        "fcntl write locks don't block read locks without -Dlock"
                     )
             else:
                 r_lock.unlock()
                 self.knownFailure(
-                    "fcntl write locks don't" " block read locks without -Dlock"
+                    "fcntl write locks don't block read locks without -Dlock"
                 )
         finally:
             w_lock.unlock()

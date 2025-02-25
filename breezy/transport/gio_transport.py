@@ -221,7 +221,7 @@ class GioTransport(ConnectedTransport):
                     self.loop.run()
         except gio.Error as e:
             raise errors.TransportError(
-                msg="Error setting up connection:" " {}".format(str(e)), orig_error=e
+                msg="Error setting up connection: {}".format(str(e)), orig_error=e
             ) from e
         return connection, (user, password)
 

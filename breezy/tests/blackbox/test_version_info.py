@@ -80,7 +80,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, "clean: False")
 
         txt = self.run_bzr(
-            "version-info branch --check-clean" " --include-file-revisions"
+            "version-info branch --check-clean --include-file-revisions"
         )[0]
         self.assertContainsRe(txt, "revision: unversioned")
 
@@ -146,15 +146,13 @@ class TestVersionInfo(TestCaseWithTransport):
     def test_custom_implies_all(self):
         self.create_tree()
         out, err = self.run_bzr(
-            "version-info --custom --template="
-            '"{revno} {branch_nick} {clean}\n" branch'
+            'version-info --custom --template="{revno} {branch_nick} {clean}\n" branch'
         )
         self.assertEqual("2 branch 1\n", out)
         self.assertEqual("", err)
         self.build_tree_contents([("branch/c", b"now unclean\n")])
         out, err = self.run_bzr(
-            "version-info --custom --template="
-            '"{revno} {branch_nick} {clean}\n" branch'
+            'version-info --custom --template="{revno} {branch_nick} {clean}\n" branch'
         )
         self.assertEqual("2 branch 0\n", out)
         self.assertEqual("", err)

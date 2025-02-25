@@ -84,7 +84,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
             [
                 (
                     "tree/file",
-                    b"initial content\ncontent in 2\n" b"content in 3\nnew content\n",
+                    b"initial content\ncontent in 2\ncontent in 3\nnew content\n",
                 )
             ]
         )

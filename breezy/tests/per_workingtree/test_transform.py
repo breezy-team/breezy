@@ -979,9 +979,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         if self.wt.supports_setting_file_ids():
             self.assertEqual(
                 conflicts_s[0],
-                "Conflict adding file dorothy.  "
-                "Moved existing file to "
-                "dorothy.moved.",
+                "Conflict adding file dorothy.  Moved existing file to dorothy.moved.",
             )
             self.assertEqual(
                 conflicts_s[1],
@@ -991,7 +989,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             )
             self.assertEqual(
                 conflicts_s[2],
-                "Conflict adding files to" " munchkincity.  Created directory.",
+                "Conflict adding files to munchkincity.  Created directory.",
             )
             self.assertEqual(
                 conflicts_s[3],
@@ -1001,7 +999,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             )
             self.assertEqualDiff(
                 conflicts_s[4],
-                "Conflict: can't delete oz because it" " is not empty.  Not deleting.",
+                "Conflict: can't delete oz because it is not empty.  Not deleting.",
             )
             self.assertEqual(
                 conflicts_s[5],
@@ -1011,8 +1009,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             )
             self.assertEqual(
                 conflicts_s[6],
-                "Conflict moving oz/emeraldcity into"
-                " oz/emeraldcity. Cancelled move.",
+                "Conflict moving oz/emeraldcity into oz/emeraldcity. Cancelled move.",
             )
         elif self.wt.has_versioned_directories():
             self.assertEqual(

@@ -54,7 +54,7 @@ class TestPermissions(tests.TestCaseWithTransport):
         if isinstance(self.branch_format, RemoteBranchFormat):
             # Remote branch format have no permission logic in them; there's
             # nothing to test here.
-            raise tests.TestNotApplicable("Remote branches have no" " permission logic")
+            raise tests.TestNotApplicable("Remote branches have no permission logic")
         if sys.platform == "win32":
             raise tests.TestNotApplicable("chmod has no effect on win32")
         os.mkdir("a")
@@ -82,7 +82,7 @@ class TestPermissions(tests.TestCaseWithTransport):
         if isinstance(self.branch_format, RemoteBranchFormat):
             # Remote branch format have no permission logic in them; there's
             # nothing to test here.
-            raise tests.TestNotApplicable("Remote branches have no" " permission logic")
+            raise tests.TestNotApplicable("Remote branches have no permission logic")
         if sys.platform == "win32":
             raise tests.TestNotApplicable("chmod has no effect on win32")
         elif sys.platform == "darwin" or "freebsd" in sys.platform:

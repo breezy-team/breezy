@@ -45,7 +45,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             # if there is a working tree now, this is not supported.
             test_branch.controldir.open_workingtree()
             raise TestNotApplicable(
-                "only on trees that can be separate" " from their branch."
+                "only on trees that can be separate from their branch."
             )
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
@@ -394,7 +394,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
         if getattr(wt.branch, "_set_revision_history", None) is None:
-            raise TestSkipped("Branch format does not permit arbitrary" " history")
+            raise TestSkipped("Branch format does not permit arbitrary history")
         wt.branch._set_revision_history([a, b"B"])
         wt.set_last_revision(a)
         self.assertEqual([a], wt.get_parent_ids())
@@ -706,7 +706,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # implementation-independent. mbp 20070226
         tree = self.make_branch_and_tree("master")
         if not isinstance(tree, InventoryWorkingTree):
-            raise TestNotApplicable("merge-hashes is specific to bzr " "working trees")
+            raise TestNotApplicable("merge-hashes is specific to bzr working trees")
         tree._transport.put_bytes("merge-hashes", b"asdfasdf")
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
@@ -906,7 +906,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
-                "_write_inventory does not exist on " "non-inventory working trees"
+                "_write_inventory does not exist on non-inventory working trees"
             )
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
@@ -1058,7 +1058,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(case_sensitive, tree.case_sensitive)
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
-                "get_format_string is only available " "on bzr working trees"
+                "get_format_string is only available on bzr working trees"
             )
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.controldir.get_workingtree_transport(None)
@@ -1289,9 +1289,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
     def make_wt_with_worth_saving_limit(self):
         wt = self.make_branch_and_tree("wt")
         if getattr(wt, "_worth_saving_limit", None) is None:
-            raise tests.TestNotApplicable(
-                "no _worth_saving_limit for" " this tree type"
-            )
+            raise tests.TestNotApplicable("no _worth_saving_limit for this tree type")
         wt.lock_write()
         self.addCleanup(wt.unlock)
         return wt
@@ -1325,7 +1323,7 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
         self.assertEqual(10, wt._worth_saving_limit())
         self.assertLength(1, warnings)
         self.assertEqual(
-            'Value "a" is not valid for' ' "bzr.workingtree.worth_saving_limit"',
+            'Value "a" is not valid for "bzr.workingtree.worth_saving_limit"',
             warnings[0],
         )
 

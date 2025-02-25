@@ -44,9 +44,7 @@ class MalformedBugIdentifier(errors.BzrError):
 
 
 class InvalidBugTrackerURL(errors.BzrError):
-    _fmt = (
-        'The URL for bug tracker "%(abbreviation)s" doesn\'t ' "contain {id}: %(url)s"
-    )
+    _fmt = 'The URL for bug tracker "%(abbreviation)s" doesn\'t contain {id}: %(url)s'
 
     def __init__(self, abbreviation, url):
         self.abbreviation = abbreviation
@@ -54,7 +52,7 @@ class InvalidBugTrackerURL(errors.BzrError):
 
 
 class UnknownBugTrackerAbbreviation(errors.BzrError):
-    _fmt = "Cannot find registered bug tracker called %(abbreviation)s " "on %(branch)s"
+    _fmt = "Cannot find registered bug tracker called %(abbreviation)s on %(branch)s"
 
     def __init__(self, abbreviation, branch):
         self.abbreviation = abbreviation

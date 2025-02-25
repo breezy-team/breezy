@@ -348,7 +348,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqualDiff(b"Bazaar-NG Working Tree format 3", t.get("format").read())
         self.assertEqualDiff(
             t.get("inventory").read(),
-            b'<inventory format="5">\n' b"</inventory>\n",
+            b'<inventory format="5">\n</inventory>\n',
         )
         self.assertEqualDiff(b"### bzr hashcache v5\n", t.get("stat-cache").read())
         self.assertFalse(t.has("inventory.basis"))

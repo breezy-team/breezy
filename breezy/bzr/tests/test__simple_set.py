@@ -335,7 +335,7 @@ class TestSimpleSet(tests.TestCase):
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
-        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz1234567890"
+        chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
         for i in chars:
             for j in chars:
                 k = (i, j)

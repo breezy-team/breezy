@@ -653,7 +653,9 @@ class CHKInventory:
                     raise errors.InconsistentDelta(
                         old_path,
                         file_id,
-                        "Entry was at wrong other path {!r}.".format(self.id2path(file_id)),
+                        "Entry was at wrong other path {!r}.".format(
+                            self.id2path(file_id)
+                        ),
                     )
                 altered.add(file_id)
             id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))
@@ -695,7 +697,7 @@ class CHKInventory:
                     raise errors.InconsistentDelta(
                         self.id2path(child.file_id),
                         child.file_id,
-                        "Child not deleted or reparented when " "parent deleted.",
+                        "Child not deleted or reparented when parent deleted.",
                     )
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
@@ -1129,7 +1131,7 @@ class CHKInventory:
                 for (parent_id, name_utf8), file_id in items:  # noqa: B007
                     if parent_id != current_id or name_utf8 != basename_utf8:
                         raise errors.BzrError(
-                            "corrupt inventory lookup! " "{!r} {!r} {!r} {!r}".format(
+                            "corrupt inventory lookup! {!r} {!r} {!r} {!r}".format(
                                 parent_id, current_id, name_utf8, basename_utf8
                             )
                         )

@@ -90,8 +90,7 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(["cat-revision", "-r-1"], retcode=3)
         self.assertContainsRe(
             error,
-            "brz: ERROR: Repository .* does not support access to raw "
-            "revision texts",
+            "brz: ERROR: Repository .* does not support access to raw revision texts",
         )
         self.assertEqual(output, "")
 
@@ -774,4 +773,4 @@ index 0000000..05ec0b1
 """
             )
         output, error = self.run_bzr("git-apply foo.patch")
-        self.assertContainsRe(error, "Committing to: .*\n" "Committed revision 1.\n")
+        self.assertContainsRe(error, "Committing to: .*\nCommitted revision 1.\n")

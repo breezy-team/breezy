@@ -213,7 +213,7 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
 
     def __repr__(self):
         return (
-            "{}(file_id={!r}, name={!r}, parent_id={!r}, " "reference_revision={!r})"
+            "{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})"
         ).format(
             type(self).__name__,
             self.file_id,

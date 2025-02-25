@@ -679,8 +679,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
         )
         self.assertContainsRe(
             str(e),
-            "Requested revision: 'mainline:revid:alt_r22' does not exist in"
-            " branch: ",
+            "Requested revision: 'mainline:revid:alt_r22' does not exist in branch: ",
         )
 
     def test_in_history(self):

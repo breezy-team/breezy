@@ -170,7 +170,7 @@ class TestAdd(tests.TestCaseWithTransport):
         out, err = self.run_bzr("add --file-ids-from ../base/b", working_dir="new")
         self.assertEqual("", err)
         self.assertEqualDiff(
-            "adding c w/ file id from b/c\n" "adding d w/ file id from b/d\n", out
+            "adding c w/ file id from b/c\nadding d w/ file id from b/d\n", out
         )
 
         new_tree = new_tree.controldir.open_workingtree("new")
@@ -231,7 +231,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.make_branch_and_tree("\xa7")
         self.build_tree(["\xa7/a", "\xa7/b"])
         out, err = self.run_bzr(["add", "a", "b"], working_dir="\xa7")
-        self.assertEqual(out, "adding a\n" "adding b\n")
+        self.assertEqual(out, "adding a\nadding b\n")
         self.assertEqual(err, "")
 
     def test_add_skip_large_files(self):

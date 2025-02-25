@@ -108,7 +108,9 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
     def test_pull_orphans(self):
         if not self.workingtree_format.missing_parent_conflicts:
             raise tests.TestSkipped(
-                "{!r} does not support missing parent conflicts".format(self.workingtree_format)
+                "{!r} does not support missing parent conflicts".format(
+                    self.workingtree_format
+                )
             )
         trunk = self.make_branch_deleting_dir("trunk")
         work = trunk.controldir.sprout("work", revision_id=b"2").open_workingtree()

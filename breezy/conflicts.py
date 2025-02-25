@@ -122,7 +122,7 @@ class cmd_resolve(commands.Command):
         if all:
             if file_list:
                 raise errors.CommandError(
-                    gettext("If --all is specified," " no FILE may be provided")
+                    gettext("If --all is specified, no FILE may be provided")
                 )
             if directory is None:
                 directory = "."

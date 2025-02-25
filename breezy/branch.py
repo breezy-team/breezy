@@ -821,7 +821,7 @@ class Branch(ControlComponent):
                     url.encode("ascii")
                 except UnicodeEncodeError as exc:
                     raise urlutils.InvalidURL(
-                        url, "Urls must be 7-bit ascii, " "use breezy.urlutils.escape"
+                        url, "Urls must be 7-bit ascii, use breezy.urlutils.escape"
                     ) from exc
             url = urlutils.relative_url(self.base, url)
         with self.lock_write():

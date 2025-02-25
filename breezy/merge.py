@@ -79,8 +79,7 @@ class MergeHooks(hooks.Hooks):
         )
         self.add_hook(
             "pre_merge",
-            "Called before a merge. "
-            "Receives a Merger object as the single argument.",
+            "Called before a merge. Receives a Merger object as the single argument.",
             (2, 5),
         )
         self.add_hook(
@@ -581,8 +580,7 @@ class Merger:
                 raise errors.UnrelatedBranches()
             if self._is_criss_cross:
                 trace.warning(
-                    "Warning: criss-cross merge encountered.  See bzr"
-                    " help criss-cross."
+                    "Warning: criss-cross merge encountered.  See bzr help criss-cross."
                 )
                 trace.mutter(f"Criss-cross lcas: {lcas!r}")
                 if self.base_rev_id in lcas:
@@ -644,15 +642,17 @@ class Merger:
             kwargs["reprocess"] = self.reprocess
         elif self.reprocess:
             raise errors.BzrError(
-                "Conflict reduction is not supported for merge"
-                " type {}.".format(self.merge_type)
+                "Conflict reduction is not supported for merge type {}.".format(
+                    self.merge_type
+                )
             )
         if self.merge_type.supports_show_base:
             kwargs["show_base"] = self.show_base
         elif self.show_base:
             raise errors.BzrError(
-                "Showing base is not supported for this"
-                " merge type. {}".format(self.merge_type)
+                "Showing base is not supported for this merge type. {}".format(
+                    self.merge_type
+                )
             )
         if (
             not getattr(self.merge_type, "supports_reverse_cherrypick", True)
@@ -1346,7 +1346,9 @@ class Merge3Merger:
                 # the tree root.
                 if names[self.winner_idx[parent_id_winner]] != "":
                     raise AssertionError(
-                        "File looks like a root, but named {}".format(names[self.winner_idx[parent_id_winner]])
+                        "File looks like a root, but named {}".format(
+                            names[self.winner_idx[parent_id_winner]]
+                        )
                     )
                 parent_trans_id = transform.ROOT_PARENT
             else:
@@ -2009,9 +2011,7 @@ def merge_inner(
                     branch.get_revision_tree(base_revision))
     """
     if this_tree is None:
-        raise errors.BzrError(
-            "breezy.merge.merge_inner requires a this_tree " "parameter"
-        )
+        raise errors.BzrError("breezy.merge.merge_inner requires a this_tree parameter")
     merger = Merger(
         this_branch,
         other_tree,
@@ -2288,7 +2288,7 @@ class _PlanMerge(_PlanMergeBase):
                 # More than 2 lca's, fall back to grabbing all nodes between
                 # this and the unique lca.
                 trace.mutter(
-                    "More than 2 LCAs, falling back to all nodes for:" " %s, %s\n=> %s",
+                    "More than 2 LCAs, falling back to all nodes for: %s, %s\n=> %s",
                     self.a_key,
                     self.b_key,
                     cur_ancestors,

@@ -801,7 +801,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         except WebserviceFailure as e:
             # Urgh.
             if (
-                b"There is already a branch merge proposal " b"registered for branch "
+                b"There is already a branch merge proposal registered for branch "
             ) in e.message:
                 raise MergeProposalExists(self.source_branch.user_url) from e
             raise
@@ -958,7 +958,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         except WebserviceFailure as e:
             # Urgh.
             if (
-                "There is already a branch merge proposal " "registered for branch "
+                "There is already a branch merge proposal registered for branch "
             ) in e.message:
                 raise MergeProposalExists(self.source_branch.user_url) from e
             raise

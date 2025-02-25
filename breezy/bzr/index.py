@@ -1485,7 +1485,7 @@ class CombinedGraphIndex:
         if debug.debug_flag_enabled("index"):
             indices_info = list(indices_info)
             trace.mutter(
-                "CombinedGraphIndex reordering: currently %r, " "promoting %r",
+                "CombinedGraphIndex reordering: currently %r, promoting %r",
                 indices_info,
                 hit_indices,
             )

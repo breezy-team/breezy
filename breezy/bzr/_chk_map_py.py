@@ -67,7 +67,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
         items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError(
-            "item count (%d) mismatch for key %s," " bytes %r" % (length, key, bytes)
+            "item count (%d) mismatch for key %s, bytes %r" % (length, key, bytes)
         )
     result._items = items
     result._len = length

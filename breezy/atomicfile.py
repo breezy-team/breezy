@@ -25,7 +25,7 @@ _hostname = None
 
 
 class AtomicFileAlreadyClosed(errors.PathError):
-    _fmt = '"%(function)s" called on an AtomicFile after it was closed:' ' "%(path)s"'
+    _fmt = '"%(function)s" called on an AtomicFile after it was closed: "%(path)s"'
 
     def __init__(self, path, function):
         errors.PathError.__init__(self, path=path, extra=None)

@@ -4,6 +4,7 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
+use std::borrow::Cow;
 use std::convert::TryInto;
 
 #[pyfunction]
@@ -99,10 +100,14 @@ impl LinesDeltaIndex {
     fn make_delta<'a>(
         &'a self,
         py: Python,
-        source: Vec<std::borrow::Cow<'a, [u8]>>,
+        source: Vec<Vec<Vec<u8>>>,
         bytes_length: usize,
         soft: Option<bool>,
     ) -> (Vec<Py<PyBytes>>, Vec<bool>) {
+        let source: Vec<Cow<[u8]>> = source
+            .iter()
+            .map(|x| Cow::Owned(x.iter().flatten().copied().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
         let (delta, index) = self.0.make_delta(source.as_slice(), bytes_length, soft);
         (
             delta
@@ -262,7 +267,7 @@ struct TraditionalGroupCompressor(
 #[pymethods]
 impl TraditionalGroupCompressor {
     #[new]
-    fn new() -> Self {
+    fn new(settings: Option<PyObject>) -> Self {
         Self(Some(
             bazaar::groupcompress::compressor::TraditionalGroupCompressor::new(),
         ))

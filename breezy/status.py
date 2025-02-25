@@ -315,9 +315,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if verbose:
             to_file.write("pending merges:\n")
         else:
-            to_file.write(
-                "pending merge tips:" " (use -v to see all merge revisions)\n"
-            )
+            to_file.write("pending merge tips: (use -v to see all merge revisions)\n")
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -352,8 +350,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
             raise AssertionError(
-                "Somehow we misunderstood how"
-                f" iter_topo_order works {first} != {merge}"
+                f"Somehow we misunderstood how iter_topo_order works {first} != {merge}"
             )
         for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]

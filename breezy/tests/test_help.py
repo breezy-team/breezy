@@ -90,9 +90,7 @@ Options:
         )
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
-        self.assertStartsWith(
-            helptext, "Purpose: A sample command.\n" "Usage:   brz Demo"
-        )
+        self.assertStartsWith(helptext, "Purpose: A sample command.\nUsage:   brz Demo")
         self.assertEndsWith(helptext, "  -v, --verbose  Display more information.\n\n")
 
     def test_command_with_additional_see_also(self):
@@ -120,7 +118,7 @@ Options:
         helptext = cmd.get_help_text(["gam"])
         self.assertEndsWith(
             helptext,
-            "  -v, --verbose  Display more information.\n" "\n" "See also: gam\n",
+            "  -v, --verbose  Display more information.\n\nSee also: gam\n",
         )
 
     def test_get_help_topic(self):
@@ -566,7 +564,7 @@ class TestRegisteredTopic(TestHelp):
     def test_get_help_text_with_additional_see_also(self):
         topic = help_topics.topic_registry.get("commands")
         self.assertEndsWith(
-            topic.get_help_text(["foo", "bar"]), "\n" "See also: bar, foo\n"
+            topic.get_help_text(["foo", "bar"]), "\nSee also: bar, foo\n"
         )
 
     def test_get_help_text_loaded_from_file(self):
@@ -574,7 +572,7 @@ class TestRegisteredTopic(TestHelp):
         topic = help_topics.topic_registry.get("authentication")
         self.assertStartsWith(
             topic.get_help_text(),
-            "Authentication Settings\n" "=======================\n" "\n",
+            "Authentication Settings\n=======================\n\n",
         )
 
 

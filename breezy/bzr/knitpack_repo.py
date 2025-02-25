@@ -298,7 +298,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return b"Bazaar pack repository format 1 with rich root" b" (needs bzr 1.0)\n"
+        return b"Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -444,8 +444,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
 
     def get_format_description(self):
         return (
-            "Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
-            " (deprecated)"
+            "Packs 5 rich-root (adds stacking support, requires bzr 1.6) (deprecated)"
         )
 
     def is_deprecated(self):

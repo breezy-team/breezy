@@ -1510,7 +1510,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 "README",
                 b"This is a Bazaar control directory.\n"
                 b"Do not change any files in this directory.\n"
-                b"See http://bazaar.canonical.com/ for more information about Bazaar.\n",
+                b"See https://launchpad.net/bzr for more information about Bazaar.\n",
             ),
             ("branch-format", self.as_string()),
         ]
@@ -1536,7 +1536,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             found_format = controldir.ControlDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError(
-                    "{} was asked to open {}, but it seems to need " "format {}".format(
+                    "{} was asked to open {}, but it seems to need format {}".format(
                         self, transport, found_format
                     )
                 )

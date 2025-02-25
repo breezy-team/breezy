@@ -45,8 +45,7 @@ class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
     def test_symlink_target(self):
         if isinstance(self.tree, (MutableTree, PreviewTree)):
             raise TestSkipped(
-                "symlinks not accurately represented in working trees and"
-                " preview trees"
+                "symlinks not accurately represented in working trees and preview trees"
             )
         entry = get_entry(self.tree, "symlink")
         self.assertEqual(entry.symlink_target, "link-target")

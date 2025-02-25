@@ -116,7 +116,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         out, err = self.run_bzr(
             ["conflicts", "-d", "branch", "--text"], encoding=self.encoding
         )
-        self.assertEqual(out, "\xa7_other_file\n" "\xa7file\n")
+        self.assertEqual(out, "\xa7_other_file\n\xa7file\n")
         self.assertEqual(err, "")
 
 

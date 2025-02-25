@@ -104,8 +104,7 @@ def build_backing_branch(test, relpath, transport_class=None, server_class=None)
         test.transport_server = server_class
     elif not (transport_class is None and server_class is None):
         raise AssertionError(
-            "Specify both ``transport_class`` and "
-            "``server_class`` or neither of them"
+            "Specify both ``transport_class`` and ``server_class`` or neither of them"
         )
     if getattr(test, "backing_branch", None) is None:
         # First call, let's build the branch on disk
@@ -569,7 +568,7 @@ class TestIniConfigBuilding(TestIniConfig):
         got = os.stat("foo.conf")
         expected = os.stat(".")
         self.assertEqual(expected.st_uid, got.st_uid)
-        self.assertEqual(expected.st_gid, got.st_uid)
+        self.assertEqual(expected.st_gid, got.st_gid)
 
 
 class TestIniConfigSaving(tests.TestCaseInTempDir):
@@ -2595,7 +2594,9 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store {}.".format(store.external_url())
+                "Permission denied while trying to load configuration store {}.".format(
+                    store.external_url()
+                )
             ],
         )
 
@@ -2881,7 +2882,7 @@ class TestStoreSaveChanges(tests.TestCaseWithTransport):
         self.assertStartsWith(warning, "Option foo in section None")
         self.assertEndsWith(
             warning,
-            "was changed from <CREATED> to bar." " The baz value will be saved.",
+            "was changed from <CREATED> to bar. The baz value will be saved.",
         )
 
     def test_concurrent_deletion(self):
@@ -2901,7 +2902,7 @@ class TestStoreSaveChanges(tests.TestCaseWithTransport):
         self.assertStartsWith(warning, "Option foo in section None")
         self.assertEndsWith(
             warning,
-            "was changed from bar to <CREATED>." " The <DELETED> value will be saved.",
+            "was changed from bar to <CREATED>. The <DELETED> value will be saved.",
         )
 
 

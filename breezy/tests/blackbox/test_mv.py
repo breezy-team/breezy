@@ -478,9 +478,7 @@ class TestMove(TestCaseWithTransport):
     def test_mv_auto_two_paths(self):
         self.make_abcd_tree()
         out, err = self.run_bzr("mv --auto tree tree2", retcode=3)
-        self.assertEqual(
-            "brz: ERROR: Only one path may be specified to" " --auto.\n", err
-        )
+        self.assertEqual("brz: ERROR: Only one path may be specified to --auto.\n", err)
 
     def test_mv_auto_dry_run(self):
         self.make_abcd_tree()
@@ -499,9 +497,7 @@ class TestMove(TestCaseWithTransport):
     def test_mv_auto_after(self):
         self.make_abcd_tree()
         out, err = self.run_bzr("mv --auto --after", working_dir="tree", retcode=3)
-        self.assertEqual(
-            "brz: ERROR: --after cannot be specified with" " --auto.\n", err
-        )
+        self.assertEqual("brz: ERROR: --after cannot be specified with --auto.\n", err)
 
     def test_mv_quiet(self):
         tree = self.make_branch_and_tree(".")

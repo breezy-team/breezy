@@ -980,11 +980,19 @@ class TestTestResult(tests.TestCase):
 
         class TimeAddedVerboseTestResult(tests.VerboseTestResult):
             def startTest(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                try:
+                    dt = datetime.datetime.fromtimestamp(1.145, datetime.UTC)
+                except AttributeError:
+                    dt = datetime.datetime.utcfromtimestamp(1.145)
+                self.time(dt)
                 super().startTest(test)
 
             def addSuccess(self, test):
-                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                try:
+                    dt = datetime.datetime.fromtimestamp(51.147, datetime.UTC)
+                except AttributeError:
+                    dt = datetime.datetime.utcfromtimestamp(51.147)
+                self.time(dt)
                 super().addSuccess(test)
 
             def report_tests_starting(self):
@@ -1259,7 +1267,7 @@ class TestRunner(tests.TestCase):
         self.run_test_runner(runner, test)
         self.assertContainsRe(
             stream.getvalue(),
-            "\n" "-*\n" "Ran 1 test in .*\n" "\n" "OK \\(known_failures=1\\)\n",
+            "\n-*\nRan 1 test in .*\n\nOK \\(known_failures=1\\)\n",
         )
 
     def test_unexpected_success_bad(self):
@@ -2158,9 +2166,8 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIn(
             str(e),
             [
-                "None is an instance of <type 'NoneType'> rather than " "<type 'int'>",
-                "None is an instance of <class 'NoneType'> rather than "
-                "<class 'int'>",
+                "None is an instance of <type 'NoneType'> rather than <type 'int'>",
+                "None is an instance of <class 'NoneType'> rather than <class 'int'>",
             ],
         )
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
@@ -2467,8 +2474,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             list_only=True,
         )
         self.assertEqual(
-            b"breezy.tests.test_selftest.Test.a\n"
-            b"breezy.tests.test_selftest.Test.b\n",
+            b"breezy.tests.test_selftest.Test.a\nbreezy.tests.test_selftest.Test.b\n",
             output.getvalue(),
         )
 
@@ -3050,7 +3056,7 @@ class TestSelftestFiltering(tests.TestCase):
 
     def test_condition_id_re(self):
         test_name = (
-            "breezy.tests.test_selftest.TestSelftestFiltering." "test_condition_id_re"
+            "breezy.tests.test_selftest.TestSelftestFiltering.test_condition_id_re"
         )
         filtered_suite = tests.filter_suite_by_condition(
             self.suite, tests.condition_id_re("test_condition_id_re")
@@ -3059,8 +3065,7 @@ class TestSelftestFiltering(tests.TestCase):
 
     def test_condition_id_in_list(self):
         test_names = [
-            "breezy.tests.test_selftest.TestSelftestFiltering."
-            "test_condition_id_in_list"
+            "breezy.tests.test_selftest.TestSelftestFiltering.test_condition_id_in_list"
         ]
         id_list = tests.TestIdList(test_names)
         filtered_suite = tests.filter_suite_by_condition(
@@ -3109,8 +3114,7 @@ class TestSelftestFiltering(tests.TestCase):
         self.all_names = _test_ids(self.suite)
         filtered_suite = tests.exclude_tests_by_re(self.suite, "exclude_tests_by_re")
         excluded_name = (
-            "breezy.tests.test_selftest.TestSelftestFiltering."
-            "test_exclude_tests_by_re"
+            "breezy.tests.test_selftest.TestSelftestFiltering.test_exclude_tests_by_re"
         )
         self.assertEqual(len(self.all_names) - 1, filtered_suite.countTestCases())
         self.assertNotIn(excluded_name, _test_ids(filtered_suite))
@@ -3198,8 +3202,7 @@ class TestSelftestFiltering(tests.TestCase):
         condition = tests.condition_id_re("test_filter_suite_by_r")
         split_suite = tests.split_suite_by_condition(self.suite, condition)
         filtered_name = (
-            "breezy.tests.test_selftest.TestSelftestFiltering."
-            "test_filter_suite_by_re"
+            "breezy.tests.test_selftest.TestSelftestFiltering.test_filter_suite_by_re"
         )
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
         self.assertNotIn(filtered_name, _test_ids(split_suite[1]))
@@ -3211,8 +3214,7 @@ class TestSelftestFiltering(tests.TestCase):
         self.all_names = _test_ids(self.suite)
         split_suite = tests.split_suite_by_re(self.suite, "test_filter_suite_by_r")
         filtered_name = (
-            "breezy.tests.test_selftest.TestSelftestFiltering."
-            "test_filter_suite_by_re"
+            "breezy.tests.test_selftest.TestSelftestFiltering.test_filter_suite_by_re"
         )
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
         self.assertNotIn(filtered_name, _test_ids(split_suite[1]))
@@ -3502,7 +3504,7 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
     def test_load_dirty_file(self):
         test_list_fname = "test.list"
         self._create_test_list_file(
-            test_list_fname, "  mod1.cl1.meth1\n\nmod2.cl2.meth2  \n" "bar baz\n"
+            test_list_fname, "  mod1.cl1.meth1\n\nmod2.cl2.meth2  \nbar baz\n"
         )
         tlist = tests.load_test_id_list(test_list_fname)
         self.assertEqual(4, len(tlist))

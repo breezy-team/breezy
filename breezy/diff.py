@@ -359,7 +359,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             m = re.match(b"^(binary )?files.*differ$", first_line, re.I)
             if m is None:
                 raise errors.BzrError(
-                    "external diff failed with exit code 2;" f" command: {diffcmd!r}"
+                    f"external diff failed with exit code 2; command: {diffcmd!r}"
                 )
             else:
                 # Binary files differ, just return
@@ -992,8 +992,7 @@ class DiffFromTool(DiffPath):
             pass
         except OSError as e:
             mutter(
-                f'The temporary directory "{self._root}" was not '
-                f"cleanly removed: {e}."
+                f'The temporary directory "{self._root}" was not cleanly removed: {e}.'
             )
 
     def diff(self, old_path, new_path, old_kind, new_kind):

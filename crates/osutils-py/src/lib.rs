@@ -838,10 +838,10 @@ fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> P
 
 #[pyfunction]
 fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
-    if let Ok(s) = text.extract::<&str>(py) {
-        Ok(breezy_osutils::contains_whitespace(s))
-    } else if let Ok(s) = text.extract::<&[u8]>(py) {
-        Ok(breezy_osutils::contains_whitespace_bytes(s))
+    if let Ok(s) = text.extract::<String>(py) {
+        Ok(breezy_osutils::contains_whitespace(&s))
+    } else if let Ok(s) = text.extract::<Vec<u8>>(py) {
+        Ok(breezy_osutils::contains_whitespace_bytes(&s))
     } else {
         Err(PyTypeError::new_err("text must be str or bytes"))
     }

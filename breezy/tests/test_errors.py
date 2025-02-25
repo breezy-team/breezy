@@ -45,7 +45,8 @@ class TestErrors(tests.TestCase):
                 )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(
-                    True, ('"message" not allowed in ' '"errors.{}._fmt"'.format(c.__name__))
+                    True,
+                    ('"message" not allowed in "errors.{}._fmt"'.format(c.__name__)),
                 )
 
     def test_duplicate_help_prefix(self):
@@ -109,15 +110,14 @@ class TestErrors(tests.TestCase):
     def test_jail_break(self):
         error = errors.JailBreak("some url")
         self.assertEqualDiff(
-            "An attempt to access a url outside the server"
-            " jail was made: 'some url'.",
+            "An attempt to access a url outside the server jail was made: 'some url'.",
             str(error),
         )
 
     def test_lock_active(self):
         error = errors.LockActive("lock description")
         self.assertEqualDiff(
-            "The lock for 'lock description' is in use and " "cannot be broken.",
+            "The lock for 'lock description' is in use and cannot be broken.",
             str(error),
         )
 
@@ -137,20 +137,20 @@ class TestErrors(tests.TestCase):
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff(
-            "The transport 'a transport' cannot tunnel the " "smart protocol.",
+            "The transport 'a transport' cannot tunnel the smart protocol.",
             str(error),
         )
 
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff(
-            'The file id "anid" is not present in the tree ' "atree.", str(error)
+            'The file id "anid" is not present in the tree atree.', str(error)
         )
 
     def test_no_such_revision_in_tree(self):
         error = errors.NoSuchRevisionInTree("atree", "anid")
         self.assertEqualDiff(
-            "The revision id {anid} is not present in the" " tree atree.", str(error)
+            "The revision id {anid} is not present in the tree atree.", str(error)
         )
         self.assertIsInstance(error, errors.NoSuchRevision)
 
@@ -161,7 +161,7 @@ class TestErrors(tests.TestCase):
     def test_not_write_locked(self):
         error = errors.NotWriteLocked("a thing to repr")
         self.assertEqualDiff(
-            "'a thing to repr' is not write locked but needs " "to be.", str(error)
+            "'a thing to repr' is not write locked but needs to be.", str(error)
         )
 
     def test_lock_failed(self):
@@ -188,7 +188,7 @@ class TestErrors(tests.TestCase):
     def test_up_to_date(self):
         error = errors.UpToDateFormat("someformat")
         self.assertEqualDiff(
-            "The branch format someformat is already at the most " "recent format.",
+            "The branch format someformat is already at the most recent format.",
             str(error),
         )
 
@@ -238,7 +238,7 @@ class TestErrors(tests.TestCase):
     def test_transport_not_possible(self):
         error = errors.TransportNotPossible("readonly", "original error")
         self.assertEqualDiff(
-            "Transport operation not possible:" " readonly original error", str(error)
+            "Transport operation not possible: readonly original error", str(error)
         )
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
@@ -363,7 +363,7 @@ class TestErrors(tests.TestCase):
         reason = "a reason"
         err = errors.UnresumableWriteGroup(repo, wg_tokens, reason)
         self.assertEqual(
-            "Repository dummy repo cannot resume write group " "['token']: a reason",
+            "Repository dummy repo cannot resume write group ['token']: a reason",
             str(err),
         )
 
@@ -464,7 +464,9 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff(
             "An error has been detected in the repository {}.\n"
-            "Please run brz reconcile on this repository.".format(repo.controldir.root_transport.base),
+            "Please run brz reconcile on this repository.".format(
+                repo.controldir.root_transport.base
+            ),
             str(error),
         )
 

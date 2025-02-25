@@ -622,13 +622,13 @@ _global_option("message", type=str, short_name="m", help="Message string.")
 _global_option(
     "null",
     short_name="0",
-    help="Use an ASCII NUL (\\0) separator rather than " "a newline.",
+    help="Use an ASCII NUL (\\0) separator rather than a newline.",
 )
 _global_option(
     "overwrite",
-    help="Ignore differences between branches and " "overwrite unconditionally.",
+    help="Ignore differences between branches and overwrite unconditionally.",
 )
-_global_option("remember", help="Remember the specified location as a" " default.")
+_global_option("remember", help="Remember the specified location as a default.")
 _global_option("reprocess", help="Reprocess to reduce spurious conflicts.")
 _global_option(
     "revision",

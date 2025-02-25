@@ -132,7 +132,7 @@ impl Iterator for PyRecordStreamIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         Python::with_gil(|py| {
-            let py_record_stream_iter = self.0.as_ref(py);
+            let py_record_stream_iter = self.0.bind(py);
             let py_content_factory = py_record_stream_iter.call_method0("next").unwrap();
             let content_factory = PyContentFactory(py_content_factory.to_object(py));
             Some(content_factory)
@@ -143,7 +143,7 @@ impl Iterator for PyRecordStreamIter {
 impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     fn check_not_reserved_id(version_id: &VersionId) -> bool {
         Python::with_gil(|py| {
-            let m = py.import("breezy.bzr.versionedfile").unwrap();
+            let m = py.import_bound("breezy.bzr.versionedfile").unwrap();
             let c = m.getattr("VersionedFile").unwrap();
             c.call_method1("check_not_reserved_id", (version_id.to_object(py),))
                 .unwrap()
@@ -154,7 +154,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
 
     fn has_version(&self, version_id: &VersionId) -> bool {
         Python::with_gil(|py| {
-            let py_versioned_file = self.0.as_ref(py);
+            let py_versioned_file = self.0.bind(py);
             py_versioned_file
                 .call_method1("has_version", (version_id.to_object(py),))
                 .unwrap()
@@ -180,7 +180,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         include_delta_closure: bool,
     ) -> Box<dyn Iterator<Item = PyContentFactory>> {
         Box::new(Python::with_gil(|py| {
-            let py_versioned_file = self.0.as_ref(py);
+            let py_versioned_file = self.0.bind(py);
             let version_ids = version_ids
                 .iter()
                 .map(|k| k.to_object(py))
@@ -204,8 +204,8 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         random_id: bool,
     ) -> Result<(Vec<u8>, usize, PyObject), Error> {
         Python::with_gil(|py| {
-            let py_versioned_file = self.0.as_ref(py);
-            let py_lines = lines.map(|l| PyBytes::new(py, l)).collect::<Vec<_>>();
+            let py_versioned_file = self.0.bind(py);
+            let py_lines = lines.map(|l| PyBytes::new_bound(py, l)).collect::<Vec<_>>();
             let py_parent_texts = match parent_texts {
                 Some(parent_texts) => {
                     let py_parent_texts = parent_texts
@@ -252,7 +252,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         }
 
         Python::with_gil(|py| {
-            let py_versioned_file = self.0.as_ref(py);
+            let py_versioned_file = self.0.bind(py);
             let stream = stream.collect::<Vec<_>>();
             let py_stream = stream
                 .into_iter()

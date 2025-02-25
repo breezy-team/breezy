@@ -139,7 +139,7 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
         failed_count = attempted_count - succeeded_count
         ui.ui_factory.note(
             gettext(
-                "\nSUMMARY: {0} upgrades attempted, {1} succeeded," " {2} failed"
+                "\nSUMMARY: {0} upgrades attempted, {1} succeeded, {2} failed"
             ).format(attempted_count, succeeded_count, failed_count)
         )
     return exceptions

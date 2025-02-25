@@ -35,6 +35,8 @@ def get_autodoc_datetime():
     :return: A `datetime` object
     """
     try:
-        return datetime.datetime.utcfromtimestamp(int(os.environ["SOURCE_DATE_EPOCH"]))
+        return datetime.datetime.fromtimestamp(
+            int(os.environ["SOURCE_DATE_EPOCH"]), datetime.UTC
+        )
     except (KeyError, ValueError):
         return datetime.datetime.utcnow()

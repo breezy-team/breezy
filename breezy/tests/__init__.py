@@ -46,6 +46,7 @@ import threading
 import time
 import traceback
 import unittest
+from unittest import SkipTest as TestSkipped
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
@@ -839,9 +840,6 @@ def iter_suite_tests(suite):
             yield from iter_suite_tests(item)
     else:
         raise Exception(f"unknown type {type(suite)!r} for object {suite!r}")
-
-
-from testtools.testcase import TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
@@ -3017,8 +3015,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """
         if type(shape) not in (list, tuple):
             raise AssertionError(
-                "Parameter 'shape' should be "
-                f"a list or a tuple. Got {shape!r} instead"
+                f"Parameter 'shape' should be a list or a tuple. Got {shape!r} instead"
             )
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
@@ -3479,7 +3476,7 @@ parallel_registry = registry.Registry[str, Callable, None]()
 def fork_decorator(suite):
     if getattr(os, "fork", None) is None:
         raise errors.CommandError(
-            "platform does not support fork," " try --parallel=subprocess instead."
+            "platform does not support fork, try --parallel=subprocess instead."
         )
     concurrency = osutils.local_concurrency()
     if concurrency == 1:

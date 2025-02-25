@@ -94,7 +94,7 @@ class BazaarRefsContainer(RefsContainer):
             pass  # FIXME: Switch default branch
         else:
             raise NotImplementedError(
-                "Symbolic references not supported for anything other than " "HEAD"
+                "Symbolic references not supported for anything other than HEAD"
             )
 
     def _get_revid_by_tag_name(self, tag_name):

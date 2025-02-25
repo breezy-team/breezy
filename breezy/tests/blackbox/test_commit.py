@@ -105,7 +105,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertContainsRe(
             err,
-            "^Committing to: .*\n" "added hello.txt\n" "Committed revision 1.\n$",
+            "^Committing to: .*\nadded hello.txt\nCommitted revision 1.\n$",
         )
 
     def prepare_simple_history(self):
@@ -125,9 +125,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertContainsRe(
             err,
-            "^Committing to: .*\n"
-            "modified hello\\.txt\n"
-            "Committed revision 2\\.\n$",
+            "^Committing to: .*\nmodified hello\\.txt\nCommitted revision 2\\.\n$",
         )
 
     def test_unicode_commit_message_is_filename(self):
@@ -235,7 +233,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertContainsRe(
             err,
-            "^Committing to: .*\n" "added hello\\.txt\n" "Committed revision 1\\.\n$",
+            "^Committing to: .*\nadded hello\\.txt\nCommitted revision 1\\.\n$",
         )
 
     def test_verbose_commit_with_unchanged(self):
@@ -249,7 +247,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertContainsRe(
             err,
-            "^Committing to: .*\n" "added hello\\.txt\n" "Committed revision 2\\.$\n",
+            "^Committing to: .*\nadded hello\\.txt\nCommitted revision 2\\.$\n",
         )
 
     def test_verbose_commit_includes_master_location(self):
@@ -389,14 +387,13 @@ brz: ERROR: No changes to commit.\
         # now commit to the checkout should emit
         # ERROR: Out of date with the branch, 'brz update' is suggested
         output = self.run_bzr(
-            "commit --unchanged -m checkout_message " "checkout", retcode=3
+            "commit --unchanged -m checkout_message checkout", retcode=3
         )
         self.assertEqual(
             output,
             (
                 "",
-                "brz: ERROR: Working tree is out of date, please "
-                "run 'brz update'.\n",
+                "brz: ERROR: Working tree is out of date, please run 'brz update'.\n",
             ),
         )
 
@@ -406,7 +403,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr("commit --local", retcode=3)
         self.assertEqualDiff("", out)
         self.assertEqualDiff(
-            "brz: ERROR: Cannot perform local-only commits " "on unbound branches.\n",
+            "brz: ERROR: Cannot perform local-only commits on unbound branches.\n",
             err,
         )
 
@@ -548,7 +545,7 @@ altered in u2
         output, err = self.run_bzr("commit -m hello --fixes=lp:23452 tree/hello.txt")
         self.assertEqual("", output)
         self.assertContainsRe(
-            err, "Committing to: .*\n" "added hello\\.txt\n" "Committed revision 1\\.\n"
+            err, "Committing to: .*\nadded hello\\.txt\nCommitted revision 1\\.\n"
         )
 
     def test_fixes_bug_unicode(self):
@@ -618,7 +615,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        self.run_bzr("commit -m hello --fixes=lp:123 --fixes=lp:235" " tree/hello.txt")
+        self.run_bzr("commit -m hello --fixes=lp:123 --fixes=lp:235 tree/hello.txt")
 
         # Get the revision properties, ignoring the branch-nick property, which
         # we don't care about for this test.
@@ -758,7 +755,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr("commit -m hello --author='John Doe' " "tree/hello.txt")
+        out, err = self.run_bzr("commit -m hello --author='John Doe' tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual("John Doe", properties["authors"])
@@ -769,7 +766,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         out, err = self.run_bzr(
-            "commit -m hello --author='John Doe' " "--author='Jane Rey' tree/hello.txt"
+            "commit -m hello --author='John Doe' --author='Jane Rey' tree/hello.txt"
         )
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
@@ -780,8 +777,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         out, err = self.run_bzr(
-            "commit -m hello "
-            "--commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt"
+            "commit -m hello --commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt"
         )
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual(
@@ -794,7 +790,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         out, err = self.run_bzr(
-            "commit -m hello " "--commit-time='NOT A TIME' tree/hello.txt", retcode=3
+            "commit -m hello --commit-time='NOT A TIME' tree/hello.txt", retcode=3
         )
         self.assertStartsWith(err, "brz: ERROR: Could not parse --commit-time:")
 
@@ -803,7 +799,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         out, err = self.run_bzr(
-            "commit -m hello " "--commit-time='2009-10-10 08:00:00' tree/hello.txt",
+            "commit -m hello --commit-time='2009-10-10 08:00:00' tree/hello.txt",
             retcode=3,
         )
         self.assertStartsWith(err, "brz: ERROR: Could not parse --commit-time:")

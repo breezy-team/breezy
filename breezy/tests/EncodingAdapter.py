@@ -63,8 +63,7 @@ _nihonjin = "\u65e5\u672c\u4eba"
 # the last word used to be 'ódy' (odes). The 'k' was added as a pun when using
 # the sentece to check whether one has properly set encoding.
 _yellow_horse = (
-    "\u017dlu\u0165ou\u010dk\xfd k\u016f\u0148"
-    " \xfap\u011bl \u010f\xe1belsk\xe9 k\xf3dy"
+    "\u017dlu\u0165ou\u010dk\xfd k\u016f\u0148 \xfap\u011bl \u010f\xe1belsk\xe9 k\xf3dy"
 )
 _yellow = "\u017dlu\u0165ou\u010dk\xfd"
 _someone = "Some\u016f\u0148\u011b"

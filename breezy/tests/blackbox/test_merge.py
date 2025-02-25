@@ -112,7 +112,7 @@ class TestMerge(tests.TestCaseWithTransport):
         run_merge_then_revert(["--merge-type", "lca"])
         self.run_bzr_error(
             ["Show-base is not supported for this merge type"],
-            "merge ../b -r last:1..last:1 --merge-type weave" " --show-base",
+            "merge ../b -r last:1..last:1 --merge-type weave --show-base",
             working_dir="a",
         )
         a_tree.revert(backups=False)
@@ -151,13 +151,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # 'show-base' is not set
         self.run_bzr("merge ../other", working_dir="tree", retcode=1)
         self.assertEqualDiff(
-            b"a\n"
-            b"B\n"
-            b"<<<<<<< TREE\n"
-            b"C\n"
-            b"=======\n"
-            b"D\n"
-            b">>>>>>> MERGE-SOURCE\n",
+            b"a\nB\n<<<<<<< TREE\nC\n=======\nD\n>>>>>>> MERGE-SOURCE\n",
             tree.get_file_text("fname"),
         )
 
@@ -175,14 +169,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # Explicitly disable reprocess
         self.run_bzr("merge ../other --no-reprocess", working_dir="tree", retcode=1)
         self.assertEqualDiff(
-            b"a\n"
-            b"<<<<<<< TREE\n"
-            b"B\n"
-            b"C\n"
-            b"=======\n"
-            b"B\n"
-            b"D\n"
-            b">>>>>>> MERGE-SOURCE\n",
+            b"a\n<<<<<<< TREE\nB\nC\n=======\nB\nD\n>>>>>>> MERGE-SOURCE\n",
             tree.get_file_text("fname"),
         )
 

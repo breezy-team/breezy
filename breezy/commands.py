@@ -134,7 +134,9 @@ class CommandRegistry(registry.Registry):
             trace.warning(f"Two plugins defined the same command: {k!r}")
             trace.warning(f"Not loading the one in {sys.modules[cmd.__module__]!r}")
             trace.warning(
-                "Previously this command was registered from {!r}".format(sys.modules[previous.__module__])
+                "Previously this command was registered from {!r}".format(
+                    sys.modules[previous.__module__]
+                )
             )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
@@ -914,12 +916,12 @@ class CommandHooks(Hooks):
         )
         self.add_hook(
             "pre_command",
-            "Called prior to executing a command. Called with the command " "object.",
+            "Called prior to executing a command. Called with the command object.",
             (2, 6),
         )
         self.add_hook(
             "post_command",
-            "Called after executing a command. Called with the command " "object.",
+            "Called after executing a command. Called with the command object.",
             (2, 6),
         )
 

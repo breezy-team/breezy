@@ -2,23 +2,17 @@ name: Python package
 
 on: [push, pull_request]
 
+env:
+  PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+
 jobs:
   build:
 
-    continue-on-error: ${{ matrix.experimental }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", '3.12']
-        experimental: [false]
-        include:
-          - os: macos-latest
-            experimental: true
-            python-version: 3.7
-          - os: windows-latest
-            python-version: 3.7
-            experimental: true
+        python-version: [3.9, "3.10", "3.11", '3.12']
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
@@ -29,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies (apt)
@@ -49,7 +43,11 @@ jobs:
           python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport,debian]"
       - name: Install dependencies (linux/pip)
         run: |
-          sudo apt install libgpgme-dev
+          sudo apt install libgpgme-dev libgpg-error-dev
+          mkdir -p "$HOME/.local/bin"
+          cp .github/gpgme-config "$HOME/.local/bin/gpgme-config"
+          cp .github/gpg-error-config "$HOME/.local/bin/gpg-error-config"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           pip install pyinotify
           pip install ".[workspace,pgp]"
         if: "matrix.os == 'ubuntu-latest'"

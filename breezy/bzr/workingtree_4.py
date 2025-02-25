@@ -1938,7 +1938,7 @@ class DirStateRevisionTree(InventoryTree):
         """
         if not self._locked:
             raise AssertionError(
-                "cannot generate inventory of an unlocked " "dirstate revision tree"
+                "cannot generate inventory of an unlocked dirstate revision tree"
             )
         # separate call for profiling - makes it clear where the costs are.
         self._dirstate._read_dirblocks_if_needed()
@@ -2078,14 +2078,12 @@ class DirStateRevisionTree(InventoryTree):
         content = None
         for _, content_iter in self.iter_files_bytes([(path, None)]):
             if content is not None:
-                raise AssertionError("iter_files_bytes returned" " too many entries")
+                raise AssertionError("iter_files_bytes returned too many entries")
             # For each entry returned by iter_files_bytes, we must consume the
             # content_iter before we step the files iterator.
             content = b"".join(content_iter)
         if content is None:
-            raise AssertionError(
-                "iter_files_bytes did not return" " the requested data"
-            )
+            raise AssertionError("iter_files_bytes did not return the requested data")
         return content
 
     def get_reference_revision(self, path):

@@ -69,8 +69,7 @@ class RetryWithNewPacks(errors.BzrError):
     internal_error = True
 
     _fmt = (
-        "Pack files have changed, reload and retry. context: %(context)s"
-        " %(orig_error)s"
+        "Pack files have changed, reload and retry. context: %(context)s %(orig_error)s"
     )
 
     def __init__(self, context, reload_occurred, exc_info):
@@ -839,7 +838,7 @@ class Packer:
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
             raise errors.BzrError(
-                "call to {}.pack() while another pack is" " being written.".format(
+                "call to {}.pack() while another pack is being written.".format(
                     self.__class__.__name__
                 )
             )
@@ -1243,8 +1242,7 @@ class RepositoryPackCollection:
             final_pack_list.extend(pack_files)
         if len(final_pack_list) == 1:
             raise AssertionError(
-                "We somehow generated an autopack with a"
-                " single pack file being moved."
+                "We somehow generated an autopack with a single pack file being moved."
             )
             return []
         return [[final_rev_count, final_pack_list]]

@@ -69,7 +69,7 @@ class TestCopy(TestCaseWithTransport):
         tree.add(["hello.txt", "sub1"])
 
         self.run_bzr_error(
-            ["^brz: ERROR: Could not copy sub1 => sub2 . " "sub1 is a directory\\.$"],
+            ["^brz: ERROR: Could not copy sub1 => sub2 . sub1 is a directory\\.$"],
             "cp sub1 sub2",
         )
 

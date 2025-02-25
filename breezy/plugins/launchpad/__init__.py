@@ -32,8 +32,6 @@ The plugin also provides the following commands:
 
 """
 
-# see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 from ...directory_service import directories

@@ -131,7 +131,7 @@ class EmailSender:
         if numlines <= difflimit:
             return diff_content.getvalue()
         else:
-            return "\nDiff too large for email" " (%d lines, the limit is %d).\n" % (
+            return "\nDiff too large for email (%d lines, the limit is %d).\n" % (
                 numlines,
                 difflimit,
             )

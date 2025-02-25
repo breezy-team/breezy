@@ -116,13 +116,13 @@ class TestAllGroupCompressors(TestGroupCompressor):
         )
         # get the first out
         self.assertEqual(
-            ([b"strange\ncommon long line\n" b"that needs a 16 byte match\n"], sha1_1),
+            ([b"strange\ncommon long line\nthat needs a 16 byte match\n"], sha1_1),
             compressor.extract((b"label",)),
         )
         # and the second
         self.assertEqual(
             (
-                [b"common long line\nthat needs a 16 byte match\n" b"different\n"],
+                [b"common long line\nthat needs a 16 byte match\ndifferent\n"],
                 sha1_2,
             ),
             compressor.extract((b"newlabel",)),
@@ -338,14 +338,11 @@ class TestGroupCompressBlock(tests.TestCase):
         content = b"a tiny bit of content\n"
         z_content = zlib.compress(content)
         z_bytes = (
-            (
-                b"gcb1z\n"  # group compress block v1 plain
-                b"%d\n"  # Length of compressed content
-                b"%d\n"  # Length of uncompressed content
-                b"%s"  # Compressed content
-            )
-            % (len(z_content), len(content), z_content)
-        )
+            b"gcb1z\n"  # group compress block v1 plain
+            b"%d\n"  # Length of compressed content
+            b"%d\n"  # Length of uncompressed content
+            b"%s"  # Compressed content
+        ) % (len(z_content), len(content), z_content)
         block = groupcompress.GroupCompressBlock.from_bytes(z_bytes)
         self.assertEqual(z_content, block._z_content)
         self.assertIs(None, block._content)
@@ -370,13 +367,10 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(total_len, len(block_bytes))
         self.assertEqual(gcb._content_length, content_len)
         expected_header = (
-            (
-                b"gcb1z\n"  # group compress block v1 zlib
-                b"%d\n"  # Length of compressed content
-                b"%d\n"  # Length of uncompressed content
-            )
-            % (gcb._z_content_length, gcb._content_length)
-        )
+            b"gcb1z\n"  # group compress block v1 zlib
+            b"%d\n"  # Length of compressed content
+            b"%d\n"  # Length of uncompressed content
+        ) % (gcb._z_content_length, gcb._content_length)
         # The first chunk should be the header chunk. It is small, fixed size,
         # and there is no compelling reason to split it up
         self.assertEqual(expected_header, block_chunks[0])
@@ -386,20 +380,17 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(content, raw_bytes)
 
     def test_to_bytes(self):
-        content = b"this is some content\n" b"this content will be compressed\n"
+        content = b"this is some content\nthis content will be compressed\n"
         gcb = groupcompress.GroupCompressBlock()
         gcb.set_content(content)
         data = gcb.to_bytes()
         self.assertEqual(gcb._z_content_length, len(gcb._z_content))
         self.assertEqual(gcb._content_length, len(content))
         expected_header = (
-            (
-                b"gcb1z\n"  # group compress block v1 zlib
-                b"%d\n"  # Length of compressed content
-                b"%d\n"  # Length of uncompressed content
-            )
-            % (gcb._z_content_length, gcb._content_length)
-        )
+            b"gcb1z\n"  # group compress block v1 zlib
+            b"%d\n"  # Length of compressed content
+            b"%d\n"  # Length of uncompressed content
+        ) % (gcb._z_content_length, gcb._content_length)
         self.assertStartsWith(data, expected_header)
         remaining_bytes = data[len(expected_header) :]
         raw_bytes = zlib.decompress(remaining_bytes)
@@ -408,7 +399,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # we should get the same results if using the chunked version
         gcb = groupcompress.GroupCompressBlock()
         gcb.set_chunked_content(
-            [b"this is some content\n" b"this content will be compressed\n"],
+            [b"this is some content\nthis content will be compressed\n"],
             len(content),
         )
         old_data = data
@@ -1194,7 +1185,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             groupcompress.GroupCompressor, groupcompress.PyrexGroupCompressor
         ):
             raise tests.TestNotApplicable(
-                "pure-python compressor" " does not handle compressor_settings"
+                "pure-python compressor does not handle compressor_settings"
             )
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(
@@ -1280,7 +1271,7 @@ class Test_GCBuildDetails(tests.TestCase):
             (("parent1",), ("parent2",)), ("INDEX", 10, 20, 0, 5)
         )
         self.assertEqual(
-            "_GCBuildDetails(('INDEX', 10, 20, 0, 5)," " (('parent1',), ('parent2',)))",
+            "_GCBuildDetails(('INDEX', 10, 20, 0, 5), (('parent1',), ('parent2',)))",
             repr(bd),
         )
 

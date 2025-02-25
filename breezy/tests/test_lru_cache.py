@@ -32,14 +32,14 @@ def walk_lru(lru):
         if node.next_key is lru_cache._null_key:
             if node is not lru._least_recently_used:
                 raise AssertionError(
-                    "only the last node should have" f" no next value: {node}"
+                    f"only the last node should have no next value: {node}"
                 )
             node_next = None
         else:
             node_next = lru._cache[node.next_key]
             if node_next.prev is not node:
                 raise AssertionError(
-                    "inconsistency found, node.next.prev" f" != node: {node}"
+                    f"inconsistency found, node.next.prev != node: {node}"
                 )
         if node.prev is None:
             if node is not lru._most_recently_used:
@@ -50,7 +50,7 @@ def walk_lru(lru):
         else:
             if node.prev.next_key != node.key:
                 raise AssertionError(
-                    "inconsistency found, node.prev.next" f" != node: {node}"
+                    f"inconsistency found, node.prev.next != node: {node}"
                 )
         yield node
         node = node_next

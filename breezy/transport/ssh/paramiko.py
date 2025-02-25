@@ -106,7 +106,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             ) from e
     else:
         raise ConnectionError(
-            "Unable to authenticate to SSH host as" f"  {username}@{host}"
+            f"Unable to authenticate to SSH host as  {username}@{host}"
         )
 
 

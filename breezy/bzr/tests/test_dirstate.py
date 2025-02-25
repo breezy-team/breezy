@@ -3393,7 +3393,7 @@ class TestBisectDirblock(tests.TestCase):
         self.assertEqual(
             bisect_left_idx,
             bisect_split_idx,
-            "bisect_split disagreed. {} != {}" " for key {!r}".format(
+            "bisect_split disagreed. {} != {} for key {!r}".format(
                 bisect_left_idx, bisect_split_idx, path
             ),
         )

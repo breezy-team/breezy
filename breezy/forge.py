@@ -104,7 +104,7 @@ class PrerequisiteBranchUnsupported(errors.BzrError):
 class ForgeLoginRequired(errors.BzrError):
     """Action requires forge login credentials."""
 
-    _fmt = "Action requires credentials for hosting site %(forge)r." ""
+    _fmt = "Action requires credentials for hosting site %(forge)r."
 
     def __init__(self, forge):
         errors.BzrError.__init__(self)
@@ -114,7 +114,7 @@ class ForgeLoginRequired(errors.BzrError):
 class SourceNotDerivedFromTarget(errors.BzrError):
     """Source branch is not derived from target branch."""
 
-    _fmt = "Source %(source_branch)r not derived from " "target %(target_branch)r."
+    _fmt = "Source %(source_branch)r not derived from target %(target_branch)r."
 
     def __init__(self, source_branch, target_branch):
         errors.BzrError.__init__(
@@ -132,6 +132,12 @@ class MergeProposal:
 
     def __init__(self, url=None):
         self.url = url
+
+    def __str__(self):
+        return self.url
+
+    def __repr__(self):
+        return "<%s(%r)>" % (self.__class__.__name__, self.url)
 
     def get_web_url(self):
         raise NotImplementedError(self.get_web_url)

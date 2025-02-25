@@ -214,7 +214,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             a_controldir.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree) as e:
             raise TestSkipped(
-                "bzrdir on transport {!r} has no working tree".format(a_controldir.transport)
+                "bzrdir on transport {!r} has no working tree".format(
+                    a_controldir.transport
+                )
             ) from e
 
     def createWorkingTreeOrSkip(self, a_controldir):
@@ -235,7 +237,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             )
         except errors.NotLocalUrl as e:
             raise TestSkipped(
-                "cannot make working tree with transport {!r}".format(a_controldir.transport)
+                "cannot make working tree with transport {!r}".format(
+                    a_controldir.transport
+                )
             ) from e
 
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
@@ -707,7 +711,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         :return: the resulting repo, control dir tuple.
         """
         if not self.bzrdir_format.is_initializable():
-            raise TestNotApplicable("control dir format is not " "initializable")
+            raise TestNotApplicable("control dir format is not initializable")
         (
             repo,
             control,

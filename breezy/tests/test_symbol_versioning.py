@@ -74,9 +74,7 @@ class TestDeprecationWarnings(TestCase):
             2,
         )
         expected_docstring = (
-            "Deprecated static.\n"
-            "\n"
-            "This function was deprecated in version 0.7.0.\n"
+            "Deprecated static.\n\nThis function was deprecated in version 0.7.0.\n"
         )
         self.check_deprecated_callable(
             expected_warning,
@@ -132,8 +130,7 @@ class TestDeprecationWarnings(TestCase):
 
     def test_deprecated_list(self):
         expected_warning = (
-            "Modifying a_deprecated_list was deprecated in version 0.9.0."
-            " Don't use me",
+            "Modifying a_deprecated_list was deprecated in version 0.9.0. Don't use me",
             DeprecationWarning,
             3,
         )

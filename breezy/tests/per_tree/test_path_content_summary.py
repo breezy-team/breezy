@@ -105,7 +105,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.assertIs(None, summary[3])
         elif isinstance(tree, PreviewTree):
             self.expectFailure(
-                'PreviewTree returns "missing" for unversioned' "files",
+                'PreviewTree returns "missing" for unversionedfiles',
                 self.assertEqual,
                 "file",
                 summary[0],

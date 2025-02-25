@@ -548,7 +548,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 new_revision_ids.append(revision_id)
         if new_revision_ids != revision_ids:
             mutter(
-                "requested to set revision_ids = %s," " but filtered to %s",
+                "requested to set revision_ids = %s, but filtered to %s",
                 revision_ids,
                 new_revision_ids,
             )

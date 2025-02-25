@@ -46,7 +46,7 @@ class cmd_dump_btree(Command):
     takes_options = [
         Option(
             "raw",
-            help="Write the uncompressed bytes out," " rather than the parsed tuples.",
+            help="Write the uncompressed bytes out, rather than the parsed tuples.",
         ),
     ]
 

@@ -76,7 +76,7 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
 fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
-        if let Ok(arg) = arg.extract::<&str>() {
+        if let Ok(arg) = arg.extract::<String>() {
             path.push(arg);
         } else {
             return Err(PyTypeError::new_err(
@@ -84,14 +84,15 @@ fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
             ));
         }
     }
-    breezy_urlutils::joinpath(url, path.as_slice()).map_err(map_urlutils_error_to_pyerr)
+    let path_ref = path.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+    breezy_urlutils::joinpath(url, path_ref.as_slice()).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction(signature = (url, *args))]
 fn join(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
-        if let Ok(arg) = arg.extract::<&str>() {
+        if let Ok(arg) = arg.extract::<String>() {
             path.push(arg);
         } else {
             return Err(PyTypeError::new_err(
@@ -99,7 +100,8 @@ fn join(url: &str, args: &PyTuple) -> PyResult<String> {
             ));
         }
     }
-    breezy_urlutils::join(url, path.as_slice()).map_err(map_urlutils_error_to_pyerr)
+    let path_ref = path.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+    breezy_urlutils::join(url, path_ref.as_slice()).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]
@@ -129,14 +131,13 @@ fn combine_paths(base_path: &str, relpath: &str) -> String {
 
 #[pyfunction]
 fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
-    let text = if let Ok(text) = text.extract::<&str>(py) {
-        text.as_bytes()
-    } else if let Ok(text) = text.extract::<&[u8]>(py) {
-        text
+    if let Ok(text) = text.extract::<String>(py) {
+        Ok(breezy_urlutils::escape(text.as_bytes(), safe))
+    } else if let Ok(text) = text.extract::<Vec<u8>>(py) {
+        Ok(breezy_urlutils::escape(text.as_slice(), safe))
     } else {
-        return Err(PyTypeError::new_err("text must be a string or bytes"));
-    };
-    Ok(breezy_urlutils::escape(text, safe))
+        Err(PyTypeError::new_err("text must be a string or bytes"))
+    }
 }
 
 #[pyfunction]
@@ -163,7 +164,7 @@ fn posix_local_path_to_url(path: &str) -> PyResult<String> {
 fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
-        if let Ok(arg) = arg.extract::<&str>() {
+        if let Ok(arg) = arg.extract::<String>() {
             path.push(arg);
         } else {
             return Err(PyTypeError::new_err(
@@ -171,12 +172,17 @@ fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
             ));
         }
     }
-    breezy_urlutils::join_segment_parameters_raw(url, path.as_slice())
+    let path_ref = path.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
+    breezy_urlutils::join_segment_parameters_raw(url, path_ref.as_slice())
         .map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]
-fn join_segment_parameters(url: &str, parameters: HashMap<&str, &str>) -> PyResult<String> {
+fn join_segment_parameters(url: &str, parameters: HashMap<String, String>) -> PyResult<String> {
+    let parameters = parameters
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
     breezy_urlutils::join_segment_parameters(url, &parameters).map_err(map_urlutils_error_to_pyerr)
 }
 

@@ -50,7 +50,9 @@ class TestRefreshData(TestCaseWithRepository):
             server_repo.lock_write(token)
         except errors.TokenLockingNotSupported:
             self.skipTest(
-                "Cannot concurrently insert into repo format {!r}".format(self.repository_format)
+                "Cannot concurrently insert into repo format {!r}".format(
+                    self.repository_format
+                )
             )
         try:
             server_repo.fetch(source.branch.repository, revid)

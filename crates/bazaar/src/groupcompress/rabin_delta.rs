@@ -4,7 +4,7 @@ use crate::groupcompress::delta::{
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::io::{Read, Write};
+use std::io::Write;
 
 /// diff-delta.rs: generate a delta between two buffers
 ///

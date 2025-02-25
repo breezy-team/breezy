@@ -56,8 +56,9 @@ class MsgEditorTest(TestCaseWithTransport):
             self.build_tree_contents([(filename, b"contents of hello")])
         except UnicodeEncodeError:
             self.skipTest(
-                "can't build unicode working tree in "
-                "filesystem encoding {}".format(sys.getfilesystemencoding())
+                "can't build unicode working tree in filesystem encoding {}".format(
+                    sys.getfilesystemencoding()
+                )
             )
         working_tree.add(filename)
         return working_tree
@@ -168,7 +169,7 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv(
-            "BRZ_EDITOR", f"\"{self.make_do_nothing_editor('name with spaces')}\""
+            "BRZ_EDITOR", f'"{self.make_do_nothing_editor("name with spaces")}"'
         )
         self.assertEqual(True, msgeditor._run_editor("a_filename"))
 

@@ -45,7 +45,7 @@ RESPONSE_VERSION_THREE = _smart_rs.RESPONSE_VERSION_THREE
 
 
 class SmartMessageHandlerError(errors.InternalBzrError):
-    _fmt = "The message handler raised an exception:\n" "%(traceback_text)s"
+    _fmt = "The message handler raised an exception:\n%(traceback_text)s"
 
     def __init__(self, exc_info):
         import traceback
@@ -777,12 +777,10 @@ class SmartClientRequestProtocolOne(
         """
         if result_tuple == (
             b"error",
-            b"Generic bzr smart protocol error: "
-            b"bad request '" + self._last_verb + b"'",
+            b"Generic bzr smart protocol error: bad request '" + self._last_verb + b"'",
         ) or result_tuple == (
             b"error",
-            b"Generic bzr smart protocol error: "
-            b"bad request u'%s'" % self._last_verb,
+            b"Generic bzr smart protocol error: bad request u'%s'" % self._last_verb,
         ):
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()

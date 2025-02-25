@@ -461,7 +461,7 @@ class BranchReconciler:
             # Not really worth a whole BranchReconciler class just for this,
             # though.
             ui.ui_factory.note(
-                gettext("Fixing last revision info {0} " " => {1}").format(
+                gettext("Fixing last revision info {0}  => {1}").format(
                     last_revno, len(real_history)
                 )
             )
