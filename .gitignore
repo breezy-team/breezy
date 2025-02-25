@@ -14,3 +14,4 @@ build/
 /brz
 /Cargo.lock
 *.cpython-*.so
+.testrepository
