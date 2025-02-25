@@ -23,7 +23,7 @@ import stat
 import sys
 
 from ...controldir import ControlDir
-from .. import KnownFailure, TestCaseWithTransport, TestSkipped
+from .. import expectedFailure, TestCaseWithTransport, TestSkipped
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -240,6 +240,10 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(["bisect", "run", "./test_script"])
         self.assertRevno(4)
 
+
+    # bisect does not drill down into merge commits: 
+    # https://bugs.launchpad.net/bzr-bisect/+bug/539937
+    @expectedFailure
     def testRunScriptMergePoint(self):
         """Make a test script and run it."""
         if sys.platform == "win32":
@@ -251,14 +255,12 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(["bisect", "yes"])
         self.run_bzr(["bisect", "no", "-r", "1"])
         self.run_bzr(["bisect", "run", "./test_script"])
-        try:
-            self.assertRevno(2)
-        except AssertionError as err:
-            raise KnownFailure(
-                "bisect does not drill down into merge commits: "
-                "https://bugs.launchpad.net/bzr-bisect/+bug/539937"
-            ) from err
+        self.assertRevno(2)
 
+
+    # bisect does not drill down into merge commits:
+    # https://bugs.launchpad.net/bzr-bisect/+bug/539937
+    @expectedFailure
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
         if sys.platform == "win32":
@@ -270,10 +272,4 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(["bisect", "yes"])
         self.run_bzr(["bisect", "no", "-r", "1"])
         self.run_bzr(["bisect", "run", "./test_script"])
-        try:
-            self.assertRevno(1.2)
-        except AssertionError as err:
-            raise KnownFailure(
-                "bisect does not drill down into merge commits: "
-                "https://bugs.launchpad.net/bzr-bisect/+bug/539937"
-            ) from err
+        self.assertRevno(1.2)
