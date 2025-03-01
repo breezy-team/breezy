@@ -80,7 +80,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def iter_files_recursive(self):
         # needs special handling because it does not have a relpath parameter
-        mutter("%s %s" % ("iter_files_recursive", self._decorated.base))
+        mutter("{} {}".format("iter_files_recursive", self._decorated.base))
         return self._call_and_log_result("iter_files_recursive", (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
@@ -89,8 +89,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         else:
             kwargs_str = ""
         mutter(
-            "%s %s %s %s"
-            % (
+            "{} {} {} {}".format(
                 methodname,
                 relpath,
                 self._shorten(self._strip_tuple_parens(args)),
@@ -104,7 +103,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
         try:
             result = getattr(self._decorated, methodname)(*args, **kwargs)
         except Exception as e:
-            mutter("  --> %s" % e)
+            mutter("  --> {}".format(e))
             mutter("      %.03fs" % (time.time() - before))
             raise
         return self._show_result(before, methodname, result)
@@ -141,7 +140,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             result_len = total_bytes
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
-        mutter("  --> %s" % shown_result)
+        mutter("  --> {}".format(shown_result))
         # The log decorator no longer shows the elapsed time or transfer rate
         # because they're available in the log prefixes and the transport
         # activity display respectively.
@@ -152,7 +151,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
                 # speed using base-10 units (see HACKING.txt).
                 mutter("      %9.03fs %8dkB/s" % (elapsed, result_len / elapsed / 1000))
             else:
-                mutter("      %9.03fs" % (elapsed))
+                mutter("      {:9.3f}s".format(elapsed))
         return return_result
 
     def _shorten(self, x):

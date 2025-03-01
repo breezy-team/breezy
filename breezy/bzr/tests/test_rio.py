@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for rio serialization
+"""Tests for rio serialization.
 
 A simple, reproducible structured IO format.
 
@@ -33,7 +33,7 @@ from ..rio import RioReader, Stanza, read_stanza, read_stanzas, rio_file
 
 class TestRio(TestCase):
     def test_stanza(self):
-        """Construct rio stanza in memory"""
+        """Construct rio stanza in memory."""
         s = Stanza(number="42", name="fred")
         self.assertTrue("number" in s)
         self.assertFalse("color" in s)
@@ -43,23 +43,23 @@ class TestRio(TestCase):
         self.assertEqual(s.get("name"), "fred")
 
     def test_empty_value(self):
-        """Serialize stanza with empty field"""
+        """Serialize stanza with empty field."""
         s = Stanza(empty="")
         self.assertEqual(s.to_string(), b"empty: \n")
 
     def test_to_lines(self):
-        """Write simple rio stanza to string"""
+        """Write simple rio stanza to string."""
         s = Stanza(number="42", name="fred")
         self.assertEqual(list(s.to_lines()), [b"name: fred\n", b"number: 42\n"])
 
     def test_as_dict(self):
-        """Convert rio Stanza to dictionary"""
+        """Convert rio Stanza to dictionary."""
         s = Stanza(number="42", name="fred")
         sd = s.as_dict()
-        self.assertEqual(sd, dict(number="42", name="fred"))
+        self.assertEqual(sd, {"number": "42", "name": "fred"})
 
     def test_to_file(self):
-        """Write rio to file"""
+        """Write rio to file."""
         tmpf = TemporaryFile()
         s = Stanza(
             a_thing='something with "quotes like \\"this\\""', number="42", name="fred"
@@ -93,7 +93,7 @@ motto: war is peace
         self.assertEqual(s, s2)
 
     def test_read_stanza(self):
-        """Load stanza from string"""
+        """Load stanza from string."""
         lines = b"""\
 revision: mbp@sourcefrog.net-123-abc
 timestamp: 1130653962
@@ -115,7 +115,7 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
         self.assertEqual(len(s), 4)
 
     def test_repeated_field(self):
-        """Repeated field in rio"""
+        """Repeated field in rio."""
         s = Stanza()
         for k, v in [
             ("a", "10"),
@@ -171,7 +171,7 @@ tabs: \t\t\t
         self.rio_file_stanzas([s])
 
     def test_quoted(self):
-        """Rio quoted string cases"""
+        """Rio quoted string cases."""
         s = Stanza(
             q1='"hello"',
             q2=' "for',
@@ -190,7 +190,7 @@ tabs: \t\t\t
         # self.assertEqual(s, s3)
 
     def test_read_empty(self):
-        """Detect end of rio file"""
+        """Detect end of rio file."""
         s = read_stanza([])
         self.assertEqual(s, None)
         self.assertTrue(s is None)
@@ -204,7 +204,7 @@ tabs: \t\t\t
         self.assertRaises(ValueError, read_stanza, [b"\0" * 100])
 
     def test_read_iter(self):
-        """Read several stanzas from file"""
+        """Read several stanzas from file."""
         tmpf = TemporaryFile()
         tmpf.write(b"""\
 version_header: 1
@@ -217,7 +217,7 @@ val: 129319
 """)
         tmpf.seek(0)
         reader = read_stanzas(tmpf)
-        read_iter = iter(reader)
+        iter(reader)
         stuff = list(reader)
         self.assertEqual(
             stuff,
@@ -229,7 +229,7 @@ val: 129319
         )
 
     def test_read_several(self):
-        """Read several stanzas from file"""
+        """Read several stanzas from file."""
         tmpf = TemporaryFile()
         tmpf.write(b"""\
 version_header: 1
@@ -329,17 +329,17 @@ s: both\\\"
             self.assertEqual(stanza.get("s"), expected)
 
     def test_write_empty_stanza(self):
-        """Write empty stanza"""
+        """Write empty stanza."""
         l = list(Stanza().to_lines())
         self.assertEqual(l, [])
 
     def test_rio_raises_type_error(self):
-        """TypeError on adding invalid type to Stanza"""
+        """TypeError on adding invalid type to Stanza."""
         s = Stanza()
         self.assertRaises(TypeError, s.add, "foo", {})
 
     def test_rio_raises_type_error_key(self):
-        """TypeError on adding invalid type to Stanza"""
+        """TypeError on adding invalid type to Stanza."""
         s = Stanza()
         self.assertRaises(TypeError, s.add, 10, {})
 

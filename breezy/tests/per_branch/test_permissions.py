@@ -114,7 +114,7 @@ class TestPermissions(tests.TestCaseWithTransport):
         check_mode_r(self, "c/.bzr", 0o0640, 0o2750)
 
     def test_mode_0(self):
-        """Test when a transport returns null permissions for .bzr"""
+        """Test when a transport returns null permissions for .bzr."""
         if isinstance(self.branch_format, RemoteBranchFormat):
             # Remote branch format have no permission logic in them; there's
             # nothing to test here.

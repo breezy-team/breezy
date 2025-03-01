@@ -178,7 +178,7 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
         controldir.ControlDir.create_branch_convenience(
             "repo/branch1", format=self.from_format
         )
-        b2 = controldir.ControlDir.create_branch_convenience(
+        controldir.ControlDir.create_branch_convenience(
             "repo/branch2", format=self.from_format
         )
         return repo.controldir

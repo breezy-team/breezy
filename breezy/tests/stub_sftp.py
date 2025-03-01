@@ -74,7 +74,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         else:
             if not home.startswith(self.root):
                 raise AssertionError(
-                    "home must be a subdirectory of root (%s vs %s)" % (home, root)
+                    "home must be a subdirectory of root ({} vs {})".format(home, root)
                 )
             self.home = home[len(self.root) :]
         if self.home.startswith("/"):
@@ -323,7 +323,7 @@ class SocketDelay:
     def __getattr__(self, attr):
         if attr in SocketDelay._proxied_arguments:
             return getattr(self.sock, attr)
-        raise AttributeError("'SocketDelay' object has no attribute %r" % attr)
+        raise AttributeError("'SocketDelay' object has no attribute {!r}".format(attr))
 
     def dup(self):
         return SocketDelay(
@@ -509,8 +509,8 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             or isinstance(backing_server, test_server.LocalURLServer)
         ):
             raise AssertionError(
-                "backing_server should not be %r, because this can only serve "
-                "the local current working directory." % (backing_server,)
+                "backing_server should not be {!r}, because this can only serve "
+                "the local current working directory.".format(backing_server)
             )
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
@@ -540,7 +540,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         # we just never listen on that port
         s = socket.socket()
         s.bind(("localhost", 0))
-        return "sftp://%s:%s/" % s.getsockname()
+        return "sftp://{}:{}/".format(*s.getsockname())
 
 
 class SFTPFullAbsoluteServer(SFTPServer):

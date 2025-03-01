@@ -14,14 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for different inventory implementations"""
+"""Tests for different inventory implementations."""
 
 from breezy import tests
 from breezy.bzr import groupcompress
 
 
 def load_tests(loader, basic_tests, pattern):
-    """Generate suite containing all parameterized tests"""
+    """Generate suite containing all parameterized tests."""
     modules_to_test = [
         "breezy.bzr.tests.per_inventory.basics",
     ]

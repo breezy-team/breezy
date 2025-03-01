@@ -47,7 +47,7 @@ class CommitTemplate:
         delta = self.commit.builder.get_basis_delta()
         found_old_path = None
         found_entry = None
-        for old_path, new_path, fileid, entry in delta:
+        for old_path, new_path, _fileid, entry in delta:
             if new_path in self.filespec:
                 found_entry = entry
                 found_old_path = old_path

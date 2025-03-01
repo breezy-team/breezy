@@ -375,7 +375,7 @@ class SFTPTransport(ConnectedTransport):
             connection.close()
 
     def _get_sftp(self):
-        """Ensures that a connection is established"""
+        """Ensures that a connection is established."""
         connection = self._get_connection()
         if connection is None:
             # First connection ever
@@ -384,8 +384,7 @@ class SFTPTransport(ConnectedTransport):
         return connection
 
     def has(self, relpath):
-        """Does the target location exist?
-        """
+        """Does the target location exist?"""
         try:
             self._get_sftp().stat(self._remote_path(relpath))
             # stat result is about 20 bytes, let's say
@@ -419,7 +418,7 @@ class SFTPTransport(ConnectedTransport):
             return bytes
 
     def _readv(self, relpath, offsets):
-        """See Transport.readv()"""
+        """See Transport.readv()."""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
         # Also, if we have a new paramiko, it implements an async readv()
@@ -467,7 +466,7 @@ class SFTPTransport(ConnectedTransport):
         return self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
-        """Helper function so both put() and copy_abspaths can reuse the code"""
+        """Helper function so both put() and copy_abspaths can reuse the code."""
         tmp_abspath = "%s.tmp.%.9f.%d.%d" % (
             abspath,
             time.time(),
@@ -530,7 +529,7 @@ class SFTPTransport(ConnectedTransport):
         #       But for now, we just chmod later anyway.
 
         def _open_and_write_file():
-            """Try to open the target file, raise error on failure"""
+            """Try to open the target file, raise error on failure."""
             fout = None
             try:
                 try:
@@ -603,7 +602,7 @@ class SFTPTransport(ConnectedTransport):
     ):
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                "raw_bytes must be a plain string, not %s" % type(raw_bytes)
+                "raw_bytes must be a plain string, not {}".format(type(raw_bytes))
             )
 
         def writer(fout):
@@ -650,11 +649,10 @@ class SFTPTransport(ConnectedTransport):
                 if mode != stat.st_mode & 0o777:
                     if stat.st_mode & 0o6000:
                         warning(
-                            "About to chmod %s over sftp, which will result"
+                            "About to chmod {} over sftp, which will result"
                             " in its suid or sgid bits being cleared.  If"
                             " you want to preserve those bits, change your "
-                            " environment on the server to use umask 0%03o."
-                            % (abspath, 0o777 - mode)
+                            " environment on the server to use umask 0{:03o}.".format(abspath, 0o777 - mode)
                         )
                     self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, OSError) as e:
@@ -743,14 +741,14 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, relpath, ": unable to append")
 
     def rename(self, rel_from, rel_to):
-        """Rename without special overwriting"""
+        """Rename without special overwriting."""
         try:
             self._get_sftp().rename(
                 self._remote_path(rel_from), self._remote_path(rel_to)
             )
         except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(
-                e, rel_from, ": unable to rename to %r" % (rel_to)
+                e, rel_from, ": unable to rename to {!r}".format(rel_to)
             )
 
     def _rename_and_overwrite(self, abs_from, abs_to):
@@ -765,17 +763,17 @@ class SFTPTransport(ConnectedTransport):
             )
         except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(
-                e, abs_from, ": unable to rename to %r" % (abs_to)
+                e, abs_from, ": unable to rename to {!r}".format(abs_to)
             )
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         path_from = self._remote_path(rel_from)
         path_to = self._remote_path(rel_to)
         self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         path = self._remote_path(relpath)
         try:
             self._get_sftp().remove(path)
@@ -792,8 +790,7 @@ class SFTPTransport(ConnectedTransport):
         return True
 
     def list_dir(self, relpath):
-        """Return a list of all files at the given location.
-        """
+        """Return a list of all files at the given location."""
         # does anything actually use this?
         # -- Unknown
         # This is at least used by copy_tree for remote upgrades.
@@ -834,15 +831,15 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            sftp_retval = conn.symlink(source, self._remote_path(link_name))
+            conn.symlink(source, self._remote_path(link_name))
         except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(
-                e, link_name, ": unable to create symlink to %r" % (source)
+                e, link_name, ": unable to create symlink to {!r}".format(source)
             )
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        :return: A lock object, which has an unlock() member function
+        :return: A lock object, which has an unlock() member function.
         """
 
         # FIXME: there should be something clever i can do here...
@@ -863,7 +860,7 @@ class SFTPTransport(ConnectedTransport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, which has an unlock() member function
         """

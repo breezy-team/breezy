@@ -140,7 +140,7 @@ class TestContainerWriter(tests.TestCase):
         )
 
     def test_add_bytes_record_split_writes(self):
-        """Write a large record which does multiple IOs"""
+        """Write a large record which does multiple IOs."""
         writes = []
         real_write = self.writer.write_func
 
@@ -439,8 +439,7 @@ class TestBytesRecordReader(tests.TestCase):
                 pass
             else:
                 self.fail(
-                    "UnexpectedEndOfContainerError not raised when parsing %r"
-                    % (incomplete_record,)
+                    "UnexpectedEndOfContainerError not raised when parsing {!r}".format(incomplete_record)
                 )
 
     def test_initial_eof(self):

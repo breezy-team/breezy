@@ -200,7 +200,7 @@ class MemoryTransport(transport.Transport):
         return result
 
     def rename(self, rel_from, rel_to):
-        """Rename a file or directory; fail if the destination exists"""
+        """Rename a file or directory; fail if the destination exists."""
         abs_from = self._resolve_symlinks(rel_from)
         abs_to = self._resolve_symlinks(rel_to)
 
@@ -295,7 +295,7 @@ class MemoryTransport(transport.Transport):
             if i == "..":
                 if not r:
                     raise ValueError(
-                        "illegal relpath %r under %r" % (relpath, self._cwd)
+                        "illegal relpath {!r} under {!r}".format(relpath, self._cwd)
                     )
                 r = r[:-1]
             elif i == "." or i == "":
@@ -336,7 +336,7 @@ class MemoryServer(transport.Server):
         self._files = {}
         self._symlinks = {}
         self._locks = {}
-        self._scheme = "memory+%s:///" % id(self)
+        self._scheme = "memory+{}:///".format(id(self))
 
         def memory_factory(url):
             from . import memory

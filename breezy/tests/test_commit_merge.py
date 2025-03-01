@@ -56,7 +56,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wty.commit("merge from x", rev_id=b"y@u-0-2", allow_pointless=False)
 
         self.assertEqual(by.revno(), 3)
-        graph = wty.branch.repository.get_graph()
+        wty.branch.repository.get_graph()
         self.addCleanup(wty.lock_read().unlock)
         self.assertThat(by, RevisionHistoryMatches([base_rev, b"y@u-0-1", b"y@u-0-2"]))
         rev = by.repository.get_revision(b"y@u-0-2")
@@ -65,7 +65,7 @@ class TestCommitMerge(TestCaseWithTransport):
     def test_merge_new_file(self):
         """Commit merge of two trees with no overlapping files."""
         wtx = self.make_branch_and_tree("x")
-        base_rev = wtx.commit("common parent")
+        wtx.commit("common parent")
         bx = wtx.branch
         wtx.commit("establish root id")
         wty = wtx.controldir.sprout("y").open_workingtree()

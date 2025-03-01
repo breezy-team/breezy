@@ -90,7 +90,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertPathExists("target/subtree")
 
     def test_file_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree("source")
         target = self.make_branch_and_tree("target")
         self.build_tree(["source/file", "target/file"])
@@ -115,7 +115,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], target2.conflicts())
 
     def test_symlink_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         source = self.make_branch_and_tree("source")
         os.symlink("foo", "source/symlink")
@@ -142,7 +142,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], target.conflicts())
 
     def test_directory_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree("source")
         target = self.make_branch_and_tree("target")
         self.build_tree(["source/dir1/", "source/dir1/file", "target/dir1/"])
@@ -190,7 +190,7 @@ class TestBuildTree(TestCaseWithTransport):
         )
 
     def test_mixed_conflict_handling(self):
-        """Ensure that when building trees, conflict handling is done"""
+        """Ensure that when building trees, conflict handling is done."""
         source = self.make_branch_and_tree("source")
         target = self.make_branch_and_tree("target")
         self.build_tree(["source/name", "target/name/"])
@@ -236,7 +236,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual(2, transform_result.rename_count)
 
     def create_ab_tree(self):
-        """Create a committed test tree with two files"""
+        """Create a committed test tree with two files."""
         source = self.make_branch_and_tree("source")
         self.build_tree_contents([("source/file1", b"A")])
         self.build_tree_contents([("source/file2", b"B")])

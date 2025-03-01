@@ -144,7 +144,7 @@ class FakeNFSServer(DecoratorServer):
 
 
 class FakeVFATServer(DecoratorServer):
-    """A server that suggests connections through FakeVFATTransportDecorator
+    """A server that suggests connections through FakeVFATTransportDecorator.
 
     For use in testing.
     """
@@ -359,9 +359,7 @@ class TestingTCPServerMixin:
                 errno.ENOTCONN,
                 errno.EPIPE,
             ]
-        if isinstance(e, socket.error) and e.errno in accepted_errnos:
-            return True
-        return False
+        return bool(isinstance(e, socket.error) and e.errno in accepted_errnos)
 
     # The following methods are called by the main thread
 
@@ -487,12 +485,12 @@ class TestingThreadingTCPServer(TestingTCPServerMixin, socketserver.ThreadingTCP
 
     def set_ignored_exceptions(self, thread, ignored_exceptions):
         TestingTCPServerMixin.set_ignored_exceptions(self, thread, ignored_exceptions)
-        for sock, addr, connection_thread in self.clients:
+        for _sock, _addr, connection_thread in self.clients:
             if connection_thread is not None:
                 connection_thread.set_ignored_exceptions(self.ignored_exceptions)
 
     def _pending_exception(self, thread):
-        for sock, addr, connection_thread in self.clients:
+        for _sock, _addr, connection_thread in self.clients:
             if connection_thread is not None:
                 connection_thread.pending_exception()
         TestingTCPServerMixin._pending_exception(self, thread)
@@ -640,7 +638,7 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
             self.run_server_stopped_hooks()
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return "bzr://%s:%d/" % self.server_address
 
 
@@ -711,7 +709,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
-        """Return a URL which will fail to connect"""
+        """Return a URL which will fail to connect."""
         return "bzr://127.0.0.1:1/"
 
 

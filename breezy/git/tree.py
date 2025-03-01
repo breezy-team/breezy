@@ -130,9 +130,9 @@ class GitTreeFile(_mod_tree.TreeFile):
 
     def __repr__(self):
         return (
-            "%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, "
-            "git_sha1=%r, executable=%r)"
-        ) % (
+            "{}(file_id={!r}, name={!r}, parent_id={!r}, text_size={!r}, "
+            "git_sha1={!r}, executable={!r})"
+        ).format(
             type(self).__name__,
             self.file_id,
             self.name,
@@ -219,7 +219,7 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         return "tree-reference"
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, reference_revision=%r)") % (
+        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})").format(
             type(self).__name__,
             self.file_id,
             self.name,
@@ -288,7 +288,9 @@ class GitTree(_mod_tree.Tree):
 
         return GitTransformPreview(self, pb=pb)
 
-    def find_related_paths_across_trees(self, paths, trees=[], require_versioned=True):
+    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
+        if trees is None:
+            trees = []
         if paths is None:
             return None
 
@@ -642,7 +644,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                     substore = store
                 if stat.S_ISDIR(mode):
                     if specific_files is None or any(
-                        [p for p in specific_files if p.startswith(child_path)]
+                        p for p in specific_files if p.startswith(child_path)
                     ):
                         extradirs.append(
                             (
@@ -945,12 +947,12 @@ def tree_delta_from_git_changes(
             ret.unchanged.append(change)
 
     implicit_dirs = {b""}
-    for path, kind, sha in added:
+    for path, kind, _sha in added:
         if kind == "directory" or path in target_extras:
             continue
         implicit_dirs.update(osutils.parent_directories(path))
 
-    for path, kind, sha in added:
+    for path, kind, _sha in added:
         if kind == "directory" and path not in implicit_dirs:
             continue
         path_decoded = decode_git_path(path)
@@ -1137,10 +1139,12 @@ class InterGitTrees(_mod_tree.InterTree):
         include_unchanged=False,
         specific_files=None,
         pb=None,
-        extra_trees=[],
+        extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
     ):
+        if extra_trees is None:
+            extra_trees = []
         with self.lock_read():
             changes, source_extras, target_extras = self._iter_git_changes(
                 want_unchanged=include_unchanged,
@@ -1205,7 +1209,7 @@ class InterGitTrees(_mod_tree.InterTree):
         paths = set(paths)
         ret = {}
         changes = self._iter_git_changes(specific_files=paths, include_trees=False)[0]
-        for change_type, old, new in changes:
+        for _change_type, old, new in changes:
             if old[0] is None:
                 continue
             oldpath = decode_git_path(old[0])
@@ -1226,7 +1230,7 @@ class InterGitTrees(_mod_tree.InterTree):
         paths = set(paths)
         ret = {}
         changes = self._iter_git_changes(specific_files=paths, include_trees=False)[0]
-        for change_type, old, new in changes:
+        for _change_type, old, new in changes:
             if new[0] is None:
                 continue
             newpath = decode_git_path(new[0])
@@ -1328,14 +1332,14 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
         if kinds is None:
             kinds = [None] * len(files)
-        elif not len(kinds) == len(files):
+        elif len(kinds) != len(files):
             raise AssertionError()
         with self.lock_tree_write():
             for f in files:
                 # generic constraint checks:
                 if self.is_control_filename(f):
                     raise errors.ForbiddenControlFileError(filename=f)
-                fp = osutils.splitpath(f)
+                osutils.splitpath(f)
             # fill out file kinds for all files [not needed when we stop
             # caring about the instantaneous file kind within a uncommmitted tree
             #
@@ -1388,7 +1392,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = True
 
     def _apply_index_changes(self, changes):
-        for path, kind, executability, reference_revision, symlink_target in changes:
+        for path, kind, _executability, reference_revision, symlink_target in changes:
             if kind is None or kind == "directory":
                 (index, subpath) = self._lookup_index(encode_git_path(path))
                 try:
@@ -1457,7 +1461,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 stat_val = os.stat_result((S_IFGITLINK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
             stat_val = os.stat_result((S_IFGITLINK,) + stat_val[1:])
         else:
-            raise AssertionError("unknown kind '%s'" % kind)
+            raise AssertionError("unknown kind '{}'".format(kind))
         # Add an entry to the index or update the existing entry
         ensure_normalized_path(path)
         encoded_path = encode_git_path(path)
@@ -1633,7 +1637,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def update_basis_by_delta(self, revid, delta):
         # TODO(jelmer): This shouldn't be called, it's inventory specific.
-        for old_path, new_path, file_id, ie in delta:
+        for old_path, new_path, _file_id, ie in delta:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(encode_git_path(old_path))
                 if old_subpath in index:
@@ -1688,10 +1692,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 kind = self.kind(to_rel)
             else:
                 try:
-                    to_kind = self.kind(to_rel)
+                    self.kind(to_rel)
                 except _mod_transport.NoSuchFile:
                     exc_type = errors.BzrRenameFailedError
-                    to_kind = None
                 else:
                     exc_type = errors.BzrMoveFailedError
                 if self.is_versioned(to_rel):

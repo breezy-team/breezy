@@ -291,7 +291,7 @@ class GCCHKPacker(Packer):
                 def handle_leaf_node(node):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
-                    for file_id, bytes in node.iteritems(None):
+                    for _file_id, bytes in node.iteritems(None):
                         self._text_refs.add(chk_map._bytes_to_text_key(bytes))
 
                 def next_stream():
@@ -308,7 +308,6 @@ class GCCHKPacker(Packer):
                         node = chk_map._deserialise(
                             bytes, record.key, search_key_func=None
                         )
-                        common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
                             handle_internal_node(node)
                         elif parse_leaf_nodes:
@@ -443,8 +442,7 @@ class GCCHKPacker(Packer):
             if really_missing:
                 missing_inventories = sorted(really_missing)
                 raise ValueError(
-                    "We are missing inventories for revisions: %s"
-                    % (missing_inventories,)
+                    "We are missing inventories for revisions: {}".format(missing_inventories)
                 )
         self._copy_stream(
             source_vf,
@@ -717,9 +715,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 )
                 if chk_inv.id_to_entry.key() != canonical_inv.id_to_entry.key():
                     trace.mutter(
-                        "Non-canonical CHK map for id_to_entry of inv: %s "
-                        "(root is %s, should be %s)"
-                        % (
+                        "Non-canonical CHK map for id_to_entry of inv: {} "
+                        "(root is {}, should be {})".format(
                             chk_inv.revision_id,
                             chk_inv.id_to_entry.key()[0],
                             canonical_inv.id_to_entry.key()[0],
@@ -732,8 +729,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if p_id_map.key() != canon_p_id_map.key():
                     trace.mutter(
                         "Non-canonical CHK map for parent_id_to_basename of "
-                        "inv: %s (root is %s, should be %s)"
-                        % (
+                        "inv: {} (root is {}, should be {})".format(
                             chk_inv.revision_id,
                             p_id_map.key()[0],
                             canon_p_id_map.key()[0],
@@ -789,8 +785,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
             problems.append(
-                "inventories missing for revisions %s"
-                % (sorted(missing_corresponding),)
+                "inventories missing for revisions {}".format(sorted(missing_corresponding))
             )
             return problems
         # Are any chk root entries missing for any inventories?  This includes
@@ -804,7 +799,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             no_fallback_inv_index.get_parent_map(all_inv_keys)
         )
         parent_invs_only_keys = all_inv_keys.symmetric_difference(corresponding_invs)
-        all_missing = set()
         inv_ids = [key[-1] for key in all_inv_keys]
         parent_invs_only_ids = [key[-1] for key in parent_invs_only_keys]
         root_key_info = _build_interesting_key_sets(
@@ -817,9 +811,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_chk_roots = expected_chk_roots.difference(present_chk_roots)
         if missing_chk_roots:
             problems.append(
-                "missing referenced chk root keys: %s."
+                "missing referenced chk root keys: {}."
                 "Run 'brz reconcile --canonicalize-chks' on the affected "
-                "repository." % (sorted(missing_chk_roots),)
+                "repository.".format(sorted(missing_chk_roots))
             )
             # Don't bother checking any further.
             return problems
@@ -834,7 +828,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         )
         text_keys = set()
         try:
-            for record in _filter_text_keys(
+            for _record in _filter_text_keys(
                 chk_diff, text_keys, chk_map._bytes_to_text_key
             ):
                 pass
@@ -847,7 +841,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             root_key_info.uninteresting_pid_root_keys,
         )
         try:
-            for interesting_rec, interesting_map in chk_diff:
+            for _interesting_rec, _interesting_map in chk_diff:
                 pass
         except errors.NoSuchRevision:
             problems.append(
@@ -856,7 +850,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
-            problems.append("missing text keys: %r" % (sorted(missing_text_keys),))
+            problems.append("missing text keys: {!r}".format(sorted(missing_text_keys)))
         return problems
 
 
@@ -985,13 +979,13 @@ class CHKInventoryRepository(PackRepository):
         for old_path, new_path, file_id, entry in delta:
             if old_path is not None:
                 raise ValueError(
-                    "Invalid delta, somebody tried to delete %r"
-                    " from the NULL_REVISION" % ((old_path, file_id),)
+                    "Invalid delta, somebody tried to delete {!r}"
+                    " from the NULL_REVISION".format((old_path, file_id))
                 )
             if new_path is None:
                 raise ValueError(
                     "Invalid delta, delta from NULL_REVISION has"
-                    " no new_path %r" % (file_id,)
+                    " no new_path {!r}".format(file_id)
                 )
             if new_path == "":
                 new_inv.root_id = file_id
@@ -1115,7 +1109,7 @@ class CHKInventoryRepository(PackRepository):
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)
-        present_inventory_keys = {k for k in parent_map}
+        present_inventory_keys = set(parent_map)
         return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -1148,10 +1142,10 @@ class CHKInventoryRepository(PackRepository):
             interesting_root_keys = root_key_info.interesting_root_keys
             uninteresting_root_keys = root_key_info.uninteresting_root_keys
             chk_bytes = self.chk_bytes
-            for record, items in chk_map.iter_interesting_nodes(
+            for _record, items in chk_map.iter_interesting_nodes(
                 chk_bytes, interesting_root_keys, uninteresting_root_keys, pb=pb
             ):
-                for name, bytes in items:
+                for _name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
                     # TODO: consider interning file_id, revision_id here, or
                     #       pushing that intern() into bytes_to_info()
@@ -1177,7 +1171,7 @@ class CHKInventoryRepository(PackRepository):
         # examinations/direct tree traversal. Note that that will require care
         # as a common node is reachable both from the inventory that added it,
         # and others afterwards.
-        revision_keys = self.revisions.keys()
+        self.revisions.keys()
         result = {}
         rich_roots = self.supports_rich_root()
         with ui.ui_factory.nested_progress_bar() as pb:
@@ -1343,7 +1337,7 @@ class GroupCHKStreamSource(StreamSource):
         yield "chk_bytes", _filter_id_to_entry()
 
         def _get_parent_id_basename_to_file_id_pages():
-            for record, items in chk_map.iter_interesting_nodes(
+            for record, _items in chk_map.iter_interesting_nodes(
                 chk_bytes, self._chk_p_id_roots, uninteresting_pid_root_keys
             ):
                 if record is not None:
@@ -1410,7 +1404,7 @@ class GroupCHKStreamSource(StreamSource):
             if key[0] != "inventories":
                 raise AssertionError(
                     "The only missing keys we should"
-                    " be filling in are inventory keys, not %s" % (key[0],)
+                    " be filling in are inventory keys, not {}".format(key[0])
                 )
             missing_inventory_keys.add(key[1:])
         if self._chk_id_roots or self._chk_p_id_roots:

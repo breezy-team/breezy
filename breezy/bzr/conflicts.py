@@ -41,7 +41,7 @@ CONFLICT_SUFFIXES = (".THIS", ".BASE", ".OTHER")
 
 
 class Conflict(BaseConflict):
-    """Base class for all types of conflict"""
+    """Base class for all types of conflict."""
 
     # FIXME: cleanup should take care of that ? -- vila 091229
     has_files = False
@@ -112,7 +112,7 @@ class Conflict(BaseConflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, "action_%s" % action, None)
+        meth = getattr(self, "action_{}".format(action), None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + "." + action)
         meth(tree)
@@ -139,14 +139,14 @@ class Conflict(BaseConflict):
 class ConflictList(BaseConflictList):
     @staticmethod
     def from_stanzas(stanzas):
-        """Produce a new ConflictList from an iterable of stanzas"""
+        """Produce a new ConflictList from an iterable of stanzas."""
         conflicts = ConflictList()
         for stanza in stanzas:
             conflicts.append(Conflict.factory(**stanza.as_dict()))
         return conflicts
 
     def to_stanzas(self):
-        """Generator of stanzas"""
+        """Generator of stanzas."""
         for conflict in self:
             yield conflict.as_stanza()
 
@@ -197,14 +197,14 @@ class ConflictList(BaseConflictList):
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print("{} does not exist".format(path))
                 else:
-                    print("%s is not conflicted" % path)
+                    print("{} is not conflicted".format(path))
         return new_conflicts, selected_conflicts
 
 
 class PathConflict(Conflict):
-    """A conflict was encountered merging file paths"""
+    """A conflict was encountered merging file paths."""
 
     typestring = "path conflict"
 
@@ -311,7 +311,7 @@ class PathConflict(Conflict):
 
 
 class ContentsConflict(PathConflict):
-    """The files are of different types (or both binary), or not present"""
+    """The files are of different types (or both binary), or not present."""
 
     has_files = True
 
@@ -573,7 +573,7 @@ class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
     Typically, the result of a merge where THIS deleted the directory and
     the OTHER added a file to it.
-    See also: DeletingParent (same situation, THIS and OTHER reversed)
+    See also: DeletingParent (same situation, THIS and OTHER reversed).
     """
 
     typestring = "missing parent"
@@ -643,7 +643,7 @@ ctype = {}
 
 
 def register_types(*conflict_types):
-    """Register a Conflict subclass for serialization purposes"""
+    """Register a Conflict subclass for serialization purposes."""
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type

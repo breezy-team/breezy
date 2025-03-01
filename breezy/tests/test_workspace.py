@@ -115,15 +115,15 @@ Arch: all
 
 def vary_by_inotify():
     return [
-        ("with_inotify", dict(_use_inotify=True)),
-        ("without_inotify", dict(_use_inotify=False)),
+        ("with_inotify", {"_use_inotify": True}),
+        ("without_inotify", {"_use_inotify": False}),
     ]
 
 
 def vary_by_format():
     return [
-        ("bzr", dict(_format="bzr")),
-        ("git", dict(_format="git")),
+        ("bzr", {"_format": "bzr"}),
+        ("git", {"_format": "git"}),
     ]
 
 

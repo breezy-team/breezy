@@ -14,14 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.remove'"""
+"""Tests for interface conformance of 'WorkingTree.remove'."""
 
 from breezy import ignores, osutils
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestRemove(TestCaseWithWorkingTree):
-    """Tests WorkingTree.remove"""
+    """Tests WorkingTree.remove."""
 
     files = ["a", "b/", "b/c", "d/"]
     rfiles = ["b/c", "b", "a", "d"]
@@ -155,7 +155,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_unknown_files(self):
-        """Unknown files shuld be backed up"""
+        """Unknown files shuld be backed up."""
         tree = self.get_tree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)

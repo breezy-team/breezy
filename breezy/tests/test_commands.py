@@ -36,7 +36,7 @@ class TestCommands(tests.TestCase):
         self.assertLength(0, commands_without_help)
 
     def test_display_command(self):
-        """EPIPE message is selectively suppressed"""
+        """EPIPE message is selectively suppressed."""
 
         def pipe_thrower():
             raise OSError(errno.EPIPE, "Bogus pipe error")
@@ -214,7 +214,7 @@ class TestRegisterLazy(tests.TestCase):
         self.assertIsInstance(cmd_obj, cmd_fake)
 
     def test_register_lazy(self):
-        """Ensure lazy registration works"""
+        """Ensure lazy registration works."""
         commands.plugin_cmds.register_lazy("cmd_fake", [], "breezy.tests.fake_command")
         self.addCleanup(self.remove_fake)
         self.assertFalse(lazy_command_imported)
@@ -375,7 +375,7 @@ class TestGetMissingCommandHook(tests.TestCase):
         # looking up help topics.
         self.hook_missing()
         topic = commands.HelpCommandIndex()
-        topics = topic.get_topics("foo")
+        topic.get_topics("foo")
         self.assertEqual([], self.hook_calls)
 
 
@@ -394,7 +394,7 @@ class TestListCommandHook(tests.TestCase):
             "list_commands", list_my_commands, None
         )
         # Get a command, which should not trigger the hook.
-        cmd = commands.get_cmd_object("info")
+        commands.get_cmd_object("info")
         self.assertEqual([], hook_calls)
         # Get all command classes (for docs and shell completion).
         cmds = list(commands.all_command_names())
@@ -449,7 +449,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         self.assertEqual(["run", "post"], hook_calls)
 
     def test_pre_command_error(self):
-        """Ensure an CommandError in pre_command aborts the command"""
+        """Ensure an CommandError in pre_command aborts the command."""
         hook_calls = []
 
         def pre_command(cmd):

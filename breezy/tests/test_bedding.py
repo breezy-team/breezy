@@ -184,7 +184,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
 
 
 class TestDefaultMailDomain(tests.TestCaseInTempDir):
-    """Test retrieving default domain from mailname file"""
+    """Test retrieving default domain from mailname file."""
 
     def test_default_mail_domain_simple(self):
         with open("simple", "w") as f:

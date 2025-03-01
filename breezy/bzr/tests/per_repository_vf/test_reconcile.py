@@ -315,7 +315,6 @@ class TestsNeedingReweave(TestReconcile):
                 except errors.RevisionNotPresent:
                     raise TestSkipped("text ghost parents not supported")
                 if repo.supports_rich_root():
-                    root_id = inv.root.file_id
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision), [], [])
             finally:
                 repo.commit_write_group()

@@ -98,7 +98,7 @@ def unescape_file_id(file_id):
             elif file_id[i + 1 : i + 2] == b"c":
                 ret.append(b"\x0c"[0])
             else:
-                raise ValueError("unknown escape character %s" % file_id[i + 1 : i + 2])
+                raise ValueError("unknown escape character {}".format(file_id[i + 1 : i + 2]))
             i += 1
         i += 1
     return bytes(ret)
@@ -218,7 +218,7 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return ""
         else:
-            return "\ngit-svn-id: %s\n" % git_svn_id.encode(encoding)
+            return "\ngit-svn-id: {}\n".format(git_svn_id.encode(encoding))
 
     def _generate_hg_message_tail(self, rev):
         extra = {}
@@ -281,7 +281,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return message.encode(encoding)
 
     def export_commit(self, rev, tree_sha, parent_lookup, lossy, verifiers):
-        """Turn a Bazaar revision in to a Git commit
+        """Turn a Bazaar revision in to a Git commit.
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
@@ -309,7 +309,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 if len(git_p) != 40:
-                    raise AssertionError("unexpected length for %r" % git_p)
+                    raise AssertionError("unexpected length for {!r}".format(git_p))
                 parents.append(git_p)
         commit.parents = parents
         try:
@@ -576,7 +576,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         rev, roundtrip_revid, verifiers = super().import_commit(
             commit, lookup_parent_revid, strict
         )
-        rev.properties["converted_revision"] = "git %s\n" % commit.id
+        rev.properties["converted_revision"] = "git {}\n".format(commit.id)
         return rev, roundtrip_revid, verifiers
 
 
@@ -612,7 +612,7 @@ mapping_registry.set_default(b"git-v1")
 
 
 class ForeignGit(ForeignVcs):
-    """The Git Stupid Content Tracker"""
+    """The Git Stupid Content Tracker."""
 
     @property
     def branch_format(self):

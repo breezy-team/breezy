@@ -126,8 +126,8 @@ class BEncodeRevisionSerializer1:
             var_name, expected_type, validator = schema[key]
             if value.__class__ is not expected_type:
                 raise ValueError(
-                    "key %s did not conform to the expected type"
-                    " %s, but was %s" % (key, expected_type, type(value))
+                    "key {} did not conform to the expected type"
+                    " {}, but was {}".format(key, expected_type, type(value))
                 )
             if validator is not None:
                 value = validator(value)
@@ -137,7 +137,7 @@ class BEncodeRevisionSerializer1:
                 key for key, (var_name, _, _) in schema.items() if var_name not in bits
             ]
             raise ValueError(
-                "Revision text was missing expected keys %s. text %r" % (missing, text)
+                "Revision text was missing expected keys {}. text {!r}".format(missing, text)
             )
         del bits[None]  # Get rid of 'format' since it doesn't get mapped
         rev = _mod_revision.Revision(**bits)
@@ -162,7 +162,7 @@ class CHKSerializer(serializer.Serializer):
     def _unpack_inventory(
         self, elt, revision_id=None, entry_cache=None, return_from_cache=False
     ):
-        """Construct from XML Element"""
+        """Construct from XML Element."""
         inv = xml_serializer.unpack_inventory_flat(
             elt,
             self.format_num,

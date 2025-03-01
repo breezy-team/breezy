@@ -41,8 +41,7 @@ from .features import UnicodeFilenameFeature
 
 
 def import_tar_broken(tree, tar_input):
-    """Import a tarfile with names that that end in //, e.g. Feisty Python 2.5
-    """
+    """Import a tarfile with names that that end in //, e.g. Feisty Python 2.5."""
     tar_file = tarfile.open("lala", "r", tar_input)
     for member in tar_file.members:
         if member.name.endswith("/"):

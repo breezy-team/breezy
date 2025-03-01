@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for lock-breaking user interface"""
+"""Tests for lock-breaking user interface."""
 
 from breezy import branch, config, controldir, errors, osutils, tests
 from breezy.tests.script import run_script
@@ -68,7 +68,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.assertEqual("", err)
 
     def test_break_lock_no_interaction(self):
-        """With --force, the user isn't asked for confirmation"""
+        """With --force, the user isn't asked for confirmation."""
         self.master_branch.lock_write()
         run_script(
             self,
@@ -119,7 +119,7 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
 
     def test_break_lock(self):
         self.run_bzr(
-            "break-lock --config %s" % osutils.dirname(self.config_file_name),
+            "break-lock --config {}".format(osutils.dirname(self.config_file_name)),
             stdin="y\n",
         )
         self.assertRaises(errors.LockBroken, self.config.unlock)

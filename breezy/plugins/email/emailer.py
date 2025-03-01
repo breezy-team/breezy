@@ -54,7 +54,7 @@ class EmailSender:
             "url": self.url(),
         }
         for name, value in fields.items():
-            text = text.replace("$%s" % name, value)
+            text = text.replace("${}".format(name), value)
         return text
 
     def body(self):
@@ -76,7 +76,7 @@ class EmailSender:
 
         _body = self.config.get("post_commit_body")
         if _body is None:
-            _body = "At %s\n\n" % self.url()
+            _body = "At {}\n\n".format(self.url())
         outf.write(self._format(_body))
 
         log_format = self.config.get("post_commit_log_format")
@@ -160,7 +160,7 @@ class EmailSender:
         return self.config.get("post_commit_to")
 
     def url(self):
-        """What URL to display in the subject of the mail"""
+        """What URL to display in the subject of the mail."""
         url = self.config.get("post_commit_url")
         if url is None:
             url = self.config.get("public_branch")

@@ -35,7 +35,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
     def test_destroy_colocated_branch(self):
         branch = self.make_branch("branch")
         bzrdir = branch.controldir
-        colo_branch = self.create_branch(bzrdir, "colo")
+        self.create_branch(bzrdir, "colo")
         try:
             bzrdir.destroy_branch("colo")
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
@@ -183,7 +183,7 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
 
     def test_branch_names(self):
         repo = self.make_repository("branch-1")
-        target_branch = self.create_branch(repo.controldir, name="foo")
+        self.create_branch(repo.controldir, name="foo")
         self.assertIn("foo", repo.controldir.branch_names())
 
     def test_branch_name_with_slash(self):

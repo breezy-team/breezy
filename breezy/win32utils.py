@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Win32-specific helper functions"""
+"""Win32-specific helper functions."""
 
 import glob
 import os
@@ -60,7 +60,7 @@ def debug_memory_win32api(message="", short=True):
     from breezy import trace
 
     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
-        """Used by GetProcessMemoryInfo"""
+        """Used by GetProcessMemoryInfo."""
 
         _fields_ = [
             ("cb", ctypes.c_ulong),
@@ -349,7 +349,7 @@ def get_app_path(appname):
 
 
 def set_file_attr_hidden(path):
-    """Set file attributes to hidden if possible"""
+    """Set file attributes to hidden if possible."""
     from ctypes.wintypes import BOOL, DWORD, LPWSTR
 
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
@@ -406,7 +406,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 
 def _ctypes_is_local_pid_dead(pid):
-    """True if pid doesn't correspond to live process on this machine"""
+    """True if pid doesn't correspond to live process on this machine."""
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
@@ -425,7 +425,7 @@ is_local_pid_dead = _ctypes_is_local_pid_dead
 
 
 def get_fs_type(drive):
-    """Return file system type for a drive on the system.
+    r"""Return file system type for a drive on the system.
 
     Args:
       drive: Unicode string with drive including trailing backslash (e.g.

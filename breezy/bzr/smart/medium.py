@@ -144,8 +144,7 @@ class SmartMedium:
             raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
-                "_push_back called when self._push_back_buffer is %r"
-                % (self._push_back_buffer,)
+                "_push_back called when self._push_back_buffer is {!r}".format(self._push_back_buffer)
             )
         if data == b"":
             return
@@ -154,8 +153,8 @@ class SmartMedium:
     def _get_push_back_buffer(self):
         if self._push_back_buffer == b"":
             raise AssertionError(
-                "%s._push_back_buffer should never be the empty string, "
-                "which can be confused with EOF" % (self,)
+                "{}._push_back_buffer should never be the empty string, "
+                "which can be confused with EOF".format(self)
             )
         bytes = self._push_back_buffer
         self._push_back_buffer = None
@@ -309,7 +308,7 @@ class SmartServerStreamMedium(SmartMedium):
         return protocol
 
     def _wait_on_descriptor(self, fd, timeout_seconds):
-        """select() on a file descriptor, waiting for nonblocking read()
+        """select() on a file descriptor, waiting for nonblocking read().
 
         This will raise a ConnectionTimeout exception if we do not get a
         readable handle before timeout_seconds.
@@ -339,7 +338,7 @@ class SmartServerStreamMedium(SmartMedium):
         if rs or xs:
             return
         raise errors.ConnectionTimeout(
-            "disconnecting client after %.1f seconds" % (timeout_seconds,)
+            "disconnecting client after {:.1f} seconds".format(timeout_seconds)
         )
 
     def _serve_one_request(self, protocol):
@@ -464,7 +463,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._out = out_file
 
     def serve(self):
-        """See SmartServerStreamMedium.serve"""
+        """See SmartServerStreamMedium.serve."""
         # This is the regular serve, except it adds signal trapping for soft
         # shutdown.
         stop_gracefully = self._stop_gracefully
@@ -706,12 +705,12 @@ class _DebugCounter:
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = dict(count=0, vfs_count=0, medium_repr=medium_repr)
+        self.counts[medium] = {"count": 0, "vfs_count": 0, "medium_repr": medium_repr}
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
         # entry is removed by the WeakKeyDict's own callback.
-        ref = weakref.ref(medium, self.done)
+        weakref.ref(medium, self.done)
 
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
@@ -821,9 +820,8 @@ class SmartClientMedium(SmartMedium):
             )
             if "hpss" in debug.debug_flags:
                 ui.ui_factory.show_warning(
-                    "_remember_remote_is_before(%r) called, but "
-                    "_remember_remote_is_before(%r) was called previously."
-                    % (version_tuple, self._remote_version_is_before)
+                    "_remember_remote_is_before({!r}) called, but "
+                    "_remember_remote_is_before({!r}) was called previously.".format(version_tuple, self._remote_version_is_before)
                 )
             return
         self._remote_version_is_before = version_tuple
@@ -1007,11 +1005,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if self._ssh_params.port is None:
             maybe_port = ""
         else:
-            maybe_port = ":%s" % self._ssh_params.port
+            maybe_port = ":{}".format(self._ssh_params.port)
         if self._ssh_params.username is None:
             maybe_user = ""
         else:
-            maybe_user = "%s@" % self._ssh_params.username
+            maybe_user = "{}@".format(self._ssh_params.username)
         return "{}({}://{}{}{}/)".format(
             self.__class__.__name__,
             self._scheme,
@@ -1067,7 +1065,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             )
         else:
             raise AssertionError(
-                "Unexpected io_kind %r from %r" % (io_kind, self._ssh_connection)
+                "Unexpected io_kind {!r} from {!r}".format(io_kind, self._ssh_connection)
             )
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
@@ -1158,8 +1156,8 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 "failed to lookup %s:%d: %s" % (self._host, port, err_msg)
             )
         # Initialize err in case there are no addresses returned:
-        last_err = socket.error("no address found for %s" % self._host)
-        for family, socktype, proto, canonname, sockaddr in sockaddrs:
+        last_err = socket.error("no address found for {}".format(self._host))
+        for family, socktype, proto, _canonname, sockaddr in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
                 self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)

@@ -119,7 +119,7 @@ class TestInvoke(tests.TestCaseInTempDir):
             cleanup(0)
             return 0
 
-        command = "%s {result}" % os.path.basename(sys.executable)
+        command = "{} {{result}}".format(os.path.basename(sys.executable))
         retcode = mergetools.invoke(command, "test.txt", dummy_invoker)
         self.assertEqual(0, retcode)
         self.assertEqual(sys.executable, self._exe)

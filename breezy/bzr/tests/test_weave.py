@@ -19,7 +19,7 @@
 # TODO: rbc 20050108 test that join does not leave an inconsistent weave
 #       if it fails.
 
-"""test suite for weave algorithm"""
+"""test suite for weave algorithm."""
 
 from io import BytesIO
 from pprint import pformat
@@ -53,14 +53,14 @@ class TestBase(TestCase):
 
             self.log("")
             self.log("parents: %s" % (k._parents == k2._parents))
-            self.log("         %r" % k._parents)
-            self.log("         %r" % k2._parents)
+            self.log("         {!r}".format(k._parents))
+            self.log("         {!r}".format(k2._parents))
             self.log("")
             self.fail("read/write check failed")
 
 
 class WeaveContains(TestBase):
-    """Weave __contains__ operator"""
+    """Weave __contains__ operator."""
 
     def runTest(self):
         k = Weave(get_scope=lambda: None)
@@ -554,7 +554,7 @@ class ReplaceLine(TestBase):
 
 
 class Merge(TestBase):
-    """Storage of versions that merge diverged parents"""
+    """Storage of versions that merge diverged parents."""
 
     def runTest(self):
         k = Weave()
@@ -631,7 +631,7 @@ class NonConflict(TestBase):
 
 
 class Khayyam(TestBase):
-    """Test changes to multi-line texts, and read/write"""
+    """Test changes to multi-line texts, and read/write."""
 
     def test_multi_line_merge(self):
         rawtexts = [

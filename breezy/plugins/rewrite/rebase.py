@@ -229,7 +229,7 @@ def generate_simple_plan(
     # by the heads cache? RBC 20080719
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
-        assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        assert isinstance(oldparents, tuple), "not tuple: {!r}".format(oldparents)
         parents = []
         # Left parent:
         if heads_cache.heads((oldparents[0], onto_revid)) == {onto_revid}:
@@ -258,8 +258,8 @@ def generate_simple_plan(
                 continue
         parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
-        assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
-        assert isinstance(parents, tuple), "parents not tuple: %r" % parents
+        assert newrevid != oldrevid, "old and newrevid equal ({!r})".format(newrevid)
+        assert isinstance(parents, tuple), "parents not tuple: {!r}".format(parents)
         replace_map[oldrevid] = (newrevid, parents)
     return replace_map
 
@@ -319,7 +319,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 else:
                     parents = parent_map[c]
                 assert isinstance(parents, tuple), (
-                    "Expected tuple of parents, got: %r" % parents
+                    "Expected tuple of parents, got: {!r}".format(parents)
                 )
                 # replace r in parents with replace_map[r][0]
                 if replace_map[r][0] not in parents:
@@ -369,7 +369,7 @@ def rebase(repository, replace_map, revision_rewriter):
         for i, revid in enumerate(todo):
             pb.update("rebase revisions", i, len(todo))
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
+            assert isinstance(newparents, tuple), "Expected tuple for {!r}".format(newparents)
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
@@ -422,7 +422,7 @@ class CommitBuilderRevisionRewriter:
         :param new_parents: Revision ids of the new parent revisions.
         """
         assert isinstance(new_parents, tuple), (
-            "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
+            "CommitBuilderRevisionRewriter: Expected tuple for {!r}".format(new_parents)
         )
         mutter(
             "creating copy %r of %r with new parents %r",
@@ -470,7 +470,7 @@ class CommitBuilderRevisionRewriter:
             config_stack=_mod_config.GlobalStack(),
         )
         try:
-            for relpath, fs_hash in builder.record_iter_changes(
+            for _relpath, _fs_hash in builder.record_iter_changes(
                 mappedtree, new_base, iter_changes
             ):
                 pass
@@ -483,8 +483,7 @@ class CommitBuilderRevisionRewriter:
 
 class WorkingTreeRevisionRewriter:
     def __init__(self, wt, state, merge_type=None):
-        """:param wt: Working tree in which to do the replays.
-        """
+        """:param wt: Working tree in which to do the replays."""
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
         self.state = state
@@ -512,7 +511,7 @@ class WorkingTreeRevisionRewriter:
             "Changes in rev"
         )
 
-        oldtree = repository.revision_tree(oldrevid)
+        repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
@@ -520,8 +519,7 @@ class WorkingTreeRevisionRewriter:
             oldrevid, oldrev.parent_ids, newrevid, newparents
         )
         mutter(
-            "replaying %r as %r with base %r and new parents %r"
-            % (oldrevid, newrevid, base_revid, newparents)
+            "replaying {!r} as {!r} with base {!r} and new parents {!r}".format(oldrevid, newrevid, base_revid, newparents)
         )
         merger.set_base_revision(base_revid, self.wt.branch)
         merger.merge_type = merge_type
@@ -568,7 +566,7 @@ class WorkingTreeRevisionRewriter:
         :param oldrev: Revision info of new revision to commit.
         :param newrevid: New revision id.
         """
-        assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
+        assert oldrev.revision_id != newrevid, "Invalid revid {!r}".format(newrevid)
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode("utf-8")
         committer = self.wt.branch.get_config().username()

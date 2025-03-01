@@ -68,7 +68,7 @@ class TestNormalization(TestCase):
 
 
 class NormalizedFilename(TestCaseWithTransport):
-    """Test normalized_filename and associated helpers"""
+    """Test normalized_filename and associated helpers."""
 
     def test__accessible_normalized_filename(self):
         anf = osutils._accessible_normalized_filename

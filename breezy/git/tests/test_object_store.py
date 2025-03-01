@@ -158,10 +158,10 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         tree = self.branch.controldir.create_workingtree()
         self.build_tree_contents([("foo/",), ("foo/bar", b"a\nb\nc\nd\ne\n")])
         tree.add(["foo", "foo/bar"])
-        revid1 = tree.commit("commit 1")
+        tree.commit("commit 1")
         shutil.rmtree("foo")
         os.symlink("trgt", "foo")
-        revid2 = tree.commit("commit 2")
+        tree.commit("commit 2")
         # read locks cache
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
         self.store.unlock()
@@ -276,7 +276,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
 
         with tree_a.lock_write():
             tree_a.merge_from_branch(tree_b.branch)
-        rev_merge = tree_a.commit("merge")
+        tree_a.commit("merge")
 
         revtree_merge = tree_a.branch.basis_tree()
         self.addCleanup(revtree_merge.lock_read().unlock)

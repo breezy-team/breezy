@@ -82,7 +82,7 @@ class FIFOCache(dict):
         if len(self._queue) != len(self):
             raise AssertionError(
                 "The length of the queue should always equal"
-                " the length of the dict. %s != %s" % (len(self._queue), len(self))
+                " the length of the dict. {} != {}".format(len(self._queue), len(self))
             )
 
     def clear(self):
@@ -139,14 +139,14 @@ class FIFOCache(dict):
         raise NotImplementedError(self.popitem)
 
     def setdefault(self, key, defaultval=None):
-        """Similar to dict.setdefault"""
+        """Similar to dict.setdefault."""
         if key in self:
             return self[key]
         self[key] = defaultval
         return defaultval
 
     def update(self, *args, **kwargs):
-        """Similar to dict.update()"""
+        """Similar to dict.update()."""
         if len(args) == 1:
             arg = args[0]
             if isinstance(arg, dict):

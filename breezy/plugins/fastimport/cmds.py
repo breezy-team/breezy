@@ -364,7 +364,7 @@ class cmd_fast_import(Command):
             proc = info_processor.InfoProcessor(verbose=True, outf=output)
             p = parser.ImportParser(stream)
             try:
-                return_code = proc.process(p.iter_commands)
+                proc.process(p.iter_commands)
             except ParsingError as e:
                 raise CommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()

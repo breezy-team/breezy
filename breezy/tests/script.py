@@ -40,7 +40,7 @@ def split(s):
 
 
 def _script_to_commands(text, file_name=None):
-    """Turn a script into a list of commands with their associated IOs.
+    r"""Turn a script into a list of commands with their associated IOs.
 
     Each command appears on a line by itself starting with '$ '. It can be
     associated with an input that will feed it and an expected output.
@@ -71,7 +71,6 @@ def _script_to_commands(text, file_name=None):
             commands.append((cmd, input, output, error))
 
     cmd_cur = None
-    cmd_line = 1
     lineno = 0
     input, output, error = None, None, None
     text = textwrap.dedent(text)
@@ -100,7 +99,6 @@ def _script_to_commands(text, file_name=None):
             add_command(cmd_cur, input, output, error)
             # And start a new one
             cmd_cur = list(split(line[1:]))
-            cmd_line = lineno
             input, output, error = None, None, None
         elif line.startswith("<"):
             if input is None:
@@ -232,14 +230,14 @@ class ScriptRunner:
         try:
             self._check_output(output, actual_output, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + " in stdout of command %s" % cmd)
+            raise AssertionError(str(e) + " in stdout of command {}".format(cmd))
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + " in stderr of running command %s" % cmd)
+            raise AssertionError(str(e) + " in stderr of running command {}".format(cmd))
         if retcode and not error and actual_error:
             test_case.fail(
-                "In \n\t%s\nUnexpected error: %s" % (" ".join(cmd), actual_error)
+                "In \n\t{}\nUnexpected error: {}".format(" ".join(cmd), actual_error)
             )
         return retcode, actual_output, actual_error
 
@@ -250,7 +248,7 @@ class ScriptRunner:
             elif expected == "...\n":
                 return
             else:
-                test_case.fail("expected output: %r, but found nothing" % (expected,))
+                test_case.fail("expected output: {!r}, but found nothing".format(expected))
 
         null_output_matches_anything = getattr(
             self, "null_output_matches_anything", False
@@ -280,7 +278,6 @@ class ScriptRunner:
                 test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
-        new_args = []
         for arg in args:
             # Strip the simple and double quotes since we don't care about
             # them.  We leave the backquotes in place though since they have a
@@ -553,7 +550,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
 
 def run_script(test_case, script_string, null_output_matches_anything=False):
-    """Run the given script within a testcase"""
+    """Run the given script within a testcase."""
     return ScriptRunner().run_script(
         test_case,
         script_string,

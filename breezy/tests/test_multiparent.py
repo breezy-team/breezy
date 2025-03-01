@@ -258,7 +258,7 @@ class TestVersionedFile(TestCase):
         )
 
     def test_reordered(self):
-        """Check for a corner case that requires re-starting the cursor"""
+        """Check for a corner case that requires re-starting the cursor."""
         vf = multiparent.MultiMemoryVersionedFile()
         # rev-b must have at least two hunks, so split a and b with c.
         self.add_version(vf, b"c", b"rev-a", [])

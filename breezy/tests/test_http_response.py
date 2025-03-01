@@ -411,7 +411,7 @@ class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
     """Perform the same tests as TestRangeFileMultipleRanges, but uses
     an angle-bracket quoted boundary string like IIS 6.0 and 7.0
     (but not IIS 5, which breaks the RFC in a different way
-    by using square brackets, not angle brackets)
+    by using square brackets, not angle brackets).
 
     This reveals a bug caused by
 

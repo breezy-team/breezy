@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""A generator which creates a python script from the current tree info"""
+"""A generator which creates a python script from the current tree info."""
 
 import pprint
 
@@ -52,7 +52,6 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
             "clean": None,
             "date": None,
         }
-        revisions = []
 
         revision_id = self._get_revision_id()
         if revision_id == NULL_REVISION:

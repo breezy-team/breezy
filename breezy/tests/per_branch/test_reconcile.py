@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for branch implementations - test reconcile() functionality"""
+"""Tests for branch implementations - test reconcile() functionality."""
 
 from breezy import errors, reconcile
 from breezy.bzr.branch import BzrBranch
@@ -31,8 +31,8 @@ class TestBranchReconcile(TestCaseWithBranch):
         # histories, so the setup portion is customized
         tree = self.make_branch_and_tree("test")
         r1 = tree.commit("one")
-        r2 = tree.commit("two")
-        r3 = tree.commit("three")
+        tree.commit("two")
+        tree.commit("three")
         r4 = tree.commit("four")
         # create an alternate branch
         tree.set_parent_ids([r1])
@@ -84,9 +84,9 @@ class TestBranchReconcile(TestCaseWithBranch):
         if not tree.branch.repository._format.supports_ghosts:
             raise TestNotApplicable("repository format does not support ghosts")
         tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
-        r1 = tree.commit("one")
+        tree.commit("one")
         r2 = tree.commit("two")
         tree.branch.set_last_revision_info(2, r2)
 
-        reconciler = tree.branch.reconcile()
+        tree.branch.reconcile()
         self.assertEqual(r2, tree.branch.last_revision())

@@ -61,7 +61,7 @@ class Store:
         raise NotImplementedError
 
     def add(self, f, fileid):
-        """Add a file object f to the store accessible from the given fileid"""
+        """Add a file object f to the store accessible from the given fileid."""
         raise NotImplementedError(
             "Children of Store must define their method of adding entries."
         )
@@ -91,7 +91,7 @@ class TransportStore(Store):
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError(
-                "store %r already contains id %r" % (self._transport.base, fileid)
+                "store {!r} already contains id {!r}".format(self._transport.base, fileid)
             )
 
         # Most of the time, just adding the file will work
@@ -111,10 +111,10 @@ class TransportStore(Store):
                 "Fileids should be bytestrings: {} {!r}".format(type(fileid), fileid)
             )
         if b"\\" in fileid or b"/" in fileid:
-            raise ValueError("invalid store id %r" % fileid)
+            raise ValueError("invalid store id {!r}".format(fileid))
 
     def _id_to_names(self, fileid, suffix):
-        """Return the names in the expected order"""
+        """Return the names in the expected order."""
         if suffix is not None:
             fn = self._relpath(fileid, [suffix])
         else:
@@ -188,7 +188,7 @@ class TransportStore(Store):
             self._mapper = versionedfile.HashPrefixMapper()
         elif self._escaped:
             raise ValueError(
-                "%r: escaped unprefixed stores are not permitted." % (self,)
+                "{!r}: escaped unprefixed stores are not permitted.".format(self)
             )
         else:
             self._mapper = versionedfile.PrefixMapper()
@@ -204,7 +204,7 @@ class TransportStore(Store):
             if name.endswith(".gz"):
                 name = name[:-3]
             skip = False
-            for count in range(len(self._suffixes)):
+            for _count in range(len(self._suffixes)):
                 for suffix in self._suffixes:
                     if name.endswith("." + suffix):
                         skip = True
@@ -219,7 +219,7 @@ class TransportStore(Store):
         if suffixes:
             for suffix in suffixes:
                 if suffix not in self._suffixes:
-                    raise ValueError("Unregistered suffix %r" % suffix)
+                    raise ValueError("Unregistered suffix {!r}".format(suffix))
                 self._check_fileid(suffix.encode("utf-8"))
         else:
             suffixes = []
@@ -229,7 +229,7 @@ class TransportStore(Store):
 
     def __repr__(self):
         if self._transport is None:
-            return "%s(None)" % (self.__class__.__name__)
+            return "{}(None)".format(self.__class__.__name__)
         else:
             return "{}({!r})".format(self.__class__.__name__, self._transport.base)
 
@@ -247,7 +247,7 @@ class TransportStore(Store):
         self._suffixes.add(suffix)
 
     def total_size(self):
-        """Return (count, bytes)
+        """Return (count, bytes).
 
         This is the (compressed) size stored on disk, not the size of
         the content.

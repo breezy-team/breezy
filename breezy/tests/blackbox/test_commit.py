@@ -32,7 +32,7 @@ from ..test_bedding import override_whoami
 
 class TestCommit(TestCaseWithTransport):
     def test_05_empty_commit(self):
-        """Commit of tree with no versioned files should fail"""
+        """Commit of tree with no versioned files should fail."""
         # If forced, it should succeed, but this is not tested here.
         self.make_branch_and_tree(".")
         self.build_tree(["hello.txt"])
@@ -55,7 +55,7 @@ brz: ERROR: No changes to commit.\
         )
 
     def test_commit_success(self):
-        """Successful commit should not leave behind a bzr-commit-* file"""
+        """Successful commit should not leave behind a bzr-commit-* file."""
         self.make_branch_and_tree(".")
         self.run_bzr("commit --unchanged -m message")
         self.assertEqual("", self.run_bzr("unknowns")[0])
@@ -78,7 +78,7 @@ brz: ERROR: No changes to commit.\
         self.assertTrue(output.startswith("1 dummy-"))
 
     def test_commit_with_path(self):
-        """Commit tree with path of root specified"""
+        """Commit tree with path of root specified."""
         a_tree = self.make_branch_and_tree("a")
         self.build_tree(["a/a_file"])
         a_tree.add("a_file")
@@ -97,7 +97,7 @@ brz: ERROR: No changes to commit.\
         self.run_bzr(["commit", "-m", "merge into b", "b"])
 
     def test_10_verbose_commit(self):
-        """Add one file and examine verbose commit output"""
+        """Add one file and examine verbose commit output."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["hello.txt"])
         tree.add("hello.txt")
@@ -109,7 +109,7 @@ brz: ERROR: No changes to commit.\
         )
 
     def prepare_simple_history(self):
-        """Prepare and return a working tree with one commit of one file"""
+        """Prepare and return a working tree with one commit of one file."""
         # Commit with modified file should say so
         wt = ControlDir.create_standalone_workingtree(".")
         self.build_tree(["hello.txt", "extra.txt"])
@@ -119,7 +119,7 @@ brz: ERROR: No changes to commit.\
 
     def test_verbose_commit_modified(self):
         # Verbose commit of modified file should say so
-        wt = self.prepare_simple_history()
+        self.prepare_simple_history()
         self.build_tree_contents([("hello.txt", b"new contents")])
         out, err = self.run_bzr("commit -m modified")
         self.assertEqual("", out)
@@ -138,7 +138,7 @@ brz: ERROR: No changes to commit.\
         self.run_bzr(["add"])
         out, err = self.run_bzr(["commit", "-m", file_name])
         reflags = re.MULTILINE | re.DOTALL | re.UNICODE
-        te = osutils.get_terminal_encoding()
+        osutils.get_terminal_encoding()
         self.assertContainsRe(err, "The commit message is a file name:", flags=reflags)
 
         # Run same test with a filename that causes encode
@@ -155,7 +155,7 @@ brz: ERROR: No changes to commit.\
             self.run_bzr(["add"])
             out, err = self.run_bzr(["commit", "-m", file_name])
             reflags = re.MULTILINE | re.DOTALL | re.UNICODE
-            te = osutils.get_terminal_encoding()
+            osutils.get_terminal_encoding()
             self.assertContainsRe(
                 err, "The commit message is a file name:", flags=reflags
             )
@@ -184,7 +184,7 @@ brz: ERROR: No changes to commit.\
         self.assertContainsRe(err, b'(?m)not versioned: "\xfd"$')
 
     def test_warn_about_forgotten_commit_message(self):
-        """Test that the lack of -m parameter is caught"""
+        """Test that the lack of -m parameter is caught."""
         wt = self.make_branch_and_tree(".")
         self.build_tree(["one", "two"])
         wt.add(["two"])
@@ -214,7 +214,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: %s/" % osutils.getcwd(),
+                "Committing to: {}/".format(osutils.getcwd()),
                 "added subdir",
                 "renamed hello.txt => subdir/hello.txt",
                 "Committed revision 2.",
@@ -224,7 +224,7 @@ brz: ERROR: No changes to commit.\
         )
 
     def test_verbose_commit_with_unknown(self):
-        """Unknown files should not be listed by default in verbose output"""
+        """Unknown files should not be listed by default in verbose output."""
         # Is that really the best policy?
         wt = ControlDir.create_standalone_workingtree(".")
         self.build_tree(["hello.txt", "extra.txt"])
@@ -237,7 +237,7 @@ brz: ERROR: No changes to commit.\
         )
 
     def test_verbose_commit_with_unchanged(self):
-        """Unchanged files should not be listed by default in verbose output"""
+        """Unchanged files should not be listed by default in verbose output."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["hello.txt", "unchanged.txt"])
         tree.add("unchanged.txt")
@@ -251,16 +251,16 @@ brz: ERROR: No changes to commit.\
         )
 
     def test_verbose_commit_includes_master_location(self):
-        """Location of master is displayed when committing to bound branch"""
+        """Location of master is displayed when committing to bound branch."""
         a_tree = self.make_branch_and_tree("a")
         self.build_tree(["a/b"])
         a_tree.add("b")
         a_tree.commit(message="Initial message")
 
-        b_tree = a_tree.branch.create_checkout("b")
+        a_tree.branch.create_checkout("b")
         expected = "{}/".format(osutils.abspath("a"))
         out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
-        self.assertEqual(err, "Committing to: %s\nCommitted revision 2.\n" % expected)
+        self.assertEqual(err, "Committing to: {}\nCommitted revision 2.\n".format(expected))
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line
@@ -336,7 +336,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: %s/" % osutils.pathjoin(osutils.getcwd(), "this"),
+                "Committing to: {}/".format(osutils.pathjoin(osutils.getcwd(), "this")),
                 "modified filetomodify",
                 "added newdir",
                 "added newfile",
@@ -361,7 +361,7 @@ brz: ERROR: No changes to commit.\
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
-        outer_tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         inner_tree = self.make_branch_and_tree("branch")
         self.build_tree_contents(
             [("branch/foo.c", b"int main() {}"), ("branch/bar.c", b"int main() {}")]
@@ -381,7 +381,7 @@ brz: ERROR: No changes to commit.\
         # of date checkout
         tree = self.make_branch_and_tree("branch")
         # make a checkout
-        checkout = tree.branch.create_checkout("checkout", lightweight=True)
+        tree.branch.create_checkout("checkout", lightweight=True)
         # commit to the original branch to make the checkout out of date
         tree.commit("message branch", allow_pointless=True)
         # now commit to the checkout should emit
@@ -420,7 +420,7 @@ brz: ERROR: No changes to commit.\
         u1.add("hosts")
         self.run_bzr("commit -m add-hosts u1")
 
-        u2 = trunk.branch.create_checkout("u2")
+        trunk.branch.create_checkout("u2")
         self.build_tree_contents([("u2/hosts", b"altered in u2\n")])
         self.run_bzr("commit -m checkin-from-u2 u2")
 
@@ -480,7 +480,7 @@ altered in u2
         self.assertEqual("", err)
 
     def test_commit_respects_spec_for_removals(self):
-        """Commit with a file spec should only commit removals that match"""
+        """Commit with a file spec should only commit removals that match."""
         t = self.make_branch_and_tree(".")
         self.build_tree(["file-a", "dir-a/", "dir-a/file-b"])
         t.add(["file-a", "dir-a", "dir-a/file-b"])
@@ -492,7 +492,7 @@ altered in u2
         self.assertContainsRe(result, "removed:\n  file-a")
 
     def test_strict_commit(self):
-        """Commit with --strict works if everything is known"""
+        """Commit with --strict works if everything is known."""
         ignores._set_user_ignores([])
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
@@ -501,7 +501,7 @@ altered in u2
         self.run_bzr("commit --strict -m adding-a", working_dir="tree")
 
     def test_strict_commit_no_changes(self):
-        """Commit --strict gives "no changes" if there is nothing to commit"""
+        """Commit --strict gives "no changes" if there is nothing to commit."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
         tree.add("a")
@@ -519,7 +519,7 @@ altered in u2
         self.run_bzr("commit --strict --unchanged -m no-changes", working_dir="tree")
 
     def test_strict_commit_unknown(self):
-        """Commit --strict fails if a file is unknown"""
+        """Commit --strict fails if a file is unknown."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
         tree.add("a")
@@ -662,7 +662,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         self.run_bzr_error(
-            ["Unrecognized bug %s. Commit refused." % "xxx:123"],
+            ["Unrecognized bug {}. Commit refused.".format("xxx:123")],
             "commit -m add-b --fixes=xxx:123",
             working_dir="tree",
         )

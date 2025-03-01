@@ -30,7 +30,7 @@ _serializer_handles_escaping = hasattr(
 def copy_inventory(inv):
     entries = inv.iter_entries_by_dir()
     inv = inventory.Inventory(None, inv.revision_id)
-    for path, inv_entry in entries:
+    for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
 
@@ -218,7 +218,7 @@ class CommitHandler(processor.CommitHandler):
 
             # Try the other inventories
             if len(self.parents) > 1:
-                for inv in self.parent_invs[1:]:
+                for _inv in self.parent_invs[1:]:
                     id = self.basis_inventory.path2id(path)
                     if id is not None:
                         return id, False
@@ -245,7 +245,7 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("%s not in utf8 - replacing unknown characters" % (field,))
+            self.warning("{} not in utf8 - replacing unknown characters".format(field))
             return value.decode("utf-8", "replace")
 
     def _decode_path(self, path):
@@ -254,13 +254,13 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("path %r not in utf8 - replacing unknown characters" % (path,))
+            self.warning("path {!r} not in utf8 - replacing unknown characters".format(path))
             return path.decode("utf-8", "replace")
 
     def _format_name_email(self, section, name, email):
         """Format name & email as a string."""
-        name = self._utf8_decode("%s name" % section, name)
-        email = self._utf8_decode("%s email" % section, email)
+        name = self._utf8_decode("{} name".format(section), name)
+        email = self._utf8_decode("{} email".format(section), email)
 
         if email:
             return "{} <{}>".format(name, email)
@@ -315,7 +315,7 @@ class CommitHandler(processor.CommitHandler):
             for name, value in props.items():
                 if value is None:
                     self.warning(
-                        "converting None to empty string for property %s" % (name,)
+                        "converting None to empty string for property {}".format(name)
                     )
                     result[name] = ""
                 else:
@@ -349,7 +349,7 @@ class CommitHandler(processor.CommitHandler):
             # We don't warn about directories because it's fine for them
             # to be created already by a previous rename
             if kind != "directory":
-                self.warning("%s already added in this commit - ignoring" % (path,))
+                self.warning("{} already added in this commit - ignoring".format(path))
             return
 
         # Create the new InventoryEntry
@@ -375,7 +375,7 @@ class CommitHandler(processor.CommitHandler):
             self.data_for_commit[file_id] = b""
         else:
             self.warning(
-                "Cannot import items of kind '%s' yet - ignoring '%s'" % (kind, path)
+                "Cannot import items of kind '{}' yet - ignoring '{}'".format(kind, path)
             )
             return
         # Record it
@@ -386,10 +386,9 @@ class CommitHandler(processor.CommitHandler):
                 self.record_new(path, ie)
             except:
                 print(
-                    "failed to add path '%s' with entry '%s' in command %s"
-                    % (path, ie, self.command.id)
+                    "failed to add path '{}' with entry '{}' in command {}".format(path, ie, self.command.id)
                 )
-                print("parent's children are:\n%r\n" % (ie.parent_id.children,))
+                print("parent's children are:\n{!r}\n".format(ie.parent_id.children))
                 raise
         else:
             if old_ie.kind == "directory":
@@ -397,7 +396,7 @@ class CommitHandler(processor.CommitHandler):
             self.record_changed(path, ie, parent_id)
 
     def _ensure_directory(self, path, inv):
-        """Ensure that the containing directory exists for 'path'"""
+        """Ensure that the containing directory exists for 'path'."""
         dirname, basename = osutils.split(path)
         if dirname == "":
             # the root node doesn't get updated
@@ -520,8 +519,7 @@ class CommitHandler(processor.CommitHandler):
         file_id = inv.path2id(old_path)
         if file_id is None:
             self.warning(
-                "ignoring rename of %s to %s - old path does not exist"
-                % (old_path, new_path)
+                "ignoring rename of {} to {} - old path does not exist".format(old_path, new_path)
             )
             return
         ie = inv.get_entry(file_id)
@@ -630,7 +628,7 @@ class CommitHandler(processor.CommitHandler):
                 new_inv.apply_delta(delta)
             except errors.InconsistentDelta:
                 self.mutter(
-                    "INCONSISTENT DELTA IS:\n%s" % "\n".join([str(de) for de in delta])
+                    "INCONSISTENT DELTA IS:\n{}".format("\n".join([str(de) for de in delta]))
                 )
                 raise
         return new_inv
@@ -666,7 +664,7 @@ class CommitHandler(processor.CommitHandler):
             del self._delta_entries_by_fileid[file_id]
             parent_dir = osutils.dirname(existing[1])
             self.mutter(
-                "cancelling add of %s with parent %s" % (existing[1], parent_dir)
+                "cancelling add of {} with parent {}".format(existing[1], parent_dir)
             )
             if parent_dir:
                 self._dirs_that_might_become_empty.add(parent_dir)

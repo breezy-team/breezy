@@ -68,7 +68,7 @@ class EmailMessage:
         self._headers["To"] = ", ".join(to_addresses)
         self._headers["From"] = self.address_to_encoded_header(from_address)
         self._headers["Subject"] = Header(safe_unicode(subject))
-        self._headers["User-Agent"] = "Bazaar (%s)" % _breezy_version
+        self._headers["User-Agent"] = "Bazaar ({})".format(_breezy_version)
 
     def add_inline_attachment(self, body, filename=None, mime_subtype="plain"):
         """Add an inline attachment to the message.
@@ -115,7 +115,7 @@ class EmailMessage:
 
                 if filename is not None:
                     content_type = payload["Content-Type"]
-                    content_type += '; name="%s"' % filename
+                    content_type += '; name="{}"'.format(filename)
                     payload.replace_header("Content-Type", content_type)
 
                 payload["Content-Disposition"] = "inline"
@@ -188,7 +188,7 @@ class EmailMessage:
 
     @staticmethod
     def string_with_encoding(string_):
-        """Return a str object together with an encoding.
+        r"""Return a str object together with an encoding.
 
         :param string\\_: A str or unicode object.
         :return: A tuple (str, encoding), where encoding is one of 'ascii',

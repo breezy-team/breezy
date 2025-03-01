@@ -487,7 +487,7 @@ class MergeSorter:
             scheduled_nodes_append=scheduled_nodes.append,
             revno_to_branch_count=self._revno_to_branch_count,
         ):
-            """Pop the top node off the stack
+            """Pop the top node off the stack.
 
             The node is appended to the sorted output.
             """
@@ -653,7 +653,7 @@ class MergeSorter:
         self._first_child_stack.append(first_child)
 
     def _pop_node(self):
-        """Pop the top node off the stack
+        """Pop the top node off the stack.
 
         The node is appended to the sorted output.
         """

@@ -168,13 +168,13 @@ def mirror_scenarios(base_scenarios):
     scenarios = []
     for common, (lname, ldict), (rname, rdict) in base_scenarios:
         a = tests.multiply_scenarios(
-            [(lname, dict(_this=ldict))], [(rname, dict(_other=rdict))]
+            [(lname, {"_this": ldict})], [(rname, {"_other": rdict})]
         )
         b = tests.multiply_scenarios(
-            [(rname, dict(_this=rdict))], [(lname, dict(_other=ldict))]
+            [(rname, {"_this": rdict})], [(lname, {"_other": ldict})]
         )
         # Inject the common parameters in all scenarios
-        for name, d in a + b:
+        for _name, d in a + b:
             d.update(common)
         scenarios.extend(a + b)
     return scenarios
@@ -291,10 +291,10 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.builder = builder
 
     def _get_actions(self, name):
-        return getattr(self, "do_%s" % name)
+        return getattr(self, "do_{}".format(name))
 
     def _get_check(self, name):
-        return getattr(self, "check_%s" % name)
+        return getattr(self, "check_{}".format(name))
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
@@ -346,36 +346,36 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
         [
             # File modified on both sides
             (
-                dict(_base_actions="create_file", _path="file", _file_id=b"file-id"),
+                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
                 (
                     "filed_modified_A",
-                    dict(actions="modify_file_A", check="file_has_content_A"),
+                    {"actions": "modify_file_A", "check": "file_has_content_A"},
                 ),
                 (
                     "file_modified_B",
-                    dict(actions="modify_file_B", check="file_has_content_B"),
+                    {"actions": "modify_file_B", "check": "file_has_content_B"},
                 ),
             ),
             # File modified on both sides in dir
             (
-                dict(
-                    _base_actions="create_file_in_dir",
-                    _path="dir/file",
-                    _file_id=b"file-id",
-                ),
+                {
+                    "_base_actions": "create_file_in_dir",
+                    "_path": "dir/file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "filed_modified_A_in_dir",
-                    dict(
-                        actions="modify_file_A_in_dir",
-                        check="file_in_dir_has_content_A",
-                    ),
+                    {
+                        "actions": "modify_file_A_in_dir",
+                        "check": "file_in_dir_has_content_A",
+                    },
                 ),
                 (
                     "file_modified_B",
-                    dict(
-                        actions="modify_file_B_in_dir",
-                        check="file_in_dir_has_content_B",
-                    ),
+                    {
+                        "actions": "modify_file_B_in_dir",
+                        "check": "file_in_dir_has_content_B",
+                    },
                 ),
             ),
         ]
@@ -439,52 +439,52 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         [
             # File modified/deleted
             (
-                dict(_base_actions="create_file", _path="file", _file_id=b"file-id"),
+                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
                 (
                     "file_modified",
-                    dict(actions="modify_file", check="file_has_more_content"),
+                    {"actions": "modify_file", "check": "file_has_more_content"},
                 ),
                 (
                     "file_deleted",
-                    dict(actions="delete_file", check="file_doesnt_exist"),
+                    {"actions": "delete_file", "check": "file_doesnt_exist"},
                 ),
             ),
             # File renamed-modified/deleted
             (
-                dict(
-                    _base_actions="create_file", _path="new-file", _file_id=b"file-id"
-                ),
+                {
+                    "_base_actions": "create_file", "_path": "new-file", "_file_id": b"file-id"
+                },
                 (
                     "file_renamed_and_modified",
-                    dict(
-                        actions="modify_and_rename_file",
-                        check="file_renamed_and_more_content",
-                    ),
+                    {
+                        "actions": "modify_and_rename_file",
+                        "check": "file_renamed_and_more_content",
+                    },
                 ),
                 (
                     "file_deleted",
-                    dict(actions="delete_file", check="file_doesnt_exist"),
+                    {"actions": "delete_file", "check": "file_doesnt_exist"},
                 ),
             ),
             # File modified/deleted in dir
             (
-                dict(
-                    _base_actions="create_file_in_dir",
-                    _path="dir/file",
-                    _file_id=b"file-id",
-                ),
+                {
+                    "_base_actions": "create_file_in_dir",
+                    "_path": "dir/file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "file_modified_in_dir",
-                    dict(
-                        actions="modify_file_in_dir",
-                        check="file_in_dir_has_more_content",
-                    ),
+                    {
+                        "actions": "modify_file_in_dir",
+                        "check": "file_in_dir_has_more_content",
+                    },
                 ),
                 (
                     "file_deleted_in_dir",
-                    dict(
-                        actions="delete_file_in_dir", check="file_in_dir_doesnt_exist"
-                    ),
+                    {
+                        "actions": "delete_file_in_dir", "check": "file_in_dir_doesnt_exist"
+                    },
                 ),
             ),
         ]
@@ -555,118 +555,118 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         [
             # File renamed/deleted
             (
-                dict(_base_actions="create_file"),
+                {"_base_actions": "create_file"},
                 (
                     "file_renamed",
-                    dict(
-                        actions="rename_file",
-                        check="file_renamed",
-                        path="new-file",
-                        file_id=b"file-id",
-                    ),
+                    {
+                        "actions": "rename_file",
+                        "check": "file_renamed",
+                        "path": "new-file",
+                        "file_id": b"file-id",
+                    },
                 ),
                 (
                     "file_deleted",
-                    dict(
-                        actions="delete_file",
-                        check="file_doesnt_exist",
+                    {
+                        "actions": "delete_file",
+                        "check": "file_doesnt_exist",
                         # PathConflicts deletion handling requires a special
                         # hard-coded value
-                        path="<deleted>",
-                        file_id=b"file-id",
-                    ),
+                        "path": "<deleted>",
+                        "file_id": b"file-id",
+                    },
                 ),
             ),
             # File renamed/deleted in dir
             (
-                dict(_base_actions="create_file_in_dir"),
+                {"_base_actions": "create_file_in_dir"},
                 (
                     "file_renamed_in_dir",
-                    dict(
-                        actions="rename_file_in_dir",
-                        check="file_in_dir_renamed",
-                        path="dir/new-file",
-                        file_id=b"file-id",
-                    ),
+                    {
+                        "actions": "rename_file_in_dir",
+                        "check": "file_in_dir_renamed",
+                        "path": "dir/new-file",
+                        "file_id": b"file-id",
+                    },
                 ),
                 (
                     "file_deleted",
-                    dict(
-                        actions="delete_file_in_dir",
-                        check="file_in_dir_doesnt_exist",
+                    {
+                        "actions": "delete_file_in_dir",
+                        "check": "file_in_dir_doesnt_exist",
                         # PathConflicts deletion handling requires a special
                         # hard-coded value
-                        path="<deleted>",
-                        file_id=b"file-id",
-                    ),
+                        "path": "<deleted>",
+                        "file_id": b"file-id",
+                    },
                 ),
             ),
             # File renamed/renamed differently
             (
-                dict(_base_actions="create_file"),
+                {"_base_actions": "create_file"},
                 (
                     "file_renamed",
-                    dict(
-                        actions="rename_file",
-                        check="file_renamed",
-                        path="new-file",
-                        file_id=b"file-id",
-                    ),
+                    {
+                        "actions": "rename_file",
+                        "check": "file_renamed",
+                        "path": "new-file",
+                        "file_id": b"file-id",
+                    },
                 ),
                 (
                     "file_renamed2",
-                    dict(
-                        actions="rename_file2",
-                        check="file_renamed2",
-                        path="new-file2",
-                        file_id=b"file-id",
-                    ),
+                    {
+                        "actions": "rename_file2",
+                        "check": "file_renamed2",
+                        "path": "new-file2",
+                        "file_id": b"file-id",
+                    },
                 ),
             ),
             # Dir renamed/deleted
             (
-                dict(_base_actions="create_dir"),
+                {"_base_actions": "create_dir"},
                 (
                     "dir_renamed",
-                    dict(
-                        actions="rename_dir",
-                        check="dir_renamed",
-                        path="new-dir",
-                        file_id=b"dir-id",
-                    ),
+                    {
+                        "actions": "rename_dir",
+                        "check": "dir_renamed",
+                        "path": "new-dir",
+                        "file_id": b"dir-id",
+                    },
                 ),
                 (
                     "dir_deleted",
-                    dict(
-                        actions="delete_dir",
-                        check="dir_doesnt_exist",
+                    {
+                        "actions": "delete_dir",
+                        "check": "dir_doesnt_exist",
                         # PathConflicts deletion handling requires a special
                         # hard-coded value
-                        path="<deleted>",
-                        file_id=b"dir-id",
-                    ),
+                        "path": "<deleted>",
+                        "file_id": b"dir-id",
+                    },
                 ),
             ),
             # Dir renamed/renamed differently
             (
-                dict(_base_actions="create_dir"),
+                {"_base_actions": "create_dir"},
                 (
                     "dir_renamed",
-                    dict(
-                        actions="rename_dir",
-                        check="dir_renamed",
-                        path="new-dir",
-                        file_id=b"dir-id",
-                    ),
+                    {
+                        "actions": "rename_dir",
+                        "check": "dir_renamed",
+                        "path": "new-dir",
+                        "file_id": b"dir-id",
+                    },
                 ),
                 (
                     "dir_renamed2",
-                    dict(
-                        actions="rename_dir2",
-                        check="dir_renamed2",
-                        path="new-dir2",
-                        file_id=b"dir-id",
-                    ),
+                    {
+                        "actions": "rename_dir2",
+                        "check": "dir_renamed2",
+                        "path": "new-dir2",
+                        "file_id": b"dir-id",
+                    },
                 ),
             ),
         ]
@@ -777,46 +777,46 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
         [
             # File created with different file-ids
             (
-                dict(_base_actions="nothing"),
+                {"_base_actions": "nothing"},
                 (
                     "filea_created",
-                    dict(
-                        actions="create_file_a",
-                        check="file_content_a",
-                        path="file",
-                        file_id=b"file-a-id",
-                    ),
+                    {
+                        "actions": "create_file_a",
+                        "check": "file_content_a",
+                        "path": "file",
+                        "file_id": b"file-a-id",
+                    },
                 ),
                 (
                     "fileb_created",
-                    dict(
-                        actions="create_file_b",
-                        check="file_content_b",
-                        path="file",
-                        file_id=b"file-b-id",
-                    ),
+                    {
+                        "actions": "create_file_b",
+                        "check": "file_content_b",
+                        "path": "file",
+                        "file_id": b"file-b-id",
+                    },
                 ),
             ),
             # File created with different file-ids but deleted on one side
             (
-                dict(_base_actions="create_file_a"),
+                {"_base_actions": "create_file_a"},
                 (
                     "filea_replaced",
-                    dict(
-                        actions="replace_file_a_by_b",
-                        check="file_content_b",
-                        path="file",
-                        file_id=b"file-b-id",
-                    ),
+                    {
+                        "actions": "replace_file_a_by_b",
+                        "check": "file_content_b",
+                        "path": "file",
+                        "file_id": b"file-b-id",
+                    },
                 ),
                 (
                     "filea_modified",
-                    dict(
-                        actions="modify_file_a",
-                        check="file_new_content",
-                        path="file",
-                        file_id=b"file-a-id",
-                    ),
+                    {
+                        "actions": "modify_file_a",
+                        "check": "file_new_content",
+                        "path": "file",
+                        "file_id": b"file-a-id",
+                    },
                 ),
             ),
         ]
@@ -856,7 +856,7 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
         tpath = self._this["path"]
         tfile_id = self._this["file_id"]
         opath = self._other["path"]
-        ofile_id = self._other["file_id"]
+        self._other["file_id"]
         self.assertEqual(tpath, opath)  # Sanity check
         self.assertEqual(tfile_id, c.file_id)
         self.assertEqual(tpath + ".moved", c.path)
@@ -1052,50 +1052,50 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         [
             # Dirs moved into each other
             (
-                dict(_base_actions="create_dir1_dir2"),
+                {"_base_actions": "create_dir1_dir2"},
                 (
                     "dir1_into_dir2",
-                    dict(
-                        actions="move_dir1_into_dir2",
-                        check="dir1_moved",
-                        dir_id=b"dir1-id",
-                        target_id=b"dir2-id",
-                        xfail=False,
-                    ),
+                    {
+                        "actions": "move_dir1_into_dir2",
+                        "check": "dir1_moved",
+                        "dir_id": b"dir1-id",
+                        "target_id": b"dir2-id",
+                        "xfail": False,
+                    },
                 ),
                 (
                     "dir2_into_dir1",
-                    dict(
-                        actions="move_dir2_into_dir1",
-                        check="dir2_moved",
-                        dir_id=b"dir2-id",
-                        target_id=b"dir1-id",
-                        xfail=False,
-                    ),
+                    {
+                        "actions": "move_dir2_into_dir1",
+                        "check": "dir2_moved",
+                        "dir_id": b"dir2-id",
+                        "target_id": b"dir1-id",
+                        "xfail": False,
+                    },
                 ),
             ),
             # Subdirs moved into each other
             (
-                dict(_base_actions="create_dir1_4"),
+                {"_base_actions": "create_dir1_4"},
                 (
                     "dir1_into_dir4",
-                    dict(
-                        actions="move_dir1_into_dir4",
-                        check="dir1_2_moved",
-                        dir_id=b"dir1-id",
-                        target_id=b"dir4-id",
-                        xfail=True,
-                    ),
+                    {
+                        "actions": "move_dir1_into_dir4",
+                        "check": "dir1_2_moved",
+                        "dir_id": b"dir1-id",
+                        "target_id": b"dir4-id",
+                        "xfail": True,
+                    },
                 ),
                 (
                     "dir3_into_dir2",
-                    dict(
-                        actions="move_dir3_into_dir2",
-                        check="dir3_4_moved",
-                        dir_id=b"dir3-id",
-                        target_id=b"dir2-id",
-                        xfail=True,
-                    ),
+                    {
+                        "actions": "move_dir3_into_dir2",
+                        "check": "dir3_4_moved",
+                        "dir_id": b"dir3-id",
+                        "target_id": b"dir2-id",
+                        "xfail": True,
+                    },
                 ),
             ),
         ]

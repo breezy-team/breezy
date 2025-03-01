@@ -166,7 +166,7 @@ $ brz resolve --take-other
 
 class TestResolveAuto(tests.TestCaseWithTransport):
     def test_auto_resolve(self):
-        """Text conflicts can be resolved automatically"""
+        """Text conflicts can be resolved automatically."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree_contents([("tree/file", b"<<<<<<<\na\n=======\n>>>>>>>\n")])
         tree.add("file", ids=b"file_id")

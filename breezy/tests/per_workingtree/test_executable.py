@@ -27,7 +27,6 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.a_id = b"a-20051208024829-849e76f7968d7a86"
         self.b_id = b"b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree("b1")
-        b = wt.branch
         tt = wt.transform()
         tt.new_file("a", tt.root, [b"a test\n"], self.a_id, True)
         tt.new_file("b", tt.root, [b"b test\n"], self.b_id, False)
@@ -36,7 +35,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.wt = wt
 
     def check_exist(self, tree):
-        """Just check that both files have the right executable bits set"""
+        """Just check that both files have the right executable bits set."""
         tree.lock_read()
         self.assertTrue(tree.is_executable("a"), "'a' lost the execute bit")
         self.assertFalse(tree.is_executable("b"), "'b' gained an execute bit")
@@ -46,7 +45,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         """Check that the files are truly missing
         :param ignore_inv: If you just delete files from a working tree
                 the inventory still shows them, so don't assert that
-                the inventory is empty, just that the tree doesn't have them
+                the inventory is empty, just that the tree doesn't have them.
         """
         with tree.lock_read():
             if not ignore_inv and getattr(tree, "root_inventory", None):
@@ -58,7 +57,7 @@ class TestExecutable(TestCaseWithWorkingTree):
             self.assertFalse(tree.has_filename("b"))
 
     def commit_and_branch(self):
-        """Commit the current tree, and create a second tree"""
+        """Commit the current tree, and create a second tree."""
         r1 = self.wt.commit("adding a,b")
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
@@ -69,7 +68,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         return wt2, r1
 
     def test_01_is_executable(self):
-        """Make sure that the tree was created and has the executable bit set"""
+        """Make sure that the tree was created and has the executable bit set."""
         self.check_exist(self.wt)
 
     def test_02_stays_executable(self):
@@ -78,14 +77,14 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
     def test_03_after_commit(self):
-        """Commit the change, and check the history"""
+        """Commit the change, and check the history."""
         r1 = self.wt.commit("adding a,b")
 
         rev_tree = self.wt.branch.repository.revision_tree(r1)
         self.check_exist(rev_tree)
 
     def test_04_after_removed(self):
-        """Make sure reverting removed files brings them back correctly"""
+        """Make sure reverting removed files brings them back correctly."""
         r1 = self.wt.commit("adding a,b")
 
         # Make sure the entries are gone
@@ -102,14 +101,14 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
     def test_05_removed_and_committed(self):
-        """Check that reverting to an earlier commit restores them"""
+        """Check that reverting to an earlier commit restores them."""
         r1 = self.wt.commit("adding a,b")
 
         # Now remove them again, and make sure that after a
         # commit, they are still marked correctly
         os.remove("b1/a")
         os.remove("b1/b")
-        r2 = self.wt.commit("removed")
+        self.wt.commit("removed")
 
         self.check_empty(self.wt)
 
@@ -120,14 +119,14 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
     def test_06_branch(self):
-        """Branch b1=>b2 should preserve the executable bits"""
+        """Branch b1=>b2 should preserve the executable bits."""
         # TODO: Maybe this should be a blackbox test
         wt2, r1 = self.commit_and_branch()
 
         self.check_exist(wt2)
 
     def test_07_pull(self):
-        """Test that pull will handle bits correctly"""
+        """Test that pull will handle bits correctly."""
         wt2, r1 = self.commit_and_branch()
 
         os.remove("b1/a")
@@ -157,7 +156,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(wt2)
 
     def test_08_no_op_revert(self):
-        """Just do a simple revert without anything changed
+        """Just do a simple revert without anything changed.
 
         The bits shouldn't swap.
         """

@@ -27,7 +27,7 @@ from .features import OsFifoFeature
 
 
 def verify_status(tester, tree, value):
-    """Verify the output of show_tree_status"""
+    """Verify the output of show_tree_status."""
     tof = StringIO()
     show_tree_status(tree, to_file=tof)
     tof.seek(0)
@@ -36,11 +36,10 @@ def verify_status(tester, tree, value):
 
 class TestBadFiles(TestCaseWithTransport):
     def test_bad_files(self):
-        """Test that bzr will ignore files it doesn't like"""
+        """Test that bzr will ignore files it doesn't like."""
         self.requireFeature(OsFifoFeature)
 
         wt = self.make_branch_and_tree(".")
-        b = wt.branch
 
         files = ["one", "two", "three"]
         file_ids = [b"one-id", b"two-id", b"three-id"]

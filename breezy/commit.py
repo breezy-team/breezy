@@ -618,7 +618,7 @@ class Commit:
             hooks = post_commit.split(" ")
             # this would be nicer with twisted.python.reflect.namedAny
             for hook in hooks:
-                result = eval(
+                eval(
                     hook + "(branch, rev_id)",
                     {"branch": self.branch, "breezy": breezy, "rev_id": self.rev_id},
                 )
@@ -654,7 +654,7 @@ class Commit:
             # the user) this is still showing progress, not showing overall
             # actions - its up to each plugin to show a UI if it want's to
             # (such as 'Emailing diff to foo@example.com').
-            self.pb_stage_name = "Running %s hooks [%s]" % (
+            self.pb_stage_name = "Running {} hooks [{}]".format(
                 hook_name,
                 Branch.hooks.get_hook_name(hook),
             )
@@ -728,8 +728,8 @@ class Commit:
                     and not self.work_tree.supports_symlinks()
                 ):
                     trace.warning(
-                        'Ignoring "%s" as symlinks are not '
-                        "supported on this filesystem." % (change.path[0],)
+                        'Ignoring "{}" as symlinks are not '
+                        "supported on this filesystem.".format(change.path[0])
                     )
                     continue
                 deleted_paths.append(change.path[1])
@@ -767,7 +767,7 @@ class Commit:
         # selected_files).
         if self.strict:
             # raise an exception as soon as we find a single unknown.
-            for unknown in self.work_tree.unknowns():
+            for _unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):

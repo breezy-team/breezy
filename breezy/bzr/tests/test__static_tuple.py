@@ -56,8 +56,8 @@ class TestStaticTuple(tests.TestCase):
             self.assertEqual(count, sys.getrefcount(obj) - 2)
 
     def test_create(self):
-        k = self.module.StaticTuple("foo")
-        k = self.module.StaticTuple("foo", "bar")
+        self.module.StaticTuple("foo")
+        self.module.StaticTuple("foo", "bar")
 
     def test_create_bad_args(self):
         args_256 = ["a"] * 256
@@ -201,11 +201,11 @@ class TestStaticTuple(tests.TestCase):
         self.assertFalse(k1 > k2)
 
     def test_holds_None(self):
-        k1 = self.module.StaticTuple(None)
+        self.module.StaticTuple(None)
         # You cannot subclass None anyway
 
     def test_holds_int(self):
-        k1 = self.module.StaticTuple(1)
+        self.module.StaticTuple(1)
 
         class subint(int):
             pass
@@ -214,7 +214,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
     def test_holds_float(self):
-        k1 = self.module.StaticTuple(1.2)
+        self.module.StaticTuple(1.2)
 
         class subfloat(float):
             pass
@@ -222,7 +222,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
 
     def test_holds_bytes(self):
-        k1 = self.module.StaticTuple(b"astring")
+        self.module.StaticTuple(b"astring")
 
         class substr(bytes):
             pass
@@ -230,7 +230,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, substr(b"a"))
 
     def test_holds_unicode(self):
-        k1 = self.module.StaticTuple("\xb5")
+        self.module.StaticTuple("\xb5")
 
         class subunicode(str):
             pass
@@ -238,8 +238,8 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError, self.module.StaticTuple, subunicode("\xb5"))
 
     def test_hold_bool(self):
-        k1 = self.module.StaticTuple(True)
-        k2 = self.module.StaticTuple(False)
+        self.module.StaticTuple(True)
+        self.module.StaticTuple(False)
         # Cannot subclass bool
 
     def test_compare_same_obj(self):
@@ -254,8 +254,8 @@ class TestStaticTuple(tests.TestCase):
         k1 = self.module.StaticTuple("foo", "bar")
         k2 = self.module.StaticTuple("foo", "bar")
         self.assertCompareEqual(k1, k2)
-        k3 = self.module.StaticTuple(k1, k2)
-        k4 = self.module.StaticTuple(k2, k1)
+        self.module.StaticTuple(k1, k2)
+        self.module.StaticTuple(k2, k1)
         self.assertCompareEqual(k1, k2)
         k5 = self.module.StaticTuple("foo", 1, None, "\xb5", 1.2, 2**65, True, k1)
         k6 = self.module.StaticTuple("foo", 1, None, "\xb5", 1.2, 2**65, True, k1)

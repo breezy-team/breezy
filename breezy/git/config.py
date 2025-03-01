@@ -20,7 +20,7 @@ from .. import config
 
 
 class GitBranchConfig(config.BranchConfig):
-    """BranchConfig that uses locations.conf in place of branch.conf"""
+    """BranchConfig that uses locations.conf in place of branch.conf."""
 
     def __init__(self, branch):
         super().__init__(branch)
@@ -33,7 +33,7 @@ class GitBranchConfig(config.BranchConfig):
     def set_user_option(
         self, name, value, store=config.STORE_BRANCH, warn_masked=False
     ):
-        """Force local to True"""
+        """Force local to True."""
         config.BranchConfig.set_user_option(
             self, name, value, store=config.STORE_LOCATION, warn_masked=warn_masked
         )
@@ -44,7 +44,7 @@ class GitBranchConfig(config.BranchConfig):
 
 
 class GitConfigSectionDefault(config.Section):
-    """The "default" config section in git config file"""
+    """The "default" config section in git config file."""
 
     id = None
 

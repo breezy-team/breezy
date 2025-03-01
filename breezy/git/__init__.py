@@ -132,7 +132,7 @@ class LocalGitProber(Prober):
 
 def user_agent_for_github():
     # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-    return "git/Breezy/%s" % breezy_version
+    return "git/Breezy/{}".format(breezy_version)
 
 
 def is_github_url(url):
@@ -158,7 +158,6 @@ class RemoteGitProber(Prober):
         url = urlutils.URL.from_string(base_url)
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        host = url.host
         url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         headers = {
             "Content-Type": "application/x-git-upload-pack-request",

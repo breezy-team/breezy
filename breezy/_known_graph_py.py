@@ -159,9 +159,8 @@ class KnownGraph:
                     return  # Identical content
                 else:
                     raise ValueError(
-                        "Parent key mismatch, existing node %s"
-                        " has parents of %s not %s"
-                        % (key, existing_parent_keys, parent_keys)
+                        "Parent key mismatch, existing node {}"
+                        " has parents of {} not {}".format(key, existing_parent_keys, parent_keys)
                     )
         else:
             node = _KnownGraphNode(key, parent_keys)
@@ -353,7 +352,7 @@ class KnownGraph:
         ]
 
     def get_parent_keys(self, key):
-        """Get the parents for a key
+        """Get the parents for a key.
 
         Returns a list containg the parents keys. If the key is a ghost,
         None is returned. A KeyError will be raised if the key is not in
@@ -365,7 +364,7 @@ class KnownGraph:
         return self._nodes[key].parent_keys
 
     def get_child_keys(self, key):
-        """Get the children for a key
+        """Get the children for a key.
 
         Returns a list containg the children keys. A KeyError will be raised
         if the key is not in the graph.

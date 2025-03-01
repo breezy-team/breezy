@@ -62,7 +62,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.run_bzr("unbind", retcode=3, working_dir="child")
 
     def test_bind_branch6(self):
-        branch1 = self.make_branch("branch1", format="dirstate-tags")
+        self.make_branch("branch1", format="dirstate-tags")
         error = self.run_bzr("bind", retcode=3, working_dir="branch1")[1]
         self.assertEndsWith(
             error, "No location supplied and no previous location known\n"
@@ -198,8 +198,6 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_bind_diverged(self):
         base_tree, child_tree = self.create_branches()
-        base_branch = base_tree.branch
-        child_branch = child_tree.branch
 
         self.run_bzr("unbind", working_dir="child")
 
@@ -351,12 +349,11 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         self.check_revno(4, "base")
 
     def test_bind_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree("base")
         self.build_tree(["base/a", "base/b"])
         tree.add("a", ids=b"b")
         tree.commit(message="init")
-        branch = tree.branch
         tree.controldir.sprout("child")
         self.run_bzr("bind --directory=child base")
         d = controldir.ControlDir.open("child")

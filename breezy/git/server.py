@@ -70,7 +70,7 @@ class BzrBackendRepo(BackendRepo):
     def find_missing_objects(
         self, determine_wants, graph_walker, progress, get_tagged=None
     ):
-        """Yield git objects to send to client"""
+        """Yield git objects to send to client."""
         with self.object_store.lock_read():
             wants = determine_wants(self.get_refs())
             have = self.object_store.find_common_revisions(graph_walker)

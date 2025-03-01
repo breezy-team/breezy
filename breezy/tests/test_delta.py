@@ -34,7 +34,7 @@ class InstrumentedReporter:
 
 
 class TestReportChanges(tests.TestCase):
-    """Test the new change reporting infrastructure"""
+    """Test the new change reporting infrastructure."""
 
     def assertReport(
         self,
@@ -287,7 +287,7 @@ class TestReportChanges(tests.TestCase):
         self.assertEqual(kind, output[6])
 
     def test_report_changes(self):
-        """Test change detection of report_changes"""
+        """Test change detection of report_changes."""
         # Ensure no changes are detected by default
         self.assertChangesEqual(
             modified="unchanged",
@@ -366,7 +366,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         return to_file.getvalue()
 
     def test_kind_change(self):
-        """Doing a status when a file has changed kind should work"""
+        """Doing a status when a file has changed kind should work."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["filename"])
         tree.add("filename", ids=b"file-id")

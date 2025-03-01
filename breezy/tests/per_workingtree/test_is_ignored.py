@@ -140,7 +140,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
 
         bedding.ensure_config_dir_exists()
-        user_ignore_file = bedding.user_ignore_config_path()
+        bedding.user_ignore_config_path()
         self._set_user_ignore_content(
             b"*.py[co]\n"
             b"./.shelf\n"

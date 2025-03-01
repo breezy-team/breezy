@@ -52,7 +52,7 @@ def create_bundle_file(test_case):
 
 
 class TestReadMergeableBundleFromURL(TestTransportImplementation):
-    """Test that read_bundle works properly across multiple transports"""
+    """Test that read_bundle works properly across multiple transports."""
 
     scenarios = transport_test_permutations()
 

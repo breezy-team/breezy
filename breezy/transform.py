@@ -203,7 +203,7 @@ class TreeTransform:
         raise NotImplementedError(self.finalize)
 
     def create_path(self, name, parent):
-        """Assign a transaction id to a new path"""
+        """Assign a transaction id to a new path."""
         trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
@@ -230,7 +230,7 @@ class TreeTransform:
         raise NotImplementedError(self.adjust_root_path)
 
     def fixup_new_roots(self):
-        """Reinterpret requests to change the root directory
+        """Reinterpret requests to change the root directory.
 
         Instead of creating a root directory, or moving an existing directory,
         all the attributes and children of the new root are applied to the
@@ -243,8 +243,8 @@ class TreeTransform:
         raise NotImplementedError(self.fixup_new_roots)
 
     def assign_id(self):
-        """Produce a new tranform id"""
-        new_id = "new-%s" % self._id_number
+        """Produce a new tranform id."""
+        new_id = "new-{}".format(self._id_number)
         self._id_number += 1
         return new_id
 
@@ -264,23 +264,23 @@ class TreeTransform:
         return self.trans_id_tree_path(os.path.dirname(path))
 
     def delete_contents(self, trans_id):
-        """Schedule the contents of a path entry for deletion"""
+        """Schedule the contents of a path entry for deletion."""
         kind = self.tree_kind(trans_id)
         if kind is not None:
             self._removed_contents.add(trans_id)
 
     def cancel_deletion(self, trans_id):
-        """Cancel a scheduled deletion"""
+        """Cancel a scheduled deletion."""
         self._removed_contents.remove(trans_id)
 
     def delete_versioned(self, trans_id):
-        """Delete and unversion a versioned file"""
+        """Delete and unversion a versioned file."""
         self.delete_contents(trans_id)
         self.unversion_file(trans_id)
 
     def set_executability(self, executability, trans_id):
         """Schedule setting of the 'execute' bit
-        To unschedule, set to None
+        To unschedule, set to None.
         """
         if executability is None:
             del self._new_executability[trans_id]
@@ -288,7 +288,7 @@ class TreeTransform:
             unique_add(self._new_executability, trans_id, executability)
 
     def set_tree_reference(self, revision_id, trans_id):
-        """Set the reference associated with a directory"""
+        """Set the reference associated with a directory."""
         unique_add(self._new_reference_revision, trans_id, revision_id)
 
     def version_file(self, trans_id, file_id=None):
@@ -296,11 +296,11 @@ class TreeTransform:
         raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):
-        """Undo a previous versioning of a file"""
+        """Undo a previous versioning of a file."""
         raise NotImplementedError(self.cancel_versioning)
 
     def unversion_file(self, trans_id):
-        """Schedule a path entry to become unversioned"""
+        """Schedule a path entry to become unversioned."""
         self._removed_id.add(trans_id)
 
     def new_paths(self, filesystem_only=False):
@@ -362,7 +362,7 @@ class TreeTransform:
         return trans_id in self._new_contents
 
     def find_raw_conflicts(self):
-        """Find any violations of inventory or filesystem invariants"""
+        """Find any violations of inventory or filesystem invariants."""
         raise NotImplementedError(self.find_raw_conflicts)
 
     def new_file(
@@ -500,7 +500,7 @@ class TreeTransform:
         raise NotImplementedError(self.create_tree_reference)
 
     def create_hardlink(self, path, trans_id):
-        """Schedule creation of a hard link"""
+        """Schedule creation of a hard link."""
         raise NotImplementedError(self.create_hardlink)
 
     def cancel_creation(self, trans_id):
@@ -554,8 +554,7 @@ def move_orphan(tt, orphan_id, parent_id):
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
     trace.warning(
-        "%s has been orphaned in %s"
-        % (joinpath(parent_path, actual_name), orphan_dir_basename)
+        "{} has been orphaned in {}".format(joinpath(parent_path, actual_name), orphan_dir_basename)
     )
 
 
@@ -590,7 +589,7 @@ opt_transform_orphan = _mod_config.RegistryOption(
 
 
 def joinpath(parent, child):
-    """Join tree-relative paths, handling the tree root specially"""
+    """Join tree-relative paths, handling the tree root specially."""
     if parent is None or parent == "":
         return child
     else:
@@ -620,7 +619,7 @@ class FinalPaths:
             return pathjoin(self.get_path(parent_id), name)
 
     def get_path(self, trans_id):
-        """Find the final path associated with a trans_id"""
+        """Find the final path associated with a trans_id."""
         if trans_id not in self._known_paths:
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
@@ -642,7 +641,7 @@ def _reparent_transform_children(tt, old_parent, new_parent):
 
 
 def new_by_entry(path, tt, entry, parent_id, tree):
-    """Create a new file according to its inventory entry"""
+    """Create a new file according to its inventory entry."""
     name = entry.name
     kind = entry.kind
     if kind == "file":
@@ -695,11 +694,11 @@ def create_from_tree(tt, trans_id, tree, path, chunks=None, filter_tree_path=Non
     elif kind == "tree-reference":
         tt.create_tree_reference(tree.get_reference_revision(path), trans_id)
     else:
-        raise AssertionError("Unknown kind %r" % kind)
+        raise AssertionError("Unknown kind {!r}".format(kind))
 
 
 def create_entry_executability(tt, entry, trans_id):
-    """Set the executability of a trans_id according to an inventory entry"""
+    """Set the executability of a trans_id according to an inventory entry."""
     if entry.kind == "file":
         tt.set_executability(entry.executable, trans_id)
 
@@ -797,7 +796,7 @@ def _alter_files(
     else:
         skip_root = False
     deferred_files = []
-    for id_num, change in enumerate(change_list):
+    for _id_num, change in enumerate(change_list):
         target_path, wt_path = change.path
         target_versioned, wt_versioned = change.versioned
         target_name, wt_name = change.name
@@ -916,7 +915,7 @@ def _alter_files(
 
 
 def resolve_conflicts(tt, pb=None, pass_func=None):
-    """Make many conflict-resolution attempts, but die if they fail"""
+    """Make many conflict-resolution attempts, but die if they fail."""
     if pass_func is None:
         pass_func = conflict_pass
     new_conflicts = set()
@@ -1082,7 +1081,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
 
 class _FileMover:
-    """Moves and deletes files for TreeTransform, tracking operations"""
+    """Moves and deletes files for TreeTransform, tracking operations."""
 
     def __init__(self):
         self.past_renames = []
@@ -1111,7 +1110,7 @@ class _FileMover:
         self.pending_deletions.append(to)
 
     def rollback(self):
-        """Reverse all renames that have been performed"""
+        """Reverse all renames that have been performed."""
         for from_, to in reversed(self.past_renames):
             try:
                 os.rename(to, from_)
@@ -1122,7 +1121,7 @@ class _FileMover:
         self.pending_deletions = None
 
     def apply_deletions(self):
-        """Apply all marked deletions"""
+        """Apply all marked deletions."""
         for path in self.pending_deletions:
             delete_any(path)
         # after apply_deletions, don't reuse _FileMover
@@ -1309,7 +1308,7 @@ class PreviewTree:
                 yield self._get_repository().revision_tree(revision_id)
 
     def get_file_size(self, path):
-        """See Tree.get_file_size"""
+        """See Tree.get_file_size."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)

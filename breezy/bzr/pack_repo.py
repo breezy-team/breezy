@@ -225,13 +225,13 @@ class Pack:
                 k for (idx, k, v, r) in index.iter_entries(external_refs)
             )
             if missing:
-                missing_items[index_name] = sorted(list(missing))
+                missing_items[index_name] = sorted(missing)
         if missing_items:
             from pprint import pformat
 
             raise errors.BzrCheckError(
-                "Newly created pack file %r has delta references to "
-                "items not in its repository:\n%s" % (self, pformat(missing_items))
+                "Newly created pack file {!r} has delta references to "
+                "items not in its repository:\n{}".format(self, pformat(missing_items))
             )
 
     def file_name(self):
@@ -757,7 +757,7 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                "%s already has a writable index through %s" % (self, self.add_callback)
+                "{} already has a writable index through {}".format(self, self.add_callback)
             )
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
@@ -841,8 +841,8 @@ class Packer:
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
             raise errors.BzrError(
-                "call to %s.pack() while another pack is"
-                " being written." % (self.__class__.__name__,)
+                "call to {}.pack() while another pack is"
+                " being written.".format(self.__class__.__name__)
             )
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
@@ -1106,7 +1106,7 @@ class RepositoryPackCollection:
         :param packer_class: The class of packer to use
         :return: The new pack names.
         """
-        for revision_count, packs in pack_operations:
+        for _revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
@@ -1261,7 +1261,7 @@ class RepositoryPackCollection:
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
-            for index, key, value in self._iter_disk_pack_index():
+            for _index, key, value in self._iter_disk_pack_index():
                 name = key[0].decode("ascii")
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((name, value))
@@ -1432,7 +1432,7 @@ class RepositoryPackCollection:
                     )
             except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
-                mutter("couldn't rename obsolete pack, skipping it:\n%s" % (e,))
+                mutter("couldn't rename obsolete pack, skipping it:\n{}".format(e))
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
@@ -1445,7 +1445,7 @@ class RepositoryPackCollection:
                         pack.name + suffix, "../obsolete_packs/" + pack.name + suffix
                     )
                 except (errors.PathError, errors.TransportError) as e:
-                    mutter("couldn't rename obsolete index, skipping it:\n%s" % (e,))
+                    mutter("couldn't rename obsolete index, skipping it:\n{}".format(e))
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
@@ -1459,7 +1459,7 @@ class RepositoryPackCollection:
         result = []
         for exponent, count in enumerate(digits):
             size = 10**exponent
-            for pos in range(int(count)):
+            for _pos in range(int(count)):
                 result.append(size)
         return list(reversed(result))
 
@@ -1529,7 +1529,7 @@ class RepositoryPackCollection:
         """
         # load the disk nodes across
         disk_nodes = set()
-        for index, key, value in self._iter_disk_pack_index():
+        for _index, key, value in self._iter_disk_pack_index():
             disk_nodes.add((key[0].decode("ascii"), value))
         orig_disk_nodes = set(disk_nodes)
 
@@ -1675,9 +1675,7 @@ class RepositoryPackCollection:
         (removed, added, modified) = self._syncronize_pack_names_from_disk_nodes(
             disk_nodes
         )
-        if removed or added or modified:
-            return True
-        return False
+        return bool(removed or added or modified)
 
     def _restart_autopack(self):
         """Reload the pack names list, and restart the autopack code."""
@@ -1718,7 +1716,7 @@ class RepositoryPackCollection:
             try:
                 obsolete_pack_transport.delete(filename)
             except (errors.PathError, errors.TransportError) as e:
-                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+                warning("couldn't delete obsolete pack, skipping it:\n{}".format(e))
         return found
 
     def _start_write_group(self):
@@ -1800,8 +1798,7 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository %s has missing compression parent(s) %r "
-                % (self.repo, sorted(all_missing))
+                "Repository {} has missing compression parent(s) {!r} ".format(self.repo, sorted(all_missing))
             )
         problems = self._check_new_inventories()
         if problems:
@@ -2048,7 +2045,7 @@ class PackRepository(MetaDirVersionedFileRepository):
             self._transaction = None
             self._write_lock_count = 0
             raise errors.BzrError(
-                "Must end write group before releasing write lock on %s" % self
+                "Must end write group before releasing write lock on {}".format(self)
             )
         if self._write_lock_count:
             self._write_lock_count -= 1
@@ -2131,7 +2128,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_controldir)
+            RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:
@@ -2213,7 +2210,7 @@ class _DirectPackAccess:
         """
         raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError("data must be plain bytes was %s" % type(raw_data))
+            raise AssertionError("data must be plain bytes was {}".format(type(raw_data)))
         result = []
         offset = 0
         for key, size in key_sizes:
@@ -2270,7 +2267,7 @@ class _DirectPackAccess:
                 )
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
-                for names, read_func in reader.iter_records():
+                for _names, read_func in reader.iter_records():
                     yield read_func(None)
             except _mod_transport.NoSuchFile:
                 # A NoSuchFile error indicates that a pack file has gone

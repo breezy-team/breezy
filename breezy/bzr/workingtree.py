@@ -205,7 +205,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(self._inventory, out_file, working=True)
 
-    def _deserialize(selt, in_file):
+    def _deserialize(self, in_file):
         return xml5.serializer_v5.read_inventory(in_file)
 
     def break_lock(self):
@@ -306,11 +306,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 elif kind == "symlink":
                     inv.add(InventoryLink(file_id, name, parent))
                 else:
-                    raise errors.BzrError("unknown kind %r" % kind)
+                    raise errors.BzrError("unknown kind {!r}".format(kind))
             self._write_inventory(inv)
 
     def _write_basis_inventory(self, xml):
-        """Write the basis inventory XML to the basis-inventory file"""
+        """Write the basis inventory XML to the basis-inventory file."""
         path = self._basis_inventory_name()
         sio = BytesIO(b"".join(xml))
         self._transport.put_file(path, sio, mode=self.controldir._get_file_mode())
@@ -406,8 +406,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_path, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, kind in file_infos:
+            for _parent_path, file_infos in self.walkdirs(directory):
+                for relpath, _basename, _kind, _lstat, _kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -580,7 +580,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return "basis-inventory-cache"
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
-        """Create the text that will be saved in basis-inventory"""
+        """Create the text that will be saved in basis-inventory."""
         inventory.revision_id = revision_id
         return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
@@ -592,7 +592,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
-            conflict_set.update(set(list(new_conflicts)))
+            conflict_set.update(set(new_conflicts))
             self.set_conflicts(
                 sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key)
             )
@@ -881,7 +881,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter
+        """See Tree.annotate_iter.
 
         This implementation will use the basis tree implementation if possible.
         Lines not in the basis are attributed to CURRENT_REVISION
@@ -1554,7 +1554,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     "Rollback failed."
                     " The working tree is in an inconsistent state."
                     " Please consider doing a 'bzr revert'."
-                    " Error message is: %s" % e,
+                    " Error message is: {}".format(e),
                 )
 
     def _move_entry(self, entry):
@@ -1607,7 +1607,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 self._write_inventory(self._inventory)
 
     def stored_kind(self, path):
-        """See Tree.stored_kind"""
+        """See Tree.stored_kind."""
         return self._path2ie(path).kind
 
     def extras(self):
@@ -1751,7 +1751,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # versioned present directory
                 # merge the inventory and disk data together
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(
+                for _relpath, subiterator in itertools.groupby(
                     sorted(
                         current_inv[1] + cur_disk_dir_content,
                         key=operator.itemgetter(0),
@@ -1890,7 +1890,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 yield path, ie
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
-        """See Tree.iter_entries_by_dir()"""
+        """See Tree.iter_entries_by_dir()."""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(

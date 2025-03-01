@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Diff and patch functionality"""
+"""Diff and patch functionality."""
 
 import errno
 import os
@@ -47,7 +47,7 @@ if os.name == "nt":
 
 
 def write_to_cmd(args, input=""):
-    """Spawn a process, and wait for the result
+    """Spawn a process, and wait for the result.
 
     If the process is killed, an exception is raised
 

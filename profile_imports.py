@@ -32,7 +32,7 @@ if sys.platform == "win32":
 
 
 def stack_add(name, frame_name, frame_lineno, scope_name=None):
-    """Start a new record on the stack"""
+    """Start a new record on the stack."""
     global _cur_id
     _cur_id += 1
     this_stack = (_cur_id, name)
@@ -47,7 +47,7 @@ def stack_add(name, frame_name, frame_lineno, scope_name=None):
 
 
 def stack_finish(this, cost):
-    """Finish a given entry, and record its cost in time"""
+    """Finish a given entry, and record its cost in time."""
     global _parent_stack
 
     assert _parent_stack[-1] == this, (
@@ -106,7 +106,7 @@ _real_import = __import__
 
 
 def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
-    """Wrap around standard importer to log import time"""
+    """Wrap around standard importer to log import time."""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
@@ -167,7 +167,7 @@ _real_compile = re._compile  # type: ignore
 
 
 def timed_compile(*args, **kwargs):
-    """Log how long it takes to compile a regex"""
+    """Log how long it takes to compile a regex."""
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get("__name__", "<unknown>")

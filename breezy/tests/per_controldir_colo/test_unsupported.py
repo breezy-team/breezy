@@ -32,13 +32,13 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             raise tests.TestNotApplicable("Control dir format not supported")
-        t = self.get_transport()
+        self.get_transport()
         try:
             made_control = self.make_controldir(".", format=self.bzrdir_format)
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable("Control dir format not initializable")
         self.assertEqual(made_control._format, self.bzrdir_format)
-        made_repo = made_control.create_repository()
+        made_control.create_repository()
         return made_control
 
     def test_destroy_colocated_branch(self):

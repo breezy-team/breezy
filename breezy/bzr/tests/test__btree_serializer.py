@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Direct tests of the btree serializer extension"""
+"""Direct tests of the btree serializer extension."""
 
 import binascii
 import bisect
@@ -48,8 +48,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
                 mod_hex = binascii.hexlify(mod_unhex)
             self.fail(
                 "_py_unhexlify returned a different answer"
-                " from binascii:\n    %r\n != %r"
-                % (binascii.hexlify(ba_unhex), mod_hex)
+                " from binascii:\n    {!r}\n != {!r}".format(binascii.hexlify(ba_unhex), mod_hex)
             )
 
     def assertFailUnhexlify(self, as_hex):
@@ -92,9 +91,8 @@ class Test_KeyToSha1(TestBtreeSerializer):
             expected_bin = binascii.unhexlify(expected)
         actual_sha1 = self.module._py_key_to_sha1(key)
         if expected_bin != actual_sha1:
-            actual_hex_sha1 = None
             if actual_sha1 is not None:
-                actual_hex_sha1 = binascii.hexlify(actual_sha1)
+                binascii.hexlify(actual_sha1)
             self.fail(
                 "_key_to_sha1 returned:\n    {}\n != {}".format(actual_sha1, expected)
             )

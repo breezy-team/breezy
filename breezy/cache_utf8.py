@@ -17,7 +17,7 @@
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
-"""Some functions to enable caching the conversion between unicode to utf8"""
+"""Some functions to enable caching the conversion between unicode to utf8."""
 
 from codecs import utf_8_decode as _utf8_decode
 from codecs import utf_8_encode as _utf8_encode
@@ -49,7 +49,7 @@ def encode(
     _utf8_to_uni=_utf8_to_unicode_map,
     _utf8_encode=_utf8_encode,
 ):
-    """Take this unicode revision id, and get a unicode version"""
+    """Take this unicode revision id, and get a unicode version."""
     # If the key is in the cache try/KeyError is 50% faster than
     # val = dict.get(key), if val is None:
     # On jam's machine the difference is
@@ -72,7 +72,7 @@ def decode(
     _utf8_to_uni=_utf8_to_unicode_map,
     _utf8_decode=_utf8_decode,
 ):
-    """Take a utf8 revision id, and decode it, but cache the result"""
+    """Take a utf8 revision id, and decode it, but cache the result."""
     try:
         return _utf8_to_uni[utf8_str]
     except KeyError:
@@ -119,6 +119,6 @@ def get_cached_ascii(
 
 
 def clear_encoding_cache():
-    """Clear the encoding and decoding caches"""
+    """Clear the encoding and decoding caches."""
     _unicode_to_utf8_map.clear()
     _utf8_to_unicode_map.clear()

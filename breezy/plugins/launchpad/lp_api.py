@@ -68,8 +68,7 @@ def check_launchpadlib_compatibility():
     if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
         raise errors.DependencyNotPresent(
             "launchpadlib",
-            "At least launchpadlib %s is required, but installed version is %s"
-            % (MINIMUM_LAUNCHPADLIB_VERSION, installed_version),
+            "At least launchpadlib {} is required, but installed version is {}".format(MINIMUM_LAUNCHPADLIB_VERSION, installed_version),
         )
 
 

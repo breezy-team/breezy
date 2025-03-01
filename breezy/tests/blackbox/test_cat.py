@@ -56,7 +56,7 @@ class TestCat(tests.TestCaseWithTransport):
         self.assertEqual(
             "baz\n",
             self.run_bzr(
-                ["cat", "a", "-r", "revid:%s" % rev_id.decode("utf-8")],
+                ["cat", "a", "-r", "revid:{}".format(rev_id.decode("utf-8"))],
                 working_dir="branch",
             )[0],
         )
@@ -70,7 +70,7 @@ class TestCat(tests.TestCaseWithTransport):
         )
 
     def test_cat_different_id(self):
-        """'cat' works with old and new files"""
+        """'cat' works with old and new files."""
         self.disable_missing_extensions_warning()
         tree = self.make_branch_and_tree(".")
         # the files are named after their path in the revision and

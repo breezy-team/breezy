@@ -64,7 +64,7 @@ class BashCompletionMixin:
             line for line in err.splitlines() if not line.startswith(b"brz: warning: ")
         ]
         if errlines != []:
-            raise AssertionError("Unexpected error message:\n%s" % err)
+            raise AssertionError("Unexpected error message:\n{}".format(err))
         self.assertEqual(b"", b"".join(errlines), "No messages to standard error")
         # import sys
         # print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
@@ -86,16 +86,14 @@ class BashCompletionMixin:
         missing = set(words) - self.completion_result
         if missing:
             raise AssertionError(
-                "Completion should contain %r but it has %r"
-                % (missing, self.completion_result)
+                "Completion should contain {!r} but it has {!r}".format(missing, self.completion_result)
             )
 
     def assertCompletionOmits(self, *words):
         surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError(
-                "Completion should omit %r but it has %r"
-                % (surplus, self.completion_result)
+                "Completion should omit {!r} but it has {!r}".format(surplus, self.completion_result)
             )
 
     def get_script(self):
@@ -111,7 +109,7 @@ class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     """Test bash completions that don't execute brz."""
 
     def test_simple_scipt(self):
-        """Ensure that the test harness works as expected"""
+        """Ensure that the test harness works as expected."""
         self.script = """
 _brz() {
     COMPREPLY=()
@@ -173,7 +171,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport, BashCompletionMixi
 
     def get_script(self):
         s = super().get_script()
-        s = s.replace("$(brz ", "$(%s " % " ".join(self.get_brz_command()))
+        s = s.replace("$(brz ", "$({} ".format(" ".join(self.get_brz_command())))
         s = s.replace("2>/dev/null", "")
         return s
 
@@ -237,16 +235,15 @@ class TestBashCodeGen(tests.TestCase):
     def test_brz_version(self):
         data = CompletionData()
         cg = BashCodeGen(data)
-        self.assertEqual("%s." % breezy.version_string, cg.brz_version())
+        self.assertEqual("{}.".format(breezy.version_string), cg.brz_version())
         data.plugins["foo"] = PluginData("foo", "1.0")
         data.plugins["bar"] = PluginData("bar", "2.0")
         cg = BashCodeGen(data)
         self.assertEqual(
             """\
-%s and the following plugins:
+{} and the following plugins:
 # bar 2.0
-# foo 1.0"""
-            % breezy.version_string,
+# foo 1.0""".format(breezy.version_string),
             cg.brz_version(),
         )
 

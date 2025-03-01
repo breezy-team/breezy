@@ -205,24 +205,23 @@ class GioTransport(ConnectedTransport):
 
         try:
             connection = gio.File(self.url)
-            mount = None
             try:
-                mount = connection.find_enclosing_mount()
+                connection.find_enclosing_mount()
             except gio.Error as e:
                 if e.code == gio.ERROR_NOT_MOUNTED:
                     self.loop = glib.MainLoop()
-                    ui.ui_factory.show_message("Mounting %s using GIO" % self.url)
+                    ui.ui_factory.show_message("Mounting {} using GIO".format(self.url))
                     op = gio.MountOperation()
                     if user:
                         op.set_username(user)
                     if password:
                         op.set_password(password)
                     op.connect("ask-password", self._auth_cb)
-                    m = connection.mount_enclosing_volume(op, self._mount_done_cb)
+                    connection.mount_enclosing_volume(op, self._mount_done_cb)
                     self.loop.run()
         except gio.Error as e:
             raise errors.TransportError(
-                msg="Error setting up connection: %s" % str(e), orig_error=e
+                msg="Error setting up connection: {}".format(str(e)), orig_error=e
             )
         return connection, (user, password)
 
@@ -233,7 +232,7 @@ class GioTransport(ConnectedTransport):
 
     def _reconnect(self):
         # FIXME: This doesn't seem to be used -- vila 20100601
-        """Create a new connection with the previously used credentials"""
+        """Create a new connection with the previously used credentials."""
         credentials = self._get_credentials()
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
@@ -245,12 +244,10 @@ class GioTransport(ConnectedTransport):
         """Does the target location exist?"""
         try:
             if "gio" in debug.debug_flags:
-                mutter("GIO has check: %s" % relpath)
+                mutter("GIO has check: {}".format(relpath))
             f = self._get_GIO(relpath)
             st = GioStatResult(f)
-            if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
-                return True
-            return False
+            return bool(stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode))
         except gio.Error as e:
             if e.code == gio.ERROR_NOT_FOUND:
                 return False
@@ -269,7 +266,7 @@ class GioTransport(ConnectedTransport):
         """
         try:
             if "gio" in debug.debug_flags:
-                mutter("GIO get: %s" % relpath)
+                mutter("GIO get: {}".format(relpath))
             f = self._get_GIO(relpath)
             fin = f.read()
             buf = fin.read()
@@ -294,7 +291,7 @@ class GioTransport(ConnectedTransport):
         :param fp:       File-like or string object.
         """
         if "gio" in debug.debug_flags:
-            mutter("GIO put_file %s" % relpath)
+            mutter("GIO put_file {}".format(relpath))
         tmppath = "%s.tmp.%.9f.%d.%d" % (
             relpath,
             time.time(),
@@ -331,7 +328,7 @@ class GioTransport(ConnectedTransport):
         """Create a directory at the given path."""
         try:
             if "gio" in debug.debug_flags:
-                mutter("GIO mkdir: %s" % relpath)
+                mutter("GIO mkdir: {}".format(relpath))
             f = self._get_GIO(relpath)
             f.make_directory()
             self._setmode(relpath, mode)
@@ -341,7 +338,7 @@ class GioTransport(ConnectedTransport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         if "gio" in debug.debug_flags:
-            mutter("GIO open_write_stream %s" % relpath)
+            mutter("GIO open_write_stream {}".format(relpath))
         if mode is not None:
             self._setmode(relpath, mode)
         result = GioFileStream(self, relpath)
@@ -359,10 +356,10 @@ class GioTransport(ConnectedTransport):
         return 64 * 1024
 
     def rmdir(self, relpath):
-        """Delete the directory at rel_path"""
+        """Delete the directory at rel_path."""
         try:
             if "gio" in debug.debug_flags:
-                mutter("GIO rmdir %s" % relpath)
+                mutter("GIO rmdir {}".format(relpath))
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 f = self._get_GIO(relpath)
@@ -385,7 +382,7 @@ class GioTransport(ConnectedTransport):
         # GIO append_to seems not to append but to truncate
         # Work around this.
         if "gio" in debug.debug_flags:
-            mutter("GIO append_file: %s" % relpath)
+            mutter("GIO append_file: {}".format(relpath))
         tmppath = "%s.tmp.%.9f.%d.%d" % (
             relpath,
             time.time(),
@@ -430,7 +427,7 @@ class GioTransport(ConnectedTransport):
         Only set permissions on Unix systems
         """
         if "gio" in debug.debug_flags:
-            mutter("GIO _setmode %s" % relpath)
+            mutter("GIO _setmode {}".format(relpath))
         if mode:
             try:
                 f = self._get_GIO(relpath)
@@ -448,7 +445,7 @@ class GioTransport(ConnectedTransport):
                     self._translate_gio_error(e, relpath)
 
     def rename(self, rel_from, rel_to):
-        """Rename without special overwriting"""
+        """Rename without special overwriting."""
         try:
             if "gio" in debug.debug_flags:
                 mutter("GIO move (rename): %s => %s", rel_from, rel_to)
@@ -459,7 +456,7 @@ class GioTransport(ConnectedTransport):
             self._translate_gio_error(e, rel_from)
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         try:
             if "gio" in debug.debug_flags:
                 mutter("GIO move: %s => %s", rel_from, rel_to)
@@ -470,7 +467,7 @@ class GioTransport(ConnectedTransport):
             self._translate_gio_error(e, relfrom)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         try:
             if "gio" in debug.debug_flags:
                 mutter("GIO delete: %s", relpath)
@@ -535,7 +532,7 @@ class GioTransport(ConnectedTransport):
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which should be passed to Transport.unlock().
         """
         if "gio" in debug.debug_flags:
             mutter("GIO lock_read", relpath)
@@ -554,7 +551,7 @@ class GioTransport(ConnectedTransport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, whichshould be passed to Transport.unlock()
         """

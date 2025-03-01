@@ -49,7 +49,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         else:
             mode = 0o755
 
-        for root, dirs, files in os.walk(basedir, topdown=False):
+        for root, dirs, _files in os.walk(basedir, topdown=False):
             for d in dirs:
                 path = os.path.join(root, d)
                 os.chmod(path, mode)
@@ -104,5 +104,5 @@ class TestReadonly(TestCaseWithWorkingTree):
                 tree._dirstate._cutoff_time = self._custom_cutoff_time()
             # Make sure we check all the files
             for path in tree.all_versioned_paths():
-                size = tree.get_file_size(path)
-                sha1 = tree.get_file_sha1(path)
+                tree.get_file_size(path)
+                tree.get_file_sha1(path)

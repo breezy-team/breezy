@@ -100,7 +100,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         result = b2.fetch(b1)
         self.assertIsInstance(result, repository.FetchResult)
 
-        rev = b2.repository.get_revision(rev1)
+        b2.repository.get_revision(rev1)
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -181,7 +181,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(random_parent, branch_d.get_parent())
 
     def test_submit_branch(self):
-        """Submit location can be queried and set"""
+        """Submit location can be queried and set."""
         branch = self.make_branch("branch")
         self.assertEqual(branch.get_submit_branch(), None)
         branch.set_submit_branch("sftp://example.com")
@@ -190,7 +190,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), "sftp://example.net")
 
     def test_public_branch(self):
-        """Public location can be queried and set"""
+        """Public location can be queried and set."""
         branch = self.make_branch("branch")
         self.assertEqual(branch.get_public_branch(), None)
         branch.set_public_branch("sftp://example.com")
@@ -278,7 +278,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
         A nickname is always available, whether set explicitly or not.
         """
-        t = self.get_transport()
+        self.get_transport()
         branch = self.make_branch("bzr.dev")
         # An implicit nick name is set; what it is exactly depends on the
         # format.
@@ -292,7 +292,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.nick, "\u1234")
 
     def test_commit_nicks(self):
-        """Nicknames are committed to the revision"""
+        """Nicknames are committed to the revision."""
         wt = self.make_branch_and_tree("bzr.dev")
         branch = wt.branch
         branch.nick = "My happy branch"
@@ -318,7 +318,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
                 "control dir format does not support colocated branches"
             )
         try:
-            child_branch1 = self.branch_format.initialize(
+            self.branch_format.initialize(
                 repo.controldir, name="branch1"
             )
         except errors.UninitializableFormat:
@@ -334,7 +334,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             repo = self.make_repository(".", shared=True)
         except errors.IncompatibleFormat:
             return
-        for val in (True, False):
+        for _val in (True, False):
             try:
                 branch = self.branch_format.initialize(
                     repo.controldir, append_revisions_only=True
@@ -410,7 +410,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
                 tree.branch.last_revision(), [revision.NULL_REVISION]
             )
         )
-        rev2 = tree.commit("bar", allow_pointless=True)
+        tree.commit("bar", allow_pointless=True)
         tree.branch.generate_revision_history(rev1)
         self.assertEqual(
             orig_history,
@@ -423,7 +423,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
     def test_generate_revision_history_NULL_REVISION(self):
         tree = self.make_branch_and_tree(".")
-        rev1 = tree.commit("foo")
+        tree.commit("foo")
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.branch.generate_revision_history(revision.NULL_REVISION)
@@ -438,8 +438,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             rev1 = checkout_b.commit("rev1")
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
-                "roundtripping between %r and %r not supported"
-                % (checkout_b.branch, checkout_b.branch.get_master_branch())
+                "roundtripping between {!r} and {!r} not supported".format(checkout_b.branch, checkout_b.branch.get_master_branch())
             )
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
@@ -551,7 +550,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super().setUp()
-        if not self.vfs_transport_factory == memory.MemoryServer:
+        if self.vfs_transport_factory != memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
@@ -695,7 +694,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = self.get_transport()
+        self.get_transport()
         readonly_t = transport.get_transport_from_url(self.get_readonly_url())
         made_branch = self.make_branch(".")
         self.assertIsInstance(made_branch, _mod_branch.Branch)
@@ -791,7 +790,7 @@ class TestBound(per_branch.TestCaseWithBranch):
     def test_set_bound_location_clears_cached_master_branch(self):
         """b.set_bound_location clears any cached value of b.get_master_branch."""
         master1 = self.make_branch("master1")
-        master2 = self.make_branch("master2")
+        self.make_branch("master2")
         branch = self.make_branch("branch")
         try:
             branch.bind(master1)

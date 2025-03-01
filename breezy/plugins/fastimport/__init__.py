@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-r"""FastImport Plugin
+r"""FastImport Plugin.
 =================
 
 The fastimport plugin provides stream-based importing and exporting of
@@ -88,4 +88,4 @@ for name in [
     "fast_import",
     "fast_export",
 ]:
-    plugin_cmds.register_lazy("cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")
+    plugin_cmds.register_lazy("cmd_{}".format(name), [], "breezy.plugins.fastimport.cmds")

@@ -129,19 +129,18 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
         self.builder = make_adduser_branch(self, "adduser")
 
     def assertAdduserBranchContent(self, revid):
-        env = dict(revid=revid, branch_name=revid)
+        env = {"revid": revid, "branch_name": revid}
         self.run_script(
             """\
-$ brz branch adduser -rrevid:%(revid)s %(branch_name)s
-"""
-            % env,
+$ brz branch adduser -rrevid:{revid} {branch_name}
+""".format(**env),
             null_output_matches_anything=True,
         )
         self.assertFileEqual(
-            _Adduser["%(revid)s_pot" % env], "%(branch_name)s/po/adduser.pot" % env
+            _Adduser["{revid}_pot".format(**env)], "{branch_name}/po/adduser.pot".format(**env)
         )
         self.assertFileEqual(
-            _Adduser["%(revid)s_po" % env], "%(branch_name)s/po/fr.po" % env
+            _Adduser["{revid}_po".format(**env)], "{branch_name}/po/fr.po".format(**env)
         )
 
     def test_base(self):
@@ -158,8 +157,8 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # details. This is declared at the end of the file to avoid cluttering the
 # beginning of the file.
 
-_Adduser = dict(
-    base_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+_Adduser = {
+    "base_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -187,7 +186,7 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
 """),
-    this_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+    "this_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -222,7 +221,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """),
-    other_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+    "other_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -257,7 +256,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """),
-    resolved_pot=osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
+    "resolved_pot": osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -292,7 +291,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """),
-    base_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+    "base_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -328,7 +327,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """),
-    this_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+    "this_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -371,7 +370,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """),
-    other_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+    "other_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -414,7 +413,7 @@ msgstr ""
 "indiqué (%s) : %s.\n"
 
 """),
-    resolved_po=osutils.safe_utf8(r"""# adduser's manpages translation to French
+    "resolved_po": osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -457,4 +456,4 @@ msgstr ""
 "indiqué (%s) : %s.\n"
 
 """),
-)
+}

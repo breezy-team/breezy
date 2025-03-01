@@ -57,7 +57,7 @@ from ..workingtree import WorkingTree
 
 
 class VersionedFileCheck(Check):
-    """Check a versioned file repository"""
+    """Check a versioned file repository."""
 
     # The Check object interacts with InventoryEntry.check, etc.
 
@@ -125,7 +125,7 @@ class VersionedFileCheck(Check):
                     elif kind == "revision-existence":
                         existences.add(value)
                     else:
-                        raise AssertionError("unknown ref kind for ref %s" % ref)
+                        raise AssertionError("unknown ref kind for ref {}".format(ref))
                 node_distances = repo.get_graph().find_lefthand_distances(distances)
                 for key, distance in node_distances.items():
                     refs[("lefthand-distance", key)] = distance
@@ -173,7 +173,7 @@ class VersionedFileCheck(Check):
         if not self.repository._format.revision_graph_can_have_wrong_parents:
             # The check against the index isn't needed.
             self.revs_with_bad_parents_in_index = None
-            for thing in revision_iterator:
+            for _thing in revision_iterator:
                 pass
         else:
             bad_revisions = self.repository._find_inconsistent_revision_parents(
@@ -323,7 +323,6 @@ class VersionedFileCheck(Check):
 
     def check_weaves(self):
         """Check all the weaves we can get our hands on."""
-        weave_ids = []
         with ui.ui_factory.nested_progress_bar() as storebar:
             self._check_weaves(storebar)
 

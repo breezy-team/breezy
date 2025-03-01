@@ -93,7 +93,7 @@ class ResponseFile:
         if whence == os.SEEK_SET:
             if offset < self._pos:
                 raise AssertionError(
-                    "Can't seek backwards, pos: %s, offset: %s" % (self._pos, offset)
+                    "Can't seek backwards, pos: {}, offset: {}".format(self._pos, offset)
                 )
             to_discard = offset - self._pos
         elif whence == os.SEEK_CUR:
@@ -153,7 +153,7 @@ class RangeFile(ResponseFile):
         self.set_range(0, -1)
 
     def set_range(self, start, size):
-        """Change the range mapping"""
+        """Change the range mapping."""
         self._start = start
         self._size = size
         # Set the new _pos since that's what we want to expose
@@ -173,7 +173,7 @@ class RangeFile(ResponseFile):
         self.read_range_definition()
 
     def read_boundary(self):
-        """Read the boundary headers defining a new range"""
+        """Read the boundary headers defining a new range."""
         boundary_line = b"\r\n"
         while boundary_line == b"\r\n":
             # RFC2616 19.2 Additional CRLFs may precede the first boundary
@@ -197,8 +197,7 @@ class RangeFile(ResponseFile):
             ):
                 raise errors.InvalidHttpResponse(
                     self._path,
-                    "Expected a boundary (%s) line, got '%s'"
-                    % (self._boundary, boundary_line),
+                    "Expected a boundary ({}) line, got '{}'".format(self._boundary, boundary_line),
                 )
 
     def _unquote_boundary(self, b):
@@ -226,14 +225,14 @@ class RangeFile(ResponseFile):
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
-        """Helper to set the new range from its description in the headers"""
+        """Helper to set the new range from its description in the headers."""
         try:
             rtype, values = content_range.split()
         except ValueError:
             raise errors.InvalidHttpRange(self._path, content_range, "Malformed header")
         if rtype != "bytes":
             raise errors.InvalidHttpRange(
-                self._path, content_range, "Unsupported range type '%s'" % rtype
+                self._path, content_range, "Unsupported range type '{}'".format(rtype)
             )
         try:
             # We don't need total, but note that it may be either the file size
@@ -275,7 +274,7 @@ class RangeFile(ResponseFile):
             raise errors.InvalidRange(
                 self._path,
                 self._pos,
-                "Range (%s, %s) exhausted" % (self._start, self._size),
+                "Range ({}, {}) exhausted".format(self._start, self._size),
             )
         self.read_boundary()
         self.read_range_definition()
@@ -300,16 +299,14 @@ class RangeFile(ResponseFile):
             raise errors.InvalidRange(
                 self._path,
                 self._pos,
-                "Can't read %s bytes before range (%s, %s)"
-                % (size, self._start, self._size),
+                "Can't read {} bytes before range ({}, {})".format(size, self._start, self._size),
             )
         if self._size > 0:
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
                     self._path,
                     self._pos,
-                    "Can't read %s bytes across range (%s, %s)"
-                    % (size, self._start, self._size),
+                    "Can't read {} bytes across range ({}, {})".format(size, self._start, self._size),
                 )
 
         # read data from file
@@ -343,14 +340,14 @@ class RangeFile(ResponseFile):
                     "RangeFile: can't seek from end while size is unknown",
                 )
         else:
-            raise ValueError("Invalid value %s for whence." % whence)
+            raise ValueError("Invalid value {} for whence.".format(whence))
 
         if final_pos < self._pos:
             # Can't seek backwards
             raise errors.InvalidRange(
                 self._path,
                 self._pos,
-                "RangeFile: trying to seek backwards to %s" % final_pos,
+                "RangeFile: trying to seek backwards to {}".format(final_pos),
             )
 
         if self._size > 0:

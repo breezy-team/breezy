@@ -164,10 +164,10 @@ class ProxyServer(http_server.HttpServer):
 
 
 class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
-    """Redirect all request to the specified server"""
+    """Redirect all request to the specified server."""
 
     def parse_request(self):
-        """Redirect a single HTTP request to another host"""
+        """Redirect a single HTTP request to another host."""
         valid = http_server.TestingHTTPRequestHandler.parse_request(self)
         if valid:
             tcs = self.server.test_case_server
@@ -187,7 +187,7 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
 
 
 class HTTPServerRedirecting(http_server.HttpServer):
-    """An HttpServer redirecting to another server"""
+    """An HttpServer redirecting to another server."""
 
     def __init__(self, request_handler=RedirectRequestHandler, protocol_version=None):
         http_server.HttpServer.__init__(
@@ -202,7 +202,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
         self.redirections = []
 
     def redirect_to(self, host, port):
-        """Redirect all requests to a specific host:port"""
+        """Redirect all requests to a specific host:port."""
         self.redirections = [("(.*)", r"http://{}:{}\1".format(host, port), 301)]
 
     def is_redirected(self, path):
@@ -241,7 +241,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
         self.old_server = self.get_secondary_server()
 
     def create_transport_secondary_server(self):
-        """Create the secondary server redirecting to the primary server"""
+        """Create the secondary server redirecting to the primary server."""
         new = self.get_readonly_server()
         redirecting = HTTPServerRedirecting(protocol_version=self._protocol_version)
         redirecting.redirect_to(new.host, new.port)
@@ -307,7 +307,7 @@ class AuthRequestHandler(http_server.TestingHTTPRequestHandler):
 
 
 class BasicAuthRequestHandler(AuthRequestHandler):
-    """Implements the basic authentication of a request"""
+    """Implements the basic authentication of a request."""
 
     def authorized(self):
         tcs = self.server.test_case_server
@@ -325,7 +325,7 @@ class BasicAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent, 'Basic realm="%s"' % tcs.auth_realm)
+        self.send_header(tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm))
 
 
 # FIXME: We could send an Authentication-Info header too when
@@ -356,7 +356,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        header = 'Digest realm="%s", ' % tcs.auth_realm
+        header = 'Digest realm="{}", '.format(tcs.auth_realm)
         header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
         self.send_header(tcs.auth_header_sent, header)
 
@@ -371,8 +371,8 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent, 'Basic realm="%s"' % tcs.auth_realm)
-        header = 'Digest realm="%s", ' % tcs.auth_realm
+        self.send_header(tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm))
+        header = 'Digest realm="{}", '.format(tcs.auth_realm)
         header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
         self.send_header(tcs.auth_header_sent, header)
 
@@ -411,7 +411,7 @@ class AuthServer(http_server.HttpServer):
         self.password_of[user] = password
 
     def authorized(self, user, password):
-        """Check that the given user provided the right password"""
+        """Check that the given user provided the right password."""
         expected_password = self.password_of.get(user, None)
         return expected_password is not None and password == expected_password
 
@@ -422,7 +422,7 @@ class AuthServer(http_server.HttpServer):
 # SHA algorithm nor MD5-sess here, but that does not seem worth
 # it.
 class DigestAuthServer(AuthServer):
-    """A digest authentication server"""
+    """A digest authentication server."""
 
     auth_nonce = "now!"
 
@@ -463,7 +463,7 @@ class DigestAuthServer(AuthServer):
 
         nonce_count = int(auth["nc"], 16)
 
-        ncvalue = "%08x" % nonce_count
+        ncvalue = "{:08x}".format(nonce_count)
 
         cnonce = auth["cnonce"]
         noncebit = "{}:{}:{}:{}:{}".format(nonce, ncvalue, cnonce, qop, H(A2))
@@ -473,7 +473,7 @@ class DigestAuthServer(AuthServer):
 
 
 class HTTPAuthServer(AuthServer):
-    """An HTTP server requiring authentication"""
+    """An HTTP server requiring authentication."""
 
     def init_http_auth(self):
         self.auth_header_sent = "WWW-Authenticate"
@@ -482,7 +482,7 @@ class HTTPAuthServer(AuthServer):
 
 
 class ProxyAuthServer(AuthServer):
-    """A proxy server requiring authentication"""
+    """A proxy server requiring authentication."""
 
     def init_proxy_auth(self):
         self.proxy_requests = True
@@ -492,7 +492,7 @@ class ProxyAuthServer(AuthServer):
 
 
 class HTTPBasicAuthServer(HTTPAuthServer):
-    """An HTTP server requiring basic authentication"""
+    """An HTTP server requiring basic authentication."""
 
     def __init__(self, protocol_version=None):
         HTTPAuthServer.__init__(
@@ -502,7 +502,7 @@ class HTTPBasicAuthServer(HTTPAuthServer):
 
 
 class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
-    """An HTTP server requiring digest authentication"""
+    """An HTTP server requiring digest authentication."""
 
     def __init__(self, protocol_version=None):
         DigestAuthServer.__init__(
@@ -512,7 +512,7 @@ class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
 
 
 class HTTPBasicAndDigestAuthServer(DigestAuthServer, HTTPAuthServer):
-    """An HTTP server requiring basic or digest authentication"""
+    """An HTTP server requiring basic or digest authentication."""
 
     def __init__(self, protocol_version=None):
         DigestAuthServer.__init__(
@@ -527,7 +527,7 @@ class HTTPBasicAndDigestAuthServer(DigestAuthServer, HTTPAuthServer):
 
 
 class ProxyBasicAuthServer(ProxyAuthServer):
-    """A proxy server requiring basic authentication"""
+    """A proxy server requiring basic authentication."""
 
     def __init__(self, protocol_version=None):
         ProxyAuthServer.__init__(
@@ -537,7 +537,7 @@ class ProxyBasicAuthServer(ProxyAuthServer):
 
 
 class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
-    """A proxy server requiring basic authentication"""
+    """A proxy server requiring basic authentication."""
 
     def __init__(self, protocol_version=None):
         ProxyAuthServer.__init__(
@@ -547,7 +547,7 @@ class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
 
 
 class ProxyBasicAndDigestAuthServer(DigestAuthServer, ProxyAuthServer):
-    """An proxy server requiring basic or digest authentication"""
+    """An proxy server requiring basic or digest authentication."""
 
     def __init__(self, protocol_version=None):
         DigestAuthServer.__init__(

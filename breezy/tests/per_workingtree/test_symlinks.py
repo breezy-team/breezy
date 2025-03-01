@@ -173,7 +173,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
         self.assertEqual(expect_paths, relpaths)
 
     def make_test_tree(self):
-        tree = self.make_branch_and_tree("tree")
+        self.make_branch_and_tree("tree")
         self.build_tree_contents(
             [
                 ("link@", "tree"),

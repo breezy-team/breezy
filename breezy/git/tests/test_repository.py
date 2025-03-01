@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interfacing with a Git Repository"""
+"""Tests for interfacing with a Git Repository."""
 
 import os
 
@@ -102,12 +102,12 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         return mapping[commit_handle]
 
     def test_pack(self):
-        commit_id = self.simple_commit()
+        self.simple_commit()
         repo = Repository.open(".")
         repo.pack()
 
     def test_unlock_closes(self):
-        commit_id = self.simple_commit()
+        self.simple_commit()
         repo = Repository.open(".")
         repo.pack()
         with repo.lock_read():
@@ -226,7 +226,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             allow_pointless=True,
             revprops={"author": "Joe Example <joe@example.com>"},
         )
-        rev = wt.branch.repository.get_revision(revid)
+        wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo(".")
         self.assertEqual(b"Joe Example <joe@example.com>", r[r.head()].author)
 
@@ -237,7 +237,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             allow_pointless=True,
             revprops={"authors": "Joe Example <joe@example.com>"},
         )
-        rev = wt.branch.repository.get_revision(revid)
+        wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo(".")
         self.assertEqual(b"Joe Example <joe@example.com>", r[r.head()].author)
 
@@ -261,7 +261,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             allow_pointless=True,
             revprops={"bugs": "https://github.com/jelmer/dulwich/issues/123 fixed\n"},
         )
-        rev = wt.branch.repository.get_revision(revid)
+        wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo(".")
         self.assertEqual(
             b"base\n\nFixes: https://github.com/jelmer/dulwich/issues/123\n",
@@ -280,7 +280,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
                 ),
             },
         )
-        rev = wt.branch.repository.get_revision(revid)
+        wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo(".")
         self.assertEqual(r[r.head()].author, b"Jelmer Vernooij <jelmer@example.com>")
         self.assertEqual(

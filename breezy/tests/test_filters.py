@@ -36,11 +36,11 @@ def _swapcase(chunks, context=None):
 
 
 def _addjunk(chunks):
-    return [b"junk\n"] + [s for s in chunks]
+    return [b"junk\n"] + list(chunks)
 
 
 def _deljunk(chunks, context):
-    return [s for s in chunks[1:]]
+    return list(chunks[1:])
 
 
 _stack_1 = [

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""man.py - create man page from built-in brz help and static text
+"""man.py - create man page from built-in brz help and static text.
 
 Todo:
   * use usage information instead of simple "brz foo" in COMMAND OVERVIEW
@@ -36,12 +36,12 @@ load_plugins()
 
 
 def get_filename(options):
-    """Provides name of manpage"""
-    return "%s.1" % (options.brz_name)
+    """Provides name of manpage."""
+    return "{}.1".format(options.brz_name)
 
 
 def infogen(options, outfile):
-    """Assembles a man page"""
+    """Assembles a man page."""
     d = get_autodoc_datetime()
     params = {
         "brzcmd": options.brz_name,
@@ -58,7 +58,7 @@ def infogen(options, outfile):
 
 
 def man_escape(string):
-    """Escapes strings for man page compatibility"""
+    """Escapes strings for man page compatibility."""
     result = string.replace("\\", "\\\\")
     result = result.replace("`", "\\'")
     result = result.replace("'", "\\*(Aq")
@@ -67,7 +67,7 @@ def man_escape(string):
 
 
 def command_name_list():
-    """Builds a list of command names from breezy"""
+    """Builds a list of command names from breezy."""
     command_names = breezy.commands.builtin_command_names()
     for cmdname in breezy.commands.plugin_command_names():
         cmd_object = breezy.commands.get_cmd_object(cmdname)
@@ -81,8 +81,8 @@ def command_name_list():
 
 
 def getcommand_list(params):
-    """Builds summary help for command names in manpage format"""
-    brzcmd = params["brzcmd"]
+    """Builds summary help for command names in manpage format."""
+    params["brzcmd"]
     output = '.SH "COMMAND OVERVIEW"\n'
     for cmd_name in command_name_list():
         cmd_object = breezy.commands.get_cmd_object(cmd_name)
@@ -95,12 +95,12 @@ def getcommand_list(params):
             tmp = '.TP\n.B "{}"\n{}\n'.format(usage, firstline)
             output = output + tmp
         else:
-            raise RuntimeError("Command '%s' has no help text" % (cmd_name))
+            raise RuntimeError("Command '{}' has no help text".format(cmd_name))
     return output
 
 
 def getcommand_help(params):
-    """Shows individual options for a brz command"""
+    """Shows individual options for a brz command."""
     output = '.SH "COMMAND REFERENCE"\n'
     formatted = {}
     for cmd_name in command_name_list():
@@ -116,9 +116,9 @@ def getcommand_help(params):
 
 
 def format_command(params, cmd):
-    """Provides long help for each public command"""
-    subsection_header = '.SS "%s"\n' % (cmd._usage())
-    doc = "%s\n" % (cmd.__doc__)
+    """Provides long help for each public command."""
+    subsection_header = '.SS "{}"\n'.format(cmd._usage())
+    doc = "{}\n".format(cmd.__doc__)
     doc = breezy.help_topics.help_as_plain_text(cmd.help())
 
     # A dot at the beginning of a line is interpreted as a macro.
@@ -130,7 +130,7 @@ def format_command(params, cmd):
     options = cmd.options()
     if options:
         option_str = "\nOptions:\n"
-        for option_name, option in sorted(options.items()):
+        for _option_name, option in sorted(options.items()):
             for name, short_name, argname, help in option.iter_switches():
                 if option.is_hidden(name):
                     continue
@@ -170,7 +170,7 @@ def format_command(params, cmd):
 
 
 def format_alias(params, alias, cmd_name):
-    help = '.SS "brz %s"\n' % alias
+    help = '.SS "brz {}"\n'.format(alias)
     help += 'Alias for "{}", see "brz {}".\n'.format(cmd_name, cmd_name)
     return help
 
@@ -182,7 +182,7 @@ def environment_variables():
 
     for k, desc in known_env_variables:
         yield ".TP\n"
-        yield '.I "%s"\n' % k
+        yield '.I "{}"\n'.format(k)
         yield man_escape(desc) + "\n"
 
 

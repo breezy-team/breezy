@@ -87,7 +87,7 @@ class Tags:
 
     def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
         """Returns a dict with revisions as keys
-        and a list of tags for that revision as value
+        and a list of tags for that revision as value.
         """
         d = self.get_tag_dict()
         rev = defaultdict(set)
@@ -299,7 +299,7 @@ class MemoryTags(Tags):
         return self._tag_dict
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         td = self.get_tag_dict()
         try:
             return td[tag_name]
@@ -368,7 +368,7 @@ def sort_time(branch, tags):
     :param tags: List of tuples with tag name and revision id.
     """
     timestamps = {}
-    for tag, revid in tags:
+    for _tag, revid in tags:
         try:
             revobj = branch.repository.get_revision(revid)
         except errors.NoSuchRevision:

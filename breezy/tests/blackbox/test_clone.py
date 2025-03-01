@@ -57,7 +57,7 @@ class TestClone(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_dir("b/a")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr("clone %s" % local_path_to_url("b/a"))
+        out, err = self.run_bzr("clone {}".format(local_path_to_url("b/a")))
         self.assertEqual("", out)
         self.assertEqual("Created new control directory.\n", err)
         self.assertPathExists("a")

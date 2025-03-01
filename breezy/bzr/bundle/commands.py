@@ -116,8 +116,8 @@ class cmd_bundle_info(Command):
         if verbose:
             self.outf.write("\n")
             bundle_file.seek(0)
-            line = bundle_file.readline()
-            line = bundle_file.readline()
+            bundle_file.readline()
+            bundle_file.readline()
             import bz2
 
             content = bz2.decompress(bundle_file.read())

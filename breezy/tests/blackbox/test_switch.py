@@ -124,7 +124,7 @@ class TestSwitch(TestCaseWithTransport):
         self.assertEqual(tree2.branch.base, checkout.branch.base)
 
     def test_switch_finds_relative_bound_branch(self):
-        """Using switch on a heavy checkout should find master sibling
+        """Using switch on a heavy checkout should find master sibling.
 
         The behaviour of lighweight and heavy checkouts should be
         consistent when using the convenient "switch to sibling" feature
@@ -161,7 +161,7 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_switch_revision(self):
         tree = self._create_sample_tree()
-        checkout = tree.branch.create_checkout("checkout", lightweight=True)
+        tree.branch.create_checkout("checkout", lightweight=True)
         self.run_bzr(["switch", "branch-1", "-r1"], working_dir="checkout")
         self.assertPathExists("checkout/file-1")
         self.assertPathDoesNotExist("checkout/file-2")
@@ -171,9 +171,9 @@ class TestSwitch(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".", format="development-colo")
         self.build_tree(["file-1", "file-2"])
         tree.add("file-1")
-        revid1 = tree.commit("rev1")
+        tree.commit("rev1")
         tree.add("file-2")
-        revid2 = tree.commit("rev2")
+        tree.commit("rev2")
         self.run_bzr(["switch", "-b", "anotherbranch"])
         self.assertEqual(
             {"", "anotherbranch"}, set(tree.branch.controldir.branch_names())
@@ -184,9 +184,9 @@ class TestSwitch(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".", format="development-colo")
         self.build_tree(["file-1", "file-2"])
         tree.add("file-1")
-        revid1 = tree.commit("rev1")
+        tree.commit("rev1")
         tree.add("file-2")
-        revid2 = tree.commit("rev2")
+        tree.commit("rev2")
         tree.controldir.create_branch(name="foo")
         self.run_bzr_error(["Cannot switch a branch, only a checkout."], "switch foo")
         self.run_bzr(["switch", "--force", "foo"])
@@ -202,7 +202,7 @@ class TestSwitch(TestCaseWithTransport):
         tree.add("file-1")
         revid1 = tree.commit("rev1")
         tree.add("file-2")
-        revid2 = tree.commit("rev2")
+        tree.commit("rev2")
         otherbranch = tree.controldir.create_branch(name="anotherbranch")
         otherbranch.generate_revision_history(revid1)
         self.run_bzr(["switch", "anotherbranch"], working_dir="branch-1")
@@ -249,7 +249,7 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()
-        checkout = tree.branch.create_checkout("checkout", lightweight=True)
+        tree.branch.create_checkout("checkout", lightweight=True)
         self.assertPathExists("checkout/file-1")
         self.assertPathExists("checkout/file-2")
         self.run_bzr(["switch", "-r1"], working_dir="checkout")
@@ -356,7 +356,7 @@ class TestSwitch(TestCaseWithTransport):
         self.assertLength(1, calls)
 
     def test_switch_lightweight_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         # create a source branch
         a_tree = self.make_branch_and_tree("a")
         self.build_tree_contents([("a/a", b"initial\n")])
@@ -393,7 +393,7 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def assertParent(self, expected_parent, branch):
         """Verify that the parent is not None and is set correctly."""
-        actual_parent = branch.get_parent()
+        branch.get_parent()
         self.assertIsSameRealPath(
             urlutils.local_path_to_url(expected_parent), branch.get_parent()
         )
@@ -404,14 +404,13 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
         self.script_runner.run_script(
             self,
             """
-                $ brz checkout %(option)s repo/trunk checkout
+                $ brz checkout {option} repo/trunk checkout
                 $ cd checkout
                 $ brz switch --create-branch switched
                 2>Tree is up to date at revision 0.
                 2>Switched to branch at .../switched/
                 $ cd ..
-                """
-            % locals(),
+                """.format(**locals()),
         )
         bound_branch = branch.Branch.open_containing("checkout")[0]
         master_branch = branch.Branch.open_containing("repo/switched")[0]
@@ -439,7 +438,7 @@ class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
         master = self.make_branch_and_tree("master")
         master.commit("one")
         # Note: not a lightweight checkout
-        checkout = master.branch.create_checkout("checkout")
+        master.branch.create_checkout("checkout")
         opened = []
 
         def open_hook(branch):
@@ -492,7 +491,7 @@ class TestSwitchUncommitted(TestCaseWithTransport):
 
 class TestSwitchStandAloneCorruption(TestCaseWithTransport):
     def test_empty_tree_switch(self):
-        """Switch . on an empty tree gets infinite recursion
+        """Switch . on an empty tree gets infinite recursion.
 
         Inspired by: https://bugs.launchpad.net/bzr/+bug/1018628
         """
@@ -508,7 +507,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
         )
 
     def test_switch_on_previous_rev(self):
-        """Switch to previous rev in a standalone directory
+        """Switch to previous rev in a standalone directory.
 
         Inspired by: https://bugs.launchpad.net/brz/+bug/1018628
         """
@@ -546,7 +545,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
         )
 
     def test_switch_to_new_branch_on_old_rev(self):
-        """Switch to previous rev in a standalone directory
+        """Switch to previous rev in a standalone directory.
 
         Inspired by: https://bugs.launchpad.net/brz/+bug/933362
         """

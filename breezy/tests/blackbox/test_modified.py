@@ -23,11 +23,11 @@ from breezy.tests import TestCaseWithTransport
 
 class TestModified(TestCaseWithTransport):
     def test_modified(self):
-        """Test that 'modified' command reports modified files"""
+        """Test that 'modified' command reports modified files."""
         self._test_modified("a", "a")
 
     def test_modified_with_spaces(self):
-        """Test that 'modified' command reports modified files with spaces in their names quoted"""
+        """Test that 'modified' command reports modified files with spaces in their names quoted."""
         self._test_modified("a filename with spaces", '"a filename with spaces"')
 
     def _test_modified(self, name, output):
@@ -52,7 +52,7 @@ class TestModified(TestCaseWithTransport):
         check_modified("")
 
         # after commit, not modified
-        tree.commit(message="add %s" % output)
+        tree.commit(message="add {}".format(output))
         check_modified("")
 
         # modify the file
@@ -63,11 +63,11 @@ class TestModified(TestCaseWithTransport):
         check_modified(name + "\0", null=True)
 
         # now commit the file and it's no longer modified
-        tree.commit(message="modified %s" % (name))
+        tree.commit(message="modified {}".format(name))
         check_modified("")
 
     def test_modified_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree("a")
         self.build_tree(["a/README"])
         tree.add("README")

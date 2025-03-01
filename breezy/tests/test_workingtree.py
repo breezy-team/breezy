@@ -116,7 +116,7 @@ class TestDefaultFormat(TestCaseWithTransport):
 
 
 class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.

@@ -46,7 +46,7 @@ from . import errors, hooks, registry
 
 
 class IllegalMergeDirectivePayload(errors.BzrError):
-    """A merge directive contained something other than a patch or bundle"""
+    """A merge directive contained something other than a patch or bundle."""
 
     _fmt = "Bad merge directive payload %(start)r"
 
@@ -134,7 +134,7 @@ class BaseMergeDirective:
         self.message = message
 
     def to_lines(self):
-        """Serialize as a list of lines
+        """Serialize as a list of lines.
 
         :return: a list of lines
         """
@@ -155,7 +155,7 @@ class BaseMergeDirective:
         return None
 
     def _to_lines(self, base_revision=False):
-        """Serialize as a list of lines
+        """Serialize as a list of lines.
 
         :return: a list of lines
         """
@@ -196,7 +196,7 @@ class BaseMergeDirective:
         public_branch=None,
         message=None,
     ):
-        """Generate a merge directive from various objects
+        """Generate a merge directive from various objects.
 
         :param repository: The repository containing the revision
         :param revision_id: The revision to merge
@@ -259,7 +259,7 @@ class BaseMergeDirective:
         )
 
     def get_disk_name(self, branch):
-        """Generate a suitable basename for storing this directive on disk
+        """Generate a suitable basename for storing this directive on disk.
 
         :param branch: The Branch this merge directive was generated fro
         :return: A string
@@ -321,7 +321,7 @@ class BaseMergeDirective:
         return message
 
     def install_revisions(self, target_repo):
-        """Install revisions and return the target revision"""
+        """Install revisions and return the target revision."""
         if not target_repo.has_revision(self.revision_id):
             if self.patch_type == "bundle":
                 info = bundle_serializer.read_bundle(BytesIO(self.get_raw_bundle()))
@@ -475,7 +475,7 @@ class MergeDirective(BaseMergeDirective):
 
     @classmethod
     def from_lines(klass, lines):
-        """Deserialize a MergeRequest from an iterable of lines
+        """Deserialize a MergeRequest from an iterable of lines.
 
         :param lines: An iterable of lines
         :return: a MergeRequest
@@ -536,7 +536,7 @@ class MergeDirective(BaseMergeDirective):
         return s.getvalue()
 
     def get_merge_request(self, repository):
-        """Provide data for performing a merge
+        """Provide data for performing a merge.
 
         Returns suggested base, suggested target, and patch verification status
         """
@@ -665,7 +665,7 @@ class MergeDirective2(BaseMergeDirective):
         message=None,
         base_revision_id=None,
     ):
-        """Generate a merge directive from various objects
+        """Generate a merge directive from various objects.
 
         :param repository: The repository containing the revision
         :param revision_id: The revision to merge
@@ -750,7 +750,7 @@ class MergeDirective2(BaseMergeDirective):
         return calculated_patch == stored_patch
 
     def get_merge_request(self, repository):
-        """Provide data for performing a merge
+        """Provide data for performing a merge.
 
         Returns suggested base, suggested target, and patch verification status
         """

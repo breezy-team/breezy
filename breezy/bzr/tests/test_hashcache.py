@@ -32,7 +32,7 @@ def pause():
 
 
 class TestHashCache(TestCaseInTempDir):
-    """Test the hashcache against a real directory"""
+    """Test the hashcache against a real directory."""
 
     def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
@@ -46,7 +46,7 @@ class TestHashCache(TestCaseInTempDir):
         return hc
 
     def test_hashcache_initial_miss(self):
-        """Get correct hash from an empty hashcache"""
+        """Get correct hash from an empty hashcache."""
         hc = self.make_hashcache()
         self.build_tree_contents([("foo", b"hello")])
         self.assertEqual(
@@ -104,7 +104,7 @@ class TestHashCache(TestCaseInTempDir):
             hc = self.reopen_hashcache()
 
     def test_hashcache_raise(self):
-        """Check that hashcache can raise BzrError"""
+        """Check that hashcache can raise BzrError."""
         self.requireFeature(OsFifoFeature)
         hc = self.make_hashcache()
         os.mkfifo("a")
@@ -158,7 +158,7 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         return FakeHashCache()
 
     def test_hashcache_miss_new_file(self):
-        """A new file gives the right sha1 but misses"""
+        """A new file gives the right sha1 but misses."""
         hc = self.make_hashcache()
         hc.put_file("foo", b"hello")
         self.assertEqual(hc.get_sha1("foo"), sha1(b"hello"))
@@ -170,7 +170,7 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         self.assertEqual(hc.hit_count, 0)
 
     def test_hashcache_old_file(self):
-        """An old file gives the right sha1 and hits"""
+        """An old file gives the right sha1 and hits."""
         hc = self.make_hashcache()
         hc.put_file("foo", b"hello")
         hc.pretend_to_sleep(20)

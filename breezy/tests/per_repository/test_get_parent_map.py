@@ -58,7 +58,7 @@ class TestGetParentMap(TestCaseWithRepository):
 
     def test_none(self):
         tree = self.make_branch_and_tree(".")
-        rev1 = tree.commit("first")
+        tree.commit("first")
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)

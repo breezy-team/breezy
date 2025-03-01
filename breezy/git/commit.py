@@ -92,7 +92,7 @@ class GitCommitBuilder(CommitBuilder):
             try:
                 entry_kls = entry_factory[change.kind[1]]
             except KeyError:
-                raise KeyError("unknown kind %s" % change.kind[1])
+                raise KeyError("unknown kind {}".format(change.kind[1]))
             entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
@@ -123,7 +123,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry.reference_revision = reference_revision
                 st = None
             else:
-                raise AssertionError("Unknown kind %r" % change.kind[1])
+                raise AssertionError("Unknown kind {!r}".format(change.kind[1]))
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
             if change.path[0] is not None:
@@ -156,7 +156,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in self._blobs.items()}
+        self._blobs = dict(self._blobs.items())
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.items())
@@ -194,9 +194,9 @@ class GitCommitBuilder(CommitBuilder):
         if bugstext is not None:
             for url, status in bugtracker.decode_bug_urls(bugstext):
                 if status == bugtracker.FIXED:
-                    pseudoheaders.append(("Fixes: %s" % url).encode(encoding))
+                    pseudoheaders.append(("Fixes: {}".format(url)).encode(encoding))
                 elif status == bugtracker.RELATED:
-                    pseudoheaders.append(("Bug: %s" % url).encode(encoding))
+                    pseudoheaders.append(("Bug: {}".format(url)).encode(encoding))
                 else:
                     raise bugtracker.InvalidBugStatus(status)
         if self._revprops:

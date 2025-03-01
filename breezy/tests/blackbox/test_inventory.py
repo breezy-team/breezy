@@ -69,9 +69,8 @@ class TestInventory(TestCaseWithTransport):
         self.assertInventoryEqual("b\nb/c\n", "b")
 
     def test_inventory_mixed(self):
-        """Test that we get expected results when mixing parameters"""
+        """Test that we get expected results when mixing parameters."""
         a_line = "%-50s %s\n" % ("a", "a-id")
-        b_line = "%-50s %s\n" % ("b", "b-id")
         c_line = "%-50s %s\n" % ("b/c", "c-id")
 
         self.assertInventoryEqual("", "--kind directory a")

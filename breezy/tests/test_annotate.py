@@ -385,7 +385,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         )
 
     def test_annotate_limits_dotted_revnos(self):
-        """Annotate should limit dotted revnos to a depth of 12"""
+        """Annotate should limit dotted revnos to a depth of 12."""
         builder = self.create_deeply_merged_trees()
 
         self.assertBranchAnnotate(

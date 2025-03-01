@@ -398,7 +398,7 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = transport.local_abspath(urlutils.quote_from_bytes(name))
+            transport.local_abspath(urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?
             if transport.has(lockname):

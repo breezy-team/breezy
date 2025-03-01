@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test for 'brz mv'"""
+"""Test for 'brz mv'."""
 
 import os
 
@@ -38,9 +38,9 @@ class TestMove(TestCaseWithTransport):
         self.assertInWorkingTree(to_path)
 
     def test_mv_modes(self):
-        """Test two modes of operation for mv"""
+        """Test two modes of operation for mv."""
         tree = self.make_branch_and_tree(".")
-        files = self.build_tree(["a", "c", "subdir/"])
+        self.build_tree(["a", "c", "subdir/"])
         tree.add(["a", "c", "subdir"])
 
         self.run_bzr("mv a b")
@@ -188,7 +188,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr("rename b a")
 
     def test_mv_no_root(self):
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.run_bzr_error(["brz: ERROR: can not move root of branch"], "mv . a")
 
     def test_mv_through_symlinks(self):
@@ -517,16 +517,16 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr(["mv", "tree/path", "tree/path2"])
 
     def test_mv_unversioned_non_ascii(self):
-        """Clear error on mv of an unversioned non-ascii file, see lp:707954"""
+        """Clear error on mv of an unversioned non-ascii file, see lp:707954."""
         self.requireFeature(UnicodeFilenameFeature)
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["\xa7"])
         out, err = self.run_bzr_error(
             ["Could not rename", "not versioned"], ["mv", "\xa7", "b"]
         )
 
     def test_mv_removed_non_ascii(self):
-        """Clear error on mv of a removed non-ascii file, see lp:898541"""
+        """Clear error on mv of a removed non-ascii file, see lp:898541."""
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["\xa7"])

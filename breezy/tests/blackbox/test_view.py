@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the view command"""
+"""Tests for the view command."""
 
 from breezy.tests import TestCaseWithTransport
 
@@ -25,7 +25,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(out, "Manage filtered views")
 
     def test_define_view(self):
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # Check definition of a new view
         out, err = self.run_bzr("view a b c")
         self.assertEqual(out, "Using 'my' view: a, b, c\n")
@@ -41,7 +41,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "Cannot change the 'off' pseudo view")
 
     def test_list_view(self):
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # Check list of the current view
         out, err = self.run_bzr("view")
         self.assertEqual(out, "No current view.\n")
@@ -69,7 +69,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "No such view")
 
     def test_delete_view(self):
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # Check delete of the current view
         out, err = self.run_bzr("view --delete", retcode=3)
         self.assertContainsRe(err, "No current view to delete")
@@ -93,7 +93,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertContainsRe(err, "Both --delete and a file list specified")
 
     def test_switch_view(self):
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # Check switching to a named view
         self.run_bzr("view a b c")
         self.run_bzr("view e f --name foo")

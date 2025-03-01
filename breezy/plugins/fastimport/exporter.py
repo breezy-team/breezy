@@ -106,9 +106,7 @@ def check_ref_format(refname):
         return False
     if b"@{" in refname:
         return False
-    if b"\\" in refname:
-        return False
-    return True
+    return b"\\" not in refname
 
 
 def sanitize_ref_name_for_git(refname):
@@ -310,9 +308,9 @@ class BzrFastExporter:
             minutes = (time.time() - self._start_time) / 60
             rate = commit_count * 1.0 / minutes
             if rate > 10:
-                rate_str = "at %.0f/minute " % rate
+                rate_str = "at {:.0f}/minute ".format(rate)
             else:
-                rate_str = "at %.1f/minute " % rate
+                rate_str = "at {:.1f}/minute ".format(rate)
             self.note("{} commits exported {}{}".format(counts, rate_str, details))
 
     def dump_stats(self):
@@ -339,15 +337,12 @@ class BzrFastExporter:
             if tree.kind(path) != "directory":
                 return False
         except _mod_transport.NoSuchFile:
-            self.warning("Skipping empty_dir detection - no file_id for %s" % (path,))
+            self.warning("Skipping empty_dir detection - no file_id for {}".format(path))
             return False
 
         # Use treewalk to find the contents of our directory
         contents = list(tree.walkdirs(prefix=path))[0]
-        if len(contents[1]) == 0:
-            return True
-        else:
-            return False
+        return len(contents[1]) == 0
 
     def emit_features(self):
         for feature in sorted(commands.FEATURE_NAMES):
@@ -567,8 +562,7 @@ class BzrFastExporter:
                     )
             else:
                 self.warning(
-                    "cannot export '%s' of kind %s yet - ignoring"
-                    % (change.path[1], change.kind[1])
+                    "cannot export '{}' of kind {} yet - ignoring".format(change.path[1], change.kind[1])
                 )
 
         # TODO(jelmer): Improve performance on remote repositories
@@ -679,14 +673,12 @@ class BzrFastExporter:
         for old, new in renamed:
             if path == old:
                 self.note(
-                    "Changing path %s given rename to %s in revision %s"
-                    % (path, new, revision_id)
+                    "Changing path {} given rename to {} in revision {}".format(path, new, revision_id)
                 )
                 path = new
             elif path.startswith(old + "/"):
                 self.note(
-                    "Adjusting path %s given rename of %s to %s in revision %s"
-                    % (path, old, new, revision_id)
+                    "Adjusting path {} given rename of {} to {} in revision {}".format(path, old, new, revision_id)
                 )
                 path = path.replace(old + "/", new + "/")
         return path
@@ -697,8 +689,8 @@ class BzrFastExporter:
                 mark = self.revid_to_mark[revid]
             except KeyError:
                 self.warning(
-                    "not creating tag %r pointing to non-existent "
-                    "revision %s" % (tag, revid)
+                    "not creating tag {!r} pointing to non-existent "
+                    "revision {}".format(tag, revid)
                 )
             else:
                 git_ref = b"refs/tags/%s" % tag.encode("utf-8")

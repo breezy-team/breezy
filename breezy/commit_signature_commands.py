@@ -76,7 +76,7 @@ class cmd_sign_my_commits(Command):
                         continue
                     # We have a revision without a signature who has a
                     # matching committer, start signing
-                    self.outf.write("%s\n" % rev_id)
+                    self.outf.write("{}\n".format(rev_id))
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)

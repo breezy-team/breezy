@@ -37,7 +37,7 @@ class GitServerTestCase(TestCaseWithTransport):
         backend = BzrBackend(t)
         server = BzrTCPGitServer(backend, "localhost", port=0)
         self.addCleanup(server.shutdown)
-        thread = threading.Thread(target=server.serve).start()
+        threading.Thread(target=server.serve).start()
         self._server = server
         _, port = self._server.socket.getsockname()
         return port

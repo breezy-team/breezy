@@ -51,7 +51,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.build_tree(["subtree/"])
         tree.add(["subtree"])
-        subtree = tree.extract("subtree")
+        tree.extract("subtree")
 
     def prepare_with_subtree(self):
         tree = self.make_branch_and_tree(".")

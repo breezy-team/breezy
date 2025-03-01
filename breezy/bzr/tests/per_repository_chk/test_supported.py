@@ -328,14 +328,14 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                     "add",
                     (
                         "file-" + name,
-                        ("file-%s-id" % name).encode(),
+                        ("file-{}-id".format(name)).encode(),
                         "file",
-                        ("content %s\n" % name).encode(),
+                        ("content {}\n".format(name)).encode(),
                     ),
                 )
             )
             file_modifies.append(
-                ("modify", ("file-" + name, ("new content %s\n" % name).encode()))
+                ("modify", ("file-" + name, ("new content {}\n".format(name)).encode()))
             )
         builder.build_snapshot(
             None,

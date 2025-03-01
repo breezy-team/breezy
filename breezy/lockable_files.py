@@ -52,7 +52,7 @@ class LockableFiles:
     def __init__(
         self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]
     ) -> None:
-        """Create a LockableFiles group
+        """Create a LockableFiles group.
 
         :param transport: Transport pointing to the directory holding the
             control files and lock.
@@ -97,7 +97,7 @@ class LockableFiles:
         self._lock.break_lock()
 
     def _escape(self, file_or_path: str) -> str:
-        """DEPRECATED: Do not use outside this class"""
+        """DEPRECATED: Do not use outside this class."""
         if file_or_path == "":
             return ""
         return urlutils.escape(file_or_path)
@@ -202,7 +202,7 @@ class LockableFiles:
                 self._lock_mode = None
 
     def is_locked(self) -> bool:
-        """Return true if this LockableFiles group is locked"""
+        """Return true if this LockableFiles group is locked."""
         return self._lock_count >= 1
 
     def get_physical_lock_status(self) -> bool:
@@ -231,13 +231,13 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError("Branch %s is in a transaction already." % self)
+            raise errors.LockError("Branch {} is in a transaction already.".format(self))
         self._transaction = new_transaction
 
     def _finish_transaction(self):
         """Exit the current transaction."""
         if self._transaction is None:
-            raise errors.LockError("Branch %s is not in a transaction" % self)
+            raise errors.LockError("Branch {} is not in a transaction".format(self))
         transaction = self._transaction
         self._transaction = None
         transaction.finish()
@@ -288,7 +288,7 @@ class TransportLock:
         raise NotImplementedError()
 
     def create(self, mode=None):
-        """Create lock mechanism"""
+        """Create lock mechanism."""
         # for old-style locks, create the file now
         self._transport.put_bytes(self._escaped_name, b"", mode=self._file_modebits)
 

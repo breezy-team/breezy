@@ -318,7 +318,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), "oldpath invalid")
 
     def test_parse_new_file(self):
-        """A new file is parsed correctly"""
+        """A new file is parsed correctly."""
         lines = root_only_lines
         fake_sha = b"deadbeef" * 5
         lines += (

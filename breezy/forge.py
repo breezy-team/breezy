@@ -129,7 +129,7 @@ class MergeProposal:
         return self.url
 
     def __repr__(self):
-        return "<%s(%r)>" % (self.__class__.__name__, self.url)
+        return "<{}({!r})>".format(self.__class__.__name__, self.url)
 
     def get_web_url(self):
         raise NotImplementedError(self.get_web_url)
@@ -189,7 +189,7 @@ class MergeProposal:
         raise NotImplementedError(self.is_merged)
 
     def is_closed(self):
-        """Check whether this merge proposal is closed
+        """Check whether this merge proposal is closed.
 
         This can either mean that it is merged or rejected.
         """
@@ -476,7 +476,7 @@ def get_forge(branch, possible_forges=None):
         for forge in possible_forges:
             if forge.hosts(branch):
                 return forge
-    for name, forge_cls in forges.items():
+    for _name, forge_cls in forges.items():
         try:
             forge = forge_cls.probe_from_branch(branch)
         except UnsupportedForge:
@@ -533,8 +533,7 @@ def create_project(url: str, *, summary=None) -> None:
       url: URL of project to create
     """
     parsed_url = urlutils.URL.from_string(url)
-    hostname = parsed_url.host
-    for name, forge_cls in forges.items():
+    for _name, forge_cls in forges.items():
         try:
             hoster = forge_cls.probe_from_url(url)
         except UnsupportedForge:

@@ -58,7 +58,7 @@ load_tests = load_tests_apply_scenarios
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
-    """Get a diamond graph to exercise deltas and merges.
+    r"""Get a diamond graph to exercise deltas and merges.
 
     :param trailing_eol: If True end the last line with \n.
     """
@@ -90,7 +90,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
 def get_diamond_files(
     files, key_length, trailing_eol=True, left_only=False, nograph=False, nokeys=False
 ):
-    """Get a diamond graph to exercise deltas and merges.
+    r"""Get a diamond graph to exercise deltas and merges.
 
     This creates a 5-node graph in files. If files supports 2-length keys two
     graphs are made to exercise the support for multiple ids.
@@ -267,7 +267,7 @@ class VersionedFileTestMixIn:
         )
 
     def test_add_follows_left_matching_blocks(self):
-        """If we change left_matching_blocks, delta changes
+        """If we change left_matching_blocks, delta changes.
 
         Note: There are multiple correct deltas in this case, because
         we start with 1 "a" and we get 3.
@@ -457,7 +457,6 @@ class VersionedFileTestMixIn:
     def test_add_lines_with_matching_blocks_noeol_last_line(self):
         """Add a text with an unchanged last line with no eol should work."""
         # Hand verified sha1 of the text we're adding.
-        sha1 = "6a1d115ec7b60afb664dc14890b5af5ce3c827a4"
         # Create a mpdiff which adds a new line before the trailing line, and
         # reuse the last line unaltered (which can cause annotation reuse).
         # Test adding this in two situations:
@@ -487,7 +486,7 @@ class VersionedFileTestMixIn:
         from breezy import multiparent
 
         vf = self.get_file("foo")
-        sha1s = self._setup_for_deltas(vf)
+        self._setup_for_deltas(vf)
         new_vf = self.get_file("bar")
         for version in multiparent.topo_iter(vf):
             mpdiff = vf.make_mpdiffs([version])[0]
@@ -592,7 +591,7 @@ class VersionedFileTestMixIn:
         f.add_lines(b"r3", [b"r2"], [b"b\n", b"c\n"])
         f.add_lines(b"rM", [b"r1", b"r2"], [b"b\n", b"c\n"])
         self.assertEqual(set(), f.get_ancestry([]))
-        versions = f.get_ancestry([b"rM"])
+        f.get_ancestry([b"rM"])
 
         self.assertRaises(RevisionNotPresent, f.get_ancestry, [b"rM", b"rX"])
 
@@ -616,7 +615,7 @@ class VersionedFileTestMixIn:
             self.assertTrue(t.has("foo" + suffix))
 
     def test_get_suffixes(self):
-        f = self.get_file()
+        self.get_file()
         # and should be a list
         self.assertTrue(isinstance(self.get_factory().get_suffixes(), list))
 
@@ -988,7 +987,7 @@ class TestReadonlyHttpMixin:
 
     def test_readonly_http_works(self):
         # we should be able to read from http with a versioned file.
-        vf = self.get_file()
+        self.get_file()
         # try an empty file access
         readonly_vf = self.get_factory()(
             "foo", transport.get_transport_from_url(self.get_readonly_url("."))
@@ -1642,7 +1641,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f = self.get_versionedfiles("files")
         if getattr(f, "add_fallback_versioned_files", None) is None:
             raise TestNotApplicable(
-                "%s doesn't support fallbacks" % (f.__class__.__name__,)
+                "{} doesn't support fallbacks".format(f.__class__.__name__)
             )
         g = self.get_versionedfiles("fallback")
         key_a = self.get_simple_key(b"a")
@@ -1655,8 +1654,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f = self.get_versionedfiles()
         key0 = self.get_simple_key(b"r0")
         key1 = self.get_simple_key(b"r1")
-        key2 = self.get_simple_key(b"r2")
-        keyf = self.get_simple_key(b"foo")
+        self.get_simple_key(b"r2")
+        self.get_simple_key(b"foo")
         f.add_lines(key0, [], [b"a\n", b"b\n"])
         if self.graph:
             f.add_lines(key1, [key0], [b"b\n", b"c\n"])
@@ -1675,8 +1674,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f = self.get_versionedfiles()
         key0 = self.get_simple_key(b"r0")
         key1 = self.get_simple_key(b"r1")
-        key2 = self.get_simple_key(b"r2")
-        keyf = self.get_simple_key(b"foo")
+        self.get_simple_key(b"r2")
+        self.get_simple_key(b"foo")
 
         def add_chunks(key, parents, chunks):
             factory = ChunkedContentFactory(
@@ -1737,7 +1736,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertRaises(RevisionNotPresent, files.annotate, prefix + ("missing-key",))
 
     def test_check_no_parameters(self):
-        files = self.get_versionedfiles()
+        self.get_versionedfiles()
 
     def test_check_progressbar_parameter(self):
         """A progress bar can be supplied because check can be a generator."""
@@ -1765,7 +1764,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
-        files = self.get_versionedfiles()
+        self.get_versionedfiles()
 
     def get_diamond_files(
         self, files, trailing_eol=True, left_only=False, nokeys=False
@@ -1975,7 +1974,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             raise TestNotApplicable("ancestry info only relevant with graph.")
         if getattr(f, "add_fallback_versioned_files", None) is None:
             raise TestNotApplicable(
-                "%s doesn't support fallbacks" % (f.__class__.__name__,)
+                "{} doesn't support fallbacks".format(f.__class__.__name__)
             )
         key_a = self.get_simple_key(b"a")
         key_b = self.get_simple_key(b"b")
@@ -2994,34 +2993,6 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         next_parent = self.get_simple_key(b"base")
         text_name = b"chain1-"
         text = [b"line\n"]
-        sha1s = {
-            0: b"da6d3141cb4a5e6f464bf6e0518042ddc7bfd079",
-            1: b"45e21ea146a81ea44a821737acdb4f9791c8abe7",
-            2: b"e1f11570edf3e2a070052366c582837a4fe4e9fa",
-            3: b"26b4b8626da827088c514b8f9bbe4ebf181edda1",
-            4: b"e28a5510be25ba84d31121cff00956f9970ae6f6",
-            5: b"d63ec0ce22e11dcf65a931b69255d3ac747a318d",
-            6: b"2c2888d288cb5e1d98009d822fedfe6019c6a4ea",
-            7: b"95c14da9cafbf828e3e74a6f016d87926ba234ab",
-            8: b"779e9a0b28f9f832528d4b21e17e168c67697272",
-            9: b"1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f",
-            10: b"131a2ae712cf51ed62f143e3fbac3d4206c25a05",
-            11: b"c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199",
-            12: b"31a2286267f24d8bedaa43355f8ad7129509ea85",
-            13: b"dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a",
-            14: b"2c4b1736566b8ca6051e668de68650686a3922f2",
-            15: b"5912e4ecd9b0c07be4d013e7e2bdcf9323276cde",
-            16: b"b0d2e18d3559a00580f6b49804c23fea500feab3",
-            17: b"8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7",
-            18: b"5cf64a3459ae28efa60239e44b20312d25b253f3",
-            19: b"1ebed371807ba5935958ad0884595126e8c4e823",
-            20: b"2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3",
-            21: b"01edc447978004f6e4e962b417a4ae1955b6fe5d",
-            22: b"d8d8dc49c4bf0bab401e0298bb5ad827768618bb",
-            23: b"c21f62b1c482862983a8ffb2b0c64b3451876e3f",
-            24: b"c0593fe795e00dff6b3c0fe857a074364d5f04fc",
-            25: b"dd1a1cf2ba9cc225c3aff729953e6364bf1d1855",
-        }
         for depth in range(26):
             new_version = self.get_simple_key(text_name + b"%d" % depth)
             text = text + [b"line\n"]
@@ -3128,7 +3099,7 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines[b"C"] = [b"Alberta"]
         it = self.texts.iter_lines_added_or_present_in_keys([(b"A",), (b"B",)])
         self.assertEqual(
-            sorted([(b"FOO", b"A"), (b"BAR", b"A"), (b"HEY", b"B")]), sorted(list(it))
+            sorted([(b"FOO", b"A"), (b"BAR", b"A"), (b"HEY", b"B")]), sorted(it)
         )
 
 

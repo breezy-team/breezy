@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for version_info"""
+"""Tests for version_info."""
 
 import os
 import re
@@ -435,7 +435,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         self.assertContainsRe(val, "'revno': '1.1.1'")
 
     def regen(self, wt, **kwargs):
-        """Create a test module, import and return it"""
+        """Create a test module, import and return it."""
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         outf = StringIO()
         builder.generate(outf)

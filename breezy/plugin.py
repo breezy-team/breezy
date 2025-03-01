@@ -90,7 +90,7 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
     _load_plugins(state, path)
     state.plugins = plugins()
     if warn_load_problems:
-        for plugin, errors in state.plugin_warnings.items():
+        for _plugin, errors in state.plugin_warnings.items():
             for error in errors:
                 trace.warning("%s", error)
 
@@ -262,9 +262,9 @@ def _load_plugins(state, paths):
             if not valid_plugin_name(name):
                 sanitised_name = sanitise_plugin_name(name)
                 trace.warning(
-                    "Unable to load %r in %r as a plugin because the "
+                    "Unable to load {!r} in {!r} as a plugin because the "
                     "file path isn't a valid module name; try renaming "
-                    "it to %r." % (name, path, sanitised_name)
+                    "it to {!r}.".format(name, path, sanitised_name)
                 )
                 continue
             msg = _load_plugin_module(name, path)
@@ -354,11 +354,11 @@ def describe_plugins(show_paths=False, state=None):
                 doc = d.split("\n")[0]
             else:
                 doc = "(no description)"
-            yield ("  %s\n" % doc)
+            yield ("  {}\n".format(doc))
             if show_paths:
-                yield ("   %s\n" % plugin.path())
+                yield ("   {}\n".format(plugin.path()))
         else:
-            yield "%s (failed to load)\n" % name
+            yield "{} (failed to load)\n".format(name)
         if name in state.plugin_warnings:
             for line in state.plugin_warnings[name]:
                 yield "  ** " + line + "\n"
@@ -428,9 +428,8 @@ def _load_plugin_module(name, dir):
         __import__(_MODULE_PREFIX + name)
     except errors.IncompatibleVersion as e:
         warning_message = (
-            "Unable to load plugin %r. It supports %s "
-            "versions %r but the current version is %s"
-            % (name, e.api.__name__, e.wanted, e.current)
+            "Unable to load plugin {!r}. It supports {} "
+            "versions {!r} but the current version is {}".format(name, e.api.__name__, e.wanted, e.current)
         )
         return record_plugin_warning(warning_message)
     except Exception as e:
@@ -476,7 +475,7 @@ def format_concise_plugin_list(state=None):
         state = breezy.get_global_state()
     items = []
     for name, a_plugin in sorted(getattr(state, "plugins", {}).items()):
-        items.append("%s[%s]" % (name, a_plugin.__version__))
+        items.append("{}[{}]".format(name, a_plugin.__version__))
     return ", ".join(items)
 
 
@@ -532,7 +531,7 @@ class ModuleHelpTopic:
         from . import help_topics
 
         if not self.module.__doc__:
-            result = "Plugin '%s' has no docstring.\n" % self.module.__name__
+            result = "Plugin '{}' has no docstring.\n".format(self.module.__name__)
         else:
             result = self.module.__doc__
         if result[-1] != "\n":

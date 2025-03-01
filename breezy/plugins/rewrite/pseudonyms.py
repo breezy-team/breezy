@@ -161,7 +161,6 @@ def find_pseudonyms(repository, revids):
                 conversions[foreign_revid].add(rev.revision_id)
     finally:
         pb.finished()
-    done = set()
     for foreign_revid in conversions.keys():
         ret = set()
         check = set(conversions[foreign_revid])

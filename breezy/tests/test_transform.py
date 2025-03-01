@@ -516,10 +516,10 @@ class TestTransformRollback(tests.TestCaseWithTransport):
 
 
 class TestFinalizeRobustness(tests.TestCaseWithTransport):
-    """Ensure treetransform creation errors can be safely cleaned up after"""
+    """Ensure treetransform creation errors can be safely cleaned up after."""
 
     def _override_globals_in_method(self, instance, method_name, globals):
-        """Replace method on instance with one with updated globals"""
+        """Replace method on instance with one with updated globals."""
         import types
 
         func = getattr(instance, method_name).__func__
@@ -533,23 +533,23 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
 
     @staticmethod
     def _fake_open_raises_before(name, mode):
-        """Like open() but raises before doing anything"""
+        """Like open() but raises before doing anything."""
         raise RuntimeError
 
     @staticmethod
     def _fake_open_raises_after(name, mode):
-        """Like open() but raises after creating file without returning"""
+        """Like open() but raises after creating file without returning."""
         open(name, mode).close()
         raise RuntimeError
 
     def create_transform_and_root_trans_id(self):
-        """Setup a transform creating a file in limbo"""
+        """Setup a transform creating a file in limbo."""
         tree = self.make_branch_and_tree(".")
         tt = tree.transform()
         return tt, tt.create_path("a", tt.root)
 
     def create_transform_and_subdir_trans_id(self):
-        """Setup a transform creating a directory containing a file in limbo"""
+        """Setup a transform creating a directory containing a file in limbo."""
         tree = self.make_branch_and_tree(".")
         tt = tree.transform()
         d_trans_id = tt.create_path("d", tt.root)
@@ -1121,7 +1121,7 @@ class TestLinkTree(tests.TestCaseWithTransport):
         self.assertFalse(self.hardlinked())
 
     def test_link_succeeds_if_unmodified(self):
-        """If the file to be linked is unmodified, link"""
+        """If the file to be linked is unmodified, link."""
         transform.link_tree(self.child_tree, self.parent_tree)
         self.assertTrue(self.hardlinked())
 

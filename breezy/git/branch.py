@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Branch and a Bazaar Branch"""
+"""An adapter between a Git Branch and a Bazaar Branch."""
 
 import contextlib
 from collections import defaultdict
@@ -105,9 +105,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is not None:
-            return False
-        return True
+        return not getattr(target.branch.repository, "_git", None) is not None
 
     def merge(
         self,
@@ -170,9 +168,7 @@ class InterTagsFromGitToLocalGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is None:
-            return False
-        return True
+        return getattr(target.branch.repository, "_git", None) is not None
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         if self.source.branch.repository.has_same_location(
@@ -225,9 +221,7 @@ class InterTagsFromGitToNonGit(InterTags):
     def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
-        if isinstance(target, GitTags):
-            return False
-        return True
+        return not isinstance(target, GitTags)
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         """See Tags.merge_to."""
@@ -266,7 +260,7 @@ class InterTagsFromGitToNonGit(InterTags):
         conflicts = []
         updates = {}
         result = dict(to_tags.get_tag_dict())
-        for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+        for _ref_name, tag_name, peeled, unpeeled in source_tag_refs:
             if selector and not selector(tag_name):
                 continue
             if unpeeled is not None:
@@ -304,7 +298,7 @@ class GitTags(Tags):
 
     def get_tag_dict(self):
         ret = {}
-        for ref_name, tag_name, peeled, unpeeled in self.branch.get_tag_refs():
+        for _ref_name, tag_name, peeled, _unpeeled in self.branch.get_tag_refs():
             try:
                 bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
             except NotCommitError:
@@ -314,7 +308,7 @@ class GitTags(Tags):
         return ret
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         # TODO(jelmer): Replace with something more efficient for local tags.
         td = self.get_tag_dict()
         try:
@@ -454,7 +448,7 @@ class GitBranch(ForeignBranch):
         self._lock_count = 0
         super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
-            raise TypeError("ref is invalid: %r" % ref)
+            raise TypeError("ref is invalid: {!r}".format(ref))
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone(".")
@@ -1068,7 +1062,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         tree = self.target.repository.revision_tree(revid)
         try:
             with tree.get_file(".gitmodules") as f:
-                for path, url, section in parse_submodules(GitConfigFile.from_file(f)):
+                for path, url, _section in parse_submodules(GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)),
                         url.decode("utf-8"),
@@ -1510,7 +1504,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
-            for k, v in self.source.tags.get_tag_dict().items():
+            for _k, v in self.source.tags.get_tag_dict().items():
                 ret.append((None, v))
         ret.append((None, stop_revision))
         if getattr(self.interrepo, "fetch_revs", None):

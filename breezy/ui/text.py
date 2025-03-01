@@ -83,7 +83,7 @@ class _ChooseUI:
             name = c.replace("&", "").lower()
             choice = (name, index)
             if name in self.alternatives:
-                raise ValueError("duplicated choice: %s" % name)
+                raise ValueError("duplicated choice: {}".format(name))
             self.alternatives[name] = choice
             shortcut = c.find("&")
             if shortcut != -1 and (shortcut + 1) < len(c):
@@ -97,7 +97,7 @@ class _ChooseUI:
                 help = "[{}]{}".format(shortcut, c[1:])
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
-                raise ValueError("duplicated shortcut: %s" % shortcut)
+                raise ValueError("duplicated shortcut: {}".format(shortcut))
             self.alternatives[shortcut] = choice
             # Add redirections for default.
             if index == default:
@@ -189,7 +189,7 @@ class TextUIFactory(UIFactory):
         self.stderr = _wrap_out_stream(self.raw_stderr)
 
     def choose(self, msg, choices, default=None):
-        """Prompt the user for a list of alternatives.
+        r"""Prompt the user for a list of alternatives.
 
         Support both line-based and char-based editing.
 
@@ -323,7 +323,7 @@ class TextUIFactory(UIFactory):
             to allow UIs to reformat the prompt.
         """
         if not isinstance(prompt, str):
-            raise ValueError("prompt %r not a unicode string" % prompt)
+            raise ValueError("prompt {!r} not a unicode string".format(prompt))
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
@@ -341,26 +341,26 @@ class TextUIFactory(UIFactory):
         self._progress_view.show_transport_activity(transport, direction, byte_count)
 
     def log_transport_activity(self, display=False):
-        """See UIFactory.log_transport_activity()"""
+        """See UIFactory.log_transport_activity()."""
         log = getattr(self._progress_view, "log_transport_activity", None)
         if log is not None:
             log(display=display)
 
     def show_error(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: error: %s\n" % msg)
+        self.stderr.write("bzr: error: {}\n".format(msg))
 
     def show_message(self, msg):
         self.note(msg)
 
     def show_warning(self, msg):
         self.clear_term()
-        self.stderr.write("bzr: warning: %s\n" % msg)
+        self.stderr.write("bzr: warning: {}\n".format(msg))
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn("%r updated but no tasks are active" % (task,))
+            warnings.warn("{!r} updated but no tasks are active".format(task), stacklevel=2)
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -622,7 +622,7 @@ class TextProgressView:
             bps = self._total_byte_count / transfer_time
 
         # using base-10 units (see HACKING.txt).
-        msg = "Transferred: %.0fkB (%.1fkB/s r:%.0fkB w:%.0fkB" % (
+        msg = "Transferred: {:.0f}kB ({:.1f}kB/s r:{:.0f}kB w:{:.0f}kB".format(
             self._total_byte_count / 1000.0,
             bps / 1000.0,
             self._bytes_by_direction["read"] / 1000.0,

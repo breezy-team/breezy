@@ -27,24 +27,22 @@ EMPTY_MESSAGE = (
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar (%s)
+User-Agent: Bazaar ({})
 
-"""
-    % _breezy_version
+""".format(_breezy_version)
 )
 
 _SIMPLE_MESSAGE = (
     """\
 MIME-Version: 1.0
-Content-Type: text/plain; charset="%%s"
-Content-Transfer-Encoding: %%s
+Content-Type: text/plain; charset="%s"
+Content-Transfer-Encoding: %s
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar (%s)
+User-Agent: Bazaar ({})
 
-%%s"""
-    % _breezy_version
+%s""".format(_breezy_version)
 )
 
 SIMPLE_MESSAGE_ASCII = _SIMPLE_MESSAGE % ("us-ascii", "7bit", "body")
@@ -73,7 +71,7 @@ body
 
 
 def simple_multipart_message():
-    msg = _MULTIPART_HEAD + "--%s--\n" % BOUNDARY
+    msg = _MULTIPART_HEAD + "--{}--\n".format(BOUNDARY)
     return msg
 
 
@@ -81,9 +79,9 @@ def complex_multipart_message(typ):
     msg = (
         _MULTIPART_HEAD
         + """\
---%(boundary)s
+--{boundary}
 MIME-Version: 1.0
-Content-Type: text/%%s; charset="us-ascii"; name="lines.txt"
+Content-Type: text/%s; charset="us-ascii"; name="lines.txt"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
@@ -93,9 +91,8 @@ c
 d
 e
 
---%(boundary)s--
-"""
-        % {"boundary": BOUNDARY}
+--{boundary}--
+""".format(boundary=BOUNDARY)
     )
     return msg % (typ,)
 

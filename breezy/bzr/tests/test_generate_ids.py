@@ -14,14 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy/generate_ids.py"""
+"""Tests for breezy/generate_ids.py."""
 
 from ... import tests
 from .. import generate_ids
 
 
 class TestFileIds(tests.TestCase):
-    """Test functions which generate file ids"""
+    """Test functions which generate file ids."""
 
     def assertGenFileId(self, regex, filename):
         """gen_file_id should create a file id matching the regex.
@@ -106,10 +106,10 @@ class TestFileIds(tests.TestCase):
 
 
 class TestGenRevisionId(tests.TestCase):
-    """Test generating revision ids"""
+    """Test generating revision ids."""
 
     def assertGenRevisionId(self, regex, username, timestamp=None):
-        """gen_revision_id should create a revision id matching the regex"""
+        """gen_revision_id should create a revision id matching the regex."""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
         self.assertContainsRe(revision_id, b"^" + regex + b"$")
         # It should be a utf8 revision_id, not a unicode one
@@ -118,7 +118,7 @@ class TestGenRevisionId(tests.TestCase):
         revision_id.decode("ascii")
 
     def test_timestamp(self):
-        """Passing a timestamp should cause it to be used"""
+        """Passing a timestamp should cause it to be used."""
         self.assertGenRevisionId(rb"user@host-\d{14}-[a-z0-9]{16}", "user@host")
         self.assertGenRevisionId(
             b"user@host-20061102205056-[a-z0-9]{16}", "user@host", 1162500656.688
@@ -128,7 +128,7 @@ class TestGenRevisionId(tests.TestCase):
         )
 
     def test_gen_revision_id_email(self):
-        """gen_revision_id uses email address if present"""
+        """gen_revision_id uses email address if present."""
         regex = rb"user\+joe_bar@foo-bar\.com-\d{14}-[a-z0-9]{16}"
         self.assertGenRevisionId(regex, "user+joe_bar@foo-bar.com")
         self.assertGenRevisionId(regex, "<user+joe_bar@foo-bar.com>")
@@ -137,7 +137,7 @@ class TestGenRevisionId(tests.TestCase):
         self.assertGenRevisionId(regex, "Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>")
 
     def test_gen_revision_id_user(self):
-        """If there is no email, fall back to the whole username"""
+        """If there is no email, fall back to the whole username."""
         tail = rb"-\d{14}-[a-z0-9]{16}"
         self.assertGenRevisionId(b"joe_bar" + tail, "Joe Bar")
         self.assertGenRevisionId(b"joebar" + tail, "joebar")

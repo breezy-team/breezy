@@ -56,7 +56,7 @@ def ensure_config_dir_exists(path=None):
 
 
 def bazaar_config_dir():
-    """Return per-user configuration directory as unicode string
+    """Return per-user configuration directory as unicode string.
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
     and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar
@@ -77,14 +77,14 @@ def bazaar_config_dir():
             xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
         xdg_dir = osutils.pathjoin(xdg_dir, "bazaar")
         if osutils.isdir(xdg_dir):
-            trace.mutter("Using configuration in XDG directory %s." % xdg_dir)
+            trace.mutter("Using configuration in XDG directory {}.".format(xdg_dir))
             return xdg_dir
         base = osutils._get_home_dir()
     return osutils.pathjoin(base, ".bazaar")
 
 
 def _config_dir():
-    """Return per-user configuration directory as unicode string
+    """Return per-user configuration directory as unicode string.
 
     By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
     Mac OS X and Linux. If the breezy config directory doesn't exist but
@@ -119,7 +119,7 @@ def _config_dir():
 
 
 def config_dir():
-    """Return per-user configuration directory as unicode string
+    """Return per-user configuration directory as unicode string.
 
     By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
     Mac OS X and Linux. If the breezy config directory doesn't exist but
@@ -272,7 +272,7 @@ def _auto_user_id():
                 encoding = osutils.get_user_encoding()
                 gecos = gecos.decode(encoding)
             except UnicodeError:
-                trace.mutter("cannot decode passwd entry %s" % w)
+                trace.mutter("cannot decode passwd entry {}".format(w))
                 return None, None
 
     username = w.pw_name
@@ -280,7 +280,7 @@ def _auto_user_id():
         try:
             username = username.decode(encoding)
         except UnicodeError:
-            trace.mutter("cannot decode passwd entry %s" % w)
+            trace.mutter("cannot decode passwd entry {}".format(w))
             return None, None
 
     comma = gecos.find(",")

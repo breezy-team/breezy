@@ -268,7 +268,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         return result
 
     def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+        """Return the Revision object for a named revision."""
         with self.lock_read():
             return self.get_revision_reconcile(revision_id)
 
@@ -631,7 +631,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_controldir)
+            RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

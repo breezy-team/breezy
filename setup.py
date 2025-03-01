@@ -3,7 +3,7 @@
 """Installation script for brz.
 Run it with
  './setup.py install', or
- './setup.py --help' for more options
+ './setup.py --help' for more options.
 """
 
 import os
@@ -13,13 +13,13 @@ import sys
 try:
     import setuptools
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
+    sys.stderr.write("[ERROR] Please install setuptools ({})\n".format(e))
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
 except ModuleNotFoundError as e:
-    sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
+    sys.stderr.write("[ERROR] Please install setuptools_rust ({})\n".format(e))
     sys.exit(1)
 
 
@@ -106,8 +106,7 @@ else:
     if cython_version_info < Version(minimum_cython_version):
         print(
             "Version of Cython is too old. "
-            "Current is %s, need at least %s."
-            % (cython_version, minimum_cython_version)
+            "Current is {}, need at least {}.".format(cython_version, minimum_cython_version)
         )
         print(
             "If the .c files are available, they will be built,"
@@ -123,7 +122,7 @@ command_classes["build_ext"] = build_ext
 unavailable_files = []
 
 
-def add_cython_extension(module_name, libraries=None, extra_source=[]):
+def add_cython_extension(module_name, libraries=None, extra_source=None):
     """Add a cython module to build.
 
     This will use Cython to auto-generate the .c file if it is available.
@@ -136,6 +135,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     :param module_name: The python path to the module. This will be used to
         determine the .pyx and .c files to use.
     """
+    if extra_source is None:
+        extra_source = []
     path = module_name.replace(".", "/")
     cython_name = path + ".pyx"
     c_name = path + ".c"

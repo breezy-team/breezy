@@ -339,7 +339,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     def test_record_annotation_removes_texts(self):
         self.make_many_way_common_merge_text()
         # Populate the caches
-        for x in self.ann._get_needed_texts(self.ff_key):
+        for _x in self.ann._get_needed_texts(self.ff_key):
             continue
         self.assertEqual(
             {

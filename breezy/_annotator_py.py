@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Functionality for doing annotations in the 'optimal' way"""
+"""Functionality for doing annotations in the 'optimal' way."""
 
 from . import errors, osutils, ui
 from . import graph as _mod_graph
@@ -103,7 +103,7 @@ class Annotator:
         if pb is not None:
             pb.update("getting stream", 0, len(keys))
         stream = self._vf.get_record_stream(keys, "topological", True)
-        for idx, record in enumerate(stream):
+        for _idx, record in enumerate(stream):
             if pb is not None:
                 pb.update("extracting", 0, len(keys))
             if record.storage_kind == "absent":

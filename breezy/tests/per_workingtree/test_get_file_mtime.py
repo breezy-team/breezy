@@ -92,7 +92,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/d/", "tree/d/a"])
         tree.add(["d", "d/a"])
-        rev_1 = tree.commit("1")
+        tree.commit("1")
 
         tree.rename_one("d", "e")
 

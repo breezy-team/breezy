@@ -215,7 +215,7 @@ class TestPendingAncestryResultRefine(tests.TestCase):
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
         # being satisfied from the stacking branch.
-        g = self.make_graph(
+        self.make_graph(
             {
                 b"tip": [b"mid"],
                 b"mid": [b"base"],

@@ -62,7 +62,7 @@ class TestFormat6(TestCaseWithTransport):
 
     def test_no_ancestry_weave(self):
         control = BzrDirFormat6().initialize(self.get_url())
-        repo = RepositoryFormat6().initialize(control)
+        RepositoryFormat6().initialize(control)
         # We no longer need to create the ancestry.weave file
         # since it is *never* used.
         self.assertRaises(NoSuchFile, control.transport.get, "ancestry.weave")
@@ -143,7 +143,7 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = BzrDirMetaFormat1().initialize(self.get_url())
-        repo = RepositoryFormat7().initialize(control, shared=True)
+        RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
         # inventory.weave == empty_weave
@@ -163,7 +163,7 @@ class TestFormat7(TestCaseWithTransport):
         self.assertFalse(t.has("branch-lock"))
 
     def test_creates_lockdir(self):
-        """Make sure it appears to be controlled by a LockDir existence"""
+        """Make sure it appears to be controlled by a LockDir existence."""
         control = BzrDirMetaFormat1().initialize(self.get_url())
         repo = RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
@@ -174,7 +174,7 @@ class TestFormat7(TestCaseWithTransport):
             self.assertTrue(t.has("lock/held/info"))
 
     def test_uses_lockdir(self):
-        """Repo format 7 actually locks on lockdir"""
+        """Repo format 7 actually locks on lockdir."""
         base_url = self.get_url()
         control = BzrDirMetaFormat1().initialize(base_url)
         repo = RepositoryFormat7().initialize(control, shared=True)
@@ -284,7 +284,7 @@ _revision_v4 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 
 
 class TestSerializer(TestCase):
-    """Test serializer"""
+    """Test serializer."""
 
     def test_registry(self):
         self.assertIs(xml4.serializer_v4, serializer_format_registry.get("4"))
@@ -297,7 +297,7 @@ class TestSerializer(TestCase):
         self.assertTrue(inv.has_id(b"bar-20050901064931-73b4b1138abc9cd2"))
 
     def test_unpack_revision(self):
-        """Test unpacking a canned revision v4"""
+        """Test unpacking a canned revision v4."""
         inp = BytesIO(_revision_v4)
         rev = xml4.serializer_v4.read_revision(inp)
         eq = self.assertEqual

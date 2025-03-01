@@ -254,7 +254,7 @@ class TestFastImport(ExternalBase):
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         self.build_tree_contents([("file.fi", simple_fast_import_stream)])
-        data = self.run_bzr("fast-import file.fi br")[0]
+        self.run_bzr("fast-import file.fi br")[0]
         self.assertEqual(1, tree.branch.revno())
 
     def test_missing_bytes(self):

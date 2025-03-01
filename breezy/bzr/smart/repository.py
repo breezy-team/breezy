@@ -1157,7 +1157,7 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
-    """Iterate over the contents of files.
+    r"""Iterate over the contents of files.
 
     The client sends a list of desired files to stream, one
     per line, and as tuples of file id and revision, separated by
@@ -1271,7 +1271,7 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
             repository.supports_rich_root(), repository._format.supports_tree_reference
         )
         with repository.lock_read():
-            for inv, revid in repository._iter_inventories(revids, ordering):
+            for inv, _revid in repository._iter_inventories(revids, ordering):
                 if inv is None:
                     continue
                 inv_delta = inv._make_delta(prev_inv)
@@ -1367,7 +1367,7 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         :param format: Format (tar, tgz, tbz2, etc)
         :param name: Target file name
         :param root: Name of root directory (or '')
-        :param subdir: Subdirectory to export, if not the root
+        :param subdir: Subdirectory to export, if not the root.
         """
         tree = repository.revision_tree(revision_id)
         if subdir is not None:

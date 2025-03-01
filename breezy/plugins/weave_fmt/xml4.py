@@ -29,7 +29,7 @@ from ...revision import Revision
 
 
 class _Serializer_v4(XMLSerializer):
-    """Version 0.0.4 serializer
+    """Version 0.0.4 serializer.
 
     You should use the serializer_v4 singleton.
 
@@ -39,7 +39,7 @@ class _Serializer_v4(XMLSerializer):
     __slots__: List[str] = []
 
     def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element"""
+        """Convert InventoryEntry to XML element."""
         e = Element("entry")
         e.set("name", ie.name)
         e.set("file_id", ie.file_id.decode("ascii"))
@@ -66,7 +66,7 @@ class _Serializer_v4(XMLSerializer):
     def _unpack_inventory(
         self, elt, revision_id=None, entry_cache=None, return_from_cache=False
     ):
-        """Construct from XML Element
+        """Construct from XML Element.
 
         :param revision_id: Ignored parameter used by xml5.
         """
@@ -107,18 +107,18 @@ class _Serializer_v4(XMLSerializer):
             ie = inventory.InventoryLink(file_id, elt.get("name"), parent_id)
             ie.symlink_target = elt.get("symlink_target")
         else:
-            raise BzrError("unknown kind %r" % kind)
+            raise BzrError("unknown kind {!r}".format(kind))
 
         ## mutter("read inventoryentry: %r", elt.attrib)
 
         return ie
 
     def _pack_revision(self, rev):
-        """Revision object -> xml tree"""
+        """Revision object -> xml tree."""
         root = Element(
             "revision",
             committer=rev.committer,
-            timestamp="%.9f" % rev.timestamp,
+            timestamp="{:.9f}".format(rev.timestamp),
             revision_id=rev.revision_id,
             inventory_id=rev.inventory_id,
             inventory_sha1=rev.inventory_sha1,
@@ -150,10 +150,10 @@ class _Serializer_v4(XMLSerializer):
         f.write(b"\n")
 
     def _unpack_revision(self, elt):
-        """XML Element -> Revision object"""
+        """XML Element -> Revision object."""
         # <changeset> is deprecated...
         if elt.tag not in ("revision", "changeset"):
-            raise BzrError("unexpected tag in revision file: %r" % elt)
+            raise BzrError("unexpected tag in revision file: {!r}".format(elt))
 
         rev = Revision(
             committer=elt.get("committer"),
@@ -174,7 +174,7 @@ class _Serializer_v4(XMLSerializer):
                 rev.parent_sha1s.append(p.get("revision_sha1"))
             if precursor:
                 # must be consistent
-                prec_parent = rev.parent_ids[0]
+                rev.parent_ids[0]
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute

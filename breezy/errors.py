@@ -101,7 +101,7 @@ class BzrError(Exception):
                 return s
         except Exception as e:
             err = e
-        return "Unprintable exception %s: dict=%r, fmt=%r, error=%r" % (
+        return "Unprintable exception {}: dict={!r}, fmt={!r}, error={!r}".format(
             self.__class__.__name__,
             self.__dict__,
             getattr(self, "_fmt", None),
@@ -114,7 +114,7 @@ class BzrError(Exception):
         return "{}({})".format(self.__class__.__name__, str(self))
 
     def _get_format_string(self):
-        """Return format string for this exception or None"""
+        """Return format string for this exception or None."""
         fmt = getattr(self, "_fmt", None)
         if fmt is not None:
             from breezy.i18n import gettext
@@ -261,7 +261,7 @@ class NoWhoami(BzrError):
 
 
 class CommandError(BzrError):
-    """Error from user command"""
+    """Error from user command."""
 
     # Error from malformed user command; please avoid raising this as a
     # generic exception not caused by user input.
@@ -618,7 +618,7 @@ class NotVersionedError(BzrError):
 
 
 class PathsNotVersionedError(BzrError):
-    """Used when reporting several paths which are not versioned"""
+    """Used when reporting several paths which are not versioned."""
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
@@ -935,12 +935,12 @@ class NoCommits(BranchError):
 
 class UnlistableStore(BzrError):
     def __init__(self, store):
-        BzrError.__init__(self, "Store %s is not listable" % store)
+        BzrError.__init__(self, "Store {} is not listable".format(store))
 
 
 class UnlistableBranch(BzrError):
     def __init__(self, br):
-        BzrError.__init__(self, "Stores for branch %s are not listable" % br)
+        BzrError.__init__(self, "Stores for branch {} are not listable".format(br))
 
 
 class BoundBranchOutOfDate(BzrError):
@@ -1084,7 +1084,7 @@ class SocketConnectionError(ConnectionError):
         if port is None:
             self.port = ""
         else:
-            self.port = ":%s" % port
+            self.port = ":{}".format(port)
 
 
 # XXX: This is also used for unexpected end of file, which is different at the
@@ -1679,7 +1679,7 @@ class SSHVendorNotFound(BzrError):
 
 
 class GhostRevisionsHaveNoRevno(BzrError):
-    """When searching for revnos, if we encounter a ghost, we are stuck"""
+    """When searching for revnos, if we encounter a ghost, we are stuck."""
 
     _fmt = (
         "Could not determine revno for {%(revision_id)s} because"
@@ -1700,26 +1700,26 @@ class GhostRevisionUnusableHere(BzrError):
 
 
 class NotAMergeDirective(BzrError):
-    """File starting with %(firstline)r is not a merge directive"""
+    """File starting with %(firstline)r is not a merge directive."""
 
     def __init__(self, firstline):
         BzrError.__init__(self, firstline=firstline)
 
 
 class NoMergeSource(BzrError):
-    """Raise if no merge source was specified for a merge directive"""
+    """Raise if no merge source was specified for a merge directive."""
 
     _fmt = "A merge directive must provide either a bundle or a public branch location."
 
 
 class PatchVerificationFailed(BzrError):
-    """A patch from a merge directive could not be verified"""
+    """A patch from a merge directive could not be verified."""
 
     _fmt = "Preview patch does not match requested changes."
 
 
 class PatchMissing(BzrError):
-    """Raise a patch type was specified but no patch supplied"""
+    """Raise a patch type was specified but no patch supplied."""
 
     _fmt = "Patch_type was %(patch_type)s, but no patch was supplied."
 
@@ -1729,7 +1729,7 @@ class PatchMissing(BzrError):
 
 
 class TargetNotBranch(BzrError):
-    """A merge directive's target branch is required, but isn't a branch"""
+    """A merge directive's target branch is required, but isn't a branch."""
 
     _fmt = (
         "Your branch does not have all of the revisions required in "

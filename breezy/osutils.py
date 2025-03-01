@@ -132,7 +132,7 @@ def minimum_path_selection(paths):
         else:
             return path.split("/")
 
-    sorted_paths = sorted(list(paths), key=sort_key)
+    sorted_paths = sorted(paths, key=sort_key)
 
     search_paths = [sorted_paths[0]]
     for path in sorted_paths[1:]:
@@ -147,7 +147,7 @@ _QUOTE_RE = None
 
 
 def quotefn(f):
-    """Return a quoted filename filename
+    """Return a quoted filename filename.
 
     This previously used backslash quoting, but that works poorly on
     Windows.
@@ -167,7 +167,7 @@ _directory_kind = "directory"
 
 
 def get_umask():
-    """Return the current umask"""
+    """Return the current umask."""
     # Assume that people aren't messing with the umask while running
     # XXX: This is not thread safe, but there is no way to get the
     #      umask without setting it
@@ -301,7 +301,7 @@ def _posix_normpath(path):
 
 
 def _win32_fixdrive(path):
-    """Force drive letters to be consistent.
+    r"""Force drive letters to be consistent.
 
     win32 is inconsistent whether it returns lower or upper case
     and even if it was consistent the user might type the other
@@ -314,7 +314,7 @@ def _win32_fixdrive(path):
 
 
 def _win32_fix_separators(path):
-    """Return path with directory separators changed to forward slashes"""
+    """Return path with directory separators changed to forward slashes."""
     if isinstance(path, bytes):
         return path.replace(b"\\", b"/")
     else:
@@ -378,7 +378,7 @@ def _rename_wrap_exception(rename_func):
         except OSError as e:
             detailed_error = OSError(
                 e.errno,
-                e.strerror + " [occurred when renaming '%s' to '%s']" % (old, new),
+                e.strerror + " [occurred when renaming '{}' to '{}']".format(old, new),
             )
             detailed_error.old_filename = old
             detailed_error.new_filename = new
@@ -449,7 +449,7 @@ if sys.platform == "win32":
             raise
 
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
-        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        """Replacer for shutil.rmtree: could remove readonly dirs/files."""
         return shutil.rmtree(path, ignore_errors, onerror)
 
     _get_home_dir = win32utils.get_home_location
@@ -507,8 +507,8 @@ def get_terminal_encoding(trace=False):
     except LookupError:
         sys.stderr.write(
             "brz: warning:"
-            " unknown terminal encoding %s.\n"
-            "  Using encoding %s instead.\n" % (output_encoding, get_user_encoding())
+            " unknown terminal encoding {}.\n"
+            "  Using encoding {} instead.\n".format(output_encoding, get_user_encoding())
         )
         output_encoding = get_user_encoding()
 
@@ -581,10 +581,7 @@ def is_inside(dir, fname):
 
 def is_inside_any(dir_list, fname):
     """True if fname is inside any of given dirs."""
-    for dirname in dir_list:
-        if is_inside(dirname, fname):
-            return True
-    return False
+    return any(is_inside(dirname, fname) for dirname in dir_list)
 
 
 def is_inside_or_parent_of_any(dir_list, fname):
@@ -715,7 +712,7 @@ def size_sha_file(f):
 
 
 def sha_file_by_name(fname):
-    """Calculate the SHA1 of a file by reading the full text"""
+    """Calculate the SHA1 of a file by reading the full text."""
     s = sha()
     f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
@@ -729,7 +726,7 @@ def sha_file_by_name(fname):
 
 
 def sha_strings(strings, _factory=sha):
-    """Return the sha-1 of concatenation of strings"""
+    """Return the sha-1 of concatenation of strings."""
     s = _factory()
     for string in strings:
         s.update(string)
@@ -747,7 +744,7 @@ def fingerprint_file(f):
 
 
 def compare_files(a, b):
-    """Returns true if equal in contents"""
+    """Returns true if equal in contents."""
     BUFSIZE = 4096
     while True:
         ai = a.read(BUFSIZE)
@@ -966,7 +963,7 @@ ALNUM = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 
 def rand_chars(num):
-    """Return a random string of num alphanumeric characters
+    """Return a random string of num alphanumeric characters.
 
     The result only contains lowercase chars because it may be used on
     case-insensitive filesystems.
@@ -1061,7 +1058,7 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        trace.mutter("failed to load compiled extension: {}".format(exception_str))
         _extension_load_failures.append(exception_str)
 
 
@@ -1205,20 +1202,12 @@ def contains_whitespace(s):
         ws = " \t\n\r\v\f"
     else:
         ws = (b" ", b"\t", b"\n", b"\r", b"\v", b"\f")
-    for ch in ws:
-        if ch in s:
-            return True
-    else:
-        return False
+    return any(ch in s for ch in ws)
 
 
 def contains_linebreaks(s):
     """True if there is any vertical whitespace in s."""
-    for ch in "\f\n\r":
-        if ch in s:
-            return True
-    else:
-        return False
+    return any(ch in s for ch in "\x0c\n\r")
 
 
 def relpath(base, path):
@@ -1394,7 +1383,6 @@ def _accessible_normalized_filename(path):
 
 
 def _inaccessible_normalized_filename(path):
-    __doc__ = _accessible_normalized_filename.__doc__
 
     if isinstance(path, bytes):
         path = path.decode(sys.getfilesystemencoding())
@@ -1708,7 +1696,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
             relprefix = relroot + "/"
         else:
             relprefix = ""
-        top_slash = top + "/"
+        top + "/"
 
         dirblock = []
         try:
@@ -1730,7 +1718,7 @@ class DirReader:
     """An interface for reading directories."""
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
-        """Converts top and prefix to a starting dir entry
+        """Converts top and prefix to a starting dir entry.
 
         :param top: A utf8 path
         :param prefix: An optional utf8 path to prefix output relative paths
@@ -1849,7 +1837,7 @@ class UnicodeDirReader(DirReader):
         return sorted(dirblock)
 
 
-def copy_tree(from_path, to_path, handlers={}):
+def copy_tree(from_path, to_path, handlers=None):
     """Copy all of the entries in from_path into to_path.
 
     :param from_path: The base directory to copy.
@@ -1869,11 +1857,13 @@ def copy_tree(from_path, to_path, handlers={}):
     # So we can get both the source and target returned
     # without any extra work.
 
+    if handlers is None:
+        handlers = {}
     def copy_dir(source, dest):
         os.mkdir(dest)
 
     def copy_link(source, dest):
-        """Copy the contents of a symlink"""
+        """Copy the contents of a symlink."""
         link_to = os.readlink(source)
         os.symlink(link_to, dest)
 
@@ -1887,8 +1877,8 @@ def copy_tree(from_path, to_path, handlers={}):
     if not os.path.exists(to_path):
         real_handlers["directory"](from_path, to_path)
 
-    for dir_info, entries in walkdirs(from_path, prefix=to_path):
-        for relpath, name, kind, st, abspath in entries:
+    for _dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, _name, kind, _st, abspath in entries:
             real_handlers[kind](abspath, relpath)
 
 
@@ -1967,8 +1957,8 @@ def get_user_encoding():
         if user_encoding not in ("", "cp0"):
             sys.stderr.write(
                 "brz: warning:"
-                " unknown encoding %s."
-                " Continuing with ascii encoding.\n" % user_encoding
+                " unknown encoding {}."
+                " Continuing with ascii encoding.\n".format(user_encoding)
             )
         user_encoding = "ascii"
     else:
@@ -2088,7 +2078,7 @@ def send_all(sock, bytes, report_activity=None):
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset("Sending to %s returned 0 bytes" % (sock,))
+                raise errors.ConnectionReset("Sending to {} returned 0 bytes".format(sock))
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, "write")
@@ -2156,7 +2146,7 @@ def resource_string(package, resource_name):
         package = package[len("breezy.") :].replace(".", os.sep)
         resource_relpath = pathjoin(package, resource_name)
     else:
-        raise errors.BzrError("resource package %s not in breezy" % package)
+        raise errors.BzrError("resource package {} not in breezy".format(package))
 
     # Map the resource to a file and read its contents
     base = dirname(breezy.__file__)
@@ -2406,7 +2396,7 @@ def find_executable_on_path(name):
 
 
 def _posix_is_local_pid_dead(pid):
-    """True if pid doesn't correspond to live process on this machine"""
+    """True if pid doesn't correspond to live process on this machine."""
     try:
         # Special meaning of unix kill: just check if it's there.
         os.kill(pid, 0)

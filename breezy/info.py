@@ -43,7 +43,7 @@ class LocationList:
         self.base_path = base_path
 
     def add_url(self, label, url):
-        """Add a URL to the list, converting it to a path if possible"""
+        """Add a URL to the list, converting it to a path if possible."""
         if url is None:
             return
         try:
@@ -54,7 +54,7 @@ class LocationList:
             self.add_path(label, path)
 
     def add_path(self, label, path):
-        """Add a path, converting it to a relative path if possible"""
+        """Add a path, converting it to a relative path if possible."""
         try:
             path = osutils.relpath(self.base_path, path)
         except errors.PathNotChild:
@@ -198,14 +198,14 @@ def _show_format_info(
     outfile.write("\n")
     outfile.write("Format:\n")
     if control:
-        outfile.write("       control: %s\n" % control._format.get_format_description())
+        outfile.write("       control: {}\n".format(control._format.get_format_description()))
     if working:
-        outfile.write("  working tree: %s\n" % working._format.get_format_description())
+        outfile.write("  working tree: {}\n".format(working._format.get_format_description()))
     if branch:
-        outfile.write("        branch: %s\n" % branch._format.get_format_description())
+        outfile.write("        branch: {}\n".format(branch._format.get_format_description()))
     if repository:
         outfile.write(
-            "    repository: %s\n" % repository._format.get_format_description()
+            "    repository: {}\n".format(repository._format.get_format_description())
         )
 
 
@@ -224,19 +224,19 @@ def _show_locking_info(repository=None, branch=None, working=None, outfile=None)
                 status = "locked"
             else:
                 status = "unlocked"
-            outfile.write("  working tree: %s\n" % status)
+            outfile.write("  working tree: {}\n".format(status))
         if branch:
             if branch.get_physical_lock_status():
                 status = "locked"
             else:
                 status = "unlocked"
-            outfile.write("        branch: %s\n" % status)
+            outfile.write("        branch: {}\n".format(status))
         if repository:
             if repository.get_physical_lock_status():
                 status = "locked"
             else:
                 status = "unlocked"
-            outfile.write("    repository: %s\n" % status)
+            outfile.write("    repository: {}\n".format(status))
 
 
 def _show_missing_revisions_branch(branch, outfile):
@@ -326,11 +326,11 @@ def _show_branch_stats(branch, verbose, outfile):
         age = int((time.time() - timestamp) / 3600 / 24)
         outfile.write("  %8d day%s old\n" % (age, plural(age)))
         outfile.write(
-            "   first revision: %s\n" % osutils.format_date(timestamp, timezone)
+            "   first revision: {}\n".format(osutils.format_date(timestamp, timezone))
         )
         timestamp, timezone = stats["latestrev"]
         outfile.write(
-            "  latest revision: %s\n" % osutils.format_date(timestamp, timezone)
+            "  latest revision: {}\n".format(osutils.format_date(timestamp, timezone))
         )
     return stats
 
@@ -397,7 +397,7 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
 def show_component_info(
     control, repository, branch=None, working=None, verbose=1, outfile=None
 ):
-    """Write info about all bzrdir components to stdout"""
+    """Write info about all bzrdir components to stdout."""
     if outfile is None:
         outfile = sys.stdout
     if verbose is False:
@@ -439,7 +439,7 @@ def show_component_info(
 
 
 def describe_layout(repository=None, branch=None, tree=None, control=None):
-    """Convert a control directory layout into a user-understandable term
+    """Convert a control directory layout into a user-understandable term.
 
     Common outputs include "Standalone tree", "Repository branch" and
     "Checkout".  Uncommon outputs include "Unshared repository with trees"
@@ -499,7 +499,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
 
 
 def describe_format(control, repository, branch, tree):
-    """Determine the format of an existing control directory
+    """Determine the format of an existing control directory.
 
     Several candidates may be found.  If so, the names are returned as a
     single string, separated by ' or '.

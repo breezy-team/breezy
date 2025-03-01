@@ -14,14 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Helper functions/classes for testing locking"""
+"""Helper functions/classes for testing locking."""
 
 from .. import errors
 from ..decorators import only_raises
 
 
 class TestPreventLocking(errors.LockError):
-    """A test exception for forcing locking failure: %(message)s"""
+    """A test exception for forcing locking failure: %(message)s."""
 
 
 class LockWrapper:
@@ -77,13 +77,13 @@ class LockWrapper:
         raise TestPreventLocking("unlock disabled")
 
     def disable_lock_read(self):
-        """Make a lock_read call fail"""
+        """Make a lock_read call fail."""
         self.__dict__["_allow_read"] = False
 
     def disable_unlock(self):
-        """Make an unlock call fail"""
+        """Make an unlock call fail."""
         self.__dict__["_allow_unlock"] = False
 
     def disable_lock_write(self):
-        """Make a lock_write call fail"""
+        """Make a lock_write call fail."""
         self.__dict__["_allow_write"] = False

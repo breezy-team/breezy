@@ -988,8 +988,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 self.assertEqual(
                     expected_parents,
                     found_parents,
-                    "%s reconcile %s has parents %s, should have %s."
-                    % (when_description, version, found_parents, expected_parents),
+                    "{} reconcile {} has parents {}, should have {}.".format(when_description, version, found_parents, expected_parents),
                 )
 
     def prepare_test_repository(self):
@@ -1023,7 +1022,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             vf_shas = self.shas_for_versions_of_file(
                 repo, scenario.all_versions_after_reconcile()
             )
-        result = repo.reconcile(thorough=True)
+        repo.reconcile(thorough=True)
         with repo.lock_read():
             self.assertParentsMatch(scenario.corrected_parents(), repo, b"after")
             # The contents of the versions in the versionedfile should be the

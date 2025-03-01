@@ -29,7 +29,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         out, wt = test_read_bundle.create_bundle_file(self)
 
         class FooService:
-            """A directory service that always returns source"""
+            """A directory service that always returns source."""
 
             def look_up(self, name, url):
                 return "source"
@@ -75,5 +75,5 @@ class DisconnectingServer(test_server.TestingTCPServerInAThread):
         )
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return "bzr://%s:%d/" % self.server.server_address

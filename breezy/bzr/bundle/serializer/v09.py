@@ -23,7 +23,7 @@ from .v08 import BundleReader, BundleSerializerV08
 
 
 class BundleSerializerV09(BundleSerializerV08):
-    """Serializer for bzr bundle format 0.9
+    """Serializer for bzr bundle format 0.9.
 
     This format supports rich root data, for the nested-trees work, but also
     supports repositories that don't have rich root data.  It cannot be
@@ -35,7 +35,7 @@ class BundleSerializerV09(BundleSerializerV08):
         pass
 
     def _write_main_header(self):
-        """Write the header for the changes"""
+        """Write the header for the changes."""
         f = self.to_file
         f.write(_get_bundle_header("0.9") + b"#\n")
 
@@ -52,7 +52,7 @@ class BundleSerializerV09(BundleSerializerV08):
 
 
 class BundleInfo09(BundleInfo):
-    """BundleInfo that uses StrictTestament3
+    """BundleInfo that uses StrictTestament3.
 
     This means that the root data is included in the testament.
     """
@@ -66,7 +66,7 @@ class BundleInfo09(BundleInfo):
 
 
 class BundleReaderV09(BundleReader):
-    """BundleReader for 0.9 bundles"""
+    """BundleReader for 0.9 bundles."""
 
     def _get_info(self):
         return BundleInfo09()

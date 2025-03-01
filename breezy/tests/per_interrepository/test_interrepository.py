@@ -34,7 +34,7 @@ def check_repo_format_for_funky_id_on_win32(repo):
     if not repo._format.supports_funky_characters and sys.platform == "win32":
         raise TestSkipped(
             "funky chars not allowed on this platform in repository"
-            " %s" % repo.__class__.__name__
+            " {}".format(repo.__class__.__name__)
         )
 
 
@@ -213,10 +213,10 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         add_commit(has_ghost, b"tip", [b"references"])
         missing_ghost.fetch(has_ghost, b"tip", find_ghosts=True)
         # missing ghost now has tip and ghost.
-        rev = missing_ghost.get_revision(b"tip")
-        inv = missing_ghost.get_inventory(b"tip")
-        rev = missing_ghost.get_revision(b"ghost")
-        inv = missing_ghost.get_inventory(b"ghost")
+        missing_ghost.get_revision(b"tip")
+        missing_ghost.get_inventory(b"tip")
+        missing_ghost.get_revision(b"ghost")
+        missing_ghost.get_inventory(b"ghost")
         # rev must not be corrupt now
         self.assertThat(
             [b"ghost", b"references", b"tip"], MatchesAncestry(missing_ghost, b"tip")

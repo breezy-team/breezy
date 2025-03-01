@@ -57,7 +57,7 @@ DEFAULT_CONTEXT_AMOUNT = 3
 
 
 class _PrematchedMatcher(difflib.SequenceMatcher):
-    """Allow SequenceMatcher operations to use predetermined blocks"""
+    """Allow SequenceMatcher operations to use predetermined blocks."""
 
     def __init__(self, matching_blocks):
         difflib.SequenceMatcher(self, None, None)
@@ -353,7 +353,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
                 raise errors.BzrError(
                     "external diff failed with exit code 2"
                     " when run with LANG=C and LC_ALL=C,"
-                    " but not when run natively: %r" % (diffcmd,)
+                    " but not when run natively: {!r}".format(diffcmd)
                 )
 
             first_line = lang_c_out.split(b"\n", 1)[0]
@@ -361,7 +361,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             m = re.match(b"^(binary )?files.*differ$", first_line, re.I)
             if m is None:
                 raise errors.BzrError(
-                    "external diff failed with exit code 2; command: %r" % (diffcmd,)
+                    "external diff failed with exit code 2; command: {!r}".format(diffcmd)
                 )
             else:
                 # Binary files differ, just return
@@ -378,7 +378,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
                 msg = "exit code %d" % rc
 
             raise errors.BzrError(
-                "external diff failed with %s; command: %r" % (msg, diffcmd)
+                "external diff failed with {}; command: {!r}".format(msg, diffcmd)
             )
 
     finally:
@@ -606,7 +606,7 @@ def get_executable_change(old_is_x, new_is_x):
 
 
 class DiffPath:
-    """Base type for command object that compare files"""
+    """Base type for command object that compare files."""
 
     # The type or contents of the file were unsuitable for diffing
     CANNOT_DIFF = "CANNOT_DIFF"
@@ -668,7 +668,7 @@ class DiffKindChange:
         return klass(diff_tree.differs)
 
     def diff(self, old_path, new_path, old_kind, new_kind):
-        """Perform comparison
+        """Perform comparison.
 
         :param old_path: Path of the file in the old tree
         :param new_path: Path of the file in the new tree
@@ -685,7 +685,7 @@ class DiffKindChange:
 
 class DiffTreeReference(DiffPath):
     def diff(self, old_path, new_path, old_kind, new_kind):
-        """Perform comparison between two tree references.  (dummy)"""
+        """Perform comparison between two tree references.  (dummy)."""
         if "tree-reference" not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind not in ("tree-reference", None):
@@ -697,7 +697,7 @@ class DiffTreeReference(DiffPath):
 
 class DiffDirectory(DiffPath):
     def diff(self, old_path, new_path, old_kind, new_kind):
-        """Perform comparison between two directories.  (dummy)"""
+        """Perform comparison between two directories.  (dummy)."""
         if "directory" not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind not in ("directory", None):
@@ -709,7 +709,7 @@ class DiffDirectory(DiffPath):
 
 class DiffSymlink(DiffPath):
     def diff(self, old_path, new_path, old_kind, new_kind):
-        """Perform comparison between two symlinks
+        """Perform comparison between two symlinks.
 
         :param old_path: Path of the file in the old tree
         :param new_path: Path of the file in the new tree
@@ -778,7 +778,7 @@ class DiffText(DiffPath):
         self.context_lines = context_lines
 
     def diff(self, old_path, new_path, old_kind, new_kind):
-        """Compare two files in unified diff format
+        """Compare two files in unified diff format.
 
         :param old_path: Path of the file in the old tree
         :param new_path: Path of the file in the new tree
@@ -804,7 +804,7 @@ class DiffText(DiffPath):
         return self.diff_text(old_path, new_path, from_label, to_label)
 
     def diff_text(self, from_path, to_path, from_label, to_label):
-        """Diff the content of given files in two trees
+        """Diff the content of given files in two trees.
 
         :param from_path: The path in the from tree. If None,
             the file is not present in the from tree.
@@ -836,8 +836,7 @@ class DiffText(DiffPath):
         except errors.BinaryFile:
             self.to_file.write(
                 (
-                    "Binary files %s%s and %s%s differ\n"
-                    % (
+                    "Binary files {}{} and {}{} differ\n".format(
                         self.old_label,
                         from_path or to_path,
                         self.new_label,
@@ -933,7 +932,7 @@ class DiffFromTool(DiffPath):
 
     @staticmethod
     def _fenc():
-        """Returns safe encoding for passing file path to diff tool"""
+        """Returns safe encoding for passing file path to diff tool."""
         if sys.platform == "win32":
             return "mbcs"
         else:
@@ -1002,8 +1001,8 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.ENOENT:
                 mutter(
-                    'The temporary directory "%s" was not '
-                    "cleanly removed: %s." % (self._root, e)
+                    'The temporary directory "{}" was not '
+                    "cleanly removed: {}.".format(self._root, e)
                 )
 
     def diff(self, old_path, new_path, old_kind, new_kind):
@@ -1058,7 +1057,7 @@ class DiffTree:
         diff_text=None,
         extra_factories=None,
     ):
-        """Constructor
+        """Constructor.
 
         :param old_tree: Tree to show as old in the comparison
         :param new_tree: Tree to show as new in the comparison
@@ -1149,7 +1148,7 @@ class DiffTree:
         )
 
     def show_diff(self, specific_files, extra_trees=None):
-        """Write tree diff to self.to_file
+        """Write tree diff to self.to_file.
 
         :param specific_files: the specific files to compare (recursive)
         :param extra_trees: extra trees to use for mapping paths to file_ids
@@ -1192,8 +1191,8 @@ class DiffTree:
                 continue
             if change.kind[0] == "symlink" and not self.new_tree.supports_symlinks():
                 warning(
-                    'Ignoring "%s" as symlinks are not '
-                    "supported on this filesystem." % (change.path[0],)
+                    'Ignoring "{}" as symlinks are not '
+                    "supported on this filesystem.".format(change.path[0])
                 )
                 continue
             oldpath, newpath = change.path
@@ -1251,7 +1250,7 @@ class DiffTree:
         return has_changes
 
     def diff(self, old_path, new_path):
-        """Perform a diff of a single file
+        """Perform a diff of a single file.
 
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree

@@ -26,7 +26,7 @@ from ..bzr import branch as _mod_bzrbranch
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
     def test_create(self):
         """Test the constructor api."""
-        builder = BranchBuilder(self.get_transport().clone("foo"))
+        BranchBuilder(self.get_transport().clone("foo"))
         # we dont care if the branch has been built or not at this point.
 
     def test_get_branch(self):
@@ -149,7 +149,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_add_empty_dir(self):
         builder = self.build_a_rev()
-        rev_id2 = builder.build_snapshot(
+        builder.build_snapshot(
             None, [("add", ("b", b"b-id", "directory", None))], revision_id=b"B-id"
         )
         rev_tree = builder.get_branch().repository.revision_tree(b"B-id")
@@ -223,7 +223,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
 
     def test_delete_directory(self):
         builder = self.build_a_rev()
-        rev_id2 = builder.build_snapshot(
+        builder.build_snapshot(
             None,
             [
                 ("add", ("b", b"b-id", "directory", None)),

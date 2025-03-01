@@ -33,7 +33,7 @@ class AddCustomIDAction(add.AddAction):
 
 
 class TestAddFrom(tests.TestCaseWithTransport):
-    """Tests for AddFromBaseAction"""
+    """Tests for AddFromBaseAction."""
 
     def make_base_tree(self):
         self.base_tree = self.make_branch_and_tree("base")

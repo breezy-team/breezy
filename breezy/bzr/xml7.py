@@ -18,7 +18,7 @@ from . import xml6
 
 
 class Serializer_v7(xml6.Serializer_v6):
-    """A Serializer that supports tree references"""
+    """A Serializer that supports tree references."""
 
     # this format is used by BzrBranch6
 

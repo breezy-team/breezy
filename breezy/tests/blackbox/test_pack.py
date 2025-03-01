@@ -37,7 +37,7 @@ class TestPack(tests.TestCaseWithTransport):
             self.run_bzr(["ci", "-m", '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
-        """Append text to file 'path' and check it in"""
+        """Append text to file 'path' and check it in."""
         with open(path, "a") as f:
             f.write(text)
 
@@ -66,7 +66,7 @@ class TestPack(tests.TestCaseWithTransport):
         self.assertEqual("", err)
 
     def test_pack_clean_obsolete_packs(self):
-        """Ensure --clean-obsolete-packs removes obsolete pack files"""
+        """Ensure --clean-obsolete-packs removes obsolete pack files."""
         wt = self.make_branch_and_tree(".")
         t = wt.branch.repository.controldir.transport
 

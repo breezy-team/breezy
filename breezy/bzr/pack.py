@@ -253,7 +253,7 @@ class ReadVFile:
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1:] != b"\n":
             raise errors.BzrError(
-                "short readline in the readvfile hunk: %r" % (result,)
+                "short readline in the readvfile hunk: {!r}".format(result)
             )
         return result
 

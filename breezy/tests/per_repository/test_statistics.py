@@ -27,13 +27,13 @@ class TestGatherStats(TestCaseWithRepository):
         tree.add("")
         # three commits: one to be included by reference, one to be
         # requested, and one to be in the repository but [mostly] ignored.
-        rev1 = tree.commit(
+        tree.commit(
             "first post", committer="person 1", timestamp=1170491381, timezone=0
         )
         rev2 = tree.commit(
             "second post", committer="person 2", timestamp=1171491381, timezone=0
         )
-        rev3 = tree.commit(
+        tree.commit(
             "third post", committer="person 3", timestamp=1172491381, timezone=0
         )
         tree.unlock()

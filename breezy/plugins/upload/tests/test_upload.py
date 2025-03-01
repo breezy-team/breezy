@@ -120,8 +120,7 @@ class UploadUtilsMixin:
         if expected_mode == mode:
             return
         raise AssertionError(
-            "For path %s, mode is %s not %s"
-            % (full_path, oct(mode), oct(expected_mode))
+            "For path {}, mode is {} not {}".format(full_path, oct(mode), oct(expected_mode))
         )
 
     def assertUpPathDoesNotExist(self, path, base=upload_dir):
@@ -137,11 +136,11 @@ class UploadUtilsMixin:
     def add_file(self, path, content, base=branch_dir):
         self.set_file_content(path, content, base)
         self.tree.add(path)
-        self.tree.commit("add file %s" % path)
+        self.tree.commit("add file {}".format(path))
 
     def modify_file(self, path, content, base=branch_dir):
         self.set_file_content(path, content, base)
-        self.tree.commit("modify file %s" % path)
+        self.tree.commit("modify file {}".format(path))
 
     def chmod_file(self, path, mode, base=branch_dir):
         full_path = osutils.pathjoin(base, path)
@@ -150,12 +149,12 @@ class UploadUtilsMixin:
 
     def delete_any(self, path, base=branch_dir):
         self.tree.remove([path], keep_files=False)
-        self.tree.commit("delete %s" % path)
+        self.tree.commit("delete {}".format(path))
 
     def add_dir(self, path, base=branch_dir):
         os.mkdir(osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit("add directory %s" % path)
+        self.tree.commit("add directory {}".format(path))
 
     def rename_any(self, old_path, new_path):
         self.tree.rename_one(old_path, new_path)
@@ -164,7 +163,7 @@ class UploadUtilsMixin:
     def transform_dir_into_file(self, path, content, base=branch_dir):
         osutils.delete_any(osutils.pathjoin(base, path))
         self.set_file_content(path, content, base)
-        self.tree.commit("change %s from dir to file" % path)
+        self.tree.commit("change {} from dir to file".format(path))
 
     def transform_file_into_dir(self, path, base=branch_dir):
         # bzr can't handle that kind change in a single commit without an
@@ -172,7 +171,7 @@ class UploadUtilsMixin:
         self.tree.remove([path], keep_files=False)
         os.mkdir(osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit("change %s from file to dir" % path)
+        self.tree.commit("change {} from file to dir".format(path))
 
     def add_symlink(self, path, target, base=branch_dir):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
@@ -432,7 +431,7 @@ class TestUploadMixin(UploadUtilsMixin):
         return b.get_config_stack().get("upload_auto")
 
     def test_upload_auto(self):
-        """Test that upload --auto sets the upload_auto option"""
+        """Test that upload --auto sets the upload_auto option."""
         self.make_branch_and_working_tree()
 
         self.add_file("hello", b"foo")
@@ -448,7 +447,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
-        """Test that upload --no-auto unsets the upload_auto option"""
+        """Test that upload --no-auto unsets the upload_auto option."""
         self.make_branch_and_working_tree()
 
         self.add_file("hello", b"foo")
@@ -732,7 +731,7 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         fn = bedding.locations_config_path()
         b = self.get_branch()
         with open(fn, "w") as f:
-            f.write("[%s]\nupload_location=foo\n" % b.base.rstrip("/"))
+            f.write("[{}]\nupload_location=foo\n".format(b.base.rstrip("/")))
         self.assertEqual("foo", b.get_config_stack().get("upload_location"))
 
     def test_set_push_location(self):
@@ -758,9 +757,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
             return False
         from ....tests import stub_sftp
 
-        if transport_server is stub_sftp.SFTPHomeDirServer:
-            return True
-        return False
+        return transport_server is stub_sftp.SFTPHomeDirServer
 
     def make_remote_branch_without_working_tree(self):
         """Creates a branch without working tree to upload from.
@@ -828,7 +825,7 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
 
 class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
     def test_raises_on_wrong_revid(self):
-        tree = self.make_branch_and_working_tree()
+        self.make_branch_and_working_tree()
         self.do_full_upload()
         # Put a fake revid on the remote branch
         t = self.get_transport(self.upload_dir)

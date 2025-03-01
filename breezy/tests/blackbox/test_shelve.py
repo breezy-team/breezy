@@ -23,7 +23,7 @@ from breezy.tests.script import ScriptRunner
 
 class TestShelveList(TestCaseWithTransport):
     def test_no_shelved_changes(self):
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         err = self.run_bzr("shelve --list")[1]
         self.assertEqual("No shelved changes.\n", err)
 
@@ -35,7 +35,7 @@ class TestShelveList(TestCaseWithTransport):
     def test_shelve_one(self):
         tree = self.make_branch_and_tree(".")
         creator = self.make_creator(tree)
-        shelf_id = tree.get_shelf_manager().shelve_changes(creator, "Foo")
+        tree.get_shelf_manager().shelve_changes(creator, "Foo")
         out, err = self.run_bzr("shelve --list", retcode=1)
         self.assertEqual("", err)
         self.assertEqual("  1: Foo\n", out)
@@ -43,7 +43,7 @@ class TestShelveList(TestCaseWithTransport):
     def test_shelve_list_via_directory(self):
         tree = self.make_branch_and_tree("tree")
         creator = self.make_creator(tree)
-        shelf_id = tree.get_shelf_manager().shelve_changes(creator, "Foo")
+        tree.get_shelf_manager().shelve_changes(creator, "Foo")
         out, err = self.run_bzr("shelve -d tree --list", retcode=1)
         self.assertEqual("", err)
         self.assertEqual("  1: Foo\n", out)
@@ -51,7 +51,7 @@ class TestShelveList(TestCaseWithTransport):
     def test_shelve_no_message(self):
         tree = self.make_branch_and_tree(".")
         creator = self.make_creator(tree)
-        shelf_id = tree.get_shelf_manager().shelve_changes(creator)
+        tree.get_shelf_manager().shelve_changes(creator)
         out, err = self.run_bzr("shelve --list", retcode=1)
         self.assertEqual("", err)
         self.assertEqual("  1: <no message>\n", out)
@@ -108,7 +108,7 @@ contents of file
 
 class TestUnshelvePreview(TestCaseWithTransport):
     def test_non_ascii(self):
-        """Test that we can show a non-ascii diff that would result from unshelving"""
+        """Test that we can show a non-ascii diff that would result from unshelving."""
         init_content = "Initial: \u0418\u0437\u043d\u0430\u0447\n".encode()
         more_content = "More: \u0415\u0449\u0451\n".encode()
         next_content = init_content + more_content
@@ -142,7 +142,7 @@ class TestShelveRelpath(TestCaseWithTransport):
 
 class TestShelveUnshelve(TestCaseWithTransport):
     def test_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree("tree")
         self.build_tree_contents([("tree/a", b"initial\n")])
         tree.add("a")

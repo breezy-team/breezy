@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Breezy -- a free distributed version-control tool"""
+"""Breezy -- a free distributed version-control tool."""
 
 import os
 import sys
@@ -35,11 +35,11 @@ if os.name == "posix":
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
         sys.stderr.write(
-            "brz: warning: %s\n"
+            "brz: warning: {}\n"
             "  bzr could not set the application locale.\n"
             "  Although this should be no problem for bzr itself, it might\n"
             "  cause problems with some plugins. To investigate the issue,\n"
-            "  look at the output of the locale(1p) tool.\n" % e
+            "  look at the output of the locale(1p) tool.\n".format(e)
         )
     # Use better default than ascii with posix filesystems that deal in bytes
     # natively even when the C locale or no locale at all is given. Note that

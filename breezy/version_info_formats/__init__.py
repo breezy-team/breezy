@@ -95,7 +95,7 @@ class VersionInfoBuilder:
             self._working_tree = None
 
     def _extract_file_revisions(self):
-        """Extract the working revisions for all files"""
+        """Extract the working revisions for all files."""
         if self._tree is None:
             return
 

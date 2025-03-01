@@ -269,7 +269,7 @@ class TestHook(tests.TestCase):
         hook.hook(callback, "my callback")
         callback_repr = repr(callback)
         self.assertEqual(
-            "<HookPoint(foo), callbacks=[%s(my callback)]>" % callback_repr, repr(hook)
+            "<HookPoint(foo), callbacks=[{}(my callback)]>".format(callback_repr), repr(hook)
         )
 
 

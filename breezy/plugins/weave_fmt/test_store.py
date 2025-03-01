@@ -32,7 +32,7 @@ from .store.versioned import VersionedFileStore
 
 
 class TestStores:
-    """Mixin template class that provides some common tests for stores"""
+    """Mixin template class that provides some common tests for stores."""
 
     def check_content(self, store, fileid, value):
         with store.get(fileid) as f:
@@ -56,7 +56,7 @@ class TestStores:
         self.assertRaises(KeyError, self.check_content, store, b"d", None)
 
     def test_multiple_add(self):
-        """Multiple add with same ID should raise a BzrError"""
+        """Multiple add with same ID should raise a BzrError."""
         store = self.get_store()
         self.fill_store(store)
         self.assertRaises(BzrError, store.add, BytesIO(b"goodbye"), b"123123")
@@ -360,7 +360,7 @@ class TestTransportStore(TestCase):
         self.assertEqual("%25", my_store._relpath(b"%"))
 
     def test_escaped_uppercase(self):
-        """Uppercase letters are escaped for safety on Windows"""
+        """Uppercase letters are escaped for safety on Windows."""
         my_store = TransportStore(MemoryTransport(), prefixed=True, escaped=True)
         # a particularly perverse file-id! :-)
         self.assertEqual(my_store._relpath(b"C:<>"), "be/%2543%253a%253c%253e")

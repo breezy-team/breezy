@@ -27,7 +27,7 @@ class TestRemerge(TestCaseWithTransport):
             f.write(contents)
 
     def create_conflicts(self):
-        """Create a conflicted tree"""
+        """Create a conflicted tree."""
         os.mkdir("base")
         self.make_file("base/hello", "hi world")
         self.make_file("base/answer", "42")
@@ -47,7 +47,7 @@ class TestRemerge(TestCaseWithTransport):
         self.run_bzr("commit -m this", working_dir="this")
 
     def test_remerge(self):
-        """Remerge command works as expected"""
+        """Remerge command works as expected."""
         self.create_conflicts()
         self.run_bzr("merge ../other --show-base", retcode=1, working_dir="this")
         with open("this/hello") as f:
@@ -81,7 +81,7 @@ class TestRemerge(TestCaseWithTransport):
         self.assertPathExists("this/hello.OTHER")
         self.assertPathDoesNotExist("this/question.OTHER")
 
-        file_id = self.run_bzr("file-id hello", working_dir="this")[0]
+        self.run_bzr("file-id hello", working_dir="this")[0]
         self.run_bzr_error(
             ["hello.THIS is not versioned"], "file-id hello.THIS", working_dir="this"
         )

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.add'"""
+"""Tests for interface conformance of 'WorkingTree.add'."""
 
 from breezy import errors, tests
 from breezy.bzr import inventory
@@ -38,7 +38,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.assertTreeLayout(["", "one"], tree)
 
     def test_add_existing_id(self):
-        """Adding an entry with a pre-existing id raises DuplicateFileId"""
+        """Adding an entry with a pre-existing id raises DuplicateFileId."""
         tree = self.make_branch_and_tree(".")
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")

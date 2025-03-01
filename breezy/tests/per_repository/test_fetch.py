@@ -31,7 +31,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         tree_a = self.make_branch_and_tree("a")
         self.build_tree(["a/foo"])
         tree_a.add("foo")
-        rev1 = tree_a.commit("rev1")
+        tree_a.commit("rev1")
         # fetch with a default limit (grab everything)
         repo = self.make_repository("b")
         if (
@@ -87,7 +87,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
                 tree_b = b_branch.create_checkout("b", lightweight=True)
             except errors.NotLocalUrl:
                 raise TestSkipped(
-                    "cannot make working tree with transport %r" % b_bzrdir.transport
+                    "cannot make working tree with transport {!r}".format(b_bzrdir.transport)
                 )
         rev2 = tree_b.commit("no change")
         rev2_tree = knit3_repo.revision_tree(rev2)
@@ -305,7 +305,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree(".")
-        rev_id = tree.commit("one")
+        tree.commit("one")
         # This needs to be a new copy of the repository, if this changes, the
         # test needs to be rewritten
         repo = tree.branch.repository.controldir.open_repository()
@@ -321,7 +321,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch_missing_from_self(self):
         tree = self.make_branch_and_tree(".")
-        rev_id = tree.commit("one")
+        tree.commit("one")
         # Even though the fetch() is a NO-OP it should assert the revision id
         # is present
         repo = tree.branch.repository.controldir.open_repository()
@@ -375,7 +375,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # no-op the second time.
         repo = self.make_repository("repo")
         tree = self.make_branch_and_tree("tree")
-        revision_id = tree.commit("test")
+        tree.commit("test")
         repo.fetch(tree.branch.repository)
         repo.fetch(tree.branch.repository)
 

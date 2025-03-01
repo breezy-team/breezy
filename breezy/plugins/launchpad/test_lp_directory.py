@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for directory lookup through Launchpad.net"""
+"""Tests for directory lookup through Launchpad.net."""
 
 
 
@@ -44,7 +44,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         target_branch = self.make_branch("target")
 
         class FooService:
-            """A directory service that maps the name to a FILE url"""
+            """A directory service that maps the name to a FILE url."""
 
             def look_up(self, name, url, purpose=None):
                 if url == "lp:///apt":

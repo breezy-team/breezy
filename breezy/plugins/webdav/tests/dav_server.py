@@ -61,11 +61,11 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         return s
 
     def _read(self, length):
-        """Read the client socket"""
+        """Read the client socket."""
         return self.rfile.read(length)
 
     def _readline(self):
-        """Read a full line on the client socket"""
+        """Read a full line on the client socket."""
         return self.rfile.readline()
 
     def read_body(self):
@@ -176,7 +176,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.end_headers()
 
         try:
-            trace.mutter("do_PUT will try to open: [%s]" % path)
+            trace.mutter("do_PUT will try to open: [{}]".format(path))
             # Always write in binary mode.
             if do_append:
                 f = open(path, "ab")
@@ -185,7 +185,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 f = open(path, "wb")
         except OSError as e:
             trace.mutter(
-                "do_PUT got: [%r] while opening/seeking on [%s]" % (e, self.path)
+                "do_PUT got: [{!r}] while opening/seeking on [{}]".format(e, self.path)
             )
             self.send_error(409, "Conflict")
             return
@@ -199,7 +199,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             f.close()
             return
         f.close()
-        trace.mutter("do_PUT done: [%s]" % self.path)
+        trace.mutter("do_PUT done: [{}]".format(self.path))
         self.send_response(201)
         self.end_headers()
 
@@ -320,7 +320,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     def _generate_response(self, path):
         local_path = self.translate_path(path)
         st = os.stat(local_path)
-        prop = dict()
+        prop = {}
 
         def _prop(ns, name, value=None):
             if value is None:
@@ -353,18 +353,17 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         response = (
             """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
-    %(href)s
+    {href}
     <D:propstat>
         <D:prop>
-             %(type)s
-             %(length)s
-             %(exec)s
+             {type}
+             {length}
+             {exec}
         </D:prop>
-        %(status)s
+        {status}
     </D:propstat>
 </D:response>
-"""
-            % prop
+""".format(**prop)
         )
         return response, st
 

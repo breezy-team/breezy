@@ -218,7 +218,7 @@ def _open_brz_log():
     global _brz_log_filename
 
     def _open_or_create_log_file(filename):
-        """Open existing log file, or create with ownership and permissions
+        """Open existing log file, or create with ownership and permissions.
 
         It inherits the ownership and permissions (masked by umask) from
         the containing directory to cope better with being run under sudo
@@ -275,7 +275,7 @@ def _open_brz_log():
 
 
 def enable_default_logging():
-    """Configure default logging: messages to stderr and debug to brz.log
+    """Configure default logging: messages to stderr and debug to brz.log.
 
     This should only be called once per process.
 
@@ -429,7 +429,7 @@ _short_fields = ("VmPeak", "VmSize", "VmRSS")
 
 def _debug_memory_proc(message="", short=True):
     try:
-        status_file = open("/proc/%s/status" % os.getpid(), "rb")
+        status_file = open("/proc/{}/status".format(os.getpid()), "rb")
     except OSError:
         return
     try:
@@ -458,7 +458,7 @@ def _dump_memory_usage(err_file):
             from meliae import scanner
 
             scanner.dump_gc_objects(dump_file)
-            err_file.write("Memory dumped to %s\n" % name)
+            err_file.write("Memory dumped to {}\n".format(name))
         except ImportError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
@@ -473,7 +473,7 @@ def _dump_memory_usage(err_file):
 
 
 def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
-    """Give name of error class including module for non-builtin exceptions
+    """Give name of error class including module for non-builtin exceptions.
 
     If `unqualified_breezy_errors` is True, errors specific to breezy will
     also omit the module prefix.
@@ -558,11 +558,11 @@ def report_user_error(exc_info, err_file, advice=None):
     """
     err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
     if advice:
-        err_file.write("%s\n" % advice)
+        err_file.write("{}\n".format(advice))
 
 
 def report_bug(exc_info, err_file):
-    """Report an exception that probably indicates a bug in brz"""
+    """Report an exception that probably indicates a bug in brz."""
     from breezy.crash import report_bug
 
     report_bug(exc_info, err_file)
@@ -594,7 +594,7 @@ def _flush_trace():
 
 
 class EncodedStreamHandler(logging.Handler):
-    """Robustly write logging events to a stream using the specified encoding
+    """Robustly write logging events to a stream using the specified encoding.
 
     Messages are expected to be formatted to unicode, but UTF-8 byte strings
     are also accepted. An error during formatting or a str message in another

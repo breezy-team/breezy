@@ -31,16 +31,14 @@ class TestGlobster(TestCase):
                 self.assertTrue(
                     globster.match(name),
                     repr(
-                        'name "%s" does not match glob "%s" (re=%s)'
-                        % (name, glob, globster._regex_patterns[0][0].pattern)
+                        'name "{}" does not match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)
                     ),
                 )
             for name in negative:
                 self.assertFalse(
                     globster.match(name),
                     repr(
-                        'name "%s" does match glob "%s" (re=%s)'
-                        % (name, glob, globster._regex_patterns[0][0].pattern)
+                        'name "{}" does match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)
                     ),
                 )
 
@@ -384,7 +382,7 @@ class TestGlobster(TestCase):
 
 class TestExceptionGlobster(TestCase):
     def test_exclusion_patterns(self):
-        """Test that exception patterns are not matched"""
+        """Test that exception patterns are not matched."""
         patterns = ["*", "!./local", "!./local/**/*", "!RE:\\.z.*", "!!./.zcompdump"]
         globster = ExceptionGlobster(patterns)
         self.assertEqual("*", globster.match("tmp/foo.txt"))
@@ -395,7 +393,7 @@ class TestExceptionGlobster(TestCase):
         self.assertEqual("!!./.zcompdump", globster.match(".zcompdump"))
 
     def test_exclusion_order(self):
-        """Test that ordering of exclusion patterns does not matter"""
+        """Test that ordering of exclusion patterns does not matter."""
         patterns = ["static/**/*.html", "!static/**/versionable.html"]
         globster = ExceptionGlobster(patterns)
         self.assertEqual("static/**/*.html", globster.match("static/foo.html"))
@@ -409,7 +407,7 @@ class TestExceptionGlobster(TestCase):
 
 class TestOrderedGlobster(TestCase):
     def test_ordered_globs(self):
-        """Test that the first match in a list is the one found"""
+        """Test that the first match in a list is the one found."""
         patterns = ["*.foo", "bar.*"]
         globster = _OrderedGlobster(patterns)
         self.assertEqual("*.foo", globster.match("bar.foo"))
@@ -423,7 +421,7 @@ class TestNormalizePattern(TestCase):
     def test_backslashes(self):
         """Tests that backslashes are converted to forward slashes, multiple
         backslashes are collapsed to single forward slashes and trailing
-        backslashes are removed
+        backslashes are removed.
         """
         self.assertEqual("/", normalize_pattern("\\"))
         self.assertEqual("/", normalize_pattern("\\\\"))
@@ -433,7 +431,7 @@ class TestNormalizePattern(TestCase):
 
     def test_forward_slashes(self):
         """Tests that multiple foward slashes are collapsed to single forward
-        slashes and trailing forward slashes are removed
+        slashes and trailing forward slashes are removed.
         """
         self.assertEqual("/", normalize_pattern("/"))
         self.assertEqual("/", normalize_pattern("//"))
@@ -443,6 +441,6 @@ class TestNormalizePattern(TestCase):
 
     def test_mixed_slashes(self):
         """Tests that multiple mixed slashes are collapsed to single forward
-        slashes and trailing mixed slashes are removed
+        slashes and trailing mixed slashes are removed.
         """
         self.assertEqual("/foo/bar", normalize_pattern("\\/\\foo//\\///bar/\\\\/"))

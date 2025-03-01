@@ -406,7 +406,7 @@ class GitHub(Forge):
     def _graphql_request(self, body, **kwargs):
         headers = {}
         if self._token:
-            headers["Authorization"] = "token %s" % self._token
+            headers["Authorization"] = "token {}".format(self._token)
         url = urlutils.join(self.transport.base, "graphql")
         response = self.transport.request(
             "POST",
@@ -434,7 +434,7 @@ class GitHub(Forge):
             "Accept": "application/vnd.github.v3+json",
         }
         if self._token:
-            headers["Authorization"] = "token %s" % self._token
+            headers["Authorization"] = "token {}".format(self._token)
         try:
             response = self.transport.request(
                 method,
@@ -518,7 +518,7 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
-        path = "search/users?q=%s+in:email" % email
+        path = "search/users?q={}+in:email".format(email)
         response = self._api_request("GET", path)
         if response.status != 200:
             raise UnexpectedHttpStatus(
@@ -526,14 +526,14 @@ class GitHub(Forge):
             )
         ret = json.loads(response.text)
         if ret["total_count"] == 0:
-            raise KeyError("no user with email %s" % email)
+            raise KeyError("no user with email {}".format(email))
         elif ret["total_count"] > 1:
-            raise ValueError("more than one result for email %s" % email)
+            raise ValueError("more than one result for email {}".format(email))
         return ret["items"][0]
 
     def _get_user(self, username=None):
         if username:
-            path = "users/%s" % username
+            path = "users/{}".format(username)
         else:
             path = "user"
         response = self._api_request("GET", path)
@@ -544,7 +544,7 @@ class GitHub(Forge):
         return json.loads(response.text)
 
     def _get_organization(self, name):
-        path = "orgs/%s" % name
+        path = "orgs/{}".format(name)
         response = self._api_request("GET", path)
         if response.status != 200:
             raise UnexpectedHttpStatus(
@@ -592,7 +592,7 @@ class GitHub(Forge):
 
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user["login"]:
-            path += "?organization=%s" % owner
+            path += "?organization={}".format(owner)
         response = self._api_request("POST", path)
         if response.status != 202:
             raise UnexpectedHttpStatus(
@@ -630,7 +630,8 @@ class GitHub(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         base_owner, base_project, base_branch_name = parse_github_branch_url(
             base_branch
         )
@@ -800,7 +801,7 @@ class GitHub(Forge):
             query.append("is:merged")
         if author is None:
             author = self.current_user["login"]
-        query.append("author:%s" % author)
+        query.append("author:{}".format(author))
         for issue in self._search_issues(query=" ".join(query)):
 
             def retrieve_full():
@@ -835,7 +836,7 @@ class GitHub(Forge):
 
     def iter_my_forks(self, owner=None):
         if owner:
-            path = "/users/%s/repos" % owner
+            path = "/users/{}/repos".format(owner)
         else:
             path = "/user/repos"
         for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
@@ -913,8 +914,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 self.source_branch_name, self.target_owner, self.target_branch_name
             )
         )
-        info.append("Source: %s\n" % self.source_branch.user_url)
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info.append("Source: {}\n".format(self.source_branch.user_url))
+        info.append("Target: {}\n".format(self.target_branch.user_url))
         return "".join(info)
 
     def get_initial_body(self):

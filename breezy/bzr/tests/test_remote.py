@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for remote bzrdir/branch/repo/etc
+"""Tests for remote bzrdir/branch/repo/etc.
 
 These are proxy objects which act on remote objects by sending messages
 through a smart client.  The proxies are to be created when attempting to open
@@ -107,7 +107,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertTrue(repo.has_revision(revid))
 
     def test_find_correct_format(self):
-        """Should open a RemoteBzrDir over a RemoteTransport"""
+        """Should open a RemoteBzrDir over a RemoteTransport."""
         fmt = BzrDirFormat.find_format(self.transport)
         self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
@@ -227,8 +227,7 @@ class FakeClient(_SmartClient):
     def finished_test(self):
         if self._expected_calls:
             raise AssertionError(
-                "%r finished but was still expecting %r"
-                % (self, self._expected_calls[0])
+                "{!r} finished but was still expecting {!r}".format(self, self._expected_calls[0])
             )
 
     def _get_next_response(self):
@@ -250,9 +249,8 @@ class FakeClient(_SmartClient):
             next_call = self._expected_calls.pop(0)
         except IndexError:
             raise AssertionError(
-                "%r didn't expect any more calls "
-                "but got %r%r"
-                % (
+                "{!r} didn't expect any more calls "
+                "but got {!r}{!r}".format(
                     self,
                     method,
                     args,
@@ -262,8 +260,7 @@ class FakeClient(_SmartClient):
             return
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError(
-                "%r expected %r%r but got %r%r"
-                % (
+                "{!r} expected {!r}{!r} but got {!r}{!r}".format(
                     self,
                     next_call[0],
                     next_call[1],
@@ -370,7 +367,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         """Assert that the result of
         HttpTransportBase.remote_path_from_transport is the expected value for
         a given transport_base and relpath of that transport.  (Note that
-        HttpTransportBase is a subclass of SmartClientMedium)
+        HttpTransportBase is a subclass of SmartClientMedium).
         """
         base_transport = _mod_transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
@@ -1649,7 +1646,7 @@ class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
 
 class TestBranch_get_stacked_on_url(TestRemote):
-    """Test Branch._get_stacked_on_url rpc"""
+    """Test Branch._get_stacked_on_url rpc."""
 
     def test_get_stacked_on_invalid_url(self):
         # test that asking for a stacked on url the server can't access works.
@@ -3202,7 +3199,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_exposes_get_cached_parent_map(self):
         """RemoteRepository exposes get_cached_parent_map from
-        _unstacked_provider
+        _unstacked_provider.
         """
         r1 = "\u0e33".encode()
         r2 = "\u0dab".encode()
@@ -4174,7 +4171,7 @@ class TestRepositoryTarball(TestRemoteRepository):
 
 
 class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
-    """RemoteRepository.copy_content_into optimizations"""
+    """RemoteRepository.copy_content_into optimizations."""
 
     def test_copy_content_remote_to_local(self):
         self.transport_server = test_server.SmartTCPServer_for_testing
@@ -4273,7 +4270,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
         )
 
     def test_oom_error_reporting(self):
-        """An out-of-memory condition on the server is reported clearly"""
+        """An out-of-memory condition on the server is reported clearly."""
         transport_path = "quack"
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
@@ -4642,7 +4639,7 @@ class TestStacking(tests.TestCaseWithTransport):
     def fetch_stream_to_rev_order(self, stream):
         result = []
         for kind, substream in stream:
-            if not kind == "revisions":
+            if kind != "revisions":
                 list(substream)
             else:
                 for content in substream:

@@ -31,42 +31,42 @@ from breezy.transport.local import LocalTransport
 
 
 class AnonymousTestBranchFormat(breezy.branch.BranchFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestBranchFormat(breezy.branch.BranchFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
 
 
 class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An anonymous branch format (does not have a format string)"""
+    """An anonymous branch format (does not have a format string)."""
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
 
 
 class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An identifable branch format (has a format string)"""
+    """An identifable branch format (has a format string)."""
 
     def get_format_string(self):
         return b"I have an identity"
@@ -81,7 +81,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     # and then set the nickname to match the source branch, at which point
     # a semantic equivalence should pass
 
-    def assertDirectoriesEqual(self, source, target, ignore_list=[]):
+    def assertDirectoriesEqual(self, source, target, ignore_list=None):
         """Assert that the content of source and target are identical.
 
         paths in ignore list will be completely ignored.
@@ -98,7 +98,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             rather than representation checking of repositories for
             equivalence.
         """
-        files = []
+        if ignore_list is None:
+            ignore_list = []
         directories = ["."]
         while directories:
             dir = directories.pop()
@@ -109,7 +110,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                 try:
                     stat = source.stat(path)
                 except transport.NoSuchFile:
-                    self.fail("%s not in source" % path)
+                    self.fail("{} not in source".format(path))
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
@@ -117,7 +118,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertEqualDiff(
                         source.get_bytes(path),
                         target.get_bytes(path),
-                        "text for file %r differs:\n" % path,
+                        "text for file {!r} differs:\n".format(path),
                     )
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
@@ -212,7 +213,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             a_controldir.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree):
             raise TestSkipped(
-                "bzrdir on transport %r has no working tree" % a_controldir.transport
+                "bzrdir on transport {!r} has no working tree".format(a_controldir.transport)
             )
 
     def createWorkingTreeOrSkip(self, a_controldir):
@@ -233,7 +234,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             )
         except errors.NotLocalUrl:
             raise TestSkipped(
-                "cannot make working tree with transport %r" % a_controldir.transport
+                "cannot make working tree with transport {!r}".format(a_controldir.transport)
             )
 
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):

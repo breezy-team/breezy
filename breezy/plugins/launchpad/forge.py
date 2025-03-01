@@ -267,7 +267,7 @@ class Launchpad(Forge):
     def name(self):
         if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return "Launchpad"
-        return "Launchpad at %s" % self.base_url
+        return "Launchpad at {}".format(self.base_url)
 
     @property
     def launchpad(self):
@@ -282,7 +282,7 @@ class Launchpad(Forge):
         return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
-        return "Launchpad(service_root=%s)" % self._api_base_url
+        return "Launchpad(service_root={})".format(self._api_base_url)
 
     def get_current_user(self):
         return self.launchpad.me.name
@@ -315,7 +315,7 @@ class Launchpad(Forge):
         except KeyError:
             branch_name = params.get("branch", branch.name)
             if branch_name:
-                ref_path = "refs/heads/%s" % branch_name
+                ref_path = "refs/heads/{}".format(branch_name)
             else:
                 ref_path = repo_lp.default_branch
         ref_lp = repo_lp.getRefByPath(path=ref_path)
@@ -347,7 +347,8 @@ class Launchpad(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport(GIT_SCHEME_MAP["ssh"] + to_path)
         try:
@@ -457,7 +458,7 @@ class Launchpad(Forge):
         elif host.startswith("git."):
             vcs = "git"
         else:
-            raise ValueError("unknown host %s" % host)
+            raise ValueError("unknown host {}".format(host))
         return (vcs, user, password, path, params)
 
     def publish_derived(
@@ -532,7 +533,7 @@ class Launchpad(Forge):
                 except KeyError:
                     continue
                 return _mod_branch.Branch.open(prefix + to_path)
-            raise AssertionError("no supported schemes: %r" % preferred_schemes)
+            raise AssertionError("no supported schemes: {!r}".format(preferred_schemes))
         elif base_vcs == "git":
             to_path = self._get_derived_git_path(base_path.strip("/"), owner, project)
             for scheme in preferred_schemes:
@@ -544,7 +545,7 @@ class Launchpad(Forge):
                     prefix + to_path, {"branch": name}
                 )
                 return _mod_branch.Branch.open(to_url)
-            raise AssertionError("no supported schemes: %r" % preferred_schemes)
+            raise AssertionError("no supported schemes: {!r}".format(preferred_schemes))
         else:
             raise AssertionError("not a valid Launchpad URL")
 
@@ -639,7 +640,7 @@ class Launchpad(Forge):
         # Launchpad doesn't have a way to find a merge proposal by URL.
         (scheme, user, password, host, port, path) = urlutils.parse_url(url)
         LAUNCHPAD_CODE_DOMAINS = [
-            ("code.%s" % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()
+            ("code.{}".format(domain)) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()
         ]
         if host not in LAUNCHPAD_CODE_DOMAINS:
             raise UnsupportedForge(url)
@@ -700,8 +701,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
-        info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
+        info = ["Source: {}\n".format(self.source_branch_lp.bzr_identity)]
+        info.append("Target: {}\n".format(self.target_branch_lp.bzr_identity))
         return "".join(info)
 
     def get_initial_body(self):
@@ -856,8 +857,8 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        info = ["Source: %s\n" % self.source_branch.user_url]
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info = ["Source: {}\n".format(self.source_branch.user_url)]
+        info.append("Target: {}\n".format(self.target_branch.user_url))
         return "".join(info)
 
     def get_initial_body(self):

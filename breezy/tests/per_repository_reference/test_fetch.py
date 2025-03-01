@@ -90,7 +90,7 @@ class TestFetch(TestFetchBase):
         transport = self.make_smart_server("server")
         transport.ensure_base()
         url = transport.abspath("")
-        stack_b = source_b.controldir.sprout(url + "/stack-on", revision_id=b"B-id")
+        source_b.controldir.sprout(url + "/stack-on", revision_id=b"B-id")
         # self.make_branch only takes relative paths, so we do it the 'hard'
         # way
         target_transport = transport.clone("target")
@@ -108,7 +108,7 @@ class TestFetch(TestFetchBase):
         # bzrdir.sprout() has slightly different code paths if you supply a
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
-        final2_b = target_b.controldir.sprout(
+        target_b.controldir.sprout(
             "final2", revision_id=b"C-id"
         ).open_branch()
         self.assertEqual(b"C-id", final_b.last_revision())

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""On-disk mutex protecting a resource
+"""On-disk mutex protecting a resource.
 
 bzr on-disk objects are locked by the existence of a directory with a
 particular name within the control directory.  We use this rather than OS
@@ -243,7 +243,7 @@ class LockDir(lock.Lock):
             ) as e:
                 self._trace("... contention, %s", e)
                 other_holder = self.peek()
-                self._trace("other holder is %r" % other_holder)
+                self._trace("other holder is {!r}".format(other_holder))
                 try:
                     self._handle_lock_contention(other_holder)
                 except BaseException:
@@ -302,7 +302,7 @@ class LockDir(lock.Lock):
         raise LockContention(self)
 
     def _remove_pending_dir(self, tmpname):
-        """Remove the pending directory
+        """Remove the pending directory.
 
         This is called if we failed to rename into place, so that the pending
         dirs don't clutter up the lockdir.
@@ -337,7 +337,7 @@ class LockDir(lock.Lock):
 
     @only_raises(LockNotHeld, LockBroken)
     def unlock(self):
-        """Release a held lock"""
+        """Release a held lock."""
         if self._fake_read_lock:
             self._fake_read_lock = False
             return
@@ -398,10 +398,10 @@ class LockDir(lock.Lock):
             if ui.ui_factory.confirm_action(
                 "Break %(lock_info)s",
                 "breezy.lockdir.break",
-                dict(lock_info=str(holder_info)),
+                {"lock_info": str(holder_info)},
             ):
                 result = self.force_break(holder_info)
-                ui.ui_factory.show_message("Broke lock %s" % result.lock_url)
+                ui.ui_factory.show_message("Broke lock {}".format(result.lock_url))
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -423,7 +423,7 @@ class LockDir(lock.Lock):
         :returns: LockResult for the broken lock.
         """
         if not isinstance(dead_holder_info, LockHeldInfo):
-            raise ValueError("dead_holder_info: %r" % dead_holder_info)
+            raise ValueError("dead_holder_info: {!r}".format(dead_holder_info))
         self._check_not_locked()
         current_info = self.peek()
         if current_info is None:
@@ -479,7 +479,7 @@ class LockDir(lock.Lock):
     def _check_not_locked(self):
         """If the lock is held by this instance, raise an error."""
         if self._lock_held:
-            raise AssertionError("can't break own lock: %r" % self)
+            raise AssertionError("can't break own lock: {!r}".format(self))
 
     def confirm(self):
         """Make sure that the lock is still held by this locker.
@@ -746,7 +746,7 @@ class LockHeldInfo:
         user = self.info_dict.get("user", "<unknown>")
         hostname = self.info_dict.get("hostname", "<unknown>")
         pid = self.info_dict.get("pid", "<unknown>")
-        return dict(user=user, hostname=hostname, pid=pid, time_ago=time_ago)
+        return {"user": user, "hostname": hostname, "pid": pid, "time_ago": time_ago}
 
     @property
     def nonce(self):
@@ -760,13 +760,13 @@ class LockHeldInfo:
     @classmethod
     def for_this_process(cls, extra_holder_info):
         """Return a new LockHeldInfo for a lock taken by this process."""
-        info = dict(
-            hostname=get_host_name(),
-            pid=os.getpid(),
-            nonce=rand_chars(20),
-            start_time=int(time.time()),
-            user=get_username_for_lock_info(),
-        )
+        info = {
+            "hostname": get_host_name(),
+            "pid": os.getpid(),
+            "nonce": rand_chars(20),
+            "start_time": int(time.time()),
+            "user": get_username_for_lock_info(),
+        }
         if extra_holder_info is not None:
             info.update(extra_holder_info)
         return cls(info)
@@ -839,7 +839,7 @@ class LockHeldInfo:
         try:
             pid = int(pid_str)
         except ValueError:
-            mutter("can't parse pid %r from %r" % (pid_str, self))
+            mutter("can't parse pid {!r} from {!r}".format(pid_str, self))
             return False
         return osutils.is_local_pid_dead(pid)
 

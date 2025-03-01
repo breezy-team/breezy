@@ -52,7 +52,7 @@ class TestAncestry(TestCaseWithTransport):
             self.assertEqualDiff(result, out)
 
     def test_ancestry(self):
-        """Tests 'ancestry' command"""
+        """Tests 'ancestry' command."""
         self._build_branches()
         os.chdir("A")
         self._check_ancestry()

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for interface conformance of 'WorkingTree.rename_one'"""
+"""Tests for interface conformance of 'WorkingTree.rename_one'."""
 
 import os
 
@@ -218,7 +218,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_versioned(self):
-        """Using after with an already versioned file should fail"""
+        """Using after with an already versioned file should fail."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "b"])
         tree.add(["a", "b"])
@@ -235,7 +235,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_added(self):
-        """Using after with a newly added file should work"""
+        """Using after with a newly added file should work."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a"])
         tree.add(["a"])
@@ -370,7 +370,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         )
 
     def test_rename_unversioned_non_ascii(self):
-        """Check error when renaming an unversioned non-ascii file"""
+        """Check error when renaming an unversioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["\xa7"])
@@ -379,7 +379,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertEqual(e.extra.path, "\xa7")
 
     def test_rename_into_unversioned_non_ascii_dir(self):
-        """Check error when renaming into unversioned non-ascii directory"""
+        """Check error when renaming into unversioned non-ascii directory."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "\xa7/"])
@@ -394,7 +394,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
             tree.rename_one("a", "\xa7/a")
 
     def test_rename_over_already_versioned_non_ascii(self):
-        """Check error renaming over an already versioned non-ascii file"""
+        """Check error renaming over an already versioned non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "\xa7"])
@@ -404,7 +404,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertEqual(e.extra.path, "\xa7")
 
     def test_rename_after_non_existant_non_ascii(self):
-        """Check error renaming after move with missing non-ascii file"""
+        """Check error renaming after move with missing non-ascii file."""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a"])

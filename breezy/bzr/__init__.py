@@ -81,7 +81,7 @@ class BzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         result = []
-        for name, format in cls.formats.items():
+        for _name, format in cls.formats.items():
             if callable(format):
                 format = format()
             result.append(format)
@@ -186,7 +186,7 @@ def register_metadir(
             raise ImportError("failed to load {}: {}".format(full_name, e))
         except AttributeError:
             raise AttributeError(
-                "no factory %s in module %r" % (full_name, sys.modules[mod_name])
+                "no factory {} in module {!r}".format(full_name, sys.modules[mod_name])
             )
         return factory()
 

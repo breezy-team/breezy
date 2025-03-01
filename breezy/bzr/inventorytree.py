@@ -168,11 +168,11 @@ class InventoryTree(Tree):
         """
         if isinstance(file_id, tuple):
             if len(file_id) != 1:
-                raise ValueError("nested trees not yet supported: %r" % file_id)
+                raise ValueError("nested trees not yet supported: {!r}".format(file_id))
             file_id = file_id[0]
         return self.root_inventory, file_id
 
-    def find_related_paths_across_trees(self, paths, trees=[], require_versioned=True):
+    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 
@@ -187,6 +187,8 @@ class InventoryTree(Tree):
         :return: a set of paths for the specified filenames and their children
             in `tree`
         """
+        if trees is None:
+            trees = []
         if paths is None:
             return None
         file_ids = self.paths2ids(paths, trees, require_versioned=require_versioned)
@@ -198,7 +200,7 @@ class InventoryTree(Tree):
                 pass
         return ret
 
-    def paths2ids(self, paths, trees=[], require_versioned=True):
+    def paths2ids(self, paths, trees=None, require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
 
         Each path is looked up in this tree and any extras provided in
@@ -215,6 +217,8 @@ class InventoryTree(Tree):
         :param require_versioned: If False, do not raise NotVersionedError if
             an element of paths is not versioned in this tree and all of trees.
         """
+        if trees is None:
+            trees = []
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
     def path2id(self, path):
@@ -554,7 +558,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                 return True
 
     def _fix_case_of_inventory_path(self, path):
-        """If our tree isn't case sensitive, return the canonical path"""
+        """If our tree isn't case sensitive, return the canonical path."""
         if not self.case_sensitive:
             path = self.get_canonical_path(path)
         return path
@@ -684,14 +688,14 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                 raise AssertionError()
         if kinds is None:
             kinds = [None] * len(files)
-        elif not len(kinds) == len(files):
+        elif len(kinds) != len(files):
             raise AssertionError()
         with self.lock_tree_write():
             for f in files:
                 # generic constraint checks:
                 if self.is_control_filename(f):
                     raise errors.ForbiddenControlFileError(filename=f)
-                fp = osutils.splitpath(f)
+                osutils.splitpath(f)
             # fill out file kinds for all files [not needed when we stop
             # caring about the instantaneous file kind within a uncommmitted tree
             #
@@ -891,7 +895,7 @@ class _SmartAddHelper:
                 )
                 continue
             if illegalpath_re.search(directory):
-                trace.warning("skipping %r (contains \\n or \\r)" % abspath)
+                trace.warning("skipping {!r} (contains \\n or \\r)".format(abspath))
                 continue
             if directory in self.conflicts_related:
                 # If the file looks like one generated for a conflict, don't
@@ -1150,7 +1154,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             raise _mod_transport.NoSuchFile(e.file_id)
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
-        """See Tree.annotate_iter"""
+        """See Tree.annotate_iter."""
         file_id = self.path2id(path)
         text_key = (file_id, self.get_file_revision(path))
         annotator = self._repository.texts.get_annotator()
@@ -1273,7 +1277,7 @@ class InterInventoryTree(InterTree):
         include_unchanged=False,
         specific_files=None,
         pb=None,
-        extra_trees=[],
+        extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
     ):
@@ -1310,6 +1314,8 @@ class InterInventoryTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
+        if extra_trees is None:
+            extra_trees = []
         if not extra_trees:
             extra_trees = []
         else:
@@ -1624,10 +1630,12 @@ class InterCHKRevisionTree(InterInventoryTree):
         include_unchanged=False,
         specific_files=None,
         pb=None,
-        extra_trees=[],
+        extra_trees=None,
         require_versioned=True,
         want_unversioned=False,
     ):
+        if extra_trees is None:
+            extra_trees = []
         lookup_trees = [self.source]
         if extra_trees:
             lookup_trees.extend(extra_trees)

@@ -86,7 +86,7 @@ class BranchStatus(TestCaseWithTransport):
         return uio.getvalue().decode("utf-8")
 
     def test_branch_status(self):
-        """Test basic branch status"""
+        """Test basic branch status."""
         wt = self.make_branch_and_tree(".")
 
         # status with no commits or files - it must
@@ -167,7 +167,7 @@ class BranchStatus(TestCaseWithTransport):
         )
 
     def test_branch_status_revisions(self):
-        """Tests branch status with revisions"""
+        """Tests branch status with revisions."""
         wt = self.make_branch_and_tree(".")
 
         self.build_tree(["hello.c", "bye.c"])
@@ -194,13 +194,13 @@ class BranchStatus(TestCaseWithTransport):
         )
 
     def test_pending(self):
-        """Pending merges display works, including Unicode"""
+        """Pending merges display works, including Unicode."""
         mkdir("./branch")
         wt = self.make_branch_and_tree("branch")
         b = wt.branch
         wt.commit("Empty commit 1")
         b_2_dir = b.controldir.sprout("./copy")
-        b_2 = b_2_dir.open_branch()
+        b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
         wt.commit("\N{TIBETAN DIGIT TWO} Empty commit 2")
         wt2.merge_from_branch(wt.branch)
@@ -217,7 +217,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):
-        """Tests branch status with ignores"""
+        """Tests branch status with ignores."""
         wt = self.make_branch_and_tree(".")
         self.run_bzr("ignore *~")
         wt.commit("commit .bzrignore")
@@ -238,9 +238,8 @@ class BranchStatus(TestCaseWithTransport):
         )
 
     def test_tree_status_specific_files(self):
-        """Tests branch status with given specific files"""
+        """Tests branch status with given specific files."""
         wt = self.make_branch_and_tree(".")
-        b = wt.branch
 
         self.build_tree(
             ["directory/", "directory/hello.c", "bye.c", "test.c", "dir2/", "missing.c"]
@@ -420,7 +419,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file_with_others(self):
         # brz st [--short] NONEXISTENT ...others..
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             "removed:\n",
             "  FILE_E\n",
@@ -450,7 +449,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_multiple_nonexistent_files(self):
         # brz st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             "removed:\n",
             "  FILE_E\n",
@@ -491,7 +490,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file_with_unversioned(self):
         # brz st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
-        wt = self._prepare_nonexistent()
+        self._prepare_nonexistent()
         expected = [
             "removed:\n",
             "  FILE_E\n",
@@ -535,7 +534,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err, r".*ERROR: Path\(s\) do not exist: " "NONEXISTENT.*")
 
     def test_status_out_of_date(self):
-        """Simulate status of out-of-date tree after remote push"""
+        """Simulate status of out-of-date tree after remote push."""
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("a", b"foo\n")])
         with tree.lock_write():
@@ -551,7 +550,7 @@ class BranchStatus(TestCaseWithTransport):
 
         See https://bugs.launchpad.net/bzr/+bug/40103
         """
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
 
         self.build_tree(["test1.c", "test1.c~", "test2.c~"])
         result = self.run_bzr("status")[0]
@@ -741,7 +740,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertEqual(result2, result)
 
     def assertStatusContains(self, pattern, short=False):
-        """Run status, and assert it contains the given pattern"""
+        """Run status, and assert it contains the given pattern."""
         if short:
             result = self.run_bzr("status --short")[0]
         else:
@@ -799,10 +798,10 @@ class TestStatus(TestCaseWithTransport):
         tree = self.make_branch_and_tree("tree")
         self.build_tree_contents([("tree/a", b"content of a\n")])
         tree.add("a")
-        r1_id = tree.commit("one")
+        tree.commit("one")
         alt = tree.controldir.sprout("alt").open_workingtree()
         self.build_tree_contents([("alt/a", b"content of a\nfrom alt\n")])
-        alt_id = alt.commit("alt")
+        alt.commit("alt")
         tree.merge_from_branch(alt.branch)
         output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
@@ -821,14 +820,14 @@ class TestStatusEncodings(TestCaseWithTransport):
         except UnicodeEncodeError:
             raise TestSkipped(
                 "can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding()
+                "filesystem encoding {}".format(sys.getfilesystemencoding())
             )
         working_tree.add(filename)
         return working_tree
 
     def test_stdout_ascii(self):
         self.overrideAttr(osutils, "_cached_user_encoding", "ascii")
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
         self.assertEqual(
@@ -841,7 +840,7 @@ added:
 
     def test_stdout_latin1(self):
         self.overrideAttr(osutils, "_cached_user_encoding", "latin-1")
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
         expected = """\

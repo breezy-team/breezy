@@ -57,7 +57,7 @@ class ReturnsUnlockable(Matcher):
         self.lockable_thing = lockable_thing
 
     def __str__(self):
-        return "ReturnsUnlockable(lockable_thing=%s)" % self.lockable_thing
+        return "ReturnsUnlockable(lockable_thing={})".format(self.lockable_thing)
 
     def match(self, lock_method):
         lock_method().unlock()
@@ -73,7 +73,7 @@ class _IsLocked(Mismatch):
         self.lockable_thing = lockable_thing
 
     def describe(self):
-        return "%s is locked" % self.lockable_thing
+        return "{} is locked".format(self.lockable_thing)
 
 
 class _AncestryMismatch(Mismatch):
@@ -162,7 +162,7 @@ class HasLayout(Matcher):
                 yield entry
 
     def __str__(self):
-        return "HasLayout(%r)" % self.entries
+        return "HasLayout({!r})".format(self.entries)
 
     def match(self, tree):
         include_file_ids = self.entries and not isinstance(self.entries[0], str)
@@ -258,7 +258,7 @@ class RevisionHistoryMatches(Matcher):
         self.expected = history
 
     def __str__(self):
-        return "RevisionHistoryMatches(%r)" % self.expected
+        return "RevisionHistoryMatches({!r})".format(self.expected)
 
     def match(self, branch):
         with branch.lock_read():
@@ -320,7 +320,7 @@ class MatchesTreeChanges(Matcher):
         return rich_expected
 
     def __str__(self):
-        return "<MatchesTreeChanges(%r)>" % self.expected
+        return "<MatchesTreeChanges({!r})>".format(self.expected)
 
     def match(self, actual):
         from ..bzr.inventorytree import InventoryTreeChange

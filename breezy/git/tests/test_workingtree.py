@@ -106,7 +106,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
 
     def test_add_submodule_file(self):
         os.mkdir(".git/modules")
-        subbranch = self.make_branch(".git/modules/asub", format="git-bare")
+        self.make_branch(".git/modules/asub", format="git-bare")
         os.mkdir("asub")
         with open("asub/.git", "w") as f:
             f.write("gitdir: ../.git/modules/asub\n")
@@ -323,7 +323,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.build_tree(["a"])
         self.wt.add(["a"])
         os.unlink("a")
-        a = Blob.from_string(b"contents of a\n")
+        Blob.from_string(b"contents of a\n")
         t = Tree()
         t.add(b"a", 0, ZERO_SHA)
         self.expectDelta(

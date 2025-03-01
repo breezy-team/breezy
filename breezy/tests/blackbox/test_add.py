@@ -37,7 +37,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_add_reports(self):
         """Add command prints the names of added files."""
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["top.txt", "dir/", "dir/sub.txt", "CVS"])
         self.build_tree_contents([(".bzrignore", b"CVS\n")])
         out = self.run_bzr("add")[0]
@@ -53,7 +53,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_add_quiet_is(self):
         """Add -q does not print the names of added files."""
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["top.txt", "dir/", "dir/sub.txt"])
         out = self.run_bzr("add -q")[0]
         # the ordering is not defined at the moment
@@ -65,7 +65,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
         "brz add" should add the parent(s) as necessary.
         """
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["inertiatic/", "inertiatic/esp"])
         self.assertEqual(self.run_bzr("unknowns")[0], "inertiatic\n")
         self.run_bzr("add inertiatic/esp")
@@ -84,7 +84,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(self.run_bzr("unknowns")[0], "")
 
     def test_add_no_recurse(self):
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["inertiatic/", "inertiatic/esp"])
         self.assertEqual(self.run_bzr("unknowns")[0], "inertiatic\n")
         self.run_bzr("add -N inertiatic")
@@ -95,7 +95,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
         "brz add" should do this happily.
         """
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["inertiatic/", "inertiatic/esp"])
         self.assertEqual(self.run_bzr("unknowns")[0], "inertiatic\n")
         self.run_bzr("add --no-recurse inertiatic")
@@ -104,12 +104,10 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(self.run_bzr("unknowns")[0], "")
 
     def test_subdir_add(self):
-        """Add in subdirectory should add only things from there down"""
+        """Add in subdirectory should add only things from there down."""
         eq = self.assertEqual
-        ass = self.assertTrue
 
         t = self.make_branch_and_tree(".")
-        b = t.branch
         self.build_tree(["src/", "README"])
 
         eq(sorted(t.unknowns()), ["README", "src"])
@@ -227,7 +225,7 @@ class TestAdd(tests.TestCaseWithTransport):
         )
 
     def test_add_multiple_files_in_unicode_cwd(self):
-        """Adding multiple files in a non-ascii cwd, see lp:686611"""
+        """Adding multiple files in a non-ascii cwd, see lp:686611."""
         self.requireFeature(features.UnicodeFilenameFeature)
         self.make_branch_and_tree("\xa7")
         self.build_tree(["\xa7/a", "\xa7/b"])
@@ -236,7 +234,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(err, "")
 
     def test_add_skip_large_files(self):
-        """Test skipping files larger than add.maximum_file_size"""
+        """Test skipping files larger than add.maximum_file_size."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["small.txt", "big.txt", "big2.txt"])
         self.build_tree_contents([("small.txt", b"0\n")])
@@ -265,7 +263,7 @@ class TestAdd(tests.TestCaseWithTransport):
                 "unable to add filenames with backslashes where "
                 " it is the path separator"
             )
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         self.build_tree(["\\"])
         self.assertEqual("adding \\\n", self.run_bzr("add \\\\")[0])
         self.assertEqual("\\\n", self.run_bzr("ls --versioned")[0])

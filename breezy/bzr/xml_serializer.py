@@ -56,7 +56,7 @@ from . import inventory, serializer
 
 
 class XMLSerializer(serializer.Serializer):
-    """Abstract XML object serialize/deserialize"""
+    """Abstract XML object serialize/deserialize."""
 
     squashes_xml_invalid_characters = True
 
@@ -167,7 +167,7 @@ _xml_escape_map = {
 
 
 def _unicode_escape_replace(match, _map=_xml_escape_map):
-    """Replace a string of non-ascii, non XML safe characters with their escape
+    """Replace a string of non-ascii, non XML safe characters with their escape.
 
     This will escape both Standard XML escapes, like <>"', etc.
     As well as escaping non ascii characters, because ElementTree did.
@@ -205,7 +205,7 @@ _to_escaped_map: Dict[Union[bytes, str], str] = {}
 
 
 def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
-    """Encode the string into utf8, and escape invalid XML characters"""
+    """Encode the string into utf8, and escape invalid XML characters."""
     # We frequently get entities we have not seen before, so it is better
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
@@ -230,7 +230,7 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
 
 
 def _clear_cache():
-    """Clean out the unicode => escaped map"""
+    """Clean out the unicode => escaped map."""
     _to_escaped_map.clear()
 
 
@@ -286,7 +286,7 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
 
     kind = elt.tag
     if not inventory.InventoryEntry.versionable_kind(kind):
-        raise AssertionError("unsupported entry kind %s" % kind)
+        raise AssertionError("unsupported entry kind {}".format(kind))
 
     file_id = get_utf8_or_ascii(file_id)
     if revision is not None:
@@ -344,10 +344,10 @@ def unpack_inventory_flat(
         encountered
     """
     if elt.tag != "inventory":
-        raise serializer.UnexpectedInventoryFormat("Root tag is %r" % elt.tag)
+        raise serializer.UnexpectedInventoryFormat("Root tag is {!r}".format(elt.tag))
     format = elt.get("format")
     if (format is None and format_num is not None) or format.encode() != format_num:
-        raise serializer.UnexpectedInventoryFormat("Invalid format version %r" % format)
+        raise serializer.UnexpectedInventoryFormat("Invalid format version {!r}".format(format))
     revision_id = elt.get("revision_id")
     if revision_id is not None:
         revision_id = revision_id.encode("utf-8")
@@ -369,7 +369,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     entries = inv.iter_entries()
     # Skip the root
     root_path, root_ie = next(entries)
-    for path, ie in entries:
+    for _path, ie in entries:
         if ie.parent_id != root_id:
             parent_str = b"".join(
                 [b' parent_id="', encode_and_escape(ie.parent_id), b'"']

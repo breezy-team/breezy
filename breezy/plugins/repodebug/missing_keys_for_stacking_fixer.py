@@ -42,17 +42,17 @@ class cmd_fix_missing_keys_for_stacking(Command):
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL):
-            raise errors.CommandError("Not a branch or invalid URL: %s" % branch_url)
+            raise errors.CommandError("Not a branch or invalid URL: {}".format(branch_url))
         b.lock_read()
         try:
-            url = b.get_stacked_on_url()
+            b.get_stacked_on_url()
         except (
             errors.UnstackableRepositoryFormat,
             errors.NotStacked,
             errors.UnstackableBranchFormat,
         ):
             b.unlock()
-            raise errors.CommandError("Not stacked: %s" % branch_url)
+            raise errors.CommandError("Not stacked: {}".format(branch_url))
         raw_r = b.repository.controldir.open_repository()
         if dry_run:
             raw_r.lock_read()
@@ -72,7 +72,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
             if not needed:
                 # Nothing to see here.
                 return
-            self.outf.write("Missing inventories: %r\n" % needed)
+            self.outf.write("Missing inventories: {!r}\n".format(needed))
             if dry_run:
                 return
             assert raw_r._format.network_name() == b.repository._format.network_name()
@@ -84,7 +84,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
         finally:
             raw_r.unlock()
         b.unlock()
-        self.outf.write("Fixed: %s\n" % branch_url)
+        self.outf.write("Fixed: {}\n".format(branch_url))
 
 
 class cmd_mirror_revs_into(Command):

@@ -81,7 +81,7 @@ def colorstring(text, fgcolor=None, bgcolor=None):
 def term_title(title):
     term = os.environ.get("TERM", "")
     if term.startswith("xterm") or term == "dtterm":
-        return "\033]0;%s\007" % title
+        return "\033]0;{}\007".format(title)
     return ""
 
 

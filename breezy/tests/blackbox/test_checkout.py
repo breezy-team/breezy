@@ -76,8 +76,8 @@ class TestCheckout(TestCaseWithTransport):
         self.make_controldir("checkout")
         out, err = self.run_bzr(["checkout", "branch", "checkout"])
         result = controldir.ControlDir.open("checkout")
-        tree = result.open_workingtree()
-        branch = result.open_branch()
+        result.open_workingtree()
+        result.open_branch()
 
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'brz checkout' in the directory of a branch with no tree
@@ -150,7 +150,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertEqual(b"null:", tree.last_revision())
 
     def test_checkout_files_from(self):
-        branch = _mod_branch.Branch.open("branch")
+        _mod_branch.Branch.open("branch")
         self.run_bzr(["checkout", "branch", "branch2", "--files-from", "branch"])
 
     def test_checkout_hardlink(self):

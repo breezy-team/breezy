@@ -57,7 +57,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             except errors.NoRoundtrippingSupport:
                 raise TestNotApplicable("roundtripping not supported")
             # check that b now has all the data from a's first commit.
-            rev = repo.get_revision(rev1)
+            repo.get_revision(rev1)
             tree = repo.revision_tree(rev1)
             tree.lock_read()
             self.addCleanup(tree.unlock)
@@ -277,7 +277,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         exclude_keys = set(repo.all_revision_ids()) - {revision_id}
         search = SearchResult([revision_id], exclude_keys, 1, [revision_id])
         source = repo._get_source(repo._format)
-        for substream_kind, substream in source.get_stream(search):
+        for _substream_kind, substream in source.get_stream(search):
             # Consume the substream
             list(substream)
 
@@ -286,7 +286,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         if not self.repository_format.supports_ghosts:
             raise TestNotApplicable("Need ghost support in the source.")
-        to_repo = self.make_to_repository("to")
+        self.make_to_repository("to")
         builder = self.make_branch_builder("branch")
         builder.start_series()
         base = builder.build_snapshot(
@@ -451,13 +451,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository("to_repo")
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
-        with to_repo.lock_write():
-            with WriteGroup(to_repo, suppress_errors=True):
-                inv = tree.branch.repository.get_inventory(rev1)
-                to_repo.add_inventory(rev1, inv, [])
-                rev = tree.branch.repository.get_revision(rev1)
-                to_repo.add_revision(rev1, rev, inv=inv)
-                self.disable_commit_write_group_paranoia(to_repo)
+        with to_repo.lock_write(), WriteGroup(to_repo, suppress_errors=True):
+            inv = tree.branch.repository.get_inventory(rev1)
+            to_repo.add_inventory(rev1, inv, [])
+            rev = tree.branch.repository.get_revision(rev1)
+            to_repo.add_revision(rev1, rev, inv=inv)
+            self.disable_commit_write_group_paranoia(to_repo)
 
         # Implementations can either ensure that the target of the delta is
         # reconstructable, or raise an exception (which stream based copies
@@ -553,7 +552,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("roundtripping not supported")
 
     def test_fetch_revision_hash(self):
-        """Ensure that inventory hashes are updated by fetch"""
+        """Ensure that inventory hashes are updated by fetch."""
         if not self.repository_format_to.supports_full_versioned_files:
             raise TestNotApplicable("Need full versioned files")
         from_tree = self.make_branch_and_tree("tree")

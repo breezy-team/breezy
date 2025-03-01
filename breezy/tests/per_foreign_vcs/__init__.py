@@ -22,7 +22,7 @@ from breezy import foreign, tests
 
 def vcs_scenarios():
     scenarios = []
-    for name, vcs in foreign.foreign_vcs_registry.items():
+    for _name, vcs in foreign.foreign_vcs_registry.items():
         scenarios.append(
             (
                 vcs.__class__.__name__,

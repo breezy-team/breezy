@@ -222,7 +222,7 @@ class TestSmartServerCat(TestCaseWithTransport):
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(["cat", "%s/foo" % self.get_url("branch")])
+        out, err = self.run_bzr(["cat", "{}/foo".format(self.get_url("branch"))])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -271,7 +271,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
 class TestSmartServerConfig(TestCaseWithTransport):
     def test_simple_branch_config(self):
         self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree("branch")
+        self.make_branch_and_tree("branch")
         self.reset_smart_call_log()
         out, err = self.run_bzr(["config", "-d", self.get_url("branch")])
         # This figure represent the amount of work to perform this use case. It
@@ -488,8 +488,8 @@ class TestSmartServerPush(TestCaseWithTransport):
     def test_push_smart_incremental_acceptance(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
-        rev_id1 = t.commit(allow_pointless=True, message="first commit")
-        rev_id2 = t.commit(allow_pointless=True, message="second commit")
+        t.commit(allow_pointless=True, message="first commit")
+        t.commit(allow_pointless=True, message="second commit")
         self.run_bzr(["push", self.get_url("to-one"), "-r1"], working_dir="from")
         self.reset_smart_call_log()
         self.run_bzr(["push", self.get_url("to-one")], working_dir="from")
@@ -525,7 +525,7 @@ class TestSmartServerRevno(TestCaseWithTransport):
         t = self.make_branch_and_tree("branch")
         self.build_tree_contents([("branch/foo", b"thecontents")])
         t.add("foo")
-        revid = t.commit("message")
+        t.commit("message")
         self.reset_smart_call_log()
         out, err = self.run_bzr(["revno", self.get_url("branch")])
         # This figure represent the amount of work to perform this use case. It
@@ -543,7 +543,7 @@ class TestSmartServerRevno(TestCaseWithTransport):
         self.build_tree_contents([("branch/foo", b"thecontents")])
         t.add("foo")
         revid1 = t.commit("message")
-        revid2 = t.commit("message")
+        t.commit("message")
         self.reset_smart_call_log()
         out, err = self.run_bzr(
             ["revno", "-rrevid:" + revid1.decode("utf-8"), self.get_url("branch")]
@@ -740,7 +740,7 @@ class TestSmartServerVerifySignatures(TestCaseWithTransport):
         out, err = self.run_bzr(["sign-my-commits", self.get_url("branch")])
         self.reset_smart_call_log()
         self.run_bzr("sign-my-commits")
-        out = self.run_bzr(["verify-signatures", self.get_url("branch")])
+        self.run_bzr(["verify-signatures", self.get_url("branch")])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

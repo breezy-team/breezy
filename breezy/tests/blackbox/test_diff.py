@@ -36,7 +36,7 @@ def subst_dates(string):
 
 
 class DiffBase(tests.TestCaseWithTransport):
-    """Base class with common setup method"""
+    """Base class with common setup method."""
 
     def make_example_branch(self):
         tree = self.make_branch_and_tree(".")
@@ -67,7 +67,7 @@ class TestDiff(DiffBase):
         self.run_bzr("diff")
 
     def test_diff_prefix(self):
-        """Diff --prefix appends to filenames in output"""
+        """Diff --prefix appends to filenames in output."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff --prefix old/:new/", retcode=1)
@@ -91,7 +91,7 @@ class TestDiff(DiffBase):
         self.assertContainsRe(err, "--prefix expects two values separated by a colon")
 
     def test_diff_p1(self):
-        """Diff -p1 produces lkml-style diffs"""
+        """Diff -p1 produces lkml-style diffs."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff -p1", retcode=1)
@@ -110,7 +110,7 @@ class TestDiff(DiffBase):
         )
 
     def test_diff_p0(self):
-        """Diff -p0 produces diffs with no prefix"""
+        """Diff -p0 produces diffs with no prefix."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         out, err = self.run_bzr("diff -p0", retcode=1)
@@ -341,7 +341,7 @@ class TestDiff(DiffBase):
         self.assertContainsRe(output[0], "\n\\-original line\n\\+new line\n")
 
     def test_diff_across_rename(self):
-        """The working tree path should always be considered for diffing"""
+        """The working tree path should always be considered for diffing."""
         tree = self.make_example_branch()
         self.run_bzr("diff -r 0..1 hello", retcode=1)
         tree.rename_one("hello", "hello1")
@@ -458,7 +458,7 @@ class TestDiffLabels(DiffBase):
 
 class TestExternalDiff(DiffBase):
     def test_external_diff(self):
-        """Test that we can spawn an external diff process"""
+        """Test that we can spawn an external diff process."""
         self.disable_missing_extensions_warning()
         # We have to use run_brz_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
@@ -484,7 +484,7 @@ class TestExternalDiff(DiffBase):
         self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n+baz\n\n")
 
     def test_external_diff_options_and_using(self):
-        """Test that the options are passed correctly to an external diff process"""
+        """Test that the options are passed correctly to an external diff process."""
         self.requireFeature(features.diff_feature)
         self.make_example_branch()
         self.build_tree_contents([("hello", b"Foo\n")])

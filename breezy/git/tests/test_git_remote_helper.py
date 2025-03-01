@@ -91,7 +91,6 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         local_path = local_dir.control_transport.local_abspath(".")
         remote_tree = self.make_branch_and_tree("remote")
         remote_dir = remote_tree.controldir
-        shortname = "bzr"
         env = dict(os.environ)
         env["GIT_DIR"] = local_path
         env["PYTHONPATH"] = ":".join(sys.path)

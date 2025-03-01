@@ -128,7 +128,7 @@ class DataCollector:
         return self.data
 
     def global_options(self):
-        for name, item in option.Option.OPTIONS.items():
+        for _name, item in option.Option.OPTIONS.items():
             self.data.global_options.append(
                 (
                     "--" + item.name,
@@ -184,13 +184,13 @@ class DataCollector:
         )
 
         opts = cmd.options()
-        for optname, opt in sorted(opts.items()):
+        for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
         if name == "help" or "help" in cmd.aliases:
-            cmd_data.fixed_words = "($cmds %s)" % " ".join(
+            cmd_data.fixed_words = "($cmds {})".format(" ".join(
                 sorted(help_topics.topic_registry.keys())
-            )
+            ))
 
         return cmd_data
 
@@ -201,15 +201,14 @@ class DataCollector:
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
         if isinstance(opt, option.RegistryOption) and opt.enum_switch:
-            enum_switch = "--%s" % opt.name
+            enum_switch = "--{}".format(opt.name)
             enum_data = optswitches.get(enum_switch)
             if enum_data:
                 try:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--%s': %s"
-                        % (opt.name, str(e).split("\n")[0])
+                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split("\n")[0])
                     )
         return sorted(optswitches.values())
 

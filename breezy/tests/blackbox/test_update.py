@@ -29,7 +29,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree(".")
         out, err = self.run_bzr("update")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch %s\n" % self.test_dir, err
+            "Tree is up to date at revision 0 of branch {}\n".format(self.test_dir), err
         )
         self.assertEqual("", out)
 
@@ -43,7 +43,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree(".")
         out, err = self.run_bzr("up")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch %s\n" % self.test_dir, err
+            "Tree is up to date at revision 0 of branch {}\n".format(self.test_dir), err
         )
         self.assertEqual("", out)
 
@@ -52,8 +52,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.run_bzr("checkout --lightweight branch checkout")
         out, err = self.run_bzr("update checkout")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch %s\n"
-            % osutils.pathjoin(self.test_dir, "branch"),
+            "Tree is up to date at revision 0 of branch {}\n".format(osutils.pathjoin(self.test_dir, "branch")),
             err,
         )
         self.assertEqual("", out)
@@ -85,12 +84,11 @@ $ brz update checkout
         self.assertEqualDiff(
             """+N  file
 All changes applied successfully.
-Updated to revision 1 of branch %s
-"""
-            % osutils.pathjoin(
+Updated to revision 1 of branch {}
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "branch",
-            ),
+            )),
             err,
         )
         self.assertPathExists("branch/file")
@@ -108,12 +106,11 @@ Updated to revision 1 of branch %s
         self.assertEqualDiff(
             """+N  file
 All changes applied successfully.
-Updated to revision 1 of branch %s
-"""
-            % osutils.pathjoin(
+Updated to revision 1 of branch {}
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "branch",
-            ),
+            )),
             err,
         )
         self.assertEqual("", out)
@@ -139,12 +136,11 @@ Updated to revision 1 of branch %s
             """ M  file
 Text conflict in file
 1 conflicts encountered.
-Updated to revision 2 of branch %s
-"""
-            % osutils.pathjoin(
+Updated to revision 2 of branch {}
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "branch",
-            ),
+            )),
             err,
         )
         self.assertEqual("", out)
@@ -186,13 +182,12 @@ Updated to revision 2 of branch %s
 All changes applied successfully.
 +N  file
 All changes applied successfully.
-Updated to revision 2 of branch %s
+Updated to revision 2 of branch {}
 Your local commits will now show as pending merges with 'brz status', and can be committed with 'brz commit'.
-"""
-            % osutils.pathjoin(
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "master",
-            ),
+            )),
             err,
         )
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
@@ -242,22 +237,21 @@ Your local commits will now show as pending merges with 'brz status', and can be
         self.assertEqualDiff(
             """+N  file3
 All changes applied successfully.
-Updated to revision 2 of branch %s
-"""
-            % osutils.pathjoin(
+Updated to revision 2 of branch {}
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "master",
-            ),
+            )),
             err,
         )
         # The pending merges should still be there
         self.assertEqual([b"o2"], checkout1.get_parent_ids()[1:])
 
     def test_readonly_lightweight_update(self):
-        """Update a light checkout of a readonly branch"""
+        """Update a light checkout of a readonly branch."""
         tree = self.make_branch_and_tree("branch")
         readonly_branch = branch.Branch.open(self.get_readonly_url("branch"))
-        checkout = readonly_branch.create_checkout("checkout", lightweight=True)
+        readonly_branch.create_checkout("checkout", lightweight=True)
         tree.commit("empty commit")
         self.run_bzr("update checkout")
 
@@ -296,12 +290,11 @@ Updated to revision 2 of branch %s
         self.assertEqual("", out)
         self.assertEqualDiff(
             """All changes applied successfully.
-Updated to revision 2 of branch %s
-"""
-            % osutils.pathjoin(
+Updated to revision 2 of branch {}
+""".format(osutils.pathjoin(
                 self.test_dir,
                 "master",
-            ),
+            )),
             err,
         )
         # The pending merges should still be there
@@ -390,7 +383,7 @@ $ brz update -r revid:m2
         )
 
     def test_update_show_base(self):
-        """Brz update support --show-base
+        """Brz update support --show-base.
 
         see https://bugs.launchpad.net/bzr/+bug/202374
         """
@@ -429,7 +422,7 @@ $ brz update -r revid:m2
 
     def test_update_checkout_prevent_double_merge(self):
         """ "Launchpad bug 113809 in brz "update performs two merges"
-        https://launchpad.net/bugs/113809
+        https://launchpad.net/bugs/113809.
         """
         master = self.make_branch_and_tree("master")
         self.build_tree_contents([("master/file", b"initial contents\n")])
@@ -437,7 +430,7 @@ $ brz update -r revid:m2
         master.commit("one", rev_id=b"m1")
 
         checkout = master.branch.create_checkout("checkout")
-        lightweight = checkout.branch.create_checkout("lightweight", lightweight=True)
+        checkout.branch.create_checkout("lightweight", lightweight=True)
 
         # time to create a mess
         # add a commit to the master

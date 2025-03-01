@@ -84,7 +84,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
             elif vcs == "Bazaar":
                 git_repo = None
             else:
-                raise errors.BzrError("Unknown default vcs %s for %s" % (vcs, target))
+                raise errors.BzrError("Unknown default vcs {} for {}".format(vcs, target))
         if lp_branch or git_repo:
             break
         path, subpath = split(path)
@@ -143,7 +143,7 @@ def _resolve(url, _lp_login=None):
 
 class LaunchpadDirectory:
     def look_up(self, name, url, purpose=None):
-        """See DirectoryService.look_up"""
+        """See DirectoryService.look_up."""
         return _resolve(url)
 
 

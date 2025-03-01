@@ -25,9 +25,9 @@ class TestPull(per_branch.TestCaseWithBranch):
         # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_branch_and_tree("parent")
-        p1 = parent.commit("1st post", allow_pointless=True)
+        parent.commit("1st post", allow_pointless=True)
         mine = parent.controldir.sprout("mine").open_workingtree()
-        m1 = mine.commit("my change", allow_pointless=True)
+        mine.commit("my change", allow_pointless=True)
         parent.merge_from_branch(mine.branch)
         p2 = parent.commit("merge my change")
         mine.pull(parent.branch)
@@ -39,21 +39,21 @@ class TestPull(per_branch.TestCaseWithBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         parent = self.make_branch_and_tree("parent")
-        p1 = parent.commit("1st post", allow_pointless=True)
+        parent.commit("1st post", allow_pointless=True)
         mine = parent.controldir.sprout("mine").open_workingtree()
-        m1 = mine.commit("my change", allow_pointless=True)
+        mine.commit("my change", allow_pointless=True)
         other = parent.controldir.sprout("other").open_workingtree()
         other.merge_from_branch(mine.branch)
-        o2 = other.commit("merge my change")
+        other.commit("merge my change")
         parent.merge_from_branch(other.branch)
         p2 = parent.commit("merge other")
         mine.pull(parent.branch)
         self.assertEqual(p2, mine.branch.last_revision())
 
     def test_pull_updates_checkout_and_master(self):
-        """Pulling into a checkout updates the checkout and the master branch"""
+        """Pulling into a checkout updates the checkout and the master branch."""
         master_tree = self.make_branch_and_tree("master")
-        rev1 = master_tree.commit("master")
+        master_tree.commit("master")
         checkout = master_tree.branch.create_checkout("checkout")
 
         other = master_tree.branch.controldir.sprout("other").open_workingtree()
@@ -65,7 +65,7 @@ class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_local_updates_checkout_only(self):
         """Pulling --local into a checkout updates the checkout and not the
-        master branch
+        master branch.
         """
         master_tree = self.make_branch_and_tree("master")
         rev1 = master_tree.commit("master")
@@ -84,7 +84,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev1 = master_tree.commit("master")
 
         other = master_tree.branch.controldir.sprout("other").open_workingtree()
-        rev2 = other.commit("other commit")
+        other.commit("other commit")
         # now pull --local, which should raise LocalRequiresBoundBranch error.
         self.assertRaises(
             errors.LocalRequiresBoundBranch,
@@ -136,7 +136,7 @@ class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_overwrite_set(self):
         tree_a = self.make_branch_and_tree("tree_a")
-        rev1 = tree_a.commit("message 1")
+        tree_a.commit("message 1")
 
         tree_b = tree_a.controldir.sprout("tree_b").open_workingtree()
         rev2a = tree_a.commit("message 2a")

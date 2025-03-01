@@ -20,7 +20,7 @@ from .xml_serializer import encode_and_escape, get_utf8_or_ascii, unpack_invento
 
 
 class Serializer_v5(xml6.Serializer_v6):
-    """Version 5 serializer
+    """Version 5 serializer.
 
     Packs objects into XML and vice versa.
     """
@@ -31,14 +31,14 @@ class Serializer_v5(xml6.Serializer_v6):
     def _unpack_inventory(
         self, elt, revision_id, entry_cache=None, return_from_cache=False
     ):
-        """Construct from XML Element"""
+        """Construct from XML Element."""
         root_id = elt.get("file_id") or inventory.ROOT_ID
         root_id = get_utf8_or_ascii(root_id)
 
         format = elt.get("format")
         if format is not None:
             if format != "5":
-                raise errors.BzrError("invalid format version %r on inventory" % format)
+                raise errors.BzrError("invalid format version {!r} on inventory".format(format))
         data_revision_id = elt.get("revision_id")
         if data_revision_id is not None:
             revision_id = data_revision_id.encode("utf-8")
@@ -60,7 +60,7 @@ class Serializer_v5(xml6.Serializer_v6):
             try:
                 parent = byid[parent_id]
             except KeyError:
-                raise errors.BzrError("parent_id {%s} not in inventory" % (parent_id,))
+                raise errors.BzrError("parent_id {{{}}} not in inventory".format(parent_id))
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             if ie.name in parent.children:

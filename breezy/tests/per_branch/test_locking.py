@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test locks across all branch implemenations"""
+"""Test locks across all branch implemenations."""
 
 from breezy import errors, tests
 from breezy.tests import lock_helpers, per_branch
@@ -27,7 +27,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.reduceLockdirTimeout()
 
     def get_instrumented_branch(self):
-        """Get a Branch object which has been instrumented"""
+        """Get a Branch object which has been instrumented."""
         # TODO: jam 20060630 It may be that not all formats have a
         # 'control_files' member. So we should fail gracefully if
         # not there. But assuming it has them lets us test the exact
@@ -568,7 +568,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         branch = self.make_branch("b")
         branch.lock_read()
         self.addCleanup(branch.unlock)
-        err = self.assertRaises(errors.ReadOnlyError, branch.lock_write)
+        self.assertRaises(errors.ReadOnlyError, branch.lock_write)
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):
         branch = self.make_branch("b")

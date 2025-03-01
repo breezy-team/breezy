@@ -108,9 +108,9 @@ class RemoteTransport(transport.ConnectedTransport):
             medium = self._shared_connection.connection
         else:
             raise AssertionError(
-                "Both _from_transport (%r) and medium (%r) passed to "
+                "Both _from_transport ({!r}) and medium ({!r}) passed to "
                 "RemoteTransport.__init__, but these parameters are mutally "
-                "exclusive." % (_from_transport, medium)
+                "exclusive.".format(_from_transport, medium)
             )
 
         if _client is None:
@@ -230,7 +230,7 @@ class RemoteTransport(transport.ConnectedTransport):
             return ("%d" % mode).encode("ascii")
 
     def mkdir(self, relpath, mode=None):
-        resp = self._call2(
+        self._call2(
             b"mkdir", self._remote_path(relpath), self._serialise_optional_mode(mode)
         )
 
@@ -243,7 +243,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
-            raise TypeError("raw_bytes must be bytes string, not %s" % type(raw_bytes))
+            raise TypeError("raw_bytes must be bytes string, not {}".format(type(raw_bytes)))
         resp = self._call_with_body_bytes(
             b"put",
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
@@ -443,7 +443,7 @@ class RemoteTransport(transport.ConnectedTransport):
         self._call(b"move", self._remote_path(rel_from), self._remote_path(rel_to))
 
     def rmdir(self, relpath):
-        resp = self._call(b"rmdir", self._remote_path(relpath))
+        self._call(b"rmdir", self._remote_path(relpath))
 
     def _ensure_ok(self, resp):
         if resp[0] != b"ok":
@@ -604,7 +604,7 @@ class RemoteHTTPTransport(RemoteTransport):
         )
 
     def _redirected_to(self, source, target):
-        """See transport._redirected_to"""
+        """See transport._redirected_to."""
         redirected = self._http_transport._redirected_to(source, target)
         if redirected is not None and isinstance(
             redirected, type(self._http_transport)
@@ -626,8 +626,8 @@ class HintingSSHTransport(transport.Transport):
     def __init__(self, url):
         raise transport.UnsupportedProtocol(
             url,
-            'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
-            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url),
+            'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+{}". '
+            'Use git+ssh for Git operations over SSH, e.g. "git+{}".'.format(url, url),
         )
 
 

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Report on version of breezy"""
+"""Report on version of breezy."""
 
 import os
 import platform
@@ -28,7 +28,7 @@ from . import bedding, controldir, errors, osutils, trace
 def show_version(show_config=True, show_copyright=True, to_file=None):
     if to_file is None:
         to_file = sys.stdout
-    to_file.write("Breezy (brz) %s\n" % breezy.__version__)
+    to_file.write("Breezy (brz) {}\n".format(breezy.__version__))
     # is breezy itself in a branch?
     src_tree = _get_brz_source_tree()
     if src_tree:
@@ -65,7 +65,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     platform_str = platform.platform(aliased=1)
     if not isinstance(platform_str, str):
         platform_str = platform_str.decode("utf-8")
-    to_file.write("  Platform: %s\n" % platform_str)
+    to_file.write("  Platform: {}\n".format(platform_str))
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's

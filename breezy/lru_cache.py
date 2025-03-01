@@ -91,7 +91,7 @@ class LRUCache:
         return len(self._cache)
 
     def __setitem__(self, key, value):
-        """Add a new value to the cache"""
+        """Add a new value to the cache."""
         if key is _null_key:
             raise ValueError("cannot use _null_key as a key")
         if key in self._cache:
@@ -131,7 +131,7 @@ class LRUCache:
         return list(self._cache.keys())
 
     def as_dict(self):
-        """Get a new dict with the same key:value pairs as the cache"""
+        """Get a new dict with the same key:value pairs as the cache."""
         return {k: n.value for k, n in self._cache.items()}
 
     def cleanup(self):
@@ -247,7 +247,7 @@ class LRUSizeCache(LRUCache):
         LRUCache.__init__(self, max_cache=max(int(max_size // 512), 1))
 
     def __setitem__(self, key, value):
-        """Add a new value to the cache"""
+        """Add a new value to the cache."""
         if key is _null_key:
             raise ValueError("cannot use _null_key as a key")
         node = self._cache.get(key, None)

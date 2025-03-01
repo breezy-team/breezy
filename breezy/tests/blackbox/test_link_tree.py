@@ -42,7 +42,7 @@ class TestLinkTreeCommand(tests.TestCaseWithTransport):
         return parent_stat.st_ino == child_stat.st_ino
 
     def test_link_tree(self):
-        """Ensure the command works as intended"""
+        """Ensure the command works as intended."""
         os.chdir("child")
         self.parent_tree.unlock()
         self.run_bzr("link-tree ../parent")

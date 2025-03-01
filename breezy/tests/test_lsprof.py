@@ -32,7 +32,7 @@ _TXT_HEADER = (
 
 def _junk_callable():
     """A simple routine to profile."""
-    result = sorted(["abc", "def", "ghi"])
+    sorted(["abc", "def", "ghi"])
 
 
 def _collect_stats():

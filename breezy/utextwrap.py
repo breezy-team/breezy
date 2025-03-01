@@ -89,7 +89,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return sum(charwidth(c) for c in s)
 
     def _cut(self, s, width):
-        """Returns head and rest of s. (head+rest == s)
+        """Returns head and rest of s. (head+rest == s).
 
         Head is large as long as _width(head) <= width.
         """
@@ -102,7 +102,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return s, ""
 
     def _fix_sentence_endings(self, chunks):
-        """_fix_sentence_endings(chunks : [string])
+        r"""_fix_sentence_endings(chunks : [string]).
 
         Correct for sentence endings buried in 'chunks'.  Eg. when the
         original text contains "... foo.\nBar ...", munge_whitespace()
@@ -156,7 +156,7 @@ class UTextWrapper(textwrap.TextWrapper):
     def _wrap_chunks(self, chunks):
         lines = []
         if self.width <= 0:
-            raise ValueError("invalid width %r (must be > 0)" % self.width)
+            raise ValueError("invalid width {!r} (must be > 0)".format(self.width))
         if self.max_lines is not None:
             if self.max_lines > 1:
                 indent = self.subsequent_indent

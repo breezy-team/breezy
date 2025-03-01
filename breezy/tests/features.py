@@ -141,7 +141,7 @@ class _CompatabilityThunkFeature(Feature):
         if self._feature is None:
             from breezy import pyutils
 
-            depr_msg = self._dep_version % ("%s.%s" % (self._module, self._name))
+            depr_msg = self._dep_version % ("{}.{}".format(self._module, self._name))
             use_msg = " Use {}.{} instead.".format(
                 self._replacement_module, self._replacement_name
             )
@@ -225,7 +225,7 @@ class PluginLoadedFeature(Feature):
         return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
-        return "%s plugin" % self.plugin_name
+        return "{} plugin".format(self.plugin_name)
 
 
 class _HTTPSServerFeature(Feature):
@@ -250,9 +250,7 @@ class _ByteStringNamedFilesystem(Feature):
     """Is the filesystem based on bytes?"""
 
     def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
+        return os.name == "posix"
 
 
 ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
@@ -262,9 +260,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8"):
-            return True
-        return False
+        return sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8")
 
 
 UTF8Filesystem = _UTF8Filesystem()
@@ -360,10 +356,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
     def _probe(self):
         if CaseInsCasePresFilenameFeature.available():
             return False
-        elif CaseInsensitiveFilesystemFeature.available():
-            return False
-        else:
-            return True
+        return not CaseInsensitiveFilesystemFeature.available()
 
     def feature_name(self):
         return "case-sensitive filesystem"
@@ -423,7 +416,7 @@ backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
 class _ChownFeature(Feature):
-    """os.chown is supported"""
+    """os.chown is supported."""
 
     def _probe(self):
         return os.name == "posix" and hasattr(os, "chown")
@@ -451,7 +444,7 @@ class ExecutableFeature(Feature):
         return self._path is not None
 
     def feature_name(self):
-        return "%s executable" % self.name
+        return "{} executable".format(self.name)
 
 
 bash_feature = ExecutableFeature("bash")
@@ -573,4 +566,4 @@ class PathFeature(Feature):
         return os.path.exists(self.path)
 
     def feature_name(self):
-        return "%s exists" % self.path
+        return "{} exists".format(self.path)

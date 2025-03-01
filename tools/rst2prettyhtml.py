@@ -27,7 +27,7 @@ def kidified_rest(rest_file, template_name):
     xhtml_file = StringIO()
     # prevent docutils from autoclosing the StringIO
     xhtml_file.close = lambda: None
-    xhtml = publish_file(
+    publish_file(
         rest_file,
         writer_name="html",
         destination=xhtml_file,
@@ -49,7 +49,7 @@ def safe_open(filename, mode):
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise
-        sys.stderr.write("file not found: %s\n" % sys.argv[2])
+        sys.stderr.write("file not found: {}\n".format(sys.argv[2]))
         sys.exit(3)
 
 

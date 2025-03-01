@@ -35,7 +35,7 @@ class BadCommitMessageEncoding(BzrError):
 
 
 def _get_editor():
-    """Return sequence of possible editor binaries for the current platform"""
+    """Return sequence of possible editor binaries for the current platform."""
     try:
         yield os.environ["BRZ_EDITOR"], "$BRZ_EDITOR"
     except KeyError:
@@ -69,8 +69,7 @@ def _run_editor(filename):
                 # environment variable or config file) said to try it.  Let
                 # the user know their configuration is broken.
                 trace.warning(
-                    'Could not start editor "%s" (specified by %s): %s\n'
-                    % (candidate, candidate_source, str(e))
+                    'Could not start editor "{}" (specified by {}): {}\n'.format(candidate, candidate_source, str(e))
                 )
             continue
             raise
@@ -82,15 +81,15 @@ def _run_editor(filename):
             break
     raise BzrError(
         "Could not start any editor.\nPlease specify one with:\n"
-        " - $BRZ_EDITOR\n - editor=/some/path in %s\n"
-        " - $VISUAL\n - $EDITOR" % bedding.config_path()
+        " - $BRZ_EDITOR\n - editor=/some/path in {}\n"
+        " - $VISUAL\n - $EDITOR".format(bedding.config_path())
     )
 
 
-DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % {
-    "bar": "-" * 14,
-    "msg": "This line and the following will be ignored",
-}
+DEFAULT_IGNORE_LINE = "{bar} {msg} {bar}".format(
+    bar="-" * 14,
+    msg="This line and the following will be ignored",
+)
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE, start_message=None):
@@ -338,7 +337,7 @@ hooks = MessageEditorHooks()
 def set_commit_message(commit, start_message=None):
     """Sets the commit message.
     :param commit: Commit object for the active commit.
-    :return: The commit message or None to continue using the message editor
+    :return: The commit message or None to continue using the message editor.
     """
     start_message = None
     for hook in hooks["set_commit_message"]:

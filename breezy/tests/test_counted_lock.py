@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.counted_lock"""
+"""Tests for breezy.counted_lock."""
 
 from ..counted_lock import CountedLock
 from ..errors import LockError, LockNotHeld, ReadOnlyError, TokenMismatch

@@ -231,7 +231,7 @@ class cmd_rebase(Command):
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
                 note(gettext("%d revisions will be rebased:") % len(todo))
                 for revid in todo:
-                    note("%s" % revid)
+                    note("{}".format(revid))
 
             if not dry_run:
                 # Write plan file
@@ -520,7 +520,7 @@ class cmd_rebase_foreign(Command):
 
         branch_to.lock_write()
         try:
-            graph = branch_to.repository.get_graph()
+            branch_to.repository.get_graph()
             renames = upgrade_branch(
                 branch_to,
                 generate_rebase_map,

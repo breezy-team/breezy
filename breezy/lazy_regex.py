@@ -63,7 +63,7 @@ class LazyRegex:
     ] + _regex_attributes_to_copy
 
     def __init__(self, args, kwargs):
-        """Create a new proxy object, passing in the args to pass to re.compile
+        """Create a new proxy object, passing in the args to pass to re.compile.
 
         :param args: The `*args` to pass to re.compile
         :param kwargs: The `**kwargs` to pass to re.compile
@@ -73,7 +73,7 @@ class LazyRegex:
         self._regex_kwargs = kwargs
 
     def _compile_and_collapse(self):
-        """Actually compile the requested regex"""
+        """Actually compile the requested regex."""
         self._real_regex = self._real_re_compile(
             *self._regex_args, **self._regex_kwargs
         )
@@ -81,7 +81,7 @@ class LazyRegex:
             setattr(self, attr, getattr(self._real_regex, attr))
 
     def _real_re_compile(self, *args, **kwargs):
-        """Thunk over to the original re.compile"""
+        """Thunk over to the original re.compile."""
         try:
             return re.compile(*args, **kwargs)
         except re.error as e:

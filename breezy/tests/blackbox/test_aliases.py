@@ -28,7 +28,7 @@ class TestAliases(TestCaseWithTransport):
         def bzr_catch_error(args, **kwargs):
             return self.run_bzr(args, **kwargs)[1]
 
-        conf = config.GlobalConfig.from_string(
+        config.GlobalConfig.from_string(
             b"""[ALIASES]
 c=cat
 c1=cat -r 1

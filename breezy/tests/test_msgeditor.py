@@ -57,13 +57,13 @@ class MsgEditorTest(TestCaseWithTransport):
         except UnicodeEncodeError:
             self.skipTest(
                 "can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding()
+                "filesystem encoding {}".format(sys.getfilesystemencoding())
             )
         working_tree.add(filename)
         return working_tree
 
     def test_commit_template(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = msgeditor.make_commit_message_template(working_tree, None)
         self.assertEqualDiff(
@@ -108,7 +108,7 @@ pending merges:
         )
 
     def test_commit_template_encoded(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(
             working_tree, None, output_encoding="utf8"
@@ -122,7 +122,7 @@ added:
         )
 
     def test_commit_template_and_diff(self):
-        """Test building a commit message template"""
+        """Test building a commit message template."""
         working_tree = self.make_uncommitted_tree()
         template = make_commit_message_template_encoded(
             working_tree, None, diff=True, output_encoding="utf8"
@@ -168,7 +168,7 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv(
-            "BRZ_EDITOR", '"%s"' % self.make_do_nothing_editor("name with spaces")
+            "BRZ_EDITOR", '"{}"'.format(self.make_do_nothing_editor("name with spaces"))
         )
         self.assertEqual(True, msgeditor._run_editor("a_filename"))
 
@@ -181,7 +181,7 @@ added:
         if not isinstance(message, bytes):
             message = message.encode("utf-8")
         with open("fed.py", "w") as f:
-            f.write("#!%s\n" % sys.executable)
+            f.write("#!{}\n".format(sys.executable))
             f.write(
                 """\
 # coding=utf-8
@@ -201,16 +201,15 @@ if len(sys.argv) == 2:
                 f.write(
                     """\
 @echo off
-"%s" fed.py %%1
-"""
-                    % sys.executable
+"{}" fed.py %1
+""".format(sys.executable)
                 )
             self.overrideEnv("BRZ_EDITOR", "fed.bat")
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod("fed.py", 0o755)
-            mutter("Setting BRZ_EDITOR to %r", "%s ./fed.py" % sys.executable)
-            self.overrideEnv("BRZ_EDITOR", "%s ./fed.py" % sys.executable)
+            mutter("Setting BRZ_EDITOR to %r", "{} ./fed.py".format(sys.executable))
+            self.overrideEnv("BRZ_EDITOR", "{} ./fed.py".format(sys.executable))
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()
@@ -236,8 +235,7 @@ if len(sys.argv) == 2:
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
             self.skipTest(
-                "Cannot find a unicode character that works in encoding %s"
-                % (osutils.get_user_encoding(),)
+                "Cannot find a unicode character that works in encoding {}".format(osutils.get_user_encoding())
             )
 
         self.assertEqual(
@@ -361,7 +359,7 @@ if len(sys.argv) == 2:
         if char is None:
             self.skipTest(
                 "Cannot find suitable non-ascii character "
-                "for user_encoding (%s)" % osutils.get_user_encoding()
+                "for user_encoding ({})".format(osutils.get_user_encoding())
             )
 
         self.make_fake_editor(message=char)
@@ -405,7 +403,7 @@ if len(sys.argv) == 2:
 
 # GZ 2009-11-17: This wants moving to osutils when the errno checking code is
 class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
-    """Ensuring workarounds enshrined in code actually serve a purpose"""
+    """Ensuring workarounds enshrined in code actually serve a purpose."""
 
     def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":

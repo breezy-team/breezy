@@ -171,7 +171,7 @@ class Serializer_v8(XMLSerializer):
         )
 
     def write_revision_to_lines(self, rev):
-        """Revision object -> xml tree"""
+        """Revision object -> xml tree."""
         # For the XML format, we need to write them as Unicode rather than as
         # utf-8 strings. So that cElementTree can handle properly escaping
         # them.
@@ -232,7 +232,7 @@ class Serializer_v8(XMLSerializer):
     def _unpack_inventory(
         self, elt, revision_id=None, entry_cache=None, return_from_cache=False
     ):
-        """Construct from XML Element"""
+        """Construct from XML Element."""
         inv = unpack_inventory_flat(
             elt, self.format_num, self._unpack_entry, entry_cache, return_from_cache
         )
@@ -240,14 +240,14 @@ class Serializer_v8(XMLSerializer):
         return inv
 
     def _unpack_revision(self, elt):
-        """XML Element -> Revision object"""
+        """XML Element -> Revision object."""
         format = elt.get("format")
         format_num = self.format_num
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         if format is not None:
             if format.encode() != format_num:
-                raise BzrError("invalid format version %r on revision" % format)
+                raise BzrError("invalid format version {!r} on revision".format(format))
         get_cached = get_utf8_or_ascii
         rev = Revision(
             committer=elt.get("committer"),
@@ -275,7 +275,7 @@ class Serializer_v8(XMLSerializer):
             return
         for prop_elt in props_elt:
             if prop_elt.tag != "property":
-                raise AssertionError("bad tag under properties list: %r" % prop_elt.tag)
+                raise AssertionError("bad tag under properties list: {!r}".format(prop_elt.tag))
             name = prop_elt.get("name")
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads
@@ -284,7 +284,7 @@ class Serializer_v8(XMLSerializer):
             if value is None:
                 value = ""
             if name in rev.properties:
-                raise AssertionError("repeated property %r" % name)
+                raise AssertionError("repeated property {!r}".format(name))
             rev.properties[name] = value
 
     def _find_text_key_references(self, line_iterator):
@@ -303,7 +303,7 @@ class Serializer_v8(XMLSerializer):
             raise AssertionError(
                 "_find_text_key_references only "
                 "supported for branches which store inventory as unnested xml"
-                ", not on %r" % self
+                ", not on {!r}".format(self)
             )
         result = {}
 

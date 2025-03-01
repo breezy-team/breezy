@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""builtin brz commands"""
+"""builtin brz commands."""
 
 import errno
 import os
@@ -655,7 +655,9 @@ class cmd_revision_info(Command):
     ]
 
     @display_command
-    def run(self, revision=None, directory=".", tree=False, revision_info_list=[]):
+    def run(self, revision=None, directory=".", tree=False, revision_info_list=None):
+        if revision_info_list is None:
+            revision_info_list = []
         try:
             wt = WorkingTree.open_containing(directory)[0]
             b = wt.branch
@@ -1006,14 +1008,13 @@ class cmd_cp(Command):
             if src_kind is None:
                 raise errors.CommandError(
                     gettext(
-                        "Could not copy %s => %s . %s is not versioned\\."
-                        % (src, dst, src)
+                        "Could not copy {} => {} . {} is not versioned\\.".format(src, dst, src)
                     )
                 )
             if src_kind == "directory":
                 raise errors.CommandError(
                     gettext(
-                        "Could not copy %s => %s . %s is a directory." % (src, dst, src)
+                        "Could not copy {} => {} . {} is a directory.".format(src, dst, src)
                     )
                 )
             dst_parent = osutils.split(dst)[0]
@@ -1512,10 +1513,9 @@ class cmd_push(Command):
                     raise errors.CommandError(
                         gettext(
                             "No push location known or specified. To push to the "
-                            "parent branch (at %s), use 'brz push :parent'."
-                            % urlutils.unescape_for_display(
+                            "parent branch (at {}), use 'brz push :parent'.".format(urlutils.unescape_for_display(
                                 parent_loc, self.outf.encoding
-                            )
+                            ))
                         )
                     )
                 else:
@@ -1764,10 +1764,9 @@ class cmd_branches(Command):
                 raise errors.CommandError("Can't scan this type of location.")
             for b in controldir.ControlDir.find_branches(t):
                 self.outf.write(
-                    "%s\n"
-                    % urlutils.unescape_for_display(
+                    "{}\n".format(urlutils.unescape_for_display(
                         urlutils.relative_url(t.base, b.base), self.outf.encoding
-                    ).rstrip("/")
+                    ).rstrip("/"))
                 )
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
@@ -1787,7 +1786,7 @@ class cmd_branches(Command):
             # Only mention the current branch explicitly if it's not
             # one of the colocated branches
             if not any(names.values()) and active_branch is not None:
-                self.outf.write("* %s\n" % gettext("(default)"))
+                self.outf.write("* {}\n".format(gettext("(default)")))
             for name in sorted(names):
                 active = names[name]
                 if active:
@@ -1899,9 +1898,9 @@ class cmd_clone(Command):
             from_location
         )
         if no_recurse_nested:
-            recurse = "none"
+            pass
         else:
-            recurse = "down"
+            pass
         revision = _get_one_revision("branch", revision)
         self.enter_context(br_from.lock_read())
         if revision is not None:
@@ -1913,7 +1912,7 @@ class cmd_clone(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = urlutils.derive_to_location(from_location)
-        target_controldir = br_from.controldir.clone(
+        br_from.controldir.clone(
             to_location, revision_id=revision_id
         )
         note(gettext("Created new control directory."))
@@ -2155,7 +2154,7 @@ class cmd_remove(Command):
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
-            file_list = [f for f in file_list]
+            file_list = list(file_list)
 
         self.enter_context(tree.lock_write())
         # Heuristics should probably all move into tree.remove_smart or
@@ -3331,7 +3330,7 @@ class cmd_touching_revisions(Command):
             touching_revs = log.find_touching_revisions(
                 tree.branch.repository, tree.branch.last_revision(), tree, relpath
             )
-            for revno, revision_id, what in reversed(list(touching_revs)):
+            for revno, _revision_id, what in reversed(list(touching_revs)):
                 self.outf.write("%6d %s\n" % (revno, what))
 
 
@@ -3569,7 +3568,7 @@ class cmd_ignore(Command):
         if default_rules is not None:
             # dump the default rules and exit
             for pattern in ignores.USER_DEFAULTS:
-                self.outf.write("%s\n" % pattern)
+                self.outf.write("{}\n".format(pattern))
             return
         if not name_pattern_list:
             raise errors.CommandError(
@@ -3581,7 +3580,7 @@ class cmd_ignore(Command):
         for p in name_pattern_list:
             if not globbing.Globster.is_pattern_valid(p):
                 bad_patterns_count += 1
-                bad_patterns += "\n  %s" % p
+                bad_patterns += "\n  {}".format(p)
         if bad_patterns:
             msg = (
                 ngettext(
@@ -3605,7 +3604,7 @@ class cmd_ignore(Command):
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         self.enter_context(tree.lock_read())
-        for filename, fc, fkind, entry in tree.list_files():
+        for filename, _fc, _fkind, entry in tree.list_files():
             id = getattr(entry, "file_id", None)
             if id is not None:
                 if ignored.match(filename):
@@ -3641,7 +3640,7 @@ class cmd_ignored(Command):
     def run(self, directory="."):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
-        for path, file_class, kind, entry in tree.list_files():
+        for path, file_class, _kind, _entry in tree.list_files():
             if file_class != "I":
                 continue
             # XXX: Slightly inefficient since this was already calculated
@@ -3668,7 +3667,7 @@ class cmd_lookup_revision(Command):
                 gettext("not a valid revision-number: %r") % revno
             ) from exc
         revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
-        self.outf.write("%s\n" % revid.decode("utf-8"))
+        self.outf.write("{}\n".format(revid.decode("utf-8")))
 
 
 class cmd_export(Command):
@@ -3767,9 +3766,9 @@ class cmd_export(Command):
             root = get_root_name(dest)
 
         if not per_file_timestamps:
-            force_mtime = time.time()
+            time.time()
         else:
-            force_mtime = None
+            pass
 
         if filters:
             from breezy.filter_tree import ContentFilterTree
@@ -3888,7 +3887,7 @@ class cmd_local_time_offset(Command):
 
     @display_command
     def run(self):
-        self.outf.write("%s\n" % osutils.local_time_offset())
+        self.outf.write("{}\n".format(osutils.local_time_offset()))
 
 
 class cmd_commit(Command):
@@ -4130,9 +4129,8 @@ class cmd_commit(Command):
                 file_exists = False
             if file_exists:
                 warning_msg = (
-                    'The commit message is a file name: "%(f)s".\n'
-                    '(use --file "%(f)s" to take commit message from that file)'
-                    % {"f": message}
+                    'The commit message is a file name: "{f}".\n'
+                    '(use --file "{f}" to take commit message from that file)'.format(f=message)
                 )
                 ui.ui_factory.show_warning(warning_msg)
             if "\r" in message:
@@ -4144,7 +4142,7 @@ class cmd_commit(Command):
                 )
 
         def get_message(commit_obj):
-            """Callback to get commit message"""
+            """Callback to get commit message."""
             if file:
                 with open(file, "rb") as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
@@ -4470,7 +4468,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        self.outf.write("%s\n" % branch.nick)
+        self.outf.write("{}\n".format(branch.nick))
 
 
 class cmd_alias(Command):
@@ -4534,7 +4532,7 @@ class cmd_alias(Command):
 
         alias = get_alias(alias_name)
         if alias is None:
-            self.outf.write("brz alias: %s: not found\n" % alias_name)
+            self.outf.write("brz alias: {}: not found\n".format(alias_name))
         else:
             self.outf.write('brz alias {}="{}"\n'.format(alias_name, " ".join(alias)))
 
@@ -4596,21 +4594,21 @@ class cmd_selftest(Command):
     # NB: this is used from the class without creating an instance, which is
     # why it does not have a self parameter.
 
-    def get_transport_type(typestring):
+    def get_transport_type(self):
         """Parse and return a transport specifier."""
-        if typestring == "sftp":
+        if self == "sftp":
             from .tests import stub_sftp
 
             return stub_sftp.SFTPAbsoluteServer
-        elif typestring == "memory":
+        elif self == "memory":
             from .tests import test_server
 
             return memory.MemoryServer
-        elif typestring == "fakenfs":
+        elif self == "fakenfs":
             from .tests import test_server
 
             return test_server.FakeNFSServer
-        msg = "No known transport type %s. Supported types are: sftp\n" % (typestring)
+        msg = "No known transport type {}. Supported types are: sftp\n".format(self)
         raise errors.CommandError(msg)
 
     hidden = True
@@ -4721,10 +4719,6 @@ class cmd_selftest(Command):
         # too heavily. The call should be as early as possible, as
         # error reporting for past duplicate imports won't have useful
         # backtraces.
-        if sys.version_info[0] < 3:
-            # TODO(pad.lv/1696545): Allow proxying on Python 3, since
-            # disallowing it currently leads to failures in many places.
-            lazy_import.disallow_proxying()
 
         try:
             from . import tests
@@ -5380,7 +5374,7 @@ class cmd_remerge(Command):
                 if tree.kind(filename) != "directory":
                     continue
 
-                for path, ie in tree.iter_entries_by_dir(specific_files=[filename]):
+                for path, _ie in tree.iter_entries_by_dir(specific_files=[filename]):
                     interesting_files.add(path)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
@@ -7338,13 +7332,13 @@ class cmd_hooks(Command):
     def run(self):
         for hook_key in sorted(hooks.known_hooks.keys()):
             some_hooks = hooks.known_hooks_key_to_object(hook_key)
-            self.outf.write("%s:\n" % type(some_hooks).__name__)
+            self.outf.write("{}:\n".format(type(some_hooks).__name__))
             for hook_name, hook_point in sorted(some_hooks.items()):
                 self.outf.write("  {}:\n".format(hook_name))
                 found_hooks = list(hook_point)
                 if found_hooks:
                     for hook in found_hooks:
-                        self.outf.write("    %s\n" % (some_hooks.get_hook_name(hook),))
+                        self.outf.write("    {}\n".format(some_hooks.get_hook_name(hook)))
                 else:
                     self.outf.write(gettext("    <no hooks installed>\n"))
 
@@ -7725,7 +7719,7 @@ class cmd_fetch_ghosts(Command):
 
 
 class cmd_grep(Command):
-    """Print lines matching PATTERN for specified files and revisions.
+    r"""Print lines matching PATTERN for specified files and revisions.
 
     This command searches the specified files and revisions for a given
     pattern.  The pattern is specified as a Python regular expressions[1].
@@ -8006,7 +8000,7 @@ class cmd_resolve_location(Command):
 
         url = location_to_url(location)
         display_url = urlutils.unescape_for_display(url, self.outf.encoding)
-        self.outf.write("%s\n" % display_url)
+        self.outf.write("{}\n".format(display_url))
 
 
 def _register_lazy_builtins():

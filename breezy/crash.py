@@ -62,11 +62,11 @@ def report_bug(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
     except ImportError as e:
-        trace.mutter("couldn't find apport bug-reporting library: %s" % e)
+        trace.mutter("couldn't find apport bug-reporting library: {}".format(e))
     except Exception as e:
         # this should only happen if apport is installed but it didn't
         # work, eg because of an io error writing the crash file
-        trace.mutter("brz: failed to report crash using apport: %r" % e)
+        trace.mutter("brz: failed to report crash using apport: {!r}".format(e))
         trace.log_exception_quietly()
     return report_bug_legacy(exc_info, stderr)
 
@@ -81,14 +81,13 @@ def report_bug_legacy(exc_info, err_file):
         err_file.write(textwrap.fill(l, width=78, subsequent_indent="    ") + "\n")
 
     print_wrapped(
-        "brz %s on python %s (%s)\n"
-        % (
+        "brz {} on python {} ({})\n".format(
             breezy.__version__,
             breezy._format_version_tuple(sys.version_info),
             platform.platform(aliased=1),
         )
     )
-    print_wrapped("arguments: %r\n" % sys.argv)
+    print_wrapped("arguments: {!r}\n".format(sys.argv))
     print_wrapped(
         textwrap.fill(
             "plugins: " + plugin.format_concise_plugin_list(),
@@ -136,9 +135,8 @@ def report_bug_to_apport(exc_info, stderr):
         stderr.write(
             "\n"
             "You can report this problem to Breezy's developers by running\n"
-            "    apport-bug %s\n"
-            "if a bug-reporting window does not automatically appear.\n"
-            % (crash_filename)
+            "    apport-bug {}\n"
+            "if a bug-reporting window does not automatically appear.\n".format(crash_filename)
         )
         # XXX: on Windows, Mac, and other platforms where we might have the
         # apport libraries but not have an apport always running, we could

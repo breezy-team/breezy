@@ -55,7 +55,7 @@ def revision_tree_from_workingtree(testcase, tree):
 
 
 def _dirstate_tree_from_workingtree(testcase, tree):
-    revid = tree.commit("save tree", allow_pointless=True, recursive=None)
+    tree.commit("save tree", allow_pointless=True, recursive=None)
     return tree.basis_tree()
 
 
@@ -73,7 +73,6 @@ def preview_tree_post(testcase, tree):
     testcase.addCleanup(tt.finalize)
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    pp = None
     es = contextlib.ExitStack()
     testcase.addCleanup(es.close)
     transform._prepare_revert_transform(
@@ -151,7 +150,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_2(self, tree, converter=None):
-        """Return a test tree with a, b/, b/c contents.
+        r"""Return a test tree with a, b/, b/c contents.
 
         This variation changes the content of 'a' to foobar\n.
         """
@@ -182,7 +181,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_5(self, tree, converter=None):
-        """Return a test tree with d, b/, b/c contents.
+        r"""Return a test tree with d, b/, b/c contents.
 
         This variation renames a to d and alters its content to 'bar\n'.
         """
@@ -230,7 +229,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_with_subdirs_and_all_supported_content_types(self, symlinks):
         """Return a test tree with subdirs and all supported content types.
         Some content types may not be created on some platforms
-        (like symlinks on native win32)
+        (like symlinks on native win32).
 
         :param  symlinks:   control is symlink should be created in the tree.
                             Note: if you wish to automatically set this
@@ -363,7 +362,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 def create_tree_scenario(
     transport_server, transport_readonly_server, workingtree_format, converter
 ):
-    """Create a scenario for the specified converter
+    """Create a scenario for the specified converter.
 
     :param converter: A function that converts a workingtree into the
         desired format.

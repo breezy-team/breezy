@@ -129,7 +129,7 @@ class ReadOnlyTransaction(Transaction):
 
 
 class WriteTransaction(ReadOnlyTransaction):
-    """A write transaction
+    """A write transaction.
 
     - caches domain objects
     - clean objects can be removed from the cache
@@ -170,7 +170,7 @@ class WriteTransaction(ReadOnlyTransaction):
 
 
 class PassThroughTransaction(Transaction):
-    """A pass through transaction
+    """A pass through transaction.
 
     - nothing is cached.
     - nothing ever gets into the identity map.

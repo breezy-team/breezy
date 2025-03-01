@@ -41,7 +41,7 @@ from breezy.workingtree import WorkingTree
 
 
 def chmod_r(base, file_mode, dir_mode):
-    """Recursively chmod from a base directory"""
+    """Recursively chmod from a base directory."""
     os.chmod(base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
@@ -53,7 +53,7 @@ def chmod_r(base, file_mode, dir_mode):
 
 
 def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
-    """Check that all permissions match
+    """Check that all permissions match.
 
     :param test: The TestCase being run
     :param base: The path to the root directory to check

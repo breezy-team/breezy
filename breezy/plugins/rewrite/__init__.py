@@ -42,7 +42,7 @@ for cmd in [
     "pseudonyms",
     "rebase_foreign",
 ]:
-    plugin_cmds.register_lazy("cmd_%s" % cmd, [], __name__ + ".commands")
+    plugin_cmds.register_lazy("cmd_{}".format(cmd), [], __name__ + ".commands")
 
 
 def show_rebase_summary(params):

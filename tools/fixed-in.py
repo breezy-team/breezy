@@ -51,7 +51,7 @@ class NewsParser:
         if self.release is None:
             return False
         date_re = re.compile(
-            r":%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})" % (self.release,)
+            r":{}: (NOT RELEASED YET|\d{{4}}-\d{{2}}-\d{{2}})".format(self.release)
         )
         match = date_re.match(self.lrs)
         if match is not None:
@@ -149,7 +149,7 @@ def main():
         bug = None
         msg_re = re.compile(opts.msg_re)
     elif len(args) != 1:
-        opt_parser.error("Expected a single bug number, got %r" % args)
+        opt_parser.error("Expected a single bug number, got {!r}".format(args))
     else:
         bug = args[0]
 

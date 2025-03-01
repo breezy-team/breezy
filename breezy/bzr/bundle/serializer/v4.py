@@ -82,24 +82,24 @@ class BundleWriter:
         self._compressor = bz2.BZ2Compressor()
 
     def _write_encoded(self, bytes):
-        """Write bzip2-encoded bytes to the file"""
+        """Write bzip2-encoded bytes to the file."""
         self._fileobj.write(self._compressor.compress(bytes))
 
     def begin(self):
-        """Start writing the bundle"""
+        """Start writing the bundle."""
         self._fileobj.write(bundle_serializer._get_bundle_header("4"))
         self._fileobj.write(b"#\n")
         self._container.begin()
 
     def end(self):
-        """Finish writing the bundle"""
+        """Finish writing the bundle."""
         self._container.end()
         self._fileobj.write(self._compressor.flush())
 
     def add_multiparent_record(
         self, mp_bytes, sha1, parents, repo_kind, revision_id, file_id
     ):
-        """Add a record for a multi-parent diff
+        """Add a record for a multi-parent diff.
 
         :mp_bytes: A multi-parent diff, as a bytestring
         :sha1: The sha1 hash of the fulltext
@@ -113,7 +113,7 @@ class BundleWriter:
         self._add_record(mp_bytes, metadata, repo_kind, revision_id, file_id)
 
     def add_fulltext_record(self, bytes, parents, repo_kind, revision_id):
-        """Add a record for a fulltext
+        """Add a record for a fulltext.
 
         :bytes: The fulltext, as a bytestring
         :parents: a list of revision-ids of the parents
@@ -121,7 +121,6 @@ class BundleWriter:
             'signature'
         :revision_id: The revision id of the fulltext being added.
         """
-        metadata = {b"parents": parents, b"storage_kind": b"mpdiff"}
         self._add_record(
             bytes,
             {b"parents": parents, b"storage_kind": b"fulltext"},
@@ -131,7 +130,7 @@ class BundleWriter:
         )
 
     def add_info_record(self, kwargs):
-        """Add an info record to the bundle
+        """Add an info record to the bundle.
 
         Any parameters may be supplied, except 'self' and 'storage_kind'.
         Values must be lists, strings, integers, dicts, or a combination.
@@ -141,7 +140,7 @@ class BundleWriter:
 
     @staticmethod
     def encode_name(content_kind, revision_id, file_id=None):
-        """Encode semantic ids as a container name"""
+        """Encode semantic ids as a container name."""
         if content_kind not in ("revision", "file", "inventory", "signature", "info"):
             raise ValueError(content_kind)
         if content_kind == "file":
@@ -187,7 +186,7 @@ class BundleReader:
     """
 
     def __init__(self, fileobj, stream_input=True):
-        """Constructor
+        """Constructor.
 
         :param fileobj: a file containing a bzip-encoded container
         :param stream_input: If True, the BundleReader stream input rather than
@@ -206,7 +205,7 @@ class BundleReader:
 
     @staticmethod
     def iter_decode(fileobj):
-        """Iterate through decoded fragments of the file"""
+        """Iterate through decoded fragments of the file."""
         decompressor = bz2.BZ2Decompressor()
         for line in fileobj:
             try:
@@ -216,7 +215,7 @@ class BundleReader:
 
     @staticmethod
     def decode_name(name):
-        """Decode a name from its container form into a semantic form
+        """Decode a name from its container form into a semantic form.
 
         :retval: content_kind, revision_id, file_id
         """
@@ -239,7 +238,7 @@ class BundleReader:
         return content_kind.decode("ascii"), revision_id, file_id
 
     def iter_records(self):
-        """Iterate through bundle records
+        """Iterate through bundle records.
 
         :return: a generator of (bytes, metadata, content_kind, revision_id,
             file_id)
@@ -257,10 +256,10 @@ class BundleReader:
 
 
 class BundleSerializerV4(bundle_serializer.BundleSerializer):
-    """Implement the high-level bundle interface"""
+    """Implement the high-level bundle interface."""
 
     def write_bundle(self, repository, target, base, fileobj):
-        """Write a bundle to a file object
+        """Write a bundle to a file object.
 
         :param repository: The repository to retrieve revision data from
         :param target: The head revision to include ancestors of
@@ -272,18 +271,18 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
         return write_op.do_write()
 
     def read(self, file):
-        """Return a reader object for a given file"""
+        """Return a reader object for a given file."""
         bundle = BundleInfoV4(file, self)
         return bundle
 
     @staticmethod
     def get_source_serializer(info):
-        """Retrieve the serializer for a given info object"""
+        """Retrieve the serializer for a given info object."""
         return serializer.format_registry.get(info[b"serializer"].decode("ascii"))
 
 
 class BundleWriteOperation:
-    """Perform the operation of writing revisions to a bundle"""
+    """Perform the operation of writing revisions to a bundle."""
 
     def __init__(self, base, target, repository, fileobj, revision_ids=None):
         self.base = base
@@ -302,7 +301,7 @@ class BundleWriteOperation:
         self.revision_keys = {(revid,) for revid in self.revision_ids}
 
     def do_write(self):
-        """Write all data to the bundle"""
+        """Write all data to the bundle."""
         trace.note(
             ngettext(
                 "Bundling %d revision.",
@@ -320,7 +319,7 @@ class BundleWriteOperation:
         return self.revision_ids
 
     def write_info(self):
-        """Write format info"""
+        """Write format info."""
         serializer_format = self.repository.get_serializer_format()
         supports_rich_root = {True: 1, False: 0}[self.repository.supports_rich_root()]
         self.bundle.add_info_record(
@@ -331,7 +330,7 @@ class BundleWriteOperation:
         )
 
     def write_files(self):
-        """Write bundle records for all revisions of all files"""
+        """Write bundle records for all revisions of all files."""
         text_keys = []
         altered_fileids = self.repository.fileids_altered_by_revision_ids(
             self.revision_ids
@@ -342,7 +341,7 @@ class BundleWriteOperation:
         self._add_mp_records_keys("file", self.repository.texts, text_keys)
 
     def write_revisions(self):
-        """Write bundle records for all revisions and signatures"""
+        """Write bundle records for all revisions and signatures."""
         inv_vf = self.repository.inventories
         topological_order = [
             key[-1] for key in multiparent.topo_iter_keys(inv_vf, self.revision_keys)
@@ -407,7 +406,7 @@ class BundleWriteOperation:
 
     @staticmethod
     def get_base_target(revision_ids, forced_bases, repository):
-        """Determine the base and target from old-style revision ids"""
+        """Determine the base and target from old-style revision ids."""
         if len(revision_ids) == 0:
             return None, None
         target = revision_ids[0]
@@ -421,7 +420,7 @@ class BundleWriteOperation:
         return base, target
 
     def _add_mp_records_keys(self, repo_kind, vf, keys):
-        """Add multi-parent diff records to a bundle"""
+        """Add multi-parent diff records to a bundle."""
         ordered_keys = list(multiparent.topo_iter_keys(vf, keys))
         mpdiffs = vf.make_mpdiffs(ordered_keys)
         sha1s = vf.get_sha1s(ordered_keys)
@@ -444,7 +443,7 @@ class BundleWriteOperation:
 
 
 class BundleInfoV4:
-    """Provide (most of) the BundleInfo interface"""
+    """Provide (most of) the BundleInfo interface."""
 
     def __init__(self, fileobj, serializer):
         self._fileobj = fileobj
@@ -456,7 +455,7 @@ class BundleInfoV4:
         return self.install_revisions(repository)
 
     def install_revisions(self, repository, stream_input=True):
-        """Install this bundle's revisions into the specified repository
+        """Install this bundle's revisions into the specified repository.
 
         :param target_repo: The repository to install into
         :param stream_input: If True, will stream input rather than reading it
@@ -470,14 +469,14 @@ class BundleInfoV4:
             return ri.install()
 
     def get_merge_request(self, target_repo):
-        """Provide data for performing a merge
+        """Provide data for performing a merge.
 
         Returns suggested base, suggested target, and patch verification status
         """
         return None, self.target, "inapplicable"
 
     def get_bundle_reader(self, stream_input=True):
-        """Return a new BundleReader for the associated bundle
+        """Return a new BundleReader for the associated bundle.
 
         :param stream_input: If True, the BundleReader stream input rather than
             reading it all into memory at once.  Reading it into memory all at
@@ -494,8 +493,8 @@ class BundleInfoV4:
                 bytes,
                 metadata,
                 repo_kind,
-                revision_id,
-                file_id,
+                _revision_id,
+                _file_id,
             ) in bundle_reader.iter_records():
                 if repo_kind == "info":
                     serializer = self._serializer.get_source_serializer(metadata)
@@ -524,7 +523,7 @@ class BundleInfoV4:
 
 
 class RevisionInstaller:
-    """Installs revisions into a repository"""
+    """Installs revisions into a repository."""
 
     def __init__(self, container, serializer, repository):
         self._container = container
@@ -542,11 +541,8 @@ class RevisionInstaller:
 
     def _install_in_write_group(self):
         current_file = None
-        current_versionedfile = None
         pending_file_records = []
-        inventory_vf = None
         pending_inventory_records = []
-        added_inv = set()
         target_revision = None
         for (
             bytes,
@@ -584,7 +580,7 @@ class RevisionInstaller:
         return target_revision
 
     def _handle_info(self, info):
-        """Extract data from an info record"""
+        """Extract data from an info record."""
         self._info = info
         self._source_serializer = self._serializer.get_source_serializer(info)
         if info[b"supports_rich_root"] == 0 and self._repository.supports_rich_root():
@@ -740,7 +736,7 @@ class RevisionInstaller:
         self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):
-        transaction = self._repository.get_transaction()
+        self._repository.get_transaction()
         if self._repository.has_signature_for_revision_id(revision_id):
             return
         self._repository.add_signature_text(revision_id, text)

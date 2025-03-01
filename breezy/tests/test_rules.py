@@ -29,7 +29,7 @@ class TestErrors(tests.TestCase):
 
 class TestIniBasedRulesSearcher(tests.TestCase):
     def make_searcher(self, text):
-        """Make a _RulesSearcher from a string"""
+        """Make a _RulesSearcher from a string."""
         if text is None:
             lines = None
         else:
@@ -89,7 +89,7 @@ class TestIniBasedRulesSearcher(tests.TestCase):
 
 class TestStackedRulesSearcher(tests.TestCase):
     def make_searcher(self, text1=None, text2=None):
-        """Make a _StackedRulesSearcher with 0, 1 or 2 items"""
+        """Make a _StackedRulesSearcher with 0, 1 or 2 items."""
         searchers = []
         if text1 is not None:
             searchers.append(rules._IniBasedRulesSearcher(text1.splitlines()))

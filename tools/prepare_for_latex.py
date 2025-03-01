@@ -67,7 +67,8 @@ class Converter:
             foundimg = False
 
             image_fixer = ImageFixer(self.srcdir, self.destdir)
-            image_fixer_lambda = lambda match: image_fixer.substitute_pdf_image(match)
+            def image_fixer_lambda(match):
+                return image_fixer.substitute_pdf_image(match)
             line = IMAGE_DIRECTIVE_PATTERN.sub(image_fixer_lambda, line)
             directive_match = IMAGE_DIRECTIVE_PATTERN.match(line)
             if directive_match is not None:

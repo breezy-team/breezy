@@ -186,10 +186,10 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revids.append(revid)
             elif sha1 is not None:
                 if self._commit_needs_fetching(sha1):
-                    for kind, (
+                    for _kind, (
                         revid,
-                        tree_sha,
-                        verifiers,
+                        _tree_sha,
+                        _verifiers,
                     ) in self.source_store.lookup_git_sha(sha1):
                         revid_sha_map[revid] = sha1
                         stop_revids.append(revid)
@@ -319,7 +319,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
-                raise AssertionError("Unsupported search result type %s" % recipe[0])
+                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
@@ -541,7 +541,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" % recipe[0])
+                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
         else:
             interesting_heads = None
 
@@ -613,9 +613,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             return False
         if isinstance(target, GitRepository):
             return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
+        return getattr(target._format, "supports_full_versioned_files", True)
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
@@ -654,9 +652,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             return False
         if isinstance(target, GitRepository):
             return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
+        return getattr(target._format, "supports_full_versioned_files", True)
 
 
 class InterGitGitRepository(InterFromGitRepository):
@@ -692,7 +688,7 @@ class InterGitGitRepository(InterFromGitRepository):
             return ret
 
         self.fetch_objects(determine_wants)
-        for k, (git_sha, bzr_revid) in ref_changes.items():
+        for k, (git_sha, _bzr_revid) in ref_changes.items():
             self.target._git.refs[k] = git_sha  # type: ignore
         new_refs = self.target.controldir.get_refs_container()
         return {}, old_refs, new_refs
@@ -722,7 +718,7 @@ class InterGitGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type %s" % recipe[0])
+                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(
@@ -771,7 +767,7 @@ class InterGitGitRepository(InterFromGitRepository):
         potential = {
             v
             for k, v in refs.items()
-            if not v == ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
+            if v != ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)
         }
         return list(potential - self._target_has_shas(potential))
 

@@ -174,7 +174,7 @@ class RepoFetcher:
 
 
 class Inter1and2Helper:
-    """Helper for operations that convert data from model 1 and 2
+    """Helper for operations that convert data from model 1 and 2.
 
     This is for use by fetchers and converters.
     """

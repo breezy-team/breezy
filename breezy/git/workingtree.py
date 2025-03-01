@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""An adapter between a Git index and a Bazaar Working Tree"""
+"""An adapter between a Git index and a Bazaar Working Tree."""
 
 import errno
 import itertools
@@ -71,7 +71,7 @@ class TextConflict(_mod_conflicts.Conflict):
     _conflict_re = re.compile(b"^(<{7}|={7}|>{7})")
 
     def __init__(self, path):
-        super(TextConflict, self).__init__(path)
+        super().__init__(path)
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in (".BASE", ".OTHER", ".THIS")]
@@ -132,7 +132,7 @@ class TextConflict(_mod_conflicts.Conflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, "action_%s" % action, None)
+        meth = getattr(self, "action_{}".format(action), None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + "." + action)
         meth(tree)
@@ -143,7 +143,7 @@ class TextConflict(_mod_conflicts.Conflict):
         pass
 
     def describe(self):
-        return "Text conflict in %(path)s" % self.__dict__
+        return "Text conflict in {path}".format(**self.__dict__)
 
     def __str__(self):
         return self.describe()
@@ -530,8 +530,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_path, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, kind in file_infos:
+            for _parent_path, file_infos in self.walkdirs(directory):
+                for relpath, _basename, _kind, _lstat, _kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -985,7 +985,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     value = None
                 kind = self.kind(path)
                 parent, name = posixpath.split(path)
-                for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
+                for _dir_path, _dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                     pass
                 if kind == "tree-reference" and recurse_nested:
                     ie = self._get_dir_ie(path, self.path2id(path))
@@ -1036,7 +1036,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return paths
 
     def iter_child_entries(self, path):
-        encoded_path = encode_git_path(path)
+        encode_git_path(path)
         with self.lock_read():
             parent_id = self.path2id(path)
             found_any = False
@@ -1223,7 +1223,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # versioned present directory
                 # merge the inventory and disk data together
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(
+                for _relpath, subiterator in itertools.groupby(
                     sorted(
                         current_inv[1] + cur_disk_dir_content,
                         key=operator.itemgetter(0),
@@ -1321,7 +1321,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         raise errors.StoringUncommittedNotSupported(self)
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
-        """See Tree.annotate_iter
+        """See Tree.annotate_iter.
 
         This implementation will use the basis tree implementation if possible.
         Lines not in the basis are attributed to CURRENT_REVISION

@@ -272,16 +272,16 @@ class AbsentContentFactory(ContentFactory):
 
     def get_bytes_as(self, storage_kind):
         raise ValueError(
-            "A request was made for key: %s, but that"
+            "A request was made for key: {}, but that"
             " content is not available, and the calling"
-            " code does not handle if it is missing." % (self.key,)
+            " code does not handle if it is missing.".format(self.key)
         )
 
     def iter_bytes_as(self, storage_kind):
         raise ValueError(
-            "A request was made for key: %s, but that"
+            "A request was made for key: {}, but that"
             " content is not available, and the calling"
-            " code does not handle if it is missing." % (self.key,)
+            " code does not handle if it is missing.".format(self.key)
         )
 
 
@@ -355,7 +355,7 @@ class _MPDiffGenerator:
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in parent_map.items():
+        for _child_key, parent_keys in parent_map.items():
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -374,7 +374,7 @@ class _MPDiffGenerator:
         return needed_keys, refcounts
 
     def _compute_diff(self, key, parent_lines, lines):
-        """Compute a single mp_diff, and store it in self._diffs"""
+        """Compute a single mp_diff, and store it in self._diffs."""
         if len(parent_lines) > 0:
             # XXX: _extract_blocks is not usefully defined anywhere...
             #      It was meant to extract the left-parent diff without
@@ -502,7 +502,7 @@ class VersionedFile:
         random_id=False,
         check_content=True,
     ):
-        """Add a single text on top of the versioned file.
+        r"""Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history.
@@ -810,7 +810,7 @@ class VersionedFile:
         raise NotImplementedError(self.annotate)
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None, pb=None):
-        """Iterate over the lines in the versioned file from version_ids.
+        r"""Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1115,7 +1115,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and chr(c)) or ("%%%02x" % c) for c in bytearray(prefix)]
+        r = [((c in self._safe) and chr(c)) or ("%{:02x}".format(c)) for c in bytearray(prefix)]
         return "".join(r).encode("ascii")
 
     def _unescape(self, basename):
@@ -1173,7 +1173,7 @@ class VersionedFiles:
         random_id=False,
         check_content=True,
     ):
-        """Add a text to the store.
+        r"""Add a text to the store.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1403,7 +1403,7 @@ class VersionedFiles:
         raise NotImplementedError
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1580,7 +1580,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         # XXX: This is over-enthusiastic but as we only thunk for Weaves today
         # this is tolerable. Ideally we'd pass keys down to check() and
         # have the older VersiondFile interface updated too.
-        for prefix, vf in self._iter_all_components():
+        for _prefix, vf in self._iter_all_components():
             vf.check()
         if keys is not None:
             return self.get_record_stream(keys, "unordered", True)
@@ -1651,7 +1651,6 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
-        sha1s = {}
         for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
@@ -1689,7 +1688,7 @@ class ThunkedVersionedFiles(VersionedFiles):
             vf.insert_record_stream([thunk_record])
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        """Iterate over the lines in the versioned files from keys.
+        r"""Iterate over the lines in the versioned files from keys.
 
         This may return lines from other keys. Each item the returned
         iterator yields is a tuple of a line and a text version that that line
@@ -1780,7 +1779,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
-        """See VersionedFile.plan_merge"""
+        """See VersionedFile.plan_merge."""
         from ..merge import _PlanMerge
 
         if base is None:
@@ -1809,7 +1808,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         )
 
     def add_lines(self, key, parents, lines):
-        """See VersionedFiles.add_lines
+        """See VersionedFiles.add_lines.
 
         Lines are added locally, not to fallback versionedfiles.  Also, ghosts
         are permitted.  Only reserved ids are permitted.
@@ -1849,7 +1848,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             yield AbsentContentFactory(key)
 
     def get_parent_map(self, keys):
-        """See VersionedFiles.get_parent_map"""
+        """See VersionedFiles.get_parent_map."""
         # We create a new provider because a fallback may have been added.
         # If we make fallbacks private we can update a stack list and avoid
         # object creation thrashing.

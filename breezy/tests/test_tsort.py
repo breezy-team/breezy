@@ -48,41 +48,39 @@ class TopoSortTests(TestCase):
             for parent in parents:
                 if sort_result.index(node) < sort_result.index(parent):
                     self.fail(
-                        "parent %s must come before child %s:\n%s"
-                        % (parent, node, sort_result)
+                        "parent {} must come before child {}:\n{}".format(parent, node, sort_result)
                     )
                 if iter_result.index(node) < iter_result.index(parent):
                     self.fail(
-                        "parent %s must come before child %s:\n%s"
-                        % (parent, node, iter_result)
+                        "parent {} must come before child {}:\n{}".format(parent, node, iter_result)
                     )
 
     def test_tsort_empty(self):
-        """TopoSort empty list"""
+        """TopoSort empty list."""
         self.assertSortAndIterate([], [])
 
     def test_tsort_easy(self):
-        """TopoSort list with one node"""
+        """TopoSort list with one node."""
         self.assertSortAndIterate({0: []}.items(), [0])
 
     def test_tsort_cycle(self):
-        """TopoSort traps graph with cycles"""
+        """TopoSort traps graph with cycles."""
         self.assertSortAndIterateRaise(GraphCycleError, {0: [1], 1: [0]}.items())
 
     def test_tsort_cycle_2(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(
             GraphCycleError, {0: [1], 1: [2], 2: [0]}.items()
         )
 
     def test_topo_sort_cycle_with_tail(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(
             GraphCycleError, {0: [1], 1: [2], 2: [3, 4], 3: [0], 4: []}.items()
         )
 
     def test_tsort_1(self):
-        """TopoSort simple nontrivial graph"""
+        """TopoSort simple nontrivial graph."""
         self.assertSortAndIterate(
             {0: [3], 1: [4], 2: [1, 4], 3: [], 4: [0, 3]}.items(), [3, 0, 4, 1, 2]
         )
@@ -108,7 +106,7 @@ class TopoSortTests(TestCase):
         )
 
     def test_tsort_unincluded_parent(self):
-        """Sort nodes, but don't include some parents in the output"""
+        """Sort nodes, but don't include some parents in the output."""
         self.assertSortAndIterate([(0, [1]), (1, [2])], [1, 0])
 
 

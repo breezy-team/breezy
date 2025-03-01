@@ -39,8 +39,8 @@ class TestIgnored(TestCaseWithTransport):
         self.assertEqual("", err)
 
     def test_ignored_directory(self):
-        """Test --directory option"""
-        tree = self.make_branch_and_tree("a")
+        """Test --directory option."""
+        self.make_branch_and_tree("a")
         self.build_tree_contents(
             [("a/README", b"contents"), ("a/.bzrignore", b"README")]
         )

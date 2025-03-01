@@ -117,7 +117,7 @@ topic_registry = HelpTopicRegistry()
 
 
 def _help_on_topics(dummy):
-    """Write out the help for topics to outfile"""
+    """Write out the help for topics to outfile."""
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
 
@@ -180,8 +180,8 @@ The keywords used as revision selection methods are the following:
     details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
-    indent_re = re.compile(r"^    ", re.MULTILINE)
-    for prefix, i in breezy.revisionspec.revspec_registry.iteritems():
+    re.compile(r"^    ", re.MULTILINE)
+    for _prefix, i in breezy.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == breezy.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"
@@ -261,7 +261,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 
 _basic_help = (
-    """Breezy %s -- a free distributed version-control tool
+    """Breezy {} -- a free distributed version-control tool
 https://www.breezy-vcs.org/
 
 Basic commands:
@@ -285,8 +285,7 @@ Basic commands:
   brz help init      more help on e.g. init command
   brz help commands  list all commands
   brz help topics    list all help topics
-"""
-    % breezy.__version__
+""".format(breezy.__version__)
 )
 
 

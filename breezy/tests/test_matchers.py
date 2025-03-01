@@ -64,7 +64,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
     def test__str__(self):
         matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
-            "MatchesAncestry(repository='A repository', revision_id=%r)" % (b"arevid",),
+            "MatchesAncestry(repository='A repository', revision_id={!r})".format(b"arevid"),
             str(matcher),
         )
 
@@ -87,7 +87,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         b = self.make_branch_builder(".")
         b.start_series()
         revid1 = b.build_commit()
-        revid2 = b.build_commit()
+        b.build_commit()
         b.finish_series()
         branch = b.get_branch()
         m = MatchesAncestry(branch.repository, revid1)

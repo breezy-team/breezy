@@ -25,7 +25,7 @@ from breezy.tests import TestCaseWithTransport
 
 class TestCommands(TestCaseWithTransport):
     def test_ignore_absolutes(self):
-        """'ignore' with an absolute path returns an error"""
+        """'ignore' with an absolute path returns an error."""
         self.make_branch_and_tree(".")
         self.run_bzr_error(
             ("brz: ERROR: NAME_PATTERN should not be an absolute path\n",),
@@ -76,7 +76,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents(".bzrignore", b"*.blah\ngarh\n")
 
     def test_ignore_multiple_arguments(self):
-        """'ignore' works with multiple arguments"""
+        """'ignore' works with multiple arguments."""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["a", "b", "c", "d"])
         self.assertEqual(list(tree.unknowns()), ["a", "b", "c", "d"])
@@ -85,7 +85,7 @@ class TestCommands(TestCaseWithTransport):
         self.check_file_contents(".bzrignore", b"a\nb\nc\n")
 
     def test_ignore_no_arguments(self):
-        """'ignore' with no arguments returns an error"""
+        """'ignore' with no arguments returns an error."""
         self.make_branch_and_tree(".")
         self.run_bzr_error(
             (
@@ -150,8 +150,8 @@ class TestCommands(TestCaseWithTransport):
         )
 
     def test_ignore_directory(self):
-        """Test --directory option"""
-        tree = self.make_branch_and_tree("a")
+        """Test --directory option."""
+        self.make_branch_and_tree("a")
         self.run_bzr(["ignore", "--directory=a", "README"])
         self.check_file_contents("a/.bzrignore", b"README\n")
 
@@ -162,7 +162,7 @@ class TestCommands(TestCaseWithTransport):
         Invalid pattern should show clear error message.
         Invalid pattern should not be added to .bzrignore file.
         """
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         out, err = self.run_bzr(["ignore", "RE:*.cpp", "foo", "RE:["], 3)
         self.assertEqual(out, "")
         self.assertContainsRe(

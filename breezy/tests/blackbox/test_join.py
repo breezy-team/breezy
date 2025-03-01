@@ -59,7 +59,7 @@ class TestJoin(tests.TestCaseWithTransport):
         self.run_bzr_error(("Not a branch:.*subtree2",), "join tree/subtree2")
 
     def test_join_reference(self):
-        """Join can add a reference if --reference is supplied"""
+        """Join can add a reference if --reference is supplied."""
         base_tree, sub_tree = self.make_trees()
         subtree_root_id = sub_tree.path2id("")
         self.run_bzr("join . --reference", working_dir="tree/subtree")
@@ -88,8 +88,8 @@ class TestJoin(tests.TestCaseWithTransport):
         # in 0.15 the default format has a dirstate workingtree, that can
         # support tree references, but the default repository format
         # cannot.
-        tree = self.make_branch_and_tree("tree", format="dirstate")
-        tree2 = self.make_branch_and_tree("tree/subtree")
+        self.make_branch_and_tree("tree", format="dirstate")
+        self.make_branch_and_tree("tree/subtree")
         out, err = self.run_bzr("join --reference tree/subtree", retcode=3)
         self.assertContainsRe(err, r"Can't join trees")
         self.assertContainsRe(err, r"use brz upgrade")

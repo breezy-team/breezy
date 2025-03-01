@@ -47,7 +47,7 @@ class TransportDecorator(Transport):
         prefix = self._get_url_prefix()
         if not url.startswith(prefix):
             raise ValueError(
-                "url %r doesn't start with decorator prefix %r" % (url, prefix)
+                "url {!r} doesn't start with decorator prefix {!r}".format(url, prefix)
             )
         not_decorated_url = url[len(prefix) :]
         if _decorated is None:

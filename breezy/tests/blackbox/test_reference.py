@@ -25,7 +25,6 @@ class TestReference(TestCaseWithTransport):
 
     def test_no_args_lists(self):
         tree = self.make_branch_and_tree("branch")
-        branch = tree.branch
         tree.add_reference(self.make_branch_and_tree("branch/path"))
         tree.add_reference(self.make_branch_and_tree("branch/lath"))
         tree.set_reference_info("path", "http://example.org")
@@ -44,7 +43,7 @@ class TestReference(TestCaseWithTransport):
         return tree
 
     def test_uses_working_tree_location(self):
-        tree = self.make_tree_with_reference()
+        self.make_tree_with_reference()
         out, err = self.run_bzr("reference", working_dir="tree")
         self.assertContainsRe(out, "newpath http://example.org\n")
 
@@ -55,12 +54,12 @@ class TestReference(TestCaseWithTransport):
         self.assertContainsRe(out, "newpath http://example.org\n")
 
     def test_one_arg_displays(self):
-        tree = self.make_tree_with_reference()
+        self.make_tree_with_reference()
         out, err = self.run_bzr("reference newpath", working_dir="tree")
         self.assertEqual("newpath http://example.org\n", out)
 
     def test_one_arg_uses_containing_tree(self):
-        tree = self.make_tree_with_reference()
+        self.make_tree_with_reference()
         out, err = self.run_bzr("reference -d tree newpath")
         self.assertEqual("newpath http://example.org\n", out)
 
@@ -75,7 +74,7 @@ class TestReference(TestCaseWithTransport):
         self.assertEqual("", err)
 
     def test_missing_file(self):
-        tree = self.make_branch_and_tree("tree")
+        self.make_branch_and_tree("tree")
         out, err = self.run_bzr(
             "reference file http://example.org", working_dir="tree", retcode=3
         )

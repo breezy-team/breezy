@@ -236,7 +236,7 @@ class BzrDir(controldir.ControlDir):
                 result_repo.unlock()
         else:
             if result_repo is not None:
-                raise AssertionError("result_repo not None(%r)" % result_repo)
+                raise AssertionError("result_repo not None({!r})".format(result_repo))
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -829,7 +829,7 @@ class BzrDir(controldir.ControlDir):
         """
         if cls is not BzrDir:
             raise AssertionError(
-                "BzrDir.create always creates the default format, not one of %r" % cls
+                "BzrDir.create always creates the default format, not one of {!r}".format(cls)
             )
         if format is None:
             format = BzrDirFormat.get_default_format()
@@ -1357,7 +1357,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         try:
             # can we hand off the request to the smart server rather than using
             # vfs calls?
-            client_medium = transport.get_smart_medium()
+            transport.get_smart_medium()
         except errors.NoSmartMedium:
             return self._initialize_on_transport_vfs(transport)
         else:
@@ -1416,7 +1416,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         if not vfs_only:
             # Try to hand off to a smart server
             try:
-                client_medium = transport.get_smart_medium()
+                transport.get_smart_medium()
             except errors.NoSmartMedium:
                 pass
             else:
@@ -1549,8 +1549,8 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             found_format = controldir.ControlDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError(
-                    "%s was asked to open %s, but it seems to need "
-                    "format %s" % (self, transport, found_format)
+                    "{} was asked to open {}, but it seems to need "
+                    "format {}".format(self, transport, found_format)
                 )
             # Allow subclasses - use the found format.
             self._supply_sub_formats_to(found_format)
@@ -1623,7 +1623,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
-    """Bzr meta control format 1
+    """Bzr meta control format 1.
 
     This is the first format with split out working tree, branch and repository
     disk storage.
@@ -1654,9 +1654,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         if other.workingtree_format != self.workingtree_format:
             return False
-        if other.features != self.features:
-            return False
-        return True
+        return not other.features != self.features
 
     def __ne__(self, other):
         return not self == other
@@ -2003,7 +2001,7 @@ class ConvertMetaToColo(controldir.Converter):
 
 
 class CreateRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of creating a new repository"""
+    """A policy of creating a new repository."""
 
     def __init__(
         self, controldir, stack_on=None, stack_on_pwd=None, require_stacking=False
@@ -2021,7 +2019,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
     def acquire_repository(
         self, make_working_trees=None, shared=False, possible_transports=None
     ):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Creates the desired repository in the controldir we already have.
         """
@@ -2051,7 +2049,7 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
 
 
 class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(
         self, repository, stack_on=None, stack_on_pwd=None, require_stacking=False
@@ -2069,7 +2067,7 @@ class UseExistingRepository(controldir.RepositoryAcquisitionPolicy):
     def acquire_repository(
         self, make_working_trees=None, shared=False, possible_transports=None
     ):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """

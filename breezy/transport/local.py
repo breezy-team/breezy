@@ -40,7 +40,7 @@ class LocalTransport(transport.Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith("file://"):
-            raise AssertionError("not a file:// url: %r" % base)
+            raise AssertionError("not a file:// url: {!r}".format(base))
         if base[-1] != "/":
             base = base + "/"
 
@@ -107,7 +107,7 @@ class LocalTransport(transport.Transport):
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
-        """Transform the given relative path URL into the actual path on disk
+        """Transform the given relative path URL into the actual path on disk.
 
         This function only exists for the LocalTransport, since it is
         the only one that has direct local access.
@@ -181,7 +181,7 @@ class LocalTransport(transport.Transport):
         from ..atomicfile import AtomicFile
 
         if not isinstance(raw_bytes, bytes):
-            raise TypeError("raw_bytes must be bytes, not %s" % type(raw_bytes))
+            raise TypeError("raw_bytes must be bytes, not {}".format(type(raw_bytes)))
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -306,7 +306,7 @@ class LocalTransport(transport.Transport):
                 yield relpath
 
     def _mkdir(self, abspath, mode=None):
-        """Create a real directory, filtering through mode"""
+        """Create a real directory, filtering through mode."""
         if mode is None:
             # os.mkdir() will filter through umask
             local_mode = 0o777
@@ -340,7 +340,7 @@ class LocalTransport(transport.Transport):
         return transport.FileFileStream(self, relpath, handle)
 
     def _get_append_file(self, relpath, mode=None):
-        """Call os.open() for the given relpath"""
+        """Call os.open() for the given relpath."""
         file_abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
@@ -353,7 +353,7 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, relpath)
 
     def _check_mode_and_size(self, file_abspath, fd, mode=None):
-        """Check the mode of the file, and return the current size"""
+        """Check the mode of the file, and return the current size."""
         st = os.fstat(fd)
         if mode is not None and mode != S_IMODE(st.st_mode):
             # Because of umask, we may still need to chmod the file.
@@ -392,7 +392,7 @@ class LocalTransport(transport.Transport):
             os.write(to_fd, b)
 
     def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
+        """Copy the item at rel_from to the location at rel_to."""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
         import shutil
@@ -416,7 +416,7 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, path_from)
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to."""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
 
@@ -428,7 +428,7 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, path_from)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -496,7 +496,7 @@ class LocalTransport(transport.Transport):
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+        :return: A lock object, which should be passed to Transport.unlock().
         """
         from breezy.lock import ReadLock
 
@@ -509,7 +509,7 @@ class LocalTransport(transport.Transport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+        WARNING: many transports do not support this, so trying avoid using it.
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
@@ -561,7 +561,7 @@ class LocalTransport(transport.Transport):
 
 
 class EmulatedWin32LocalTransport(LocalTransport):
-    """Special transport for testing Win32 [UNC] paths on non-windows"""
+    """Special transport for testing Win32 [UNC] paths on non-windows."""
 
     def __init__(self, base):
         if base[-1] != "/":

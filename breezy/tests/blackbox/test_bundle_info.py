@@ -35,7 +35,7 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         self.run_bzr_error(
             ["--verbose requires a merge directive"], "bundle-info -v bundle"
         )
-        target = self.make_branch("target")
+        self.make_branch("target")
         md = merge_directive.MergeDirective2.from_objects(
             source.branch.repository, b"rev1", 0, 0, "target", base_revision_id=b"null:"
         )

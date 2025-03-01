@@ -11,7 +11,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-"""Bootstrap a buildout-based project
+"""Bootstrap a buildout-based project.
 
 Simply run this script in a directory containing a buildout.cfg.
 The script accepts buildout command-line options, so you can
@@ -44,7 +44,7 @@ if sys.platform == "win32":
 
     def quote(c):
         if " " in c:
-            return '"%s"' % c  # work around spawn lamosity on windows
+            return '"{}"'.format(c)  # work around spawn lamosity on windows
         else:
             return c
 else:

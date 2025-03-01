@@ -41,12 +41,12 @@ class TestErrors(tests.TestCase):
                     "message" in args,
                     (
                         'Argument name "message" not allowed for '
-                        '"errors.%s.__init__"' % c.__name__
+                        '"errors.{}.__init__"'.format(c.__name__)
                     ),
                 )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(
-                    True, ('"message" not allowed in "errors.%s._fmt"' % c.__name__)
+                    True, ('"message" not allowed in "errors.{}._fmt"'.format(c.__name__))
                 )
 
     def test_duplicate_help_prefix(self):
@@ -242,12 +242,12 @@ class TestErrors(tests.TestCase):
         )
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
-        """Check the formatting of a SocketConnectionError exception"""
+        """Check the formatting of a SocketConnectionError exception."""
         e = errors.SocketConnectionError(*args, **kwargs)
         self.assertEqual(expected, str(e))
 
     def test_socket_connection_error(self):
-        """Test the formatting of SocketConnectionError"""
+        """Test the formatting of SocketConnectionError."""
         # There should be a default msg about failing to connect
         # we only require a host name.
         self.assertSocketConnectionError("Failed to connect to ahost", "ahost")
@@ -452,7 +452,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         error = errors.NoPublicBranch(b)
         url = urlutils.unescape_for_display(b.base, "ascii")
         self.assertEqualDiff(
-            'There is no public branch set for "%s".' % url, str(error)
+            'There is no public branch set for "{}".'.format(url), str(error)
         )
 
     def test_no_repo(self):
@@ -465,9 +465,8 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         repo = self.make_repository(".")
         error = errors.CorruptRepository(repo)
         self.assertEqualDiff(
-            "An error has been detected in the repository %s.\n"
-            "Please run brz reconcile on this repository."
-            % repo.controldir.root_transport.base,
+            "An error has been detected in the repository {}.\n"
+            "Please run brz reconcile on this repository.".format(repo.controldir.root_transport.base),
             str(error),
         )
 

@@ -325,7 +325,7 @@ def _apply_log_request_defaults(rqst):
 
 
 def format_signature_validity(rev_id, branch):
-    """Get the signature validity
+    """Get the signature validity.
 
     :param rev_id: revision id to validate
     :param branch: branch of revision
@@ -375,7 +375,7 @@ class Logger:
         :param lf: The LogFormatter object to send the output to.
         """
         if not isinstance(lf, LogFormatter):
-            warn("not a LogFormatter instance: %r" % lf)
+            warn("not a LogFormatter instance: {!r}".format(lf), stacklevel=2)
 
         with self.branch.lock_read():
             if getattr(lf, "begin_log", None):
@@ -955,7 +955,7 @@ def _graph_view_revisions(
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id, stop_rule=stop_rule
     )
     if not rebase_initial_depths:
-        for rev_id, merge_depth, revno, end_of_merge in view_revisions:
+        for rev_id, merge_depth, revno, _end_of_merge in view_revisions:
             yield rev_id, ".".join(map(str, revno)), merge_depth
     else:
         # We're following a development line starting at a merged revision.
@@ -963,7 +963,7 @@ def _graph_view_revisions(
         # a depth less than it. Then we use that depth as the adjustment.
         # If and when we reach the mainline, depth adjustment ends.
         depth_adjustment = None
-        for rev_id, merge_depth, revno, end_of_merge in view_revisions:
+        for rev_id, merge_depth, revno, _end_of_merge in view_revisions:
             if depth_adjustment is None:
                 depth_adjustment = merge_depth
             if depth_adjustment:
@@ -1190,7 +1190,7 @@ def _update_files(delta, files, stop_on):
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
-    """Extract revision objects from the repository
+    """Extract revision objects from the repository.
 
     :param branch: The branch being logged.
     :param generate_delta: Whether to generate a delta for each revision.
@@ -1691,7 +1691,7 @@ class LogFormatter:
         :return: a list of formatted lines (excluding trailing newlines)
         """
         lines = self._foreign_info_properties(revision)
-        for key, handler in properties_handler_registry.iteritems():
+        for _key, handler in properties_handler_registry.iteritems():
             try:
                 lines.extend(self._format_properties(handler(revision)))
             except Exception:
@@ -1772,10 +1772,10 @@ class LongLogFormatter(LogFormatter):
                 "revno: {}{}".format(revision.revno, self.merge_marker(revision))
             )
         if revision.tags:
-            lines.append("tags: %s" % (", ".join(sorted(revision.tags))))
+            lines.append("tags: {}".format(", ".join(sorted(revision.tags))))
         if self.show_ids or revision.revno is None:
             lines.append(
-                "revision-id: %s" % (revision.rev.revision_id.decode("utf-8"),)
+                "revision-id: {}".format(revision.rev.revision_id.decode("utf-8"))
             )
         if self.show_ids:
             for parent_id in revision.rev.parent_ids:
@@ -1866,7 +1866,7 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         tags = ""
         if revision.tags:
-            tags = " {%s}" % (", ".join(sorted(revision.tags)))
+            tags = " {{{}}}".format(", ".join(sorted(revision.tags)))
         to_file.write(
             indent
             + "%*s %s\t%s%s%s\n"
@@ -1890,7 +1890,7 @@ class ShortLogFormatter(LogFormatter):
             to_file.write(
                 indent
                 + offset
-                + "revision-id:%s\n" % (revision.rev.revision_id.decode("utf-8"),)
+                + "revision-id:{}\n".format(revision.rev.revision_id.decode("utf-8"))
             )
         if not revision.rev.message:
             to_file.write(indent + offset + "(no message)\n")
@@ -1958,7 +1958,7 @@ class LineLogFormatter(LogFormatter):
         self.to_file.write("\n")
 
     def log_string(self, revno, rev, max_chars, tags=None, prefix=""):
-        """Format log info into one string. Truncate tail of string
+        """Format log info into one string. Truncate tail of string.
 
         :param revno:      revision number or None.
                            Revision numbers counts from 1.
@@ -1971,7 +1971,7 @@ class LineLogFormatter(LogFormatter):
         out = []
         if revno:
             # show revno only when is not None
-            out.append("%s:" % revno)
+            out.append("{}:".format(revno))
         if max_chars is not None:
             out.append(self.truncate(self.short_author(rev), (max_chars + 3) // 4))
         else:
@@ -1980,7 +1980,7 @@ class LineLogFormatter(LogFormatter):
         if len(rev.parent_ids) > 1:
             out.append("[merge]")
         if tags:
-            tag_str = "{%s}" % (", ".join(sorted(tags)))
+            tag_str = "{{{}}}".format(", ".join(sorted(tags)))
             out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(prefix + " ".join(out).rstrip("\n"), max_chars)
@@ -2034,7 +2034,7 @@ def line_log(rev, max_chars):
 
 
 class LogFormatterRegistry(registry.Registry):
-    """Registry for log formatters"""
+    """Registry for log formatters."""
 
     def make_formatter(self, name, *args, **kwargs):
         """Construct a formatter from arguments.

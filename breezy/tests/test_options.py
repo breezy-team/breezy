@@ -29,10 +29,10 @@ def parse(options, args):
 
 
 class OptionTests(TestCase):
-    """Command-line option tests"""
+    """Command-line option tests."""
 
     def test_parse_args(self):
-        """Option parser"""
+        """Option parser."""
         # XXX: Using cmd_commit makes these tests overly sensitive to changes
         # to cmd_commit, when they are meant to be about option parsing in
         # general.
@@ -55,7 +55,7 @@ class OptionTests(TestCase):
         )
 
     def test_no_more_opts(self):
-        """Terminated options"""
+        """Terminated options."""
         self.assertEqual(
             (
                 ["-file-with-dashes"],
@@ -392,7 +392,7 @@ class TestOptionDefinitions(TestCase):
         commands.install_bzr_command_hooks()
         for cmd_name in sorted(commands.builtin_command_names()):
             cmd = commands.get_cmd_object(cmd_name)
-            for opt_name, opt in sorted(cmd.options().items()):
+            for _opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
         self.assertTrue(g)
         return g

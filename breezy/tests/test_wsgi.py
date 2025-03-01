@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for WSGI application"""
+"""Tests for WSGI application."""
 
 from io import BytesIO
 
@@ -106,7 +106,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
             }
         )
         iterable = wsgi_app(environ, self.start_response)
-        response = self.read_response(iterable)
+        self.read_response(iterable)
         self.assertEqual([("clone", "foo/bar/")], transport.calls)
 
     def test_smart_wsgi_app_request_and_response(self):

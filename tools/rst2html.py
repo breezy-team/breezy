@@ -6,8 +6,7 @@
 #
 # This file is in the public domain.
 
-"""A minimal front end to the Docutils Publisher, producing HTML.
-"""
+"""A minimal front end to the Docutils Publisher, producing HTML."""
 
 try:
     import locale
@@ -26,9 +25,9 @@ if True:  # this is still required in the distutils trunk as-at June 2008.
     #
     # This is a bit gross to patch because all this is built up at load time.
     Body.pats["optname"] = r"[a-zA-Z0-9][a-zA-Z0-9._-]*"
-    Body.pats["longopt"] = r"(--|/)%(optname)s([ =]%(optarg)s)?" % Body.pats
-    Body.pats["option"] = r"(%(shortopt)s|%(longopt)s)" % Body.pats
-    Body.patterns["option_marker"] = r"%(option)s(, %(option)s)*(  +| ?$)" % Body.pats
+    Body.pats["longopt"] = r"(--|/){optname}([ =]{optarg})?".format(**Body.pats)
+    Body.pats["option"] = r"({shortopt}|{longopt})".format(**Body.pats)
+    Body.patterns["option_marker"] = r"{option}(, {option})*(  +| ?$)".format(**Body.pats)
 
 
 description = (

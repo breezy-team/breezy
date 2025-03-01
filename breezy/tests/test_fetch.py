@@ -121,7 +121,7 @@ class TestFetch(TestCaseWithTransport):
         wt.branch.fetch(wt.branch)
 
     def test_fetch_root_knit(self):
-        """Ensure that knit2.fetch() updates the root knit
+        """Ensure that knit2.fetch() updates the root knit.
 
         This tests the case where the root has a new revision, but there are no
         corresponding filename, parent, contents or other changes.
@@ -184,7 +184,7 @@ class TestFetch(TestCaseWithTransport):
 
 class TestMergeFetch(TestCaseWithTransport):
     def test_merge_fetches_unrelated(self):
-        """Merge brings across history from unrelated source"""
+        """Merge brings across history from unrelated source."""
         wt1 = self.make_branch_and_tree("br1")
         br1 = wt1.branch
         wt1.commit(message="rev 1-1", rev_id=b"1-1")
@@ -196,7 +196,7 @@ class TestMergeFetch(TestCaseWithTransport):
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
-        """Merge brings across history from source"""
+        """Merge brings across history from source."""
         wt1 = self.make_branch_and_tree("br1")
         br1 = wt1.branch
         wt1.commit(message="rev 1-1", rev_id=b"1-1")
@@ -225,7 +225,7 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt1.add("file", ids=b"this-file-id")
         wt1.commit(message="rev 1-1", rev_id=b"1-1")
         dir_2 = br1.controldir.sprout("br2")
-        br2 = dir_2.open_branch()
+        dir_2.open_branch()
         wt2 = dir_2.open_workingtree()
         self.build_tree_contents([("br1/file", b"original from 1\n")])
         wt1.commit(message="rev 1-2", rev_id=b"1-2")
@@ -237,10 +237,10 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt2.commit(message="rev 2-2", rev_id=b"2-2")
 
     def test_merge_fetches_file_history(self):
-        """Merge brings across file histories"""
+        """Merge brings across file histories."""
         br2 = Branch.open("br2")
         br1 = Branch.open("br1")
-        wt2 = WorkingTree.open("br2").merge_from_branch(br1)
+        WorkingTree.open("br2").merge_from_branch(br1)
         br2.lock_read()
         self.addCleanup(br2.unlock)
         for rev_id, text in [
@@ -487,7 +487,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
 
 
 class Test1To2Fetch(TestCaseWithTransport):
-    """Tests for Model1To2 failure modes"""
+    """Tests for Model1To2 failure modes."""
 
     def make_tree_and_repo(self):
         self.tree = self.make_branch_and_tree("tree", format="pack-0.92")
@@ -507,11 +507,11 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.repo.fetch(self.tree.branch.repository, second)
 
     def test_fetch_order_AB(self):
-        """See do_fetch_order_test"""
+        """See do_fetch_order_test."""
         self.do_fetch_order_test(b"A", b"B")
 
     def test_fetch_order_BA(self):
-        """See do_fetch_order_test"""
+        """See do_fetch_order_test."""
         self.do_fetch_order_test(b"B", b"A")
 
     def get_parents(self, file_id, revision_id):

@@ -133,7 +133,7 @@ class SSHVendorManager:
         return self._get_vendor_by_version_string(version, "ssh")
 
     def _get_vendor_from_path(self, path):
-        """Return the vendor or None using the program at the given path"""
+        """Return the vendor or None using the program at the given path."""
         version = self._get_ssh_version_string([path, "-V"])
         return self._get_vendor_by_version_string(
             version, os.path.splitext(os.path.basename(path))[0]
@@ -297,7 +297,7 @@ class ParamikoVendor(SSHVendor):
             our_server_key_hex = self._hexify(our_server_key.get_fingerprint())
         else:
             trace.warning(
-                "Adding %s host key for %s: %s" % (keytype, host, server_key_hex)
+                "Adding {} host key for {}: {}".format(keytype, host, server_key_hex)
             )
             add = getattr(BRZ_HOSTKEYS, "add", None)
             if add is not None:  # paramiko >= 1.X.X
@@ -311,8 +311,7 @@ class ParamikoVendor(SSHVendor):
             filename1 = os.path.expanduser("~/.ssh/known_hosts")
             filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
-                "Host keys for %s do not match!  %s != %s"
-                % (host, our_server_key_hex, server_key_hex),
+                "Host keys for {} do not match!  {} != {}".format(host, our_server_key_hex, server_key_hex),
                 ["Try editing {} or {}".format(filename1, filename2)],
             )
 
@@ -477,7 +476,7 @@ register_ssh_vendor("sshcorp", SSHCorpSubprocessVendor())
 
 
 class LSHSubprocessVendor(SubprocessVendor):
-    """SSH vendor that uses the 'lsh' executable from GNU"""
+    """SSH vendor that uses the 'lsh' executable from GNU."""
 
     executable_path = "lsh"
 
@@ -532,7 +531,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         username = auth.get_user("ssh", host, port=port, default=getpass.getuser())
     agent = paramiko.Agent()
     for key in agent.get_keys():
-        trace.mutter("Trying SSH agent key %s" % hexlify(key.get_fingerprint()).upper())
+        trace.mutter("Trying SSH agent key {}".format(hexlify(key.get_fingerprint()).upper()))
         try:
             paramiko_transport.auth_publickey(username, key)
             return
@@ -578,8 +577,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     ):
         raise errors.ConnectionError(
             "Unable to authenticate to SSH host as"
-            "\n  %s@%s\nsupported auth types: %s"
-            % (username, host, supported_auth_types)
+            "\n  {}@{}\nsupported auth types: {}".format(username, host, supported_auth_types)
         )
 
     if password:
@@ -597,12 +595,12 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise errors.ConnectionError(
-                "Unable to authenticate to SSH host as\n  %s@%s\n" % (username, host),
+                "Unable to authenticate to SSH host as\n  {}@{}\n".format(username, host),
                 e,
             )
     else:
         raise errors.ConnectionError(
-            "Unable to authenticate to SSH host as  %s@%s" % (username, host)
+            "Unable to authenticate to SSH host as  {}@{}".format(username, host)
         )
 
 
@@ -622,11 +620,11 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
             return True
         except paramiko.SSHException:
             trace.mutter(
-                "SSH authentication via %s key failed." % (os.path.basename(filename),)
+                "SSH authentication via {} key failed.".format(os.path.basename(filename))
             )
     except paramiko.SSHException:
         trace.mutter(
-            "SSH authentication via %s key failed." % (os.path.basename(filename),)
+            "SSH authentication via {} key failed.".format(os.path.basename(filename))
         )
     except OSError:
         pass
@@ -657,8 +655,7 @@ def load_host_keys():
 
 
 def save_host_keys():
-    """Save "discovered" host keys in $(config)/ssh_host_keys/.
-    """
+    """Save "discovered" host keys in $(config)/ssh_host_keys/."""
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     bzr_hostkey_path = _ssh_host_keys_config_dir()
     bedding.ensure_config_dir_exists()
@@ -668,7 +665,7 @@ def save_host_keys():
             f.write("# SSH host keys collected by bzr\n")
             for hostname, keys in BRZ_HOSTKEYS.items():
                 for keytype, key in keys.items():
-                    f.write("%s %s %s\n" % (hostname, keytype, key.get_base64()))
+                    f.write("{} {} {}\n".format(hostname, keytype, key.get_base64()))
     except OSError as e:
         trace.mutter("failed to save bzr host keys: " + str(e))
 
