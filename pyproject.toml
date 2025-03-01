@@ -58,7 +58,7 @@ github = ["github"]
 paramiko = ["paramiko>=1.6.2"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools>=0.9.5",
+    "testtools>=0.9.9",
     "testscenarios",
     "python-subunit",
     "cython>=0.29",

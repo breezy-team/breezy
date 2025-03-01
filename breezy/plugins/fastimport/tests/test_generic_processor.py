@@ -292,10 +292,11 @@ class TestImportToPackTag(TestCaseForGenericProcessor):
 
         return command_list
 
+    # non-mark committish not yet supported- bug #410249
+    @tests.expectedFailure
     def test_tag(self):
         handler, branch = self.get_handler()
         path = b"a"
-        raise tests.KnownFailure("non-mark committish not yet supported- bug #410249")
         handler.process(self.file_command_iter(path))
 
 

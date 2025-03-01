@@ -871,6 +871,8 @@ traceback._some_str = _clever_some_str  # type: ignore
 # deprecated - use self.knownFailure(), or self.expectFailure.
 KnownFailure = testtools.testcase._ExpectedFailure
 
+expectedFailure = unittest.case.expectedFailure
+
 
 class UnavailableFeature(Exception):
     """A feature required for this test was not available.
@@ -2343,15 +2345,8 @@ class TestCase(testtools.TestCase):
             # We use buffer_now=True to avoid holding the file open beyond
             # the life of this function, which might interfere with e.g.
             # cleaning tempdirs on Windows.
-            # XXX: Testtools 0.9.5 doesn't have the content_from_file helper
-            # detail_content = content.content_from_file(
-            #    log_file_path, buffer_now=True)
-            with open(log_file_path, "rb") as log_file:
-                log_file_bytes = log_file.read()
-            detail_content = content.Content(
-                content.ContentType("text", "plain", {"charset": "utf8"}),
-                lambda: [log_file_bytes],  # noqa: B023
-            )
+            detail_content = content.content_from_file(
+               log_file_path, buffer_now=True)
             self.addDetail("start_brz_subprocess-log-%d" % (count,), detail_content)
 
     def _popen(self, *args, **kwargs):

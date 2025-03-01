@@ -283,6 +283,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual("add file1 and file2", logentry.rev.message)
         self.checkDelta(logentry.delta, added=["file1", "file2"])
 
+    # bug #842695
+    @tests.expectedFailure
     def test_bug_842695_log_restricted_to_dir(self):
         # Comments here indicate revision numbers in trunk  # VVVVV
         trunk = self.make_branch_and_tree("this")
@@ -311,10 +313,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         lf.supports_merge_revisions = True
         log.show_log(trunk.branch, lf, file_id)
-        try:
-            self.assertEqual(["2", "1.1.1"], [r.revno for r in lf.revisions])
-        except AssertionError as err:
-            raise tests.KnownFailure("bug #842695") from err
+        self.assertEqual(["2", "1.1.1"], [r.revno for r in lf.revisions])
 
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):

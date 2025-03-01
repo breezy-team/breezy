@@ -18,7 +18,7 @@ import os
 
 from .. import errors, ignores, osutils, shelf, tests, transform, workingtree
 from ..bzr import pack
-from . import KnownFailure, features
+from . import expectedFailure, features
 
 EMPTY_SHELF = (
     b"Bazaar pack format 1 (introduced in 0.18)\n"
@@ -228,6 +228,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.transform()
         self.check_shelve_creation(creator, tree)
 
+    # shelving directory with ignored file: see bug #611739
+    @expectedFailure
     def test_shelve_directory_with_ignored(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -253,13 +255,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         ignores.add_unique_user_ignores(in_patterns)
 
         creator.shelve_change(("add file", b"bar-id", "directory", "bar"))
-        try:
-            creator.transform()
-            self.check_shelve_creation(creator, tree)
-        except transform.MalformedTransform as err:
-            raise KnownFailure(
-                "shelving directory with ignored file: see bug #611739"
-            ) from err
+        creator.transform()
+        self.check_shelve_creation(creator, tree)
 
     def _test_shelve_symlink_creation(
         self, link_name, link_target, shelve_change=False
