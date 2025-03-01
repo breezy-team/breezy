@@ -188,7 +188,7 @@ def iter_tokens():
 
 
 def get_credentials_by_url(url):
-    for name, credentials in iter_tokens():
+    for _name, credentials in iter_tokens():
         if credentials["url"].rstrip("/") == url.rstrip("/"):
             return credentials
     else:
@@ -419,7 +419,7 @@ class GitLab(Forge):
     merge_proposal_description_format = "markdown"
 
     def __repr__(self):
-        return "<GitLab(%r)>" % self.base_url
+        return "<GitLab({!r})>".format(self.base_url)
 
     @property
     def base_url(self):
@@ -455,28 +455,28 @@ class GitLab(Forge):
         self._current_user = None
 
     def _get_user(self, username):
-        path = "users/%s" % urlutils.quote(str(username), "")
+        path = "users/{}".format(urlutils.quote(str(username), ""))
         response = self._api_request("GET", path)
         if response.status == 404:
-            raise KeyError("no such user %s" % username)
+            raise KeyError("no such user {}".format(username))
         if response.status == 200:
             return json.loads(response.data)
         _unexpected_status(path, response)
 
     def _get_user_by_email(self, email):
-        path = "users?search=%s" % urlutils.quote(str(email), "")
+        path = "users?search={}".format(urlutils.quote(str(email), ""))
         response = self._api_request("GET", path)
         if response.status == 404:
-            raise KeyError("no such user %s" % email)
+            raise KeyError("no such user {}".format(email))
         if response.status == 200:
             ret = json.loads(response.data)
             if len(ret) != 1:
-                raise ValueError("unexpected number of results; %r" % ret)
+                raise ValueError("unexpected number of results; {!r}".format(ret))
             return ret[0]
         _unexpected_status(path, response)
 
     def _get_project(self, project_name, _redirect_checked=False):
-        path = "projects/%s" % urlutils.quote(str(project_name), "")
+        path = "projects/{}".format(urlutils.quote(str(project_name), ""))
         response = self._api_request("GET", path)
         if response.status == 404:
             if not _redirect_checked:
@@ -508,7 +508,7 @@ class GitLab(Forge):
 
         namespace = self._get_namespace(namespace_path)
         if namespace is None:
-            raise Exception("namespace %s does not exist" % namespace_path)
+            raise Exception("namespace {} does not exist".format(namespace_path))
 
         fields = {
             "path": path,
@@ -530,7 +530,7 @@ class GitLab(Forge):
         return project
 
     def fork_project(self, project_name, timeout=50, interval=5, owner=None):
-        path = "projects/%s/fork" % urlutils.quote(str(project_name), "")
+        path = "projects/{}/fork".format(urlutils.quote(str(project_name), ""))
         fields = {}
         if owner is not None:
             fields["namespace"] = owner
@@ -587,7 +587,7 @@ class GitLab(Forge):
             parameters["page"] = page
             response = self._api_request(
                 "GET",
-                path + "?" + "&".join(["%s=%s" % item for item in parameters.items()]),
+                path + "?" + "&".join(["{}={}".format(*item) for item in parameters.items()]),
             )
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
@@ -598,7 +598,7 @@ class GitLab(Forge):
 
     def _list_merge_requests(self, author=None, project=None, state=None):
         if project is not None:
-            path = "projects/%s/merge_requests" % urlutils.quote(str(project), "")
+            path = "projects/{}/merge_requests".format(urlutils.quote(str(project), ""))
         else:
             path = "merge_requests"
         parameters = {}
@@ -621,7 +621,7 @@ class GitLab(Forge):
         return json.loads(response.data)
 
     def _list_projects(self, owner):
-        path = "users/%s/projects" % urlutils.quote(str(owner), "")
+        path = "users/{}/projects".format(urlutils.quote(str(owner), ""))
         parameters = {}
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
@@ -672,7 +672,7 @@ class GitLab(Forge):
         labels=None,
         allow_collaboration=False,
     ):
-        path = "projects/%s/merge_requests" % source_project_id
+        path = "projects/{}/merge_requests".format(source_project_id)
         fields = {
             "title": title,
             "source_branch": source_branch_name,
@@ -725,7 +725,8 @@ class GitLab(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
-            tag_selector = lambda t: False
+            def tag_selector(t):
+                return False
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(
             base_branch
         )
@@ -849,7 +850,7 @@ class GitLab(Forge):
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        base_url = "https://%s" % hostname
+        base_url = "https://{}".format(hostname)
         credentials = get_credentials_by_url(base_url)
         if credentials is not None:
             transport = get_transport(base_url, possible_transports=possible_transports)
@@ -868,7 +869,7 @@ class GitLab(Forge):
         except NotGitLabUrl:
             raise UnsupportedForge(url)
         transport = get_transport(
-            "https://%s" % host, possible_transports=possible_transports
+            "https://{}".format(host), possible_transports=possible_transports
         )
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
@@ -891,12 +892,12 @@ class GitLab(Forge):
             if not resp.getheader("X-Gitlab-Feature-Category"):
                 raise UnsupportedForge(url)
             if resp.status in (200, 401):
-                raise GitLabLoginMissing("https://%s/" % host)
+                raise GitLabLoginMissing("https://{}/".format(host))
             raise UnsupportedForge(url)
 
     @classmethod
     def iter_instances(cls):
-        for name, credentials in iter_tokens():
+        for _name, credentials in iter_tokens():
             yield cls(
                 get_transport(credentials["url"]),
                 private_token=credentials.get("private_token"),
@@ -935,7 +936,7 @@ class GitLab(Forge):
         return GitLabMergeProposal(self, mr)
 
     def delete_project(self, project):
-        path = "projects/%s" % urlutils.quote(str(project), "")
+        path = "projects/{}".format(urlutils.quote(str(project), ""))
         response = self._api_request("DELETE", path)
         if response.status == 404:
             raise NoSuchProject(project)
@@ -960,9 +961,9 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
         info = []
-        info.append("Gitlab instance: %s\n" % self.target_host)
-        info.append("Source: %s\n" % self.source_branch.user_url)
-        info.append("Target: %s\n" % self.target_branch.user_url)
+        info.append("Gitlab instance: {}\n".format(self.target_host))
+        info.append("Source: {}\n".format(self.source_branch.user_url))
+        info.append("Target: {}\n".format(self.target_branch.user_url))
         return "".join(info)
 
     def get_initial_body(self):
@@ -994,7 +995,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         if title is None:
             title = determine_title(description)
         if work_in_progress:
-            title = "WIP: %s" % title
+            title = "WIP: {}".format(title)
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
         kwargs = {

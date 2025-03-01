@@ -56,7 +56,7 @@ class TestNormalize(tests.TestCase):
 
 
 class TestParseSource(tests.TestCase):
-    """Check mappings to line numbers generated from python source"""
+    """Check mappings to line numbers generated from python source."""
 
     def test_classes(self):
         src = '''
@@ -136,7 +136,7 @@ t = (
 
 
 class TestModuleContext(tests.TestCase):
-    """Checks for source context tracking objects"""
+    """Checks for source context tracking objects."""
 
     def check_context(self, context, path, lineno):
         self.assertEqual((context.path, context.lineno), (path, lineno))
@@ -148,7 +148,7 @@ class TestModuleContext(tests.TestCase):
         self.check_context(context, "two.py", 5)
 
     def test_from_class(self):
-        """New context returned with lineno updated from class"""
+        """New context returned with lineno updated from class."""
         path = "cls.py"
 
         class A:
@@ -169,7 +169,7 @@ class TestModuleContext(tests.TestCase):
         self.assertEqual("", self.get_log())
 
     def test_from_class_missing(self):
-        """When class has no lineno the old context details are returned"""
+        """When class has no lineno the old context details are returned."""
         path = "cls_missing.py"
 
         class A:
@@ -187,7 +187,7 @@ class TestModuleContext(tests.TestCase):
         self.assertContainsRe(self.get_log(), "Definition of <.*M'> not found")
 
     def test_from_string(self):
-        """New context returned with lineno updated from string"""
+        """New context returned with lineno updated from string."""
         path = "str.py"
         str_lines = {"one": 14, "two": 42}
         context = export_pot._ModuleContext(path, _source_info=({}, str_lines))
@@ -201,7 +201,7 @@ class TestModuleContext(tests.TestCase):
         self.assertEqual("", self.get_log())
 
     def test_from_string_missing(self):
-        """When string has no lineno the old context details are returned"""
+        """When string has no lineno the old context details are returned."""
         path = "str_missing.py"
         context = export_pot._ModuleContext(path, 4, ({}, {"line\n": 21}))
         context1 = context.from_string("line\n")
@@ -213,7 +213,7 @@ class TestModuleContext(tests.TestCase):
 
 
 class TestWriteOption(tests.TestCase):
-    """Tests for writing texts extracted from options in pot format"""
+    """Tests for writing texts extracted from options in pot format."""
 
     def pot_from_option(self, opt, context=None, note="test"):
         sio = StringIO()
@@ -324,7 +324,7 @@ class TestWriteOption(tests.TestCase):
 
 
 class TestPotExporter(tests.TestCase):
-    """Test for logic specific to the _PotExporter class"""
+    """Test for logic specific to the _PotExporter class."""
 
     # This test duplicates test_duplicates below
     def test_duplicates(self):

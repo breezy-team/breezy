@@ -57,7 +57,7 @@ class _ObjectGetter(Generic[T]):
         return self._obj.__module__
 
     def get_obj(self) -> T:
-        """Get the object that was saved at creation time"""
+        """Get the object that was saved at creation time."""
         return self._obj
 
 
@@ -168,7 +168,7 @@ class Registry(Generic[K, V]):
         """
         if not override_existing:
             if key in self._dict:
-                raise KeyError("Key %r already registered" % key)
+                raise KeyError("Key {!r} already registered".format(key))
         self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -198,7 +198,7 @@ class Registry(Generic[K, V]):
         """
         if not override_existing:
             if key in self._dict:
-                raise KeyError("Key %r already registered" % key)
+                raise KeyError("Key {!r} already registered".format(key))
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -209,7 +209,7 @@ class Registry(Generic[K, V]):
         :param target: Target key name
         """
         if key in self._dict and key not in self._aliases:
-            raise KeyError("Key %r already registered and not an alias" % key)
+            raise KeyError("Key {!r} already registered and not an alias".format(key))
         self._dict[key] = self._dict[target]
         self._aliases[key] = target
         if info is None:
@@ -217,7 +217,7 @@ class Registry(Generic[K, V]):
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
     def _add_help_and_info(self, key: K, help=None, info=None):
-        """Add the help and information about this key"""
+        """Add the help and information about this key."""
         self._help_dict[key] = help
         self._info_dict[key] = info
 
@@ -260,7 +260,7 @@ class Registry(Generic[K, V]):
                 return self.get(key), fullname[len(key) :]
 
     def _get_key_or_default(self, key=None):
-        """Return either 'key' or the default key if key is None"""
+        """Return either 'key' or the default key if key is None."""
         if key is not None:
             return key
         if self.default_key is None:
@@ -269,14 +269,14 @@ class Registry(Generic[K, V]):
             return self.default_key
 
     def get_help(self, key: Optional[K] = None) -> Optional[str]:
-        """Get the help text associated with the given key"""
+        """Get the help text associated with the given key."""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):
             return the_help(self, key)
         return the_help
 
     def get_info(self, key=None):
-        """Get the extra information associated with the given key"""
+        """Get the extra information associated with the given key."""
         return self._info_dict[self._get_key_or_default(key)]
 
     def remove(self, key):
@@ -290,7 +290,7 @@ class Registry(Generic[K, V]):
         return key in self._dict
 
     def keys(self):
-        """Get a list of registered entries"""
+        """Get a list of registered entries."""
         return sorted(self._dict)
 
     def iteritems(self) -> Iterator[Tuple[K, V]]:
@@ -304,7 +304,7 @@ class Registry(Generic[K, V]):
 
     def _set_default_key(self, key):
         if key not in self._dict:
-            raise KeyError("No object registered under key %s." % key)
+            raise KeyError("No object registered under key {}.".format(key))
         else:
             self._default_key = key
 

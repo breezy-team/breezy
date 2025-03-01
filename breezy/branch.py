@@ -151,7 +151,7 @@ class Branch(ControlComponent):
         stop_index: Optional[int] = None,
         stop_revision: Optional[RevisionID] = None,
     ) -> None:
-        """Extend the partial history to include a given index
+        """Extend the partial history to include a given index.
 
         If a stop_index is supplied, stop when that index has been reached.
         If a stop_revision is supplied, stop when that revision is
@@ -204,7 +204,7 @@ class Branch(ControlComponent):
         _unsupported: bool = False,
         possible_transports=None,
     ):
-        """Open the branch rooted at transport"""
+        """Open the branch rooted at transport."""
         control = ControlDir.open_from_transport(transport, _unsupported)
         return control.open_branch(
             name=name, unsupported=_unsupported, possible_transports=possible_transports
@@ -355,7 +355,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self.unlock)
 
     def peek_lock_mode(self):
-        """Return lock mode for the Branch: 'r', 'w' or None"""
+        """Return lock mode for the Branch: 'r', 'w' or None."""
         raise NotImplementedError(self.peek_lock_mode)
 
     def get_physical_lock_status(self):
@@ -545,7 +545,7 @@ class Branch(ControlComponent):
             if direction == "forward":
                 return reversed(list(filtered))
             else:
-                raise ValueError("invalid direction %r" % direction)
+                raise ValueError("invalid direction {!r}".format(direction))
 
     def _filter_merge_sorted_revisions(
         self, merge_sorted_revisions, start_revision_id, stop_revision_id, stop_rule
@@ -616,7 +616,7 @@ class Branch(ControlComponent):
                             reached_stop_revision_id = True
                             revision_id_whitelist.extend(rev.parent_ids)
         else:
-            raise ValueError("invalid stop_rule %r" % stop_rule)
+            raise ValueError("invalid stop_rule {!r}".format(stop_rule))
 
     def _filter_start_non_ancestors(self, rev_iter):
         # If we started from a dotted revno, we want to consider it as a tip
@@ -726,7 +726,7 @@ class Branch(ControlComponent):
         return None
 
     def get_old_bound_location(self):
-        """Return the URL of the branch we used to be bound to"""
+        """Return the URL of the branch we used to be bound to."""
         raise errors.UpgradeRequired(self.user_url)
 
     def get_commit_builder(
@@ -808,7 +808,7 @@ class Branch(ControlComponent):
         last_rev: Optional[RevisionID] = None,
         other_branch: Optional["Branch"] = None,
     ) -> None:
-        """See Branch.generate_revision_history"""
+        """See Branch.generate_revision_history."""
         with self.lock_write():
             graph = self.repository.get_graph()
             (last_revno, last_revid) = self.last_revision_info()
@@ -966,7 +966,7 @@ class Branch(ControlComponent):
         return (revno, revid)
 
     def revision_id_to_revno(self, revision_id: RevisionID) -> int:
-        """Given a revision id, return its revno"""
+        """Given a revision id, return its revno."""
         if _mod_revision.is_null(revision_id):
             return 0
         history = self._revision_history()
@@ -1158,7 +1158,7 @@ class Branch(ControlComponent):
     def check_real_revno(self, revno: int) -> None:
         """\
         Check whether a revno corresponds to a real revision.
-        Zero (the NULL revision) is considered invalid
+        Zero (the NULL revision) is considered invalid.
         """
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
@@ -1667,7 +1667,7 @@ class BranchFormat(ControlComponentFormat):
         return self.get_format_description().rstrip()
 
     def supports_tags(self):
-        """True if this format supports tags stored in the branch"""
+        """True if this format supports tags stored in the branch."""
         return False  # by default
 
     def tags_are_versioned(self):
@@ -1992,7 +1992,7 @@ class _Result:
         if not getattr(self, "tag_conflicts", None):
             return
         to_file.write("Conflicting tags:\n")
-        for name, value1, value2 in self.tag_conflicts:
+        for name, _value1, _value2 in self.tag_conflicts:
             to_file.write("    {}\n".format(name))
 
 
@@ -2180,7 +2180,7 @@ class InterBranch(InterObject[Branch]):
         raise NotImplementedError(self.push)
 
     def copy_content_into(self, revision_id=None, tag_selector=None):
-        """Copy the content of source into target
+        """Copy the content of source into target.
 
         Args:
           revision_id:
@@ -2244,7 +2244,7 @@ class GenericInterBranch(InterBranch):
         return format
 
     def copy_content_into(self, revision_id=None, tag_selector=None):
-        """Copy the content of source into target
+        """Copy the content of source into target.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.

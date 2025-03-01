@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """brz postinstall helper for win32 installation
-Written by Alexander Belchenko
+Written by Alexander Belchenko.
 
 Dependency: ctypes
 """
@@ -30,7 +30,7 @@ import sys
 VERSION = "1.5.20070131"
 
 USAGE = """Brz postinstall helper for win32 installation
-Usage: %s [options]
+Usage: {} [options]
 
 OPTIONS:
     -h, --help                  - help message
@@ -45,7 +45,7 @@ OPTIONS:
     --add-shell-menu            - add shell context menu to start brz session
     --delete-shell-menu         - delete context menu from shell
     --check-mfc71               - check if MFC71.DLL present in system
-""" % os.path.basename(sys.argv[0])
+""".format(os.path.basename(sys.argv[0]))
 
 # Windows version
 _major, _minor, _build, _platform, _text = sys.getwindowsversion()
@@ -122,7 +122,7 @@ def main():
             ],
         )
 
-        for o, a in opts:
+        for o, _a in opts:
             if o in ("-h", "--help"):
                 print(USAGE)
                 return OK
@@ -175,7 +175,7 @@ def main():
                 r'.*(?<!\\)brz\.exe([ "].*)?$', s.rstrip("\r\n"), re.IGNORECASE
             ):
                 content[ix] = s.replace(
-                    "brz.exe", '"%s"' % os.path.join(brz_dir, "brz.exe")
+                    "brz.exe", '"{}"'.format(os.path.join(brz_dir, "brz.exe"))
                 )
             elif s.find(r"C:\Program Files\Breezy") != -1:
                 content[ix] = s.replace(r"C:\Program Files\Breezy", brz_dir)
@@ -289,7 +289,7 @@ def main():
                         if i.rstrip("\r\n") != pattern:
                             f.write(i)
             else:
-                print("*** Remove line <%s> from autoexec.bat" % pattern)
+                print("*** Remove line <{}> from autoexec.bat".format(pattern))
 
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
@@ -298,7 +298,7 @@ def main():
                     f.write(pattern)
                     f.write("\n")
             else:
-                print("*** Add line <%s> to autoexec.bat" % pattern)
+                print("*** Add line <{}> to autoexec.bat".format(pattern))
 
     if add_shell_menu and not delete_shell_menu:
         hkey = None

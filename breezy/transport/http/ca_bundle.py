@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Auto-detect of CA bundle for SSL connections"""
+"""Auto-detect of CA bundle for SSL connections."""
 
 import os
 import sys
@@ -25,7 +25,7 @@ _ca_path = None
 
 
 def get_ca_path(use_cache=True):
-    """Return location of CA bundle"""
+    """Return location of CA bundle."""
     global _ca_path
 
     if _ca_path is not None and use_cache:

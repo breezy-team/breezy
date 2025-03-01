@@ -22,11 +22,11 @@ from . import decorator
 
 
 class BrokenRenameTransportDecorator(decorator.TransportDecorator):
-    """A transport that fails to detect clashing renames"""
+    """A transport that fails to detect clashing renames."""
 
     @classmethod
     def _get_url_prefix(self):
-        """FakeNFS transports are identified by 'brokenrename+'"""
+        """FakeNFS transports are identified by 'brokenrename+'."""
         return "brokenrename+"
 
     def rename(self, rel_from, rel_to):

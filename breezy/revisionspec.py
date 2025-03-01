@@ -225,7 +225,7 @@ class RevisionSpec:
         return self._as_revision_id(context_branch)
 
     def _as_revision_id(self, context_branch):
-        """Implementation of as_revision_id()
+        """Implementation of as_revision_id().
 
         Classes should override this function to provide appropriate
         functionality. The default is to just call '.in_history().rev_id'
@@ -361,7 +361,7 @@ class RevisionSpec_revno(RevisionSpec):
     prefix = "revno:"
 
     def _match_on(self, branch, revs):
-        """Lookup a revision by revision number"""
+        """Lookup a revision by revision number."""
         branch, revno, revision_id = self._lookup(branch)
         return RevisionInfo(branch, revno, revision_id)
 
@@ -598,7 +598,7 @@ class RevisionSpec_before(RevisionSpec):
 
 
 class RevisionSpec_tag(RevisionSpec):
-    """Select a revision identified by tag name"""
+    """Select a revision identified by tag name."""
 
     help_txt = """Selects a revision identified by a tag name.
 
@@ -617,7 +617,7 @@ class RevisionSpec_tag(RevisionSpec):
 
 
 class _RevListToTimestamps:
-    """This takes a list of revisions, and allows you to bisect by date"""
+    """This takes a list of revisions, and allows you to bisect by date."""
 
     __slots__ = ["branch"]
 
@@ -625,7 +625,7 @@ class _RevListToTimestamps:
         self.branch = branch
 
     def __getitem__(self, index):
-        """Get the date of the index'd item"""
+        """Get the date of the index'd item."""
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
         return r.datetime()
 
@@ -911,7 +911,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
 
     def _raise_invalid(self, numstring, context_branch):
         raise InvalidRevisionSpec(
-            self.user_spec, context_branch, "No such line: %s" % numstring
+            self.user_spec, context_branch, "No such line: {}".format(numstring)
         )
 
     def _as_revision_id(self, context_branch):
@@ -926,7 +926,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
                 raise InvalidRevisionSpec(
                     self.user_spec,
                     context_branch,
-                    "File '%s' is not versioned." % file_path,
+                    "File '{}' is not versioned.".format(file_path),
                 )
             revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
@@ -937,7 +937,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
             raise InvalidRevisionSpec(
                 self.user_spec,
                 context_branch,
-                "Line %s has not been committed." % numstring,
+                "Line {} has not been committed.".format(numstring),
             )
         return revision_id
 

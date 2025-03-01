@@ -75,7 +75,7 @@ class TestDefaultFormat(tests.TestCase):
 
 
 class TestBranchFormat5(tests.TestCaseWithTransport):
-    """Tests specific to branch format 5"""
+    """Tests specific to branch format 5."""
 
     def test_branch_format_5_uses_lockdir(self):
         url = self.get_url()
@@ -83,7 +83,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         bdir.create_repository()
         branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
-        self.log("branch instance is %r" % branch)
+        self.log("branch instance is {!r}".format(branch))
         self.assertTrue(isinstance(branch, BzrBranch5))
         self.assertIsDirectory(".", t)
         self.assertIsDirectory(".bzr/branch", t)
@@ -93,7 +93,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertIsDirectory(".bzr/branch/lock/held", t)
 
     def test_set_push_location(self):
-        conf = config.LocationConfig.from_string("# comment\n", ".", save=True)
+        config.LocationConfig.from_string("# comment\n", ".", save=True)
 
         branch = self.make_branch(".", format="knit")
         branch.set_push_location("foo")
@@ -111,7 +111,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
 
 
 class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
-    """A sample format
+    """A sample format.
 
     this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
@@ -315,13 +315,13 @@ class TestBranch67:
         self.assertIsInstance(branch, self.get_class())
 
     def test_layout(self):
-        branch = self.make_branch("a", format=self.get_format_name())
+        self.make_branch("a", format=self.get_format_name())
         self.assertPathExists("a/.bzr/branch/last-revision")
         self.assertPathDoesNotExist("a/.bzr/branch/revision-history")
         self.assertPathDoesNotExist("a/.bzr/branch/references")
 
     def test_config(self):
-        """Ensure that all configuration data is stored in the branch"""
+        """Ensure that all configuration data is stored in the branch."""
         branch = self.make_branch("a", format=self.get_format_name())
         branch.set_parent("http://example.com")
         self.assertPathDoesNotExist("a/.bzr/branch/parent")
@@ -416,9 +416,9 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
     def test_clone_stacked_on_unstackable_repo(self):
         repo = self.make_repository("a", format="dirstate-tags")
         control = repo.controldir
-        branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
+        _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         # Calling clone should not raise UnstackableRepositoryFormat.
-        cloned_bzrdir = control.clone("cloned")
+        control.clone("cloned")
 
     def _test_default_stacked_location(self):
         branch = self.make_branch("a", format=self.get_format_name())
@@ -555,19 +555,19 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
-        self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
-        self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
-        self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
-        self.assertTrue("post_uncommit" in hooks, "post_uncommit not in %s" % hooks)
+        self.assertTrue("post_push" in hooks, "post_push not in {}".format(hooks))
+        self.assertTrue("post_commit" in hooks, "post_commit not in {}".format(hooks))
+        self.assertTrue("pre_commit" in hooks, "pre_commit not in {}".format(hooks))
+        self.assertTrue("post_pull" in hooks, "post_pull not in {}".format(hooks))
+        self.assertTrue("post_uncommit" in hooks, "post_uncommit not in {}".format(hooks))
         self.assertTrue(
             "post_change_branch_tip" in hooks,
-            "post_change_branch_tip not in %s" % hooks,
+            "post_change_branch_tip not in {}".format(hooks),
         )
         self.assertTrue(
-            "post_branch_init" in hooks, "post_branch_init not in %s" % hooks
+            "post_branch_init" in hooks, "post_branch_init not in {}".format(hooks)
         )
-        self.assertTrue("post_switch" in hooks, "post_switch not in %s" % hooks)
+        self.assertTrue("post_switch" in hooks, "post_switch not in {}".format(hooks))
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
@@ -582,7 +582,7 @@ class TestHooks(tests.TestCaseWithTransport):
             "post_branch_init", calls.append, None
         )
         self.assertLength(0, calls)
-        branch = self.make_branch("a")
+        self.make_branch("a")
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
@@ -594,7 +594,7 @@ class TestHooks(tests.TestCaseWithTransport):
         _mod_branch.Branch.hooks.install_named_hook(
             "post_branch_init", lambda params: param_reprs.append(repr(params)), None
         )
-        branch = self.make_branch("a")
+        self.make_branch("a")
         self.assertLength(1, param_reprs)
         param_repr = param_reprs[0]
         self.assertStartsWith(param_repr, "<BranchInitHookParams of ")
@@ -646,7 +646,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
         self.check_append_revisions_only(True, "true")
 
     def test_invalid_append_revisions_only(self):
-        """Ensure warning is noted on invalid settings"""
+        """Ensure warning is noted on invalid settings."""
         self.warnings = []
 
         def warning(*args):

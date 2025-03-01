@@ -94,19 +94,19 @@ class TestApiUsage(TestSourceHelper):
 
 class TestSource(TestSourceHelper):
     def get_breezy_dir(self):
-        """Get the path to the root of breezy"""
+        """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
         source_dir = os.path.dirname(source)
 
         # Avoid the case when breezy is packaged in a zip file
         if not os.path.isdir(source_dir):
             raise TestSkipped(
-                "Cannot find breezy source directory. Expected %s" % source_dir
+                "Cannot find breezy source directory. Expected {}".format(source_dir)
             )
         return source_dir
 
     def get_source_files(self, extensions=None):
-        """Yield all source files for bzr and breezy
+        """Yield all source files for bzr and breezy.
 
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
@@ -134,41 +134,32 @@ class TestSource(TestSourceHelper):
                 yield fname, f.read()
 
     def is_our_code(self, fname):
-        """True if it's a "real" part of breezy rather than external code"""
-        if "/util/" in fname or "/plugins/" in fname:
-            return False
-        else:
-            return True
+        """True if it's a "real" part of breezy rather than external code."""
+        return not ("/util/" in fname or "/plugins/" in fname)
 
     def is_copyright_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
-        for exc in COPYRIGHT_EXCEPTIONS:
-            if fname.endswith(exc):
-                return True
-        return False
+        return any(fname.endswith(exc) for exc in COPYRIGHT_EXCEPTIONS)
 
     def is_license_exception(self, fname):
-        """Certain files are allowed to be different"""
+        """Certain files are allowed to be different."""
         if not self.is_our_code(fname):
             return True
-        for exc in LICENSE_EXCEPTIONS:
-            if fname.endswith(exc):
-                return True
-        return False
+        return any(fname.endswith(exc) for exc in LICENSE_EXCEPTIONS)
 
     def test_tmpdir_not_in_source_files(self):
-        """When scanning for source files, we don't descend test tempdirs"""
+        """When scanning for source files, we don't descend test tempdirs."""
         for filename in self.get_source_files():
             if re.search(r"test....\.tmp", filename):
                 self.fail(
-                    "get_source_file() returned filename %r "
-                    "from within a temporary directory" % filename
+                    "get_source_file() returned filename {!r} "
+                    "from within a temporary directory".format(filename)
                 )
 
     def test_copyright(self):
-        """Test that all .py and .pyx files have a valid copyright statement"""
+        """Test that all .py and .pyx files have a valid copyright statement."""
         incorrect = []
 
         copyright_re = re.compile("#\\s*copyright.*(?=\n)", re.I)
@@ -269,7 +260,7 @@ class TestSource(TestSourceHelper):
                 for f, lines in dict_.items()
             ]
         )
-        return message + "\n\n    %s" % ("\n    ".join(files))
+        return message + "\n\n    {}".format("\n    ".join(files))
 
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
@@ -319,7 +310,7 @@ class TestSource(TestSourceHelper):
             problems.append(
                 "The following source files doesn't have a "
                 "newline at the end:"
-                "\n\n    %s" % ("\n    ".join(no_newline_at_eof))
+                "\n\n    {}".format("\n    ".join(no_newline_at_eof))
             )
         if problems:
             self.fail("\n\n".join(problems))
@@ -342,8 +333,7 @@ class TestSource(TestSourceHelper):
                     break
         if badfiles:
             self.fail(
-                "these files contain an assert statement and should not:\n%s"
-                % "\n".join(badfiles)
+                "these files contain an assert statement and should not:\n{}".format("\n".join(badfiles))
             )
 
     def test_extension_exceptions(self):

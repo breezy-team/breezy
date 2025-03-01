@@ -57,7 +57,7 @@ class TestUnlock(TestCaseWithExternalReferenceRepository):
         return base, stacked
 
     def test_unlock_unlocks_fallback(self):
-        base = self.make_branch("base")
+        self.make_branch("base")
         stacked = self.make_branch("stacked")
         repo = stacked.repository
         stacked.set_stacked_on_url("../base")

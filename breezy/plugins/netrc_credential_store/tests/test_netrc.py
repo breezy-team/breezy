@@ -49,22 +49,22 @@ default login anonymous password joe@home
 
     def test_not_matching_user(self):
         cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host="host", user="jim"))
+        password = cs.decode_password({"host": "host", "user": "jim"})
         self.assertIs(None, password)
 
     def test_matching_user(self):
         cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host="host", user="joe"))
+        password = cs.decode_password({"host": "host", "user": "joe"})
         self.assertEqual("secret", password)
 
     def test_default_password(self):
         cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host="other", user="anonymous"))
+        password = cs.decode_password({"host": "other", "user": "anonymous"})
         self.assertEqual("joe@home", password)
 
     def test_default_password_without_user(self):
         cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host="other"))
+        password = cs.decode_password({"host": "other"})
         self.assertIs(None, password)
 
     def test_get_netrc_credentials_via_auth_config(self):

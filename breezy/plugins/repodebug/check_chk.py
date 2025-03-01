@@ -57,7 +57,7 @@ class cmd_check_chk(commands.Command):
                     search_key_func=inv.id_to_entry._search_key_func,
                 )
                 if inv.id_to_entry.key() != test_key:
-                    trace.warning("Failed for id_to_entry inv: %s" % (inv.revision_id,))
+                    trace.warning("Failed for id_to_entry inv: {}".format(inv.revision_id))
                 pid = inv.parent_id_basename_to_file_id
                 d = dict(pid.iteritems())
                 test_key = chk_map.CHKMap.from_dict(
@@ -69,5 +69,5 @@ class cmd_check_chk(commands.Command):
                 )
                 if pid.key() != test_key:
                     trace.warning(
-                        "Failed for parent_id_to_basename inv: %s" % (inv.revision_id,)
+                        "Failed for parent_id_to_basename inv: {}".format(inv.revision_id)
                     )

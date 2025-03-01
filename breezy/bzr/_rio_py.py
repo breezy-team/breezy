@@ -50,19 +50,19 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
         real_l = line
         if line[0] == "\t":  # continues previous value
             if tag is None:
-                raise ValueError("invalid continuation line %r" % real_l)
+                raise ValueError("invalid continuation line {!r}".format(real_l))
             if accum_value is None:
-                raise ValueError("missing initial line for continuation %r" % real_l)
+                raise ValueError("missing initial line for continuation {!r}".format(real_l))
             accum_value.append("\n" + line[1:-1])
         else:  # new tag:value line
             if tag is not None:
                 if accum_value is None:
-                    raise ValueError("missing value for tag %r" % tag)
+                    raise ValueError("missing value for tag {!r}".format(tag))
                 stanza.add(tag, "".join(accum_value))
             try:
                 colon_index = line.index(": ")
             except ValueError:
-                raise ValueError("tag/value separator not found in line %r" % real_l)
+                raise ValueError("tag/value separator not found in line {!r}".format(real_l))
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag {!r}".format(tag))
@@ -70,7 +70,7 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
 
     if tag is not None:  # add last tag-value
         if accum_value is None:
-            raise ValueError("missing value for tag %r" % tag)
+            raise ValueError("missing value for tag {!r}".format(tag))
         stanza.add(tag, "".join(accum_value))  # type: ignore
         return stanza
     else:  # didn't see any content

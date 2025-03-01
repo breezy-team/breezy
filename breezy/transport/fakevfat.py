@@ -68,7 +68,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        """Readonly transport decorators are invoked via 'vfat+'"""
+        """Readonly transport decorators are invoked via 'vfat+'."""
         return "vfat+"
 
     def _squash_name(self, name):
@@ -78,7 +78,7 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         error if there are invalid characters in the name.
         """
         if re.search(r"[?*:;<>]", name):
-            raise ValueError("illegal characters for VFAT filename: %r" % name)
+            raise ValueError("illegal characters for VFAT filename: {!r}".format(name))
         return name.lower()
 
     def get(self, relpath):

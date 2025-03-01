@@ -39,7 +39,7 @@ class TestMutt(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -48,7 +48,7 @@ class TestThunderbird(tests.TestCase):
         tbird = mail_client.Thunderbird(None)
         commandline = tbird._get_compose_commandline(None, None, "file%")
         self.assertEqual(
-            ["-compose", "attachment='%s'" % urlutils.local_path_to_url("file%")],
+            ["-compose", "attachment='{}'".format(urlutils.local_path_to_url("file%"))],
             commandline,
         )
         commandline = tbird._get_compose_commandline(
@@ -71,7 +71,7 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(
             [
                 "-compose",
-                ("attachment='%s'," % urlutils.local_path_to_url("file%"))
+                ("attachment='{}',".format(urlutils.local_path_to_url("file%")))
                 + "subject='Hi there!',to='jrandom@example.org'",
             ],
             cmdline,
@@ -79,7 +79,7 @@ class TestThunderbird(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -118,7 +118,7 @@ class TestEmacsMail(tests.TestCase):
         for item in commandline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -156,7 +156,7 @@ class TestXDGEmail(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -184,7 +184,7 @@ class TestEvolution(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -209,7 +209,7 @@ class TestKMail(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
 
@@ -242,7 +242,7 @@ class TestClaws(tests.TestCase):
         self.assertEqual(
             [
                 "--compose",
-                "mailto:jrandom@example.org?subject=%s" % subject_string,
+                "mailto:jrandom@example.org?subject={}".format(subject_string),
                 "--attach",
                 "file%",
             ],
@@ -251,7 +251,7 @@ class TestClaws(tests.TestCase):
         for item in cmdline:
             self.assertTrue(
                 isinstance(item, str),
-                "Command-line item %r is not a native string!" % item,
+                "Command-line item {!r} is not a native string!".format(item),
             )
 
     def test_with_from(self):
@@ -290,7 +290,7 @@ class TestClaws(tests.TestCase):
 
 class TestEditor(tests.TestCase):
     def test_get_merge_prompt_unicode(self):
-        """Prompt, to and subject are unicode, the attachement is binary"""
+        """Prompt, to and subject are unicode, the attachement is binary."""
         editor = mail_client.Editor(None)
         prompt = editor._get_merge_prompt(
             "foo\u1234", "bar\u1234", "baz\u1234", "qux\u1234".encode()

@@ -81,7 +81,7 @@ def get_serializer(version):
     return serializer(version)
 
 
-def write(source, revision_ids, f, version=None, forced_bases={}):
+def write(source, revision_ids, f, version=None, forced_bases=None):
     """Serialize a list of bundles to a filelike object.
 
     :param source: A source for revision information
@@ -89,6 +89,8 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param f: The file to output to
     :param version: [optional] target serialization version
     """
+    if forced_bases is None:
+        forced_bases = {}
     with source.lock_read():
         return get_serializer(version).write(source, revision_ids, forced_bases, f)
 

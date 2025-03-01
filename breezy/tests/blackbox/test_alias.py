@@ -42,7 +42,7 @@ class TestAlias(tests.TestCaseWithTransport):
         self.assertEqual('brz alias commit="commit --strict"\n', out)
 
     def test_unicode_alias(self):
-        """Unicode aliases should work (Bug #529930)"""
+        """Unicode aliases should work (Bug #529930)."""
         # XXX: strictly speaking, lack of unicode filenames doesn't imply that
         # unicode command lines aren't available.
         self.requireFeature(features.UnicodeFilenameFeature)

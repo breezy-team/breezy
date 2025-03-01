@@ -98,7 +98,7 @@ def open_destination_directory(location, format=None, verbose=True):
         if contents:
             errors.CommandError(
                 "Destination must have a .bzr directory, "
-                " not yet exist or be empty - files found in %s" % (location,)
+                " not yet exist or be empty - files found in {}".format(location)
             )
     else:
         try:
@@ -128,7 +128,7 @@ def kind_to_mode(kind, executable):
         elif executable is False:
             return stat.S_IFREG | 0o644
         else:
-            raise AssertionError("Executable %r invalid" % executable)
+            raise AssertionError("Executable {!r} invalid".format(executable))
     elif kind == "symlink":
         return stat.S_IFLNK
     elif kind == "directory":
@@ -136,7 +136,7 @@ def kind_to_mode(kind, executable):
     elif kind == "tree-reference":
         return 0o160000
     else:
-        raise AssertionError("Unknown file kind '%s'" % kind)
+        raise AssertionError("Unknown file kind '{}'".format(kind))
 
 
 def mode_to_kind(mode):
@@ -152,7 +152,7 @@ def mode_to_kind(mode):
     elif mode == 0o160000:
         return "tree-reference", False
     else:
-        raise AssertionError("invalid mode %o" % mode)
+        raise AssertionError("invalid mode {:o}".format(mode))
 
 
 def binary_stream(stream):

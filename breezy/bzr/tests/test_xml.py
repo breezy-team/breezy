@@ -202,10 +202,10 @@ _inventory_v5b = b"""<inventory format="5" revision_id="a-rev-id">
 
 
 class TestSerializer(TestCase):
-    """Test XML serialization"""
+    """Test XML serialization."""
 
     def test_unpack_revision_5(self):
-        """Test unpacking a canned revision v5"""
+        """Test unpacking a canned revision v5."""
         inp = BytesIO(_revision_v5)
         rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
         eq = self.assertEqual
@@ -224,7 +224,7 @@ class TestSerializer(TestCase):
         eq(rev.parent_ids[0], b"mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
     def test_unpack_inventory_5(self):
-        """Unpack canned new-style inventory"""
+        """Unpack canned new-style inventory."""
         inp = BytesIO(_committed_inv_v5)
         inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
@@ -236,7 +236,7 @@ class TestSerializer(TestCase):
         eq(inv.get_entry(ie.parent_id).kind, "directory")
 
     def test_unpack_basis_inventory_5(self):
-        """Unpack canned new-style inventory"""
+        """Unpack canned new-style inventory."""
         inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_basis_inv_v5)
         )
@@ -327,7 +327,7 @@ class TestSerializer(TestCase):
         self.assertRoundTrips(_expected_inv_v5_root)
 
     def check_repack_revision(self, txt):
-        """Check that repacking a revision yields the same information"""
+        """Check that repacking a revision yields the same information."""
         inp = BytesIO(txt)
         rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
         outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
@@ -335,14 +335,14 @@ class TestSerializer(TestCase):
         self.assertEqual(rev, rev2)
 
     def test_repack_revision_5(self):
-        """Round-trip revision to XML v5"""
+        """Round-trip revision to XML v5."""
         self.check_repack_revision(_revision_v5)
 
     def test_repack_revision_5_utc(self):
         self.check_repack_revision(_revision_v5_utc)
 
     def test_pack_revision_5(self):
-        """Pack revision to XML v5"""
+        """Pack revision to XML v5."""
         # fixed 20051025, revisions should have final newline
         rev = breezy.bzr.xml5.serializer_v5.read_revision_from_string(_revision_v5)
         outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
@@ -354,7 +354,7 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
     def test_empty_property_value(self):
-        """Create an empty property value check that it serializes correctly"""
+        """Create an empty property value check that it serializes correctly."""
         s_v5 = breezy.bzr.xml5.serializer_v5
         rev = s_v5.read_revision_from_string(_revision_v5)
         props = {"empty": "", "one": "one"}
@@ -388,7 +388,7 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v7, b"".join(lines))
         inv2 = xml7.serializer_v7.read_inventory_from_lines(lines)
         self.assertEqual(5, len(inv2))
-        for path, ie in inv.iter_entries():
+        for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_roundtrip_inventory_v6(self):
@@ -397,11 +397,11 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v6, b"".join(lines))
         inv2 = xml6.serializer_v6.read_inventory_from_lines(lines)
         self.assertEqual(4, len(inv2))
-        for path, ie in inv.iter_entries():
+        for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_wrong_format_v7(self):
-        """Can't accidentally open a file with wrong serializer"""
+        """Can't accidentally open a file with wrong serializer."""
         s_v6 = breezy.bzr.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
         self.assertRaises(
@@ -443,7 +443,7 @@ class TestSerializer(TestCase):
         lines = xml8.serializer_v8.write_inventory_to_lines(inv)
         inv2 = xml8.serializer_v8.read_inventory_from_lines(lines)
         self.assertEqual(4, len(inv2))
-        for path, ie in inv.iter_entries():
+        for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_inventory_text_v8(self):
@@ -452,25 +452,25 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v8, b"".join(lines))
 
     def test_revision_text_v6(self):
-        """Pack revision to XML v6"""
+        """Pack revision to XML v6."""
         rev = breezy.bzr.xml6.serializer_v6.read_revision_from_string(_expected_rev_v5)
         serialized = breezy.bzr.xml6.serializer_v6.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v5)
 
     def test_revision_text_v7(self):
-        """Pack revision to XML v7"""
+        """Pack revision to XML v7."""
         rev = breezy.bzr.xml7.serializer_v7.read_revision_from_string(_expected_rev_v5)
         serialized = breezy.bzr.xml7.serializer_v7.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v5)
 
     def test_revision_text_v8(self):
-        """Pack revision to XML v8"""
+        """Pack revision to XML v8."""
         rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(_expected_rev_v8)
         serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v8)
 
     def test_revision_text_v8_complex(self):
-        """Pack revision to XML v8"""
+        """Pack revision to XML v8."""
         rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(
             _expected_rev_v8_complex
         )
@@ -579,5 +579,5 @@ class TestEncodeAndEscape(TestCase):
 
 class TestMisc(TestCase):
     def test_unescape_xml(self):
-        """We get some kind of error when malformed entities are passed"""
+        """We get some kind of error when malformed entities are passed."""
         self.assertRaises(KeyError, breezy.bzr.xml8._unescape_xml, b"foo&bar;")

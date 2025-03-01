@@ -102,16 +102,16 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr("revert")
         os.chdir("..")
 
-    def example_branch(test):
-        test.run_bzr("init")
+    def example_branch(self):
+        self.run_bzr("init")
         with open("hello", "w") as f:
             f.write("foo")
-        test.run_bzr("add hello")
-        test.run_bzr("commit -m setup hello")
+        self.run_bzr("add hello")
+        self.run_bzr("commit -m setup hello")
         with open("goodbye", "w") as f:
             f.write("baz")
-        test.run_bzr("add goodbye")
-        test.run_bzr("commit -m setup goodbye")
+        self.run_bzr("add goodbye")
+        self.run_bzr("commit -m setup goodbye")
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
@@ -155,7 +155,7 @@ class TestCommands(TestCaseWithTransport):
         self.assertTrue(added_loc < added_message)
 
     def test_locations(self):
-        """Using and remembering different locations"""
+        """Using and remembering different locations."""
         os.mkdir("a")
         os.chdir("a")
         self.run_bzr("init")
@@ -189,7 +189,7 @@ class TestCommands(TestCaseWithTransport):
         err.index("unknown command")
 
     def create_conflicts(self):
-        """Create a conflicted tree"""
+        """Create a conflicted tree."""
         os.mkdir("base")
         os.chdir("base")
         with open("hello", "wb") as f:
@@ -228,10 +228,10 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr("commit --unchanged --message pumpkin")
         os.chdir("../branch3")
         self.run_bzr("merge ../branch2")
-        message = self.run_bzr("status")[0]
+        self.run_bzr("status")[0]
 
     def test_conflicts(self):
-        """Handling of merge conflicts"""
+        """Handling of merge conflicts."""
         self.create_conflicts()
         self.run_bzr("merge ../other --show-base", retcode=1)
         with open("hello") as f:
@@ -311,7 +311,7 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr("missing ../missing/new-branch")
 
     def test_external_command(self):
-        """Test that external commands can be run by setting the path"""
+        """Test that external commands can be run by setting the path."""
         # We don't at present run brz in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
@@ -572,7 +572,7 @@ class RemoteTests:
         self.run_bzr("add branch/file")[0]
         self.run_bzr("commit -m foo branch")[0]
         url = self.get_readonly_url("branch/file")
-        output = self.run_bzr("log %s" % url)[0]
+        output = self.run_bzr("log {}".format(url))[0]
         self.assertEqual(8, len(output.split("\n")))
 
     def test_check(self):

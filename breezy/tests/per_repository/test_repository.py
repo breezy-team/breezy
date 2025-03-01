@@ -365,7 +365,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo.unlock()
         old_signature = repo.get_signature_text(a)
         try:
-            old_format = controldir.ControlDirFormat.get_default_format()
+            controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
             format = controldir.format_registry.make_controldir("development-subtree")
@@ -422,9 +422,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertMessageRoundtrips("All 8-bit chars: " + "".join(unichars))
 
     def test_check_repository(self):
-        """Check a fairly simple repository's history"""
+        """Check a fairly simple repository's history."""
         tree = self.make_branch_and_tree(".")
-        a_rev = tree.commit("initial empty commit", allow_pointless=True)
+        tree.commit("initial empty commit", allow_pointless=True)
         result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
@@ -798,9 +798,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         controldir.ControlDir.create_branch_convenience(
             self.get_url("repository/bar"), force_new_repo=True
         )
-        baz = self.make_controldir("repository/baz")
-        qux = self.make_branch("repository/baz/qux")
-        quxx = self.make_branch("repository/baz/qux/quxx")
+        self.make_controldir("repository/baz")
+        self.make_branch("repository/baz/qux")
+        self.make_branch("repository/baz/qux/quxx")
         return repo
 
     def test_find_branches(self):

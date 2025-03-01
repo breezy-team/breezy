@@ -55,7 +55,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     local_repo = local_dir.find_repository()
     inter = InterRepository.get(remote_repo, local_repo)
     revs = []
-    for sha1, ref in wants:
+    for sha1, _ref in wants:
         revs.append((sha1, None))
     if isinstance(remote_repo, GitRepository) and isinstance(local_repo, GitRepository):
         lossy = False
@@ -169,13 +169,13 @@ class RemoteHelper:
             elif self.batchcmd is None:
                 return
             else:
-                raise AssertionError("invalid batch %r" % self.batchcmd)
+                raise AssertionError("invalid batch {!r}".format(self.batchcmd))
             self.batchcmd = None
         else:
             try:
                 self.commands[argv[0].decode()](self, outf, argv)
             except KeyError:
-                raise Exception("Unknown remote command %r" % argv)
+                raise Exception("Unknown remote command {!r}".format(argv))
         outf.flush()
 
 

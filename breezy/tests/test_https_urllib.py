@@ -34,7 +34,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
     def test_specified(self):
         self.build_tree(["cacerts.pem"])
         path = os.path.join(self.test_dir, "cacerts.pem")
-        stack = self.get_stack("ssl.ca_certs = %s\n" % path)
+        stack = self.get_stack("ssl.ca_certs = {}\n".format(path))
         self.assertEqual(path, stack.get("ssl.ca_certs"))
 
     def test_specified_doesnt_exist(self):

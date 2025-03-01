@@ -315,7 +315,6 @@ class LinesDeltaIndex:
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""
     data = bytearray()
-    count = 0
     while val >= 0x80:
         data.append((val | 0x80) & 0xFF)
         val >>= 7

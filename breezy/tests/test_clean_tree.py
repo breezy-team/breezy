@@ -43,7 +43,7 @@ class TestCleanTree(TestCaseInTempDir):
         self.assertPathExists("no-die-please/child")
 
     def test_iter_deletable(self):
-        """Files are selected for deletion appropriately"""
+        """Files are selected for deletion appropriately."""
         os.mkdir("branch")
         tree = ControlDir.create_standalone_workingtree("branch")
         transport = tree.controldir.root_transport
@@ -67,7 +67,7 @@ class TestCleanTree(TestCaseInTempDir):
             self.assertEqual([], dels)
 
     def test_delete_items_warnings(self):
-        """Ensure delete_items issues warnings on EACCES. (bug #430785)"""
+        """Ensure delete_items issues warnings on EACCES. (bug #430785)."""
 
         def _dummy_unlink(path):
             """unlink() files other than files named '0foo'."""

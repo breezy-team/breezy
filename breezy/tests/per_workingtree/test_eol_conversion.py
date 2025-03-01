@@ -45,11 +45,11 @@ class TestEolConversion(TestCaseWithWorkingTree):
         f = fmt.supports_content_filtering
         if f is None:
             raise TestSkipped(
-                "format %s doesn't declare whether it "
-                "supports content filtering, assuming not" % fmt
+                "format {} doesn't declare whether it "
+                "supports content filtering, assuming not".format(fmt)
             )
         if not f():
-            raise TestSkipped("format %s doesn't support content filtering" % fmt)
+            raise TestSkipped("format {} doesn't support content filtering".format(fmt))
         super().setUp()
 
     def patch_rules_searcher(self, eol):
@@ -62,7 +62,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
                 return rules._IniBasedRulesSearcher(
                     [
                         "[name *]\n",
-                        "eol=%s\n" % eol,
+                        "eol={}\n".format(eol),
                     ]
                 )
 
@@ -91,7 +91,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if expected_win is None:
             expected_win = expected_unix
         self.patch_rules_searcher(eol)
-        wt2 = wt.controldir.sprout("tree-%s" % eol).open_workingtree()
+        wt2 = wt.controldir.sprout("tree-{}".format(eol)).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
         with wt2.get_file("file1", filtered=False) as f:
             content = f.read()

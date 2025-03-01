@@ -430,7 +430,7 @@ def verify_commit_reconstruction(
         )
     diff = []
     new_objs = {}
-    for path, obj, ie in _tree_to_objects(
+    for path, obj, _ie in _tree_to_objects(
         ret_tree,
         parent_trees,
         target_git_object_retriever._cache.idmap,
@@ -450,8 +450,7 @@ def verify_commit_reconstruction(
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
                     raise AssertionError(
-                        "Modes for %s differ: %o != %o"
-                        % (path, old_obj[name][0], new_obj[name][0])
+                        "Modes for {} differ: {:o} != {:o}".format(path, old_obj[name][0], new_obj[name][0])
                     )
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper
@@ -614,7 +613,7 @@ def import_git_objects(
             if o.object[1] not in checked:
                 heads.append(o.object[1])
         else:
-            trace.warning("Unable to import head object %r" % o)
+            trace.warning("Unable to import head object {!r}".format(o))
         checked.add(o.id)
     del checked
     # Order the revisions

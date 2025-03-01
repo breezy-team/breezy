@@ -49,7 +49,7 @@ class FakeCodec:
             self._enabled_encodings.add(encoding_name)
 
     def __call__(self, encoding_name):
-        """Called indirectly by codecs module during lookup"""
+        """Called indirectly by codecs module during lookup."""
         if encoding_name in self._enabled_encodings:
             return codecs.lookup("latin-1")
 
@@ -201,7 +201,7 @@ class TestUserEncoding(TestCase):
         )
 
     def test_user_empty(self):
-        """Running bzr from a vim script gives '' for a preferred locale"""
+        """Running bzr from a vim script gives '' for a preferred locale."""
         self._encoding = ""
         self.assertEqual("ascii", osutils.get_user_encoding())
         self.assertEqual("", sys.stderr.getvalue())

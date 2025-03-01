@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test directory service implementation"""
+"""Test directory service implementation."""
 
 from .. import transport, urlutils
 from ..directory_service import (
@@ -28,7 +28,7 @@ from . import TestCase, TestCaseWithTransport
 
 
 class FooService:
-    """A directory service that maps the name to a FILE url"""
+    """A directory service that maps the name to a FILE url."""
 
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url("/foo")
@@ -68,7 +68,7 @@ class TestDirectoryLookup(TestCase):
 
 
 class OldService:
-    """A directory service that maps the name to a FILE url"""
+    """A directory service that maps the name to a FILE url."""
 
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url("/foo")
@@ -155,7 +155,7 @@ class TestColocatedDirectory(TestCaseWithTransport):
 
     def test_lookup_default(self):
         default = self.make_branch(".")
-        non_default = default.controldir.create_branch(name="nondefault")
+        default.controldir.create_branch(name="nondefault")
         self.assertEqual(
             urlutils.join_segment_parameters(
                 default.controldir.user_url, {"branch": ""}

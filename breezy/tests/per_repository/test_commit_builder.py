@@ -218,7 +218,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 )
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
-                rev_id2 = builder.commit("delete foo")
+                builder.commit("delete foo")
             except:
                 builder.abort()
                 raise
@@ -576,7 +576,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                         delta_entry.symlink_target, new_entry.symlink_target
                     )
             else:
-                expected_delta = None
                 if tree.branch.repository._format.records_per_file_revision:
                     self.assertFalse(version_recorded)
             tree.set_parent_ids([rev2])
@@ -708,7 +707,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         if tree2.supports_file_ids:
 
             def _check_graph(in_tree, changed_in_tree):
-                rev3 = self.mini_commit_record_iter_changes(
+                self.mini_commit_record_iter_changes(
                     in_tree,
                     name,
                     "new_" + name,
@@ -727,7 +726,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # change to name, branch tree1 and give it an unrelated change, then
         # merge that to t2.
         other_tree = tree1.controldir.sprout("t3").open_workingtree()
-        other_rev = other_tree.commit("other_rev")
+        other_tree.commit("other_rev")
         tree2.merge_from_branch(other_tree.branch)
         if tree2.supports_file_ids:
             _check_graph(tree2, False)
@@ -736,7 +735,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Make a merge which incorporates the addition of a new object to
         # another branch. The per-file graph shows no additional change
         # in the merge because its a straight line.
-        rev1 = tree1.commit("rev1")
+        tree1.commit("rev1")
         tree2 = tree1.controldir.sprout("t2").open_workingtree()
         # make and commit on the other side to merge back
         make("t2/name")
@@ -744,7 +743,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertTrue(tree2.is_versioned("name"))
         rev2 = tree2.commit("rev2")
         tree1.merge_from_branch(tree2.branch)
-        rev3 = self.mini_commit_record_iter_changes(tree1, None, "name", False)
+        self.mini_commit_record_iter_changes(tree1, None, "name", False)
         (tree3,) = self._get_revtrees(tree1, [rev2])
         # in rev2, name should be only changed in rev2
         self.assertEqual(rev2, tree3.get_file_revision("name"))
@@ -931,7 +930,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, builder.commit, "Invalid\r\ncommit message\r\n")
 
     def test_non_ascii_str_committer_rejected(self):
-        """Ensure an error is raised on a non-ascii byte string committer"""
+        """Ensure an error is raised on a non-ascii byte string committer."""
         branch = self.make_branch(".")
         branch.repository.lock_write()
         self.addCleanup(branch.repository.unlock)

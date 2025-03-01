@@ -63,7 +63,7 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         return self._last_revision_info
 
     def _gen_revision_history(self):
-        """Generate the revision history from last revision"""
+        """Generate the revision history from last revision."""
         with self.lock_read():
             self._extend_partial_history()
             return list(reversed(self._partial_revision_history_cache))

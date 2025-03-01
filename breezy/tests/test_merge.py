@@ -42,7 +42,7 @@ from . import (
 
 
 class TestMerge(TestCaseWithTransport):
-    """Test appending more than one revision"""
+    """Test appending more than one revision."""
 
     def test_pending(self):
         wt = self.make_branch_and_tree(".")
@@ -94,7 +94,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertEqual([tip], wt2.get_parent_ids())
 
     def test_pending_with_null(self):
-        """When base is forced to revno 0, parent_ids are set"""
+        """When base is forced to revno 0, parent_ids are set."""
         wt2 = self.test_unrelated()
         wt1 = WorkingTree.open(".")
         br1 = wt1.branch
@@ -108,7 +108,7 @@ class TestMerge(TestCaseWithTransport):
         return (wt1, wt2.branch)
 
     def test_two_roots(self):
-        """Merge base is sane when two unrelated branches are merged"""
+        """Merge base is sane when two unrelated branches are merged."""
         wt1, br2 = self.test_pending_with_null()
         wt1.commit("blah")
         wt1.lock_read()
@@ -147,7 +147,7 @@ class TestMerge(TestCaseWithTransport):
             self.assertEqual(wt.path2id(""), new_root_id)
 
     def test_create_rename(self):
-        """Rename an inventory entry while creating the file"""
+        """Rename an inventory entry while creating the file."""
         tree = self.make_branch_and_tree(".")
         with open("name1", "wb") as f:
             f.write(b"Hello")
@@ -158,7 +158,7 @@ class TestMerge(TestCaseWithTransport):
         transform_tree(tree, tree.branch.basis_tree())
 
     def test_layered_rename(self):
-        """Rename both child and parent at same time"""
+        """Rename both child and parent at same time."""
         tree = self.make_branch_and_tree(".")
         os.mkdir("dirname1")
         tree.add("dirname1")
@@ -506,7 +506,7 @@ class TestMerge(TestCaseWithTransport):
         )
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
-        tt = tree_merger.do_merge()
+        tree_merger.do_merge()
         with this_tree.get_file("file") as tree_file:
             self.assertEqual(b"2b\n1\n2a\n", tree_file.read())
 
@@ -517,7 +517,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(["a"])
         tree.add("a")
         first_rev = tree.commit("added a")
-        old_root_id = tree.path2id("")
+        tree.path2id("")
         merger = _mod_merge.Merger.from_revision_ids(
             tree, _mod_revision.NULL_REVISION, first_rev
         )
@@ -1358,7 +1358,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         return builder
 
     def make_Merger(self, builder, other_revision_id, interesting_files=None):
-        """Make a Merger object from a branch builder"""
+        """Make a Merger object from a branch builder."""
         mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
@@ -1466,7 +1466,7 @@ class TestMergerInMemory(TestMergerBase):
     def test_criss_cross_passed_to_merge_type(self):
         merger = self.make_Merger(self.setup_criss_cross_graph(), b"E-id")
         merger.merge_type = _mod_merge.Merge3Merger
-        merge_obj = merger.make_merger()
+        merger.make_merger()
         self.assertEqual(
             [b"B-id", b"C-id"], [t.get_revision_id() for t in merger._lca_trees]
         )
@@ -3356,7 +3356,7 @@ class TestLCAMultiWay(tests.TestCase):
         self.assertLCAMultiWay("this", "bval", [], "oval", "oval")
 
     def test_lca_supersedes_other_lca(self):
-        """If one lca == base, the other lca takes precedence"""
+        """If one lca == base, the other lca takes precedence."""
         self.assertLCAMultiWay("this", "bval", ["bval", "lcaval"], "lcaval", "tval")
         self.assertLCAMultiWay("this", "bval", ["bval", "lcaval"], "lcaval", "bval")
         # This is actually considered a 'revert' because the 'lcaval' in LCAS
@@ -3539,11 +3539,11 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def test_uses_this_branch(self):
         builder = self.make_text_conflict()
-        with builder.make_preview_transform() as tt:
+        with builder.make_preview_transform():
             pass
 
     def test_affected_files_cached(self):
-        """Ensures that the config variable is cached"""
+        """Ensures that the config variable is cached."""
         builder = self.make_text_conflict()
         conflicts = builder.merge()
         # The hook should set the variable

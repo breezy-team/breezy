@@ -45,7 +45,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         return wt
 
     def test_verify_signatures(self):
-        wt = self.setup_tree()
+        self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr("sign-my-commits")
         out = self.run_bzr("verify-signatures", retcode=1)
@@ -62,7 +62,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         )
 
     def test_verify_signatures_acceptable_key(self):
-        wt = self.setup_tree()
+        self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr("sign-my-commits")
         out = self.run_bzr(
@@ -81,7 +81,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         )
 
     def test_verify_signatures_verbose(self):
-        wt = self.setup_tree()
+        self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr("sign-my-commits")
         out = self.run_bzr("verify-signatures --verbose", retcode=1)
@@ -100,7 +100,7 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
         )
 
     def test_verify_signatures_verbose_all_valid(self):
-        wt = self.setup_tree()
+        self.setup_tree()
         self.monkey_patch_gpg()
         self.run_bzr("sign-my-commits")
         self.run_bzr(["sign-my-commits", ".", "Alternate <alt@foo.com>"])

@@ -72,7 +72,7 @@ class Replacer:
     def __call__(self, text):
         if not self._pat:
             self._pat = lazy_regex.lazy_compile(
-                "|".join(["(%s)" % p for p in self._pats]), re.UNICODE
+                "|".join(["({})".format(p) for p in self._pats]), re.UNICODE
             )
         return self._pat.sub(self._do_sub, text)
 
@@ -102,8 +102,8 @@ def _sub_group(m):
 def _invalid_regex(repl):
     def _(m):
         warning(
-            "'%s' not allowed within a regular expression. "
-            "Replacing with '%s'" % (m, repl)
+            "'{}' not allowed within a regular expression. "
+            "Replacing with '{}'".format(m, repl)
         )
         return repl
 
@@ -213,7 +213,7 @@ class Globster:
 
     def _add_patterns(self, patterns, translator, prefix=""):
         while patterns:
-            grouped_rules = ["(%s)" % translator(pat) for pat in patterns[:99]]
+            grouped_rules = ["({})".format(translator(pat)) for pat in patterns[:99]]
             joined_rule = "{}(?:{})$".format(prefix, "|".join(grouped_rules))
             # Explicitly use lazy_compile here, because we count on its
             # nicer error reporting.
@@ -242,7 +242,7 @@ class Globster:
             for _, patterns in self._regex_patterns:
                 for p in patterns:
                     if not Globster.is_pattern_valid(p):
-                        bad_patterns += "\n  %s" % p
+                        bad_patterns += "\n  {}".format(p)
             e.msg += bad_patterns
             raise e
         return None
@@ -272,7 +272,7 @@ class Globster:
         """
         result = True
         translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
-        tpattern = "(%s)" % translator(pattern)
+        tpattern = "({})".format(translator(pattern))
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("")  # force compile
@@ -310,7 +310,7 @@ class ExceptionGlobster:
         """
         double_neg = self._ignores[2].match(filename)
         if double_neg:
-            return "!!%s" % double_neg
+            return "!!{}".format(double_neg)
         elif self._ignores[1].match(filename):
             return None
         else:

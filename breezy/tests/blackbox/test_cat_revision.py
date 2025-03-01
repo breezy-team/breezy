@@ -55,12 +55,12 @@ class TestCatRevision(TestCaseWithTransport):
             )
 
     def test_cat_no_such_revid(self):
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         err = self.run_bzr("cat-revision abcd", retcode=3)[1]
         self.assertContainsRe(err, "The repository .* contains no revision abcd.")
 
     def test_cat_revision_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         tree = self.make_branch_and_tree("a")
         tree.commit("This revision", rev_id=b"abcd")
         output, errors = self.run_bzr(["cat-revision", "-d", "a", "abcd"])

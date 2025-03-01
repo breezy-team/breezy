@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for branch implementations - test check() functionality"""
+"""Tests for branch implementations - test check() functionality."""
 
 from io import BytesIO
 
@@ -28,8 +28,8 @@ class TestBranchCheck(TestCaseWithBranch):
         # histories, so the setup portion is customized
         tree = self.make_branch_and_tree("test")
         r1 = tree.commit("one")
-        r2 = tree.commit("two")
-        r3 = tree.commit("three")
+        tree.commit("two")
+        tree.commit("three")
         r4 = tree.commit("four")
         # create an alternate branch
         tree.set_parent_ids([r1])
@@ -58,7 +58,7 @@ class TestBranchCheck(TestCaseWithBranch):
         )
 
     def test_check_branch_report_results(self):
-        """Checking a branch produces results which can be printed"""
+        """Checking a branch produces results which can be printed."""
         branch = self.make_branch(".")
         branch.lock_read()
         self.addCleanup(branch.unlock)
@@ -87,7 +87,7 @@ class TestBranchCheck(TestCaseWithBranch):
             elif kind == "revision-existence":
                 existences.add(value)
             else:
-                raise AssertionError("unknown ref kind for ref %s" % ref)
+                raise AssertionError("unknown ref kind for ref {}".format(ref))
         node_distances = branch.repository.get_graph().find_lefthand_distances(
             distances
         )

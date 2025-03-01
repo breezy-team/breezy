@@ -35,7 +35,7 @@ class TestInfo(tests.TestCaseWithTransport):
         location = self.get_url()
         out, err = self.run_bzr("info " + location, retcode=3)
         self.assertEqual(out, "")
-        self.assertEqual(err, 'brz: ERROR: Not a branch: "%s".\n' % location)
+        self.assertEqual(err, 'brz: ERROR: Not a branch: "{}".\n'.format(location))
 
     def test_info_empty_controldir(self):
         self.make_controldir("ctrl")
@@ -92,7 +92,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.assertEqual(err, "")
 
     def test_info_standalone(self):
-        transport = self.get_transport()
+        self.get_transport()
 
         # Create initial standalone branch
         tree1 = self.make_branch_and_tree("standalone", "knit")
@@ -360,8 +360,7 @@ Repository:
         self.assertEqual("", err)
 
         # Lightweight checkout (same as above, different branch and repository)
-        tree5 = branch1.create_checkout("lightcheckout", lightweight=True)
-        branch5 = tree5.branch
+        branch1.create_checkout("lightcheckout", lightweight=True)
         out, err = self.run_bzr("info -v lightcheckout")
         if "metaweave" in controldir.format_registry:
             format_description = "knit or metaweave"
@@ -975,7 +974,7 @@ Repository:
 
     def test_info_shared_repository_with_trees(self):
         format = controldir.format_registry.make_controldir("knit")
-        transport = self.get_transport()
+        self.get_transport()
 
         # Create shared repository with working trees
         repo = self.make_repository("repo", shared=True, format=format)
@@ -1226,7 +1225,7 @@ Repository:
 
     def test_info_shared_repository_with_tree_in_root(self):
         format = controldir.format_registry.make_controldir("knit")
-        transport = self.get_transport()
+        self.get_transport()
 
         # Create shared repository with working trees
         repo = self.make_repository("repo", shared=True, format=format)
@@ -1257,7 +1256,7 @@ Repository:
 
         # Create branch in root of repository
         control = repo.controldir
-        branch = control.create_branch()
+        control.create_branch()
         control.create_workingtree()
         out, err = self.run_bzr("info -v repo")
         self.assertEqualDiff(
@@ -1307,7 +1306,7 @@ Repository:
 
         info.hooks.install_named_hook("repository", repo_info, None)
         # Create shared repository with working trees
-        repo = self.make_repository("repo", shared=True, format=format)
+        self.make_repository("repo", shared=True, format=format)
         out, err = self.run_bzr("info -v repo")
         self.assertEqualDiff(
             """Shared repository with trees (format: dirstate or dirstate-tags or knit)
@@ -1335,7 +1334,7 @@ more info
 
     def test_info_unshared_repository_with_colocated_branches(self):
         format = controldir.format_registry.make_controldir("development-colo")
-        transport = self.get_transport()
+        self.get_transport()
 
         # Create unshared repository
         repo = self.make_repository("repo", shared=False, format=format)
@@ -1405,7 +1404,7 @@ Location:
                 self.run_brz_subprocess,
                 "info " + command_string,
             )
-        out, err = self.run_bzr("info %s" % command_string)
+        out, err = self.run_bzr("info {}".format(command_string))
         description = {
             (True, True): "Lightweight checkout",
             (True, False): "Repository checkout",
@@ -1426,10 +1425,9 @@ Location:
             expected_lock_output = (
                 "\n"
                 "Lock status:\n"
-                "  working tree: %s\n"
-                "        branch: %s\n"
-                "    repository: %s\n"
-                % (
+                "  working tree: {}\n"
+                "        branch: {}\n"
+                "    repository: {}\n".format(
                     locked_message(tree_locked),
                     locked_message(branch_locked),
                     locked_message(repo_locked),
@@ -1440,9 +1438,9 @@ Location:
         tree_data = ""
         extra_space = ""
         if light_checkout:
-            tree_data = "  light checkout root: %s\n" % friendly_location(
+            tree_data = "  light checkout root: {}\n".format(friendly_location(
                 lco_tree.controldir.root_transport.base
-            )
+            ))
             extra_space = " "
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += "{}       checkout root: {}\n".format(
@@ -1450,7 +1448,7 @@ Location:
                 friendly_location(lco_tree.branch.controldir.root_transport.base),
             )
         if shared_repo is not None:
-            branch_data = "   checkout of branch: %s\n    shared repository: %s\n" % (
+            branch_data = "   checkout of branch: {}\n    shared repository: {}\n".format(
                 friendly_location(repo_branch.controldir.root_transport.base),
                 friendly_location(shared_repo.controldir.root_transport.base),
             )
@@ -1461,8 +1459,7 @@ Location:
             )
         else:
             branch_data = (
-                "   checkout of branch: %s\n"
-                % lco_tree.branch.controldir.root_transport.base
+                "   checkout of branch: {}\n".format(lco_tree.branch.controldir.root_transport.base)
             )
 
         if verbose >= 2:
@@ -1632,7 +1629,7 @@ Repository:
         trunk_tree = self.make_branch_and_tree("mainline", format="1.6")
         trunk_tree.commit("mainline")
         # and a branch from it which is stacked
-        new_dir = trunk_tree.controldir.sprout("newbranch", stacked=True)
+        trunk_tree.controldir.sprout("newbranch", stacked=True)
         out, err = self.run_bzr("info newbranch")
         self.assertEqual(
             """Standalone tree (format: 1.6)
@@ -1648,7 +1645,7 @@ Related branches:
         self.assertEqual("", err)
 
     def test_info_revinfo_optional(self):
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
 
         def last_revision_info(self):
             raise errors.UnsupportedOperation(last_revision_info, self)

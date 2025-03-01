@@ -522,7 +522,7 @@ class Merger:
         self._maybe_fetch(self.other_branch, self.this_branch, self.other_basis)
 
     def set_other_revision(self, revision_id, other_branch):
-        """Set 'other' based on a branch and revision id
+        """Set 'other' based on a branch and revision id.
 
         :param revision_id: The revision to use for a tree
         :param other_branch: The branch containing this tree
@@ -534,7 +534,7 @@ class Merger:
         self.other_basis = revision_id
 
     def set_base_revision(self, revision_id, branch):
-        """Set 'base' based on a branch and revision id
+        """Set 'base' based on a branch and revision id.
 
         :param revision_id: The revision to use for a tree
         :param branch: The branch containing this tree
@@ -585,11 +585,11 @@ class Merger:
                 trace.warning(
                     "Warning: criss-cross merge encountered.  See bzr help criss-cross."
                 )
-                trace.mutter("Criss-cross lcas: %r" % lcas)
+                trace.mutter("Criss-cross lcas: {!r}".format(lcas))
                 if self.base_rev_id in lcas:
                     trace.mutter(
                         "Unable to find unique lca. "
-                        "Fallback %r as best option." % self.base_rev_id
+                        "Fallback {!r} as best option.".format(self.base_rev_id)
                     )
                 interesting_revision_ids = set(lcas)
                 interesting_revision_ids.add(self.base_rev_id)
@@ -609,7 +609,7 @@ class Merger:
                 self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
-        trace.mutter("Base revid: %r" % self.base_rev_id)
+        trace.mutter("Base revid: {!r}".format(self.base_rev_id))
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
@@ -646,14 +646,14 @@ class Merger:
         elif self.reprocess:
             raise errors.BzrError(
                 "Conflict reduction is not supported for merge"
-                " type %s." % self.merge_type
+                " type {}.".format(self.merge_type)
             )
         if self.merge_type.supports_show_base:
             kwargs["show_base"] = self.show_base
         elif self.show_base:
             raise errors.BzrError(
                 "Showing base is not supported for this"
-                " merge type. %s" % self.merge_type
+                " merge type. {}".format(self.merge_type)
             )
         if (
             not getattr(self.merge_type, "supports_reverse_cherrypick", True)
@@ -752,7 +752,7 @@ _none_entry = _InventoryNoneEntry()
 
 
 class Merge3Merger:
-    """Three-way merger that uses the merge3 text merger"""
+    """Three-way merger that uses the merge3 text merger."""
 
     requires_base = True
     supports_reprocess = True
@@ -1162,7 +1162,7 @@ class Merge3Merger:
                         # Nothing interesting
                         continue
                 else:
-                    raise AssertionError("unhandled kind: %s" % other_ie.kind)
+                    raise AssertionError("unhandled kind: {}".format(other_ie.kind))
 
             # If we have gotten this far, that means something has changed
             yield (
@@ -1201,14 +1201,14 @@ class Merge3Merger:
 
     @staticmethod
     def parent(entry):
-        """Determine the parent for a file_id (used as a key method)"""
+        """Determine the parent for a file_id (used as a key method)."""
         if entry is None:
             return None
         return entry.parent_id
 
     @staticmethod
     def name(entry):
-        """Determine the name for a file_id (used as a key method)"""
+        """Determine the name for a file_id (used as a key method)."""
         if entry is None:
             return None
         return entry.name
@@ -1305,7 +1305,7 @@ class Merge3Merger:
         return "conflict"
 
     def _merge_names(self, trans_id, file_id, paths, parents, names, resolver):
-        """Perform a merge on file names and parents"""
+        """Perform a merge on file names and parents."""
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
         unused_base_path, other_path, this_path = paths
@@ -1349,8 +1349,7 @@ class Merge3Merger:
                 # the tree root.
                 if names[self.winner_idx[parent_id_winner]] != "":
                     raise AssertionError(
-                        "File looks like a root, but named %s"
-                        % names[self.winner_idx[parent_id_winner]]
+                        "File looks like a root, but named {}".format(names[self.winner_idx[parent_id_winner]])
                     )
                 parent_trans_id = transform.ROOT_PARENT
             else:
@@ -1521,8 +1520,7 @@ class Merge3Merger:
             return "delete", None
         else:
             raise AssertionError(
-                "winner is OTHER, but file %r not in THIS or OTHER tree"
-                % (merge_hook_params.base_path,)
+                "winner is OTHER, but file {!r} not in THIS or OTHER tree".format(merge_hook_params.base_path)
             )
 
     def merge_contents(self, merge_hook_params):
@@ -1559,7 +1557,7 @@ class Merge3Merger:
             return tree.get_file_lines(path)
 
     def text_merge(self, trans_id, paths):
-        """Perform a three-way text merge on a file"""
+        """Perform a three-way text merge on a file."""
         from merge3 import Merge3
 
         # it's possible that we got here with base as a different type.
@@ -1712,7 +1710,7 @@ class Merge3Merger:
             self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
-        """Convert all conflicts into a form that doesn't depend on trans_id"""
+        """Convert all conflicts into a form that doesn't depend on trans_id."""
         self.cooked_conflicts = list(
             self.tt.cook_conflicts(list(fs_conflicts) + self._raw_conflicts)
         )
@@ -1787,7 +1785,7 @@ class LCAMerger(WeaveMerger):
 
 
 class Diff3Merger(Merge3Merger):
-    """Three-way merger using external diff3 for text merging"""
+    """Three-way merger using external diff3 for text merging."""
 
     requires_file_merge_plan = False
 
@@ -1949,7 +1947,7 @@ class MergeIntoMergeType(Merge3Merger):
                 child_pb.update(gettext("Preparing file merge"), num, len(entries))
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
                 path = osutils.pathjoin(self._source_subpath, relpath)
-                trans_id = transform.new_by_entry(
+                transform.new_by_entry(
                     path, self.tt, entry, parent_trans_id, self.other_tree
                 )
         self._finish_computing_transform()
@@ -2054,7 +2052,7 @@ merge_type_registry.register("weave", WeaveMerger, "Weave-based merge.")
 
 
 def get_merge_type_registry():
-    """Merge type registry was previously in breezy.option
+    """Merge type registry was previously in breezy.option.
 
     This method provides a backwards compatible way to retrieve it.
     """
@@ -2194,7 +2192,7 @@ class _PlanMergeBase:
         return matcher.get_matching_blocks()
 
     def _unique_lines(self, matching_blocks):
-        """Analyse matching_blocks to determine which lines are unique
+        """Analyse matching_blocks to determine which lines are unique.
 
         :return: a tuple of (unique_left, unique_right), where the values are
             sets of line numbers of unique lines.
@@ -2227,7 +2225,7 @@ class _PlanMergeBase:
         """
         matcher = patiencediff.PatienceSequenceMatcher(None, old_plan, new_plan)
         last_j = 0
-        for i, j, n in matcher.get_matching_blocks():
+        for _i, j, n in matcher.get_matching_blocks():
             for jj in range(last_j, j):
                 yield new_plan[jj]
             for jj in range(j, j + n):
@@ -2242,7 +2240,7 @@ class _PlanMergeBase:
 
 
 class _PlanMerge(_PlanMergeBase):
-    """Plan an annotate merge using on-the-fly annotation"""
+    """Plan an annotate merge using on-the-fly annotation."""
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
         super().__init__(a_rev, b_rev, vf, key_prefix)
@@ -2275,7 +2273,7 @@ class _PlanMerge(_PlanMergeBase):
         pass
 
     def _find_recursive_lcas(self):
-        """Find all the ancestors back to a unique lca"""
+        """Find all the ancestors back to a unique lca."""
         cur_ancestors = (self.a_key, self.b_key)
         # graph.find_lca(uncommon, keys) now returns plain NULL_REVISION,
         # rather than a key tuple. We will just map that directly to no common
@@ -2453,7 +2451,7 @@ class _PlanMerge(_PlanMergeBase):
         tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
         parent_map[tip_key] = (self.a_key, self.b_key)
 
-        for seq_num, key, depth, eom in reversed(merge_sort(parent_map, tip_key)):
+        for _seq_num, key, _depth, _eom in reversed(merge_sort(parent_map, tip_key)):
             if key == tip_key:
                 continue
             # for key in tsort.topo_sort(parent_map):
@@ -2477,8 +2475,7 @@ class _PlanMerge(_PlanMergeBase):
             else:
                 if self._head_key != self.b_key:
                     raise AssertionError(
-                        "There was an invalid head: %s != %s"
-                        % (self.b_key, self._head_key)
+                        "There was an invalid head: {} != {}".format(self.b_key, self._head_key)
                     )
                 plan = "new-b"
             head_rev = self._head_key[-1]

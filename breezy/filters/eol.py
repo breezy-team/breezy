@@ -65,5 +65,5 @@ _eol_filter_stack_map = {
 def eol_lookup(key):
     filter = _eol_filter_stack_map.get(key)
     if filter is None:
-        raise BzrError("Unknown eol value '%s'" % key)
+        raise BzrError("Unknown eol value '{}'".format(key))
     return filter

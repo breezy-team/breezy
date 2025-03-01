@@ -494,7 +494,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
-            parents = self.cache_mgr.reftracker.track_heads(cmd)
+            self.cache_mgr.reftracker.track_heads(cmd)
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(
@@ -507,11 +507,11 @@ class GenericProcessor(processor.ImportProcessor):
         try:
             handler.process()
         except:
-            print("ABORT: exception occurred processing commit %s" % (cmd.id))
+            print("ABORT: exception occurred processing commit {}".format(cmd.id))
             raise
         self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id.lstrip(b":"))
+        self.report_progress("({})".format(cmd.id.lstrip(b":")))
 
         if cmd.ref.startswith(b"refs/tags/"):
             tag_name = cmd.ref[len(b"refs/tags/") :]
@@ -537,10 +537,10 @@ class GenericProcessor(processor.ImportProcessor):
             revisions_added = self._revision_count - self.skip_total
             rate = revisions_added * 1.0 / minutes
             if rate > 10:
-                rate_str = "at %.0f/minute " % rate
+                rate_str = "at {:.0f}/minute ".format(rate)
             else:
-                rate_str = "at %.1f/minute " % rate
-            self.note("%s commits processed %s%s" % (counts, rate_str, details))
+                rate_str = "at {:.1f}/minute ".format(rate)
+            self.note("{} commits processed {}{}".format(counts, rate_str, details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -556,7 +556,7 @@ class GenericProcessor(processor.ImportProcessor):
             if cmd.from_ is not None:
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:
-                self.warning("ignoring reset refs/tags/%s - no from clause" % tag_name)
+                self.warning("ignoring reset refs/tags/{} - no from clause".format(tag_name))
             return
 
         if cmd.from_ is not None:
@@ -567,7 +567,7 @@ class GenericProcessor(processor.ImportProcessor):
         if cmd.from_ is not None:
             self._set_tag(cmd.id, cmd.from_)
         else:
-            self.warning("ignoring tag %s - no from clause" % cmd.id)
+            self.warning("ignoring tag {} - no from clause".format(cmd.id))
 
     def _set_tag(self, name, from_):
         """Define a tag given a name and import 'from' reference."""

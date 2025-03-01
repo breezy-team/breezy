@@ -50,7 +50,7 @@ class AddAction:
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write("adding %s\n" % _quote(path))
+            self._to_file.write("adding {}\n".format(_quote(path)))
         return None
 
     def skip_file(self, tree, path, kind, stat_value=None):
@@ -69,7 +69,7 @@ class AddAction:
 
 
 class AddWithSkipLargeAction(AddAction):
-    """A class that can decide to skip a file if it's considered too large"""
+    """A class that can decide to skip a file if it's considered too large."""
 
     _maxSize = None
 
@@ -109,7 +109,7 @@ class AddFromBaseAction(AddAction):
         if file_id is not None:
             if self.should_print:
                 self._to_file.write(
-                    "adding %s w/ file id from %s\n" % (path, base_path)
+                    "adding {} w/ file id from {}\n".format(path, base_path)
                 )
         else:
             # we aren't doing anything special, so let the default

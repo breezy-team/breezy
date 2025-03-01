@@ -270,15 +270,15 @@ class ConflictList:
         return not (self == other_list)
 
     def __repr__(self):
-        return "ConflictList(%r)" % self.__list
+        return "ConflictList({!r})".format(self.__list)
 
     def to_strings(self):
-        """Generate strings for the provided conflicts"""
+        """Generate strings for the provided conflicts."""
         for conflict in self:
             yield str(conflict)
 
     def remove_files(self, tree):
-        """Remove the THIS, BASE and OTHER files for listed conflicts"""
+        """Remove the THIS, BASE and OTHER files for listed conflicts."""
         for conflict in self:
             if not conflict.has_files:
                 continue
@@ -311,9 +311,9 @@ class ConflictList:
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("%s does not exist" % path)
+                    print("{} does not exist".format(path))
                 else:
-                    print("%s is not conflicted" % path)
+                    print("{} is not conflicted".format(path))
         return new_conflicts, selected_conflicts
 
 

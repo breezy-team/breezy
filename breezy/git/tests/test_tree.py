@@ -556,7 +556,7 @@ class DeltaFromGitChangesTests(TestCase):
 
     def test_unchanged(self):
         b = Blob.from_string(b"b")
-        delta = self.transform(
+        self.transform(
             [
                 (
                     "unchanged",

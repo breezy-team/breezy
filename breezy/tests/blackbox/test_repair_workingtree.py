@@ -49,7 +49,7 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         return tree
 
     def test_repair_refuses_uncorrupted(self):
-        tree = self.make_initial_tree()
+        self.make_initial_tree()
         # If the tree doesn't appear to be corrupt, we refuse, but prompt the
         # user to let them know that:
         # a) they may want to use 'brz revert' instead of repair-workingtree

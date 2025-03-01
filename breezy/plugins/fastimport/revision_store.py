@@ -274,8 +274,7 @@ class RevisionStore:
         if ie.revision != self._current_rev_id:
             raise AssertionError(
                 "start_new_revision() registered a different"
-                " revision (%s) to that in the inventory entry (%s)"
-                % (self._current_rev_id, ie.revision)
+                " revision ({}) to that in the inventory entry ({})".format(self._current_rev_id, ie.revision)
             )
 
         # Find the heads. This code is lifted from
@@ -373,7 +372,6 @@ class RevisionStore:
             else:
                 self._use_known_graph = False
         if self._graph is not None:
-            orig_heads = builder._heads
 
             def thunked_heads(file_id, revision_ids):
                 # self._graph thinks in terms of keys, not ids, so translate
@@ -395,7 +393,7 @@ class RevisionStore:
             basis_rev_id = _mod_revision.NULL_REVISION
         tree = _TreeShim(self.repo, basis_inv, inv_delta, text_provider)
         changes = tree._delta_to_iter_changes()
-        for path, fs_hash in builder.record_iter_changes(tree, basis_rev_id, changes):
+        for _path, _fs_hash in builder.record_iter_changes(tree, basis_rev_id, changes):
             # So far, we don't *do* anything with the result
             pass
         builder.finish_inventory()
@@ -409,7 +407,6 @@ class RevisionStore:
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inv_sha1 = builder.inv_sha1
-        config = builder._config_stack
         builder.repository.add_revision(
             builder._new_revision_id, rev, builder.revision_tree().root_inventory
         )

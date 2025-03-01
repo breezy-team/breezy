@@ -79,7 +79,7 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_lightweight_checkout(self):
         self.tree.branch.create_checkout("branch2", lightweight=True)
         self.assertPathExists("branch2/foo")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["You cannot remove the working tree from a lightweight checkout"],
             "remove-tree",
             retcode=3,
@@ -91,7 +91,7 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_lightweight_checkout_explicit(self):
         self.tree.branch.create_checkout("branch2", lightweight=True)
         self.assertPathExists("branch2/foo")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["You cannot remove the working tree from a lightweight checkout"],
             "remove-tree branch2",
             retcode=3,
@@ -101,14 +101,14 @@ class TestRemoveTree(TestCaseWithTransport):
 
     def test_remove_tree_empty_dir(self):
         os.mkdir("branch2")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["Not a branch"], "remove-tree", retcode=3, working_dir="branch2"
         )
 
     def test_remove_tree_repeatedly(self):
         self.run_bzr("remove-tree branch1")
         self.assertPathDoesNotExist("branch1/foo")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["No working tree to remove"], "remove-tree branch1", retcode=3
         )
 
@@ -119,7 +119,7 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_uncommitted_changes(self):
         self.build_tree(["branch1/bar"])
         self.tree.add("bar")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["Working tree .* has uncommitted changes"],
             "remove-tree branch1",
             retcode=3,
@@ -142,7 +142,7 @@ class TestRemoveTree(TestCaseWithTransport):
         self.assertPathExists("branch2/bar")
         self.run_bzr(["revert", "."], working_dir="branch2")
         self.assertPathDoesNotExist("branch2/bar")
-        output = self.run_bzr_error(
+        self.run_bzr_error(
             ["Working tree .* has uncommitted changes"],
             "remove-tree branch2",
             retcode=3,
@@ -167,8 +167,8 @@ class TestRemoveTree(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
         self.addCleanup(creator.finalize)
-        shelf_id = tree.get_shelf_manager().shelve_changes(creator, "Foo")
-        output = self.run_bzr_error(
+        tree.get_shelf_manager().shelve_changes(creator, "Foo")
+        self.run_bzr_error(
             ["Working tree .* has shelved changes"], "remove-tree", retcode=3
         )
 
@@ -176,7 +176,7 @@ class TestRemoveTree(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
         self.addCleanup(creator.finalize)
-        shelf_id = tree.get_shelf_manager().shelve_changes(creator, "Foo")
+        tree.get_shelf_manager().shelve_changes(creator, "Foo")
         self.run_bzr("remove-tree --force")
         self.run_bzr("checkout")
         # Ensure shelf is empty

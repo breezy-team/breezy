@@ -60,10 +60,10 @@ class _KnitParentsProvider:
         self._knit = knit
 
     def __repr__(self):
-        return "KnitParentsProvider(%r)" % self._knit
+        return "KnitParentsProvider({!r})".format(self._knit)
 
     def get_parent_map(self, keys):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         parent_map = {}
         for revision_id in keys:
             if revision_id is None:
@@ -89,10 +89,10 @@ class _KnitsParentsProvider:
         self._prefix = prefix
 
     def __repr__(self):
-        return "KnitsParentsProvider(%r)" % self._knit
+        return "KnitsParentsProvider({!r})".format(self._knit)
 
     def get_parent_map(self, keys):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         parent_map = self._knit.get_parent_map([self._prefix + (key,) for key in keys])
         result = {}
         for key, parents in parent_map.items():
@@ -183,7 +183,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         return result
 
     def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+        """Return the Revision object for a named revision."""
         with self.lock_read():
             return self.get_revision_reconcile(revision_id)
 
@@ -324,10 +324,10 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
 
         self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
         repo_transport = a_controldir.get_repository_transport(None)
-        control_files = lockable_files.LockableFiles(
+        lockable_files.LockableFiles(
             repo_transport, "lock", lockdir.LockDir
         )
-        transaction = transactions.WriteTransaction()
+        transactions.WriteTransaction()
         result = self.open(a_controldir=a_controldir, _found=True)
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
@@ -347,7 +347,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
                                     than normal. I.e. during 'upgrade'.
         """
         if not _found:
-            format = RepositoryFormatMetaDir.find_format(a_controldir)
+            RepositoryFormatMetaDir.find_format(a_controldir)
         if _override_transport is not None:
             repo_transport = _override_transport
         else:

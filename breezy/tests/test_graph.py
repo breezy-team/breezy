@@ -614,7 +614,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         return tree
 
     def build_ancestry(self, tree, ancestors):
-        """Create an ancestry as specified by a graph dict
+        """Create an ancestry as specified by a graph dict.
 
         :param tree: A tree to use
         :param ancestors: a dict of {node: [node_parent, ...]}
@@ -665,7 +665,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual({b"rev1"}, graph.find_lca(b"rev2a", b"rev2b"))
 
     def test_no_unique_lca(self):
-        """Test error when one revision is not in the graph"""
+        """Test error when one revision is not in the graph."""
         graph = self.make_graph(ancestry_1)
         self.assertRaises(
             errors.NoCommonAncestor, graph.find_unique_lca, b"rev1", b"1rev"
@@ -678,7 +678,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual({b"rev2b"}, graph.find_lca(b"rev3a", b"rev3b", b"rev2b"))
 
     def test_lca_shortcut(self):
-        """Test least-common ancestor on this history shortcut"""
+        """Test least-common ancestor on this history shortcut."""
         graph = self.make_graph(history_shortcut)
         self.assertEqual({b"rev2b"}, graph.find_lca(b"rev3a", b"rev3b"))
 
@@ -740,7 +740,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         )
 
     def test_unique_lca_criss_cross(self):
-        """Ensure we don't pick non-unique lcas in a criss-cross"""
+        """Ensure we don't pick non-unique lcas in a criss-cross."""
         graph = self.make_graph(criss_cross)
         self.assertEqual(b"rev1", graph.find_unique_lca(b"rev3a", b"rev3b"))
         lca, steps = graph.find_unique_lca(b"rev3a", b"rev3b", count_steps=True)
@@ -748,13 +748,13 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(2, steps)
 
     def test_unique_lca_null_revision(self):
-        """Ensure we pick NULL_REVISION when necessary"""
+        """Ensure we pick NULL_REVISION when necessary."""
         graph = self.make_graph(criss_cross2)
         self.assertEqual(b"rev1b", graph.find_unique_lca(b"rev2a", b"rev1b"))
         self.assertEqual(NULL_REVISION, graph.find_unique_lca(b"rev2a", b"rev2b"))
 
     def test_unique_lca_null_revision2(self):
-        """Ensure we pick NULL_REVISION when necessary"""
+        """Ensure we pick NULL_REVISION when necessary."""
         graph = self.make_graph(ancestry_2)
         self.assertEqual(NULL_REVISION, graph.find_unique_lca(b"rev4a", b"rev1b"))
 
@@ -763,7 +763,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(b"c", graph.find_unique_lca(b"f", b"g"))
 
     def test_common_ancestor_two_repos(self):
-        """Ensure we do unique_lca using data from two repos"""
+        """Ensure we do unique_lca using data from two repos."""
         mainline_tree = self.prepare_memory_tree("mainline")
         self.build_ancestry(mainline_tree, mainline)
         self.addCleanup(mainline_tree.unlock)
@@ -907,7 +907,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(expected, dict(graph.iter_ancestry([b"c"])))
 
     def test_filter_candidate_lca(self):
-        """Test filter_candidate_lca for a corner case
+        """Test filter_candidate_lca for a corner case.
 
         This tests the case where we encounter the end of iteration for b'e'
         in the same pass as we discover that b'd' is an ancestor of b'e', and
@@ -1517,10 +1517,10 @@ class TestFindUniqueAncestors(TestGraphBase):
 
 
 class TestGraphFindDistanceToNull(TestGraphBase):
-    """Test an api that should be able to compute a revno"""
+    """Test an api that should be able to compute a revno."""
 
     def assertFindDistance(self, revno, graph, target_id, known_ids):
-        """Assert the output of Graph.find_distance_to_null()"""
+        """Assert the output of Graph.find_distance_to_null()."""
         actual = graph.find_distance_to_null(target_id, known_ids)
         self.assertEqual(revno, actual)
 
@@ -1566,7 +1566,7 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(2, graph, b"rev2a", [(b"rev3", 3)])
 
     def test_target_is_ancestor_limits(self):
-        """We shouldn't search all history if we run into ourselves"""
+        """We shouldn't search all history if we run into ourselves."""
         graph = self.make_breaking_graph(ancestry_1, [b"rev1"])
         self.assertFindDistance(3, graph, b"rev3", [(b"rev4", 4)])
 
@@ -1676,7 +1676,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
 
     def test_get_parent_map(self):
-        """Requesting the same revision should be returned from cache"""
+        """Requesting the same revision should be returned from cache."""
         self.assertEqual({}, self.caching_pp._cache)
         self.assertEqual({b"a": (b"b",)}, self.caching_pp.get_parent_map([b"a"]))
         self.assertEqual([b"a"], self.inst_pp.calls)
@@ -1686,7 +1686,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({b"a": (b"b",)}, self.caching_pp._cache)
 
     def test_get_parent_map_not_present(self):
-        """The cache should also track when a revision doesn't exist"""
+        """The cache should also track when a revision doesn't exist."""
         self.assertEqual({}, self.caching_pp.get_parent_map([b"b"]))
         self.assertEqual([b"b"], self.inst_pp.calls)
         self.assertEqual({}, self.caching_pp.get_parent_map([b"b"]))
@@ -1694,7 +1694,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual([b"b"], self.inst_pp.calls)
 
     def test_get_parent_map_mixed(self):
-        """Anything that can be returned from cache, should be"""
+        """Anything that can be returned from cache, should be."""
         self.assertEqual({}, self.caching_pp.get_parent_map([b"b"]))
         self.assertEqual([b"b"], self.inst_pp.calls)
         self.assertEqual({b"a": (b"b",)}, self.caching_pp.get_parent_map([b"a", b"b"]))

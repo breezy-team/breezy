@@ -311,7 +311,7 @@ class TestUpgrade(TestCaseWithTransport):
         )
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to latest format"""
+        """Upgrade simple v0.0.4 format to latest format."""
         eq = self.assertEqual
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade(".")
@@ -331,7 +331,6 @@ class TestUpgrade(TestCaseWithTransport):
             ],
         )
         rt = b.repository.revision_tree(rh[0])
-        foo_id = b"foo-20051004035605-91e788d1875603ae"
         with rt.lock_read():
             eq(rt.get_file_text("foo"), b"initial contents\n")
         rt = b.repository.revision_tree(rh[1])
@@ -424,7 +423,7 @@ class TestUpgrade(TestCaseWithTransport):
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
-    """Test some stuff when accessing a bzr Branch over sftp"""
+    """Test some stuff when accessing a bzr Branch over sftp."""
 
     def test_lock_file(self):
         # old format branches use a special lock file on sftp.
@@ -536,7 +535,7 @@ Repository:
 
 
 class TestBranchFormat4(TestCaseWithTransport):
-    """Tests specific to branch format 4"""
+    """Tests specific to branch format 4."""
 
     def test_no_metadir_support(self):
         url = self.get_url()
@@ -571,7 +570,7 @@ class TestBoundBranch(TestCaseWithTransport):
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
-            "brz: ERROR: Branch at %s/ does not support binding.\n" % cwd, err
+            "brz: ERROR: Branch at {}/ does not support binding.\n".format(cwd), err
         )
 
     def test_unbind_format_6_bzrdir(self):
@@ -581,7 +580,7 @@ class TestBoundBranch(TestCaseWithTransport):
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
             "brz: ERROR: To use this feature you must "
-            "upgrade your branch at %s/.\n" % cwd,
+            "upgrade your branch at {}/.\n".format(cwd),
             err,
         )
 

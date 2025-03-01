@@ -60,7 +60,7 @@ class TestStacking(TestCaseWithBranch):
     def test_get_set_stacked_on_relative(self):
         # Branches can be stacked on other branches using relative paths.
         branch = self.make_branch("branch")
-        target = self.make_branch("target")
+        self.make_branch("target")
         try:
             branch.set_stacked_on_url("../target")
         except unstackable_format_errors:
@@ -87,7 +87,7 @@ class TestStacking(TestCaseWithBranch):
         # Stacking on the same branch silently raises and doesn't execute the
         # change.
         branch = self.make_branch("branch")
-        target = self.make_branch("target")
+        self.make_branch("target")
         try:
             branch.set_stacked_on_url("../target")
         except unstackable_format_errors:
@@ -167,7 +167,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionInRepository("newbranch", new_branch_revid)
 
     def test_unstack_fetches(self):
-        """Removing the stacked-on branch pulls across all data"""
+        """Removing the stacked-on branch pulls across all data."""
         try:
             builder = self.make_branch_builder("trunk")
         except errors.UninitializableFormat:
@@ -413,7 +413,7 @@ class TestStacking(TestCaseWithBranch):
         # see https://bugs.launchpad.net/bzr/+bug/252821
         stack_on = self.make_branch_and_tree("stack-on")
         if not stack_on.branch._format.supports_stacking():
-            raise TestNotApplicable("%r does not support stacking" % self.branch_format)
+            raise TestNotApplicable("{!r} does not support stacking".format(self.branch_format))
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])
         stack_on.add("a")
@@ -431,7 +431,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
-            raise TestNotApplicable("%r does not support stacking" % self.branch_format)
+            raise TestNotApplicable("{!r} does not support stacking".format(self.branch_format))
         stack_on = self.make_branch_and_tree("stack-on")
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])
@@ -487,7 +487,7 @@ class TestStacking(TestCaseWithBranch):
     def test_transform_fallback_location_hook(self):
         # The 'transform_fallback_location' branch hook allows us to inspect
         # and transform the URL of the fallback location for the branch.
-        stack_on = self.make_branch("stack-on")
+        self.make_branch("stack-on")
         stacked = self.make_branch("stacked")
         try:
             stacked.set_stacked_on_url("../stack-on")
@@ -578,10 +578,10 @@ class TestStackingConnections(transport_util.TestCaseWithConnectionHookedTranspo
 
     def test_open_stacked(self):
         b = _mod_branch.Branch.open(self.get_url("stacked"))
-        rev = b.repository.get_revision(self.rev_base)
+        b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))
 
     def test_open_stacked_relative(self):
         b = _mod_branch.Branch.open(self.get_url("stacked_relative"))
-        rev = b.repository.get_revision(self.rev_base)
+        b.repository.get_revision(self.rev_base)
         self.assertEqual(1, len(self.connections))

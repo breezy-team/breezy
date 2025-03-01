@@ -20,10 +20,10 @@ from breezy import merge, tests, transform, workingtree
 
 
 class TestRevert(tests.TestCaseWithTransport):
-    """Ensure that revert behaves as expected"""
+    """Ensure that revert behaves as expected."""
 
     def test_revert_merged_dir(self):
-        """Reverting a merge that adds a directory deletes the directory"""
+        """Reverting a merge that adds a directory deletes the directory."""
         source_tree = self.make_branch_and_tree("source")
         source_tree.commit("empty tree")
         target_tree = source_tree.controldir.sprout("target").open_workingtree()
@@ -45,7 +45,7 @@ class TestRevert(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist("target/dir")
 
     def test_revert_new(self):
-        """Only locally-changed new files should be preserved when reverting
+        """Only locally-changed new files should be preserved when reverting.
 
         When a file isn't present in revert's target tree:
         If a file hasn't been committed, revert should unversion it, but not

@@ -56,11 +56,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         self,
         branch,
         revno,
-        expected_added=[],
-        expected_removed=[],
-        expected_modified=[],
-        expected_renamed=[],
-        expected_kind_changed=[],
+        expected_added=None,
+        expected_removed=None,
+        expected_modified=None,
+        expected_renamed=None,
+        expected_kind_changed=None,
     ):
         """Check the changes introduced in a revision of a branch.
 
@@ -85,6 +85,16 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             that must have been changed in the delta.
         :return: revtree1, revtree2
         """
+        if expected_kind_changed is None:
+            expected_kind_changed = []
+        if expected_renamed is None:
+            expected_renamed = []
+        if expected_modified is None:
+            expected_modified = []
+        if expected_removed is None:
+            expected_removed = []
+        if expected_added is None:
+            expected_added = []
         repo = branch.repository
         revtree1 = repo.revision_tree(branch.get_rev_id(revno - 1))
         revtree2 = repo.revision_tree(branch.get_rev_id(revno))
@@ -102,13 +112,13 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def _check_changes(
         self,
         changes,
-        expected_added=[],
-        expected_removed=[],
-        expected_modified=[],
-        expected_renamed=[],
-        expected_kind_changed=[],
+        expected_added=None,
+        expected_removed=None,
+        expected_modified=None,
+        expected_renamed=None,
+        expected_kind_changed=None,
     ):
-        """Check the changes in a TreeDelta
+        """Check the changes in a TreeDelta.
 
         This method checks that the TreeDelta contains the expected
         modifications between the two trees that were used to generate
@@ -130,6 +140,16 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         expected_kind_changed: a list of (path, old_kind, new_kind) tuples
             that must have been changed in the delta.
         """
+        if expected_kind_changed is None:
+            expected_kind_changed = []
+        if expected_renamed is None:
+            expected_renamed = []
+        if expected_modified is None:
+            expected_modified = []
+        if expected_removed is None:
+            expected_removed = []
+        if expected_added is None:
+            expected_added = []
         renamed = changes.renamed
         added = changes.added + changes.copied
         removed = changes.removed
@@ -155,7 +175,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_added is not None:
             self.assertEqual(
-                len(added), len(expected_added), "%s is added" % str(added)
+                len(added), len(expected_added), "{} is added".format(str(added))
             )
             added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
@@ -166,7 +186,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_removed is not None:
             self.assertEqual(
-                len(removed), len(expected_removed), "%s is removed" % str(removed)
+                len(removed), len(expected_removed), "{} is removed".format(str(removed))
             )
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
@@ -179,7 +199,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_modified is not None:
             self.assertEqual(
-                len(modified), len(expected_modified), "%s is modified" % str(modified)
+                len(modified), len(expected_modified), "{} is modified".format(str(modified))
             )
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:

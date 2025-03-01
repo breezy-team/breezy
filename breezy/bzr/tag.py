@@ -40,7 +40,7 @@ class BasicTags(Tags):
             self._set_tag_dict(td)
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
+        """Return the referent string of a tag."""
         td = self.get_tag_dict()
         try:
             return td[tag_name]
@@ -54,9 +54,9 @@ class BasicTags(Tags):
             except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning(
-                    "No branch/tags file in %s.  "
+                    "No branch/tags file in {}.  "
                     "This branch was probably created by bzr 0.15pre.  "
-                    "Create an empty file to silence this message." % (self.branch,)
+                    "Create an empty file to silence this message.".format(self.branch)
                 )
                 return {}
             return self._deserialize_tag_dict(tag_content)
@@ -78,7 +78,7 @@ class BasicTags(Tags):
             self._set_tag_dict(d)
 
     def _set_tag_dict(self, new_dict):
-        """Replace all tag definitions
+        """Replace all tag definitions.
 
         WARNING: Calling this on an unlocked branch will lock it, and will
         replace the tags without warning on conflicts.
@@ -92,7 +92,7 @@ class BasicTags(Tags):
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):
-        """Convert the tag file into a dictionary of tags"""
+        """Convert the tag file into a dictionary of tags."""
         # was a special case to make initialization easy, an empty definition
         # is an empty dictionary
         if tag_content == b"":
@@ -104,5 +104,5 @@ class BasicTags(Tags):
             return r
         except ValueError as e:
             raise ValueError(
-                "failed to deserialize tag dictionary %r: %s" % (tag_content, e)
+                "failed to deserialize tag dictionary {!r}: {}".format(tag_content, e)
             )

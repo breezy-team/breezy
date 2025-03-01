@@ -49,7 +49,7 @@ class TestStrace(tests.TestCaseWithTransport):
             )
 
     def strace_detailed_or_skip(self, *args, **kwargs):
-        """Run strace, but cope if it's not allowed"""
+        """Run strace, but cope if it's not allowed."""
         try:
             return strace_detailed(*args, **kwargs)
         except strace.StraceError as e:

@@ -146,7 +146,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip, backward=Tru
     if not backward:
         merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
     revline = []
-    for seq, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+    for _seq, rev_id, merge_depth, revno, _end_of_merge in merge_sorted_revisions:
         revline.append((".".join(map(str, revno)), rev_id, merge_depth))
     return revline
 
@@ -200,7 +200,7 @@ def _find_unmerged(
     else:
         if restrict != "all":
             raise ValueError(
-                'param restrict not one of "all", "local", "remote": %r' % (restrict,)
+                'param restrict not one of "all", "local", "remote": {!r}'.format(restrict)
             )
         local_extra, remote_extra = graph.find_difference(
             local_revision_id, remote_revision_id

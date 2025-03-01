@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Persistent maps from tuple_of_strings->string using CHK stores.
+r"""Persistent maps from tuple_of_strings->string using CHK stores.
 
 Overview and current status:
 
@@ -130,7 +130,7 @@ class CHKMap:
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(
-                delta, "New items are already in the map %r." % existing_new
+                delta, "New items are already in the map {!r}.".format(existing_new)
             )
         # Now apply changes.
         for old, new, value in delta:
@@ -260,7 +260,7 @@ class CHKMap:
         )
         if not isinstance(root_key, StaticTuple):
             raise AssertionError(
-                "we got a %s instead of a StaticTuple" % (type(root_key),)
+                "we got a {} instead of a StaticTuple".format(type(root_key))
             )
         return root_key
 
@@ -400,8 +400,6 @@ class CHKMap:
                 process_node(basis_node, basis_path, basis, basis_pending)
 
         process_common_prefix_nodes(self_node, None, basis_node, None)
-        self_seen = set()
-        basis_seen = set()
         excluded_keys = set()
 
         def check_excluded(key_path):
@@ -423,7 +421,7 @@ class CHKMap:
             loop_counter += 1
             if not self_pending:
                 # self is exhausted: output remainder of basis
-                for prefix, key, node, path in basis_pending:
+                for _prefix, key, node, path in basis_pending:
                     if check_excluded(path):
                         continue
                     node = basis._get_node(node)
@@ -437,7 +435,7 @@ class CHKMap:
                 return
             elif not basis_pending:
                 # basis is exhausted: output remainder of self.
-                for prefix, key, node, path in self_pending:
+                for _prefix, key, node, path in self_pending:
                     if check_excluded(path):
                         continue
                     node = self._get_node(node)
@@ -744,7 +742,7 @@ class LeafNode(Node):
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + "...]"
-        return "%s(key:%s len:%s size:%s max:%s prefix:%s keywidth:%s items:%s)" % (
+        return "{}(key:{} len:{} size:{} max:{} prefix:{} keywidth:{} items:{})".format(
             self.__class__.__name__,
             self._key,
             self._len,
@@ -940,7 +938,7 @@ class LeafNode(Node):
             return self._split(store)
         else:
             if self._search_prefix is _unknown:
-                raise AssertionError("%r must be known" % self._search_prefix)
+                raise AssertionError("{!r} must be known".format(self._search_prefix))
             return self._search_prefix, [(b"", self)]
 
     _serialise_key = b"\x00".join
@@ -970,9 +968,8 @@ class LeafNode(Node):
             serialized = b"%s\x00%d\n" % (self._serialise_key(key), len(value_lines))
             if not serialized.startswith(self._common_serialised_prefix):
                 raise AssertionError(
-                    "We thought the common prefix was %r"
-                    " but entry %r does not have it in common"
-                    % (self._common_serialised_prefix, serialized)
+                    "We thought the common prefix was {!r}"
+                    " but entry {!r} does not have it in common".format(self._common_serialised_prefix, serialized)
                 )
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
@@ -1075,8 +1072,7 @@ class InternalNode(Node):
             raise AssertionError("_search_prefix should not be None")
         if not prefix.startswith(self._search_prefix):
             raise AssertionError(
-                "prefixes mismatch: %s must start with %s"
-                % (prefix, self._search_prefix)
+                "prefixes mismatch: {} must start with {}".format(prefix, self._search_prefix)
             )
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError(
@@ -1387,8 +1383,7 @@ class InternalNode(Node):
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
                 raise AssertionError(
-                    "prefixes mismatch: %s must start with %s"
-                    % (serialised, self._search_prefix)
+                    "prefixes mismatch: {} must start with {}".format(serialised, self._search_prefix)
                 )
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -1584,7 +1579,6 @@ class CHKMapDifference:
         # only 1 time during this code. (We may want to evaluate saving the
         # raw bytes into the page cache, which would allow a working tree
         # update after the fetch to not have to read the bytes again.)
-        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, "unordered", True)
         for record in stream:
             if self._pb is not None:
@@ -1615,7 +1609,7 @@ class CHKMapDifference:
     def _read_old_roots(self):
         old_chks_to_enqueue = []
         all_old_chks = self._all_old_chks
-        for record, node, prefix_refs, items in self._read_nodes_from_store(
+        for _record, _node, prefix_refs, items in self._read_nodes_from_store(
             self._old_root_keys
         ):
             # Uninteresting node
@@ -1670,7 +1664,7 @@ class CHKMapDifference:
         # added a second time
         processed_new_refs = self._processed_new_refs
         processed_new_refs.update(new_keys)
-        for record, node, prefix_refs, items in self._read_nodes_from_store(new_keys):
+        for record, _node, prefix_refs, items in self._read_nodes_from_store(new_keys):
             # At this level, we now know all the uninteresting references
             # So we filter and queue up whatever is remaining
             prefix_refs = [
@@ -1750,7 +1744,7 @@ class CHKMapDifference:
         refs = self._old_queue
         self._old_queue = []
         all_old_chks = self._all_old_chks
-        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+        for _record, _, prefix_refs, items in self._read_nodes_from_store(refs):
             # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
             refs = [r for _, r in prefix_refs if r not in all_old_chks]
@@ -1832,6 +1826,6 @@ def _check_key(key):
             )
         )
     if not isinstance(key[0], str):
-        raise TypeError("key %r should hold a str, not %r" % (key, type(key[0])))
+        raise TypeError("key {!r} should hold a str, not {!r}".format(key, type(key[0])))
     if not key[0].startswith("sha1:"):
         raise ValueError("key {!r} should point to a sha1:".format(key))

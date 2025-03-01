@@ -155,7 +155,7 @@ class SFTPNonServerTest(TestCase):
         )
 
     def test_get_paramiko_vendor(self):
-        """Test that if no 'ssh' is available we get builtin paramiko"""
+        """Test that if no 'ssh' is available we get builtin paramiko."""
         from breezy.transport import ssh
 
         # set '.' as the only location in the path, forcing no 'ssh' to exist
@@ -177,7 +177,7 @@ class SFTPNonServerTest(TestCase):
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
-    """Test some stuff when accessing a bzr Branch over sftp"""
+    """Test some stuff when accessing a bzr Branch over sftp."""
 
     def test_push_support(self):
         self.build_tree(["a/", "a/foo"])
@@ -218,7 +218,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         super().setUp()
 
         def create_server():
-            """Just a wrapper so that when created, it will set _vendor"""
+            """Just a wrapper so that when created, it will set _vendor."""
             # SFTPFullAbsoluteServer can handle any vendor,
             # it just needs to be set between the time it is instantiated
             # and the time .setUp() is called
@@ -257,7 +257,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
 
 
 class SSHVendorBadConnection(TestCaseWithTransport):
-    """Test that the ssh vendors handle bad connection properly
+    """Test that the ssh vendors handle bad connection properly.
 
     We don't subclass TestCaseWithSFTPServer, because we don't actually
     need an SFTP connection.
@@ -272,7 +272,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         s = socket.socket()
         s.bind(("localhost", 0))
         self.addCleanup(s.close)
-        self.bogus_url = "sftp://%s:%s/" % s.getsockname()
+        self.bogus_url = "sftp://{}:{}/".format(*s.getsockname())
 
     def set_vendor(self, vendor, subprocess_stderr=None):
         from breezy.transport import ssh
@@ -282,7 +282,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
             self.overrideAttr(ssh.SubprocessVendor, "_stderr_target", subprocess_stderr)
 
     def test_bad_connection_paramiko(self):
-        """Test that a real connection attempt raises the right error"""
+        """Test that a real connection attempt raises the right error."""
         from breezy.transport import ssh
 
         self.set_vendor(ssh.ParamikoVendor())
@@ -290,7 +290,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.assertRaises(errors.ConnectionError, t.get, "foobar")
 
     def test_bad_connection_ssh(self):
-        """None => auto-detect vendor"""
+        """None => auto-detect vendor."""
         f = open(os.devnull, "wb")
         self.addCleanup(f.close)
         self.set_vendor(None, f)
@@ -401,7 +401,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile:
-    """An object that acts like Paramiko's SFTPFile when readv() is used"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used."""
 
     def __init__(self, data):
         self._data = data

@@ -602,7 +602,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertPathExists("tree/FiLe.moved")
 
     def test_apply_case_conflict(self):
-        """Ensure that a transform with case conflicts can always be applied"""
+        """Ensure that a transform with case conflicts can always be applied."""
         tree = self.make_branch_and_tree("tree")
         transform = tree.transform()
         self.addCleanup(transform.finalize)
@@ -1019,7 +1019,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                     "Text conflict in oz",
                     "Text conflict in oz/emeraldcity",
                 },
-                {c for c in conflicts_s},
+                set(conflicts_s),
             )
         else:
             self.assertEqual(
@@ -1028,7 +1028,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                     "Text conflict in oz",
                     "Text conflict in oz/emeraldcity",
                 },
-                {c for c in conflicts_s},
+                set(conflicts_s),
             )
 
     def prepare_wrong_parent_kind(self):
@@ -1217,7 +1217,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertTrue(wt.is_executable("set_after_creation"))
 
     def test_preserve_mode(self):
-        """File mode is preserved when replacing content"""
+        """File mode is preserved when replacing content."""
         if sys.platform == "win32":
             raise TestSkipped("chmod has no effect on win32")
         transform, root = self.transform()
@@ -1533,7 +1533,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         )
 
     def test_iter_changes_modified_bleed(self):
-        """Modified flag should not bleed from one change to another"""
+        """Modified flag should not bleed from one change to another."""
         # unfortunately, we have no guarantee that file1 (which is modified)
         # will be applied before file2.  And if it's applied after file2, it
         # obviously can't bleed into file2's change output.  But for now, it
@@ -1573,7 +1573,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_move_missing(self):
-        """Test moving ids with no files around"""
+        """Test moving ids with no files around."""
         # Need two steps because versioning a non-existant file is a conflict.
         transform, root = self.transform()
         transform.new_directory("floater", root, b"floater-id")
@@ -1606,7 +1606,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_pointless(self):
-        """Ensure that no-ops are not treated as modifications"""
+        """Ensure that no-ops are not treated as modifications."""
         transform, root = self.transform()
         transform.new_file("old", root, [b"blah"], b"id-1")
         transform.new_directory("subdir", root, b"subdir-id")
@@ -1659,7 +1659,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_cancel_parent(self):
-        """Cancelling a parent doesn't cause deletion of a non-empty directory
+        """Cancelling a parent doesn't cause deletion of a non-empty directory.
 
         This is like the test_change_parent, except that we cancel the parent
         before adjusting the path.  The transform must detect that the
@@ -1691,7 +1691,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_adjust_and_cancel(self):
-        """Make sure adjust_path keeps track of limbo children properly"""
+        """Make sure adjust_path keeps track of limbo children properly."""
         transform, root = self.transform()
         parent1 = transform.new_directory("parent1", root)
         child1 = transform.new_file("child1", parent1, [b"contents"])
@@ -1731,7 +1731,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(1, transform.rename_count)
 
     def test_reuse_name(self):
-        """Avoid reusing the same limbo name for different files"""
+        """Avoid reusing the same limbo name for different files."""
         transform, root = self.transform()
         parent = transform.new_directory("parent", root)
         transform.new_directory("child", parent)
@@ -1749,7 +1749,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_reuse_when_first_moved(self):
-        """Don't avoid direct paths when it is safe to use them"""
+        """Don't avoid direct paths when it is safe to use them."""
         transform, root = self.transform()
         parent = transform.new_directory("parent", root)
         child1 = transform.new_directory("child", parent)
@@ -1760,7 +1760,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(1, transform.rename_count)
 
     def test_reuse_after_cancel(self):
-        """Don't avoid direct paths when it is safe to use them"""
+        """Don't avoid direct paths when it is safe to use them."""
         transform, root = self.transform()
         parent2 = transform.new_directory("parent2", root)
         child1 = transform.new_directory("child1", parent2)
@@ -1773,7 +1773,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(2, transform.rename_count)
 
     def test_finalize_order(self):
-        """Finalize must be done in child-to-parent order"""
+        """Finalize must be done in child-to-parent order."""
         transform, root = self.transform()
         parent = transform.new_directory("parent", root)
         transform.new_directory("child", parent)

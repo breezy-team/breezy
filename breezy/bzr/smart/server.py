@@ -248,7 +248,7 @@ class SmartTCPServer:
         self._fully_stopped.set()
 
     def get_url(self):
-        """Return the url of the server"""
+        """Return the url of the server."""
         return "bzr://{}:{}/".format(self._sockname[0], self._sockname[1])
 
     def _make_handler(self, conn):

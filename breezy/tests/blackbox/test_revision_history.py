@@ -38,7 +38,7 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
         self.assertEqual(rh, "revision_1\nrevision_2\nrevision_3\n")
 
     def test_revision_history(self):
-        """No location"""
+        """No location."""
         self._build_branch()
         self._check_revision_history(working_dir="test")
 

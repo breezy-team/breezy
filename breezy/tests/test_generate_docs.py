@@ -28,7 +28,7 @@ from . import TestCase
 
 
 class Options:
-    """Simply container"""
+    """Simply container."""
 
     pass
 

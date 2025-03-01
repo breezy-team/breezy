@@ -148,4 +148,4 @@ def load_tests(loader, basic_tests, pattern):
 
 
 class ExternalBase(tests.TestCaseWithTransport):
-    """Don't use this class anymore, use TestCaseWithTransport or similar"""
+    """Don't use this class anymore, use TestCaseWithTransport or similar."""

@@ -36,7 +36,7 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        """Readonly transport decorators are invoked via 'readonly+'"""
+        """Readonly transport decorators are invoked via 'readonly+'."""
         return "readonly+"
 
     def rename(self, rel_from, rel_to):

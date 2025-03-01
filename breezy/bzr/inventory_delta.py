@@ -231,7 +231,7 @@ class InventoryDeltaSerializer:
             if newpath == "/":
                 raise AssertionError(
                     "Bad inventory delta: '/' is not a valid newpath "
-                    "(should be '') in delta item %r" % (delta_item,)
+                    "(should be '') in delta item {!r}".format(delta_item)
                 )
             # TODO: Test real-world utf8 cache hit rate. It may be a win.
             newpath_utf8 = b"/" + newpath.encode("utf8")
@@ -327,7 +327,7 @@ class InventoryDeltaDeserializer:
         result = []
         seen_ids = set()
         line_iter = iter(lines)
-        for i in range(5):
+        for _i in range(5):
             next(line_iter)
         for line in line_iter:
             (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified, content) = (
@@ -408,7 +408,7 @@ def _parse_entry(path, file_id, parent_id, last_modified, content):
         b"link": _link_to_entry,
         b"tree": _tree_to_entry,
     }
-    kind = content[0]
+    content[0]
     if path.startswith("/"):
         raise AssertionError
     name = basename(path)

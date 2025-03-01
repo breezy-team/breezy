@@ -158,8 +158,7 @@ class ConventionalRequestHandler(MessageHandler):
     def end_received(self):
         if self.expecting not in ["body", "end"]:
             raise errors.SmartProtocolError(
-                "End of message received prematurely (while expecting %s)"
-                % (self.expecting,)
+                "End of message received prematurely (while expecting {})".format(self.expecting)
             )
         self.expecting = "nothing"
         self.request_handler.end_received()
@@ -258,14 +257,13 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(
-                    "Unexpected structure received: %r (already got %r)"
-                    % (structure, self.args)
+                    "Unexpected structure received: {!r} (already got {!r})".format(structure, self.args)
                 )
             self.args = structure
         else:
             if self._body_stream_status != b"E":
                 raise errors.SmartProtocolError(
-                    "Unexpected structure received after body: %r" % (structure,)
+                    "Unexpected structure received after body: {!r}".format(structure)
                 )
             self._body_error_args = structure
 
@@ -354,7 +352,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
 
 def _raise_smart_server_error(error_tuple):
-    """Raise exception based on tuple received from smart server
+    """Raise exception based on tuple received from smart server.
 
     Specific error translation is handled by breezy.bzr.remote._translate_error
     """

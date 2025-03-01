@@ -57,11 +57,11 @@ class RevisionTree(tree.Tree):
         raise NotImplementedError(self.get_file_revision)
 
     def get_file_text(self, path):
-        for identifier, content in self.iter_files_bytes([(path, None)]):
+        for _identifier, content in self.iter_files_bytes([(path, None)]):
             return b"".join(content)
 
     def get_file(self, path):
-        for identifier, content in self.iter_files_bytes([(path, None)]):
+        for _identifier, content in self.iter_files_bytes([(path, None)]):
             return iterablefile.IterableFile(content)
 
     def is_locked(self):

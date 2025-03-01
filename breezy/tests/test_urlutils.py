@@ -128,7 +128,7 @@ class TestUrlToPath(TestCase):
     def test_url_scheme_re(self):
         # Test paths that may be URLs
         def test_one(url, scheme_and_path):
-            """Assert that _url_scheme_re correctly matches
+            """Assert that _url_scheme_re correctly matches.
 
             :param scheme_and_path: The (scheme, path) that should be matched
                 can be None, to indicate it should not match
@@ -864,7 +864,7 @@ class TestUrlToPath(TestCase):
 
 
 class TestCwdToURL(TestCaseInTempDir):
-    """Test that local_path_to_url works based on the cwd"""
+    """Test that local_path_to_url works based on the cwd."""
 
     def test_dot(self):
         # This test will fail if getcwd is not ascii

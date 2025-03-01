@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the python and pyrex extensions of KnownGraph"""
+"""Tests for the python and pyrex extensions of KnownGraph."""
 
 import pprint
 
@@ -323,35 +323,34 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
                     continue
                 if node_idx[node] <= node_idx[parent]:
                     self.fail(
-                        "parent %s must come before child %s:\n%s"
-                        % (parent, node, sort_result)
+                        "parent {} must come before child {}:\n{}".format(parent, node, sort_result)
                     )
 
     def test_topo_sort_empty(self):
-        """TopoSort empty list"""
+        """TopoSort empty list."""
         self.assertTopoSortOrder({})
 
     def test_topo_sort_easy(self):
-        """TopoSort list with one node"""
+        """TopoSort list with one node."""
         self.assertTopoSortOrder({0: []})
 
     def test_topo_sort_cycle(self):
-        """TopoSort traps graph with cycles"""
+        """TopoSort traps graph with cycles."""
         g = self.make_known_graph({0: [1], 1: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_2(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         g = self.make_known_graph({0: [1], 1: [2], 2: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_with_tail(self):
-        """TopoSort traps graph with longer cycle"""
+        """TopoSort traps graph with longer cycle."""
         g = self.make_known_graph({0: [1], 1: [2], 2: [3, 4], 3: [0], 4: []})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_1(self):
-        """TopoSort simple nontrivial graph"""
+        """TopoSort simple nontrivial graph."""
         self.assertTopoSortOrder({0: [3], 1: [4], 2: [1, 4], 3: [], 4: [0, 3]})
 
     def test_topo_sort_partial(self):
@@ -375,7 +374,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
         )
 
     def test_topo_sort_ghost_parent(self):
-        """Sort nodes, but don't include some parents in the output"""
+        """Sort nodes, but don't include some parents in the output."""
         self.assertTopoSortOrder({0: [1], 1: [2]})
 
 

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""File annotate based on weave storage"""
+"""File annotate based on weave storage."""
 
 # TODO: Choice of more or less verbose formats:
 #
@@ -110,7 +110,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
 
     # Output the annotations
     prevanno = ""
-    for revno_str, author, date_str, line_rev_id, text in annotation:
+    for revno_str, author, date_str, _line_rev_id, text in annotation:
         if verbose:
             anno = "%-*s %-*s %8s " % (
                 max_revno_len,

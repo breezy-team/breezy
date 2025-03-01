@@ -90,7 +90,7 @@ class TestGraph(TestCaseWithRepository):
         target_b = self.make_branch("target_repo/branch")
         self.addCleanup(target_b.lock_write().unlock)
         self.setup_smart_server_with_call_log()
-        res = target_b.repository.search_missing_revision_ids(
+        target_b.repository.search_missing_revision_ids(
             stacked_b.repository, revision_ids=[b"F"], find_ghosts=False
         )
         self.assertParentMapCalls(

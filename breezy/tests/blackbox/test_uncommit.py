@@ -78,7 +78,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a2"], wt.get_parent_ids())
 
     def test_uncommit_no_history(self):
-        wt = self.make_branch_and_tree("tree")
+        self.make_branch_and_tree("tree")
         out, err = self.run_bzr("uncommit --force", retcode=1)
         self.assertEqual("", err)
         self.assertEqual("No revisions to uncommit.\n", out)
@@ -129,7 +129,7 @@ class TestUncommit(TestCaseWithTransport):
 
     def test_uncommit_bound_local(self):
         t_a = self.make_branch_and_tree("a")
-        rev_id1 = t_a.commit("commit 1")
+        t_a.commit("commit 1")
         rev_id2 = t_a.commit("commit 2")
         rev_id3 = t_a.commit("commit 3")
         b = t_a.branch.create_checkout("b").branch
@@ -151,7 +151,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual(b"a1", wt.branch.last_revision())
 
     def test_uncommit_neg_1(self):
-        wt = self.create_simple_tree()
+        self.create_simple_tree()
         os.chdir("tree")
         out, err = self.run_bzr("uncommit -r -1", retcode=1)
         self.assertEqual("No revisions to uncommit.\n", out)
@@ -230,7 +230,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a2", b"b3", b"c3"], wt.get_parent_ids())
 
     def test_uncommit_shows_log_with_revision_id(self):
-        wt = self.create_simple_tree()
+        self.create_simple_tree()
 
         script = ScriptRunner()
         script.run_script(
@@ -248,7 +248,7 @@ You can restore the old tip by running:
         )
 
     def test_uncommit_shows_pull_with_location(self):
-        wt = self.create_simple_tree()
+        self.create_simple_tree()
 
         script = ScriptRunner()
         script.run_script(

@@ -71,7 +71,7 @@ class GitShaMap:
         :return: list with (type, type_data) tuples with type_data:
             commit: revid, tree_sha, verifiers
             blob: fileid, revid
-            tree: fileid, revid
+            tree: fileid, revid.
         """
         raise NotImplementedError(self.lookup_git_sha)
 
@@ -297,7 +297,7 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in self._by_sha.items():
+        for _key, entries in self._by_sha.items():
             for type, type_data in entries.values():
                 if type == "commit":
                     yield type_data[0]
@@ -486,7 +486,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute("select sha1 from %s" % table):
+            for (sha,) in self.db.execute("select sha1 from {}".format(table)):
                 yield sha.encode("ascii")
 
 
@@ -627,7 +627,7 @@ class TdbGitShaMap(GitShaMap):
         try:
             return sha_to_hex(self.db[b"commit\0" + revid][:20])
         except KeyError:
-            raise KeyError("No cache entry for %r" % revid)
+            raise KeyError("No cache entry for {!r}".format(revid))
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
@@ -655,7 +655,7 @@ class TdbGitShaMap(GitShaMap):
             elif type_name in ("tree", "blob"):
                 yield (type_name, tuple(data[1:]))
             else:
-                raise AssertionError("unknown type %r" % type_name)
+                raise AssertionError("unknown type {!r}".format(type_name))
 
     def missing_revisions(self, revids):
         ret = set()
@@ -805,7 +805,7 @@ class IndexGitShaMap(GitShaMap):
         if self._transport is not None:
             return "{}({!r})".format(self.__class__.__name__, self._transport.base)
         else:
-            return "%s()" % (self.__class__.__name__)
+            return "{}()".format(self.__class__.__name__)
 
     def repack(self):
         if self._builder is not None:
@@ -917,13 +917,13 @@ class IndexGitShaMap(GitShaMap):
 
     def revids(self):
         """List the revision ids known."""
-        for key, value in self._iter_entries_prefix((b"commit", None, None)):
+        for key, _value in self._iter_entries_prefix((b"commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
-        for _, key, value in self._index.iter_entries(
+        for _, key, _value in self._index.iter_entries(
             (b"commit", revid, b"X") for revid in revids
         ):
             missing_revids.remove(key[1])
@@ -931,7 +931,7 @@ class IndexGitShaMap(GitShaMap):
 
     def sha1s(self):
         """List the SHA1s."""
-        for key, value in self._iter_entries_prefix((b"git", None, None)):
+        for key, _value in self._iter_entries_prefix((b"git", None, None)):
             yield key[1]
 
 

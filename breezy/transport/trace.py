@@ -70,7 +70,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        """Tracing transports are identified by 'trace+'"""
+        """Tracing transports are identified by 'trace+'."""
         return "trace+"
 
     def get(self, relpath):

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test for setup.py build process"""
+"""Test for setup.py build process."""
 
 import os
 import subprocess
@@ -35,7 +35,7 @@ from .. import tests
 
 class TestSetup(tests.TestCaseInTempDir):
     def test_build_and_install(self):
-        """Test cmd `python setup.py build`
+        """Test cmd `python setup.py build`.
 
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
@@ -66,7 +66,7 @@ class TestSetup(tests.TestCaseInTempDir):
                 "You must have distutils installed to run this test."
                 ' Usually this can be found by installing "python-dev"'
             )
-        self.log("test_build running from %s" % self.source_dir)
+        self.log("test_build running from {}".format(self.source_dir))
         build_dir = os.path.join(self.test_dir, "build")
         install_dir = os.path.join(self.test_dir, "install")
         self.run_setup(["build", "-b", build_dir, "install", "--root", install_dir])
@@ -93,7 +93,7 @@ class TestSetup(tests.TestCaseInTempDir):
         stdout, stderr = p.communicate()
         self.log("stdout: %r", stdout)
         self.log("stderr: %r", stderr)
-        self.assertEqual(0, p.returncode, "invocation of %r failed" % args)
+        self.assertEqual(0, p.returncode, "invocation of {!r} failed".format(args))
 
 
 class TestDistutilsVersion(tests.TestCase):

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test that lazy regexes are not compiled right away"""
+"""Test that lazy regexes are not compiled right away."""
 
 import pickle
 import re
@@ -30,7 +30,7 @@ class TestErrors(tests.TestCase):
 
 
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
-    """Keep track of actions on the lazy regex"""
+    """Keep track of actions on the lazy regex."""
 
     _actions: List[Tuple[str, ...]] = []
 
@@ -49,7 +49,7 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
 
 class TestLazyRegex(tests.TestCase):
     def test_lazy_compile(self):
-        """Make sure that LazyRegex objects compile at the right time"""
+        """Make sure that LazyRegex objects compile at the right time."""
         actions = []
         InstrumentedLazyRegex.use_actions(actions)
 
@@ -87,14 +87,14 @@ class TestLazyRegex(tests.TestCase):
 
 class TestLazyCompile(tests.TestCase):
     def test_simple_acts_like_regex(self):
-        """Test that the returned object has basic regex like functionality"""
+        """Test that the returned object has basic regex like functionality."""
         pattern = lazy_regex.lazy_compile("foo")
         self.assertIsInstance(pattern, lazy_regex.LazyRegex)
         self.assertTrue(pattern.match("foo"))
         self.assertIs(None, pattern.match("bar"))
 
     def test_extra_args(self):
-        """Test that extra arguments are also properly passed"""
+        """Test that extra arguments are also properly passed."""
         pattern = lazy_regex.lazy_compile("foo", re.I)
         self.assertIsInstance(pattern, lazy_regex.LazyRegex)
         self.assertTrue(pattern.match("foo"))

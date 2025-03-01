@@ -79,10 +79,10 @@ class DummyForeignVcs(foreign.ForeignVcs):
         self.abbreviation = "dummy"
 
     def show_foreign_revid(self, foreign_revid):
-        return {"dummy ding": "%s/%s\\%s" % foreign_revid}
+        return {"dummy ding": "{}/{}\\{}".format(*foreign_revid)}
 
     def serialize_foreign_revid(self, foreign_revid):
-        return "%s|%s|%s" % foreign_revid
+        return "{}|{}|{}".format(*foreign_revid)
 
 
 class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):

@@ -65,7 +65,7 @@ def _normalize(s):
 
 
 def _parse_source(source_text, filename="<unknown>"):
-    """Get object to lineno mappings from given source_text"""
+    """Get object to lineno mappings from given source_text."""
     import ast
 
     cls_to_lineno = {}
@@ -85,7 +85,7 @@ def _parse_source(source_text, filename="<unknown>"):
 
 
 class _ModuleContext:
-    """Record of the location within a source tree"""
+    """Record of the location within a source tree."""
 
     def __init__(self, path, lineno=1, _source_info=None):
         self.path = path
@@ -95,7 +95,7 @@ class _ModuleContext:
 
     @classmethod
     def from_module(cls, module):
-        """Get new context from module object and parse source for linenos"""
+        """Get new context from module object and parse source for linenos."""
         sourcepath = inspect.getsourcefile(module)
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
@@ -107,7 +107,7 @@ class _ModuleContext:
         )
 
     def from_class(self, cls):
-        """Get new context with same details but lineno of class in source"""
+        """Get new context with same details but lineno of class in source."""
         try:
             lineno = self._cls_to_lineno[cls.__name__]
         except (AttributeError, KeyError):
@@ -118,7 +118,7 @@ class _ModuleContext:
         )
 
     def from_string(self, string):
-        """Get new context with same details but lineno of string in source"""
+        """Get new context with same details but lineno of string in source."""
         try:
             lineno = self._str_to_lineno[string]
         except (AttributeError, KeyError):
@@ -130,7 +130,7 @@ class _ModuleContext:
 
 
 class _PotExporter:
-    """Write message details to output stream in .pot file format"""
+    """Write message details to output stream in .pot file format."""
 
     def __init__(self, outf, include_duplicates=False):
         self.outf = outf
@@ -148,7 +148,7 @@ class _PotExporter:
         if comment is None:
             comment = ""
         else:
-            comment = "# %s\n" % comment
+            comment = "# {}\n".format(comment)
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
         line = '#: {path}:{lineno}\n{comment}msgid {msg}\nmsgstr ""\n\n'.format(
             path=path, lineno=lineno, comment=comment, msg=_normalize(s)
@@ -246,7 +246,7 @@ def _command_helps(exporter, plugin_name=None):
 
     plugins = _mod_plugin.plugins()
     if plugin_name is not None and plugin_name not in plugins:
-        raise errors.BzrError(gettext("Plugin %s is not loaded" % plugin_name))
+        raise errors.BzrError(gettext("Plugin {} is not loaded".format(plugin_name)))
     core_plugins = {
         name for name in plugins if plugins[name].path().startswith(breezy.__path__[0])
     }

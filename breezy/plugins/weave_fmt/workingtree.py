@@ -123,7 +123,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         self._matchingcontroldir = BzrDirFormat6()
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.
@@ -201,7 +201,7 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _iter_conflicts(self):
         conflicted = set()
-        for path, file_class, file_kind, entry in self.list_files():
+        for path, _file_class, _file_kind, _entry in self.list_files():
             stem = get_conflicted_stem(path)
             if stem is None:
                 continue

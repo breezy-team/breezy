@@ -98,7 +98,7 @@ class TestTransformPreview(TestCaseWithTree):
             log = BytesIO()
             trace.push_log_file(log)
             show_diff_trees(revision_tree, preview_tree, out)
-            lines = out.getvalue().splitlines()
+            out.getvalue().splitlines()
         finally:
             os.symlink = os_symlink
         self.assertContainsRe(
@@ -254,8 +254,8 @@ class TestTransformPreview(TestCaseWithTree):
         file_trans_id = preview.trans_id_tree_path("file")
         preview.adjust_path("renamed", preview.root, file_trans_id)
         preview_tree = preview.get_preview_tree()
-        preview_mtime = preview_tree.get_file_mtime("renamed")
-        work_mtime = work_tree.get_file_mtime("file")
+        preview_tree.get_file_mtime("renamed")
+        work_tree.get_file_mtime("file")
 
     def test_get_file_size(self):
         work_tree = self.make_branch_and_tree("tree")

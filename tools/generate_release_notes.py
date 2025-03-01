@@ -55,7 +55,7 @@ Breezy Release Notes
 
 
 def natural_sort_key(file_name):
-    """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb')
+    """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb').
 
     e.g. 1.10b1 will sort as greater than 1.2::
 
@@ -76,7 +76,7 @@ def output_news_file_sphinx(out_file, news_file_name):
     news_file_name = os.path.basename(news_file_name)
     if not news_file_name.endswith(".txt"):
         raise AssertionError(
-            "NEWS file %s does not have .txt extension." % (news_file_name,)
+            "NEWS file {} does not have .txt extension.".format(news_file_name)
         )
     doc_name = news_file_name[:-4]
     link_text = doc_name.replace("-", " ")

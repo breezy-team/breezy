@@ -162,7 +162,7 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         local_revid_range=None,
         remote_revid_range=None,
     ):
-        """Check the output of find_unmerged_mainline_revisions"""
+        """Check the output of find_unmerged_mainline_revisions."""
         local_extra, remote_extra = missing.find_unmerged(
             local_branch,
             remote_branch,

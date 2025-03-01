@@ -87,8 +87,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
             mac_encoded = normal_thing.encode(fs_enc)
             if mac_encoded != encoded:
                 self.knownFailure(
-                    "Unable to roundtrip path %r on OSX filesystem"
-                    ' using encoding "%s"' % (path, fs_enc)
+                    "Unable to roundtrip path {!r} on OSX filesystem"
+                    ' using encoding "{}"'.format(path, fs_enc)
                 )
 
     def _check_can_encode_paths(self):
@@ -101,16 +101,14 @@ class TestNonAscii(tests.TestCaseWithTransport):
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
                 raise tests.TestSkipped(
-                    'Unable to represent path %r in filesystem encoding "%s"'
-                    % (thing, fs_enc)
+                    'Unable to represent path {!r} in filesystem encoding "{}"'.format(thing, fs_enc)
                 )
             try:
                 thing.encode(terminal_enc)
             except UnicodeEncodeError:
                 raise tests.TestSkipped(
-                    'Unable to represent path %r in terminal encoding "%s"'
-                    ' (even though it is valid in filesystem encoding "%s")'
-                    % (thing, terminal_enc, fs_enc)
+                    'Unable to represent path {!r} in terminal encoding "{}"'
+                    ' (even though it is valid in filesystem encoding "{}")'.format(thing, terminal_enc, fs_enc)
                 )
 
     def create_base(self):
@@ -169,7 +167,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def test_mkdir(self):
         txt = self.run_bzr_decode(["mkdir", self.info["directory"]])
-        self.assertEqual("added %s\n" % self.info["directory"], txt)
+        self.assertEqual("added {}\n".format(self.info["directory"]), txt)
 
         # The text should be garbled, but the command should succeed
         txt = self.run_bzr_raw(
@@ -221,7 +219,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.run_bzr_decode(["mv", "a", fname1], fail=True)
 
         txt = self.run_bzr_decode(["mv", "a", fname2])
-        self.assertEqual("a => %s\n" % fname2, txt)
+        self.assertEqual("a => {}\n".format(fname2), txt)
         self.assertPathDoesNotExist("a")
         self.assertPathExists(fname2)
 
@@ -273,8 +271,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(
-            "Using saved parent location: %s/\n"
-            "No revisions or tags to pull.\n" % (expected,),
+            "Using saved parent location: {}/\n"
+            "No revisions or tags to pull.\n".format(expected),
             txt,
         )
 
@@ -325,26 +323,26 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info["filename"] + "2"
         self.wt.rename_one("a", fname)
         txt = self.run_bzr_decode("renames")
-        self.assertEqual("a => %s\n" % fname, txt)
+        self.assertEqual("a => {}\n".format(fname), txt)
 
         self.run_bzr_decode("renames", fail=True, encoding="ascii")
 
     def test_remove(self):
         fname = self.info["filename"]
-        txt = self.run_bzr_decode(["remove", fname], encoding="ascii")
+        self.run_bzr_decode(["remove", fname], encoding="ascii")
 
     def test_remove_verbose(self):
         fname = self.info["filename"]
-        txt = self.run_bzr_decode(["remove", "--verbose", fname], encoding="ascii")
+        self.run_bzr_decode(["remove", "--verbose", fname], encoding="ascii")
 
     def test_file_id(self):
         fname = self.info["filename"]
-        txt = self.run_bzr_decode(["file-id", fname])
+        self.run_bzr_decode(["file-id", fname])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(["file-id", fname], encoding="ascii")
+        self.run_bzr_decode(["file-id", fname], encoding="ascii")
 
     def test_file_path(self):
         # Create a directory structure
@@ -360,22 +358,22 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.rename_one(fname, path)
         self.wt.commit("moving things around")
 
-        txt = self.run_bzr_decode(["file-path", path])
+        self.run_bzr_decode(["file-path", path])
 
         # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
-        txt = self.run_bzr_decode(["file-path", path], encoding="ascii")
+        self.run_bzr_decode(["file-path", path], encoding="ascii")
 
     def test_revision_history(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode("revision-history")
+        self.run_bzr_decode("revision-history")
 
     def test_ancestry(self):
         # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
-        txt = self.run_bzr_decode("ancestry")
+        self.run_bzr_decode("ancestry")
 
     def test_diff(self):
         self._check_OSX_can_roundtrip(self.info["filename"])
@@ -383,7 +381,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
         self.build_tree_contents([(self.info["filename"], b"newline\n")])
-        txt = self.run_bzr("diff", retcode=1)[0]
+        self.run_bzr("diff", retcode=1)[0]
 
     def test_deleted(self):
         self._check_OSX_can_roundtrip(self.info["filename"])
@@ -463,7 +461,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.commit("Renamed {} => {}".format(fname, fname2))
 
         txt = self.run_bzr_decode(["touching-revisions", fname2])
-        expected_txt = "     3 added %s\n     4 renamed %s => %s\n" % (
+        expected_txt = "     3 added {}\n     4 renamed {} => {}\n".format(
             fname,
             fname,
             fname2,

@@ -146,7 +146,7 @@ class UnpackHighresDateTests(tests.TestCase):
         self.assertEqual(o, o2)
         t -= 24 * 3600 * 365 * 2  # Start 2 years ago
         o = -12 * 3600
-        for count in range(500):
+        for _count in range(500):
             t += random.random() * 24 * 3600 * 30
             try:
                 time.gmtime(t + o)

@@ -360,9 +360,9 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if first != merge:
             raise AssertionError(
                 "Somehow we misunderstood how"
-                " iter_topo_order works %s != %s" % (first, merge)
+                " iter_topo_order works {} != {}".format(first, merge)
             )
-        for num, sub_merge, depth, eom in rev_id_iterator:
+        for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
                 to_file.write(

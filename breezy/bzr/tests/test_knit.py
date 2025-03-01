@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Knit data structure"""
+"""Tests for Knit data structure."""
 
 import gzip
 import sys
@@ -95,7 +95,7 @@ class ErrorTests(TestCase):
 
 class KnitContentTestsMixin:
     def test_constructor(self):
-        content = self._make_content([])
+        self._make_content([])
 
     def test_text(self):
         content = self._make_content([])
@@ -111,7 +111,7 @@ class KnitContentTestsMixin:
         self.assertEqual(copy.annotate(), content.annotate())
 
     def assertDerivedBlocksEqual(self, source, target, noeol=False):
-        """Assert that the derived matching blocks match real output"""
+        """Assert that the derived matching blocks match real output."""
         source_lines = source.splitlines(True)
         target_lines = target.splitlines(True)
 
@@ -144,7 +144,7 @@ class KnitContentTestsMixin:
         self.assertDerivedBlocksEqual("a\nb\nc", "a\nb\nc\nd")
 
     def test_get_line_delta_blocks_noeol(self):
-        """Handle historical knit deltas safely
+        """Handle historical knit deltas safely.
 
         Some existing knit deltas don't consider the last line to differ
         when the only difference whether it has a final newline.
@@ -580,7 +580,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the index key has changed from 'foo' to 'bar'
         access = pack_repo._DirectPackAccess({"bar": (transport, "packname")})
-        e = self.assertListRaises(KeyError, access.get_raw_records, memos)
+        self.assertListRaises(KeyError, access.get_raw_records, memos)
 
     def test_missing_file_raises_retry(self):
         memos = self.make_pack_file()
@@ -605,7 +605,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess({"foo": (transport, "different-packname")})
-        e = self.assertListRaises(
+        self.assertListRaises(
             _mod_transport.NoSuchFile, access.get_raw_records, memos
         )
 
@@ -641,7 +641,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b"1234567890"], list(access.get_raw_records(memos[:1])))
         self.assertEqual([b"12345"], list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        e = self.assertListRaises(
+        self.assertListRaises(
             _mod_transport.NoSuchFile, access.get_raw_records, memos
         )
 
@@ -736,7 +736,6 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # exercise the code well.
         # What we care about is that all lines are always yielded, but not
         # duplicated
-        count = 0
         reload_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
         self.assertEqual([1, 1, 0], reload_counter)
         # Now do it again, to make sure the result is equivalent
@@ -792,7 +791,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         if keys != alt1 and keys != alt2:
             self.fail(
                 "Returned key order did not match either expected order."
-                " expected %s or %s, not %s" % (alt1, alt2, keys)
+                " expected {} or {}, not {}".format(alt1, alt2, keys)
             )
 
 
@@ -1424,11 +1423,11 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._expand_record(
             parent_key, (), None, [b"line1\n", b"line2\n"], ("fulltext", False)
         )
-        res = ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
+        ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
         # Expanding the second child should remove the content object, and the
         # num_compression_children entry
-        res = ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
+        ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
         self.assertFalse(parent_key in ann._content_objects)
         self.assertEqual({}, ann._num_compression_children)
         # We should not cache the content_objects for rev2 and rev, because
@@ -1591,7 +1590,7 @@ class TestBadShaError(KnitTests):
 
 class TestKnitIndex(KnitTests):
     def test_add_versions_dictionary_compresses(self):
-        """Adding versions to the index should update the lookup dict"""
+        """Adding versions to the index should update the lookup dict."""
         knit = self.make_test_knit()
         idx = knit._index
         idx.add_records([((b"a-1",), [b"fulltext"], ((b"a-1",), 0, 0), [])])
@@ -1650,7 +1649,7 @@ class TestKnitIndex(KnitTests):
             pass
 
         def generate_failure():
-            """Add some entries and then raise an exception"""
+            """Add some entries and then raise an exception."""
             yield ((b"a-2",), [b"fulltext"], (None, 0, 0), (b"a-1",))
             yield ((b"a-3",), [b"fulltext"], (None, 0, 0), (b"a-2",))
             raise StopEarly()
@@ -1677,7 +1676,7 @@ class TestKnitIndex(KnitTests):
         t = _mod_transport.get_transport_from_path(".")
         t.put_bytes("test.kndx", b"")
 
-        knit = self.make_test_knit()
+        self.make_test_knit()
 
     def test_knit_index_checks_header(self):
         t = _mod_transport.get_transport_from_path(".")
@@ -1689,7 +1688,9 @@ class TestKnitIndex(KnitTests):
 class TestGraphIndexKnit(KnitTests):
     """Tests for knits using a GraphIndex rather than a KnitIndex."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
@@ -2140,7 +2141,9 @@ class TestGraphIndexKnit(KnitTests):
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
 
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = GraphIndexBuilder(ref_lists)
         for node, references in nodes:
             builder.add_node(node, references)
@@ -2976,7 +2979,7 @@ class TestNetworkBehaviour(KnitTests):
 
 
 class TestContentMapGenerator(KnitTests):
-    """Tests for ContentMapGenerator"""
+    """Tests for ContentMapGenerator."""
 
     def test_get_record_stream_gives_records(self):
         vf = self.make_test_knit(name="test")

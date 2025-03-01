@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""External tests of 'brz export-pot'"""
+"""External tests of 'brz export-pot'."""
 
 
 from breezy.tests import TestCaseWithMemoryTransport

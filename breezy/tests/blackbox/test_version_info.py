@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Blackbox tests for version_info"""
+"""Blackbox tests for version_info."""
 
 import os
 
@@ -50,7 +50,7 @@ class TestVersionInfo(TestCaseWithTransport):
         )
 
     def test_all(self):
-        """'--all' includes clean, revision history, and file revisions"""
+        """'--all' includes clean, revision history, and file revisions."""
         wt = self.create_tree()
         txt = self.run_bzr("version-info branch --all")[0]
         self.assertContainsRe(txt, "date:")
@@ -69,7 +69,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, "path: b")
 
     def test_clean(self):
-        """Test that --check-clean includes the right info"""
+        """Test that --check-clean includes the right info."""
         self.create_tree()
 
         txt = self.run_bzr("version-info branch --check-clean")[0]
@@ -111,7 +111,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual(len(lines1), len(lines2))
 
     def test_no_branch(self):
-        """Test that brz defaults to the local working directory"""
+        """Test that brz defaults to the local working directory."""
         self.create_tree()
 
         txt1 = self.run_bzr("version-info branch")[0]
@@ -121,7 +121,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqualNoBuildDate(txt1, txt2)
 
     def test_rio(self):
-        """Test that we can pass --format=rio"""
+        """Test that we can pass --format=rio."""
         self.create_tree()
 
         txt = self.run_bzr("version-info branch")[0]
@@ -131,7 +131,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqualNoBuildDate(txt, txt2)
 
     def test_python(self):
-        """Test that we can do --format=python"""
+        """Test that we can do --format=python."""
         self.create_tree()
 
         txt = self.run_bzr("version-info --format python branch")[0]
@@ -139,7 +139,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, "version_info = {")
 
     def test_custom_without_template(self):
-        wt = self.make_branch_and_tree("branch")
+        self.make_branch_and_tree("branch")
         out, err = self.run_bzr("version-info --custom", retcode=3)
         self.assertContainsRe(err, r"ERROR: No template specified\.")
 
@@ -172,7 +172,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual("", err)
 
     def test_non_ascii(self):
-        """Test that we can output non-ascii data"""
+        """Test that we can output non-ascii data."""
         commit_message = "Non-ascii message with character not in latin-1: \u1234"
 
         tree = self.make_branch_and_tree(".")

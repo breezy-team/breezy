@@ -532,7 +532,7 @@ class BazaarObjectStore(BaseObjectStore):
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
         # FIXME JRV 2011-12-15: Shouldn't we try both values for lossy ?
-        for path, obj in self._revision_to_objects(
+        for _path, obj in self._revision_to_objects(
             rev,
             tree,
             lossy=(not self.mapping.roundtripping),
@@ -610,7 +610,7 @@ class BazaarObjectStore(BaseObjectStore):
                 # FIXME: Make sure the file id is the root id
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
-                raise AssertionError("unknown entry kind '%s'" % entry.kind)
+                raise AssertionError("unknown entry kind '{}'".format(entry.kind))
 
         path = bzr_tree.id2path(fileid)
         tree = directory_to_tree(
@@ -670,7 +670,7 @@ class BazaarObjectStore(BaseObjectStore):
                     if self.repository.has_revision(type_data[1]):
                         return True
                 else:
-                    raise AssertionError("Unknown object type '%s'" % type)
+                    raise AssertionError("Unknown object type '{}'".format(type))
             else:
                 return False
         except KeyError:
@@ -774,7 +774,7 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchRevision:
                         raise KeyError(sha)
                 else:
-                    raise AssertionError("Unknown object type '%s'" % kind)
+                    raise AssertionError("Unknown object type '{}'".format(kind))
             else:
                 raise KeyError(sha)
 
@@ -817,7 +817,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError("Type was {}, not commit".format(type))
                     processed.add(type_data[0])
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
@@ -828,7 +828,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError("Type was {}, not commit".format(type))
                     pending.add(type_data[0])
             except KeyError:
                 pass
@@ -837,7 +837,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was %s, not commit" % type)
+                        raise AssertionError("Type was {}, not commit".format(type))
                     shallows.add(type_data[0])
             except KeyError:
                 pass

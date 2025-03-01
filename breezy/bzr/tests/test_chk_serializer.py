@@ -55,10 +55,10 @@ _working_revision_bencode1_no_timezone = (
 
 
 class TestBEncodeSerializer1(TestCase):
-    """Test BEncode serialization"""
+    """Test BEncode serialization."""
 
     def test_unpack_revision(self):
-        """Test unpacking a revision"""
+        """Test unpacking a revision."""
         rev = chk_bencode_serializer.read_revision_from_string(
             _working_revision_bencode1
         )

@@ -53,8 +53,8 @@ class TestBzrlibVersioning(tests.TestCase):
 
 class TestPlatformUse(tests.TestCase):
     scenarios = [
-        ("ascii", dict(_platform="test-platform")),
-        ("unicode", dict(_platform="Schr\xc3\xb6dinger")),
+        ("ascii", {"_platform": "test-platform"}),
+        ("unicode", {"_platform": "Schr\xc3\xb6dinger"}),
     ]
 
     def setUp(self):
@@ -65,6 +65,6 @@ class TestPlatformUse(tests.TestCase):
         out = self.make_utf8_encoded_stringio()
         self.overrideAttr(platform, "platform", lambda **kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False, to_file=out)
-        expected = r"(?m)^  Platform: %s" % self._platform
+        expected = r"(?m)^  Platform: {}".format(self._platform)
         expected = expected.encode("utf-8")
         self.assertContainsRe(out.getvalue(), expected)

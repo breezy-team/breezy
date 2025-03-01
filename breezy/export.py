@@ -84,7 +84,7 @@ def export(
         # TODO(jelmer): If the tree is remote (e.g. HPSS, Git Remote),
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
-            for unused in dir_exporter_generator(
+            for _unused in dir_exporter_generator(
                 tree, dest, root, subdir, force_mtime, recurse_nested=recurse_nested
             ):
                 pass
@@ -213,19 +213,18 @@ def dir_exporter_generator(
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
-                    "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, symlink_target, e)
+                    "Failed to create symlink {!r} -> {!r}, error: {}".format(fullpath, symlink_target, e)
                 )
         else:
             raise errors.BzrError(
-                "don't know how to export {%s} of kind %r" % (tp, ie.kind)
+                "don't know how to export {{{}}} of kind {!r}".format(tp, ie.kind)
             )
 
         yield
     # The data returned here can be in any order, but we've already created all
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, "O_BINARY", 0)
-    for (relpath, treepath, unused_none), chunks in tree.iter_files_bytes(to_fetch):
+    for (relpath, treepath, _unused_none), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666

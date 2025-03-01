@@ -102,7 +102,7 @@ class TestRevisionInfo(TestCaseWithTransport):
 
     def test_revision_info_tree_no_working_tree(self):
         # Make branch with no tree
-        b = self.make_branch("branch")
+        self.make_branch("branch")
 
         # Try getting the --tree revision-info
         out, err = self.run_bzr("revision-info --tree -d branch", retcode=3)

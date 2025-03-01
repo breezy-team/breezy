@@ -102,7 +102,7 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
             self.transport_server = None
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository("repo")
-        token = repo.lock_write()
+        repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         # Damage the repository on the filesystem

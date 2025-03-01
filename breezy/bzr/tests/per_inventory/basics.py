@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for different inventory implementations"""
+"""Tests for different inventory implementations."""
 
 # NOTE: Don't import Inventory here, to make sure that we don't accidentally
 # hardcode that when we should be using self.make_inventory
@@ -212,7 +212,7 @@ class TestInventoryReads(TestInventory):
         self.assertEqual((ie, resolved, remaining), (None, None, None))
 
     def test_non_directory_children(self):
-        """Test path2id when a parent directory has no children"""
+        """Test path2id when a parent directory has no children."""
         inv = inventory.Inventory(b"tree-root")
         inv.add(self.make_file(b"file-id", "file", b"tree-root"))
         inv.add(self.make_link(b"link-id", "link", b"tree-root"))

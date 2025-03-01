@@ -181,7 +181,7 @@ class GitBranchBuilder:
         self._write(b"\n")
 
     def finish(self):
-        """We are finished building, close the stream, get the id mapping"""
+        """We are finished building, close the stream, get the id mapping."""
         self.stream.seek(0)
         if self.orig_stream is None:
             from dulwich.repo import Repo

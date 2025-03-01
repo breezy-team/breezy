@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""B+Tree indices"""
+"""B+Tree indices."""
 
 from io import BytesIO
 
@@ -146,7 +146,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self._optimize_for_size = False
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         If adding the node causes the builder to reach its spill_at threshold,
         disk spilling will be triggered.
@@ -453,7 +453,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         return self._write_nodes(self.iter_all_entries())[0]
 
     def iter_all_entries(self):
-        """Iterate over all keys within the index
+        """Iterate over all keys within the index.
 
         :return: An iterable of (index, key, value, reference_lists). There is
             no defined order for the result iteration - it will be in the most
@@ -613,7 +613,7 @@ class _LeafNode(dict):
         self._keys = dict(self)
 
     def all_items(self):
-        """Return a sorted list of (key, (value, refs)) items"""
+        """Return a sorted list of (key, (value, refs)) items."""
         items = sorted(self.items())
         return items
 
@@ -1132,7 +1132,7 @@ class BTreeGraphIndex:
         # large queries are being made.
         keys_at_index = [(0, sorted(keys))]
 
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+        for _row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
             node_indexes = [idx for idx, s_keys in keys_at_index]
             nodes = self._get_internal_nodes(node_indexes)
 
@@ -1521,7 +1521,7 @@ class BTreeGraphIndex:
                 if offset > self._size:
                     raise AssertionError(
                         "tried to read past the end"
-                        " of the file %s > %s" % (offset, self._size)
+                        " of the file {} > {}".format(offset, self._size)
                     )
                 size = min(size, self._size - offset)
             ranges.append((base_offset + offset, size))
@@ -1552,7 +1552,7 @@ class BTreeGraphIndex:
             elif bytes.startswith(_INTERNAL_FLAG):
                 node = _InternalNode(bytes)
             else:
-                raise AssertionError("Unknown node type for %r" % bytes)
+                raise AssertionError("Unknown node type for {!r}".format(bytes))
             yield offset // _PAGE_SIZE, node
 
     def _signature(self):
@@ -1569,7 +1569,7 @@ class BTreeGraphIndex:
             # We shouldn't be reading anything anyway
             start_node = 1
         node_end = self._row_offsets[-1]
-        for node in self._read_nodes(list(range(start_node, node_end))):
+        for _node in self._read_nodes(list(range(start_node, node_end))):
             pass
 
 

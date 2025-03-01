@@ -77,7 +77,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
         env_changes = dict(PYTHONVERBOSE="1", **self.preserved_env_vars)
         trace.mutter("Setting env for bzr subprocess: %r", env_changes)
-        kwargs = dict(env_changes=env_changes, allow_plugins=False)
+        kwargs = {"env_changes": env_changes, "allow_plugins": False}
         if stderr_file:
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to
@@ -95,7 +95,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if err.find("\nimport '%s' " % module_name) != -1:
+            if err.find("\nimport '{}' ".format(module_name)) != -1:
                 bad_modules.append(module_name)
 
         if bad_modules:
@@ -128,7 +128,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
 
 class TestImportTariffs(ImportTariffTestCase):
-    """Basic import tariff tests for some common bzr commands"""
+    """Basic import tariff tests for some common bzr commands."""
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
@@ -261,7 +261,7 @@ class TestImportTariffs(ImportTariffTestCase):
             process.stdout, process.stdin, url
         )
         transport = remote.RemoteTransport(url, medium=client_medium)
-        branch = ControlDir.open_from_transport(transport).open_branch()
+        ControlDir.open_from_transport(transport).open_branch()
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None

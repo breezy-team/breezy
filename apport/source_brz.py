@@ -1,4 +1,4 @@
-"""apport package hook for Breezy"""
+"""apport package hook for Breezy."""
 
 # Copyright (c) 2009, 2010 Canonical Ltd.
 # Author: Matt Zimmerman <mdz@canonical.com>

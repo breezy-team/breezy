@@ -243,7 +243,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         return inventory.Inventory()
 
     def open(self, a_controldir, _found=False):
-        """Return the WorkingTree object for a_controldir
+        """Return the WorkingTree object for a_controldir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already been done.

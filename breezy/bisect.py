@@ -150,7 +150,7 @@ class BisectLog:
                 if not matches:
                     continue
                 if len(matches) > 1:
-                    raise RuntimeError("revision %s duplicated" % revision)
+                    raise RuntimeError("revision {} duplicated".format(revision))
                 if matches[0] == "yes":
                     high_revid = revision
                     between_revs = []
@@ -193,7 +193,7 @@ class BisectLog:
             if status != "done" and revid in [
                 x[0] for x in self._items if x[1] in ["yes", "no"]
             ]:
-                raise RuntimeError("attempting to add revid %s twice" % revid)
+                raise RuntimeError("attempting to add revid {} twice".format(revid))
             self._items.append((revid, status))
 
     def change_file_name(self, filename):

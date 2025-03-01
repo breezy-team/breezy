@@ -53,7 +53,7 @@ class TestWhoami(tests.TestCaseWithTransport):
 
     def test_whoami_branch(self):
         """Branch specific user identity works."""
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         b = branch.Branch.open(".")
         self.set_branch_email(b, "Branch Identity <branch@identi.ty>")
         self.assertWhoAmI("Branch Identity <branch@identi.ty>")
@@ -79,7 +79,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """Verify that whoami doesn't totally break when in utf-8, using an ascii
         encoding.
         """
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         b = branch.Branch.open(".")
         self.set_branch_email(b, "Branch Identity \u20ac <branch@identi.ty>")
         self.assertWhoAmI("Branch Identity ? <branch@identi.ty>", encoding="ascii")
@@ -149,6 +149,6 @@ class TestWhoami(tests.TestCaseWithTransport):
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""
-        wt = self.build_tree(["subdir/"])
+        self.build_tree(["subdir/"])
         out, err = self.run_bzr("whoami --directory subdir", retcode=3)
         self.assertContainsRe(err, "ERROR: Not a branch")

@@ -189,7 +189,7 @@ class _SmartClientRequest:
         if request_type in ("semivfs", "mutate", "stream"):
             return False
         trace.mutter(
-            "Unknown request type: %s for method %s" % (request_type, self.method)
+            "Unknown request type: {} for method {}".format(request_type, self.method)
         )
         return False
 
@@ -218,7 +218,7 @@ class _SmartClientRequest:
             if not self._is_safe_to_send_twice():
                 raise
             trace.warning(
-                "ConnectionReset reading response for %r, retrying" % (self.method,)
+                "ConnectionReset reading response for {!r}, retrying".format(self.method)
             )
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(protocol_version)
@@ -312,7 +312,7 @@ class _SmartClientRequest:
                 #   SmartClientRequestProtocolOne or Two, because they don't
                 #   support client-side body streams.
                 raise
-            trace.warning("ConnectionReset calling %r, retrying" % (self.method,))
+            trace.warning("ConnectionReset calling {!r}, retrying".format(self.method))
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(protocol_version)
             self._send_no_retry(encoder)

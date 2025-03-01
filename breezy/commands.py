@@ -60,10 +60,9 @@ class CommandAvailableInPlugin(Exception):
 
     def __str__(self):
         _fmt = (
-            '"%s" is not a standard brz command. \n'
-            "However, the following official plugin provides this command: %s\n"
-            "You can install it by going to: %s"
-            % (self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"])
+            '"{}" is not a standard brz command. \n'
+            "However, the following official plugin provides this command: {}\n"
+            "You can install it by going to: {}".format(self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"])
         )
 
         return _fmt
@@ -109,7 +108,7 @@ class CommandRegistry(registry.Registry):
             return command_name
 
     def register(self, cmd, decorate=False):
-        """Utility function to help register a command
+        """Utility function to help register a command.
 
         Args:
           cmd: Command subclass to register
@@ -134,11 +133,10 @@ class CommandRegistry(registry.Registry):
                 self, k_unsquished, cmd, override_existing=decorate, info=info
             )
         except KeyError:
-            trace.warning("Two plugins defined the same command: %r" % k)
-            trace.warning("Not loading the one in %r" % sys.modules[cmd.__module__])
+            trace.warning("Two plugins defined the same command: {!r}".format(k))
+            trace.warning("Not loading the one in {!r}".format(sys.modules[cmd.__module__]))
             trace.warning(
-                "Previously this command was registered from %r"
-                % sys.modules[previous.__module__]
+                "Previously this command was registered from {!r}".format(sys.modules[previous.__module__])
             )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
@@ -219,7 +217,7 @@ def all_command_names():
         names = hook(names)
         if names is None:
             raise AssertionError(
-                "hook %s returned None" % Command.hooks.get_hook_name(hook)
+                "hook {} returned None".format(Command.hooks.get_hook_name(hook))
             )
     return names
 
@@ -837,7 +835,7 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError("no implementation of command %r" % self.name())
+        raise NotImplementedError("no implementation of command {!r}".format(self.name()))
 
     def help(self):
         """Return help message for this class."""
@@ -1408,10 +1406,10 @@ class HelpCommandIndex:
 
 
 class Provider:
-    """Generic class to be overriden by plugins"""
+    """Generic class to be overriden by plugins."""
 
     def plugin_for_command(self, cmd_name):
-        """Takes a command and returns the information for that plugin
+        """Takes a command and returns the information for that plugin.
 
         :return: A dictionary with all the available information
             for the requested plugin
@@ -1420,10 +1418,10 @@ class Provider:
 
 
 class ProvidersRegistry(registry.Registry):
-    """This registry exists to allow other providers to exist"""
+    """This registry exists to allow other providers to exist."""
 
     def __iter__(self):
-        for key, provider in self.items():
+        for _key, provider in self.items():
             yield provider
 
 

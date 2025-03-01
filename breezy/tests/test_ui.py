@@ -445,7 +445,7 @@ class TestBoolFromString(tests.TestCase):
         self.assertIsNone("42")
 
     def test_provided_values(self):
-        av = dict(y=True, n=False, yes=True, no=False)
+        av = {"y": True, "n": False, "yes": True, "no": False}
         self.assertIsTrue("y", av)
         self.assertIsTrue("Y", av)
         self.assertIsTrue("Yes", av)
@@ -475,7 +475,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
             for specific_answer in [True, False]:
                 for conf_id in ["given_id", "other_id"]:
                     wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
-                        base_ui, default_answer, dict(given_id=specific_answer)
+                        base_ui, default_answer, {"given_id": specific_answer}
                     )
                     result = wrapper.confirm_action("Do something?", conf_id, {})
                     if conf_id == "given_id":
@@ -485,7 +485,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
 
     def test_repr(self):
         base_ui = _mod_ui.NoninteractiveUIFactory()
-        wrapper = _mod_ui.ConfirmationUserInterfacePolicy(base_ui, True, dict(a=2))
+        wrapper = _mod_ui.ConfirmationUserInterfacePolicy(base_ui, True, {"a": 2})
         self.assertThat(
             repr(wrapper),
             Equals(
@@ -496,7 +496,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
 
 
 class TestProgressRecordingUI(tests.TestCase):
-    """Test test-oriented UIFactory that records progress updates"""
+    """Test test-oriented UIFactory that records progress updates."""
 
     def test_nested_ignore_depth_beyond_one(self):
         # we only want to capture the first level out progress, not

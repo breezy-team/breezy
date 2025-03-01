@@ -52,12 +52,11 @@ if "-install" in sys.argv[1:]:
     ##
     # XXX change message for something more appropriate
     print(
-        """Breezy %s
+        """Breezy {}
 
 Congratulation! Brz successfully installed.
 
-"""
-        % ver
+""".format(ver)
     )
 
     batch_path = "brz.bat"

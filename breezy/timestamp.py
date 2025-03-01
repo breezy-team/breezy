@@ -80,14 +80,14 @@ def unpack_highres_date(date):
     # Weekday parsing is locale sensitive, so drop the weekday
     space_loc = date.find(" ")
     if space_loc == -1 or date[:space_loc] not in osutils.weekdays:
-        raise ValueError("Date string does not contain a day of week: %r" % date)
+        raise ValueError("Date string does not contain a day of week: {!r}".format(date))
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
     dot_loc = date.find(".")
     if dot_loc == -1:
         raise ValueError(
-            "Date string does not contain high-precision seconds: %r" % date
+            "Date string does not contain high-precision seconds: {!r}".format(date)
         )
     base_time = time.strptime(date[space_loc:dot_loc], " %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
@@ -114,7 +114,7 @@ def format_patch_date(secs, offset=0):
     """
     if offset % 60 != 0:
         raise ValueError(
-            "can't represent timezone %s offset by fractional minutes" % offset
+            "can't represent timezone {} offset by fractional minutes".format(offset)
         )
     # so that we don't need to do calculations on pre-epoch times,
     # which doesn't work with win32 python gmtime, we always
@@ -125,7 +125,7 @@ def format_patch_date(secs, offset=0):
         from warnings import warn
 
         warn(
-            "gmtime of negative time (%s, %s) may not work on Windows" % (secs, offset)
+            "gmtime of negative time ({}, {}) may not work on Windows".format(secs, offset), stacklevel=2
         )
     return osutils.format_date(secs, offset=offset, date_fmt="%Y-%m-%d %H:%M:%S")
 
@@ -144,10 +144,10 @@ def parse_patch_date(date_str):
     match = RE_PATCHDATE.match(date_str)
     if match is None:
         if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
-            raise ValueError("time data %r is missing a timezone offset" % date_str)
+            raise ValueError("time data {!r} is missing a timezone offset".format(date_str))
         else:
             raise ValueError(
-                "time data %r does not match format " % date_str
+                "time data {!r} does not match format ".format(date_str)
                 + "'%Y-%m-%d %H:%M:%S %z'"
             )
     secs_str = match.group(1)

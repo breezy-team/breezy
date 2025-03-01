@@ -56,64 +56,64 @@ complete -F {function_name} -o default brz
 
     def function(self):
         return """\
-%(function_name)s ()
-{
+{function_name} ()
+{{
     local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
     local curOpt optEnums
     local IFS=$' \\n'
 
     COMPREPLY=()
-    cur=${COMP_WORDS[COMP_CWORD]}
+    cur=${{COMP_WORDS[COMP_CWORD]}}
 
-    cmds='%(cmds)s'
-    globalOpts=( %(global_options)s )
+    cmds='{cmds}'
+    globalOpts=( {global_options} )
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
-        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
+        [[ ${{COMP_WORDS[i]}} == "--" ]] && return 0
     done
 
     # find the command; it's the first word not starting in -
     cmd=
-    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
-        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
-            cmd=${COMP_WORDS[cmdIdx]}
+    for ((cmdIdx = 1; cmdIdx < ${{#COMP_WORDS[@]}}; ++cmdIdx)); do
+        if [[ ${{COMP_WORDS[cmdIdx]}} != -* ]]; then
+            cmd=${{COMP_WORDS[cmdIdx]}}
             break
         fi
     done
 
     # complete command name if we are not already past the command
     if [[ $COMP_CWORD -le cmdIdx ]]; then
-        COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
+        COMPREPLY=( $( compgen -W "$cmds ${{globalOpts[*]}}" -- $cur ) )
         return 0
     fi
 
     # find the option for which we want to complete a value
     curOpt=
     if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
-        curOpt=${COMP_WORDS[COMP_CWORD - 1]}
+        curOpt=${{COMP_WORDS[COMP_CWORD - 1]}}
         if [[ $curOpt == = ]]; then
-            curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+            curOpt=${{COMP_WORDS[COMP_CWORD - 2]}}
         elif [[ $cur == : ]]; then
             cur=
             curOpt="$curOpt:"
         elif [[ $curOpt == : ]]; then
-            curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
+            curOpt=${{COMP_WORDS[COMP_CWORD - 2]}}:
         fi
     fi
-%(debug)s
+{debug}
     cmdOpts=( )
     optEnums=( )
     fixedWords=( )
     case $cmd in
-%(cases)s\
+{cases}\
     *)
         cmdOpts=(--help -h)
         ;;
     esac
 
     IFS=$'\\n'
-    if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
+    if [[ ${{#fixedWords[@]}} -eq 0 ]] && [[ ${{#optEnums[@]}} -eq 0 ]] && [[ $cur != -* ]]; then
         case $curOpt in
             tag:|*..tag:)
                 fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
@@ -125,33 +125,33 @@ complete -F {function_name} -o default brz
                 ;;
             [\\"\\']*..tag:*)
                 fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
-                fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
+                fixedWords=( $(for i in "${{fixedWords[@]}}"; do echo "${{cur%..tag:*}}..tag:${{i}}"; done) )
                 ;;
         esac
-    elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
+    elif [[ $cur == = ]] && [[ ${{#optEnums[@]}} -gt 0 ]]; then
         # complete directly after "--option=", list all enum values
-        COMPREPLY=( "${optEnums[@]}" )
+        COMPREPLY=( "${{optEnums[@]}}" )
         return 0
     else
-        fixedWords=( "${cmdOpts[@]}"
-                     "${globalOpts[@]}"
-                     "${optEnums[@]}"
-                     "${fixedWords[@]}" )
+        fixedWords=( "${{cmdOpts[@]}}"
+                     "${{globalOpts[@]}}"
+                     "${{optEnums[@]}}"
+                     "${{fixedWords[@]}}" )
     fi
 
-    if [[ ${#fixedWords[@]} -gt 0 ]]; then
-        COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
+    if [[ ${{#fixedWords[@]}} -gt 0 ]]; then
+        COMPREPLY=( $( compgen -W "${{fixedWords[*]}}" -- $cur ) )
     fi
 
     return 0
-}
-""" % {
-            "cmds": self.command_names(),
-            "function_name": self.function_name,
-            "cases": self.command_cases(),
-            "global_options": self.global_options(),
-            "debug": self.debug_output(),
-        }
+}}
+""".format(
+            cmds=self.command_names(),
+            function_name=self.function_name,
+            cases=self.command_cases(),
+            global_options=self.global_options(),
+            debug=self.debug_output(),
+        )
         # Help Emacs terminate strings: "
 
     def command_names(self):
@@ -180,8 +180,8 @@ complete -F {function_name} -o default brz
             brz_version += "."
         else:
             brz_version += " and the following plugins:"
-            for name, plugin in sorted(self.data.plugins.items()):
-                brz_version += "\n# %s" % plugin
+            for _name, plugin in sorted(self.data.plugins.items()):
+                brz_version += "\n# {}".format(plugin)
         return brz_version
 
     def global_options(self):
@@ -194,28 +194,28 @@ complete -F {function_name} -o default brz
         return cases
 
     def command_case(self, command):
-        case = "\t%s)\n" % "|".join(command.aliases)
+        case = "\t{})\n".format("|".join(command.aliases))
         if command.plugin:
-            case += '\t\t# plugin "%s"\n' % command.plugin
+            case += '\t\t# plugin "{}"\n'.format(command.plugin)
         options = []
         enums = []
         for option in command.options:
             for message in option.error_messages:
-                case += "\t\t# %s\n" % message
+                case += "\t\t# {}\n".format(message)
             if option.registry_keys:
                 for key in option.registry_keys:
                     options.append("{}={}".format(option, key))
                 enums.append(
-                    "%s) optEnums=( %s ) ;;" % (option, " ".join(option.registry_keys))
+                    "{}) optEnums=( {} ) ;;".format(option, " ".join(option.registry_keys))
                 )
             else:
                 options.append(str(option))
-        case += "\t\tcmdOpts=( %s )\n" % " ".join(options)
+        case += "\t\tcmdOpts=( {} )\n".format(" ".join(options))
         if command.fixed_words:
             fixed_words = command.fixed_words
             if isinstance(fixed_words, list):
                 fixed_words = "( %s )" + " ".join(fixed_words)
-            case += "\t\tfixedWords=%s\n" % fixed_words
+            case += "\t\tfixedWords={}\n".format(fixed_words)
         if enums:
             case += "\t\tcase $curOpt in\n\t\t\t"
             case += "\n\t\t\t".join(enums)
@@ -345,13 +345,13 @@ class DataCollector:
         )
 
         opts = cmd.options()
-        for optname, opt in sorted(opts.items()):
+        for _optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
         if name == "help" or "help" in cmd.aliases:
-            cmd_data.fixed_words = "($cmds %s)" % " ".join(
+            cmd_data.fixed_words = "($cmds {})".format(" ".join(
                 sorted(help_topics.topic_registry.keys())
-            )
+            ))
 
         return cmd_data
 
@@ -362,15 +362,14 @@ class DataCollector:
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
         if isinstance(opt, option.RegistryOption) and opt.enum_switch:
-            enum_switch = "--%s" % opt.name
+            enum_switch = "--{}".format(opt.name)
             enum_data = optswitches.get(enum_switch)
             if enum_data:
                 try:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--%s': %s"
-                        % (opt.name, str(e).split("\n")[0])
+                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split("\n")[0])
                     )
         return sorted(optswitches.values())
 
@@ -503,7 +502,7 @@ if __name__ == "__main__":
     (opts, args) = parser.parse_args()
     if args:
         parser.error("script does not take positional arguments")
-    kwargs = dict()
+    kwargs = {}
     for name, value in opts.__dict__.items():
         if value is not None:
             kwargs[name] = value

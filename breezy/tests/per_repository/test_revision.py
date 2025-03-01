@@ -22,7 +22,7 @@ from breezy.tests.per_repository import TestCaseWithRepository
 
 class TestRevProps(TestCaseWithRepository):
     def test_simple_revprops(self):
-        """Simple revision properties"""
+        """Simple revision properties."""
         wt = self.make_branch_and_tree(".")
         b = wt.branch
         b.nick = "Nicholas"
@@ -56,7 +56,7 @@ class TestRevProps(TestCaseWithRepository):
             self.assertEqual(rev.properties[name], value)
 
     def test_invalid_revprops(self):
-        """Invalid revision properties"""
+        """Invalid revision properties."""
         wt = self.make_branch_and_tree(".")
         b = wt.branch
         if not b.repository._format.supports_custom_revision_properties:
@@ -70,7 +70,7 @@ class TestRevProps(TestCaseWithRepository):
             revprops={"what a silly property": "fine"},
         )
         self.assertRaises(
-            ValueError, wt.commit, message="invalid", revprops=dict(number=13)
+            ValueError, wt.commit, message="invalid", revprops={"number": 13}
         )
 
 

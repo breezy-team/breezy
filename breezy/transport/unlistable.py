@@ -24,7 +24,7 @@ class UnlistableTransportDecorator(decorator.TransportDecorator):
 
     @classmethod
     def _get_url_prefix(self):
-        """Unlistable transports are identified by 'unlistable+'"""
+        """Unlistable transports are identified by 'unlistable+'."""
         return "unlistable+"
 
     def iter_files_recursive(self):

@@ -166,7 +166,7 @@ class ShelfCreator:
         elif change[0] == "modify target":
             self.shelve_modify_target(change[1])
         else:
-            raise ValueError('Unknown change kind: "%s"' % change[0])
+            raise ValueError('Unknown change kind: "{}"'.format(change[0]))
 
     def shelve_all(self):
         """Shelve all changes.

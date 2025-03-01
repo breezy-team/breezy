@@ -104,7 +104,7 @@ def _subst_filename(args, filename):
     for arg in args:
         if "{this_temp}" in arg and "this_temp" not in subst_names:
             fh, tmp_file = tempfile.mkstemp(
-                "_bzr_mergetools_%s.THIS" % os.path.basename(filename)
+                "_bzr_mergetools_{}.THIS".format(os.path.basename(filename))
             )
             trace.mutter("fh=%r, tmp_file=%r", fh, tmp_file)
             os.close(fh)

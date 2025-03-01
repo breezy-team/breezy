@@ -66,7 +66,7 @@ class GitControlDirFormat(ControlDirFormat):
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
-    """A policy of reusing an existing repository"""
+    """A policy of reusing an existing repository."""
 
     def __init__(
         self, repository, stack_on=None, stack_on_pwd=None, require_stacking=False
@@ -84,7 +84,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
     def acquire_repository(
         self, make_working_trees=None, shared=False, possible_transports=None
     ):
-        """Implementation of RepositoryAcquisitionPolicy.acquire_repository
+        """Implementation of RepositoryAcquisitionPolicy.acquire_repository.
 
         Returns an existing repository to use.
         """

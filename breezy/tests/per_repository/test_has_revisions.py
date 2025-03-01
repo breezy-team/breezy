@@ -29,7 +29,7 @@ class TestHasRevisions(TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         repo = tree.branch.repository
         rev1 = tree.commit("1")
-        rev2 = tree.commit("2")
+        tree.commit("2")
         rev3 = tree.commit("3")
         self.assertEqual({rev1, rev3}, repo.has_revisions([rev1, rev3, b"foobar:"]))
 

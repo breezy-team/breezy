@@ -17,7 +17,7 @@
 
 # This code is from bzr-explorer and modified for bzr.
 
-"""build_mo command for setup.py"""
+"""build_mo command for setup.py."""
 
 import os
 import re
@@ -29,7 +29,7 @@ from typing import List, Optional
 
 
 class build_mo(Command):
-    """Subcommand of build command: build_mo"""
+    """Subcommand of build command: build_mo."""
 
     description = "compile po files to mo files"
 
@@ -78,7 +78,7 @@ class build_mo(Command):
             self.lang = [i.strip() for i in self.lang.split(",") if i.strip()]
 
     def run(self):
-        """Run msgfmt for each language"""
+        """Run msgfmt for each language."""
         if not self.lang:
             return
 

@@ -112,7 +112,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         tree.add("")
         revid = tree.commit("first revision")
-        revid2 = tree.commit("second revision")
+        tree.commit("second revision")
         revid3 = tree.commit("third revision")
         tree.unlock()
         branch.Branch.hooks.install_named_hook(

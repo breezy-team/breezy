@@ -115,7 +115,7 @@ class RenameMap:
         """
         seen_file_ids = set()
         path_map = {}
-        for count, path, file_id in sorted(hit_list, reverse=True):
+        for _count, path, file_id in sorted(hit_list, reverse=True):
             if path in path_map or file_id in seen_file_ids:
                 continue
             path_map[path] = file_id
@@ -222,7 +222,7 @@ class RenameMap:
                 matches.update(parents_matches)
             pp.next_phase()
             delta = rn._make_inventory_delta(matches)
-            for old, new, file_id, entry in delta:
+            for old, new, _file_id, _entry in delta:
                 trace.note(gettext("{0} => {1}").format(old, new))
             if not dry_run:
                 to_tree.add(required_parents)

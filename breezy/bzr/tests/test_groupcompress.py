@@ -57,7 +57,7 @@ class TestGroupCompressor(tests.TestCase):
 
 
 class TestAllGroupCompressors(TestGroupCompressor):
-    """Tests for GroupCompressor"""
+    """Tests for GroupCompressor."""
 
     scenarios = group_compress_implementation_scenarios()
     compressor = None  # Set by scenario
@@ -109,7 +109,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         compressor = self.compressor()
         text = b"strange\ncommon long line\nthat needs a 16 byte match\n"
         sha1_1, _, _, _ = compressor.compress(("label",), [text], len(text), None)
-        expected_lines = list(compressor.chunks)
+        list(compressor.chunks)
         text = b"common long line\nthat needs a 16 byte match\ndifferent\n"
         sha1_2, _, end_point, _ = compressor.compress(
             ("newlabel",), [text], len(text), None
@@ -312,7 +312,6 @@ class TestGroupCompressBlock(tests.TestCase):
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
-        start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, [key_to_text[key]], len(key_to_text[key]), None)
         locs = {
@@ -537,7 +536,9 @@ class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithMemoryTransport)
 
 
 class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
-    def make_g_index(self, name, ref_lists=0, nodes=[]):
+    def make_g_index(self, name, ref_lists=0, nodes=None):
+        if nodes is None:
+            nodes = []
         builder = btree_index.BTreeBuilder(ref_lists)
         for node, references, value in nodes:
             builder.add_node(node, references, value)
@@ -621,7 +622,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf._max_bytes_to_index = 1234
         record = next(vf.get_record_stream([(b"a",)], "unordered", True))
         self.assertEqual(
-            dict(max_bytes_to_index=1234), record._manager._get_compressor_settings()
+            {"max_bytes_to_index": 1234}, record._manager._get_compressor_settings()
         )
 
     @staticmethod
@@ -796,7 +797,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             True, dir="target", inconsistency_fatal=inconsistency_fatal
         )
         for x in range(2):
-            source = self.make_source_with_b(x == 1, "source%s" % x)
+            source = self.make_source_with_b(x == 1, "source{}".format(x))
             target.insert_record_stream(
                 source.get_record_stream([(b"b",)], "unordered", False)
             )
@@ -836,7 +837,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
     def test_clear_cache(self):
         vf = self.make_source_with_b(True, "source")
         vf.writer.end()
-        for record in vf.get_record_stream([(b"a",), (b"b",)], "unordered", True):
+        for _record in vf.get_record_stream([(b"a",), (b"b",)], "unordered", True):
             pass
         self.assertTrue(len(vf._group_cache) > 0)
         vf.clear_cache()
@@ -1014,7 +1015,6 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
-        start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, [key_to_text[key]], len(key_to_text[key]), None)
         locs = {
@@ -1185,7 +1185,6 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         manager = groupcompress._LazyGroupContentManager(
             old_block, get_compressor_settings=compressor_settings
         )
-        gcvf = groupcompress.GroupCompressVersionedFiles
         # It doesn't greedily evaluate compressor_settings
         self.assertIs(None, manager._compressor_settings)
         self.assertEqual((10,), manager._get_compressor_settings())
@@ -1203,7 +1202,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             )
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(
-            old_block, get_compressor_settings=lambda: dict(max_bytes_to_index=32)
+            old_block, get_compressor_settings=lambda: {"max_bytes_to_index": 32}
         )
         gc = manager._make_group_compressor()
         self.assertEqual(32, gc._delta_index._max_bytes_to_index)

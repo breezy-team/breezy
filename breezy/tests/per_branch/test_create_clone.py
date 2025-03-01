@@ -26,7 +26,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_on_transport_missing_parent_dir(self):
         tree = self.make_branch_and_tree("source")
         tree.commit("a commit")
-        source = tree.branch
         target_transport = self.get_transport("subdir").clone("target")
         self.assertRaises(
             NoSuchFile, tree.branch.create_clone_on_transport, target_transport
@@ -47,7 +46,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_on_transport_use_existing_dir_false(self):
         tree = self.make_branch_and_tree("source")
         tree.commit("a commit")
-        source = tree.branch
         target_transport = self.get_transport("target")
         target_transport.create_prefix()
         self.assertRaises(
@@ -78,7 +76,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree("source")
         old_revid = tree.commit("a commit")
         source_tip = tree.commit("a second commit")
-        source = tree.branch
         target_transport = self.get_transport("target")
         result = tree.branch.create_clone_on_transport(
             target_transport, revision_id=old_revid
@@ -93,7 +90,6 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         tree.commit("a commit")
         trunk = tree.branch.create_clone_on_transport(self.get_transport("trunk"))
         revid = tree.commit("a second commit")
-        source = tree.branch
         target_transport = self.get_transport("target")
         try:
             result = tree.branch.create_clone_on_transport(

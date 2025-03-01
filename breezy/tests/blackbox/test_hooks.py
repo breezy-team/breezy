@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for commands related to hooks"""
+"""Tests for commands related to hooks."""
 
 from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
@@ -34,7 +34,7 @@ class TestHooks(TestCaseWithTransport):
         self.make_branch(".")
         out, err = self.run_bzr("hooks")
         self.assertEqual(err, "")
-        for hook_type in Branch.hooks:
+        for _hook_type in Branch.hooks:
             self._check_hooks_output(out, {})
 
     def test_hooks_with_unnamed_hook(self):

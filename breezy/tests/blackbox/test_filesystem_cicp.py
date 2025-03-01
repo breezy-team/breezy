@@ -48,7 +48,7 @@ class TestCICPBase(tests.TestCaseWithTransport):
 class TestAdd(TestCICPBase):
     def test_add_simple(self):
         """Test add always uses the case of the filename reported by the os."""
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case name
         self.build_tree(["CamelCase"])
         run_script(
@@ -61,7 +61,7 @@ class TestAdd(TestCICPBase):
 
     def test_add_subdir(self):
         """test_add_simple but with subdirectories tested too."""
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(["CamelCaseParent/", "CamelCaseParent/CamelCase"])
         run_script(
@@ -75,7 +75,7 @@ class TestAdd(TestCICPBase):
 
     def test_add_implied(self):
         """Test add with no args sees the correct names."""
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(["CamelCaseParent/", "CamelCaseParent/CamelCase"])
         run_script(
@@ -91,7 +91,7 @@ class TestAdd(TestCICPBase):
         """Test than when a file has 'unintentionally' changed case, we can't
         add a new entry using the new case.
         """
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case name
         self.build_tree(["MixedCase"])
         run_script(
@@ -115,7 +115,7 @@ class TestAdd(TestCICPBase):
         """Test than when a file has 'unintentionally' changed case, we can't
         add a new entry using the new case.
         """
-        wt = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case name
         self.build_tree(["MixedCaseParent/", "MixedCaseParent/MixedCase"])
         run_script(
@@ -152,7 +152,7 @@ class TestAdd(TestCICPBase):
 
 class TestMove(TestCICPBase):
     def test_mv_newname(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         run_script(
             self,
             """
@@ -164,7 +164,7 @@ class TestMove(TestCICPBase):
         )
 
     def test_mv_newname_after(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
         run_script(
@@ -181,7 +181,7 @@ class TestMove(TestCICPBase):
     def test_mv_newname_exists(self):
         # test a mv, but when the target already exists with a name that
         # differs only by case.
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
         run_script(
@@ -197,7 +197,7 @@ lowercaseparent/lowercase is already versioned.
         # test a 'mv --after', but when the target already exists with a name
         # that differs only by case.  Note that this is somewhat unlikely
         # but still reasonable.
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
         # Remove the source and create a destination file on disk with a different case.
@@ -214,7 +214,7 @@ lowercaseparent/lowercase is already versioned.
         )
 
     def test_mv_newname_root(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
         run_script(
@@ -226,7 +226,7 @@ lowercaseparent/lowercase is already versioned.
         )
 
     def test_mv_newname_root_after(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
         # In this case we can specify the incorrect case for the destination,
@@ -281,7 +281,7 @@ lowercaseparent/lowercase is already versioned.
         )
 
     def test_mv_multiple(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
         run_script(
@@ -296,7 +296,7 @@ lowercaseparent/lowercase is already versioned.
 
 class TestMisc(TestCICPBase):
     def test_status(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         run_script(
             self,
@@ -311,7 +311,7 @@ class TestMisc(TestCICPBase):
         )
 
     def test_ci(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
 
         got = self.run_bzr("ci -m message camelcaseparent LOWERCASEPARENT")[1]
@@ -324,7 +324,7 @@ class TestMisc(TestCICPBase):
             self.assertContainsRe(got, "added " + expected + "\n")
 
     def test_rm(self):
-        wt = self._make_mixed_case_tree()
+        self._make_mixed_case_tree()
         self.run_bzr("add")
         self.run_bzr("ci -m message")
 

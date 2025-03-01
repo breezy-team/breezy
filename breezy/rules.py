@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Rule-based definition of preferences for selected files in selected branches
+"""Rule-based definition of preferences for selected files in selected branches.
 
 See ``bzr help rules`` for details.
 """
@@ -70,7 +70,7 @@ class _RulesSearcher:
 
         :returns: The string preference value, or None.
         """
-        for key, value in self.get_selected_items(path, [preference_name]):
+        for _key, value in self.get_selected_items(path, [preference_name]):
             return value
         return None
 

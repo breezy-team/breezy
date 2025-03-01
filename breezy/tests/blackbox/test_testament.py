@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Blackbox tests for the 'brz testament' command"""
+"""Blackbox tests for the 'brz testament' command."""
 
 import re
 
@@ -28,7 +28,7 @@ from breezy.bzr.tests.test_testament import (
 
 
 class TestTestament(TestamentSetup):
-    """Run blackbox tests on 'brz testament'"""
+    """Run blackbox tests on 'brz testament'."""
 
     def test_testament_command(self):
         """Testament containing a file and a directory."""

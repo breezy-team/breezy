@@ -36,7 +36,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
 
     @unittest.skip("encoding when LANG=C is currently borked")
     def test_utf8_default_fs_enc(self):
-        """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
+        """In the C locale brz treats a posix filesystem as UTF-8 encoded."""
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_brz_subprocess(
@@ -46,12 +46,12 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
 
 
 class TestOptParseBugHandling(tests.TestCase):
-    """Test that we handle http://bugs.python.org/issue2931"""
+    """Test that we handle http://bugs.python.org/issue2931."""
 
     def test_nonascii_optparse(self):
-        """Reasonable error raised when non-ascii in option name on Python 2"""
+        """Reasonable error raised when non-ascii in option name on Python 2."""
         error_re = "no such option: -\xe4"
-        out = self.run_bzr_error([error_re], ["st", "-\xe4"])
+        self.run_bzr_error([error_re], ["st", "-\xe4"])
 
 
 class TestObsoleteRepoFormat(RepositoryFormat2a):
@@ -89,11 +89,11 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
-        """Repo is not used yet since _deprecation_warning_done is a global"""
+        """Repo is not used yet since _deprecation_warning_done is a global."""
         repository._deprecation_warning_done = False
 
     def disable_deprecation_warning(self, repo=None):
-        """Repo is not used yet since _deprecation_warning_done is a global"""
+        """Repo is not used yet since _deprecation_warning_done is a global."""
         repository._deprecation_warning_done = True
 
     def make_obsolete_repo(self, path):
@@ -110,14 +110,14 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         check(self.get_log(), "WARNING.*brz upgrade")
 
     def test_repository_deprecation_warning(self):
-        """Old formats give a warning"""
+        """Old formats give a warning."""
         self.make_obsolete_repo("foo")
         self.enable_deprecation_warning()
         out, err = self.run_bzr("status", working_dir="foo")
         self.check_warning(True)
 
     def test_repository_deprecation_warning_suppressed_global(self):
-        """Old formats give a warning"""
+        """Old formats give a warning."""
         conf = config.GlobalStack()
         conf.set("suppress_warnings", "format_deprecation")
         self.make_obsolete_repo("foo")
@@ -126,7 +126,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.check_warning(False)
 
     def test_repository_deprecation_warning_suppressed_locations(self):
-        """Old formats give a warning"""
+        """Old formats give a warning."""
         self.make_obsolete_repo("foo")
         conf = config.LocationStack(osutils.pathjoin(self.test_dir, "foo"))
         conf.set("suppress_warnings", "format_deprecation")
@@ -135,7 +135,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.check_warning(False)
 
     def test_repository_deprecation_warning_suppressed_branch(self):
-        """Old formats give a warning"""
+        """Old formats give a warning."""
         tree = self.make_obsolete_repo("foo")
         conf = tree.branch.get_config_stack()
         conf.set("suppress_warnings", "format_deprecation")

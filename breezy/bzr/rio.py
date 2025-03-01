@@ -52,7 +52,7 @@ class RioWriter:
 
 
 class RioReader:
-    """Read stanzas from a file as a sequence
+    """Read stanzas from a file as a sequence.
 
     to_file can be anything that can be enumerated as a sequence of
     lines (with newlines.)
@@ -71,7 +71,7 @@ class RioReader:
 
 
 def rio_file(stanzas, header=None):
-    """Produce a rio IterableFile from an iterable of stanzas"""
+    """Produce a rio IterableFile from an iterable of stanzas."""
 
     def str_iter():
         if header is not None:
@@ -130,7 +130,7 @@ class Stanza:
             pass
         else:
             raise TypeError(
-                "invalid type for rio value: %r of type %s" % (value, type(value))
+                "invalid type for rio value: {!r} of type {}".format(value, type(value))
             )
         self.items.append((tag, value))
 
@@ -142,10 +142,7 @@ class Stanza:
 
     def __contains__(self, find_tag):
         """True if there is any field in this stanza with the given tag."""
-        for tag, value in self.items:
-            if tag == find_tag:
-                return True
-        return False
+        return any(tag == find_tag for tag, value in self.items)
 
     def __len__(self):
         """Return number of pairs in the stanza."""
@@ -160,7 +157,7 @@ class Stanza:
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "Stanza(%r)" % self.items
+        return "Stanza({!r})".format(self.items)
 
     def iter_pairs(self):
         """Return iterator of tag, value pairs."""
@@ -196,11 +193,11 @@ class Stanza:
         return result
 
     def to_string(self):
-        """Return stanza as a single string"""
+        """Return stanza as a single string."""
         return b"".join(self.to_lines())
 
     def write(self, to_file):
-        """Write stanza to a file"""
+        """Write stanza to a file."""
         to_file.writelines(self.to_lines())
 
     def get(self, tag):
@@ -237,7 +234,7 @@ def valid_tag(tag):
 
 
 def read_stanza(line_iter):
-    """Return new Stanza read from list of lines or a file
+    """Return new Stanza read from list of lines or a file.
 
     Returns one Stanza that was read, or returns None at end of file.  If a
     blank line follows the stanza, it is consumed.  It's not an error for

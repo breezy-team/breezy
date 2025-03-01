@@ -139,7 +139,7 @@ def get_revisions_and_committers(a_repo, revids):
     with ui.ui_factory.nested_progress_bar() as pb:
         trace.note("getting revisions")
         revisions = list(a_repo.iter_revisions(revids))
-        for count, (revid, rev) in enumerate(revisions):
+        for count, (_revid, rev) in enumerate(revisions):
             pb.update("checking", count, len(revids))
             for author in rev.get_apparent_authors():
                 # XXX: There is a chance sometimes with svn imports that the
@@ -155,8 +155,8 @@ def get_revisions_and_committers(a_repo, revids):
 
 
 def get_info(a_repo, revision):
-    """Get all of the information for a particular revision"""
-    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
+    """Get all of the information for a particular revision."""
+    with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         trace.note("getting ancestry")
         graph = a_repo.get_graph()
         ancestry = [
@@ -170,11 +170,11 @@ def get_info(a_repo, revision):
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
-    """Get only the info for new revisions between the two revisions
+    """Get only the info for new revisions between the two revisions.
 
     This lets us figure out what has actually changed between 2 revisions.
     """
-    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
+    with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         graph = a_repo.get_graph()
         trace.note("getting ancestry diff")
         ancestry = graph.find_difference(start_rev, end_rev)[1]
@@ -184,7 +184,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
 
 def display_info(info, to_file, gather_class_stats=None):
-    """Write out the information"""
+    """Write out the information."""
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(
@@ -222,7 +222,7 @@ def display_info(info, to_file, gather_class_stats=None):
                 if name is None:
                     name = "Unknown"
                 to_file.write(
-                    "     %4.0f%% %s\n" % ((float(count) / total) * 100.0, name)
+                    "     {:4.0f}% {}\n".format((float(count) / total) * 100.0, name)
                 )
 
 
@@ -269,7 +269,7 @@ class cmd_committer_statistics(commands.Command):
 
 
 class cmd_ancestor_growth(commands.Command):
-    """Figure out the ancestor graph for LOCATION"""
+    """Figure out the ancestor graph for LOCATION."""
 
     takes_args = ["location?"]
 
@@ -292,7 +292,7 @@ class cmd_ancestor_growth(commands.Command):
             revno = 0
             cur_parents = 0
             sorted_graph = tsort.merge_sort(graph.iter_ancestry([last_rev]), last_rev)
-            for num, node_name, depth, isend in reversed(sorted_graph):
+            for _num, _node_name, depth, _isend in reversed(sorted_graph):
                 cur_parents += 1
                 if depth == 0:
                     revno += 1
@@ -302,17 +302,16 @@ class cmd_ancestor_growth(commands.Command):
 def gather_class_stats(repository, revs):
     ret = {}
     total = 0
-    with ui.ui_factory.nested_progress_bar() as pb:
-        with repository.lock_read():
-            i = 0
-            for delta in repository.get_revision_deltas(revs):
-                pb.update("classifying commits", i, len(revs))
-                for c in classify_delta(delta):
-                    if c not in ret:
-                        ret[c] = 0
-                    ret[c] += 1
-                    total += 1
-                i += 1
+    with ui.ui_factory.nested_progress_bar() as pb, repository.lock_read():
+        i = 0
+        for delta in repository.get_revision_deltas(revs):
+            pb.update("classifying commits", i, len(revs))
+            for c in classify_delta(delta):
+                if c not in ret:
+                    ret[c] = 0
+                ret[c] += 1
+                total += 1
+            i += 1
     return ret, total
 
 
@@ -327,9 +326,9 @@ def display_credits(credits, to_file):
     def print_section(name, lst):
         if len(lst) == 0:
             return
-        to_file.write("%s:\n" % name)
+        to_file.write("{}:\n".format(name))
         for name in lst:
-            to_file.write("%s\n" % name)
+            to_file.write("{}\n".format(name))
         to_file.write("\n")
 
     print_section("Code", coders)

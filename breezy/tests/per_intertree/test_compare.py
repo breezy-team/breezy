@@ -442,7 +442,7 @@ class TestCompare(TestCaseWithTwoTrees):
 
 
 class TestIterChanges(TestCaseWithTwoTrees):
-    """Test the comparison iterator"""
+    """Test the comparison iterator."""
 
     def _make_abc_tree(self, tree):
         """Setup an abc content tree."""
@@ -977,7 +977,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.put_file_bytes_non_atomic("changed/unchanging/file", b"changed content")
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # parent-id has changed, as has file-id
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         self.assertEqualIterChanges(
             [
                 self.renamed(tree1, tree2, "changing", "changed", False),
@@ -1013,7 +1013,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # old is gone, new is added, parent-id has changed(reparented), as has
         # file-id(content)
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         self.assertEqualIterChanges(
             [
                 self.renamed(tree1, tree2, "changed", "changed", False),
@@ -1039,7 +1039,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content_7(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # d(d-id) is new, e is b-id renamed.
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         self.assertEqualIterChanges(
             [self.renamed(tree1, tree2, "b", "d/e", False), self.added(tree2, "d")],
             self.do_iter_changes(tree1, tree2, specific_files=["d/e"]),
@@ -1053,7 +1053,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.rename_one("a", "d/e/a")
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # d is new, d/e is b-id renamed, d/e/a is a-id renamed
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         self.assertEqualIterChanges(
             [
                 self.renamed(tree1, tree2, "b", "d/e", False),
@@ -1246,7 +1246,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         except KeyError:
             raise tests.TestNotApplicable(
-                "Cannot represent a FIFO in this case %s" % self.id()
+                "Cannot represent a FIFO in this case {}".format(self.id())
             )
         try:
             self.do_iter_changes(tree1, tree2)
@@ -1601,7 +1601,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree2.add(["movedlink"], ids=[b"link-id"])
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         expected = [
             self.renamed(tree1, tree2, "dir", "moveddir", False),
             self.renamed(tree1, tree2, "file", "movedfile", True),
@@ -1748,7 +1748,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
         self.not_applicable_if_cannot_represent_unversioned(tree2)
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         expected = [
             self.unchanged(tree1, ""),
             self.added(tree2, "added"),
@@ -1773,7 +1773,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_versioned_symlinks_specific_files(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
-        root_id = tree1.path2id("")
+        tree1.path2id("")
         expected = [
             self.added(tree2, "added"),
             self.changed_content(tree2, "changed"),

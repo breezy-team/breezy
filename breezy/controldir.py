@@ -1015,7 +1015,7 @@ class ControlDir(ControlComponent):
         if klass is not ControlDir:
             raise AssertionError(
                 "ControlDir.create always creates the"
-                "default format, not one of %r" % klass
+                "default format, not one of {!r}".format(klass)
             )
         t = _mod_transport.get_transport(base, possible_transports)
         t.ensure_base()
@@ -1396,7 +1396,7 @@ class ControlDirFormat:
 
     @classmethod
     def _set_default_format(klass, format):
-        """Set default format (for testing behavior of defaults only)"""
+        """Set default format (for testing behavior of defaults only)."""
         klass._default_format = format
 
     @classmethod
@@ -1496,7 +1496,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._registration_order = list()
+        self._registration_order = []
         super().__init__()
 
     def register(
@@ -1584,7 +1584,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
         if "default" in self:
             self.remove("default")
         self.set_default(key)
-        format = self.get("default")()
+        self.get("default")()
 
     def make_controldir(self, key):
         return self.get(key)()
@@ -1618,7 +1618,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
 
         if default_realkey is not None:
             output += wrapped(
-                default_realkey, "(default) %s" % default_help, self.get_info("default")
+                default_realkey, "(default) {}".format(default_help), self.get_info("default")
             )
         deprecated_pairs = []
         experimental_pairs = []
@@ -1696,7 +1696,7 @@ def is_control_filename(filename):
     """Check if filename is used for control directories."""
     # TODO(jelmer): Instead, have a function that returns all control
     # filenames.
-    for key, format in format_registry.items():
+    for _key, format in format_registry.items():
         if format().is_control_filename(filename):
             return True
     else:

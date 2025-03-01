@@ -34,11 +34,11 @@ class TestTreeViews(TestCaseWithWorkingTree):
         f = fmt.supports_views
         if f is None:
             raise TestSkipped(
-                "format %s doesn't declare whether it "
-                "supports views, assuming not" % fmt
+                "format {} doesn't declare whether it "
+                "supports views, assuming not".format(fmt)
             )
         if not f():
-            raise TestNotApplicable("format %s doesn't support views" % fmt)
+            raise TestNotApplicable("format {} doesn't support views".format(fmt))
         super().setUp()
 
     def test_views_initially_empty(self):
@@ -159,10 +159,10 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
         fmt = self.workingtree_format
         supported = fmt.supports_views
         if supported is None:
-            warn("Format %s doesn't declare whether it supports views or not" % fmt)
+            warn("Format {} doesn't declare whether it supports views or not".format(fmt))
             raise TestSkipped("No view support at all")
         if supported():
-            raise TestSkipped("Format %s declares that views are supported" % fmt)
+            raise TestSkipped("Format {} declares that views are supported".format(fmt))
             # it's covered by TestTreeViews
         super().setUp()
 

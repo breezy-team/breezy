@@ -137,7 +137,7 @@ class TestMergeImplementation(TestCaseWithTransport):
             [base_id], [("modify", ("foo", b"a\nc\nd\ne\n"))]
         )
         # Modify 'b\n', add 'X\n'
-        this_id = builder.build_snapshot(
+        builder.build_snapshot(
             [base_id], [("modify", ("foo", b"a\nb2\nc\nd\nX\ne\n"))]
         )
         builder.finish_series()
@@ -168,7 +168,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         return (limbodir, deletiondir)
 
     def test_merge_with_existing_limbo_empty(self):
-        """Empty limbo dir is just cleaned up - see bug 427773"""
+        """Empty limbo dir is just cleaned up - see bug 427773."""
         wt = self.make_branch_and_tree("this")
         (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
@@ -189,7 +189,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         self.do_merge(wt, wt)
 
     def test_merge_with_pending_deletion_non_empty(self):
-        """Also see bug 427773"""
+        """Also see bug 427773."""
         wt = self.make_branch_and_tree("this")
         (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
@@ -320,7 +320,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder.change_contents(transid, other=b"text4", this=b"text3")
 
     def test_change_vs_change(self):
-        """Hook is used for (changed, changed)"""
+        """Hook is used for (changed, changed)."""
         self.install_hook_success()
         builder = self.make_merge_builder()
         name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
@@ -331,7 +331,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
             self.assertEqual(f.read(), b"text-merged-by-hook")
 
     def test_change_vs_deleted(self):
-        """Hook is used for (changed, deleted)"""
+        """Hook is used for (changed, deleted)."""
         self.install_hook_success()
         builder = self.make_merge_builder()
         name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
@@ -376,7 +376,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder = self.make_merge_builder()
         name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
         builder.change_contents(name1, this=b"text2", other=b"text3")
-        conflicts = builder.merge(self.merge_type)
+        builder.merge(self.merge_type)
         self.assertEqual(
             [("log_lines", [b"text2"], [b"text3"], [b"text1"])], self.hook_log
         )
@@ -413,7 +413,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.install_hook_noop()
         builder = self.make_merge_builder()
         self.create_file_needing_contents_merge(builder, "name1")
-        conflicts = builder.merge(self.merge_type)
+        builder.merge(self.merge_type)
         self.assertEqual([("success",)], self.hook_log)
 
     def test_chain_stops_after_conflict(self):
@@ -422,7 +422,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.install_hook_noop()
         builder = self.make_merge_builder()
         self.create_file_needing_contents_merge(builder, "name1")
-        conflicts = builder.merge(self.merge_type)
+        builder.merge(self.merge_type)
         self.assertEqual([("conflict",)], self.hook_log)
 
     def test_chain_stops_after_delete(self):
@@ -431,5 +431,5 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.install_hook_noop()
         builder = self.make_merge_builder()
         self.create_file_needing_contents_merge(builder, "name1")
-        conflicts = builder.merge(self.merge_type)
+        builder.merge(self.merge_type)
         self.assertEqual([("delete",)], self.hook_log)

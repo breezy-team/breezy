@@ -53,11 +53,11 @@ class TestTagMerging(TestCaseWithTransport):
         # just to make sure this test is valid
         self.assertFalse(
             old_branch.supports_tags(),
-            "%s is expected to not support tags but does" % old_branch,
+            "{} is expected to not support tags but does".format(old_branch),
         )
         self.assertTrue(
             new_branch.supports_tags(),
-            "%s is expected to support tags but does not" % new_branch,
+            "{} is expected to support tags but does not".format(new_branch),
         )
         # there are no tags in the old one, and we can merge from it into the
         # new one

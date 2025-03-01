@@ -428,7 +428,7 @@ class TestConfigObj(tests.TestCase):
 
     def test_hash_sign_in_value(self):
         """Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
-        treated as comments when read in again. (#86838)
+        treated as comments when read in again. (#86838).
         """
         co = config.ConfigObj()
         co["test"] = "foo#bar"
@@ -474,7 +474,7 @@ whocares=notme # line 4
 class TestConfigObjErrors(tests.TestCase):
     def test_duplicate_section_name_error_line(self):
         try:
-            co = configobj.ConfigObj(BytesIO(erroneous_config), raise_errors=True)
+            configobj.ConfigObj(BytesIO(erroneous_config), raise_errors=True)
         except config.configobj.DuplicateError as e:
             self.assertEqual(3, e.line_number)
         else:
@@ -564,7 +564,7 @@ class TestIniConfigBuilding(TestIniConfig):
         self.path, self.uid, self.gid = path, uid, gid
 
     def test_ini_config_ownership(self):
-        """Ensure that chown is happening during _write_config_file"""
+        """Ensure that chown is happening during _write_config_file."""
         self.requireFeature(features.chown_feature)
         self.overrideAttr(os, "chown", self._dummy_chown)
         self.path = self.uid = self.gid = None
@@ -766,7 +766,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         return self.config_class(*self.config_args)
 
     def create_config(self, content):
-        kwargs = dict(save=True)
+        kwargs = {"save": True}
         c = self.config_class.from_string(content, *self.config_args, **kwargs)
         return c
 
@@ -970,7 +970,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertIs(location_config, my_config._get_location_config())
 
     def test_get_config(self):
-        """The Branch.get_config method works properly"""
+        """The Branch.get_config method works properly."""
         b = controldir.ControlDir.create_standalone_workingtree(".").branch
         my_config = b.get_config()
         self.assertIs(my_config.get_user_option("wacky"), None)
@@ -989,7 +989,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertTrue(b.get_config().has_explicit_nickname())
 
     def test_config_url(self):
-        """The Branch.get_config will use section that uses a local url"""
+        """The Branch.get_config will use section that uses a local url."""
         branch = self.make_branch("branch")
         self.assertEqual("branch", branch.nick)
 
@@ -1001,7 +1001,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual("foobar", branch.nick)
 
     def test_config_local_path(self):
-        """The Branch.get_config will use a local system path"""
+        """The Branch.get_config will use a local system path."""
         branch = self.make_branch("branch")
         self.assertEqual("branch", branch.nick)
 
@@ -1344,7 +1344,7 @@ other_url = /other-subdir
         )
 
     def test_location_not_listed(self):
-        """Test that the global username is used when no location matches"""
+        """Test that the global username is used when no location matches."""
         self.get_branch_config("/home/robertc/sources")
         self.assertEqual(
             "Erik B\u00e5gfors <erik@bagfors.nu>", self.my_config.username()
@@ -1569,7 +1569,7 @@ class TestMailAddressExtraction(tests.TestCase):
 
 class TestTreeConfig(tests.TestCaseWithTransport):
     def test_get_value(self):
-        """Test that retreiving a value from a section is possible"""
+        """Test that retreiving a value from a section is possible."""
         branch = self.make_branch(".")
         tree_config = config.TreeConfig(branch)
         tree_config.set_option("value", "key", "SECTION")
@@ -1647,7 +1647,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         )
 
     def test_get_value(self):
-        """Test that retreiving a value from a section is possible"""
+        """Test that retreiving a value from a section is possible."""
         bzrdir_config = config.TransportConfig(self.get_transport("."), "control.conf")
         bzrdir_config.set_option("value", "key", "SECTION")
         bzrdir_config.set_option("value2", "key2")
@@ -1933,7 +1933,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
 class TestOptionNames(tests.TestCase):
     def is_valid(self, name):
-        return config._option_ref_re.match("{%s}" % name) is not None
+        return config._option_ref_re.match("{{{}}}".format(name)) is not None
 
     def test_valid_names(self):
         self.assertTrue(self.is_valid("foo"))
@@ -2276,17 +2276,17 @@ class TestSection(tests.TestCase):
     # tests -- vila 2011-04-01
 
     def test_get_a_value(self):
-        a_dict = dict(foo="bar")
+        a_dict = {"foo": "bar"}
         section = config.Section("myID", a_dict)
         self.assertEqual("bar", section.get("foo"))
 
     def test_get_unknown_option(self):
-        a_dict = dict()
+        a_dict = {}
         section = config.Section(None, a_dict)
         self.assertEqual("out of thin air", section.get("foo", "out of thin air"))
 
     def test_options_is_shared(self):
-        a_dict = dict()
+        a_dict = {}
         section = config.Section(None, a_dict)
         self.assertIs(a_dict, section.options)
 
@@ -2300,7 +2300,7 @@ class TestMutableSection(tests.TestCase):
     ]
 
     def test_set(self):
-        a_dict = dict(foo="bar")
+        a_dict = {"foo": "bar"}
         section = self.get_section(a_dict)
         section.set("foo", "new_value")
         self.assertEqual("new_value", section.get("foo"))
@@ -2311,7 +2311,7 @@ class TestMutableSection(tests.TestCase):
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_set_preserve_original_once(self):
-        a_dict = dict(foo="bar")
+        a_dict = {"foo": "bar"}
         section = self.get_section(a_dict)
         section.set("foo", "first_value")
         section.set("foo", "second_value")
@@ -2320,7 +2320,7 @@ class TestMutableSection(tests.TestCase):
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_remove(self):
-        a_dict = dict(foo="bar")
+        a_dict = {"foo": "bar"}
         section = self.get_section(a_dict)
         section.remove("foo")
         # We get None for unknown options via the default value
@@ -2333,7 +2333,7 @@ class TestMutableSection(tests.TestCase):
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_remove_new_option(self):
-        a_dict = dict()
+        a_dict = {}
         section = self.get_section(a_dict)
         section.set("foo", "bar")
         section.remove("foo")
@@ -2398,8 +2398,8 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
         store = self.get_store(self)
         if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
-                "%s is not a concrete Store implementation"
-                " so it doesn't need an id" % (store.__class__.__name__,)
+                "{} is not a concrete Store implementation"
+                " so it doesn't need an id".format(store.__class__.__name__)
             )
         self.assertIsNot(None, store.id)
 
@@ -2581,8 +2581,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store %s."
-                % store.external_url()
+                "Permission denied while trying to load configuration store {}.".format(store.external_url())
             ],
         )
 
@@ -2991,8 +2990,7 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
-                "%s is not meant to be compatible with the old config design"
-                % (self.stack,)
+                "{} is not meant to be compatible with the old config design".format(self.stack)
             )
         self.stack.set("one", "1")
         self.stack.set("two", "2")
@@ -4258,7 +4256,7 @@ port=port # Error: Not an int
 
 
 class TestAuthenticationConfigFile(tests.TestCase):
-    """Test the authentication.conf file matching"""
+    """Test the authentication.conf file matching."""
 
     def _got_user_passwd(
         self, expected_user, expected_password, config, *args, **kwargs
@@ -4531,7 +4529,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
 
 
 class TestAuthenticationConfig(tests.TestCaseInTempDir):
-    """Test AuthenticationConfig behaviour"""
+    """Test AuthenticationConfig behaviour."""
 
     def _check_default_password_prompt(
         self,
@@ -4796,7 +4794,7 @@ class TestPlainTextCredentialStore(tests.TestCase):
     def test_decode_password(self):
         r = config.credential_store_registry
         plain_text = r.get_credential_store()
-        decoded = plain_text.decode_password(dict(password="secret"))
+        decoded = plain_text.decode_password({"password": "secret"})
         self.assertEqual("secret", decoded)
 
 
@@ -4804,7 +4802,7 @@ class TestBase64CredentialStore(tests.TestCase):
     def test_decode_password(self):
         r = config.credential_store_registry
         plain_text = r.get_credential_store("base64")
-        decoded = plain_text.decode_password(dict(password="c2VjcmV0"))
+        decoded = plain_text.decode_password({"password": "c2VjcmV0"})
         self.assertEqual(b"secret", decoded)
 
 

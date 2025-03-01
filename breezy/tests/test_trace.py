@@ -16,7 +16,7 @@
 
 # "weren't nothing promised to you.  do i look like i got a promise face?"
 
-"""Tests for trace library"""
+"""Tests for trace library."""
 
 import errno
 import logging
@@ -45,7 +45,7 @@ from . import TestCase, TestCaseInTempDir, TestSkipped, features
 
 
 def _format_exception():
-    """Format an exception as it would normally be displayed to the user"""
+    """Format an exception as it would normally be displayed to the user."""
     buf = StringIO()
     report_exception(sys.exc_info(), buf)
     return buf.getvalue()
@@ -144,7 +144,7 @@ class TestTrace(TestCase):
         self.assertEqual(msg, expected)
 
     def test_format_exception(self):
-        """Short formatting of brz exceptions"""
+        """Short formatting of brz exceptions."""
         try:
             raise errors.NotBranchError("wibble")
         except errors.NotBranchError:
@@ -158,7 +158,7 @@ class TestTrace(TestCase):
         except ImportError:
             msg = _format_exception()
         else:
-            self.fail("somehow succeeded in importing %r" % ImaginaryModule)
+            self.fail("somehow succeeded in importing {!r}".format(ImaginaryModule))
         self.assertContainsRe(
             msg,
             "^brz: ERROR: No module named '?ImaginaryModule'?\n"
@@ -173,19 +173,19 @@ class TestTrace(TestCase):
         self.assertContainsRe(msg, "Breezy has encountered an internal error")
 
     def test_trace_unicode(self):
-        """Write Unicode to trace log"""
+        """Write Unicode to trace log."""
         self.log("the unicode character for benzene is \N{BENZENE RING}")
         log = self.get_log()
         self.assertContainsRe(log, "the unicode character for benzene is")
 
     def test_trace_argument_unicode(self):
-        """Write a Unicode argument to the trace log"""
+        """Write a Unicode argument to the trace log."""
         mutter("the unicode character for benzene is %s", "\N{BENZENE RING}")
         log = self.get_log()
         self.assertContainsRe(log, "the unicode character")
 
     def test_trace_argument_utf8(self):
-        """Write a Unicode argument to the trace log"""
+        """Write a Unicode argument to the trace log."""
         mutter("the unicode character for benzene is %s", "\N{BENZENE RING}".encode())
         log = self.get_log()
         self.assertContainsRe(log, "the unicode character")
@@ -370,7 +370,7 @@ class TestVerbosityLevel(TestCase):
 
 
 class TestLogging(TestCase):
-    """Check logging functionality robustly records information"""
+    """Check logging functionality robustly records information."""
 
     def test_note(self):
         trace.note("Noted")
@@ -415,12 +415,12 @@ class TestLogging(TestCase):
 
     def test_log_bytes_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xa7")
-        log = self.get_log()
+        self.get_log()
         self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_mixed_strings(self):
         logging.getLogger("brz").debug("%s", b"\xa7")
-        log = self.get_log()
+        self.get_log()
         self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_repr_broken(self):

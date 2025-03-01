@@ -555,7 +555,7 @@ class KnitPackStreamSource(StreamSource):
             if record.storage_kind not in ("knit-delta-gz", "knit-ft-gz"):
                 raise ValueError(
                     "Unknown content storage kind for"
-                    " inventory text: %s" % (record.storage_kind,)
+                    " inventory text: {}".format(record.storage_kind)
                 )
             # It's a knit record, it has a _raw_record field (even if it was
             # reconstituted from a network stream).
@@ -1147,8 +1147,8 @@ class KnitReconcilePacker(KnitPacker):
         topo_order = tsort.topo_sort(ancestors)
         rev_order = dict(zip(topo_order, range(len(topo_order))))
         bad_texts.sort(key=lambda key: rev_order.get(key[0][1], 0))
-        transaction = repo.get_transaction()
-        file_id_index = GraphIndexPrefixAdapter(
+        repo.get_transaction()
+        GraphIndexPrefixAdapter(
             self.new_pack.text_index,
             ("blank",),
             1,
@@ -1183,7 +1183,7 @@ class KnitReconcilePacker(KnitPacker):
                 if parent_key[0] != key[0]:
                     # Graph parents must match the fileid
                     raise errors.BzrError(
-                        "Mismatched key parent %r:%r" % (key, parent_keys)
+                        "Mismatched key parent {!r}:{!r}".format(key, parent_keys)
                     )
                 parents.append(parent_key[1])
             text_lines = next(
@@ -1196,7 +1196,7 @@ class KnitReconcilePacker(KnitPacker):
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
             raise errors.BzrCheckError(
-                "Reference to missing compression parents %r" % (missing_text_keys,)
+                "Reference to missing compression parents {!r}".format(missing_text_keys)
             )
         self._log_copied_texts()
 

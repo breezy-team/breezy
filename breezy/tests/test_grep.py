@@ -48,7 +48,7 @@ class GrepTestBase(tests.TestCaseWithTransport):
             self.run_bzr(["ci", "-m", '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
-        """Append text to file 'path' and check it in"""
+        """Append text to file 'path' and check it in."""
         with open(path, "a") as f:
             f.write(text)
         if checkin:
@@ -396,7 +396,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_versioned_file_in_dir_no_recursive(self):
-        """(versioned) Should not recurse with --no-recursive"""
+        """(versioned) Should not recurse with --no-recursive."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -413,7 +413,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_wtree_file_in_dir_no_recursive(self):
-        """(wtree) Should not recurse with --no-recursive"""
+        """(wtree) Should not recurse with --no-recursive."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1406,7 +1406,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file1.txt~1.1.1:1:line1", flags=TestGrep._reflags)
 
     def test_dotted_rev_grep(self):
-        """Grep in dotted revs"""
+        """Grep in dotted revs."""
         wd0 = "foobar0"
         wd1 = "foobar1"
 
@@ -1482,7 +1482,7 @@ class TestGrep(GrepTestBase):
         self.assertNotContainsRe(err, "Binary file", flags=TestGrep._reflags)
 
     def test_revspec(self):
-        """Ensure various revspecs work"""
+        """Ensure various revspecs work."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1509,7 +1509,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_files_with_matches(self):
-        """(wtree) Ensure --files-with-matches, -l works"""
+        """(wtree) Ensure --files-with-matches, -l works."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1588,7 +1588,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_files_with_matches(self):
-        """(ver) Ensure --files-with-matches, -l works"""
+        """(ver) Ensure --files-with-matches, -l works."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1687,7 +1687,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_files_without_matches(self):
-        """(wtree) Ensure --files-without-match, -L works"""
+        """(wtree) Ensure --files-without-match, -L works."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1768,7 +1768,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_files_without_matches(self):
-        """(ver) Ensure --files-without-match, -L works"""
+        """(ver) Ensure --files-without-match, -L works."""
         wd = "foobar0"
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -1899,12 +1899,12 @@ class TestGrep(GrepTestBase):
 
 
 class TestNonAscii(GrepTestBase):
-    """Tests for non-ascii filenames and file contents"""
+    """Tests for non-ascii filenames and file contents."""
 
     _test_needs_features = [UnicodeFilenameFeature]
 
     def test_unicode_only_file(self):
-        """Test filename and contents that requires a unicode encoding"""
+        """Test filename and contents that requires a unicode encoding."""
         tree = self.make_branch_and_tree(".")
         contents = ["\u1234"]
         self.build_tree(contents)
@@ -1956,7 +1956,7 @@ class TestColorGrep(GrepTestBase):
         )
 
     def test_ver_matching_files(self):
-        """(versioned) Search for matches or no matches only"""
+        """(versioned) Search for matches or no matches only."""
         tree = self.make_branch_and_tree(".")
         contents = ["d/", "d/aaa", "bbb"]
         self.build_tree(contents)
@@ -1980,7 +1980,7 @@ class TestColorGrep(GrepTestBase):
         )
 
     def test_wtree_matching_files(self):
-        """(wtree) Search for matches or no matches only"""
+        """(wtree) Search for matches or no matches only."""
         tree = self.make_branch_and_tree(".")
         contents = ["d/", "d/aaa", "bbb"]
         self.build_tree(contents)

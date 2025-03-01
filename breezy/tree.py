@@ -279,7 +279,7 @@ class Tree:
         require_versioned=True,
         want_unversioned=False,
     ):
-        """See InterTree.iter_changes"""
+        """See InterTree.iter_changes."""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(
             include_unchanged,
@@ -422,7 +422,7 @@ class Tree:
 
     def kind(self, path):
         raise NotImplementedError(
-            "Tree subclass %s must implement kind" % self.__class__.__name__
+            "Tree subclass {} must implement kind".format(self.__class__.__name__)
         )
 
     def stored_kind(self, path):
@@ -454,8 +454,8 @@ class Tree:
 
     def get_reference_revision(self, path):
         raise NotImplementedError(
-            "Tree subclass %s must implement "
-            "get_reference_revision" % self.__class__.__name__
+            "Tree subclass {} must implement "
+            "get_reference_revision".format(self.__class__.__name__)
         )
 
     def _comparison_data(self, entry, path):
@@ -619,7 +619,7 @@ class Tree:
         """
         raise NotImplementedError(self.is_versioned)
 
-    def find_related_paths_across_trees(self, paths, trees=[], require_versioned=True):
+    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 
@@ -902,7 +902,7 @@ class InterTree(InterObject[Tree]):
         include_unchanged: bool = False,
         specific_files: Optional[List[str]] = None,
         pb=None,
-        extra_trees: List[Tree] = [],
+        extra_trees: Optional[List[Tree]] = None,
         require_versioned: bool = True,
         want_unversioned: bool = False,
     ):

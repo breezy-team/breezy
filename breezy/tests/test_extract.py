@@ -57,7 +57,7 @@ class TestExtract(TestCaseWithTransport):
             ["b", "b/c", "b/c/d", "b/c/d/e/"], ids=[b"b-id", b"c-id", b"d-id", b"e-id"]
         )
         wt.commit("added files")
-        b_wt = wt.extract("b/c/d")
+        wt.extract("b/c/d")
         b_branch = branch.Branch.open("branch/b/c/d")
         b_branch_ref = branch.Branch.open("a/b/c/d")
         self.assertEqual(b_branch.base, b_branch_ref.base)

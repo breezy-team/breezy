@@ -31,7 +31,7 @@ def LAZY_IMPORT(self, node):
     import_text = node.args[1].s
     scope = {}
     processor.lazy_import(scope, import_text)
-    for name, (path, sub, scope) in processor.imports.items():
+    for name, (path, _sub, scope) in processor.imports.items():
         importation = ImportationFrom(name, node, ".".join(path), scope)
         self.addBinding(node, importation)
 

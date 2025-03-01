@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Symbol versioning
+"""Symbol versioning.
 
 The methods here allow for api symbol versioning.
 """
@@ -47,9 +47,9 @@ def deprecated_in(version_tuple):
     >>> deprecated_in((1, 4, 0))
     '%s was deprecated in version 1.4.0.'
     """
-    return "%%s was deprecated in version %s." % breezy._format_version_tuple(
+    return "%s was deprecated in version {}.".format(breezy._format_version_tuple(
         version_tuple
-    )
+    ))
 
 
 def set_warning_method(method):
@@ -209,7 +209,7 @@ def _populate_decorated(callable, deprecation_version, label, decorated_callable
 
 
 def _dict_deprecation_wrapper(wrapped_method):
-    """Returns a closure that emits a warning and calls the superclass"""
+    """Returns a closure that emits a warning and calls the superclass."""
 
     def cb(dep_dict, *args, **kwargs):
         msg = "access to {}".format(dep_dict._variable_name)
@@ -259,7 +259,7 @@ class DeprecatedDict(dict):
 
 
 def deprecated_list(deprecation_version, variable_name, initial_value, extra=None):
-    """Create a list that warns when modified
+    """Create a list that warns when modified.
 
     :param deprecation_version: string for the warning format to raise,
         typically from deprecated_in()

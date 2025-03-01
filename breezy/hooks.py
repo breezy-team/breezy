@@ -308,7 +308,7 @@ class HookPoint:
             self._callbacks = callbacks
 
     def docs(self):
-        """Generate the documentation for this HookPoint.
+        r"""Generate the documentation for this HookPoint.
 
         :return: A string terminated in \n.
         """
@@ -367,7 +367,7 @@ class HookPoint:
             if entry_label == label:
                 entries_to_remove.append(entry)
         if entries_to_remove == []:
-            raise KeyError("No entry with label %r" % label)
+            raise KeyError("No entry with label {!r}".format(label))
         for entry in entries_to_remove:
             self._callbacks.remove(entry)
 
@@ -379,7 +379,7 @@ class HookPoint:
 
     def __repr__(self):
         strings = []
-        strings.append("<%s(" % type(self).__name__)
+        strings.append("<{}(".format(type(self).__name__))
         strings.append(self.name)
         strings.append("), callbacks=[")
         callbacks = self._callbacks

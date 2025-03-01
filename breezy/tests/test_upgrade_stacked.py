@@ -35,11 +35,11 @@ def upgrade_scenarios():
         scenarios.append(
             (
                 name,
-                dict(
-                    scenario_old_format=old_name,
-                    scenario_new_format=new_name,
-                    scenario_model_change=model_change,
-                ),
+                {
+                    "scenario_old_format": old_name,
+                    "scenario_new_format": new_name,
+                    "scenario_model_change": model_change,
+                },
             )
         )
     return scenarios

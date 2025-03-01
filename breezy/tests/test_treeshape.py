@@ -23,7 +23,7 @@ from breezy.tests import features
 
 class TestTreeShape(tests.TestCaseWithTransport):
     def test_build_tree(self):
-        """Test tree-building test helper"""
+        """Test tree-building test helper."""
         self.build_tree_contents(
             [
                 ("foo", b"new contents"),

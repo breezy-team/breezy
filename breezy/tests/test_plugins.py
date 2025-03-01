@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for plugins"""
+"""Tests for plugins."""
 
 import importlib
 import logging
@@ -83,8 +83,8 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
     def create_plugin(self, name, source=None, dir=".", file_name=None):
         if source is None:
             source = '''\
-"""This is the doc for %s"""
-''' % (name)
+"""This is the doc for {}"""
+'''.format(name)
         if file_name is None:
             file_name = name + ".py"
         # 'source' must not fail to load
@@ -150,7 +150,7 @@ dir_source = '{}'
     def assertPluginKnown(self, name):
         self.assertTrue(
             getattr(self.module, name, None) is not None,
-            "plugins known: %r" % dir(self.module),
+            "plugins known: {!r}".format(dir(self.module)),
         )
         self.assertTrue(self.module_prefix + name in sys.modules)
 
@@ -233,9 +233,9 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertPluginUnknown("pluginone")
             self.assertPluginUnknown("plugintwo")
             self.update_module_paths(["first", "second"])
-            exec("import %spluginone" % self.module_prefix)
+            exec("import {}pluginone".format(self.module_prefix))
             self.assertEqual(["first"], self.activeattributes[tempattribute])
-            exec("import %splugintwo" % self.module_prefix)
+            exec("import {}plugintwo".format(self.module_prefix))
             self.assertEqual(["first", "second"], self.activeattributes[tempattribute])
         finally:
             del self.activeattributes[tempattribute]
@@ -513,7 +513,7 @@ class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""
 
     def test_default_constructable(self):
-        index = plugin.PluginsHelpIndex()
+        plugin.PluginsHelpIndex()
 
     def test_get_topics_None(self):
         """Searching for None returns an empty list."""
@@ -587,13 +587,13 @@ class TestModuleHelpTopic(tests.TestCase):
         self.assertEqual("Plugin 'demo' has no docstring.\n", topic.get_help_text())
 
     def test_get_help_text_no_carriage_return(self):
-        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        r"""ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule("one line of help", "demo")
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("one line of help\n", topic.get_help_text())
 
     def test_get_help_text_carriage_return(self):
-        """ModuleHelpTopic.get_help_text adds a \n if needed."""
+        r"""ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule("two lines of help\nand more\n", "demo")
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("two lines of help\nand more\n", topic.get_help_text())
@@ -912,7 +912,7 @@ dir_source = '{}'
         self.create_plugin(
             "test_foo", source=source, dir=plugin_dir, file_name=plugin_file_name
         )
-        self.overrideEnv("BRZ_PLUGINS_AT", "test_foo@%s" % plugin_path)
+        self.overrideEnv("BRZ_PLUGINS_AT", "test_foo@{}".format(plugin_path))
         self.load_with_paths(["standard"])
         self.assertTestFooLoadedFrom(plugin_path)
 

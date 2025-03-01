@@ -38,12 +38,12 @@ if len(args) == 1:
 def report_notmarked(bug, task, section):
     print()
     print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id,))
-    print("Launchpad title: %s" % bug.title)
+    print("Launchpad title: {}".format(bug.title))
     print("NEWS summary: ")
     print(section)
     if "--launchpad" in options or "-l" in options:
         print("  bug %d" % bug.id)
-        print("  affects %s" % task.bug_target_name)
+        print("  affects {}".format(task.bug_target_name))
         print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
         import webbrowser
@@ -52,7 +52,7 @@ def report_notmarked(bug, task, section):
 
 
 def read_news_bugnos(path):
-    """Read the bug numbers closed by a particular NEWS file
+    """Read the bug numbers closed by a particular NEWS file.
 
     Args:
       path: Path to the NEWS file

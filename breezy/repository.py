@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -38,8 +38,10 @@ from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
-from .revisiontree import RevisionTree
 from .trace import log_exception_quietly, mutter, mutter_callsite, note, warning
+
+if TYPE_CHECKING:
+    from .revisiontree import RevisionTree
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -159,8 +161,8 @@ class CommitBuilder:
             # correctly, so refuse to accept them
             if not isinstance(value, str):
                 raise ValueError(
-                    "revision property (%s) is not a valid"
-                    " (unicode) string: %r" % (key, value)
+                    "revision property ({}) is not a valid"
+                    " (unicode) string: {!r}".format(key, value)
                 )
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value, "revision property ({})".format(key))
@@ -312,8 +314,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 )
                 return
             raise errors.BzrError(
-                "mismatched lock context and write group. %r, %r"
-                % (self._write_group, self.get_transaction())
+                "mismatched lock context and write group. {!r}, {!r}".format(self._write_group, self.get_transaction())
             )
         try:
             self._abort_write_group()
@@ -433,10 +434,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        for f, g in zip(my_fb, other_fb):
-            if not f.has_same_location(g):
-                return False
-        return True
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -672,8 +670,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError(
-                "mismatched lock context %r and "
-                "write group %r." % (self.get_transaction(), self._write_group)
+                "mismatched lock context {!r} and "
+                "write group {!r}.".format(self.get_transaction(), self._write_group)
             )
         result = self._commit_write_group()
         self._write_group = None
@@ -1099,7 +1097,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         raise NotImplementedError(self.get_parent_map)
 
     def _get_parent_map_no_fallbacks(self, revision_ids):
@@ -1146,7 +1144,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.get_file_graph)
 
     def get_graph(self, other_repository=None):
-        """Return the graph walker for this repository format"""
+        """Return the graph walker for this repository format."""
         parents_provider = self._make_parents_provider()
         if other_repository is not None and not self.has_same_location(
             other_repository
@@ -1247,9 +1245,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if "format_deprecation" in conf.get("suppress_warnings"):
                 return
             warning(
-                "Format %s for %s is deprecated -"
-                " please use 'brz upgrade' to get better performance"
-                % (self._format, self.controldir.transport.base)
+                "Format {} for {} is deprecated -"
+                " please use 'brz upgrade' to get better performance".format(self._format, self.controldir.transport.base)
             )
         finally:
             _deprecation_warning_done = True
@@ -1394,7 +1391,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_multiple_authors: bool = True
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return "{}()".format(self.__class__.__name__)
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -1693,7 +1690,7 @@ def _strip_NULL_ghosts(revision_graph):
 
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None, stop_revision=None):
-    """Extend the partial history to include a given index
+    """Extend the partial history to include a given index.
 
     If a stop_index is supplied, stop when that index has been reached.
     If a stop_revision is supplied, stop when that revision is

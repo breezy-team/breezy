@@ -134,7 +134,7 @@ def uninstall():
 
 
 def _get_locale_dir(base):
-    """Returns directory to find .mo translations file in, either local or system
+    """Returns directory to find .mo translations file in, either local or system.
 
     :param base: plugins can specify their own local directory
     """

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the Branch.create_checkout"""
+"""Tests for the Branch.create_checkout."""
 
 from breezy.tests import per_branch
 
@@ -70,4 +70,4 @@ class TestCreateCheckout(per_branch.TestCaseWithBranch):
         """We shouldn't fail if the directory already exists."""
         tree1 = self.make_branch_and_tree("base")
         self.build_tree(["checkout/"])
-        tree2 = tree1.branch.create_checkout("checkout", lightweight=True)
+        tree1.branch.create_checkout("checkout", lightweight=True)

@@ -144,7 +144,7 @@ class SvnRepositoryProber(controldir.Prober):
             while subtransport:
                 try:
                     if all(
-                        [subtransport.has(name) for name in ["format", "db", "conf"]]
+                        subtransport.has(name) for name in ["format", "db", "conf"]
                     ):
                         maybe = True
                         break

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test operations that check the repository for corruption"""
+"""Test operations that check the repository for corruption."""
 
 from breezy import revision as _mod_revision
 from breezy.bzr.inventorytree import InventoryTreeChange
@@ -48,8 +48,8 @@ class TestCleanRepository(TestCaseWithRepository):
             )
         )
         builder.finish_inventory()
-        rev_id = builder.commit("first post")
+        builder.commit("first post")
         result = branch.repository.check(None, check_repo=True)
         result.report_results(True)
         log = self.get_log()
-        self.assertFalse("Missing" in log, "Something was missing in %r" % log)
+        self.assertFalse("Missing" in log, "Something was missing in {!r}".format(log))

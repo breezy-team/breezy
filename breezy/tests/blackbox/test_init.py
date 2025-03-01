@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test 'brz init'"""
+"""Test 'brz init'."""
 
 import os
 import re
@@ -52,7 +52,7 @@ class TestInit(TestCaseWithTransport):
         """Smoke test for constructing a format with the 'bzr' alias."""
         out, err = self.run_bzr("init --format=bzr")
         self.assertEqual(
-            "Created a standalone tree (format: %s)\n" % self._default_label, out
+            "Created a standalone tree (format: {})\n".format(self._default_label), out
         )
         self.assertEqual("", err)
 
@@ -173,7 +173,7 @@ Using shared repository: {}
 
     def test_init_create_prefix(self):
         """'brz init --create-prefix; will create leading directories."""
-        tree = self.create_simple_tree()
+        self.create_simple_tree()
 
         self.run_bzr_error(
             ["Parent directory of ../new/tree does not exist"],
@@ -184,7 +184,7 @@ Using shared repository: {}
         self.assertPathExists("new/tree/.bzr")
 
     def test_init_default_format_option(self):
-        """Brz init should read default format from option default_format"""
+        """Brz init should read default format from option default_format."""
         g_store = _mod_config.GlobalStore()
         g_store._load_from_string(b"""
 [DEFAULT]

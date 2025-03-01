@@ -172,7 +172,7 @@ class HashCache:
             digest = osutils.sha_string(target.encode("UTF-8"))
         else:
             raise errors.BzrError(
-                "file %r: unknown file stat mode: %o" % (abspath, mode)
+                "file {!r}: unknown file stat mode: {:o}".format(abspath, mode)
             )
 
         # window of 3 seconds to allow for 2s resolution on windows,
@@ -206,7 +206,7 @@ class HashCache:
         return digest
 
     def _really_sha1_file(self, abspath, filters):
-        """Calculate the SHA1 of a file by reading the full text"""
+        """Calculate the SHA1 of a file by reading the full text."""
         return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
 
     def write(self):
@@ -260,18 +260,18 @@ class HashCache:
                 pos = l.index(b"// ")
                 path = l[:pos].decode("utf-8")
                 if path in self._cache:
-                    trace.warning("duplicated path %r in cache" % path)
+                    trace.warning("duplicated path {!r} in cache".format(path))
                     continue
 
                 pos += 3
                 fields = l[pos:].split(b" ")
                 if len(fields) != 7:
-                    trace.warning("bad line in hashcache: %r" % l)
+                    trace.warning("bad line in hashcache: {!r}".format(l))
                     continue
 
                 sha1 = fields[0]
                 if len(sha1) != 40:
-                    trace.warning("bad sha1 in hashcache: %r" % sha1)
+                    trace.warning("bad sha1 in hashcache: {!r}".format(sha1))
                     continue
 
                 fp = tuple(map(int, fields[1:]))

@@ -141,7 +141,7 @@ def make_branch_and_populated_tree(testcase):
 
 
 class TimeoutException(Exception):
-    """Timeout expired"""
+    """Timeout expired."""
 
 
 class TimeoutFixture:

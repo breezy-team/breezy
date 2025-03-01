@@ -20,38 +20,38 @@ from .. import lru_cache, tests
 
 
 def walk_lru(lru):
-    """Test helper to walk the LRU list and assert its consistency"""
+    """Test helper to walk the LRU list and assert its consistency."""
     node = lru._most_recently_used
     if node is not None:
         if node.prev is not None:
             raise AssertionError(
                 "the _most_recently_used entry is not"
                 " supposed to have a previous entry"
-                " %s" % (node,)
+                " {}".format(node)
             )
     while node is not None:
         if node.next_key is lru_cache._null_key:
             if node is not lru._least_recently_used:
                 raise AssertionError(
-                    "only the last node should have no next value: %s" % (node,)
+                    "only the last node should have no next value: {}".format(node)
                 )
             node_next = None
         else:
             node_next = lru._cache[node.next_key]
             if node_next.prev is not node:
                 raise AssertionError(
-                    "inconsistency found, node.next.prev != node: %s" % (node,)
+                    "inconsistency found, node.next.prev != node: {}".format(node)
                 )
         if node.prev is None:
             if node is not lru._most_recently_used:
                 raise AssertionError(
                     "only the _most_recently_used should"
-                    " not have a previous node: %s" % (node,)
+                    " not have a previous node: {}".format(node)
                 )
         else:
             if node.prev.next_key != node.key:
                 raise AssertionError(
-                    "inconsistency found, node.prev.next != node: %s" % (node,)
+                    "inconsistency found, node.prev.next != node: {}".format(node)
                 )
         yield node
         node = node_next
@@ -331,7 +331,7 @@ class TestLRUSizeCache(tests.TestCase):
         self.assertEqual({"test": "key"}, cache.as_dict())
 
     def test_adding_clears_cache_based_on_size(self):
-        """The cache is cleared in LRU order until small enough"""
+        """The cache is cleared in LRU order until small enough."""
         cache = lru_cache.LRUSizeCache(max_size=20)
         cache["key1"] = "value"  # 5 chars
         cache["key2"] = "value2"  # 6 chars

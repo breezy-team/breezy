@@ -151,7 +151,6 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository("repo")
         repo.lock_write()
         repo.start_write_group()
-        root_id = inv.root.file_id
         repo.texts.add_lines((b"fixed-root", b"A"), [], [])
         repo.add_revision(
             b"A",
@@ -270,8 +269,8 @@ class TestRepository(TestCaseWithRepository):
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath:
                 raise tests.TestNotApplicable(
-                    "file_id %r cannot be stored on this"
-                    " platform for this repo format" % (file_id,)
+                    "file_id {!r} cannot be stored on this"
+                    " platform for this repo format".format(file_id)
                 )
             if repo._format.rich_root_data:
                 root_commit = (tree.path2id(""),) + rev_key

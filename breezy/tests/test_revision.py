@@ -34,7 +34,7 @@ warnings.filterwarnings(
 
 
 def make_branches(self, format=None):
-    """Create two branches
+    """Create two branches.
 
     branch 1 has 6 commits, branch 2 has 3 commits
     commit 10 is a ghosted merge merge from branch 1
@@ -91,7 +91,7 @@ def make_branches(self, format=None):
 
 class TestIsAncestor(TestCaseWithTransport):
     def test_recorded_ancestry(self):
-        """Test that commit records all ancestors"""
+        """Test that commit records all ancestors."""
         br1, br2 = make_branches(self)
         d = [
             (b"a@u-0-0", [b"a@u-0-0"]),
@@ -205,7 +205,7 @@ class MockRevisionSource:
 
 
 class TestCommonAncestor(TestCaseWithTransport):
-    """Test checking whether a revision is an ancestor of another revision"""
+    """Test checking whether a revision is an ancestor of another revision."""
 
     def test_get_history(self):
         # TODO: test ghosts on the left hand branch's impact

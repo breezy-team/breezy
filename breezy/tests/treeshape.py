@@ -63,7 +63,7 @@ def capture_tree_contents(top):
 
     If top is an absolute path the descriptions will be absolute.
     """
-    for dirpath, dirnames, filenames in os.walk(top):
+    for dirpath, _dirnames, filenames in os.walk(top):
         yield (dirpath + "/",)
         filenames.sort()
         for fn in filenames:

@@ -145,7 +145,7 @@ class TestPush(TestCaseWithControlDir):
         dir.push_branch(tree.branch)
         self.build_tree(["tree/b"])
         tree.add(["b"])
-        rev_2 = tree.commit("two")
+        tree.commit("two")
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(), result.branch_push_result.new_revid)
         self.assertEqual(2, result.branch_push_result.new_revno)

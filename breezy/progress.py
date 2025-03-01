@@ -106,7 +106,7 @@ class ProgressTask:
         )
 
     def update(self, msg, current_cnt=None, total_cnt=None):
-        """Report updated task message and if relevent progress counters
+        """Report updated task message and if relevent progress counters.
 
         The message given must be unicode, not a byte string.
         """
@@ -134,7 +134,7 @@ class ProgressTask:
         )
 
     def _overall_completion_fraction(self, child_fraction=0.0):
-        """Return fractional completion of this task and its parents
+        """Return fractional completion of this task and its parents.
 
         Returns None if no completion can be computed.
         """
@@ -239,7 +239,7 @@ def get_eta(
 
 
 class ProgressPhase:
-    """Update progress object with the current phase"""
+    """Update progress object with the current phase."""
 
     def __init__(self, message, total, pb):
         object.__init__(self)

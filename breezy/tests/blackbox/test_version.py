@@ -31,7 +31,7 @@ from breezy.tests import (
 
 class TestVersion(TestCase):
     def test_main_version(self):
-        """Check output from version command and master option is reasonable"""
+        """Check output from version command and master option is reasonable."""
         # output is intentionally passed through to stdout so that we
         # can see the version being tested
         self.permit_source_tree_branch_repo()
@@ -49,7 +49,7 @@ class TestVersion(TestCase):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertEqualDiff(
-            out.splitlines()[0], "Breezy (brz) %s" % breezy.__version__
+            out.splitlines()[0], "Breezy (brz) {}".format(breezy.__version__)
         )
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
@@ -93,7 +93,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         if uni_val is None:
             raise TestSkipped(
                 "Cannot find a unicode character that works in"
-                " encoding %s" % (osutils.get_user_encoding(),)
+                " encoding {}".format(osutils.get_user_encoding())
             )
 
         self.overrideEnv("BRZ_HOME", uni_val)
@@ -139,7 +139,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         uni_val = "\xa7"
         enc = osutils.get_user_encoding()
         try:
-            str_val = uni_val.encode(enc)
+            uni_val.encode(enc)
         except UnicodeEncodeError:
             self.skipTest(
                 "Test string {!r} unrepresentable in user encoding {}".format(

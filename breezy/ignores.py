@@ -53,7 +53,7 @@ USER_DEFAULTS = [
 
 
 def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list
+    """Read in all of the lines in the file and turn it into an ignore list.
 
     Continue in the case of utf8 decoding errors, and emit a warning when
     such and error is found. Optimise for the common case -- no decoding
@@ -116,7 +116,7 @@ def get_user_ignores():
 
 
 def _set_user_ignores(patterns):
-    """Fill out the user ignore file with the given patterns
+    """Fill out the user ignore file with the given patterns.
 
     This may raise an error if it doesn't have permission to
     write to the user ignore file.

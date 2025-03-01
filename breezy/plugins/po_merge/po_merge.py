@@ -111,14 +111,14 @@ class PoMerger(merge.PerFileMerger):
                 break
         else:
             trace.mutter(
-                "PoMerger did not match for %s and %s" % (self.po_dirs, self.po_glob)
+                "PoMerger did not match for {} and {}".format(self.po_dirs, self.po_glob)
             )
             return False
         # Do we have the corresponding .pot file
-        for path, file_class, kind, entry in self.merger.this_tree.list_files(
+        for path, _file_class, _kind, entry in self.merger.this_tree.list_files(
             from_dir=po_dir, recursive=False
         ):
-            pot_name, pot_file_id = path, entry
+            pot_name, _pot_file_id = path, entry
             if fnmatch.fnmatch(pot_name, self.pot_glob):
                 relpath = osutils.pathjoin(po_dir, pot_name)
                 self.pot_file_abspath = self.merger.this_tree.abspath(relpath)
@@ -130,7 +130,7 @@ class PoMerger(merge.PerFileMerger):
                 # conflicts in the .pot file and use remerge.
                 # -- vila 2011-11-24
                 trace.mutter(
-                    "will msgmerge %s using %s" % (po_path, self.pot_file_abspath)
+                    "will msgmerge {} using {}".format(po_path, self.pot_file_abspath)
                 )
                 return True
         else:

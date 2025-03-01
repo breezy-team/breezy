@@ -16,7 +16,7 @@
 
 # Author: Martin Pool <mbp@canonical.com>
 
-"""Weave - storage of related text file versions"""
+"""Weave - storage of related text file versions."""
 
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
@@ -318,7 +318,7 @@ class Weave(VersionedFile):
         self._allow_reserved = allow_reserved
 
     def __repr__(self):
-        return "Weave(%r)" % self._weave_name
+        return "Weave({!r})".format(self._weave_name)
 
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
@@ -541,12 +541,11 @@ class Weave(VersionedFile):
 
         ancestors = self._inclusions(parents)
 
-        l = self._weave
 
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
-        for origin, lineno, line in self._extract(ancestors):
+        for _origin, lineno, line in self._extract(ancestors):
             basis_lineno.append(lineno)
             basis_lines.append(line)
 
@@ -615,12 +614,12 @@ class Weave(VersionedFile):
         return {self._idx_to_name(v) for v in i}
 
     def _check_versions(self, indexes):
-        """Check everything in the sequence of indexes is valid"""
+        """Check everything in the sequence of indexes is valid."""
         for i in indexes:
             try:
                 self._parents[i]
             except IndexError:
-                raise IndexError("invalid version number %r" % i)
+                raise IndexError("invalid version number {!r}".format(i))
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
@@ -646,7 +645,7 @@ class Weave(VersionedFile):
         if version_ids is None:
             version_ids = self.versions()
         version_ids = set(version_ids)
-        for lineno, inserted, deletes, line in self._walk_internal(version_ids):
+        for _lineno, inserted, _deletes, line in self._walk_internal(version_ids):
             if inserted not in version_ids:
                 continue
             if not line.endswith(b"\n"):
@@ -673,18 +672,18 @@ class Weave(VersionedFile):
                 elif c == b"]":
                     dset.remove(self._names[v])
                 else:
-                    raise WeaveFormatError("unexpected instruction %r" % v)
+                    raise WeaveFormatError("unexpected instruction {!r}".format(v))
             else:
                 yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
 
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks at end of weave: %s" % istack
+                "unclosed insertion blocks at end of weave: {}".format(istack)
             )
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset
+                "unclosed deletion blocks at end of weave: {}".format(dset)
             )
 
     def plan_merge(self, ver_a, ver_b):
@@ -699,7 +698,7 @@ class Weave(VersionedFile):
         inc_b = self.get_ancestry([ver_b])
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self._walk_internal([ver_a, ver_b]):
+        for _lineno, insert, deleteset, line in self._walk_internal([ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
@@ -805,11 +804,11 @@ class Weave(VersionedFile):
             lineno += 1
         if istack:
             raise WeaveFormatError(
-                "unclosed insertion blocks at end of weave: %s" % istack
+                "unclosed insertion blocks at end of weave: {}".format(istack)
             )
         if dset:
             raise WeaveFormatError(
-                "unclosed deletion blocks at end of weave: %s" % dset
+                "unclosed deletion blocks at end of weave: {}".format(dset)
             )
         return result
 
@@ -833,8 +832,7 @@ class Weave(VersionedFile):
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
             raise WeaveInvalidChecksum(
-                "file %s, revision %s, expected: %s, measured %s"
-                % (self._weave_name, version_id, expected_sha1, measured_sha1)
+                "file {}, revision {}, expected: {}, measured {}".format(self._weave_name, version_id, expected_sha1, measured_sha1)
             )
         return result
 
@@ -882,7 +880,7 @@ class Weave(VersionedFile):
 
             if new_inc != self.get_ancestry(name):
                 raise AssertionError(
-                    "failed %s != %s" % (new_inc, self.get_ancestry(name))
+                    "failed {} != {}".format(new_inc, self.get_ancestry(name))
                 )
             inclusions[name] = new_inc
 
@@ -911,8 +909,8 @@ class Weave(VersionedFile):
             expected = self._sha1s[i]
             if hd != expected:
                 raise WeaveInvalidChecksum(
-                    "mismatched sha1 for version %s: "
-                    "got %s, expected %s" % (version, hd, expected)
+                    "mismatched sha1 for version {}: "
+                    "got {}, expected {}".format(version, hd, expected)
                 )
 
         # TODO: check insertions are properly nested, that there are
@@ -927,8 +925,7 @@ class Weave(VersionedFile):
             if parent_name not in self._name_map:
                 # should not be possible
                 raise WeaveError(
-                    "missing parent {%s} of {%s} in %r"
-                    % (parent_name, other._name_map[other_idx], self)
+                    "missing parent {{{}}} of {{{}}} in {!r}".format(parent_name, other._name_map[other_idx], self)
                 )
             new_parents.append(self._name_map[parent_name])
         return new_parents
@@ -956,7 +953,7 @@ class Weave(VersionedFile):
             n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch(
-                    "inconsistent parents for version {%s}: %s vs %s" % (name, n1, n2)
+                    "inconsistent parents for version {{{}}}: {} vs {}".format(name, n1, n2)
                 )
             else:
                 return True  # ok!

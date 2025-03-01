@@ -266,7 +266,7 @@ class GraphIndexBuilder:
         return as_st(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         :param key: The key. keys are non-empty tuples containing
             as many whitespace-free utf8 bytestrings as the key length
@@ -292,7 +292,7 @@ class GraphIndexBuilder:
             self._update_nodes_by_key(key, value, node_refs)
 
     def clear_cache(self):
-        """See GraphIndex.clear_cache()
+        """See GraphIndex.clear_cache().
 
         This is a no-op, but we need the api to conform to a generic 'Index'
         abstraction.
@@ -413,13 +413,13 @@ class GraphIndexBuilder:
             self._combine_backing_indices = combine_backing_indices
 
     def find_ancestry(self, keys, ref_list_num):
-        """See CombinedGraphIndex.find_ancestry()"""
+        """See CombinedGraphIndex.find_ancestry()."""
         pending = set(keys)
         parent_map = {}
         missing_keys = set()
         while pending:
             next_pending = set()
-            for _, key, value, ref_lists in self.iter_entries(pending):
+            for _, key, _value, ref_lists in self.iter_entries(pending):
                 parent_keys = ref_lists[ref_list_num]
                 parent_map[key] = parent_keys
                 next_pending.update([p for p in parent_keys if p not in parent_map])
@@ -531,7 +531,6 @@ class GraphIndex:
         try:
             self._read_prefix(stream)
             self._expected_elements = 3 + self._key_length
-            line_count = 0
             # raw data keyed by offset
             self._keys_by_offset = {}
             # ready-to-return key:value or key:value, node_ref_lists
@@ -576,7 +575,7 @@ class GraphIndex:
             )
         refs = set()
         nodes = self._nodes
-        for key, (value, ref_lists) in nodes.items():
+        for _key, (_value, ref_lists) in nodes.items():
             ref_list = ref_lists[ref_list_num]
             refs.update([ref for ref in ref_list if ref not in nodes])
         return refs
@@ -804,7 +803,7 @@ class GraphIndex:
         # gets the job done.
         found_keys = set()
         search_keys = set()
-        for index, key, value, refs in self.iter_entries(keys):
+        for _index, key, _value, refs in self.iter_entries(keys):
             parent_keys = refs[ref_list_num]
             found_keys.add(key)
             parent_map[key] = parent_keys
@@ -1170,7 +1169,7 @@ class GraphIndex:
                 raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple([element for element in elements[: self._key_length]])
+            key = tuple(elements[: self._key_length])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
@@ -1302,7 +1301,7 @@ class GraphIndex:
     def validate(self):
         """Validate that everything in the index can be accessed."""
         # iter_all validates completely at the moment, so just do that.
-        for node in self.iter_all_entries():
+        for _node in self.iter_all_entries():
             pass
 
 
@@ -1348,19 +1347,19 @@ class CombinedGraphIndex:
         )
 
     def clear_cache(self):
-        """See GraphIndex.clear_cache()"""
+        """See GraphIndex.clear_cache()."""
         for index in self._indices:
             index.clear_cache()
 
     def get_parent_map(self, keys):
-        """See graph.StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map."""
         search_keys = set(keys)
         if _mod_revision.NULL_REVISION in search_keys:
             search_keys.discard(_mod_revision.NULL_REVISION)
             found_parents = {_mod_revision.NULL_REVISION: []}
         else:
             found_parents = {}
-        for index, key, value, refs in self.iter_entries(search_keys):
+        for _index, key, _value, refs in self.iter_entries(search_keys):
             parents = refs[0]
             if not parents:
                 parents = (_mod_revision.NULL_REVISION,)
@@ -1382,7 +1381,7 @@ class CombinedGraphIndex:
         self._index_names.insert(pos, name)
 
     def iter_all_entries(self):
-        """Iterate over all keys within the index
+        """Iterate over all keys within the index.
 
         Duplicate keys across child indices are presumed to have the same
         value and are only reported once.
@@ -1572,7 +1571,7 @@ class CombinedGraphIndex:
             # print '%4d\t\t\t%4d\t%5d\t%5d' % (generation, len(keys_to_lookup),
             #                                   len(parent_map),
             #                                   len(missing_keys))
-            for index_idx, index in enumerate(self._indices):
+            for _index_idx, index in enumerate(self._indices):
                 # TODO: we should probably be doing something with
                 #       'missing_keys' since we've already determined that
                 #       those revisions have not been found anywhere
@@ -1685,7 +1684,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 self.add_node(key, value)
 
     def iter_all_entries(self):
-        """Iterate over all keys within the index
+        """Iterate over all keys within the index.
 
         :return: An iterable of (index, key, reference_lists, value). There is no
             defined order for the result iteration - it will be in the most
@@ -1822,7 +1821,7 @@ class GraphIndexPrefixAdapter:
         self.add_nodes_callback(translated_nodes)
 
     def add_node(self, key, value, references=()):
-        """Add a node to the index.
+        r"""Add a node to the index.
 
         :param key: The key. keys are non-empty tuples containing
             as many whitespace-free utf8 bytestrings as the key length
@@ -1857,7 +1856,7 @@ class GraphIndexPrefixAdapter:
             )
 
     def iter_all_entries(self):
-        """Iterate over all keys within the index
+        """Iterate over all keys within the index.
 
         iter_all_entries is implemented against the adapted index using
         iter_entries_prefix.

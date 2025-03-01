@@ -179,7 +179,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(b"bar-id", wt.last_revision())
 
     def test_pull_user_r(self):
-        """If the user supplies -r, an error is emitted"""
+        """If the user supplies -r, an error is emitted."""
         self.prepare_merge_directive()
         self.tree1.commit("baz", rev_id=b"baz-id")
         md_text = self.run_bzr(
@@ -224,7 +224,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(b"bar-id", wt.get_parent_ids()[1])
 
     def test_merge_user_r(self):
-        """If the user supplies -r, an error is emitted"""
+        """If the user supplies -r, an error is emitted."""
         self.prepare_merge_directive()
         self.tree1.commit("baz", rev_id=b"baz-id")
         md_text = self.run_bzr(
@@ -262,12 +262,12 @@ class TestMergeDirective(tests.TestCaseWithTransport):
     def test_no_common_ancestor(self):
         foo = self.make_branch_and_tree("foo")
         foo.commit("rev1")
-        bar = self.make_branch_and_tree("bar")
+        self.make_branch_and_tree("bar")
         self.run_bzr("merge-directive ../bar", working_dir="foo")
 
     def test_no_commits(self):
-        foo = self.make_branch_and_tree("foo")
-        bar = self.make_branch_and_tree("bar")
+        self.make_branch_and_tree("foo")
+        self.make_branch_and_tree("bar")
         self.run_bzr_error(
             ("No revisions to bundle.",), "merge-directive ../bar", working_dir="foo"
         )
@@ -278,7 +278,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.run_bzr("merge-directive ../tree2")  # no exception raised
 
     def test_merge_directive_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         import re
 
         re_timestamp = re.compile(r"^# timestamp: .*", re.M)

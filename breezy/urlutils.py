@@ -91,7 +91,7 @@ def escape(relpath: Union[bytes, str], safe: str = "/~") -> str:
 
 
 def file_relpath(base: str, path: str) -> str:
-    """Compute just the relative sub-portion of a url
+    """Compute just the relative sub-portion of a url.
 
     This assumes that both paths are already fully specified file:// URLs.
     """
@@ -107,7 +107,7 @@ def file_relpath(base: str, path: str) -> str:
 
 
 def _find_scheme_and_separator(url):
-    """Find the scheme separator (://) and the first path separator
+    """Find the scheme separator (://) and the first path separator.
 
     This is just a helper functions for other path utilities.
     It could probably be replaced by urlparse
@@ -203,7 +203,7 @@ def joinpath(base, *args):
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
-    """Convert a url like file:///path/to/foo into /path/to/foo"""
+    """Convert a url like file:///path/to/foo into /path/to/foo."""
     url = strip_segment_parameters(url)
     file_localhost_prefix = "file://localhost/"
     if url.startswith(file_localhost_prefix):
@@ -219,7 +219,7 @@ def _posix_local_path_from_url(url):
 
 
 def _posix_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///path/to/foo
+    """Convert a local path like ./foo into a URL like file:///path/to/foo.
 
     This also handles transforming escaping unicode characters, etc.
     """
@@ -229,7 +229,7 @@ def _posix_local_path_to_url(path):
 
 
 def _win32_local_path_from_url(url):
-    """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
+    """Convert a url like file:///C:/path/to/foo into C:/path/to/foo."""
     if not url.startswith("file://"):
         raise InvalidURL(
             url,
@@ -264,7 +264,7 @@ def _win32_local_path_from_url(url):
 
 
 def _win32_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///C:/path/to/foo
+    """Convert a local path like ./foo into a URL like file:///C:/path/to/foo.
 
     This also handles transforming escaping unicode characters, etc.
     """
@@ -343,7 +343,7 @@ def normalize_url(url):
             if c not in _url_safe_characters:
                 raise InvalidURL(
                     url,
-                    "URLs can only contain specific safe characters (not %r)" % c,
+                    "URLs can only contain specific safe characters (not {!r})".format(c),
                 )
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
         return str(prefix + "".join(path))
@@ -354,7 +354,7 @@ def normalize_url(url):
     for i in range(len(path_chars)):
         if path_chars[i] not in _url_safe_characters:
             path_chars[i] = "".join(
-                ["%%%02X" % c for c in bytearray(path_chars[i].encode("utf-8"))]
+                ["%{:02X}".format(c) for c in bytearray(path_chars[i].encode("utf-8"))]
             )
     path = "".join(path_chars)
     path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
@@ -531,7 +531,7 @@ def join_segment_parameters_raw(base, *subsegments):
         return base
     for subsegment in subsegments:
         if not isinstance(subsegment, str):
-            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
+            raise TypeError("Subsegment {!r} is not a bytestring".format(subsegment))
         if "," in subsegment:
             raise InvalidURLJoin(", exists in subsegments", base, subsegments)
     return ",".join((base,) + subsegments)
@@ -552,19 +552,19 @@ def join_segment_parameters(url, parameters):
     new_parameters.update(existing_parameters)
     for key, value in parameters.items():
         if not isinstance(key, str):
-            raise TypeError("parameter key %r is not a str" % key)
+            raise TypeError("parameter key {!r} is not a str".format(key))
         if not isinstance(value, str):
-            raise TypeError("parameter value %r for %r is not a str" % (value, key))
+            raise TypeError("parameter value {!r} for {!r} is not a str".format(value, key))
         if "=" in key:
             raise InvalidURLJoin("= exists in parameter key", url, parameters)
         new_parameters[key] = value
     return join_segment_parameters_raw(
-        base, *["%s=%s" % item for item in sorted(new_parameters.items())]
+        base, *["{}={}".format(*item) for item in sorted(new_parameters.items())]
     )
 
 
 def _win32_strip_local_trailing_slash(url):
-    """Strip slashes after the drive letter"""
+    """Strip slashes after the drive letter."""
     if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
         return url[:-1]
     else:
@@ -636,12 +636,12 @@ def unescape(url):
 # These are characters that if escaped, should stay that way
 _no_decode_chars = ";/?:@&=+$,#"
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
-_no_decode_hex = ["%02x" % o for o in _no_decode_ords] + [
-    "%02X" % o for o in _no_decode_ords
+_no_decode_hex = ["{:02x}".format(o) for o in _no_decode_ords] + [
+    "{:02X}".format(o) for o in _no_decode_ords
 ]
 _hex_display_map = dict(
-    [("%02x" % o, bytes([o])) for o in range(256)]
-    + [("%02X" % o, bytes([o])) for o in range(256)]
+    [("{:02x}".format(o), bytes([o])) for o in range(256)]
+    + [("{:02X}".format(o), bytes([o])) for o in range(256)]
 )
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b"%" + hex.encode("ascii")) for hex in _no_decode_hex)
@@ -885,7 +885,7 @@ class URL:
                 try:
                     port = int(port)
                 except ValueError:
-                    raise InvalidURL("invalid port number %s in url:\n%s" % (port, url))
+                    raise InvalidURL("invalid port number {} in url:\n{}".format(port, url))
             else:
                 port = None
         if host != "" and host[0] == "[" and host[-1] == "]":  # IPv6
@@ -896,7 +896,7 @@ class URL:
     def __str__(self):
         netloc = self.quoted_host
         if ":" in netloc:
-            netloc = "[%s]" % netloc
+            netloc = "[{}]".format(netloc)
         if self.quoted_user is not None:
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally

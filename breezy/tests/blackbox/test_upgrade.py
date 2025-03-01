@@ -27,7 +27,7 @@ from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
 
 
 class OldBzrDir(bzrdir.BzrDirMeta1):
-    """An test brz dir implementation"""
+    """An test brz dir implementation."""
 
     def needs_format_conversion(self, format):
         return not isinstance(format, self.__class__)
@@ -88,9 +88,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         burl = self.get_transport("current_format_branch").local_abspath(".")
         (out, err) = self.run_bzr("upgrade current_format_branch", retcode=0)
         self.assertEqual(
-            "Upgrading branch %s/ ...\n"
-            "The branch format %s is already at the most recent format.\n"
-            % (burl, "Meta directory format 1"),
+            "Upgrading branch {}/ ...\n"
+            "The branch format {} is already at the most recent format.\n".format(burl, "Meta directory format 1"),
             out,
         )
 
@@ -103,10 +102,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         curl = self.get_transport("current_format_checkout").local_abspath(".")
         (out, err) = self.run_bzr("upgrade current_format_checkout", retcode=0)
         self.assertEqual(
-            "Upgrading branch %s/ ...\nThis is a checkout."
-            " The branch (%s/) needs to be upgraded separately.\n"
-            "The branch format %s is already at the most recent format.\n"
-            % (curl, burl, "Meta directory format 1"),
+            "Upgrading branch {}/ ...\nThis is a checkout."
+            " The branch ({}/) needs to be upgraded separately.\n"
+            "The branch format {} is already at the most recent format.\n".format(curl, burl, "Meta directory format 1"),
             out,
         )
 
@@ -218,7 +216,7 @@ finished
         self.assertBranchFormat("branch-foo", "pack-0.92")
 
     def test_upgrade_permission_check(self):
-        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450."""
         self.requireFeature(features.posix_permissions_feature)
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = "backup.bzr.~1~"
@@ -298,10 +296,10 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         self.run_bzr("init --format=knit a")
         out, err = self.run_bzr("revno a")
         if err.find("upgrade") > -1:
-            self.fail("message shouldn't suggest upgrade:\n%s" % err)
+            self.fail("message shouldn't suggest upgrade:\n{}".format(err))
 
     def test_upgrade_shared_repo(self):
-        repo = self.make_repository("repo", format="2a", shared=True)
-        branch = self.make_branch_and_tree("repo/branch", format="pack-0.92")
+        self.make_repository("repo", format="2a", shared=True)
+        self.make_branch_and_tree("repo/branch", format="pack-0.92")
         self.get_transport("repo/branch/.bzr/repository").delete_tree(".")
         out, err = self.run_bzr(["upgrade"], working_dir="repo/branch")

@@ -40,7 +40,7 @@ class LogCollector(logging.Handler):
 
 def makeCollectingLogger():
     """I make a logger instance that collects its logs for programmatic analysis
-    -> (logger, collector)
+    -> (logger, collector).
     """
     logger = logging.Logger("collector")
     handler = LogCollector()
@@ -71,7 +71,7 @@ def visitTests(suite, visitor):
 
 
 class FailedCollectionCase(unittest.TestCase):
-    """Pseudo-test to run and report failure if given case was uncollected"""
+    """Pseudo-test to run and report failure if given case was uncollected."""
 
     def __init__(self, case):
         super().__init__("fail_uncollected")
@@ -130,7 +130,7 @@ class TestSuite(unittest.TestSuite):
 
 
 def _run_and_collect_case(case, res):
-    """Run test case against result and use weakref to drop the refcount"""
+    """Run test case against result and use weakref to drop the refcount."""
     case.run(res)
     return weakref.ref(case)
 
@@ -192,7 +192,7 @@ class FilteredByModuleTestLoader(TestLoader):
 
 
 class TestVisitor:
-    """A visitor for Tests"""
+    """A visitor for Tests."""
 
     def visitSuite(self, aTestSuite):
         pass

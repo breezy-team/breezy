@@ -132,7 +132,7 @@ class Stats:
         :param crit: the data attribute used as the sort key.
         """
         if crit not in profiler_entry.__dict__ or crit == "code":
-            raise ValueError("Can't sort by %s" % crit)
+            raise ValueError("Can't sort by {}".format(crit))
 
         key_func = operator.attrgetter(crit)
         self.data.sort(key=key_func, reverse=reverse)
@@ -182,11 +182,11 @@ class Stats:
                     file.write(
                         cols
                         % (
-                            "+%s" % se.callcount,
+                            "+{}".format(se.callcount),
                             se.reccallcount,
                             se.totaltime,
                             se.inlinetime,
-                            "+%s" % label(se.code),
+                            "+{}".format(label(se.code)),
                         )
                     )
 
@@ -333,7 +333,7 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = "<%s>" % code.co_filename
+            mname = _fn2mod[code.co_filename] = "<{}>".format(code.co_filename)
     if calltree:
         return "%s %s:%d" % (code.co_name, mname, code.co_firstlineno)
     else:

@@ -39,7 +39,7 @@ class TestGitBlackBox(ExternalBase):
         return repo, builder.finish()[r1]
 
     def test_add(self):
-        r = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         self.build_tree(["a", "b"])
@@ -55,7 +55,7 @@ class TestGitBlackBox(ExternalBase):
         )
 
     def test_nick(self):
-        r = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(["nick"])
@@ -257,7 +257,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertNotContainsRe(output, "revno: 1")
 
     def test_commit_without_revno(self):
-        repo = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         output, error = self.run_bzr(
             ["commit", "-Ocalculate_revnos=yes", "--unchanged", "-m", "one"]
         )
@@ -270,7 +270,7 @@ class TestGitBlackBox(ExternalBase):
 
     def test_log_file(self):
         # Smoke test for "bzr log" in a git repository.
-        repo = GitRepo.init(self.test_dir)
+        GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file("a", b"text for a\n", False)
         r1 = builder.commit(b"Joe Foo <joe@foo.com>", "First")
@@ -478,7 +478,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue(err.endswith, "3 objects\n")
 
     def test_local_whoami(self):
-        r = GitRepo.init("gitr", mkdir=True)
+        GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents(
             [
                 (
@@ -511,7 +511,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(err, "")
 
     def test_local_signing_key(self):
-        r = GitRepo.init("gitr", mkdir=True)
+        GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents(
             [
                 (
@@ -629,9 +629,8 @@ class SwitchTests(ExternalBase):
                     """\
 [submodule "subtree"]
     path = subtree
-    url = %s
-"""
-                    % subtree.user_url,
+    url = {}
+""".format(subtree.user_url),
                 )
             ]
         )
@@ -731,7 +730,7 @@ class GitObjectsTests(ExternalBase):
         self.assertEqual([40, 40], [len(s) for s in shas])
         self.assertEqual(error, "")
 
-        output, error = self.run_bzr("git-object %s" % shas[0])
+        output, error = self.run_bzr("git-object {}".format(shas[0]))
         self.assertEqual("", error)
 
     def test_in_native(self):
@@ -743,7 +742,7 @@ class GitObjectsTests(ExternalBase):
 
 class GitApplyTests(ExternalBase):
     def test_apply(self):
-        b = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
 
         with open("foo.patch", "w") as f:
             f.write("""\

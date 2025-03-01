@@ -69,7 +69,7 @@ class _Views:
 
 
 class PathBasedViews(_Views):
-    """View storage in an unversioned tree control file.
+    r"""View storage in an unversioned tree control file.
 
     Views are stored in terms of paths relative to the tree root.
 
@@ -229,7 +229,7 @@ class PathBasedViews(_Views):
         if not match:
             raise ValueError("format marker missing from top of views file")
         elif match.group(1) != b"1":
-            raise ValueError("cannot decode views format %s" % match.group(1))
+            raise ValueError("cannot decode views format {}".format(match.group(1)))
         try:
             keywords = {}
             views = {}
@@ -252,7 +252,7 @@ class PathBasedViews(_Views):
             return keywords, views
         except ValueError as e:
             raise ValueError(
-                "failed to deserialize views content %r: %s" % (view_content, e)
+                "failed to deserialize views content {!r}: {}".format(view_content, e)
             )
 
 

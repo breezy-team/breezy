@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test our ability to build up test repositories"""
+"""Test our ability to build up test repositories."""
 
 from io import BytesIO
 
@@ -142,8 +142,8 @@ class TestGitBranchBuilder(tests.TestCase):
 
         builder.set_file("foo", b"contents\nfoo\n", False)
         r1 = builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
-        r2 = builder.commit(b"Joe Foo <joe@foo.com>", "second", timestamp=1194586405)
-        r3 = builder.commit(
+        builder.commit(b"Joe Foo <joe@foo.com>", "second", timestamp=1194586405)
+        builder.commit(
             b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1
         )
 
@@ -182,10 +182,10 @@ class TestGitBranchBuilder(tests.TestCase):
         builder.set_file("foo", b"contents\nfoo\n", False)
         r1 = builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
         r2 = builder.commit(b"Joe Foo <joe@foo.com>", "second", timestamp=1194586405)
-        r3 = builder.commit(
+        builder.commit(
             b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1
         )
-        r4 = builder.commit(
+        builder.commit(
             b"Joe Foo <joe@foo.com>", "Merge", timestamp=1194586415, merge=[r2]
         )
 
@@ -260,7 +260,7 @@ class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
 
         builder = tests.GitBranchBuilder()
         builder.set_file("foo", b"contents\nfoo\n", False)
-        r1 = builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
+        builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
         mapping = builder.finish()
         self.assertEqual(
             {

@@ -26,7 +26,7 @@ from ..export import _export_iter_entries
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
-    """Prepare a tarball item for exporting
+    """Prepare a tarball item for exporting.
 
     :param tree: Tree to export
     :param final_path: Final path to place item
@@ -70,7 +70,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError(
-            "don't know how to export {%s} of kind %r" % (final_path, entry.kind)
+            "don't know how to export {{{}}} of kind {!r}".format(final_path, entry.kind)
         )
     return (item, fileobj)
 
@@ -88,7 +88,7 @@ def tarball_generator(
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
-    with closing(tarfile.open(None, "w:%s" % format, buf)) as ball, tree.lock_read():
+    with closing(tarfile.open(None, "w:{}".format(format), buf)) as ball, tree.lock_read():
         for final_path, tree_path, entry in _export_iter_entries(
             tree, subdir, recurse_nested=recurse_nested
         ):
@@ -125,7 +125,6 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=Fal
         else:
             root_mtime = None
 
-        is_stdout = False
         basename = None
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than

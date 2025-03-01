@@ -65,7 +65,7 @@ class TestRevert(TestCaseWithTransport):
         mutter("cd dir\n")
 
         self.assertEqual("1\n", self.run_bzr("revno")[0])
-        self.run_bzr("revert %s file" % param)
+        self.run_bzr("revert {} file".format(param))
         with open("file", "rb") as f:
             self.assertEqual(b"spam", f.read())
 
@@ -89,7 +89,7 @@ class TestRevert(TestCaseWithTransport):
         self.assertEqual("", self.run_bzr("status")[0])
 
     def test_revert_dirname(self):
-        """Test that revert DIRECTORY does what's expected"""
+        """Test that revert DIRECTORY does what's expected."""
         self._prepare_rename_mod_tree()
         self.run_bzr("revert a")
         self.assertPathExists("a/b")

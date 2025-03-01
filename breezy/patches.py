@@ -104,7 +104,7 @@ def get_patch_names(iter_lines):
 
 
 def parse_range(textrange):
-    """Parse a patch range, handling the "1" special-case
+    """Parse a patch range, handling the "1" special-case.
 
     :param textrange: The text to parse
     :type textrange: str
@@ -150,7 +150,7 @@ class HunkLine:
         self.contents = contents
 
     def get_str(self, leadchar):
-        if self.contents == b"\n" and leadchar == b" " and False:
+        if False:
             return b"\n"
         if not self.contents.endswith(b"\n"):
             terminator = b"\n" + NO_NL
@@ -278,7 +278,7 @@ def iter_hunks(iter_lines, allow_dirty=False):
     """:arg iter_lines: iterable of lines to parse for hunks
     :kwarg allow_dirty: If True, when we encounter something that is not
         a hunk header when we're looking for one, assume the rest of the lines
-        are not part of the patch (comments or other junk).  Default False
+        are not part of the patch (comments or other junk).  Default False.
     """
     hunk = None
     for line in iter_lines:
@@ -358,7 +358,7 @@ class Patch(BinaryPatch):
         return (inserts, removes, len(self.hunks))
 
     def stats_str(self):
-        """Return a string of patch statistics"""
+        """Return a string of patch statistics."""
         return "%i inserts, %i removes in %i hunks" % self.stats_values()
 
     def pos_in_mod(self, position):
@@ -371,7 +371,7 @@ class Patch(BinaryPatch):
         return newpos
 
     def iter_inserted(self):
-        """Iteraties through inserted lines
+        """Iteraties through inserted lines.
 
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
@@ -389,7 +389,7 @@ class Patch(BinaryPatch):
 def parse_patch(iter_lines, allow_dirty=False):
     """:arg iter_lines: iterable of lines to parse
     :kwarg allow_dirty: If True, allow the patch to have trailing junk.
-        Default False
+        Default False.
     """
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
@@ -472,7 +472,7 @@ def iter_file_patch(
 
 
 def iter_lines_handle_nl(iter_lines: Iterator[bytes]) -> Iterator[bytes]:
-    """Iterates through lines, ensuring that lines that originally had no
+    r"""Iterates through lines, ensuring that lines that originally had no
     terminating \n are produced without one.  This transformation may be
     applied at any point up until hunk line parsing, and is safe to apply
     repeatedly.
@@ -513,7 +513,7 @@ def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
 
 
 def difference_index(atext, btext):
-    """Find the indext of the first character that differs between two texts
+    """Find the indext of the first character that differs between two texts.
 
     :param atext: The first text
     :type atext: str

@@ -92,8 +92,7 @@ class TestGetTo(TestCaseInTempDir):
     def test_custom_body(self):
         sender, revid = self.get_sender(customized_mail_config)
         self.assertEqual(
-            "%s has committed revision 1 at %s.\n\n%s"
-            % (
+            "{} has committed revision 1 at {}.\n\n{}".format(
                 sender.revision.committer,
                 sender.url(),
                 sample_log % revid.decode("utf-8"),
@@ -172,13 +171,13 @@ class TestGetTo(TestCaseInTempDir):
     def test_subject(self):
         sender, revid = self.get_sender()
         self.assertEqual(
-            "Rev 1: foo bar baz in %s" % sender.branch.base, sender.subject()
+            "Rev 1: foo bar baz in {}".format(sender.branch.base), sender.subject()
         )
 
     def test_custom_subject(self):
         sender, revid = self.get_sender(customized_mail_config)
         self.assertEqual(
-            "[commit] %s" % sender.revision.get_summary(), sender.subject()
+            "[commit] {}".format(sender.revision.get_summary()), sender.subject()
         )
 
     def test_diff_filename(self):

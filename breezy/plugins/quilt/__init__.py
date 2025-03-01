@@ -188,7 +188,7 @@ option_registry.register(
 
 def policy_from_store(s):
     if s not in ("applied", "unapplied"):
-        raise ValueError("Invalid quilt.commit_policy: %s" % s)
+        raise ValueError("Invalid quilt.commit_policy: {}".format(s))
     return s
 
 

@@ -41,7 +41,7 @@ _file_streams: Dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
-    """Return a dictionary of {urlprefix: [factory]}"""
+    """Return a dictionary of {urlprefix: [factory]}."""
     return transport_list_registry
 
 
@@ -62,7 +62,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.items():
+    for _prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
@@ -312,7 +312,7 @@ class AppendBasedFileStream(FileStream):
 
 
 class TransportHooks(hooks.Hooks):
-    """Mapping of hook names to registered callbacks for transport hooks"""
+    """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
         super().__init__()
@@ -398,7 +398,7 @@ class Transport:
             new_transport = cur_transport.clone("..")
             if new_transport.base == cur_transport.base:
                 raise errors.CommandError(
-                    "Failed to create path prefix for %s." % cur_transport.base
+                    "Failed to create path prefix for {}.".format(cur_transport.base)
                 )
             try:
                 new_transport.mkdir(".", mode=mode)
@@ -599,10 +599,7 @@ class Transport:
 
     def has_any(self, relpaths):
         """Return True if any of the paths exist."""
-        for relpath in relpaths:
-            if self.has(relpath):
-                return True
-        return False
+        return any(self.has(relpath) for relpath in relpaths)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
@@ -871,8 +868,7 @@ class Transport:
                 if start < last_end:
                     raise ValueError(
                         "Overlapping range not allowed:"
-                        " last range ended at %s, new one starts at %s"
-                        % (last_end, start)
+                        " last range ended at {}, new one starts at {}".format(last_end, start)
                     )
                 cur.length = end - cur.start
                 cur.ranges.append((start - cur.start, size))
@@ -897,7 +893,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                "raw_bytes must be a plain string, not %s" % type(raw_bytes)
+                "raw_bytes must be a plain string, not {}".format(type(raw_bytes))
             )
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
@@ -926,7 +922,7 @@ class Transport:
         """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
-                "raw_bytes must be a plain string, not %s" % type(raw_bytes)
+                "raw_bytes must be a plain string, not {}".format(type(raw_bytes))
             )
         self.put_file_non_atomic(
             relpath,
@@ -1025,7 +1021,7 @@ class Transport:
         :returns: the length of relpath before the content was written to it.
         """
         if not isinstance(data, bytes):
-            raise TypeError("bytes must be a plain string, not %s" % type(data))
+            raise TypeError("bytes must be a plain string, not {}".format(type(data)))
         return self.append_file(relpath, BytesIO(data), mode=mode)
 
     def copy(self, rel_from, rel_to):
@@ -1127,7 +1123,7 @@ class Transport:
             self.delete(rel_from)
 
     def delete(self, relpath):
-        """Delete the item at relpath"""
+        """Delete the item at relpath."""
         raise NotImplementedError(self.delete)
 
     def delete_tree(self, relpath):
@@ -1178,16 +1174,16 @@ class Transport:
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible(
-            "Dereferencing symlinks is not supported on %s" % self
+            "Dereferencing symlinks is not supported on {}".format(self)
         )
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+        raise errors.TransportNotPossible("Hard links are not supported on {}".format(self))
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
+        raise errors.TransportNotPossible("Symlinks are not supported on {}".format(self))
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1199,10 +1195,10 @@ class Transport:
         it if at all possible.
         """
         raise errors.TransportNotPossible(
-            "Transport %r has not "
+            "Transport {!r} has not "
             "implemented list_dir "
             "(but must claim to be listable "
-            "to trigger this error)." % (self)
+            "to trigger this error).".format(self)
         )
 
     def lock_read(self, relpath):
@@ -1216,7 +1212,7 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible("transport locks not supported on {}".format(self))
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1229,7 +1225,7 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible("transport locks not supported on {}".format(self))
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1364,7 +1360,7 @@ class ConnectedTransport(Transport):
         return self._parsed_url.scheme
 
     def clone(self, offset=None):
-        """Return a new transport with root at self.base + offset
+        """Return a new transport with root at self.base + offset.
 
         We leave the daughter classes take advantage of the hint
         that it's a cloning not a raw creation.
@@ -1407,7 +1403,7 @@ class ConnectedTransport(Transport):
         return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
-        """Return the local path portion from a given absolute path"""
+        """Return the local path portion from a given absolute path."""
         parsed_url = self._split_url(abspath)
         error = []
         if parsed_url.scheme != self._parsed_url.scheme:
@@ -1628,7 +1624,7 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
-            mutter("failed to instantiate transport %r for %r: %r" % (factory, base, e))
+            mutter("failed to instantiate transport {!r} for {!r}: {!r}".format(factory, base, e))
             last_err = e
             continue
     return None, last_err
@@ -1663,7 +1659,7 @@ def do_catching_redirections(
     # If a loop occurs, there is little we can do. So we don't try to detect
     # them, just getting out if too much redirections occurs. The solution
     # is outside: where the loop is defined.
-    for redirections in range(MAX_REDIRECTIONS):
+    for _redirections in range(MAX_REDIRECTIONS):
         try:
             return action(transport)
         except errors.RedirectRequested as e:

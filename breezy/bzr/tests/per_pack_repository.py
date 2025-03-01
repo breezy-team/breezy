@@ -184,7 +184,7 @@ class TestPackRepository(TestCaseWithTransport):
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
         for x in range(9):
-            tree.commit("commit %s" % x)
+            tree.commit("commit {}".format(x))
         # there should be 9 packs:
         index = self.index_class(trans, "pack-names", None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -197,7 +197,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.controldir.open_workingtree()
-        check_result = tree.branch.repository.check([tree.branch.last_revision()])
+        tree.branch.repository.check([tree.branch.last_revision()])
         nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
             nb_files += 1  # .cix
@@ -256,7 +256,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
-        format = self.get_format()
+        self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
         t = transport.get_transport_from_url(server.get_url())
@@ -371,7 +371,7 @@ class TestPackRepository(TestCaseWithTransport):
         # tip->ancestor
         format = self.get_format()
         tree = self.make_branch_and_tree(".", format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        tree.branch.repository.controldir.get_repository_transport(None)
         tree.commit("start", rev_id=b"1")
         tree.commit("more work", rev_id=b"2")
         tree.branch.repository.pack()
@@ -383,7 +383,7 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         pos_1 = pos_2 = None
-        for _1, key, val, refs in pack.revision_index.iter_all_entries():
+        for _1, key, val, _refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
                 pos = list(map(int, val.split()))
@@ -395,7 +395,7 @@ class TestPackRepository(TestCaseWithTransport):
             else:
                 pos_2 = pos
         self.assertTrue(
-            pos_2 < pos_1, "rev 1 came before rev 2 %s > %s" % (pos_1, pos_2)
+            pos_2 < pos_1, "rev 1 came before rev 2 {} > {}".format(pos_1, pos_2)
         )
 
     def test_pack_repositories_support_multiple_write_locks(self):
@@ -656,8 +656,8 @@ class TestPackRepository(TestCaseWithTransport):
         add_commit(has_ghost, b"tip", [b"references"])
         missing_ghost.fetch(has_ghost, b"tip")
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision(b"tip")
-        inv = missing_ghost.get_inventory(b"tip")
+        missing_ghost.get_revision(b"tip")
+        missing_ghost.get_inventory(b"tip")
         self.assertRaises(errors.NoSuchRevision, missing_ghost.get_revision, b"ghost")
         self.assertRaises(errors.NoSuchRevision, missing_ghost.get_inventory, b"ghost")
 
@@ -698,7 +698,7 @@ class TestPackRepository(TestCaseWithTransport):
         key = ("some", "junk")
         repo.texts._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
 
     def test_supports_external_lookups(self):
         repo = self.make_repository(".", format=self.get_format())
@@ -752,7 +752,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository("repo", format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token
         repo.start_write_group()
         repo.texts.add_lines((b"file-id", b"revid"), (), [b"lines"])
         wg_tokens = repo.suspend_write_group()
@@ -774,7 +774,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository("repo", format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable("no chk_bytes for this repository")
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token
         repo.start_write_group()
         text = b"a bit of text\n"
         key = (b"sha1:" + osutils.sha_string(text),)
@@ -798,7 +798,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository("repo", format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = (b"file-id", b"revid")
         repo.texts.add_lines(text_key, (), [b"lines"])
@@ -816,7 +816,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_commit_resumed_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository("repo", format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = (b"file-id", b"revid")
         repo.texts.add_lines(text_key, (), [b"lines"])
@@ -844,14 +844,14 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository("repo", format=self.get_format())
-        token = self._lock_write(repo).repository_token
+        self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = (b"file-id", b"revid")
         repo.texts.add_lines(text_key, (), [b"lines"])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository("new_repo", format=self.get_format())
-        token = self._lock_write(new_repo).repository_token
+        self._lock_write(new_repo).repository_token
         hacked_wg_token = "../../../../repo/.bzr/repository/upload/" + wg_tokens[0]
         self.assertRaises(
             errors.UnresumableWriteGroup, new_repo.resume_write_group, [hacked_wg_token]
@@ -859,11 +859,11 @@ class TestPackRepository(TestCaseWithTransport):
 
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
-    """Tests for stacking pack repositories"""
+    """Tests for stacking pack repositories."""
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking" % (self.format_name,))
+            raise TestNotApplicable("{!r} doesn't support stacking".format(self.format_name))
         super().setUp()
 
     def get_format(self):
@@ -969,7 +969,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # test.
         local_tree = tree.branch.create_checkout("local")
         for x in range(9):
-            local_tree.commit("commit %s" % x)
+            local_tree.commit("commit {}".format(x))
         # there should be 9 packs:
         index = self.index_class(trans, "pack-names", None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
@@ -979,7 +979,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.controldir.open_workingtree()
-        check_result = tree.branch.repository.check([tree.branch.last_revision()])
+        tree.branch.repository.check([tree.branch.last_revision()])
         nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
             nb_files += 1  # .cix
@@ -1107,7 +1107,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         # Make 9 local revisions, and push them one at a time to the remote
         # repo to produce 9 pack files.
         for x in range(9):
-            tree.commit("commit %s" % x)
+            tree.commit("commit {}".format(x))
             tree.branch.push(remote_branch)
         # Make one more push to trigger an autopack
         self.hpss_calls = []
@@ -1141,49 +1141,49 @@ def load_tests(loader, basic_tests, pattern):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
-        dict(
-            format_name="pack-0.92",
-            format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
-            format_supports_external_lookups=False,
-            index_class=GraphIndex,
-        ),
-        dict(
-            format_name="pack-0.92-subtree",
-            format_string="Bazaar pack repository format 1 "
+        {
+            "format_name": "pack-0.92",
+            "format_string": "Bazaar pack repository format 1 (needs bzr 0.92)\n",
+            "format_supports_external_lookups": False,
+            "index_class": GraphIndex,
+        },
+        {
+            "format_name": "pack-0.92-subtree",
+            "format_string": "Bazaar pack repository format 1 "
             "with subtree support (needs bzr 0.92)\n",
-            format_supports_external_lookups=False,
-            index_class=GraphIndex,
-        ),
-        dict(
-            format_name="1.6",
-            format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
-            format_supports_external_lookups=True,
-            index_class=GraphIndex,
-        ),
-        dict(
-            format_name="1.6.1-rich-root",
-            format_string="Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n",
-            format_supports_external_lookups=True,
-            index_class=GraphIndex,
-        ),
-        dict(
-            format_name="1.9",
-            format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
-            format_supports_external_lookups=True,
-            index_class=BTreeGraphIndex,
-        ),
-        dict(
-            format_name="1.9-rich-root",
-            format_string="Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n",
-            format_supports_external_lookups=True,
-            index_class=BTreeGraphIndex,
-        ),
-        dict(
-            format_name="2a",
-            format_string="Bazaar repository format 2a (needs bzr 1.16 or later)\n",
-            format_supports_external_lookups=True,
-            index_class=BTreeGraphIndex,
-        ),
+            "format_supports_external_lookups": False,
+            "index_class": GraphIndex,
+        },
+        {
+            "format_name": "1.6",
+            "format_string": "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
+            "format_supports_external_lookups": True,
+            "index_class": GraphIndex,
+        },
+        {
+            "format_name": "1.6.1-rich-root",
+            "format_string": "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n",
+            "format_supports_external_lookups": True,
+            "index_class": GraphIndex,
+        },
+        {
+            "format_name": "1.9",
+            "format_string": "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+            "format_supports_external_lookups": True,
+            "index_class": BTreeGraphIndex,
+        },
+        {
+            "format_name": "1.9-rich-root",
+            "format_string": "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n",
+            "format_supports_external_lookups": True,
+            "index_class": BTreeGraphIndex,
+        },
+        {
+            "format_name": "2a",
+            "format_string": "Bazaar repository format 2a (needs bzr 1.16 or later)\n",
+            "format_supports_external_lookups": True,
+            "index_class": BTreeGraphIndex,
+        },
     ]
     # name of the scenario is the format name
     scenarios = [(s["format_name"], s) for s in scenarios_params]

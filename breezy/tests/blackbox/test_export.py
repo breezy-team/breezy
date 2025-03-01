@@ -110,7 +110,7 @@ class TestExport(TestCaseWithTransport):
             )
 
     def test_tar_export_unicode_basedir(self):
-        """Test for bug #413406"""
+        """Test for bug #413406."""
         self.requireFeature(features.UnicodeFilenameFeature)
         basedir = "\N{EURO SIGN}"
         os.mkdir(basedir)
@@ -135,19 +135,19 @@ class TestExport(TestCaseWithTransport):
     #       testing. Though the actual setup and teardown functions are pretty
     #       different for each
     def assertZipANameAndContent(self, zfile, root=""):
-        """The file should only contain name 'a' and _file_content"""
+        """The file should only contain name 'a' and _file_content."""
         fname = root + "a"
         self.assertEqual([fname], sorted(zfile.namelist()))
         zfile.testzip()
         self.assertEqualDiff(self._file_content, zfile.read(fname))
 
     def test_zip_export_stdout(self):
-        tree = self.make_basic_tree()
+        self.make_basic_tree()
         contents = self.run_bzr_raw("export -d tree --format=zip -")[0]
         self.assertZipANameAndContent(zipfile.ZipFile(BytesIO(contents)))
 
     def test_zip_export_file(self):
-        tree = self.make_basic_tree()
+        self.make_basic_tree()
         self.run_bzr("export -d tree test.zip")
         self.assertZipANameAndContent(zipfile.ZipFile("test.zip"), root="test/")
 
@@ -168,7 +168,7 @@ class TestExport(TestCaseWithTransport):
         self.assertRaises(StopIteration, next, ball_iter)
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
-        tree = self.make_basic_tree()
+        self.make_basic_tree()
         fname = "test.{}".format(extension)
         self.run_bzr("export -d tree {}".format(fname))
         mode = "r|{}".format(tarfile_flags)
@@ -389,14 +389,14 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(315532800, foo_st.st_mtime)
 
     def test_export_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         self.example_branch()
         self.run_bzr(["export", "--directory=branch", "latest"])
         self.assertEqual(["goodbye", "hello"], sorted(os.listdir("latest")))
         self.check_file_contents("latest/goodbye", b"baz")
 
     def test_export_uncommitted(self):
-        """Test --uncommitted option"""
+        """Test --uncommitted option."""
         self.example_branch()
         os.chdir("branch")
         self.build_tree_contents([("goodbye", b"uncommitted data")])

@@ -35,7 +35,7 @@ class TestNick(tests.TestCaseWithTransport):
                 self.assertEqual(expected, conf._get_explicit_nickname())
 
     def test_nick_command(self):
-        """Brz nick for viewing, setting nicknames"""
+        """Brz nick for viewing, setting nicknames."""
         self.make_branch_and_tree("me.dev")
         self.assertNick("me.dev", working_dir="me.dev")
         # set the nickname
@@ -51,7 +51,7 @@ class TestNick(tests.TestCaseWithTransport):
     def test_bound_nick(self):
         """Bind should not update implicit nick."""
         base = self.make_branch_and_tree("base")
-        child = self.make_branch_and_tree("child")
+        self.make_branch_and_tree("child")
         self.assertNick("child", working_dir="child", explicit=False)
 
         self.run_bzr("bind ../base", working_dir="child")
@@ -60,23 +60,23 @@ class TestNick(tests.TestCaseWithTransport):
     def test_bound_nick_explicit(self):
         """Bind should update explicit nick."""
         base = self.make_branch_and_tree("base")
-        child = self.make_branch_and_tree("child")
+        self.make_branch_and_tree("child")
         self.run_bzr("nick explicit_nick", working_dir="child")
         self.assertNick("explicit_nick", working_dir="child", explicit=True)
         self.run_bzr("bind ../base", working_dir="child")
         self.assertNick(base.branch.nick, working_dir="child", explicit=True)
 
     def test_boundless_nick(self):
-        """Nick defaults to implicit local nick when bound branch is AWOL"""
+        """Nick defaults to implicit local nick when bound branch is AWOL."""
         base = self.make_branch_and_tree("base")
-        child = self.make_branch_and_tree("child")
+        self.make_branch_and_tree("child")
         self.run_bzr("bind ../base", working_dir="child")
         self.assertNick(base.branch.nick, working_dir="child", explicit=False)
         osutils.rmtree("base")
         self.assertNick("child", working_dir="child", explicit=False)
 
     def test_nick_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         self.make_branch_and_tree("me.dev")
         self.assertNick("me.dev", directory="me.dev")
         self.run_bzr(["nick", "-d", "me.dev", "moo"])

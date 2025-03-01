@@ -30,12 +30,12 @@ import breezy.osutils
 
 
 def get_filename(options):
-    """Provides name of manual"""
-    return "%s_man.txt" % (options.brz_name)
+    """Provides name of manual."""
+    return "{}_man.txt".format(options.brz_name)
 
 
 def infogen(options, outfile):
-    """Create manual in RSTX format"""
+    """Create manual in RSTX format."""
     t = time.time()
     tt = time.gmtime(t)
     params = {
@@ -93,7 +93,7 @@ def _get_section(
             help = "{}\n{}\n\n".format(heading, text)
         if file_per_topic:
             topic_id = _dump_text(output_dir, topic, help)
-            lines.append("   %s" % topic_id)
+            lines.append("   {}".format(topic_id))
         else:
             lines.append(help)
 
@@ -120,7 +120,7 @@ def _get_commands_section(
         help = "{}\n{}\n\n{}\n\n".format(heading, underline, text)
         if file_per_topic:
             topic_id = _dump_text(output_dir, cmd_name, help)
-            lines.append("   %s" % topic_id)
+            lines.append("   {}".format(topic_id))
         else:
             lines.append(help)
 

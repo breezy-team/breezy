@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 """Get file version.
-Written by Alexander Belchenko, 2006
+Written by Alexander Belchenko, 2006.
 """
 
 import os
@@ -24,7 +24,7 @@ class VersionNotAvailable(Exception):
 def get_file_version(filename):
     """Get file version (windows properties)
     :param  filename:   path to file
-    :return:            4-tuple with 4 version numbers
+    :return:            4-tuple with 4 version numbers.
     """
     if not os.path.isfile(filename):
         raise FileNotFound

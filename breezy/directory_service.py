@@ -178,11 +178,11 @@ can be used with most commands that expect a location, such as `brz push`.
 
 The aliases are::
 
-%s
+{}
 For example, to push to the parent location::
 
     brz push :parent
-""" % "".join(alias_lines)
+""".format("".join(alias_lines))
 
 
 directories.register(":", AliasDirectory, "Easy access to remembered branch locations")

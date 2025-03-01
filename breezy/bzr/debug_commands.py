@@ -163,4 +163,4 @@ class cmd_file_path(Command):
         segments = osutils.splitpath(relpath)
         for pos in range(1, len(segments) + 1):
             path = osutils.joinpath(segments[:pos])
-            self.outf.write("%s\n" % tree.path2id(path))
+            self.outf.write("{}\n".format(tree.path2id(path)))

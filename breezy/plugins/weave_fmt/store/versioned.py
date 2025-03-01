@@ -38,9 +38,11 @@ class VersionedFileStore(TransportStore):
         dir_mode=None,
         file_mode=None,
         versionedfile_class=None,
-        versionedfile_kwargs={},
+        versionedfile_kwargs=None,
         escaped=False,
     ):
+        if versionedfile_kwargs is None:
+            versionedfile_kwargs = {}
         super().__init__(
             transport,
             dir_mode=dir_mode,
@@ -76,10 +78,7 @@ class VersionedFileStore(TransportStore):
     def has_id(self, file_id):
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
-        for suffix in suffixes:
-            if not self._transport.has(filename + suffix):
-                return False
-        return True
+        return all(self._transport.has(filename + suffix) for suffix in suffixes)
 
     def get_empty(self, file_id, transaction):
         """Get an empty weave, which implies deleting the existing one first."""

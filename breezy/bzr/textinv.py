@@ -53,7 +53,7 @@ def unescape(s):
 def write_text_inventory(inv, outf):
     """Write out inv in a simple trad-unix text format."""
     outf.write(START_MARK)
-    for path, ie in inv.iter_entries():
+    for _path, ie in inv.iter_entries():
         if inv.is_root(ie.file_id):
             continue
 
@@ -71,7 +71,7 @@ def write_text_inventory(inv, outf):
 
 
 def read_text_inventory(tf):
-    """Return an inventory read in from tf"""
+    """Return an inventory read in from tf."""
     if tf.readline() != START_MARK:
         raise BzrError("missing start mark")
 
@@ -81,7 +81,7 @@ def read_text_inventory(tf):
         fields = l.split(" ")
         if fields[0] == "#":
             break
-        ie = {
+        {
             "file_id": fields[0],
             "name": unescape(fields[1]),
             "kind": fields[2],

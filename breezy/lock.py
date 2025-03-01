@@ -101,7 +101,7 @@ class Lock:
 
 
 class LockResult:
-    """Result of an operation on a lock; passed to a hook"""
+    """Result of an operation on a lock; passed to a hook."""
 
     def __init__(self, lock_url, details=None):
         """Create a lock result for lock with optional details about the lock."""
@@ -126,7 +126,7 @@ class LogicalLockResult:
         self.token = token
 
     def __repr__(self):
-        return "LogicalLockResult(%s)" % (self.unlock)
+        return "LogicalLockResult({})".format(self.unlock)
 
     def __enter__(self):
         return self
@@ -234,8 +234,7 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Write lock taken w/ an open read lock on: %s"
-                        % (self.filename,)
+                        "Write lock taken w/ an open read lock on: {}".format(self.filename)
                     )
 
             self._open(self.filename, "rb+")
@@ -272,8 +271,7 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Read lock taken w/ an open write lock on: %s"
-                        % (self.filename,)
+                        "Read lock taken w/ an open write lock on: {}".format(self.filename)
                     )
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
@@ -306,7 +304,7 @@ if have_fcntl:
             :return: A token which can be used to switch back to a read lock.
             """
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError("file already locked: %r" % (self.filename,))
+                raise AssertionError("file already locked: {!r}".format(self.filename))
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
@@ -332,7 +330,7 @@ if have_fcntl:
                 raise errors.LockContention(self.filename)
 
             if self.filename in _fcntl_WriteLock._open_locks:
-                raise AssertionError("file already locked: %r" % (self.filename,))
+                raise AssertionError("file already locked: {!r}".format(self.filename))
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want

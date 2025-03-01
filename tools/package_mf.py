@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Custom module finder for entire package"""
+"""Custom module finder for entire package."""
 
 import os
 import sys
@@ -31,13 +31,17 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                     if not specified, python standard library only is used.
     """
 
-    def __init__(self, path=None, debug=0, excludes=[], replace_paths=[]):
+    def __init__(self, path=None, debug=0, excludes=None, replace_paths=None):
+        if replace_paths is None:
+            replace_paths = []
+        if excludes is None:
+            excludes = []
         if path is None:
             path = [os.path.dirname(os.__file__)]  # only python std lib
         modulefinder.ModuleFinder.__init__(self, path, debug, excludes, replace_paths)
 
     def load_package_recursive(self, fqname):
-        """Recursively process each module in package
+        """Recursively process each module in package.
 
         :param  fqname:   name of the package.
         """
@@ -86,7 +90,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                 self.import_module(partname, ".".join((package, partname)), pkg_module)
 
     def get_result(self):
-        """Return 2-tuple: (list of packages, list of modules)"""
+        """Return 2-tuple: (list of packages, list of modules)."""
         keys = sorted(self.modules.keys())
         mods = []
         packs = []

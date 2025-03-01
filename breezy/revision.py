@@ -69,7 +69,7 @@ class Revision:
         self.__dict__.update(args)
 
     def __repr__(self):
-        return "<Revision id %s>" % self.revision_id
+        return "<Revision id {}>".format(self.revision_id)
 
     def datetime(self):
         import datetime
@@ -100,9 +100,9 @@ class Revision:
             # GZ 2017-06-10: What sort of string are properties exactly?
             not_text = not isinstance(name, str)
             if not_text or osutils.contains_whitespace(name):
-                raise ValueError("invalid property name %r" % name)
+                raise ValueError("invalid property name {!r}".format(name))
             if not isinstance(value, (str, bytes)):
-                raise ValueError("invalid property value %r for %r" % (value, name))
+                raise ValueError("invalid property value {!r} for {!r}".format(value, name))
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.
@@ -212,7 +212,7 @@ def __get_closest(intersection):
 
 
 def is_reserved_id(revision_id: RevisionID) -> bool:
-    """Determine whether a revision id is reserved
+    """Determine whether a revision id is reserved.
 
     Returns:
       True if the revision is reserved, False otherwise
@@ -221,7 +221,7 @@ def is_reserved_id(revision_id: RevisionID) -> bool:
 
 
 def check_not_reserved_id(revision_id: RevisionID) -> None:
-    """Raise ReservedId if the supplied revision_id is reserved"""
+    """Raise ReservedId if the supplied revision_id is reserved."""
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
 

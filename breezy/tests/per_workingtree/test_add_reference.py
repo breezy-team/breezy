@@ -75,7 +75,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self._references_unsupported(tree)
 
     def test_root_present(self):
-        """Subtree root is present, though not the working tree root"""
+        """Subtree root is present, though not the working tree root."""
         tree, sub_tree = self.make_trees()
         if not tree.supports_setting_file_ids():
             self.skipTest("format does not support setting file ids")

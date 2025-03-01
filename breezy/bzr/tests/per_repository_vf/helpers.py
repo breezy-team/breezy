@@ -41,7 +41,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             # pretty deprecated.  Ideally these tests should apply to any repo
             # where repo.revision_graph_can_have_wrong_parents() is True, but
             # at the moment we only know how to corrupt knit repos.
-            raise TestNotApplicable("%s isn't a knit format" % self.repository_format)
+            raise TestNotApplicable("{} isn't a knit format".format(self.repository_format))
 
         repo = self.make_repository("broken")
         with repo.lock_write(), WriteGroup(repo):

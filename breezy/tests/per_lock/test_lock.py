@@ -104,7 +104,7 @@ class TestLock(TestCaseWithLock):
         self.assertRaises(errors.LockContention, self.write_lock, "a-file")
 
     def test_read_unlock_write(self):
-        """Make sure that unlocking allows us to lock write"""
+        """Make sure that unlocking allows us to lock write."""
         a_lock = self.read_lock("a-file")
         a_lock.unlock()
         a_lock = self.write_lock("a-file")

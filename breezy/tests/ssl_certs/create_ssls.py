@@ -58,14 +58,14 @@ def error(s):
 
 
 def needs(request, *paths):
-    """Errors out if the specified path does not exists"""
+    """Errors out if the specified path does not exists."""
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
         error("{} needs: {}".format(request, ",".join(missing)))
 
 
 def rm_f(path):
-    """Rm -f path"""
+    """Rm -f path."""
     try:
         os.unlink(path)
     except:
@@ -86,29 +86,29 @@ def _openssl(args, input=None):
     return proc.returncode, stdout, stderr
 
 
-ssl_params = dict(
+ssl_params = {
     # Passwords
-    server_pass="I will protect the communications",
-    server_challenge_pass="Challenge for the CA",
-    ca_pass="I am the authority for the whole... localhost",
+    "server_pass": "I will protect the communications",
+    "server_challenge_pass": "Challenge for the CA",
+    "ca_pass": "I am the authority for the whole... localhost",
     # CA identity
-    ca_country_code="BZ",
-    ca_state="Internet",
-    ca_locality="Bazaar",
-    ca_organization="Distributed",
-    ca_section="VCS",
-    ca_name="Master of certificates",
-    ca_email="cert@no.spam",
+    "ca_country_code": "BZ",
+    "ca_state": "Internet",
+    "ca_locality": "Bazaar",
+    "ca_organization": "Distributed",
+    "ca_section": "VCS",
+    "ca_name": "Master of certificates",
+    "ca_email": "cert@no.spam",
     # Server identity
-    server_country_code="LH",
-    server_state="Internet",
-    server_locality="LocalHost",
-    server_organization="Testing Ltd",
-    server_section="https server",
-    server_name="127.0.0.1",  # Always accessed under that name
-    server_email="https_server@localhost",
-    server_optional_company_name="",
-)
+    "server_country_code": "LH",
+    "server_state": "Internet",
+    "server_locality": "LocalHost",
+    "server_organization": "Testing Ltd",
+    "server_section": "https server",
+    "server_name": "127.0.0.1",  # Always accessed under that name
+    "server_email": "https_server@localhost",
+    "server_optional_company_name": "",
+}
 
 
 def build_ca_key():
@@ -117,7 +117,7 @@ def build_ca_key():
     rm_f(key_path)
     _openssl(
         ["genrsa", "-passout", "stdin", "-aes256", "-out", key_path, "4096"],
-        input="%(ca_pass)s\n%(ca_pass)s\n" % ssl_params,
+        input="{ca_pass}\n{ca_pass}\n".format(**ssl_params),
     )
 
 
@@ -144,14 +144,14 @@ def build_ca_certificate():
             "-out",
             cert_path,
         ],
-        input="%(ca_pass)s\n"
-        "%(ca_country_code)s\n"
-        "%(ca_state)s\n"
-        "%(ca_locality)s\n"
-        "%(ca_organization)s\n"
-        "%(ca_section)s\n"
-        "%(ca_name)s\n"
-        "%(ca_email)s\n" % ssl_params,
+        input="{ca_pass}\n"
+        "{ca_country_code}\n"
+        "{ca_state}\n"
+        "{ca_locality}\n"
+        "{ca_organization}\n"
+        "{ca_section}\n"
+        "{ca_name}\n"
+        "{ca_email}\n".format(**ssl_params),
     )
 
 
@@ -165,40 +165,40 @@ def build_server_key():
     rm_f(key_path)
     _openssl(
         ["genrsa", "-passout", "stdin", "-des3", "-out", key_path, "4096"],
-        input="%(server_pass)s\n%(server_pass)s\n" % ssl_params,
+        input="{server_pass}\n{server_pass}\n".format(**ssl_params),
     )
 
     key_nopass_path = ssl_certs.build_path("server_without_pass.key")
     rm_f(key_nopass_path)
     _openssl(
         ["rsa", "-passin", "stdin", "-in", key_path, "-out", key_nopass_path],
-        input="%(server_pass)s\n" % ssl_params,
+        input="{server_pass}\n".format(**ssl_params),
     )
 
 
 def build_server_signing_request():
-    """Create a CSR (certificate signing request) to get signed by the CA"""
+    """Create a CSR (certificate signing request) to get signed by the CA."""
     key_path = ssl_certs.build_path("server_with_pass.key")
     needs("Building server.csr", key_path)
     server_csr_path = ssl_certs.build_path("server.csr")
     rm_f(server_csr_path)
     _openssl(
         ["req", "-passin", "stdin", "-new", "-key", key_path, "-out", server_csr_path],
-        input="%(server_pass)s\n"
-        "%(server_country_code)s\n"
-        "%(server_state)s\n"
-        "%(server_locality)s\n"
-        "%(server_organization)s\n"
-        "%(server_section)s\n"
-        "%(server_name)s\n"
-        "%(server_email)s\n"
-        "%(server_challenge_pass)s\n"
-        "%(server_optional_company_name)s\n" % ssl_params,
+        input="{server_pass}\n"
+        "{server_country_code}\n"
+        "{server_state}\n"
+        "{server_locality}\n"
+        "{server_organization}\n"
+        "{server_section}\n"
+        "{server_name}\n"
+        "{server_email}\n"
+        "{server_challenge_pass}\n"
+        "{server_optional_company_name}\n".format(**ssl_params),
     )
 
 
 def sign_server_certificate():
-    """CA signs server csr"""
+    """CA signs server csr."""
     server_csr_path = ssl_certs.build_path("server.csr")
     ca_cert_path = ssl_certs.build_path("ca.crt")
     ca_key_path = ssl_certs.build_path("ca.key")
@@ -228,7 +228,7 @@ def sign_server_certificate():
             "-out",
             server_cert_path,
         ],
-        input="%(ca_pass)s\n" % ssl_params,
+        input="{ca_pass}\n".format(**ssl_params),
     )
 
 
@@ -287,19 +287,19 @@ opt_parser.add_option(
 )
 
 
-key_builders = dict(
-    ca=build_ca_key,
-    server=build_server_key,
-)
-certificate_builders = dict(
-    ca=build_ca_certificate,
-)
-signing_request_builders = dict(
-    server=build_server_signing_request,
-)
-signing_builders = dict(
-    server=sign_server_certificate,
-)
+key_builders = {
+    "ca": build_ca_key,
+    "server": build_server_key,
+}
+certificate_builders = {
+    "ca": build_ca_certificate,
+}
+signing_request_builders = {
+    "server": build_server_signing_request,
+}
+signing_builders = {
+    "server": sign_server_certificate,
+}
 
 
 if __name__ == "__main__":

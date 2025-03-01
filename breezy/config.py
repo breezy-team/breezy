@@ -227,7 +227,7 @@ def signature_policy_from_unicode(signature_string):
         return CHECK_NEVER
     if signature_string.lower() == "require":
         return CHECK_ALWAYS
-    raise ValueError("Invalid signatures policy '%s'" % signature_string)
+    raise ValueError("Invalid signatures policy '{}'".format(signature_string))
 
 
 def signing_policy_from_unicode(signature_string):
@@ -240,16 +240,14 @@ def signing_policy_from_unicode(signature_string):
         return SIGN_ALWAYS
     if signature_string.lower() == "when-possible":
         return SIGN_WHEN_POSSIBLE
-    raise ValueError("Invalid signing policy '%s'" % signature_string)
+    raise ValueError("Invalid signing policy '{}'".format(signature_string))
 
 
 def _has_triplequote_bug():
     """True if triple quote logic is reversed, see lp:710410."""
     conf = configobj.ConfigObj()
     quote = getattr(conf, "_get_triple_quote", None)
-    if quote and quote('"""') != "'''":
-        return True
-    return False
+    return bool(quote and quote('"""') != "'''")
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -455,8 +453,8 @@ class Config:
                 value = self._expand_options_in_list(value)
             elif isinstance(value, dict):
                 trace.warning(
-                    'Cannot expand "%s":'
-                    " Dicts do not support option expansion" % (option_name,)
+                    'Cannot expand "{}":'
+                    " Dicts do not support option expansion".format(option_name)
                 )
             else:
                 value = self._expand_options_in_string(value)
@@ -504,7 +502,7 @@ class Config:
         return None
 
     def validate_signatures_in_log(self):
-        """Show GPG signature validity in log"""
+        """Show GPG signature validity in log."""
         result = self._validate_signatures_in_log()
         if result == "true":
             result = True
@@ -573,18 +571,15 @@ class Config:
           True if the warning should be suppressed, False otherwise.
         """
         warnings = self.get_user_option_as_list("suppress_warnings")
-        if warnings is None or warning not in warnings:
-            return False
-        else:
-            return True
+        return not (warnings is None or warning not in warnings)
 
     def get_merge_tools(self):
         tools = {}
-        for oname, value, section, conf_id, parser in self._get_options():
+        for oname, _value, _section, _conf_id, _parser in self._get_options():
             if oname.startswith("bzr.mergetool."):
                 tool_name = oname[len("bzr.mergetool.") :]
                 tools[tool_name] = self.get_user_option(oname, False)
-        trace.mutter("loaded merge tools: %r" % tools)
+        trace.mutter("loaded merge tools: {!r}".format(tools))
         return tools
 
     def find_merge_tool(self, name):
@@ -595,7 +590,7 @@ class Config:
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
         command_line = self.get_user_option(
-            "bzr.mergetool.%s" % name, expand=False
+            "bzr.mergetool.{}".format(name), expand=False
         ) or known_merge_tools.get(name, None)
         return command_line
 
@@ -834,7 +829,7 @@ class IniBasedConfig(Config):
             return signature_policy_from_unicode(policy)
 
     def _get_signing_policy(self):
-        """See Config._get_signing_policy"""
+        """See Config._get_signing_policy."""
         policy = self._get_user_option("create_signatures")
         if policy:
             return signing_policy_from_unicode(policy)
@@ -864,7 +859,7 @@ class IniBasedConfig(Config):
                     value = urlutils.join(value, extra_path)
                 return value
             else:
-                raise AssertionError("Unexpected config policy %r" % policy)
+                raise AssertionError("Unexpected config policy {!r}".format(policy))
         else:
             return None
 
@@ -1171,7 +1166,7 @@ class LocationConfig(LockableConfig):
             key=lambda match: (match[2], match[0]),
             reverse=True,
         )
-        for section, extra_path, length in matches:
+        for section, extra_path, _length in matches:
             yield section, extra_path
             # should we stop looking for parent configs here?
             try:
@@ -1185,7 +1180,7 @@ class LocationConfig(LockableConfig):
         # We ignore the name here as the only sections handled are named with
         # the location path and we don't expose embedded sections either.
         parser = self._get_parser()
-        for name, extra_path in self._get_matching_sections():
+        for name, _extra_path in self._get_matching_sections():
             yield (name, parser[name], self.config_id())
 
     def _get_option_policy(self, section, option_name):
@@ -1223,7 +1218,7 @@ class LocationConfig(LockableConfig):
             STORE_LOCATION_NORECURSE,
             STORE_LOCATION_APPENDPATH,
         ]:
-            raise ValueError("bad storage policy %r for %r" % (store, option))
+            raise ValueError("bad storage policy {!r} for {!r}".format(store, option))
         with self.lock_write():
             self.reload()
             location = self.location
@@ -1450,7 +1445,7 @@ def extract_email_address(e):
 
 
 class TreeConfig(IniBasedConfig):
-    """Branch configuration data associated with its contents, not location"""
+    """Branch configuration data associated with its contents, not location."""
 
     # XXX: Really needs a better name, as this is not part of the tree!
     # -- mbp 20080507
@@ -1469,7 +1464,7 @@ class TreeConfig(IniBasedConfig):
             return self._config.get_option(name, section, default)
 
     def set_option(self, value, name, section=None):
-        """Set a per-branch configuration option"""
+        """Set a per-branch configuration option."""
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
         with self.branch.lock_write():
@@ -1563,7 +1558,7 @@ class AuthenticationConfig:
             f.close()
 
     def _set_option(self, section_name, option_name, value):
-        """Set an authentication configuration option"""
+        """Set an authentication configuration option."""
         conf = self._get_config()
         section = conf.get(section_name)
         if section is None:
@@ -1604,7 +1599,7 @@ class AuthenticationConfig:
         credentials = None
         for auth_def_name, auth_def in self._get_config().iteritems():
             if not isinstance(auth_def, configobj.Section):
-                raise ValueError("%s defined outside a section" % auth_def_name)
+                raise ValueError("{} defined outside a section".format(auth_def_name))
 
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ["scheme", "host", "user", "path"]
@@ -1615,14 +1610,14 @@ class AuthenticationConfig:
             except KeyError:
                 a_port = None
             except ValueError:
-                raise ValueError("'port' not numeric in %s" % auth_def_name)
+                raise ValueError("'port' not numeric in {}".format(auth_def_name))
             try:
                 a_verify_certificates = auth_def.as_bool("verify_certificates")
             except KeyError:
                 a_verify_certificates = True
             except ValueError:
                 raise ValueError(
-                    "'verify_certificates' not boolean in %s" % auth_def_name
+                    "'verify_certificates' not boolean in {}".format(auth_def_name)
                 )
 
             # Attempt matching
@@ -1645,17 +1640,17 @@ class AuthenticationConfig:
                 continue
             # Prepare a credentials dictionary with additional keys
             # for the credential providers
-            credentials = dict(
-                name=auth_def_name,
-                user=a_user,
-                scheme=a_scheme,
-                host=host,
-                port=port,
-                path=path,
-                realm=realm,
-                password=auth_def.get("password", None),
-                verify_certificates=a_verify_certificates,
-            )
+            credentials = {
+                "name": auth_def_name,
+                "user": a_user,
+                "scheme": a_scheme,
+                "host": host,
+                "port": port,
+                "path": path,
+                "realm": realm,
+                "password": auth_def.get("password", None),
+                "verify_certificates": a_verify_certificates,
+            }
             # Decode the password in the credentials (or get one)
             self.decode_password(credentials, auth_def.get("password_encoding", None))
             if "auth" in debug.debug_flags:
@@ -1791,8 +1786,8 @@ class AuthenticationConfig:
             password = credentials["password"]
             if password is not None and scheme == "ssh":
                 trace.warning(
-                    "password ignored in section [%s],"
-                    " use an ssh agent instead" % credentials["name"]
+                    "password ignored in section [{}],"
+                    " use an ssh agent instead".format(credentials["name"])
                 )
                 password = None
         else:
@@ -1801,7 +1796,7 @@ class AuthenticationConfig:
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = "%s" % scheme.upper() + " %(user)s@%(host)s password"
+                prompt = "{}".format(scheme.upper()) + " %(user)s@%(host)s password"
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = "%s:%d" % (host, port)
@@ -1814,7 +1809,7 @@ class AuthenticationConfig:
         try:
             cs = credential_store_registry.get_credential_store(encoding)
         except KeyError:
-            raise ValueError("%r is not a known password_encoding" % encoding)
+            raise ValueError("{!r} is not a known password_encoding".format(encoding))
         credentials["password"] = cs.decode_password(credentials)
         return credentials
 
@@ -1919,7 +1914,7 @@ credential_store_registry = CredentialStoreRegistry()
 
 
 class CredentialStore:
-    """An abstract class to implement storage for credentials"""
+    """An abstract class to implement storage for credentials."""
 
     def decode_password(self, credentials):
         """Returns a clear text password for the provided credentials."""
@@ -1980,7 +1975,7 @@ class BzrDirConfig:
         for those under repositories.
         """
         if self._config is None:
-            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
+            raise errors.BzrError("Cannot set configuration in {}".format(self._bzrdir))
         if value is None:
             self._config.set_option("", "default_stack_on")
         else:
@@ -2184,7 +2179,7 @@ class Option:
             self.default = default
         else:
             # other python objects are not expected
-            raise AssertionError("%r is not supported as a default value" % (default,))
+            raise AssertionError("{!r} is not supported as a default value".format(default))
         self.default_from_env = default_from_env
         self._help = help
         self.from_unicode = from_unicode
@@ -2244,8 +2239,7 @@ class Option:
                 value = self.default()
                 if not isinstance(value, str):
                     raise AssertionError(
-                        "Callable default value for '%s' should be unicode"
-                        % (self.name)
+                        "Callable default value for '{}' should be unicode".format(self.name)
                     )
             else:
                 value = self.default
@@ -2275,7 +2269,7 @@ def int_from_store(unicode_str):
     return int(unicode_str)
 
 
-_unit_suffixes = dict(K=10**3, M=10**6, G=10**9)
+_unit_suffixes = {"K": 10**3, "M": 10**6, "G": 10**9}
 
 
 def int_SI_from_store(unicode_str):
@@ -2384,8 +2378,8 @@ class RegistryOption(Option):
             return self.registry.get(unicode_str)
         except KeyError:
             raise ValueError(
-                "Invalid value %s for %s."
-                "See help for a list of possible values." % (unicode_str, self.name)
+                "Invalid value {} for {}."
+                "See help for a list of possible values.".format(unicode_str, self.name)
             )
 
     @property
@@ -2427,7 +2421,7 @@ class OptionRegistry(registry.Registry):
         Args:
           option_name: The name to validate.
         """
-        if _option_ref_re.match("{%s}" % option_name) is None:
+        if _option_ref_re.match("{{{}}}".format(option_name)) is None:
             raise IllegalOptionName(option_name)
 
     def register(self, option):
@@ -2455,7 +2449,7 @@ class OptionRegistry(registry.Registry):
         super().register_lazy(key, module_name, member_name)
 
     def get_help(self, key=None):
-        """Get the help text associated with the given key"""
+        """Get the help text associated with the given key."""
         option = self.get(key)
         the_help = option.help
         if callable(the_help):
@@ -3034,11 +3028,7 @@ class Store:
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
-        for s in self.dirty_sections.values():
-            if s.orig:
-                # At least one dirty section contains a modification
-                return True
-        return False
+        return any(s.orig for s in self.dirty_sections.values())
 
     def apply_changes(self, dirty_sections):
         """Apply changes from dirty sections while checking for coherency.
@@ -3287,7 +3277,7 @@ class TransportIniFileStore(IniFileStore):
     """
 
     def __init__(self, transport, file_name):
-        """A Store using a ini file on a Transport
+        """A Store using a ini file on a Transport.
 
         Args:
           transport: The transport object where the config file is located.
@@ -3625,7 +3615,7 @@ _shared_stores_at_exit_installed = False
 
 
 class Stack:
-    """A stack of configurations where an option can be defined"""
+    """A stack of configurations where an option can be defined."""
 
     def __init__(self, sections_def, store=None, mutable_section_id=None):
         """Creates a stack of sections with an optional store for changes.
@@ -3693,8 +3683,8 @@ class Stack:
                         val = self._expand_options_in_string(val)
                     else:
                         trace.warning(
-                            'Cannot expand "%s":'
-                            " %s does not support option expansion" % (name, type(val))
+                            'Cannot expand "{}":'
+                            " {} does not support option expansion".format(name, type(val))
                         )
                 if opt is None:
                     val = found_store.unquote(val)
@@ -3844,7 +3834,7 @@ class Stack:
             stores = _shared_stores
 
             def save_config_changes():
-                for k, store in stores.items():
+                for _k, store in stores.items():
                     store.save_changes()
 
             if not _shared_stores_at_exit_installed:

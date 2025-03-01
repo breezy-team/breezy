@@ -115,7 +115,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual("catching KeyboardInterrupt\n", err)
 
     def test_server_exception_no_hook(self):
-        """Test exception without hook returns error"""
+        """Test exception without hook returns error."""
         args = []
         out, err = self.run_bzr_serve_then_func(args, retcode=3)
 
@@ -423,7 +423,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         # Read-only
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
-        self.assertEqual("readonly+%s" % base_url, self.bzr_serve_transport.base)
+        self.assertEqual("readonly+{}".format(base_url), self.bzr_serve_transport.base)
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport, allow_writes=True)
@@ -433,5 +433,5 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         # Read-only, from a URL
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()
-        self.assertEqual("readonly+%s" % base_url, self.bzr_serve_transport.base)
+        self.assertEqual("readonly+{}".format(base_url), self.bzr_serve_transport.base)
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))

@@ -69,7 +69,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
-        """Pushing into a checkout updates the checkout and the master branch"""
+        """Pushing into a checkout updates the checkout and the master branch."""
         master_tree = self.make_branch_and_tree("master")
         checkout = self.make_branch_and_tree("checkout")
         try:
@@ -77,7 +77,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
-        rev1 = checkout.commit("master")
+        checkout.commit("master")
 
         other = master_tree.branch.controldir.sprout("other").open_workingtree()
         rev2 = other.commit("other commit")
@@ -225,7 +225,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         revid_a = source.build_snapshot(
             None, [("add", ("", b"root-id", "directory", None))]
         )
-        revid_b = source.build_snapshot([revid_a], [])
+        source.build_snapshot([revid_a], [])
         revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
         b = source.get_branch()
@@ -259,7 +259,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         #   - rev-1, adds a file
         #   - rev-2, no changes
         #   - rev-3, modifies the file.
-        repo = self.make_repository("repo", shared=True, format="1.6")
+        self.make_repository("repo", shared=True, format="1.6")
         builder = self.make_branch_builder("repo/local")
         builder.start_series()
         revid1 = builder.build_snapshot(
@@ -270,7 +270,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             ],
         )
         revid2 = builder.build_snapshot([revid1], [])
-        revid3 = builder.build_snapshot(
+        builder.build_snapshot(
             [revid2], [("modify", ("filename", b"new-content\n"))]
         )
         builder.finish_series()

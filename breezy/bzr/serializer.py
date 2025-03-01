@@ -115,7 +115,7 @@ class Serializer:
 
 
 class SerializerRegistry(registry.Registry):
-    """Registry for serializer objects"""
+    """Registry for serializer objects."""
 
 
 format_registry = SerializerRegistry()

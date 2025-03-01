@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for breezy.i18n"""
+"""Tests for breezy.i18n."""
 
 import io
 
@@ -31,7 +31,7 @@ class ZzzTranslations:
     _null_translation = i18n._gettext.NullTranslations()
 
     def zzz(self, s):
-        return "zz\xe5{{%s}}" % s
+        return "zz\xe5{{{{{}}}}}".format(s)
 
     def gettext(self, s):
         return self.zzz(self._null_translation.gettext(s))
@@ -137,7 +137,7 @@ class TestTranslate(tests.TestCaseWithTransport):
     def test_error_message_translation(self):
         """Do errors get translated?"""
         err = None
-        tree = self.make_branch_and_tree(".")
+        self.make_branch_and_tree(".")
         try:
             workingtree.WorkingTree.open("./foo")
         except errors.NotBranchError as e:

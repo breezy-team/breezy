@@ -86,7 +86,7 @@ class PathFilteringTransport(Transport):
 
     def _call(self, methodname, relpath, *args):
         """Helper for Transport methods of the form:
-        operation(path, [other args ...])
+        operation(path, [other args ...]).
         """
         backing_method = getattr(self.server.backing_transport, methodname)
         return backing_method(self._filter(relpath), *args)

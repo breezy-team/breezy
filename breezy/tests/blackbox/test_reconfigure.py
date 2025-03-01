@@ -20,22 +20,22 @@ from breezy.tests.script import TestCaseWithTransportAndScript
 
 class TestReconfigure(TestCaseWithTransportAndScript):
     def test_no_type(self):
-        branch = self.make_branch("branch")
+        self.make_branch("branch")
         self.run_bzr_error(["No target configuration specified"], "reconfigure branch")
 
     def test_branch_to_tree(self):
-        branch = self.make_branch("branch")
+        self.make_branch("branch")
         self.run_bzr("reconfigure --tree branch")
-        tree = workingtree.WorkingTree.open("branch")
+        workingtree.WorkingTree.open("branch")
 
     def test_tree_to_branch(self):
-        tree = self.make_branch_and_tree("tree")
+        self.make_branch_and_tree("tree")
         self.run_bzr("reconfigure --branch tree")
         self.assertRaises(errors.NoWorkingTree, workingtree.WorkingTree.open, "tree")
 
     def test_branch_to_specified_checkout(self):
-        branch = self.make_branch("branch")
-        parent = self.make_branch("parent")
+        self.make_branch("branch")
+        self.make_branch("parent")
         self.run_bzr("reconfigure branch --checkout --bind-to parent")
 
     def test_force(self):
@@ -49,29 +49,29 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_lightweight_checkout_to_checkout(self):
         branch = self.make_branch("branch")
-        checkout = branch.create_checkout("checkout", lightweight=True)
+        branch.create_checkout("checkout", lightweight=True)
         self.run_bzr("reconfigure --checkout checkout")
 
     def test_lightweight_checkout_to_tree(self):
         branch = self.make_branch("branch")
-        checkout = branch.create_checkout("checkout", lightweight=True)
+        branch.create_checkout("checkout", lightweight=True)
         self.run_bzr("reconfigure --tree checkout")
 
     def test_no_args(self):
-        branch = self.make_branch("branch")
+        self.make_branch("branch")
         self.run_bzr_error(
             ["No target configuration specified"], "reconfigure", working_dir="branch"
         )
 
     def test_checkout_to_lightweight_checkout(self):
         branch = self.make_branch("branch")
-        checkout = branch.create_checkout("checkout")
+        branch.create_checkout("checkout")
         self.run_bzr("reconfigure --lightweight-checkout checkout")
 
     def test_standalone_to_use_shared(self):
         self.build_tree(["repo/"])
         tree = self.make_branch_and_tree("repo/tree")
-        repo = self.make_repository("repo", shared=True)
+        self.make_repository("repo", shared=True)
         self.run_bzr("reconfigure --use-shared", working_dir="repo/tree")
         tree = workingtree.WorkingTree.open("repo/tree")
         self.assertNotEqual(
@@ -80,7 +80,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         )
 
     def test_use_shared_to_standalone(self):
-        repo = self.make_repository("repo", shared=True)
+        self.make_repository("repo", shared=True)
         branch = controldir.ControlDir.create_branch_convenience("repo/tree")
         self.assertNotEqual(
             branch.controldir.root_transport.base,
@@ -121,15 +121,15 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         )
 
     def test_make_with_trees_nonshared_repo(self):
-        branch = self.make_branch("branch")
+        self.make_branch("branch")
         self.run_bzr_error(
             ["Requested reconfiguration of '.*' is not supported"],
             "reconfigure --with-trees branch",
         )
 
     def test_make_without_trees_leaves_tree_alone(self):
-        repo = self.make_repository("repo", shared=True)
-        branch = controldir.ControlDir.create_branch_convenience("repo/branch")
+        self.make_repository("repo", shared=True)
+        controldir.ControlDir.create_branch_convenience("repo/branch")
         tree = workingtree.WorkingTree.open("repo/branch")
         self.build_tree(["repo/branch/foo"])
         tree.add("foo")
@@ -138,7 +138,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         tree = workingtree.WorkingTree.open("repo/branch")
 
     def test_shared_format_to_standalone(self, format=None):
-        repo = self.make_repository("repo", shared=True, format=format)
+        self.make_repository("repo", shared=True, format=format)
         branch = controldir.ControlDir.create_branch_convenience("repo/tree")
         self.assertNotEqual(
             branch.controldir.root_transport.base,
@@ -170,7 +170,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
 
     def test_lightweight_format_checkout_to_tree(self, format=None):
         branch = self.make_branch("branch", format=format)
-        checkout = branch.create_checkout("checkout", lightweight=True)
+        branch.create_checkout("checkout", lightweight=True)
         tree = workingtree.WorkingTree.open("checkout")
         self.build_tree_contents([("checkout/file", b"foo\n")])
         tree.add(["file"])
@@ -240,7 +240,6 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         self.build_tree(["b1/foo"])
         tree_1.add(["foo"])
         tree_1.commit("add foo")
-        branch_1 = tree_1.branch
         # now branch and commit again
         bzrdir_2 = tree_1.controldir.sprout("b2")
         tree_2 = bzrdir_2.open_workingtree()

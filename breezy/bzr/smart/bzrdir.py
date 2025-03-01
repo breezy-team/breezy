@@ -309,7 +309,7 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
 class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
     def _find(self, path):
-        """Try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -332,7 +332,7 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 
 class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
     def do(self, path):
-        """Try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -356,7 +356,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
 class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
     def do(self, path):
-        """Try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -381,7 +381,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
 class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
     def do(self, path):
-        """Try to find a repository from path upwards
+        """Try to find a repository from path upwards.
 
         This operates precisely like 'bzrdir.find_repository'.
 
@@ -467,7 +467,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             return False
         if arg == b"True":
             return True
-        raise AssertionError("invalid arg %r" % arg)
+        raise AssertionError("invalid arg {!r}".format(arg))
 
     def parse_NoneBytestring(self, arg):
         return arg or None

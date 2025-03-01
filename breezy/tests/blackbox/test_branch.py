@@ -83,7 +83,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr("branch %s,branch=somecolo" % local_path_to_url("b/a"))
+        out, err = self.run_bzr("branch {},branch=somecolo".format(local_path_to_url("b/a")))
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -93,7 +93,7 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr("branch -b somecolo %s" % local_path_to_url("b/a"))
+        out, err = self.run_bzr("branch -b somecolo {}".format(local_path_to_url("b/a")))
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -274,7 +274,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(second_stat, target_stat)
 
     def test_branch_standalone(self):
-        shared_repo = self.make_repository("repo", shared=True)
+        self.make_repository("repo", shared=True)
         self.example_branch("source")
         self.run_bzr("branch --standalone source repo/target")
         b = branch.Branch.open("repo/target")
@@ -384,7 +384,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
         self.run_bzr("branch source target")
 
-        target = WorkingTree.open("target")
+        WorkingTree.open("target")
         self.assertRaises(errors.NotBranchError, WorkingTree.open, "target/subtree")
 
     def test_branch_with_nested_trees_no_recurse(self):
@@ -398,7 +398,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
         self.run_bzr("branch --no-recurse-nested source target")
 
-        target = WorkingTree.open("target")
+        WorkingTree.open("target")
         self.addCleanup(subtree.lock_read().unlock)
         basis = subtree.basis_tree()
         self.addCleanup(basis.lock_read().unlock)
@@ -406,7 +406,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
 
 class TestBranchStacked(tests.TestCaseWithTransport):
-    """Tests for branch --stacked"""
+    """Tests for branch --stacked."""
 
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repo, disregarding stacking."""
@@ -423,7 +423,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         self.assertEqual(set(revid_list), repo.has_revisions(revid_list))
 
     def test_branch_stacked_branch_not_stacked(self):
-        """Branching a stacked branch is not stacked by default"""
+        """Branching a stacked branch is not stacked by default."""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree("target", format="1.9")
         trunk_tree.commit("mainline")
@@ -448,7 +448,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         )
 
     def test_branch_stacked_branch_stacked(self):
-        """Asking to stack on a stacked branch does work"""
+        """Asking to stack on a stacked branch does work."""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree("target", format="1.9")
         trunk_revid = trunk_tree.commit("mainline")
@@ -463,7 +463,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "branch", "--stacked", "branch2"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % branch_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(branch_tree.branch.base),
             err,
         )
         self.assertEqual(
@@ -486,7 +486,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "--stacked", "mainline", "newbranch"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to %s.\n" % trunk_tree.branch.base,
+            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
             err,
         )
         self.assertRevisionNotInRepository("newbranch", original_revid)
@@ -496,13 +496,13 @@ class TestBranchStacked(tests.TestCaseWithTransport):
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
         self.transport_server = test_server.SmartTCPServer_for_testing
-        trunk = self.make_branch("mainline", format="1.9")
+        self.make_branch("mainline", format="1.9")
         out, err = self.run_bzr(
             ["branch", "--stacked", self.get_url("mainline"), "shallow"]
         )
 
     def test_branch_stacked_from_non_stacked_format(self):
-        """The origin format doesn't support stacking"""
+        """The origin format doesn't support stacking."""
         trunk = self.make_branch("trunk", format="pack-0.92")
         out, err = self.run_bzr(["branch", "--stacked", "trunk", "shallow"])
         # We should notify the user that we upgraded their format
@@ -513,7 +513,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             "  Branch format 7\n"
             "Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n"
             "This may take some time. Upgrade the repositories to the same format for better performance.\n"
-            "Created new stacked branch referring to %s.\n" % (trunk.base,),
+            "Created new stacked branch referring to {}.\n".format(trunk.base),
             err,
         )
 
@@ -528,7 +528,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             "  Branch format 7\n"
             "Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n"
             "This may take some time. Upgrade the repositories to the same format for better performance.\n"
-            "Created new stacked branch referring to %s.\n" % (trunk.base,),
+            "Created new stacked branch referring to {}.\n".format(trunk.base),
             err,
         )
 
@@ -561,15 +561,14 @@ class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
         self.script_runner.run_script(
             self,
             """
-                $ brz checkout %(option)s repo/trunk checkout
+                $ brz checkout {option} repo/trunk checkout
                 $ cd checkout
                 $ brz branch --switch ../repo/trunk ../repo/branched
                 2>Branched 0 revisions.
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched...
                 $ cd ..
-                """
-            % locals(),
+                """.format(**locals()),
         )
         bound_branch = branch.Branch.open_containing("checkout")[0]
         master_branch = branch.Branch.open_containing("repo/branched")[0]

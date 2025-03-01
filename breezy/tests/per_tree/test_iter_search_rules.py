@@ -22,7 +22,7 @@ from breezy.tests.per_tree import TestCaseWithTree
 
 class TestIterSearchRules(TestCaseWithTree):
     def make_per_user_searcher(self, text):
-        """Make a _RulesSearcher from a string"""
+        """Make a _RulesSearcher from a string."""
         return rules._IniBasedRulesSearcher(text.splitlines(True))
 
     def make_tree_with_rules(self, text):
