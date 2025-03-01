@@ -26,6 +26,11 @@ from typing import Dict, List
 
 from .lazy_import import lazy_import
 
+__all__ = [
+    'md5',
+    'sha',
+]
+
 lazy_import(
     globals(),
     """
@@ -50,6 +55,7 @@ from breezy.i18n import gettext
 """,
 )
 
+from hashlib import md5
 from hashlib import sha1 as sha
 
 import breezy

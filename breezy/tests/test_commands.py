@@ -197,6 +197,7 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
     def setUp(self):
         super().setUp()
+        import breezy.tests.fake_command  # noqa: F401
 
         del sys.modules["breezy.tests.fake_command"]
         global lazy_command_imported

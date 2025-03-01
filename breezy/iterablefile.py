@@ -29,7 +29,8 @@ class IterableFileBase:
         self.done = False
 
     def read_n(self, length: int) -> bytes:
-        """>>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_n(8)
+        """
+        >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_n(8)
         b'This is '
         """
 
@@ -42,7 +43,8 @@ class IterableFileBase:
         return self._read(test_length)
 
     def read_to(self, sequence: bytes, length: Optional[int] = None) -> bytes:
-        """>>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        """
+        >>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.read_to(b'\\n')
         b'Th\\n'
         >>> f.read_to(b'\\n')
@@ -61,7 +63,8 @@ class IterableFileBase:
         return self._read(test_contents)
 
     def _read(self, result_length: Callable[[bytes], Optional[int]]) -> bytes:
-        """Read data until result satisfies the condition result_length.
+        """
+        Read data until result satisfies the condition result_length.
         result_length is a callable that returns None until the condition
         is satisfied, and returns the length of the result to use when
         the condition is satisfied.  (i.e. it returns the length of the
@@ -80,7 +83,8 @@ class IterableFileBase:
         return result[:output_length]
 
     def read_all(self) -> bytes:
-        """>>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_all()
+        """
+        >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_all()
         b'This is a test.'
         """
 
@@ -90,7 +94,8 @@ class IterableFileBase:
         return self._read(no_stop)
 
     def push_back(self, contents: bytes) -> None:
-        """>>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        """
+        >>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.read_to(b'\\n')
         b'Th\\n'
         >>> f.push_back(b"Sh")
@@ -122,7 +127,8 @@ class IterableFile:
             raise ValueError("File is closed.")
 
     def close(self) -> None:
-        """>>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
+        """
+        >>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         >>> f.closed
         False
         >>> f.close()
@@ -179,7 +185,8 @@ class IterableFile:
         return next(self._iter)
 
     def __iter__(self) -> Iterator[bytes]:
-        """>>> list(IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.']))
+        """
+        >>> list(IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.']))
         [b'Th\\n', b'is is \\n', b'a te\\n', b'st.']
         >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.close()
@@ -190,7 +197,8 @@ class IterableFile:
         return self
 
     def read(self, length: Optional[int] = None) -> bytes:
-        """>>> IterableFile([b'This ', b'is ', b'a ', b'test.']).read()
+        """
+        >>> IterableFile([b'This ', b'is ', b'a ', b'test.']).read()
         b'This is a test.'
         >>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         >>> f.read(10)
@@ -208,7 +216,8 @@ class IterableFile:
             return self._file_base.read_n(length)
 
     def read_to(self, sequence: bytes, size: Optional[int] = None) -> bytes:
-        """Read characters until a sequence is found, with optional max size.
+        """
+        Read characters until a sequence is found, with optional max size.
         The specified sequence, if found, will be included in the result
 
         >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
@@ -225,7 +234,8 @@ class IterableFile:
         return self._file_base.read_to(sequence, size)
 
     def readline(self, size: Optional[int] = None) -> bytes:
-        """>>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        """
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readline()
         b'Th\\n'
         >>> f.readline(4)
@@ -238,7 +248,8 @@ class IterableFile:
         return self.read_to(b"\n", size)
 
     def readlines(self, sizehint=None) -> List[bytes]:
-        """>>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        """
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readlines()
         [b'Th\\n', b'is is \\n', b'a te\\n', b'st.']
         >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
