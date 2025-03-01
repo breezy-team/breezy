@@ -42,7 +42,7 @@ Homepage = "https://www.breezy-vcs.org/"
 Download = "https://launchpad.net/brz/+download"
 
 [project.optional-dependencies]
-fastimport = ["fastimport"]
+fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
