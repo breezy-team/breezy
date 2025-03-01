@@ -60,7 +60,6 @@ from .osutils import (
     get_user_encoding,
     is_inside_any,
     minimum_path_selection,
-    supports_symlinks,
 )
 from .trace import is_quiet, mutter, note
 from .urlutils import unescape_for_display
@@ -772,7 +771,7 @@ class Commit:
                 raise StrictCommitFailed()
 
     def _commit_nested_tree(self, path):
-        "Commit a nested tree."
+        """Commit a nested tree."""
         sub_tree = self.work_tree.get_nested_tree(path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,

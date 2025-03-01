@@ -19,21 +19,20 @@
 import contextlib
 
 from breezy import branch as _mod_branch
-from breezy import config, controldir
-from breezy import delta as _mod_delta
 from breezy import (
+    config,
+    controldir,
     errors,
     lock,
-    merge,
     osutils,
     repository,
     revision,
     shelf,
     tests,
     transport,
+    urlutils,
 )
 from breezy import tree as _mod_tree
-from breezy import urlutils
 from breezy.bzr import remote
 from breezy.tests import per_branch
 from breezy.tests.http_server import HttpServer
@@ -191,7 +190,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), "sftp://example.net")
 
     def test_public_branch(self):
-        """public location can be queried and set"""
+        """Public location can be queried and set"""
         branch = self.make_branch("branch")
         self.assertEqual(branch.get_public_branch(), None)
         branch.set_public_branch("sftp://example.com")

@@ -42,9 +42,8 @@ from breezy.bzr import (
     )
 """,
 )
-from .. import errors
+from .. import errors, osutils
 from .. import graph as _mod_graph
-from .. import osutils
 from .. import transport as _mod_transport
 from ..registry import Registry
 from ..textmerge import TextMerge
@@ -764,7 +763,8 @@ class VersionedFile:
         will not include the null revision.
 
         Must raise RevisionNotPresent if any of the given versions are
-        not present in file history."""
+        not present in file history.
+        """
         raise NotImplementedError(self.get_ancestry)
 
     def get_ancestry_with_ghosts(self, version_ids):
@@ -1115,7 +1115,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [(c in self._safe) and chr(c) or ("%%%02x" % c) for c in bytearray(prefix)]
+        r = [((c in self._safe) and chr(c)) or ("%%%02x" % c) for c in bytearray(prefix)]
         return "".join(r).encode("ascii")
 
     def _unescape(self, basename):
@@ -1416,7 +1416,7 @@ class VersionedFiles:
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.
@@ -1702,7 +1702,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \n
            terminators.
          * Lines are returned in arbitrary order.

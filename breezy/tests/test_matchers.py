@@ -18,7 +18,7 @@
 
 from testtools.matchers import *
 
-from . import CapturedCall, TestCase, TestCaseWithTransport
+from . import TestCase, TestCaseWithTransport
 from .matchers import *
 
 

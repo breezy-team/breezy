@@ -65,7 +65,8 @@ class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_local_updates_checkout_only(self):
         """Pulling --local into a checkout updates the checkout and not the
-        master branch"""
+        master branch
+        """
         master_tree = self.make_branch_and_tree("master")
         rev1 = master_tree.commit("master")
         checkout = master_tree.branch.create_checkout("checkout")

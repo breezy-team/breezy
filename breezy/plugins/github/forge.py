@@ -21,12 +21,10 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ... import bedding
+from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
-from ... import controldir, errors, hooks, urlutils
-from ... import version_string as breezy_version
-from ...config import AuthenticationConfig, GlobalStack
-from ...errors import InvalidHttpResponse, PermissionDenied, UnexpectedHttpStatus
+from ...config import AuthenticationConfig
+from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
     Forge,
     ForgeLoginRequired,
@@ -43,7 +41,6 @@ from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note
 from ...transport import get_transport
-from ...transport.http import default_user_agent
 
 GITHUB_HOST = "github.com"
 WEB_GITHUB_URL = "https://github.com"
@@ -740,10 +737,10 @@ class GitHub(Forge):
         )
         for pull in pulls:
             if (
-                status == "closed"
-                and pull["merged"]
-                or status == "merged"
-                and not pull["merged"]
+                (status == "closed"
+                and pull["merged"])
+                or (status == "merged"
+                and not pull["merged"])
             ):
                 continue
             if pull["head"]["ref"] != source_branch_name:

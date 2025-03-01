@@ -57,7 +57,7 @@ def infogen(options, outfile):
 
 def _get_body(params, topic_dir):
     """Build the manual content."""
-    from breezy.help_topics import SECT_CONCEPT, SECT_LIST, SECT_PLUGIN
+    from breezy.help_topics import SECT_CONCEPT, SECT_LIST
 
     registry = breezy.help_topics.topic_registry
     result = []

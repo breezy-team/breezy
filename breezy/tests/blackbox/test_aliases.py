@@ -15,12 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """Black-box tests for brz aliases."""
 
-import os
 
 from breezy import config
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
 
 
 class TestAliases(TestCaseWithTransport):

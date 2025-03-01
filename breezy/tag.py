@@ -87,7 +87,8 @@ class Tags:
 
     def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
         """Returns a dict with revisions as keys
-        and a list of tags for that revision as value"""
+        and a list of tags for that revision as value
+        """
         d = self.get_tag_dict()
         rev = defaultdict(set)
         for key in d:

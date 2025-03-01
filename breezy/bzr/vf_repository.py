@@ -65,7 +65,7 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import ROOT_ID, Inventory, entry_factory
+from .inventory import Inventory, entry_factory
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -465,7 +465,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 carried_over = False
                 if len(heads) == 1:
                     # Could be a carry-over situation:
-                    parent_entry_revs = parent_entries.get(file_id, None)
+                    parent_entry_revs = parent_entries.get(file_id)
                     if parent_entry_revs:
                         parent_entry = parent_entry_revs.get(heads[0], None)
                     else:
@@ -1706,7 +1706,7 @@ class VersionedFileRepository(Repository):
         with self.lock_read():
             if not self.has_revision(revision_id):
                 raise errors.NoSuchRevision(self, revision_id)
-            sig_present = 1 == len(self.signatures.get_parent_map([(revision_id,)]))
+            sig_present = len(self.signatures.get_parent_map([(revision_id,)])) == 1
             return sig_present
 
     def get_signature_text(self, revision_id):

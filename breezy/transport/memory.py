@@ -20,7 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-import contextlib
 import errno
 import itertools
 import os
@@ -28,7 +27,7 @@ from io import BytesIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
 from .. import transport, urlutils
-from ..errors import InProcessTransport, LockError, TransportNotPossible
+from ..errors import InProcessTransport, LockError
 from ..transport import (
     AppendBasedFileStream,
     FileExists,
@@ -245,13 +244,13 @@ class MemoryTransport(transport.Transport):
         """See Transport.rmdir."""
         _abspath = self._resolve_symlinks(relpath)
         if _abspath in self._files:
-            self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
+            self._translate_error(OSError(errno.ENOTDIR, relpath), relpath)
         for path in itertools.chain(self._files, self._symlinks):
             if path.startswith(_abspath + "/"):
-                self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
+                self._translate_error(OSError(errno.ENOTEMPTY, relpath), relpath)
         for path in self._dirs:
             if path.startswith(_abspath + "/") and path != _abspath:
-                self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
+                self._translate_error(OSError(errno.ENOTEMPTY, relpath), relpath)
         if _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]

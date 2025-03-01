@@ -16,7 +16,6 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from io import BytesIO
 
 import fastbencode as bencode
 
@@ -31,7 +30,7 @@ from breezy.bzr import (
     )
 """,
 )
-from .. import cache_utf8, errors
+from .. import cache_utf8
 from .. import revision as _mod_revision
 from . import serializer
 

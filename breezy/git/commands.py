@@ -75,7 +75,7 @@ class cmd_git_import(Command):
 
         from .. import controldir, trace, ui, urlutils
         from ..controldir import ControlDir
-        from ..errors import BzrError, CommandError, NoRepositoryPresent, NotBranchError
+        from ..errors import CommandError, NoRepositoryPresent, NotBranchError
         from ..i18n import gettext
         from ..repository import InterRepository, Repository
         from ..transport import get_transport

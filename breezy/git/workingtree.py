@@ -47,11 +47,9 @@ from dulwich.objects import S_ISGITLINK
 from .. import branch as _mod_branch
 from .. import conflicts as _mod_conflicts
 from .. import controldir as _mod_controldir
-from .. import errors, globbing, lock, osutils
+from .. import errors, globbing, lock, osutils, trace, tree, urlutils, workingtree
 from .. import revision as _mod_revision
-from .. import trace
 from .. import transport as _mod_transport
-from .. import tree, urlutils, workingtree
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
@@ -484,7 +482,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if _mod_revision.NULL_REVISION == last_rev:
+        if last_rev == _mod_revision.NULL_REVISION:
             parents = []
         else:
             parents = [last_rev]
@@ -823,7 +821,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
-        boolean if desired."""
+        boolean if desired.
+        """
         if getattr(self, "_global_ignoreglobster", None) is None:
             from breezy import ignores
 

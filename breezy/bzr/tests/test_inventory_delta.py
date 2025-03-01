@@ -282,7 +282,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), "Versioned root found")
 
     def test_parse_last_line_not_empty(self):
-        """newpath must start with / if it is not None."""
+        """Newpath must start with / if it is not None."""
         # Trim the trailing newline from a valid serialization
         lines = root_only_lines[:-1]
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -294,7 +294,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), "last line not empty")
 
     def test_parse_invalid_newpath(self):
-        """newpath must start with / if it is not None."""
+        """Newpath must start with / if it is not None."""
         lines = empty_lines
         lines += b"None\x00bad\x00TREE_ROOT\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -306,7 +306,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), "newpath invalid")
 
     def test_parse_invalid_oldpath(self):
-        """oldpath must start with / if it is not None."""
+        """Oldpath must start with / if it is not None."""
         lines = root_only_lines
         lines += b"bad\x00/new\x00file-id\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
@@ -318,7 +318,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertContainsRe(str(err), "oldpath invalid")
 
     def test_parse_new_file(self):
-        """a new file is parsed correctly"""
+        """A new file is parsed correctly"""
         lines = root_only_lines
         fake_sha = b"deadbeef" * 5
         lines += (

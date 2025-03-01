@@ -16,7 +16,7 @@
 
 import re
 
-from .. import errors, lazy_regex
+from .. import lazy_regex
 from ..globbing import ExceptionGlobster, Globster, _OrderedGlobster, normalize_pattern
 from . import TestCase
 
@@ -345,7 +345,7 @@ class TestGlobster(TestCase):
         )
 
     def test_mixed_globs(self):
-        """tests handling of combinations of path type matches.
+        """Tests handling of combinations of path type matches.
 
         The types being extension, basename and full path.
         """
@@ -357,7 +357,7 @@ class TestGlobster(TestCase):
         self.assertEqual(".*.swp", globster.match("foo/.bar.py.swp"))
 
     def test_large_globset(self):
-        """tests that the globster can handle a large set of patterns.
+        """Tests that the globster can handle a large set of patterns.
 
         Large is defined as more than supported by python regex groups,
         i.e. 99.
@@ -384,7 +384,7 @@ class TestGlobster(TestCase):
 
 class TestExceptionGlobster(TestCase):
     def test_exclusion_patterns(self):
-        """test that exception patterns are not matched"""
+        """Test that exception patterns are not matched"""
         patterns = ["*", "!./local", "!./local/**/*", "!RE:\\.z.*", "!!./.zcompdump"]
         globster = ExceptionGlobster(patterns)
         self.assertEqual("*", globster.match("tmp/foo.txt"))
@@ -395,7 +395,7 @@ class TestExceptionGlobster(TestCase):
         self.assertEqual("!!./.zcompdump", globster.match(".zcompdump"))
 
     def test_exclusion_order(self):
-        """test that ordering of exclusion patterns does not matter"""
+        """Test that ordering of exclusion patterns does not matter"""
         patterns = ["static/**/*.html", "!static/**/versionable.html"]
         globster = ExceptionGlobster(patterns)
         self.assertEqual("static/**/*.html", globster.match("static/foo.html"))
@@ -409,7 +409,7 @@ class TestExceptionGlobster(TestCase):
 
 class TestOrderedGlobster(TestCase):
     def test_ordered_globs(self):
-        """test that the first match in a list is the one found"""
+        """Test that the first match in a list is the one found"""
         patterns = ["*.foo", "bar.*"]
         globster = _OrderedGlobster(patterns)
         self.assertEqual("*.foo", globster.match("bar.foo"))
@@ -421,9 +421,10 @@ class TestOrderedGlobster(TestCase):
 
 class TestNormalizePattern(TestCase):
     def test_backslashes(self):
-        """tests that backslashes are converted to forward slashes, multiple
+        """Tests that backslashes are converted to forward slashes, multiple
         backslashes are collapsed to single forward slashes and trailing
-        backslashes are removed"""
+        backslashes are removed
+        """
         self.assertEqual("/", normalize_pattern("\\"))
         self.assertEqual("/", normalize_pattern("\\\\"))
         self.assertEqual("/foo/bar", normalize_pattern("\\foo\\bar"))
@@ -431,8 +432,9 @@ class TestNormalizePattern(TestCase):
         self.assertEqual("/foo/bar", normalize_pattern("\\\\foo\\\\bar\\\\"))
 
     def test_forward_slashes(self):
-        """tests that multiple foward slashes are collapsed to single forward
-        slashes and trailing forward slashes are removed"""
+        """Tests that multiple foward slashes are collapsed to single forward
+        slashes and trailing forward slashes are removed
+        """
         self.assertEqual("/", normalize_pattern("/"))
         self.assertEqual("/", normalize_pattern("//"))
         self.assertEqual("/foo/bar", normalize_pattern("/foo/bar"))
@@ -440,6 +442,7 @@ class TestNormalizePattern(TestCase):
         self.assertEqual("/foo/bar", normalize_pattern("//foo//bar//"))
 
     def test_mixed_slashes(self):
-        """tests that multiple mixed slashes are collapsed to single forward
-        slashes and trailing mixed slashes are removed"""
+        """Tests that multiple mixed slashes are collapsed to single forward
+        slashes and trailing mixed slashes are removed
+        """
         self.assertEqual("/foo/bar", normalize_pattern("\\/\\foo//\\///bar/\\\\/"))

@@ -42,7 +42,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def setUp(self):
         # formats that don't support content filtering can skip these tests
         fmt = self.workingtree_format
-        f = getattr(fmt, "supports_content_filtering")
+        f = fmt.supports_content_filtering
         if f is None:
             raise TestSkipped(
                 "format %s doesn't declare whether it "

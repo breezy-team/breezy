@@ -204,8 +204,7 @@ def iter_sibling_branches(control_dir, possible_transports=None):
 
 
 def tree_files_for_add(file_list):
-    """
-    Return a tree and list of absolute paths from a file list.
+    """Return a tree and list of absolute paths from a file list.
 
     Similar to tree_files, but add handles files a bit differently, so it a
     custom implementation.  In particular, MutableTreeTree.smart_add expects
@@ -283,7 +282,8 @@ def _get_view_info_for_change_reporter(tree):
 
 def _open_directory_or_containing_tree_or_branch(filename, directory):
     """Open the tree or branch containing the specified file, unless
-    the --directory option is used to specify a different branch."""
+    the --directory option is used to specify a different branch.
+    """
     if directory is not None:
         return (None, Branch.open(directory), filename)
     return controldir.ControlDir.open_containing_tree_or_branch(filename)
@@ -1712,7 +1712,7 @@ class cmd_branch(Command):
             errors.NotStacked,
             _mod_branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat,
-        ) as e:
+        ):
             revno = branch.revno()
             if revno is not None:
                 note(
@@ -2709,7 +2709,7 @@ class cmd_diff(Command):
                 color = "always"
             else:
                 color = "never"
-        if "always" == color:
+        if color == "always":
             from .colordiff import DiffWriter
 
             outf = DiffWriter(outf)
@@ -7377,7 +7377,7 @@ class cmd_remove_branch(Command):
         if not force and br.controldir.has_workingtree():
             try:
                 active_branch = br.controldir.open_branch(name="")
-            except errors.NotBranchError as exc:
+            except errors.NotBranchError:
                 active_branch = None
             if (
                 active_branch is not None

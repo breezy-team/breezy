@@ -17,14 +17,13 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 __all__ = [
-    "reconcile",
     "Reconciler",
+    "reconcile",
 ]
 
 
 from . import errors, ui
 from .i18n import gettext
-from .trace import mutter
 
 
 def reconcile(dir, canonicalize_chks=False):

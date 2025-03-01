@@ -18,11 +18,10 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Union, cast
 
-from . import errors, lock, osutils
+from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .inter import InterObject
 
 
@@ -113,13 +112,13 @@ class TreeChange:
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = [
-        "path",
         "changed_content",
-        "versioned",
-        "name",
-        "kind",
-        "executable",
         "copied",
+        "executable",
+        "kind",
+        "name",
+        "path",
+        "versioned",
     ]
 
     def __init__(
@@ -309,6 +308,7 @@ class Tree:
 
         Returns: a list of parent ids. [] is returned to indicate
         a tree with no parents.
+
         Raises:
           BzrError: if the parents are not known.
         """
@@ -656,6 +656,7 @@ class Tree:
         Args:
           revision_id: The revision_id of the requested tree.
         Returns: A Tree.
+
         Raises:
           NoSuchRevision: if the tree cannot be obtained.
         """
@@ -864,6 +865,7 @@ class InterTree(InterObject[Tree]):
         """Return the changes from source to target.
 
         Returns: A TreeDelta.
+
         Args:
           specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
@@ -979,6 +981,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in source)
         Returns: path in target, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: If the path doesn't exist in source
         """
@@ -990,6 +993,7 @@ class InterTree(InterObject[Tree]):
         Args:
           path: Path to search for (exists in target)
         Returns: path in source, or None if there is no equivalent path.
+
         Raises:
           NoSuchFile: if the path doesn't exist in target
         """
@@ -1049,6 +1053,7 @@ def find_previous_path(from_tree, to_tree, path, recurse="none"):
       to_tree: To tree
       path: Path to search for (exists in from_tree)
     Returns: path in to_tree, or None if there is no equivalent path.
+
     Raises:
       NoSuchFile: If the path doesn't exist in from_tree
     """

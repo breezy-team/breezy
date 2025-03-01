@@ -16,7 +16,6 @@
 
 """Tests for WorkingTree.read_working_inventory."""
 
-from breezy import errors
 from breezy.bzr import inventory
 from breezy.bzr.workingtree import InventoryModified, InventoryWorkingTree
 from breezy.tests import TestNotApplicable

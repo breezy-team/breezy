@@ -301,7 +301,6 @@ class TestRemove(TestCaseWithWorkingTree):
 
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
-
         files = ["a/", "a/file", "a/directory/", "a/directory/stuff", "b/"]
         files_to_move = ["a/file", "a/directory/"]
 

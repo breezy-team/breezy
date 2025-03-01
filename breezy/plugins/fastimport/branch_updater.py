@@ -140,7 +140,7 @@ class BranchUpdater:
             to_transport.create_prefix()
             try:
                 return controldir.ControlDir.open(location).open_branch()
-            except errors.NotBranchError as ex:
+            except errors.NotBranchError:
                 return controldir.ControlDir.create_branch_convenience(
                     location,
                     format=self._branch_format,
@@ -149,7 +149,7 @@ class BranchUpdater:
         else:
             try:
                 return self.repo.controldir.open_branch(name)
-            except errors.NotBranchError as ex:
+            except errors.NotBranchError:
                 return self.repo.controldir.create_branch(name)
 
     def _update_branch(self, br, last_mark):

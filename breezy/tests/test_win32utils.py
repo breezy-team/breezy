@@ -65,7 +65,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     def test_tree_ascii(self):
         """Checks the glob expansion and path separation char
-        normalization"""
+        normalization
+        """
         self.build_ascii_tree()
         self._run_testset(
             [

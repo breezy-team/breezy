@@ -1073,7 +1073,7 @@ class KnitReconcilePacker(KnitPacker):
         self._text_filter = None
 
     def _copy_text_texts(self):
-        """generate what texts we should have and then copy."""
+        """Generate what texts we should have and then copy."""
         self.pb.update("Copying content texts", 3)
         # we have three major tasks here:
         # 1) generate the ideal index

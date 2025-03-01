@@ -308,7 +308,8 @@ class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
 
     def test_get_with_supported_tag(self):
         """If asked for a valid tag, return a tracker instance that can map bug
-        IDs to <base_url>/<bug_area> + <bug_id>."""
+        IDs to <base_url>/<bug_area> + <bug_id>.
+        """
         bugtracker.tracker_registry.register("some", self.tracker)
         self.addCleanup(bugtracker.tracker_registry.remove, "some")
 

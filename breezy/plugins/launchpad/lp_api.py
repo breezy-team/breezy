@@ -20,11 +20,9 @@
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
-import base64
 import re
-from urllib.parse import urlparse, urlunparse
 
-from ... import bedding, branch, errors, osutils, trace, transport
+from ... import bedding, branch, errors, osutils, trace
 from ...i18n import gettext
 
 
@@ -47,7 +45,6 @@ from launchpadlib.credentials import (
     AccessToken,
     Credentials,
     CredentialStore,
-    RequestTokenAuthorizationEngine,
 )
 from launchpadlib.launchpad import Launchpad
 

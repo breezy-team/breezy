@@ -21,8 +21,6 @@ import os
 import posixpath
 import random
 import re
-import socket
-import sys
 from urllib.parse import urlparse
 
 from .. import osutils, urlutils
@@ -107,7 +105,6 @@ Message: %(message)s.
         :param message: The explanation of the error code, Defaults to a short
              entry.
         """
-
         if message is None:
             try:
                 message = self.responses[code][0]

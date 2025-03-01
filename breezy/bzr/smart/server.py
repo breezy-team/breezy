@@ -230,7 +230,7 @@ class SmartTCPServer:
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
                 raise
-            except Exception as e:
+            except Exception:
                 trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:

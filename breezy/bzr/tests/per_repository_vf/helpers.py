@@ -16,7 +16,6 @@
 
 """Helper classes for repository implementation tests."""
 
-from .... import osutils
 from .... import revision as _mod_revision
 from ....repository import WriteGroup
 from ....tests import TestNotApplicable

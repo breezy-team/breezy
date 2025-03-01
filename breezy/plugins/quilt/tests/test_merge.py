@@ -18,13 +18,12 @@
 
 """Tests for the merge_quilt code."""
 
-import os
 import shutil
 
-from .... import bedding, config, errors, trace
+from .... import bedding, config, trace
 from ....merge import Merger
 from ....mutabletree import MutableTree
-from ....tests import TestCaseWithTransport, TestSkipped
+from ....tests import TestCaseWithTransport
 from .. import (
     post_build_tree_quilt,
     post_merge_quilt_cleanup,

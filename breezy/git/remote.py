@@ -16,7 +16,6 @@
 
 """Remote dirs, repositories and branches."""
 
-import gzip
 import re
 
 from dulwich.refs import SymrefLoop
@@ -61,7 +60,6 @@ from dulwich.pack import (
     load_pack_index,
     pack_objects_to_data,
 )
-from dulwich.protocol import ZERO_SHA
 from dulwich.refs import SYMREF, DictRefsContainer
 from dulwich.repo import NotGitRepository
 
@@ -77,7 +75,7 @@ from .errors import GitSmartRemoteNotSupported
 from .mapping import encode_git_path, mapping_registry
 from .object_store import get_object_store
 from .push import remote_divergence
-from .refs import branch_name_to_ref, is_peeled, ref_to_tag_name, tag_name_to_ref
+from .refs import is_peeled, ref_to_tag_name, tag_name_to_ref
 from .repository import GitRepository, GitRepositoryFormat
 
 # urlparse only supports a limited number of schemes by default

@@ -6,9 +6,9 @@
 formatted as a Python data structure.
 
 This can be useful in tests that need to recreate directory
-contents."""
+contents.
+"""
 
-import os
 import sys
 
 from breezy.trace import enable_default_logging

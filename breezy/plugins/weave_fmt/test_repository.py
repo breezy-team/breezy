@@ -174,7 +174,7 @@ class TestFormat7(TestCaseWithTransport):
             self.assertTrue(t.has("lock/held/info"))
 
     def test_uses_lockdir(self):
-        """repo format 7 actually locks on lockdir"""
+        """Repo format 7 actually locks on lockdir"""
         base_url = self.get_url()
         control = BzrDirMetaFormat1().initialize(base_url)
         repo = RepositoryFormat7().initialize(control, shared=True)

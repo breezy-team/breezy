@@ -203,7 +203,8 @@ class UnlistableServer(DecoratorServer):
 class TestingPathFilteringServer(pathfilter.PathFilteringServer):
     def __init__(self):
         """TestingPathFilteringServer is not usable until start_server
-        is called."""
+        is called.
+        """
 
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""

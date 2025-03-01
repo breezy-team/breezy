@@ -20,9 +20,8 @@ import errno
 from stat import S_ISDIR
 
 import breezy.branch
-from breezy import controldir, errors, repository
+from breezy import controldir, errors, repository, transport, workingtree
 from breezy import revision as _mod_revision
-from breezy import transport, workingtree
 from breezy.bzr import bzrdir
 from breezy.bzr.remote import RemoteBzrDirFormat
 from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
@@ -122,7 +121,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     )
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
-        """require left_repo and right_repo to contain the same data."""
+        """Require left_repo and right_repo to contain the same data."""
         # XXX: TODO: Doesn't work yet, because we need to be able to compare
         # local repositories to remote ones...  but this is an as-yet unsolved
         # aspect of format management and the Remote protocols...

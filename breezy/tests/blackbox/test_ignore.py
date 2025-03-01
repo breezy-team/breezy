@@ -19,14 +19,8 @@
 import os
 import re
 
-import breezy
-from breezy import ignores, osutils
-from breezy.branch import Branch
-from breezy.errors import CommandError
-from breezy.osutils import pathjoin
+from breezy import ignores
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
 
 
 class TestCommands(TestCaseWithTransport):
@@ -39,7 +33,7 @@ class TestCommands(TestCaseWithTransport):
         )
 
     def test_ignore_directories(self):
-        """ignoring a directory should ignore directory tree.
+        """Ignoring a directory should ignore directory tree.
 
         Also check that trailing slashes on directories are stripped.
         """

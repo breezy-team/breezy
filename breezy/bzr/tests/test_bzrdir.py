@@ -36,16 +36,15 @@ from ... import (
     lock,
     osutils,
     repository,
+    urlutils,
 )
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
-from ... import urlutils, win32utils
 from ...errors import NotBranchError, UnknownFormatError, UnsupportedFormatError
 from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
-    TestSkipped,
     http_server,
     http_utils,
 )
@@ -53,7 +52,6 @@ from ...transport import memory, pathfilter
 from ...transport.http.urllib import HttpTransport
 from ...transport.nosmart import NoSmartTransportDecorator
 from ...transport.readonly import ReadonlyTransportDecorator
-from .. import branch as bzrbranch
 from .. import bzrdir, knitpack_repo, knitrepo, remote, workingtree_3, workingtree_4
 from ..fullhistory import BzrBranchFormat5
 

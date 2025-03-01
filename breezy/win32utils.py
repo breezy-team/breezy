@@ -224,7 +224,7 @@ def get_user_name():
     """
     try:
         advapi32 = ctypes.windll.advapi32
-        GetUserName = getattr(advapi32, "GetUserNameW")
+        GetUserName = advapi32.GetUserNameW
     except AttributeError:
         pass
     else:
@@ -430,6 +430,7 @@ def get_fs_type(drive):
     Args:
       drive: Unicode string with drive including trailing backslash (e.g.
          "C:\\")
+
     Returns:
       Windows filesystem type name (e.g. "FAT32", "NTFS") or None
       if the drive can not be found

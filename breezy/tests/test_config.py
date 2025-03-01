@@ -35,11 +35,13 @@ from .. import (
     lock,
     mail_client,
     osutils,
+    tests,
+    trace,
+    ui,
+    urlutils,
 )
 from .. import registry as _mod_registry
-from .. import tests, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils
 from ..bzr import remote
 from ..transport import remote as transport_remote
 from . import features, scenarios, test_server
@@ -425,8 +427,7 @@ class TestConfigObj(tests.TestCase):
         self.assertIs(co.get_bool("UPPERCASE", "nonactive"), False)
 
     def test_hash_sign_in_value(self):
-        """
-        Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
+        """Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
         treated as comments when read in again. (#86838)
         """
         co = config.ConfigObj()

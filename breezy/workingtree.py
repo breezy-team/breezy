@@ -32,14 +32,12 @@ WorkingTree.open(dir).
 import contextlib
 import errno
 import os
-import sys
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from .branch import Branch
     from .revisiontree import RevisionTree
 
-import breezy
 
 from .lazy_import import lazy_import
 
@@ -61,10 +59,8 @@ from .controldir import (
     ControlComponentFormat,
     ControlComponentFormatRegistry,
     ControlDir,
-    ControlDirFormat,
 )
 from .i18n import gettext
-from .symbol_versioning import deprecated_in, deprecated_method
 from .trace import mutter, note
 from .transport import NoSuchFile
 
@@ -407,7 +403,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if _mod_revision.NULL_REVISION == last_rev:
+        if last_rev == _mod_revision.NULL_REVISION:
             parents = []
         else:
             parents = [last_rev]
@@ -955,7 +951,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self._last_revision()
 
     def _last_revision(self):
-        """helper for get_parent_ids."""
+        """Helper for get_parent_ids."""
         with self.lock_read():
             return self.branch.last_revision()
 

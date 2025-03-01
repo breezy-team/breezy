@@ -78,7 +78,7 @@ class Replacer:
 
     def _do_sub(self, m):
         fun = self._funs[m.lastindex - 1]
-        if hasattr(fun, "__call__"):
+        if callable(fun):
             return fun(m.group(0))
         else:
             return self._expand.sub(m.group(0), fun)

@@ -19,7 +19,6 @@
 
 import errno
 import os
-import re
 
 from .lazy_import import lazy_import
 

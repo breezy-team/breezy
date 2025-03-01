@@ -36,7 +36,8 @@ class ForeignRepositoryFactory:
 
     def make_repository(self, transport):
         """Create a new, valid, repository. May or may not contain
-        data."""
+        data.
+        """
         raise NotImplementedError(self.make_repository)
 
 
@@ -74,7 +75,8 @@ class ForeignRepositoryTests(TestCaseWithTransport):
 
     def test_gather_stats(self):
         """Test that gather_stats() will at least return a dictionary
-        with the required keys."""
+        with the required keys.
+        """
         repo = self.make_repository()
         stats = repo.gather_stats()
         self.assertIsInstance(stats, dict)

@@ -35,7 +35,7 @@ from ..errors import BzrError, LockContention
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign
 from .features import SymlinkFeature
-from .matchers import MatchesAncestry, MatchesTreeChanges
+from .matchers import MatchesAncestry
 
 # TODO: Test commit with some added, and added-but-missing files
 
@@ -398,7 +398,8 @@ class TestCommit(TestCaseWithTransport):
 
     def test_strict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = True,
-        should work."""
+        should work.
+        """
         wt = self.make_branch_and_tree(".")
         b = wt.branch
         with open("hello", "w") as f:
@@ -419,7 +420,8 @@ class TestCommit(TestCaseWithTransport):
 
     def test_nonstrict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = False,
-        should work."""
+        should work.
+        """
         wt = self.make_branch_and_tree(".")
         b = wt.branch
         with open("hello", "w") as f:
@@ -796,7 +798,6 @@ create_signatures=when-possible
 
     def test_commit_callback(self):
         """Commit should invoke a callback to get the message"""
-
         tree = self.make_branch_and_tree(".")
         try:
             tree.commit()

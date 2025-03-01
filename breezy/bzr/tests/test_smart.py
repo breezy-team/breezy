@@ -419,7 +419,7 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             )
 
     def test_shared_repository(self):
-        """for a shared repository, we get 'ok', 'relpath-to-repo'."""
+        """For a shared repository, we get 'ok', 'relpath-to-repo'."""
         backing = self.get_transport()
         request = self._request_class(backing)
         result = self._make_repository_and_result(shared=True)

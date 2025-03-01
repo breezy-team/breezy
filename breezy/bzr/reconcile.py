@@ -23,9 +23,8 @@ __all__ = [
     "VersionedFileRepoReconciler",
 ]
 
-from .. import errors
+from .. import errors, ui
 from .. import revision as _mod_revision
-from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
@@ -198,7 +197,7 @@ class VersionedFileRepoReconciler:
         """
         if parent in self._rev_graph:
             return True
-        inv_present = 1 == len(self.inventory.get_parent_map([(parent,)]))
+        inv_present = len(self.inventory.get_parent_map([(parent,)])) == 1
         return inv_present and self.repo.has_revision(parent)
 
     def _reweave_step(self, message):

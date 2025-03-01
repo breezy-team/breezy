@@ -21,8 +21,6 @@ import os
 from io import BytesIO
 from typing import Set
 
-import breezy
-
 from .lazy_import import lazy_import
 
 lazy_import(

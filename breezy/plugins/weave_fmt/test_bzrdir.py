@@ -382,7 +382,8 @@ class TestUpgrade(TestCaseWithTransport):
         This shouldn't normally happen in branches created entirely in
         bzr, but can happen in branches imported from baz and arch, or from
         other systems, where the importer knows about a revision but not
-        its contents."""
+        its contents.
+        """
         eq = self.assertEqual
         self.build_tree_contents(_ghost_template)
         upgrade.upgrade(".")

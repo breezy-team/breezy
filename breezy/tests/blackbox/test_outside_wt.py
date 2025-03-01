@@ -17,10 +17,9 @@
 
 """Black-box tests for running brz outside of a working tree."""
 
-import os
 import tempfile
 
-from breezy import osutils, tests, transport, urlutils
+from breezy import osutils, tests
 
 
 class TestOutsideWT(tests.ChrootedTestCase):

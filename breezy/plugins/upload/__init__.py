@@ -142,8 +142,12 @@ Known Issues
 # scary for the user when we say 'Deleting <path>' and are referring to
 # remote files...
 
-from ... import version_info  # noqa: F401
-from ... import commands, config, hooks
+from ... import (
+    commands,
+    config,
+    hooks,
+    version_info,  # noqa: F401
+)
 
 
 def register_option(key, member):

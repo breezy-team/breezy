@@ -38,9 +38,8 @@ import contextlib
 import itertools
 
 from . import config as _mod_config
-from . import debug, errors, registry, repository
+from . import debug, errors, registry, repository, urlutils
 from . import revision as _mod_revision
-from . import urlutils
 from .controldir import (
     ControlComponent,
     ControlComponentFormat,
@@ -754,7 +753,6 @@ class Branch(ControlComponent):
           lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
-
         if config_stack is None:
             config_stack = self.get_config_stack()
 
@@ -2119,7 +2117,7 @@ class BranchCheckResult:
           verbose: Requests more detailed display of what was checked,
             if any.
         """
-        from breezy.i18n import gettext, ngettext
+        from breezy.i18n import gettext
 
         note(
             gettext("checked branch {0} format {1}").format(

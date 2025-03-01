@@ -80,7 +80,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         )
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
-    except (errors.ConnectionReset, errors.ConnectionError) as e:
+    except (errors.ConnectionReset, errors.ConnectionError):
         raise
     except (errors.TransportError, errors.PathError) as e:
         raise errors.NotABundle(str(e))

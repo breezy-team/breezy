@@ -100,7 +100,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]["runner_class"])
 
     def _parse_test_list(self, lines, newlines_in_header=0):
-        "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
+        """Parse a list of lines into a tuple of 3 lists (header,body,footer)."""
         in_header = newlines_in_header != 0
         in_footer = False
         header = []

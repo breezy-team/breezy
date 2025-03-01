@@ -17,8 +17,7 @@
 # TODO: Could remember a bias towards whether a particular store is typically
 # compressed or not.
 
-"""
-Stores are the main data-storage mechanism for Bazaar.
+"""Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
@@ -71,7 +70,8 @@ class Store:
         """Return True or false for the presence of fileid in the store.
 
         suffix, if present, is a per file suffix, i.e. for digital signature
-        data."""
+        data.
+        """
         raise NotImplementedError
 
     def listable(self):
@@ -250,7 +250,8 @@ class TransportStore(Store):
         """Return (count, bytes)
 
         This is the (compressed) size stored on disk, not the size of
-        the content."""
+        the content.
+        """
         total = 0
         count = 0
         for relpath in self._transport.iter_files_recursive():

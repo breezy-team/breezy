@@ -129,8 +129,8 @@ class TestSwitch(TestCaseWithTransport):
         The behaviour of lighweight and heavy checkouts should be
         consistent when using the convenient "switch to sibling" feature
         Both should switch to a sibling of the branch
-        they are bound to, and not a sibling of themself"""
-
+        they are bound to, and not a sibling of themself
+        """
         self.build_tree(["repo/", "heavyco/"])
         tree1 = self.make_branch_and_tree("repo/brancha")
         tree1.commit("foo")
@@ -357,7 +357,6 @@ class TestSwitch(TestCaseWithTransport):
 
     def test_switch_lightweight_directory(self):
         """Test --directory option"""
-
         # create a source branch
         a_tree = self.make_branch_and_tree("a")
         self.build_tree_contents([("a/a", b"initial\n")])
@@ -493,7 +492,7 @@ class TestSwitchUncommitted(TestCaseWithTransport):
 
 class TestSwitchStandAloneCorruption(TestCaseWithTransport):
     def test_empty_tree_switch(self):
-        """switch . on an empty tree gets infinite recursion
+        """Switch . on an empty tree gets infinite recursion
 
         Inspired by: https://bugs.launchpad.net/bzr/+bug/1018628
         """
@@ -509,7 +508,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
         )
 
     def test_switch_on_previous_rev(self):
-        """switch to previous rev in a standalone directory
+        """Switch to previous rev in a standalone directory
 
         Inspired by: https://bugs.launchpad.net/brz/+bug/1018628
         """
@@ -547,7 +546,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
         )
 
     def test_switch_to_new_branch_on_old_rev(self):
-        """switch to previous rev in a standalone directory
+        """Switch to previous rev in a standalone directory
 
         Inspired by: https://bugs.launchpad.net/brz/+bug/933362
         """

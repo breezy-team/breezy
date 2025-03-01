@@ -109,7 +109,6 @@ contents of file
 class TestUnshelvePreview(TestCaseWithTransport):
     def test_non_ascii(self):
         """Test that we can show a non-ascii diff that would result from unshelving"""
-
         init_content = "Initial: \u0418\u0437\u043d\u0430\u0447\n".encode()
         more_content = "More: \u0415\u0449\u0451\n".encode()
         next_content = init_content + more_content

@@ -1,5 +1,4 @@
-"""
-Copyright (c) 2007 Ian Cook and John Popplewell
+"""Copyright (c) 2007 Ian Cook and John Popplewell
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -254,7 +253,6 @@ def SendMail(recipient, subject="", body="", attachfiles=""):
     body      - string: message text
     attach    - string: files to attach (multiple attachments separated with a semicolon)
     """
-
     attach = []
     AttachWork = attachfiles.split(";")
     for f in AttachWork:

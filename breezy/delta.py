@@ -137,7 +137,7 @@ def _compare_trees(
         if change.versioned == (False, False):
             delta.unversioned.append(change)
             continue
-        if not include_root and (None, None) == change.parent_id:
+        if not include_root and change.parent_id == (None, None):
             continue
         fully_present = tuple(
             (change.versioned[x] and change.kind[x] is not None) for x in range(2)

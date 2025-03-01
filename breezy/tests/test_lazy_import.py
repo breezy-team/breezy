@@ -16,12 +16,11 @@
 
 """Test the lazy_import functionality."""
 
-import linecache
 import os
 import re
 import sys
 
-from .. import errors, lazy_import, osutils
+from .. import lazy_import, osutils
 from . import TestCase, TestCaseInTempDir
 
 

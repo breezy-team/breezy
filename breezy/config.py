@@ -1230,7 +1230,7 @@ class LocationConfig(LockableConfig):
             if location.endswith("/"):
                 location = location[:-1]
             parser = self._get_parser()
-            if location not in parser and not location + "/" in parser:
+            if location not in parser and location + "/" not in parser:
                 parser[location] = {}
             elif location + "/" in parser:
                 location = location + "/"
@@ -3092,7 +3092,7 @@ class Store:
 
 
 class CommandLineStore(Store):
-    "A store to carry command line overrides for the config options."
+    """A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
         super().__init__()
@@ -3962,7 +3962,8 @@ class LocationStack(Stack):
         """Make a new stack for a location and global configuration.
 
         Args:
-          location: A URL prefix to"""
+          location: A URL prefix to
+        """
         lstore = self.get_shared_store(LocationStore())
         if location.startswith("file://"):
             location = urlutils.local_path_from_url(location)

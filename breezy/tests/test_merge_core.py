@@ -18,15 +18,13 @@ import os
 import sys
 import tempfile
 
-import breezy
-
 from .. import controldir, errors, merge_directive, osutils
 from ..bzr import generate_ids
 from ..bzr.conflicts import ContentsConflict, PathConflict, TextConflict
 from ..merge import Diff3Merger, Merge3Merger, Merger, WeaveMerger
 from ..osutils import getcwd, pathjoin
 from ..workingtree import WorkingTree
-from . import TestCaseWithTransport, TestSkipped, features
+from . import TestCaseWithTransport, TestSkipped
 
 
 class MergeBuilder:
@@ -731,7 +729,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
             self.assertEqual(f.read(), "THAT")
 
     def test_merge_rename_before_create(self):
-        """rename before create
+        """Rename before create
 
         This case requires that you must not do creates
         before move-into-place:
@@ -761,7 +759,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         )
 
     def test_merge_create_before_rename(self):
-        """create before rename, target parents before children
+        """Create before rename, target parents before children
 
         This case requires that you must not do move-into-place
         before creates, and that you must not do children after
@@ -792,7 +790,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         )
 
     def test_merge_rename_to_temp_before_delete(self):
-        """rename to temp before delete, source children before parents
+        """Rename to temp before delete, source children before parents
 
         This case requires that you must not do deletes before
         move-out-of-the-way, and that you must not do children
@@ -824,7 +822,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         )
 
     def test_merge_delete_before_rename_to_temp(self):
-        """delete before rename to temp
+        """Delete before rename to temp
 
         This case requires that you must not do
         move-out-of-the-way before deletes:

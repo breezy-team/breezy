@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import re
 import sys
 
 import breezy
@@ -188,7 +187,7 @@ class DataCollector:
         for optname, opt in sorted(opts.items()):
             cmd_data.options.extend(self.option(opt))
 
-        if "help" == name or "help" in cmd.aliases:
+        if name == "help" or "help" in cmd.aliases:
             cmd_data.fixed_words = "($cmds %s)" % " ".join(
                 sorted(help_topics.topic_registry.keys())
             )

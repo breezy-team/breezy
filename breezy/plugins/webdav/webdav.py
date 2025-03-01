@@ -454,7 +454,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # Now move the temp file
         try:
             self.move(tmp_relpath, relpath)
-        except Exception as e:
+        except Exception:
             # If  we fail,  try to  clean up  the  temporary file
             # before we throw the exception but don't let another
             # exception mess  things up.
@@ -484,7 +484,6 @@ class HttpDavTransport(urllib.HttpTransport):
         self, relpath, bytes: bytes, mode=None, create_parent_dir=False, dir_mode=False
     ):
         """See Transport.put_file_non_atomic"""
-
         abspath = self._remote_path(relpath)
 
         # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
@@ -623,7 +622,6 @@ class HttpDavTransport(urllib.HttpTransport):
 
     def move(self, rel_from, rel_to):
         """See Transport.move"""
-
         abs_from = self._remote_path(rel_from)
         abs_to = self._remote_path(rel_to)
 
@@ -644,8 +642,7 @@ class HttpDavTransport(urllib.HttpTransport):
             )
 
     def delete(self, rel_path):
-        """
-        Delete the item at relpath.
+        """Delete the item at relpath.
 
         Note that when a non-empty dir requires to be deleted, a conforming DAV
         server will delete the dir and all its content. That does not normally
@@ -695,8 +692,7 @@ class HttpDavTransport(urllib.HttpTransport):
         return True
 
     def list_dir(self, relpath):
-        """
-        Return a list of all files at the given location.
+        """Return a list of all files at the given location.
         """
         return [elt[0] for elt in self._list_tree(relpath, 1)]
 

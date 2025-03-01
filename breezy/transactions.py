@@ -112,7 +112,7 @@ class ReadOnlyTransaction(Transaction):
                 ref_threshold = 7
             if (
                 sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
-                and not self._clean_queue[offset] in self._precious_objects
+                and self._clean_queue[offset] not in self._precious_objects
             ):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)

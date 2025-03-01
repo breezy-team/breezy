@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Type
+from typing import Iterable, Optional
 
 from .lazy_import import lazy_import
 
@@ -33,9 +33,8 @@ from breezy.i18n import gettext
 """,
 )
 
-from . import controldir, debug, errors, graph, registry
+from . import controldir, debug, errors, graph, registry, ui
 from . import revision as _mod_revision
-from . import ui
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import LogicalLockResult, _RelockDebugMixin
@@ -392,7 +391,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return RepositoryFormat.get_default_format().initialize(controldir)
 
     def __init__(self, _format, controldir, control_files):
-        """instantiate a Repository.
+        """Instantiate a Repository.
 
         Args:
           _format: The format of the repository on disk.
@@ -480,6 +479,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         Args:
           token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
+
         Returns:
           a token if this instance supports tokens, otherwise None.
 
@@ -1610,7 +1610,7 @@ class InterRepository(InterObject[Repository]):
         try:
             InterRepository._assert_same_model(source, target)
             return True
-        except errors.IncompatibleRepositories as e:
+        except errors.IncompatibleRepositories:
             return False
 
     @staticmethod

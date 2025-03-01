@@ -89,7 +89,6 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param f: The file to output to
     :param version: [optional] target serialization version
     """
-
     with source.lock_read():
         return get_serializer(version).write(source, revision_ids, forced_bases, f)
 

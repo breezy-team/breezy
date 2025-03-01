@@ -395,7 +395,8 @@ class ConvertBzrDir4To5(Converter):
         """Load a revision object into memory.
 
         Any parents not either loaded or abandoned get queued to be
-        loaded."""
+        loaded.
+        """
         self.pb.update(
             gettext("loading revision"), len(self.revisions), len(self.known_revisions)
         )
@@ -445,7 +446,8 @@ class ConvertBzrDir4To5(Converter):
     def _convert_revision_contents(self, rev, inv, present_parents):
         """Convert all the files within a revision.
 
-        Also upgrade the inventory to refer to the text revision ids."""
+        Also upgrade the inventory to refer to the text revision ids.
+        """
         rev_id = rev.revision_id
         trace.mutter("converting texts of revision {%s}", rev_id)
         parent_invs = list(map(self._load_updated_inventory, present_parents))

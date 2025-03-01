@@ -331,7 +331,8 @@ class cmd_bisect(Command):
     def _set_state(self, controldir, revspec, state):
         """Set the state of the given revspec and bisecting.
 
-        Returns boolean indicating if bisection is done."""
+        Returns boolean indicating if bisection is done.
+        """
         bisect_log = BisectLog(controldir)
         if bisect_log.is_done():
             note("No further bisection is possible.\n")
@@ -348,7 +349,6 @@ class cmd_bisect(Command):
 
     def run(self, subcommand, args_list, directory=".", revision=None, output=None):
         """Handle the bisect command."""
-
         log_fn = None
         if subcommand in ("yes", "no", "move") and revision:
             pass
@@ -422,7 +422,8 @@ class cmd_bisect(Command):
 
     def replay(self, controldir, filename):
         """Apply the given log file to a clean state, so the state is
-        exactly as it was when the log was saved."""
+        exactly as it was when the log was saved.
+        """
         if controldir.control_transport.has(BISECT_INFO_PATH):
             BisectCurrent(controldir).reset()
             controldir.control_transport.delete(BISECT_INFO_PATH)

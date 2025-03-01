@@ -343,7 +343,8 @@ def pop_log_file(entry):
     This flushes, but does not close the trace file (so that anything that was
     in it is output.
 
-    Takes the memento returned from _push_log_file."""
+    Takes the memento returned from _push_log_file.
+    """
     (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
     global _trace_file
     _trace_file = old_trace_file

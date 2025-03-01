@@ -16,7 +16,7 @@
 
 
 from ... import bedding, errors, osutils
-from ...tests import TestCase, TestCaseWithTransport
+from ...tests import TestCase
 from ...tests.features import ModuleAvailableFeature
 
 launchpadlib_feature = ModuleAvailableFeature("launchpadlib")

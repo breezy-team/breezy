@@ -35,7 +35,7 @@ class BrokenRenameTransportDecorator(decorator.TransportDecorator):
             if self._decorated.has(rel_to):
                 rel_to = urlutils.join(rel_to, urlutils.basename(rel_from))
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, FileExists) as e:
+        except (errors.DirectoryNotEmpty, FileExists):
             # absorb the error
             return
 

@@ -184,7 +184,7 @@ Using shared repository: {}
         self.assertPathExists("new/tree/.bzr")
 
     def test_init_default_format_option(self):
-        """brz init should read default format from option default_format"""
+        """Brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
         g_store._load_from_string(b"""
 [DEFAULT]

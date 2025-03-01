@@ -18,7 +18,6 @@
 
 import os
 
-from breezy import osutils
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -74,7 +73,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
     def test_02_stays_executable(self):
-        """reopen the tree and ensure it stuck."""
+        """Reopen the tree and ensure it stuck."""
         self.wt = self.wt.controldir.open_workingtree()
         self.check_exist(self.wt)
 
@@ -121,7 +120,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
     def test_06_branch(self):
-        """branch b1=>b2 should preserve the executable bits"""
+        """Branch b1=>b2 should preserve the executable bits"""
         # TODO: Maybe this should be a blackbox test
         wt2, r1 = self.commit_and_branch()
 

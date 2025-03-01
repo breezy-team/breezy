@@ -27,7 +27,7 @@ objects returned.
 
 import contextlib
 import sys
-from typing import TYPE_CHECKING, Set, cast
+from typing import Set, cast
 
 from ..lazy_import import lazy_import
 
@@ -62,9 +62,6 @@ from .. import config, controldir, errors, lockdir
 from .. import transport as _mod_transport
 from ..trace import mutter, note, warning
 from ..transport import do_catching_redirections, local
-
-if TYPE_CHECKING:
-    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -551,7 +548,6 @@ class BzrDir(controldir.ControlDir):
 
         :return: Tuple with old path name and new path name
         """
-
         with ui.ui_factory.nested_progress_bar():
             old_path = self.root_transport.abspath(".bzr")
             backup_dir = self._available_backup_name("backup.bzr")

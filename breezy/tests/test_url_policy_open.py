@@ -30,7 +30,6 @@ from ..transport import (
     get_transport,
     register_transport,
     register_transport_proto,
-    transport_list_registry,
     unregister_transport,
 )
 from ..url_policy_open import (

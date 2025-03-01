@@ -16,10 +16,8 @@
 
 """Blacbox tests for the test-script command."""
 
-import os
 
 from breezy import tests
-from breezy.tests import script
 
 
 class TestTestScript(tests.TestCaseInTempDir):

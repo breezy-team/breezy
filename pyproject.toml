@@ -96,3 +96,89 @@ version = {attr = "breezy.__version__"}
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.ruff]
+extend-exclude = ["lib", "bin"]
+
+[tool.ruff.lint]
+select = [
+    "ANN",  # annotations
+    "D",  # pydocstyle
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "N",  # naming
+    "B",  # bugbear
+    "I",  # isort
+    "S",  # bandit
+    "TCH", # typecheck
+    "INT", # gettext
+   "SIM", # simplify
+    "C4",  # comprehensions
+    "UP",  # pyupgrade
+    "RUF", # ruf-specific
+]
+ignore = [
+    "ANN001",
+    "ANN002",
+    "ANN003",  # missing-type-arg
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN205",
+    "ANN206",
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D103",  # Missing docstring in public function
+    "D105",  # Missing docstring in magic method
+    "D102",  # Missing docstring in public method
+    "D205",  # 1 blank line required between summary line and description
+    "D106",  # Missing docstring in public nested class
+    "D107",  # Missing docstring in __init__
+    "D417",  # Missing argument descriptions in the docstring
+    "F821",  # undefined-name
+    "E501",  # line too long
+    "D402",  # Missing blank line after last section
+    "E402",  # module level import not at top of file
+    "E741",  # ambiguous variable name
+    "F405",  # name may be undefined, or defined from star imports
+    "N801",  # Naming convention violation: invalid constant name
+    "N802",  # Naming convention violation: invalid variable name
+    "N804",  # Naming convention violation: invalid lowercase variable name
+    "N806",  # Naming convention violation: invalid lowercase function name
+    "N818",  # Naming convention violation: invalid argument name
+    "N999",  # Naming convention violation: invalid module name
+
+    "S602",  # subprocess with shell=True
+    "S603",  # check for execution of untrusted input
+    "S105",  # "hardcoded password"; false positives on "pwd"
+    "S106",  # "hardcoded password"; false positives on "pwd"
+    "S110",  # "consider logging exception"
+
+    "S317",  # use defusedxml
+
+    # This triggers for docstrings that uses __doc__
+    "D104", # Missing docstring in public package
+
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "RUF005", # Consider iterable concatenation instead of list concatenation
+    "RUF015", # Prefer next() of single slice access
+
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM105", # Use `contextlib.suppress
+    "SIM108", # Use ternary operator
+    "SIM114", # Combine `if` branches using logical `or` operator
+    "SIM115", # Use context handler for opening files
+
+    # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
+    # have a keys() method but no __iter__
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+    "UP032", #  Use f-string instead of `format` call; f-strings break gettext
+]
+# These are actually fine, but they make mypy more strict and then it fails.
+unfixable = ["ANN204"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

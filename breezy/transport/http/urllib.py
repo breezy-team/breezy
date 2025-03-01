@@ -35,7 +35,6 @@ import urllib.request
 import weakref
 from urllib.parse import urlencode, urljoin, urlparse
 
-from ... import __version__ as breezy_version
 from ... import config, debug, errors, osutils, trace, transport, ui, urlutils
 from ...bzr.smart import medium
 from ...trace import mutter, mutter_callsite
@@ -511,7 +510,7 @@ class ConnectionHandler(urllib.request.BaseHandler):
                 report_activity=self._report_activity,
                 ca_certs=self.ca_certs,
             )
-        except http.client.InvalidURL as exception:
+        except http.client.InvalidURL:
             # There is only one occurrence of InvalidURL in http.client
             raise urlutils.InvalidURL(request.get_full_url(), extra="nonnumeric port")
 
@@ -574,7 +573,6 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
 
     def http_request(self, request):
         """Common headers setting"""
-
         for name, value in self._default_headers.items():
             if name not in request.headers:
                 request.headers[name] = value
@@ -2400,7 +2398,6 @@ class HttpTransport(ConnectedTransport):
         :return: the range header representing offsets/tail_amount or None if
             no header can be built.
         """
-
         if self._range_hint == "multi":
             # Generate the header describing all offsets
             return self._range_header(offsets, tail_amount)

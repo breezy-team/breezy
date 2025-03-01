@@ -130,7 +130,8 @@ def upgrade_branch(
 
 def check_revision_changed(oldrev, newrev):
     """Check if two revisions are different. This is exactly the same
-    as Revision.equals() except that it does not check the revision_id."""
+    as Revision.equals() except that it does not check the revision_id.
+    """
     if (
         newrev.inventory_sha1 != oldrev.inventory_sha1
         or newrev.timestamp != oldrev.timestamp
@@ -161,7 +162,6 @@ def create_upgrade_plan(
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
-
     graph = repository.get_graph()
     upgrade_map = generate_rebase_map(revision_id)
 

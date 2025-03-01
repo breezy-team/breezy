@@ -129,8 +129,7 @@ def unified_diff_bytes(
     lineterm=b"\n",
     sequencematcher=None,
 ):
-    r"""
-    Compare two sequences of lines; generate the delta as a unified diff.
+    r"""Compare two sequences of lines; generate the delta as a unified diff.
 
     Unified diffs are a compact way of showing line changes and a few
     lines of context.  The number of context lines is set by 'n' which
@@ -151,7 +150,6 @@ def unified_diff_bytes(
     times are normally expressed in the format returned by time.ctime().
 
     Example:
-
     >>> for line in bytes_unified_diff(b'one two three four'.split(),
     ...             b'zero one tree four'.split(), b'Original', b'Current',
     ...             b'Sat Jan 26 23:30:50 1991', b'Fri Jun 06 10:20:52 2003',
@@ -863,7 +861,6 @@ class DiffFromTool(DiffPath):
 
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        import tempfile
 
         self._root = tempfile.mkdtemp(prefix="brz-diff-")
 
@@ -954,7 +951,8 @@ class DiffFromTool(DiffPath):
 
     def _safe_filename(self, prefix, relpath):
         """Replace unsafe character in `relpath` then join `self._root`,
-        `prefix` and `relpath`."""
+        `prefix` and `relpath`.
+        """
         fenc = self._fenc()
         # encoded_str.replace('?', '_') may break multibyte char.
         # So we should encode, decode, then replace(u'?', u'_')
@@ -1069,7 +1067,8 @@ class DiffTree:
         :param diff_text: DiffPath-type object to use as a last resort for
             diffing text files.
         :param extra_factories: Factories of DiffPaths to try before any other
-            DiffPaths"""
+            DiffPaths
+        """
         if diff_text is None:
             diff_text = DiffText(
                 old_tree, new_tree, to_file, path_encoding, "", "", internal_diff

@@ -63,7 +63,7 @@ class BashCompletionMixin:
         errlines = [
             line for line in err.splitlines() if not line.startswith(b"brz: warning: ")
         ]
-        if [] != errlines:
+        if errlines != []:
             raise AssertionError("Unexpected error message:\n%s" % err)
         self.assertEqual(b"", b"".join(errlines), "No messages to standard error")
         # import sys

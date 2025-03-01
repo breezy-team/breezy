@@ -17,9 +17,8 @@
 """UI helper for the push command."""
 
 from . import branch as _mod_branch
-from . import controldir, errors
+from . import controldir, errors, transport
 from . import revision as _mod_revision
-from . import transport
 from .i18n import gettext
 from .trace import note, warning
 

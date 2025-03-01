@@ -26,7 +26,7 @@ from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 from ...branch import Branch
-from ...controldir import BranchReferenceLoop, ControlDir
+from ...controldir import ControlDir
 from ...errors import (
     ConnectionReset,
     DivergedBranches,
@@ -782,7 +782,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-            {"master", "blah", "master"}, {b.name for b in remote.list_branches()}
+            {"master", "blah"}, {b.name for b in remote.list_branches()}
         )
 
     def test_get_branches(self):

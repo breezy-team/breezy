@@ -174,7 +174,8 @@ def regenerate_default_revid(repository, revid):
 
     :param repository: Repository in which the revision is present.
     :param revid: Revision id of the revision that is being rebased.
-    :return: new revision id."""
+    :return: new revision id.
+    """
     if revid == NULL_REVISION:
         return NULL_REVISION
     rev = repository.get_revision(revid)
@@ -321,7 +322,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     "Expected tuple of parents, got: %r" % parents
                 )
                 # replace r in parents with replace_map[r][0]
-                if not replace_map[r][0] in parents:
+                if replace_map[r][0] not in parents:
                     parents = list(parents)
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
@@ -482,8 +483,7 @@ class CommitBuilderRevisionRewriter:
 
 class WorkingTreeRevisionRewriter:
     def __init__(self, wt, state, merge_type=None):
-        """
-        :param wt: Working tree in which to do the replays.
+        """:param wt: Working tree in which to do the replays.
         """
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
@@ -566,7 +566,8 @@ class WorkingTreeRevisionRewriter:
         """Commit a rebase.
 
         :param oldrev: Revision info of new revision to commit.
-        :param newrevid: New revision id."""
+        :param newrevid: New revision id.
+        """
         assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode("utf-8")

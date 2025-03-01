@@ -138,7 +138,7 @@ class InventoryEntry:
     RENAMED = "renamed"
     MODIFIED_AND_RENAMED = "modified and renamed"
 
-    __slots__ = ["file_id", "revision", "parent_id", "name"]
+    __slots__ = ["file_id", "name", "parent_id", "revision"]
 
     # Attributes that all InventoryEntry instances are expected to have, but
     # that don't vary for all kinds of entry.  (e.g. symlink_target is only
@@ -448,7 +448,7 @@ class InventoryDirectory(InventoryEntry):
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
 
-    __slots__ = ["text_sha1", "text_size", "text_id", "executable"]
+    __slots__ = ["executable", "text_id", "text_sha1", "text_size"]
 
     kind = "file"
 
@@ -1339,8 +1339,8 @@ class Inventory(CommonInventory):
 
         The immediate parent must already be versioned.
 
-        Returns the new entry object."""
-
+        Returns the new entry object.
+        """
         parts = osutils.splitpath(relpath)
 
         if len(parts) == 0:
@@ -1992,7 +1992,7 @@ class CHKInventory(CommonInventory):
         revision_id = info[b"revision_id"]
         root_id = info[b"root_id"]
         search_key_name = info.get(b"search_key_name", b"plain")
-        parent_id_basename_to_file_id = info.get(b"parent_id_basename_to_file_id", None)
+        parent_id_basename_to_file_id = info.get(b"parent_id_basename_to_file_id")
         if not parent_id_basename_to_file_id.startswith(b"sha1:"):
             raise ValueError(
                 "parent_id_basename_to_file_id should be a sha1"
@@ -2101,7 +2101,7 @@ class CHKInventory(CommonInventory):
         return StaticTuple(parent_id, entry.name.encode("utf8")).intern()
 
     def get_entry(self, file_id):
-        """map a single file_id -> InventoryEntry."""
+        """Map a single file_id -> InventoryEntry."""
         if file_id is None:
             raise errors.NoSuchId(self, file_id)
         result = self._fileid_to_entry_cache.get(file_id, None)

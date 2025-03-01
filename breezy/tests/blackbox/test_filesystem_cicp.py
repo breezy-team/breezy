@@ -21,7 +21,6 @@ import os
 
 from ... import osutils, tests
 from ...osutils import canonical_relpath, pathjoin
-from .. import KnownFailure
 from ..features import CaseInsCasePresFilenameFeature
 from ..script import run_script
 
@@ -75,7 +74,7 @@ class TestAdd(TestCICPBase):
         )
 
     def test_add_implied(self):
-        """test add with no args sees the correct names."""
+        """Test add with no args sees the correct names."""
         wt = self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(["CamelCaseParent/", "CamelCaseParent/CamelCase"])
@@ -90,7 +89,8 @@ class TestAdd(TestCICPBase):
 
     def test_re_add(self):
         """Test than when a file has 'unintentionally' changed case, we can't
-        add a new entry using the new case."""
+        add a new entry using the new case.
+        """
         wt = self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case name
         self.build_tree(["MixedCase"])
@@ -113,7 +113,8 @@ class TestAdd(TestCICPBase):
     def test_re_add_dir(self):
         # like re-add, but tests when the operation is on a directory.
         """Test than when a file has 'unintentionally' changed case, we can't
-        add a new entry using the new case."""
+        add a new entry using the new case.
+        """
         wt = self.make_branch_and_tree(".")
         # create a file on disk with the mixed-case name
         self.build_tree(["MixedCaseParent/", "MixedCaseParent/MixedCase"])

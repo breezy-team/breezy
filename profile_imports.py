@@ -168,7 +168,6 @@ _real_compile = re._compile  # type: ignore
 
 def timed_compile(*args, **kwargs):
     """Log how long it takes to compile a regex"""
-
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get("__name__", "<unknown>")

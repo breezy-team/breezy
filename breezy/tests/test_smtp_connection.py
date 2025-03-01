@@ -15,8 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-import smtplib
-import socket
 from email.message import Message
 
 from breezy import config, email_message, smtp_connection, tests, ui

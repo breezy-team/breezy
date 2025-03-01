@@ -135,7 +135,7 @@ class TestTranslate(tests.TestCaseWithTransport):
         self.overrideAttr(i18n, "_translations", ZzzTranslations())
 
     def test_error_message_translation(self):
-        """do errors get translated?"""
+        """Do errors get translated?"""
         err = None
         tree = self.make_branch_and_tree(".")
         try:
@@ -145,7 +145,7 @@ class TestTranslate(tests.TestCaseWithTransport):
         self.assertContainsRe(err, "zz\xe5{{Not a branch: .*}}")
 
     def test_topic_help_translation(self):
-        """does topic help get translated?"""
+        """Does topic help get translated?"""
         from .. import help
 
         out = io.StringIO()

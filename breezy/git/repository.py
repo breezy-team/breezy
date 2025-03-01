@@ -23,11 +23,9 @@ from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
 
-from .. import check, errors
+from .. import check, errors, lock, repository, trace, transactions, ui
 from .. import graph as _mod_graph
-from .. import lock, repository
 from .. import revision as _mod_revision
-from .. import trace, transactions, ui
 from ..decorators import only_raises
 from ..foreign import ForeignRepository
 from .filegraph import GitFileLastChangeScanner, GitFileParentProvider

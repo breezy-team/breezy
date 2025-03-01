@@ -14,55 +14,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import codecs
-import errno
 import os
-import sys
-import time
-from io import BytesIO, StringIO
 
 import fastbencode as bencode
 
-from .. import filters, osutils
+from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
-from .. import rules, tests, trace, transform, urlutils
 from ..bzr import generate_ids
-from ..bzr.conflicts import (
-    DeletingParent,
-    DuplicateEntry,
-    DuplicateID,
-    MissingParent,
-    NonDirectoryParent,
-    ParentLoop,
-    UnversionedParent,
-)
 from ..controldir import ControlDir
-from ..diff import show_diff_trees
 from ..errors import (
-    DuplicateKey,
-    ExistingLimbo,
-    ExistingPendingDeletion,
-    ImmortalPendingDeletion,
-    LockError,
     StrictCommitFailed,
 )
-from ..merge import Merge3Merger, Merger
+from ..merge import Merge3Merger
 from ..mutabletree import MutableTree
 from ..osutils import file_kind, pathjoin
 from ..transform import (
     ROOT_PARENT,
-    FinalPaths,
-    ImmortalLimbo,
     MalformedTransform,
-    NoFinalPath,
-    ReusingTransform,
     TransformRenameFailed,
     _FileMover,
-    create_from_tree,
     resolve_conflicts,
 )
 from ..transport import FileExists
-from . import TestCaseInTempDir, TestSkipped, features
+from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 
 

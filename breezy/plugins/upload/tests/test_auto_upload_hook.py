@@ -18,7 +18,6 @@ import os
 
 from .... import tests
 from ... import upload
-from .. import cmds
 
 
 class AutoPushHookTests(tests.TestCaseWithTransport):

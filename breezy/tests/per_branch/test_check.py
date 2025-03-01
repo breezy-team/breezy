@@ -18,7 +18,7 @@
 
 from io import BytesIO
 
-from ... import errors, tests, ui
+from ... import tests, ui
 from . import TestCaseWithBranch
 
 

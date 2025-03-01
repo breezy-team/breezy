@@ -23,7 +23,7 @@ import tempfile
 from typing import Any, List, Optional
 
 from ... import branch as _mod_branch
-from ... import controldir, errors, hooks, urlutils
+from ... import controldir, errors, urlutils
 from ...forge import (
     AutoMergeUnsupported,
     Forge,

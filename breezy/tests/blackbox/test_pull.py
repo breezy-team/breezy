@@ -458,9 +458,10 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertContainsRe(err, "(?m)Fetching into experimental format")
 
     def test_pull_show_base(self):
-        """brz pull supports --show-base
+        """Brz pull supports --show-base
 
-        see https://bugs.launchpad.net/bzr/+bug/202374"""
+        see https://bugs.launchpad.net/bzr/+bug/202374
+        """
         # create two trees with conflicts, setup conflict, check that
         # conflicted file looks correct
         a_tree = self.example_branch("a")
@@ -492,7 +493,8 @@ class TestPull(tests.TestCaseWithTransport):
     def test_pull_warns_about_show_base_when_no_working_tree(self):
         """--show-base is useless if there's no working tree
 
-        see https://bugs.launchpad.net/bzr/+bug/1022160"""
+        see https://bugs.launchpad.net/bzr/+bug/1022160
+        """
         self.make_branch("from")
         self.make_branch("to")
         out = self.run_bzr(["pull", "-d", "to", "from", "--show-base"])
@@ -505,7 +507,7 @@ class TestPull(tests.TestCaseWithTransport):
         )
 
     def test_pull_tag_conflicts(self):
-        """pulling tags with conflicts will change the exit code"""
+        """Pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree("from")
         from_tree.branch.tags.set_tag("mytag", b"somerevid")
@@ -517,7 +519,7 @@ class TestPull(tests.TestCaseWithTransport):
         )
 
     def test_pull_tag_notification(self):
-        """pulling tags with conflicts will change the exit code"""
+        """Pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree("from")
         from_tree.branch.tags.set_tag("mytag", b"somerevid")
@@ -543,7 +545,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
     def test_pull_tag_overwrite(self):
-        """pulling tags with --overwrite only reports changed tags."""
+        """Pulling tags with --overwrite only reports changed tags."""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree("from")
         from_tree.branch.tags.set_tag("mytag", b"somerevid")

@@ -19,7 +19,7 @@
 
 import os
 
-from breezy import conflicts, errors, merge
+from breezy import errors, merge
 from breezy.tests import per_workingtree
 from breezy.workingtree import PointlessMerge
 

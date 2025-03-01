@@ -22,6 +22,22 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
+__all__ = [
+    'Element',
+    'ElementTree',
+    'SubElement',
+    'XMLSerializer',
+    'escape_invalid_chars',
+    'fromstring',
+    'fromstringlist',
+    'get_utf8_or_ascii',
+    'serialize_inventory_flat',
+    'tostring',
+    'tostringlist',
+    'unpack_inventory_entry',
+    'unpack_inventory_flat',
+]
+
 import re
 from typing import Dict, Union
 from xml.etree.ElementTree import (
@@ -35,7 +51,7 @@ from xml.etree.ElementTree import (
     tostringlist,
 )
 
-from .. import errors, lazy_regex
+from .. import lazy_regex
 from . import inventory, serializer
 
 

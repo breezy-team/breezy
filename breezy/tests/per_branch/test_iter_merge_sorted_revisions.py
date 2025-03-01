@@ -16,7 +16,7 @@
 
 """Tests for Branch.iter_merge_sorted_revisions()"""
 
-from breezy import errors, revision, tests
+from breezy import errors, tests
 from breezy.tests import per_branch
 
 

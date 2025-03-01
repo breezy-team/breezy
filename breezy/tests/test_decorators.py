@@ -17,9 +17,8 @@
 
 """Tests for decorator functions"""
 
-import inspect
 
-from .. import decorators, lock
+from .. import decorators
 from . import TestCase
 
 

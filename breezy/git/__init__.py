@@ -27,7 +27,7 @@ import sys
 
 dulwich_minimum_version = (0, 19, 11)
 
-from .. import __version__ as breezy_version  # noqa: F401
+from .. import __version__ as breezy_version
 from .. import errors as brz_errors
 from .. import trace, urlutils, version_info
 from ..commands import plugin_cmds
@@ -342,9 +342,7 @@ repository_network_format_registry.register_lazy(
     b"git", __name__ + ".repository", "GitRepositoryFormat"
 )
 
-register_extra_lazy_repository_format = getattr(
-    repository_format_registry, "register_extra_lazy"
-)
+register_extra_lazy_repository_format = repository_format_registry.register_extra_lazy
 register_extra_lazy_repository_format(__name__ + ".repository", "GitRepositoryFormat")
 
 from ..branch import network_format_registry as branch_network_format_registry

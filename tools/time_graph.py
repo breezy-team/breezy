@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import optparse
-import os
 import random
 import sys
-import time
 
 from breezy import (
     _known_graph_py,

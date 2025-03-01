@@ -27,7 +27,7 @@ from . import TestCase
 
 class TestIdentityMap(TestCase):
     def test_symbols(self):
-        from ..identitymap import IdentityMap
+        pass
 
     def test_construct(self):
         identitymap.IdentityMap()
@@ -55,7 +55,7 @@ class TestIdentityMap(TestCase):
 
 class TestNullIdentityMap(TestCase):
     def test_symbols(self):
-        from ..identitymap import NullIdentityMap
+        pass
 
     def test_construct(self):
         identitymap.NullIdentityMap()

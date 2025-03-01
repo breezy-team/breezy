@@ -32,7 +32,6 @@ from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
 from dulwich.index import (
     ConflictedIndexEntry,
-    Index,
     IndexEntry,
     blob_from_path_and_stat,
     cleanup_mode,
@@ -43,14 +42,21 @@ from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
-from .. import delta, errors, mutabletree, osutils, revisiontree, trace
+from .. import (
+    delta,
+    errors,
+    mutabletree,
+    osutils,
+    revisiontree,
+    trace,
+    urlutils,
+)
 from .. import transport as _mod_transport
 from .. import tree as _mod_tree
-from .. import urlutils, workingtree
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
-from ..tree import MissingNestedTree, TreeEntry
+from ..tree import MissingNestedTree
 from .mapping import (
     decode_git_path,
     default_mapping,
@@ -61,7 +67,7 @@ from .mapping import (
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
-    __slots__ = ["file_id", "name", "parent_id", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id"]
 
     def __init__(self, file_id, name, parent_id, git_sha1=None):
         self.file_id = file_id
@@ -95,7 +101,7 @@ class GitTreeDirectory(_mod_tree.TreeDirectory):
 
 
 class GitTreeFile(_mod_tree.TreeFile):
-    __slots__ = ["file_id", "name", "parent_id", "text_size", "executable", "git_sha1"]
+    __slots__ = ["executable", "file_id", "git_sha1", "name", "parent_id", "text_size"]
 
     def __init__(
         self, file_id, name, parent_id, text_size=None, git_sha1=None, executable=None
@@ -145,7 +151,7 @@ class GitTreeFile(_mod_tree.TreeFile):
 
 
 class GitTreeSymlink(_mod_tree.TreeLink):
-    __slots__ = ["file_id", "name", "parent_id", "symlink_target", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id", "symlink_target"]
 
     def __init__(self, file_id, name, parent_id, symlink_target=None, git_sha1=None):
         self.file_id = file_id
@@ -193,7 +199,7 @@ class GitTreeSymlink(_mod_tree.TreeLink):
 
 
 class GitTreeSubmodule(_mod_tree.TreeReference):
-    __slots__ = ["file_id", "name", "parent_id", "reference_revision", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id", "reference_revision"]
 
     def __init__(
         self, file_id, name, parent_id, reference_revision=None, git_sha1=None

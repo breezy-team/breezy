@@ -22,9 +22,8 @@ import sys
 import threading
 from _thread import interrupt_main  # type: ignore
 
-from ... import builtins, config, errors, osutils
+from ... import builtins, config, errors, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision
-from ... import trace, transport, urlutils
 from ...branch import Branch
 from ...bzr.smart import client, medium
 from ...bzr.smart.server import BzrServerFactory, SmartTCPServer
@@ -84,7 +83,7 @@ class TestBzrServeBase(TestCaseWithTransport):
         # start a TCP server
         try:
             out, err = self.run_bzr(["serve"] + list(serve_args), retcode=retcode)
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             return (self._last_cmd_stdout.getvalue(), self._last_cmd_stderr.getvalue())
         return out, err
 
@@ -116,7 +115,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual("catching KeyboardInterrupt\n", err)
 
     def test_server_exception_no_hook(self):
-        """test exception without hook returns error"""
+        """Test exception without hook returns error"""
         args = []
         out, err = self.run_bzr_serve_then_func(args, retcode=3)
 
@@ -196,7 +195,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertEqual("", err)
 
     def test_bzr_serve_inet_readonly(self):
-        """brz server should provide a read only filesystem by default."""
+        """Brz server should provide a read only filesystem by default."""
         process, transport = self.start_server_inet()
         self.assertRaises(errors.TransportNotPossible, transport.mkdir, "adir")
         self.assertInetServerShutsdownCleanly(process)
@@ -214,7 +213,7 @@ class TestBzrServe(TestBzrServeBase):
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
-        """brz server should provide a read only filesystem by default."""
+        """Brz server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
         t = transport.get_transport_from_url(url)
         self.assertRaises(errors.TransportNotPossible, t.mkdir, "adir")

@@ -1767,7 +1767,7 @@ class TestLeafNode(TestCaseWithStore):
         node.set_maximum_size(10)
         result = node.map(None, (b"foo bar",), b"baz quux")
         self.assertEqual((b"foo bar", [(b"", node)]), result)
-        self.assertTrue(10 < node._current_size())
+        self.assertTrue(node._current_size() > 10)
 
     def test_map_exceeding_max_size_second_entry_early_difference_new(self):
         node = LeafNode()

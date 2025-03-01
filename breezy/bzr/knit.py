@@ -94,7 +94,7 @@ from ..bzr.versionedfile import (
     sort_groupcompress,
 )
 from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
-from ..osutils import contains_whitespace, sha_string, sha_strings, split_lines
+from ..osutils import contains_whitespace, sha_string, sha_strings
 from ..transport import NoSuchFile
 from . import index as _mod_index
 
@@ -784,14 +784,14 @@ class KnitAnnotateFactory(_KnitFactory):
                 yield text
 
     def lower_fulltext(self, content):
-        """convert a fulltext content record into a serializable form.
+        """Convert a fulltext content record into a serializable form.
 
         see parse_fulltext which this inverts.
         """
         return [b"%s %s" % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
-        """convert a delta into a serializable form.
+        """Convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
@@ -1253,7 +1253,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
-        """check that version_id and lines are safe to add."""
+        """Check that version_id and lines are safe to add."""
         if not all(isinstance(x, bytes) or x is None for x in key):
             raise TypeError(key)
         version_id = key[-1]
@@ -1306,7 +1306,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except (RevisionNotPresent, KeyError) as e:
+            except (RevisionNotPresent, KeyError):
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -1365,7 +1365,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
     def _get_content(self, key, parent_texts={}):
         """Returns a content object that makes up the specified
-        version."""
+        version.
+        """
         cached_version = parent_texts.get(key, None)
         if cached_version is not None:
             # Ensure the cache dict is valid.
@@ -1926,7 +1927,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         The caller is responsible for cleaning up progress bars (because this
         is an iterator).
 
-        NOTES:
+        Notes:
          * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
@@ -3187,7 +3188,7 @@ class _KnitGraphIndex:
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
     def _check_read(self):
-        """raise if reads are not permitted."""
+        """Raise if reads are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
@@ -3696,7 +3697,7 @@ class _KnitAnnotator(annotate.Annotator):
         return to_return
 
     def _check_ready_for_annotations(self, key, parent_keys):
-        """return true if this text is ready to be yielded.
+        """Return true if this text is ready to be yielded.
 
         Otherwise, this will return False, and queue the text into
         self._pending_annotation

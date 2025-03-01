@@ -156,7 +156,7 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _load_responses(self, responses):
         self.factory.stdin.seek(0)
-        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.writelines([((r and "y\n") or "n\n") for r in responses])
         self.factory.stdin.seek(0)
 
 

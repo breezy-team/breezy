@@ -118,7 +118,7 @@ class TestGenRevisionId(tests.TestCase):
         revision_id.decode("ascii")
 
     def test_timestamp(self):
-        """passing a timestamp should cause it to be used"""
+        """Passing a timestamp should cause it to be used"""
         self.assertGenRevisionId(rb"user@host-\d{14}-[a-z0-9]{16}", "user@host")
         self.assertGenRevisionId(
             b"user@host-20061102205056-[a-z0-9]{16}", "user@host", 1162500656.688

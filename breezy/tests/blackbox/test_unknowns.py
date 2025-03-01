@@ -23,7 +23,6 @@ from breezy.tests import TestCaseWithTransport
 class TestUnknowns(TestCaseWithTransport):
     def test_unknowns(self):
         """Test that 'unknown' command reports unknown files"""
-
         # in empty directory, no unknowns
         tree = self.make_branch_and_tree(".")
         self.assertEqual(self.run_bzr("unknowns")[0], "")

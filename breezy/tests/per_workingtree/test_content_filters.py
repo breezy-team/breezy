@@ -53,13 +53,13 @@ _trailer_string = b"\nend string\n"
 def _append_text(chunks, context=None):
     """A content filter that appends a string to the end of the file.
 
-    This tests filters that change the length."""
+    This tests filters that change the length.
+    """
     return chunks + [_trailer_string]
 
 
 def _remove_appended_text(chunks, context=None):
     """Remove the appended text."""
-
     text = b"".join(chunks)
     if text.endswith(_trailer_string):
         text = text[: -len(_trailer_string)]

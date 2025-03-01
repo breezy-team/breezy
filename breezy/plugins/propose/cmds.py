@@ -19,11 +19,10 @@
 from io import StringIO
 
 from ... import branch as _mod_branch
-from ... import controldir, errors
+from ... import controldir, errors, msgeditor, urlutils
 from ... import forge as _mod_forge
 from ... import log as _mod_log
 from ... import missing as _mod_missing
-from ... import msgeditor, urlutils
 from ...commands import Command
 from ...i18n import gettext
 from ...option import ListOption, Option, RegistryOption
@@ -361,7 +360,7 @@ class cmd_my_merge_proposals(Command):
                                 ["\t%s\n" % l for l in description.splitlines()]
                             )
                         self.outf.write("\n")
-            except _mod_forge.ForgeLoginRequired as e:
+            except _mod_forge.ForgeLoginRequired:
                 warning("Skipping %s, login required.", instance)
 
 

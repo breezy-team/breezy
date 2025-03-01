@@ -52,8 +52,7 @@ colors = {
 
 
 def colorstring(text, fgcolor=None, bgcolor=None):
-    """
-    Returns a string using ANSI control codes to set the text color.
+    """Returns a string using ANSI control codes to set the text color.
 
     :param text: The text to set the color for.
     :type text: string

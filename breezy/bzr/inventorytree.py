@@ -19,14 +19,12 @@
 import os
 import re
 from collections import deque
-from typing import TYPE_CHECKING, Optional, Type
 
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
 from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
-from ..repository import Repository
 from ..revisiontree import RevisionTree
 
 lazy_import.lazy_import(
@@ -1141,7 +1139,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.iter_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes
+        """
         repo_desired_files = [
             (self.path2id(f), self.get_file_revision(f), i) for f, i in desired_files
         ]

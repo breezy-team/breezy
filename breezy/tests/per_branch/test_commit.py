@@ -16,7 +16,7 @@
 
 """Tests for the contract of commit on branches."""
 
-from breezy import branch, delta, errors, revision, transport
+from breezy import branch, revision
 from breezy.tests import per_branch
 
 

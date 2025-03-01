@@ -16,13 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-import sys
 from os.path import expanduser
 
 import patiencediff
 
-from . import terminal, trace
-from .commands import get_cmd_object
+from . import terminal
 from .patches import (
     ContextLine,
     Hunk,

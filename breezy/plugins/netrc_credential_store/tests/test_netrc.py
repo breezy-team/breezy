@@ -16,9 +16,8 @@
 
 from io import BytesIO
 
-from .... import config, errors, osutils, tests
+from .... import config, osutils, tests
 from .... import transport as _mod_transport
-from ... import netrc_credential_store
 
 
 class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):

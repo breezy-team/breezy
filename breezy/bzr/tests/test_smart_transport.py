@@ -32,18 +32,16 @@ from testtools.matchers import DocTestMatches
 
 import breezy
 
-from ... import controldir, debug, errors, osutils, tests
+from ... import controldir, debug, errors, osutils, tests, urlutils
 from ... import transport as _mod_transport
-from ... import urlutils
 from ...tests import features, test_server
 from ...transport import local, memory, remote, ssh
 from ...transport.http import urllib
 from .. import bzrdir
 from ..remote import UnknownErrorFromSmartServer
-from ..smart import client, medium, message, protocol
+from ..smart import client, medium, message, protocol, vfs
 from ..smart import request as _mod_request
 from ..smart import server as _mod_server
-from ..smart import vfs
 from . import test_smart
 
 
@@ -1334,7 +1332,7 @@ class TestSmartTCPServer(tests.TestCase):
         try:
             client_sock = self.connect_to_server(server)
             client_sock.close()
-        except OSError as e:
+        except OSError:
             # If the server has hung up already, that is fine.
             pass
 
@@ -1963,8 +1961,7 @@ class TestSmartProtocol(tests.TestCase):
     client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
-        """
-        :returns: a Request
+        """:returns: a Request
         """
         # This is very similar to
         # breezy.bzr.smart.client._SmartClient._build_client_protocol
@@ -2105,7 +2102,8 @@ class TestVersionOneFeaturesInProtocolOne(
     TestSmartProtocol, CommonSmartProtocolTestMixin
 ):
     """Tests for version one smart protocol features as implemeted by version
-    one."""
+    one.
+    """
 
     client_protocol_class = protocol.SmartClientRequestProtocolOne
     server_protocol_class = protocol.SmartServerRequestProtocolOne

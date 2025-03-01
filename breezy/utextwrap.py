@@ -32,8 +32,7 @@ __all__ = ["UTextWrapper", "fill", "wrap"]
 
 
 class UTextWrapper(textwrap.TextWrapper):
-    """
-    Extend TextWrapper for Unicode.
+    """Extend TextWrapper for Unicode.
 
     This textwrapper handles east asian double width and split word
     even if !break_long_words when word contains double width
@@ -67,7 +66,7 @@ class UTextWrapper(textwrap.TextWrapper):
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
-        self.max_lines = kwargs.get("max_lines", None)
+        self.max_lines = kwargs.get("max_lines")
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):
@@ -128,7 +127,7 @@ class UTextWrapper(textwrap.TextWrapper):
         # Figure out when indent is larger than the specified width, and make
         # sure at least one character is stripped off on every pass
         if width < 2:
-            space_left = chunks[-1] and self._width(chunks[-1][0]) or 1
+            space_left = (chunks[-1] and self._width(chunks[-1][0])) or 1
         else:
             space_left = width - cur_len
 
@@ -222,13 +221,13 @@ class UTextWrapper(textwrap.TextWrapper):
                 if (
                     self.max_lines is None
                     or len(lines) + 1 < self.max_lines
-                    or (
+                    or ((
                         not chunks
-                        or self.drop_whitespace
+                        or (self.drop_whitespace
                         and len(chunks) == 1
-                        and not chunks[0].strip()
+                        and not chunks[0].strip())
                     )
-                    and cur_len <= width
+                    and cur_len <= width)
                 ):
                     # Convert current line back to a string and store it in
                     # list of all lines (return value).

@@ -171,7 +171,7 @@ tabs: \t\t\t
         self.rio_file_stanzas([s])
 
     def test_quoted(self):
-        """rio quoted string cases"""
+        """Rio quoted string cases"""
         s = Stanza(
             q1='"hello"',
             q2=' "for',
@@ -382,9 +382,9 @@ s: both\\\"
         lines = rio.to_patch_lines(stanza)
         for line in lines:
             self.assertContainsRe(line, b"^# ")
-            self.assertTrue(72 >= len(line))
+            self.assertTrue(len(line) <= 72)
         for line in rio.to_patch_lines(stanza, max_width=12):
-            self.assertTrue(12 >= len(line))
+            self.assertTrue(len(line) <= 12)
         new_stanza = rio.read_patch_stanza(self.mail_munge(lines, dos_nl=False))
         lines = self.mail_munge(lines)
         new_stanza = rio.read_patch_stanza(lines)

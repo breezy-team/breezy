@@ -459,11 +459,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
     def get_nested_tree(self, path):
         try:
             return WorkingTree.open(self.abspath(path))
-        except errors.NotBranchError as e:
+        except errors.NotBranchError:
             raise MissingNestedTree(path)
 
     def id2path(self, file_id, recurse="down"):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             state = self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
@@ -1823,7 +1823,7 @@ class DirStateRevisionTree(InventoryTree):
         return {p for p in paths if not pred(p)}
 
     def id2path(self, file_id, recurse="down"):
-        "Convert a file-id to a path."
+        """Convert a file-id to a path."""
         with self.lock_read():
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
@@ -2041,7 +2041,8 @@ class DirStateRevisionTree(InventoryTree):
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
 
-        This version is implemented on top of Repository.iter_files_bytes"""
+        This version is implemented on top of Repository.iter_files_bytes
+        """
         parent_index = self._get_parent_index()
         repo_desired_files = []
         for path, identifier in desired_files:
@@ -2347,7 +2348,7 @@ class InterDirStateTree(InterInventoryTree):
             source_index = None
             indices = (target_index,)
         else:
-            if not (self.source._revision_id in parent_ids):
+            if self.source._revision_id not in parent_ids:
                 raise AssertionError(
                     "Failure: source._revision_id: {} not in target.parent_ids({})".format(
                         self.source._revision_id, parent_ids

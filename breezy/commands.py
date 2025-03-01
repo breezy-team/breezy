@@ -26,9 +26,9 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Union
 
-from . import i18n, option, osutils, trace
+from . import i18n, option, trace
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -738,7 +738,8 @@ class Command:
     def options(self):
         """Return dict of valid options for this command.
 
-        Maps from long option name to option object."""
+        Maps from long option name to option object.
+        """
         r = option.Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:

@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from ..lazy_import import lazy_import
 
@@ -37,10 +37,9 @@ from breezy.bzr import (
 """,
 )
 
-from .. import errors, lockable_files
+from .. import errors, lockable_files, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from .. import urlutils
 from ..branch import (
     Branch,
     BranchFormat,
@@ -770,7 +769,8 @@ class BzrBranch8(BzrBranch):
     def _get_bound_location(self, bound):
         """Return the bound location in the config file.
 
-        Return None if the bound parameter does not match"""
+        Return None if the bound parameter does not match
+        """
         conf = self.get_config_stack()
         if conf.get("bound") != bound:
             return None

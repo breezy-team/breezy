@@ -18,7 +18,7 @@ import os
 import tarfile
 import zipfile
 
-from breezy import errors, osutils, tests
+from breezy import errors
 from breezy.tests import features
 from breezy.tests.per_tree import TestCaseWithTree
 

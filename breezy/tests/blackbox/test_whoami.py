@@ -52,7 +52,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         b.get_config_stack().set("email", email)
 
     def test_whoami_branch(self):
-        """branch specific user identity works."""
+        """Branch specific user identity works."""
         wt = self.make_branch_and_tree(".")
         b = branch.Branch.open(".")
         self.set_branch_email(b, "Branch Identity <branch@identi.ty>")
@@ -66,7 +66,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertWhoAmI("other@environ.ment", "--email")
 
     def test_whoami_utf8(self):
-        """verify that an identity can be in utf-8."""
+        """Verify that an identity can be in utf-8."""
         self.run_bzr(
             ["whoami", "Branch Identity \u20ac <branch@identi.ty>"], encoding="utf-8"
         )
@@ -76,8 +76,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertWhoAmI("branch@identi.ty", "--email")
 
     def test_whoami_ascii(self):
-        """
-        verify that whoami doesn't totally break when in utf-8, using an ascii
+        """Verify that whoami doesn't totally break when in utf-8, using an ascii
         encoding.
         """
         wt = self.make_branch_and_tree(".")
@@ -87,7 +86,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertWhoAmI("branch@identi.ty", "--email", encoding="ascii")
 
     def test_warning(self):
-        """verify that a warning is displayed if no email is given."""
+        """Verify that a warning is displayed if no email is given."""
         self.make_branch_and_tree(".")
         display = self.run_bzr(["whoami", "Branch Identity"])[1]
         self.assertEqual(

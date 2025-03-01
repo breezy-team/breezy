@@ -438,8 +438,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
 
 
 class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
-    """
-    rev1a and rev1b with identical contents
+    """rev1a and rev1b with identical contents
     rev2 revision has parents of [rev1a, rev1b]
     There is a a-file:rev2 file version, not referenced by the inventory.
     """

@@ -25,7 +25,8 @@ def escape(s):
     """Very simple URL-like escaping.
 
     (Why not just use backslashes?  Because then we couldn't parse
-    lines just by splitting on spaces.)"""
+    lines just by splitting on spaces.)
+    """
     return (
         s.replace("\\", r"\x5c")
         .replace(" ", r"\x20")

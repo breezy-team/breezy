@@ -31,9 +31,8 @@ from breezy import (
     )
 """,
 )
-from . import controldir, errors, osutils
+from . import controldir, errors, osutils, trace
 from . import revision as _mod_revision
-from . import trace
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 
 _user_encoding = osutils.get_user_encoding()
@@ -81,7 +80,7 @@ class GrepOptions:
 
 
 def _rev_on_mainline(rev_tuple):
-    """returns True is rev tuple is on mainline"""
+    """Returns True is rev tuple is on mainline"""
     if len(rev_tuple) == 1:
         return True
     return rev_tuple[1] == 0 and rev_tuple[2] == 0
@@ -150,7 +149,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id, rebase_initial_depth
 def compile_pattern(pattern, flags=0):
     try:
         return re.compile(pattern, flags)
-    except re.error as e:
+    except re.error:
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return None
 
@@ -522,7 +521,6 @@ def _make_display_path(relpath, path):
 
 def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix=None):
     """Create a file object for the specified id and pass it on to _file_grep."""
-
     path = _make_display_path(relpath, path)
     file_text = tree.get_file_text(tree_path)
     _file_grep(file_text, path, opts, revno, path_prefix)

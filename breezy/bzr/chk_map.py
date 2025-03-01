@@ -30,9 +30,8 @@ possible and supported. Individual changes via map/unmap are buffered in memory
 until the _save method is called to force serialisation of the tree.
 apply_delta records its changes immediately by performing an implicit _save.
 
-TODO:
+Todo:
 -----
-
 Densely packed upper nodes.
 
 """
@@ -93,7 +92,7 @@ search_key_registry.register(b"plain", _search_key_plain)
 class CHKMap:
     """A persistent map from string to string backed by a CHK store."""
 
-    __slots__ = ("_store", "_root_node", "_search_key_func")
+    __slots__ = ("_root_node", "_search_key_func", "_store")
 
     def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
@@ -584,7 +583,7 @@ class CHKMap:
             return node._key
 
     def unmap(self, key, check_remap=True):
-        """remove key from the map."""
+        """Remove key from the map."""
         key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if isinstance(self._root_node, InternalNode):
@@ -619,14 +618,14 @@ class Node:
     """
 
     __slots__ = (
+        "_items",
         "_key",
+        "_key_width",
         "_len",
         "_maximum_size",
-        "_key_width",
         "_raw_size",
-        "_items",
-        "_search_prefix",
         "_search_key_func",
+        "_search_prefix",
     )
 
     def __init__(self, key_width=1):
@@ -1323,8 +1322,8 @@ class InternalNode(Node):
                     new_size = child._current_size()
                     shrinkage = old_size - new_size
                     if (
-                        shrinkage > 0
-                        and new_size < _INTERESTING_NEW_SIZE
+                        (shrinkage > 0
+                        and new_size < _INTERESTING_NEW_SIZE)
                         or shrinkage > _INTERESTING_SHRINKAGE_LIMIT
                     ):
                         trace.mutter(
@@ -1805,8 +1804,8 @@ try:
     )
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._chk_map_py import _bytes_to_text_key  # noqa: F401
     from ._chk_map_py import (
+        _bytes_to_text_key,  # noqa: F401
         _deserialise_internal_node,
         _deserialise_leaf_node,
         _search_key_16,

@@ -37,9 +37,8 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """,
 )
-from . import decorators, errors, hooks, osutils, registry
+from . import decorators, errors, hooks, osutils, registry, trace, transform
 from . import revision as _mod_revision
-from . import trace, transform
 from . import transport as _mod_transport
 from . import tree as _mod_tree
 
@@ -2489,8 +2488,7 @@ class _PlanMerge(_PlanMergeBase):
 
 
 class _PlanLCAMerge(_PlanMergeBase):
-    """
-    This merge algorithm differs from _PlanMerge in that:
+    """This merge algorithm differs from _PlanMerge in that:
 
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus

@@ -49,7 +49,6 @@ def revision_history(branch):
 
 def fetch_steps(self, br_a, br_b, writable_a):
     """A foreign test method for testing fetch locally and remotely."""
-
     # TODO RBC 20060201 make this a repository test.
     repo_b = br_b.repository
     self.assertFalse(repo_b.has_revision(revision_history(br_a)[3]))

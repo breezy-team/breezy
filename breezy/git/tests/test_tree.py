@@ -19,7 +19,7 @@
 
 import stat
 
-from dulwich.objects import Blob, Tree
+from dulwich.objects import Blob
 
 from breezy.bzr.inventorytree import InventoryTreeChange as TreeChange
 from breezy.delta import TreeDelta

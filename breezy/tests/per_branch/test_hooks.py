@@ -320,7 +320,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
         del self.pre_hook_calls[:], self.post_hook_calls[:]
 
     def assertPreAndPostHooksWereInvoked(self, branch, smart_enabled):
-        """assert that both pre and post hooks were called
+        """Assert that both pre and post hooks were called
 
         :param smart_enabled: The method invoked is one that should be
             smart server ready.

@@ -386,7 +386,8 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_nonexistent_file(self):
         """It should not be possible to merge changes from a file which
-        does not exist."""
+        does not exist.
+        """
         tree_a = self.make_branch_and_tree("tree_a")
         self.build_tree_contents([("tree_a/file", b"bar\n")])
         tree_a.add(["file"])

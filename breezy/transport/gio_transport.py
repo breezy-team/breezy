@@ -100,7 +100,6 @@ class GioTransport(ConnectedTransport):
 
     def __init__(self, base, _from_transport=None):
         """Initialize the GIO transport and make sure the url is correct."""
-
         if not base.startswith("gio+"):
             raise ValueError(base)
 
@@ -510,7 +509,8 @@ class GioTransport(ConnectedTransport):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
 
-        This is cargo-culted from the SFTP transport"""
+        This is cargo-culted from the SFTP transport
+        """
         if "gio" in debug.debug_flags:
             mutter("GIO iter_files_recursive")
         queue = list(self.list_dir("."))
@@ -590,6 +590,4 @@ class GioTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
-
     return [(GioTransport, GioLocalURLServer)]

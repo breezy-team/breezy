@@ -819,7 +819,7 @@ class TestLoadPluginAt(BaseTestPlugins):
     def test_import(self):
         self.overrideEnv("BRZ_PLUGINS_AT", "test_foo@non-standard-dir")
         self.update_module_paths(["standard"])
-        import breezy.testingplugins.test_foo
+        import breezy.testingplugins.test_foo  # noqa: F401
 
         self.assertTestFooLoadedFrom("non-standard-dir")
 
@@ -858,7 +858,7 @@ class TestLoadPluginAt(BaseTestPlugins):
         self.create_plugin_package("test_bar", dir="non-standard-dir/test_bar")
         self.overrideEnv("BRZ_PLUGINS_AT", "test_foo@non-standard-dir")
         self.update_module_paths(["standard"])
-        import breezy.testingplugins.test_foo  # noqa: F401
+        import breezy.testingplugins.test_foo
 
         self.assertEqual(
             self.module_prefix + "test_foo", self.module.test_foo.__package__

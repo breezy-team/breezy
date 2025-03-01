@@ -158,7 +158,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.assertEqual(expected_dirblocks, result)
 
     def test_walkdir_unknowns(self):
-        """unknown files and directories should be reported by walkdirs."""
+        """Unknown files and directories should be reported by walkdirs."""
         self._test_walkdir(self.unknown)
 
     def test_walkdir_from_unknown_dir(self):
@@ -166,7 +166,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self._test_walkdir(self.unknown, "unknown dir")
 
     def test_walkdir_missings(self):
-        """missing files and directories should be reported by walkdirs."""
+        """Missing files and directories should be reported by walkdirs."""
         self._test_walkdir(self.missing)
 
     def test_walkdir_from_dir(self):

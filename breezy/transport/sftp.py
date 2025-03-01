@@ -31,7 +31,6 @@ import random
 import stat
 import sys
 import time
-import warnings
 
 from .. import config, debug, errors, urlutils
 from ..errors import LockError, ParamikoNotPresent, PathError, TransportError
@@ -71,7 +70,7 @@ class SFTPLock:
     deprecated storage formats.
     """
 
-    __slots__ = ["path", "lock_path", "lock_file", "transport"]
+    __slots__ = ["lock_file", "lock_path", "path", "transport"]
 
     def __init__(self, path, transport):
         self.lock_file = None
@@ -92,7 +91,7 @@ class SFTPLock:
         self.lock_file = None
         try:
             self.transport.delete(self.lock_path)
-        except (NoSuchFile,):
+        except NoSuchFile:
             # What specific errors should we catch here?
             pass
 
@@ -385,8 +384,7 @@ class SFTPTransport(ConnectedTransport):
         return connection
 
     def has(self, relpath):
-        """
-        Does the target location exist?
+        """Does the target location exist?
         """
         try:
             self._get_sftp().stat(self._remote_path(relpath))
@@ -459,8 +457,7 @@ class SFTPTransport(ConnectedTransport):
         return helper.request_and_yield_offsets(fp)
 
     def put_file(self, relpath, f, mode=None):
-        """
-        Copy the file-like object into the location.
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
@@ -731,8 +728,7 @@ class SFTPTransport(ConnectedTransport):
         raise e
 
     def append_file(self, relpath, f, mode=None):
-        """
-        Append the text in the file-like object into the final
+        """Append the text in the file-like object into the final
         location.
         """
         try:
@@ -796,8 +792,7 @@ class SFTPTransport(ConnectedTransport):
         return True
 
     def list_dir(self, relpath):
-        """
-        Return a list of all files at the given location.
+        """Return a list of all files at the given location.
         """
         # does anything actually use this?
         # -- Unknown
@@ -846,8 +841,7 @@ class SFTPTransport(ConnectedTransport):
             )
 
     def lock_read(self, relpath):
-        """
-        Lock the given file for shared (read) access.
+        """Lock the given file for shared (read) access.
         :return: A lock object, which has an unlock() member function
         """
 
@@ -868,8 +862,7 @@ class SFTPTransport(ConnectedTransport):
         return BogusLock(relpath)
 
     def lock_write(self, relpath):
-        """
-        Lock the given file for exclusive (write) access.
+        """Lock the given file for exclusive (write) access.
         WARNING: many transports do not support this, so trying avoid using it
 
         :return: A lock object, which has an unlock() member function

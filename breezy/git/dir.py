@@ -723,7 +723,7 @@ class LocalGitDir(GitDir):
             raise brz_errors.NotBranchError(self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except SymrefLoop as e:
+        except SymrefLoop:
             raise BranchReferenceLoop(self)
         if ref_chain[-1] == b"HEAD":
             controldir = self

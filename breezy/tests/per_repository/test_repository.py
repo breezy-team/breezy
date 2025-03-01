@@ -19,14 +19,22 @@
 import re
 from io import BytesIO
 
-from ... import branch as _mod_branch
-from ... import commit, controldir
+from ... import (
+    commit,
+    controldir,
+    errors,
+    gpg,
+    info,
+    repository,
+    tests,
+    transport,
+    upgrade,
+    workingtree,
+)
 from ... import delta as _mod_delta
-from ... import errors, gpg, info, repository
 from ... import revision as _mod_revision
-from ... import tests, transport, upgrade, workingtree
 from ...bzr import branch as _mod_bzrbranch
-from ...bzr import inventory, knitpack_repo, remote
+from ...bzr import knitpack_repo, remote
 from ...bzr import repository as bzrrepository
 from .. import per_repository, test_server
 from ..matchers import *
@@ -168,7 +176,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(rich_root, tree.branch.repository.supports_rich_root())
 
     def test_clone_specific_format(self):
-        """todo"""
+        """Todo"""
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -611,7 +619,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=None):
         """Make a RemoteRepository object backed by a real repository that will
-        be created at the given path."""
+        be created at the given path.
+        """
         repo = self.make_repository(path, shared=shared)
         smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
@@ -855,7 +864,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository("repo")
         try:
             repo.set_make_working_trees(True)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation):
             raise tests.TestNotApplicable("Format does not support this flag.")
         self.assertTrue(repo.make_working_trees())
 
@@ -863,7 +872,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository("repo")
         try:
             repo.set_make_working_trees(False)
-        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation) as e:
+        except (errors.RepositoryUpgradeRequired, errors.UnsupportedOperation):
             raise tests.TestNotApplicable("Format does not support this flag.")
         self.assertFalse(repo.make_working_trees())
 

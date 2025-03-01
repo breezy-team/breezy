@@ -47,27 +47,39 @@ import threading
 import time
 import traceback
 import unittest
-from unittest import SkipTest as TestSkipped
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
+from unittest import SkipTest as TestSkipped
 
 import testtools
-
 from testtools import content
 
 import breezy
 from breezy.bzr import chk_map
 
-from .. import branchbuilder
+from .. import (
+    branchbuilder,
+    config,
+    controldir,
+    debug,
+    errors,
+    hooks,
+    i18n,
+    lockdir,
+    osutils,
+    pyutils,
+    registry,
+    symbol_versioning,
+    trace,
+    ui,
+    urlutils,
+    workingtree,
+)
 from .. import commands as _mod_commands
-from .. import config, controldir, debug, errors, hooks, i18n
 from .. import lock as _mod_lock
-from .. import lockdir, osutils
 from .. import plugin as _mod_plugin
-from .. import pyutils, registry, symbol_versioning, trace
 from .. import transport as _mod_transport
-from .. import ui, urlutils, workingtree
 
 try:
     import breezy.lsprof
@@ -282,7 +294,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.stream.write(self.sep2)
         self.stream.write(
             "%s %d test%s in %.3fs\n\n"
-            % (actionTaken, run, run != 1 and "s" or "", timeTaken)
+            % (actionTaken, run, (run != 1 and "s") or "", timeTaken)
         )
         if not self.wasSuccessful():
             self.stream.write("FAILED (")
@@ -306,7 +318,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         if self.skip_count > 0:
             skipped = self.skip_count
             self.stream.write(
-                "%d test%s skipped\n" % (skipped, skipped != 1 and "s" or "")
+                "%d test%s skipped\n" % (skipped, (skipped != 1 and "s") or "")
             )
         if self.unsupported:
             for feature, count in sorted(self.unsupported.items()):
@@ -676,7 +688,7 @@ class TextTestResult(ExtendedTestResult):
         pass
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -752,7 +764,7 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write("  N/A %s\n    %s\n" % (self._testTimeString(test), reason))
 
     def report_unsupported(self, test, feature):
-        """test cannot be run because feature is missing."""
+        """Test cannot be run because feature is missing."""
         self.stream.write(
             "NODEP %s\n    The feature '%s' is not available.\n"
             % (self._testTimeString(test), feature)
@@ -797,7 +809,7 @@ class TextTestRunner:
         self._result_decorators = result_decorators or []
 
     def run(self, test):
-        "Run the given test case or test suite."
+        """Run the given test case or test suite."""
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
@@ -900,7 +912,6 @@ def IsolatedDocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-
     kwargs["setUp"] = isolated_doctest_setUp
     kwargs["tearDown"] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
@@ -1291,7 +1302,8 @@ class TestCase(testtools.TestCase):
         """Return ndiff between two strings containing lines.
 
         A trailing newline is added if missing to make the strings
-        print properly."""
+        print properly.
+        """
         if b and not b.endswith("\n"):
             b += "\n"
         if a and not a.endswith("\n"):
@@ -1352,7 +1364,7 @@ class TestCase(testtools.TestCase):
         )
 
     def assertEqualStat(self, expected, actual):
-        """assert that expected and actual are the same stat result.
+        """Assert that expected and actual are the same stat result.
 
         :param expected: A stat result.
         :param actual: A stat result.
@@ -1498,7 +1510,7 @@ class TestCase(testtools.TestCase):
             raise self.failureException("%s not raised" % excName)
 
     def assertIs(self, left, right, message=None):
-        if not (left is right):
+        if left is not right:
             if message is not None:
                 raise AssertionError(message)
             else:
@@ -2211,8 +2223,8 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get("env_changes", None)
-        working_dir = kwargs.get("working_dir", None)
+        env_changes = kwargs.get("env_changes")
+        working_dir = kwargs.get("working_dir")
         allow_plugins = kwargs.get("allow_plugins", False)
         if len(args) == 1:
             if isinstance(args[0], list):
@@ -2442,7 +2454,8 @@ class TestCase(testtools.TestCase):
     ):
         """Call callable with redirected std io pipes.
 
-        Returns the return code."""
+        Returns the return code.
+        """
         if not callable(a_callable):
             raise ValueError("a_callable must be callable.")
         if stdin is None:
@@ -4303,7 +4316,6 @@ def test_suite(keep_only=None, starting_with=None):
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-
     loader = TestUtil.TestLoader()
 
     if keep_only is not None:
@@ -4543,7 +4555,6 @@ def permute_tests_for_extension(
         tests. feature is the Feature object that can be used to determine if
         the module is available.
     """
-
     from .features import ModuleAvailableFeature
 
     py_module = pyutils.get_named_object(py_module_name)

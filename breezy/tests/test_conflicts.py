@@ -17,9 +17,8 @@
 import os
 from typing import Any, Callable, Dict, List, Tuple, Type
 
-from .. import conflicts, errors, option, osutils, tests, transform
+from .. import conflicts, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
-from ..workingtree import WorkingTree
 from . import scenarios, script
 
 load_tests = scenarios.load_tests_apply_scenarios

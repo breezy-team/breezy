@@ -18,10 +18,8 @@
 """Tests for signing and verifying blobs of data via gpg."""
 
 # import system imports here
-import sys
-from io import BytesIO
 
-from .. import config, errors, gpg, tests, trace, ui
+from .. import config, gpg, trace
 from . import TestCase, features
 
 
