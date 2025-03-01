@@ -98,7 +98,7 @@ def _check_name_encoding(name):
     try:
         name.decode("utf-8")
     except UnicodeDecodeError as e:
-        raise InvalidRecordError(str(e))
+        raise InvalidRecordError(str(e)) from e
 
 
 class ContainerSerialiser:

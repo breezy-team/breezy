@@ -518,6 +518,7 @@ class DuplicateEntry(HandledPathConflict):
 
 class ParentLoop(HandledPathConflict):
     """An attempt to create an infinitely-looping directory structure.
+
     This is rare, but can be produced like so:
 
     tree A:

@@ -35,7 +35,7 @@ class FullHistoryBzrBranch(BzrBranch):
             # correct
             history = self._lefthand_history(revision_id)
             if len(history) != revno:
-                raise AssertionError("%d != %d" % (len(history), revno))
+                raise AssertionError(f"{len(history)} != {revno}")
             self._set_revision_history(history)
 
     def _read_last_revision_info(self):

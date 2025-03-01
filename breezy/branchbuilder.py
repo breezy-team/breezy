@@ -116,7 +116,7 @@ class BranchBuilder:
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
         if message is None and message_callback is None:
-            message = "commit %d" % (self._branch.revno() + 1,)
+            message = f"commit {self._branch.revno() + 1}"
         return tree.commit(
             message, message_callback=message_callback, reporter=reporter, **kwargs
         )

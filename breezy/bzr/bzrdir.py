@@ -553,7 +553,7 @@ class BzrDir(controldir.ControlDir):
             backup_dir = self._available_backup_name("backup.bzr")
             new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note(
-                gettext("making backup of {0}\n  to {1}").format(
+                gettext("making backup of %s\n  to %s") % (
                     urlutils.unescape_for_display(old_path, "utf-8"),
                     urlutils.unescape_for_display(new_path, "utf-8"),
                 )
@@ -574,10 +574,10 @@ class BzrDir(controldir.ControlDir):
         i = 0
         while True:
             try:
-                to_path = ".bzr.retired.%d" % i
+                to_path = f".bzr.retired.{i}"
                 self.root_transport.rename(".bzr", to_path)
                 note(
-                    gettext("renamed {0} to {1}").format(
+                    gettext("renamed %s to %s") % (
                         self.root_transport.abspath(".bzr"), to_path
                     )
                 )
@@ -948,10 +948,10 @@ class BzrDirMeta1(BzrDir):
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as e:
             raise errors.NotBranchError(
                 path=urlutils.join(self.transport.base, path), controldir=self
-            )
+            ) from e
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -961,8 +961,8 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree("repository")
-        except _mod_transport.NoSuchFile:
-            raise errors.NoRepositoryPresent(self)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoRepositoryPresent(self) from e
 
     def create_workingtree(
         self, revision_id=None, from_branch=None, accelerator_tree=None, hardlink=False
@@ -1033,8 +1033,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone(path)
         try:
             branch_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(branch_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(branch_format, self._format) from e
         if name != "":
             branches = self._read_branch_list()
             if name not in branches:
@@ -1066,8 +1066,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone("repository")
         try:
             repository_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(repository_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(repository_format, self._format) from e
         try:
             self.transport.mkdir("repository", mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -1080,8 +1080,8 @@ class BzrDirMeta1(BzrDir):
             return self.transport.clone("checkout")
         try:
             workingtree_format.get_format_string()
-        except NotImplementedError:
-            raise errors.IncompatibleFormat(workingtree_format, self._format)
+        except NotImplementedError as e:
+            raise errors.IncompatibleFormat(workingtree_format, self._format) from e
         try:
             self.transport.mkdir("checkout", mode=self._get_mkdir_mode())
         except _mod_transport.FileExists:
@@ -1280,10 +1280,10 @@ class BzrFormat:
         for lineno, line in enumerate(lines):
             try:
                 (necessity, feature) = line.split(b" ", 1)
-            except ValueError:
+            except ValueError as e:
                 raise errors.ParseFormatError(
                     format=cls, lineno=lineno + 2, line=line, text=text
-                )
+                ) from e
             ret.features[feature] = necessity
         return ret
 
@@ -1306,8 +1306,8 @@ class BzrFormat:
             first_line = format_string
         try:
             cls = registry.get(first_line)
-        except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind=kind)
+        except KeyError as e:
+            raise errors.UnknownFormatError(format=first_line, kind=kind) from e
         return cls.from_string(format_string)
 
     def network_name(self):
@@ -1511,8 +1511,8 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 # the covers
                 mode=temp_control._dir_mode,
             )
-        except _mod_transport.FileExists:
-            raise errors.AlreadyControlDirError(transport.base)
+        except _mod_transport.FileExists as e:
+            raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == "win32" and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath(".bzr"))
         file_mode = temp_control._file_mode
@@ -2037,9 +2037,8 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
             if not self._require_stacking:
                 # We have picked up automatic stacking somewhere.
                 note(
-                    gettext("Using default stacking branch {0} at {1}").format(
-                        self._stack_on, self._stack_on_pwd
-                    )
+                    gettext("Using default stacking branch %s at %s"),
+                    self._stack_on, self._stack_on_pwd
                 )
         repository = self._controldir.create_repository(shared=shared)
         self._add_fallback(repository, possible_transports=possible_transports)

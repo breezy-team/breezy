@@ -193,7 +193,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     last_origin = None
     revisions = {}
     if CURRENT_REVISION in revision_ids:
-        revision_id_to_revno[CURRENT_REVISION] = ("%d?" % (branch.revno() + 1),)
+        revision_id_to_revno[CURRENT_REVISION] = (f"{branch.revno()+1}?",)
         revisions[CURRENT_REVISION] = current_rev
     revisions.update(
         entry

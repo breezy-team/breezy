@@ -256,9 +256,9 @@ class BundleInfo:
             # I don't know if this is an error yet
             warning(
                 "Not all revision hashes could be validated."
-                " Unable validate %d hashes" % len(missing)
+                " Unable validate %d hashes", len(missing)
             )
-        mutter("Verified %d sha hashes for the bundle." % count)
+        mutter("Verified %d sha hashes for the bundle.", count)
         self._validated_revisions_against_repo = True
 
     def _validate_inventory(self, inv, revision_id):

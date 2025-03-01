@@ -145,8 +145,7 @@ class GroupCompressBlock:
             num_bytes = self._content_length
         elif self._content_length is not None and num_bytes > self._content_length:
             raise AssertionError(
-                "requested num_bytes (%d) > content length (%d)"
-                % (num_bytes, self._content_length)
+                f"requested num_bytes ({num_bytes}) > content length ({self._content_length})"
             )
         # Expand the content if required
         if self._content is None:
@@ -193,7 +192,7 @@ class GroupCompressBlock:
             return
         # If we got this far, and don't have a decompressor, something is wrong
         if self._z_content_decompressor is None:
-            raise AssertionError("No decompressor to decompress %d bytes" % num_bytes)
+            raise AssertionError(f"No decompressor to decompress {num_bytes} bytes")
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
         if not remaining_decomp:
             raise AssertionError("Nothing left to decompress")
@@ -207,7 +206,7 @@ class GroupCompressBlock:
         )
         if len(self._content) < num_bytes:
             raise AssertionError(
-                "%d bytes wanted, only %d available" % (num_bytes, len(self._content))
+                f"{num_bytes} bytes wanted, only {len(self._content)} available"
             )
         if not self._z_content_decompressor.unconsumed_tail:
             # The stream is finished
@@ -232,8 +231,7 @@ class GroupCompressBlock:
         if len(data) != (pos + self._z_content_length):
             # XXX: Define some GCCorrupt error ?
             raise AssertionError(
-                "Invalid bytes: (%d) != %d + %d"
-                % (len(data), pos, self._z_content_length)
+                f"Invalid bytes: ({len(data)}) != {pos} + {self._z_content_length}"
             )
         self._z_content_chunks = (data[pos:],)
 
@@ -371,8 +369,7 @@ class GroupCompressBlock:
             pos += len_len
             if content_len + pos > self._content_length:
                 raise ValueError(
-                    "invalid content_len %d for record @ pos %d"
-                    % (content_len, pos - len_len - 1)
+                    f"invalid content_len {content_len} for record @ pos {pos - len_len - 1}"
                 )
             if kind == b"f":  # Fulltext
                 if include_text:
@@ -410,13 +407,11 @@ class GroupCompressBlock:
                         delta_pos += c
                 if delta_pos != content_len:
                     raise ValueError(
-                        "Delta consumed a bad number of bytes:"
-                        " %d != %d" % (delta_pos, content_len)
+                        f"Delta consumed a bad number of bytes: {delta_pos} != {content_len}"
                     )
                 if measured_len != decomp_len:
                     raise ValueError(
-                        "Delta claimed fulltext was %d bytes, but"
-                        " extraction resulted in %d bytes" % (decomp_len, measured_len)
+                        f"Delta claimed fulltext was {decomp_len} bytes, but extraction resulted in {measured_len} bytes"
                     )
             pos += content_len
         return result
@@ -465,7 +460,7 @@ class _LazyGroupCompressFactory:
         try:
             self._manager._prepare_for_extract()
         except zlib.error as value:
-            raise DecompressCorruption("zlib: " + str(value))
+            raise DecompressCorruption(f"zlib: {value!s}") from value
         block = self._manager._block
         self._chunks = block.extract(self.key, self._start, self._end)
         # There are code paths that first extract as fulltext, and then
@@ -2186,17 +2181,17 @@ class _GCGraphIndex:
                 for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in keys.items():
+                for key, (value, node_refs) in keys.items():  # noqa: B007
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
         if key_dependencies is not None:
             if self._parents:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     parents = refs[0]
                     key_dependencies.add_references(key, parents)
             else:
-                for key, value, refs in records:
+                for key, value, refs in records:  # noqa: B007
                     new_keys.add_key(key)
         self._add_callback(records)
 

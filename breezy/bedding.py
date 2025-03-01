@@ -255,7 +255,7 @@ def _auto_user_id():
     try:
         w = pwd.getpwuid(uid)
     except KeyError:
-        trace.mutter("no passwd entry for uid %d?" % uid)
+        trace.mutter("no passwd entry for uid %d?", uid)
         return None, None
 
     # we try utf-8 first, because on many variants (like Linux),

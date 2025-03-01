@@ -1444,7 +1444,7 @@ class DirState:
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(
-                delta, "error from _get_entry. {}".format(e)
+                delta, f"error from _get_entry. {e}"
             )
 
     def _apply_removals(self, removals):
@@ -1654,7 +1654,7 @@ class DirState:
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(
-                delta, "error from _get_entry. {}".format(e)
+                delta, f"error from _get_entry. {e}"
             )
 
         self._mark_modified(header_modified=True)
@@ -2716,7 +2716,7 @@ class DirState:
         if entry[0][2] == new_id:
             # Nothing to change.
             return
-        if new_id.__class__ != bytes:
+        if not isinstance(new_id, bytes):
             raise AssertionError("must be a utf8 file_id not {}".format(type(new_id)))
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
@@ -3462,8 +3462,8 @@ class DirState:
             this_path = osutils.pathjoin(entry[0][0], entry[0][1])
             if len(entry[1]) != tree_count:
                 raise AssertionError(
-                    "wrong number of entry details for row\n%s"
-                    ",\nexpected %d" % (pformat(entry), tree_count)
+                    f"wrong number of entry details for row\n{pformat(entry)}"
+                    f",\nexpected {tree_count}"
                 )
             absent_positions = 0
             for tree_index, tree_state in enumerate(entry[1]):
@@ -3938,7 +3938,7 @@ class ProcessEntryPython:
                     )
                     if target_parent_entry == (None, None):
                         raise AssertionError(
-                            "Could not find target parent in wt: {}\nparent of: {}".format(new_dirname, entry)
+                            f"Could not find target parent in wt: {new_dirname}\nparent of: {entry}"
                         )
                     target_parent_id = target_parent_entry[0][2]
                 if target_parent_id == entry[0][2]:
@@ -4614,7 +4614,7 @@ class ProcessEntryPython:
 
 # Try to load the compiled form if possible
 try:
-    from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
+    from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry  # noqa: N813
     from ._dirstate_helpers_pyx import (
         _bisect_path_left,
         _bisect_path_right,

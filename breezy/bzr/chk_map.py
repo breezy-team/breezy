@@ -1076,16 +1076,14 @@ class InternalNode(Node):
             )
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError(
-                "prefix wrong length: len(%s) is not %d"
-                % (prefix, len(self._search_prefix) + 1)
+                f"prefix wrong length: len({prefix}) is not {len(self._search_prefix) + 1}"
             )
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
         if self._node_width != len(self._search_prefix) + 1:
             raise AssertionError(
-                "node width mismatch: %d is not %d"
-                % (self._node_width, len(self._search_prefix) + 1)
+                f"node width mismatch: {self._node_width} is not {len(self._search_prefix) + 1}"
             )
         self._items[prefix] = node
         self._key = None
@@ -1158,7 +1156,7 @@ class InternalNode(Node):
             # 0.105us   for key in key_filter: break
             #       no func() overhead, might malloc an iterator, probably
             #       avoids checking an 'else' clause as part of the for
-            for key in key_filter:
+            for key in key_filter:  # noqa: B007
                 break
             search_prefix = self._search_prefix_filter(key)
             if len(search_prefix) == self._node_width:
@@ -1269,8 +1267,7 @@ class InternalNode(Node):
         search_key = self._search_key(key)
         if self._node_width != len(self._search_prefix) + 1:
             raise AssertionError(
-                "node width mismatch: %d is not %d"
-                % (self._node_width, len(self._search_prefix) + 1)
+                f"node width mismatch: {self._node_width} is not {len(self._search_prefix) + 1}"
             )
         if not search_key.startswith(self._search_prefix):
             # This key doesn't fit in this index, so we need to split at the
@@ -1819,11 +1816,7 @@ def _check_key(key):
         raise TypeError("key {!r} is not StaticTuple but {}".format(key, type(key)))
     if len(key) != 1:
         raise ValueError(
-            "key %r should have length 1, not %d"
-            % (
-                key,
-                len(key),
-            )
+            f"key {key!r} should have length 1, not {len(key)}"
         )
     if not isinstance(key[0], str):
         raise TypeError("key {!r} should hold a str, not {!r}".format(key, type(key[0])))

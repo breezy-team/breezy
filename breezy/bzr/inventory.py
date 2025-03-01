@@ -1203,14 +1203,14 @@ class Inventory(CommonInventory):
                 new_entry = replacement
             try:
                 self.add(new_entry)
-            except DuplicateFileId:
+            except DuplicateFileId as e:
                 raise errors.InconsistentDelta(
                     new_path, new_entry.file_id, "New id is already present in target."
-                )
-            except AttributeError:
+                ) from e
+            except AttributeError as e:
                 raise errors.InconsistentDelta(
                     new_path, new_entry.file_id, "Parent is not a directory."
-                )
+                ) from e
             if self.id2path(new_entry.file_id) != new_path:
                 raise errors.InconsistentDelta(
                     new_path,
@@ -1285,9 +1285,9 @@ class Inventory(CommonInventory):
             raise TypeError(file_id)
         try:
             return self._byid[file_id]
-        except KeyError:
+        except KeyError as e:
             # really we're passing an inventory, not a tree...
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind
@@ -1320,10 +1320,10 @@ class Inventory(CommonInventory):
         else:
             try:
                 parent = self._byid[entry.parent_id]
-            except KeyError:
+            except KeyError as e:
                 raise errors.InconsistentDelta(
                     "<unknown>", entry.parent_id, "Parent not in inventory."
-                )
+                ) from e
             if entry.name in parent.children:
                 raise errors.InconsistentDelta(
                     self.id2path(parent.children[entry.name].file_id),
@@ -1405,8 +1405,8 @@ class Inventory(CommonInventory):
         while file_id is not None:
             try:
                 ie = self._byid[file_id]
-            except KeyError:
-                raise errors.NoSuchId(tree=None, file_id=file_id)
+            except KeyError as e:
+                raise errors.NoSuchId(tree=None, file_id=file_id) from e
             yield ie
             file_id = ie.parent_id
 
@@ -1942,10 +1942,10 @@ class CHKInventory(CommonInventory):
                         parent,
                         "Not a directory, but given children",
                     )
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 raise errors.InconsistentDelta(
                     "<unknown>", parent, "Parent is not present in resulting inventory."
-                )
+                ) from e
             if result.path2id(parent_path) != parent:
                 raise errors.InconsistentDelta(
                     parent_path,
@@ -2116,9 +2116,9 @@ class CHKInventory(CommonInventory):
                     )
                 )[1]
             )
-        except StopIteration:
+        except StopIteration as e:
             # really we're passing an inventory, not a tree...
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def _getitems(self, file_ids):
         """Similar to get_entry, but lets you query for multiple.
@@ -2173,8 +2173,8 @@ class CHKInventory(CommonInventory):
         while file_id is not None:
             try:
                 ie = self.get_entry(file_id)
-            except KeyError:
-                raise errors.NoSuchId(tree=self, file_id=file_id)
+            except KeyError as e:
+                raise errors.NoSuchId(tree=self, file_id=file_id) from e
             yield ie
             file_id = ie.parent_id
 
@@ -2397,7 +2397,7 @@ class CHKInventory(CommonInventory):
             if file_id is None:
                 key_filter = [StaticTuple(current_id, basename_utf8)]
                 items = parent_id_index.iteritems(key_filter)
-                for (parent_id, name_utf8), file_id in items:
+                for (parent_id, name_utf8), file_id in items:  # noqa: B007
                     if parent_id != current_id or name_utf8 != basename_utf8:
                         raise errors.BzrError(
                             "corrupt inventory lookup! "
@@ -2525,8 +2525,8 @@ def make_entry(kind, name, parent_id, file_id=None):
     name = ensure_normalized_name(name)
     try:
         factory = entry_factory[kind]
-    except KeyError:
-        raise errors.BadFileKindError(name, kind)
+    except KeyError as e:
+        raise errors.BadFileKindError(name, kind) from e
     return factory(file_id, name, parent_id)
 
 

@@ -246,7 +246,7 @@ class BundleReader:
         iterator = pack.iter_records_from_file(self._container_file)
         for names, bytes in iterator:
             if len(names) != 1:
-                raise errors.BadBundle("Record has %d names instead of 1" % len(names))
+                raise errors.BadBundle(f"Record has {len(names)} names instead of 1")
             metadata = bencode.bdecode(bytes)
             if metadata[b"storage_kind"] == b"header":
                 bytes = None

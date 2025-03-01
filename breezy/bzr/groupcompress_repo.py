@@ -704,7 +704,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in search_key_reg.items():
+                    for search_key_name, func in search_key_reg.items():  # noqa: B007
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
