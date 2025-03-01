@@ -15,6 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+# ruff: noqa: D301
+# ruff: noqa: D212
+# ruff: noqa: D415
 
 from typing import Callable, Iterable, Iterator, List, Optional
 
