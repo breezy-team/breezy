@@ -701,7 +701,7 @@ class VersionedFileTestMixIn:
             ):
                 lines.setdefault(line, 0)
                 lines[line] += 1
-            if [] != progress.updates:
+            if progress.updates != []:
                 self.assertEqual(expected, progress.updates)
             return lines
 
@@ -2862,7 +2862,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             for line in files.iter_lines_added_or_present_in_keys(keys, pb=progress):
                 lines.setdefault(line, 0)
                 lines[line] += 1
-            if [] != progress.updates:
+            if progress.updates != []:
                 self.assertEqual(expected, progress.updates)
             return lines
 

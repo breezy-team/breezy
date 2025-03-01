@@ -611,9 +611,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             return False
         if isinstance(target, GitRepository):
             return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
+        return getattr(target._format, "supports_full_versioned_files", True)
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
@@ -652,9 +650,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             return False
         if isinstance(target, GitRepository):
             return False
-        if not getattr(target._format, "supports_full_versioned_files", True):
-            return False
-        return True
+        return getattr(target._format, "supports_full_versioned_files", True)
 
 
 class InterGitGitRepository(InterFromGitRepository):

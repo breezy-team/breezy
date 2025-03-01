@@ -84,6 +84,16 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             that must have been changed in the delta.
         :return: revtree1, revtree2
         """
+        if expected_kind_changed is None:
+            expected_kind_changed = []
+        if expected_renamed is None:
+            expected_renamed = []
+        if expected_modified is None:
+            expected_modified = []
+        if expected_removed is None:
+            expected_removed = []
+        if expected_added is None:
+            expected_added = []
         repo = branch.repository
         revtree1 = repo.revision_tree(branch.get_rev_id(revno - 1))
         revtree2 = repo.revision_tree(branch.get_rev_id(revno))
@@ -129,6 +139,16 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         expected_kind_changed: a list of (path, old_kind, new_kind) tuples
             that must have been changed in the delta.
         """
+        if expected_kind_changed is None:
+            expected_kind_changed = []
+        if expected_renamed is None:
+            expected_renamed = []
+        if expected_modified is None:
+            expected_modified = []
+        if expected_removed is None:
+            expected_removed = []
+        if expected_added is None:
+            expected_added = []
         renamed = changes.renamed
         added = changes.added + changes.copied
         removed = changes.removed

@@ -21,6 +21,7 @@
 import base64
 import contextlib
 import stat
+
 from typing import Optional
 
 import fastbencode as bencode

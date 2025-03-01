@@ -19,6 +19,7 @@
 
 import os
 
+import breezy
 from breezy.tests import TestCaseWithTransport
 
 
@@ -35,8 +36,11 @@ class DirtyTrackerTests(TestCaseWithTransport):
         self.tracker = DirtyTracker(self.tree)
 
     def test_nothing_changes(self):
-        with self.tracker:
-            self.assertFalse(self.tracker.is_dirty())
+        try:
+            with self.tracker:
+                self.assertFalse(self.tracker.is_dirty())
+        except breezy.dirty_tracker.TooManyOpenFiles:
+            self.skipTest("Too many open files")
 
     def test_regular_file_added(self):
         with self.tracker:

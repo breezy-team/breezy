@@ -28,7 +28,6 @@ is also left to that stage of the process.
 
 import inspect
 import os
-import sys
 
 import breezy
 
@@ -76,14 +75,12 @@ def _parse_source(source_text, filename="<unknown>"):
         if isinstance(node, ast.ClassDef):
             # TODO: worry about nesting?
             cls_to_lineno[node.name] = node.lineno
-        elif isinstance(node, ast.Str):
+        elif isinstance(node, ast.Constant):
             # Python AST gives location of string literal as the line the
             # string terminates on. It's more useful to have the line the
             # string begins on. Unfortunately, counting back newlines is
             # only an approximation as the AST is ignorant of escaping.
-            str_to_lineno[node.s] = node.lineno - (
-                0 if sys.version_info >= (3, 8) else node.s.count("\n")
-            )
+            str_to_lineno[node.value] = node.lineno
     return cls_to_lineno, str_to_lineno
 
 

@@ -5,10 +5,42 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.10
+##########
+
+:3.3.10: UNRELEASED
+
+brz 3.3.9
+#########
+
+:3.3.9: 2024-10-20
+
+* Update pyo3 to 0.22, adding support for Python 3.13. (Jelmer Vernooĳ,
+  #2084288
+
+brz 3.3.8
+#########
+
+:3.3.8: 2024-06-27
+
+* Prevent builds with PyO3 0.22 and up, which are incompatible with
+  Breezy 3.3. (Jelmer Vernooĳ)
+
+brz 3.3.7
+#########
+
+:3.3.7: 2024-04-01
+
+* Fix compatibility with Python 3 < 3.11, which don't have datetime.UTC. (Jelmer Vernooĳ)
+
 brz 3.3.6
 #########
 
-:3.3.6: UNRELEASED
+:3.3.6: 2024-04-01
+
+* Ignore race conditions loading config files. (Jelmer Vernooĳ)
+
+* Fix tests on Python 3.12. (Jelmer Vernooĳ)
 
 brz 3.3.5
 #########

@@ -204,6 +204,7 @@ pathjoin = _osutils_rs.pathjoin
 normpath = _osutils_rs.normpath
 _get_home_dir = _osutils_rs.get_home_dir
 
+
 getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename

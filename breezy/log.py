@@ -227,31 +227,31 @@ def make_log_request_dict(
 ):
     """Convenience function for making a logging request dictionary.
 
-    Using this function may make code slightly safer by ensuring
-    parameters have the correct names. It also provides a reference
-    point for documenting the supported parameters.
+        Using this function may make code slightly safer by ensuring
+        parameters have the correct names. It also provides a reference
+        point for documenting the supported parameters.
 
-    :param direction: 'reverse' (default) is latest to earliest;
-      'forward' is earliest to latest.
+        :param direction: 'reverse' (default) is latest to earliest;
+          'forward' is earliest to latest.
 
-    :param specific_files: If not None, only include revisions
-      affecting the specified files, rather than all revisions.
+        :param specific_files: If not None, only include revisions
+          affecting the specified files, rather than all revisions.
 
-    :param start_revision: If not None, only generate
-      revisions >= start_revision
+        :param start_revision: If not None, only generate
+          revisions >= start_revision
 
-    :param end_revision: If not None, only generate
-      revisions <= end_revision
+        :param end_revision: If not None, only generate
+          revisions <= end_revision
 
-    :param limit: If set, generate only 'limit' revisions, all revisions
-      are shown if None or 0.
+        :param limit: If set, generate only 'limit' revisions, all revisions
+          are shown if None or 0.
 
-    :param message_search: If not None, only include revisions with
-      matching commit messages
+        :param message_search: If not None, only include revisions with
+          matching commit messages
 
-    :param levels: the number of levels of revisions to
-      generate; 1 for just the mainline; 0 for all levels, or None for
-      a sensible default.
+        :param levels: the number of levels of revisions to
+          generate; 1 for just the mainline; 0 for all levels, or None for
+          a sensible default.
 
     :param generate_tags: If True, include tags for matched revisions.
     `
@@ -260,27 +260,27 @@ def make_log_request_dict(
       'partial' means filter the delta using specific_files;
       None means do not generate any delta.
 
-    :param diff_type: Either 'full', 'partial' or None.
-      'full' means generate the complete diff - adds/deletes/modifies/etc;
-      'partial' means filter the diff using specific_files;
-      None means do not generate any diff.
+        :param diff_type: Either 'full', 'partial' or None.
+          'full' means generate the complete diff - adds/deletes/modifies/etc;
+          'partial' means filter the diff using specific_files;
+          None means do not generate any diff.
 
-    :param _match_using_deltas: a private parameter controlling the
-      algorithm used for matching specific_files. This parameter
-      may be removed in the future so breezy client code should NOT
-      use it.
+        :param _match_using_deltas: a private parameter controlling the
+          algorithm used for matching specific_files. This parameter
+          may be removed in the future so breezy client code should NOT
+          use it.
 
-    :param exclude_common_ancestry: Whether -rX..Y should be interpreted as a
-      range operator or as a graph difference.
+        :param exclude_common_ancestry: Whether -rX..Y should be interpreted as a
+          range operator or as a graph difference.
 
-    :param signature: show digital signature information
+        :param signature: show digital signature information
 
-    :param match: Dictionary of list of search strings to use when filtering
-      revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
-      the empty string to match any of the preceding properties.
+        :param match: Dictionary of list of search strings to use when filtering
+          revisions. Keys can be 'message', 'author', 'committer', 'bugs' or
+          the empty string to match any of the preceding properties.
 
-    :param omit_merges: If True, commits with more than one parent are
-      omitted.
+        :param omit_merges: If True, commits with more than one parent are
+          omitted.
 
     """
     # Take care of old style message_search parameter

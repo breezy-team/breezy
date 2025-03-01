@@ -250,9 +250,7 @@ class _ByteStringNamedFilesystem(Feature):
     """Is the filesystem based on bytes?"""
 
     def _probe(self):
-        if os.name == "posix":
-            return True
-        return False
+        return os.name == "posix"
 
 
 ByteStringNamedFilesystem = _ByteStringNamedFilesystem()

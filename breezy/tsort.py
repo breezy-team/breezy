@@ -18,7 +18,7 @@
 
 from . import graph as _mod_graph
 
-__all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
+__all__ = ["MergeSorter", "TopoSorter", "merge_sort", "topo_sort"]
 
 from ._graph_rs import MergeSorter, TopoSorter, merge_sort
 

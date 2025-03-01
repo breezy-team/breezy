@@ -105,9 +105,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is not None:
-            return False
-        return True
+        return not getattr(target.branch.repository, "_git", None) is not None
 
     def merge(
         self,
@@ -170,9 +168,7 @@ class InterTagsFromGitToLocalGit(InterTags):
             return False
         if not isinstance(target, GitTags):
             return False
-        if getattr(target.branch.repository, "_git", None) is None:
-            return False
-        return True
+        return getattr(target.branch.repository, "_git", None) is not None
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         if self.source.branch.repository.has_same_location(
@@ -225,9 +221,7 @@ class InterTagsFromGitToNonGit(InterTags):
     def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
-        if isinstance(target, GitTags):
-            return False
-        return True
+        return not isinstance(target, GitTags)
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
         """See Tags.merge_to."""

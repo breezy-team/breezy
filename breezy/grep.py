@@ -151,9 +151,7 @@ def compile_pattern(pattern, flags=0):
 
 
 def is_fixed_string(s):
-    if re.match("^([A-Za-z0-9_]|\\s)*$", s):
-        return True
-    return False
+    return bool(re.match("^([A-Za-z0-9_]|\\s)*$", s))
 
 
 class _GrepDiffOutputter:
@@ -431,9 +429,7 @@ def workingtree_grep(opts):
 def _skip_file(include, exclude, path):
     if include and not _path_in_glob_list(path, include):
         return True
-    if exclude and _path_in_glob_list(path, exclude):
-        return True
-    return False
+    return bool(exclude and _path_in_glob_list(path, exclude))
 
 
 def dir_grep(tree, path, relpath, opts, revno, path_prefix):
