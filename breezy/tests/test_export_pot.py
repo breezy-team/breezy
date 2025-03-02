@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
-import sys
 import textwrap
 from io import StringIO
 
@@ -133,17 +132,9 @@ t = (
     )
 """
         _, str_lines = export_pot._parse_source(src)
-        if sys.version_info < (3, 8):
-            self.expectFailure(
-                "Escaped newlines confuses the multiline handling",
-                self.assertNotEqual,
-                str_lines,
-                {"Escaped\n": 0, "Raw\\n": 2, "A\n\nB\n\nC\n\n": -2},
-            )
-        else:
-            self.assertEqual(
-                str_lines, {"Escaped\n": 1, "Raw\\n": 2, "A\n\nB\n\nC\n\n": 4}
-            )
+        self.assertEqual(
+            str_lines, {"Escaped\n": 1, "Raw\\n": 2, "A\n\nB\n\nC\n\n": 4}
+        )
 
 
 class TestModuleContext(tests.TestCase):

@@ -254,9 +254,7 @@ def _has_triplequote_bug():
     """True if triple quote logic is reversed, see lp:710410."""
     conf = configobj.ConfigObj()
     quote = getattr(conf, "_get_triple_quote", None)
-    if quote and quote('"""') != "'''":
-        return True
-    return False
+    return bool(quote and quote('"""') != "'''")
 
 
 class ConfigObj(configobj.ConfigObj):

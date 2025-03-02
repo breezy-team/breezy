@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""create_ssls.py -- create sll keys and certificates for tests.
+"""create_ssls.py -- create ssl keys and certificates for tests.
 
 The https server requires at least a key and a certificate to start.
 

@@ -50,6 +50,7 @@ from unittest import SkipTest as TestSkipped
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable, Set
+from unittest import SkipTest as TestSkipped
 
 import testtools
 from testtools import content

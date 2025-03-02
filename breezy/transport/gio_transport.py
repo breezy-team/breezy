@@ -247,9 +247,7 @@ class GioTransport(ConnectedTransport):
                 mutter("GIO has check: %s", relpath)
             f = self._get_GIO(relpath)
             st = GioStatResult(f)
-            if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
-                return True
-            return False
+            return bool(stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode))
         except gio.Error as e:
             if e.code == gio.ERROR_NOT_FOUND:
                 return False

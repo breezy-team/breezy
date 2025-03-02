@@ -319,10 +319,6 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 =SOuC
 -----END PGP SIGNATURE-----
 """
-        plain = b"""bazaar-ng testament short form 1
-revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
-sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
-"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertRaises(gpg.SignatureVerificationFailed, my_gpg.verify, content)
 

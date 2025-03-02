@@ -1642,9 +1642,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             return False
         if other.workingtree_format != self.workingtree_format:
             return False
-        if other.features != self.features:
-            return False
-        return True
+        return not other.features != self.features
 
     def __ne__(self, other):
         return not self == other

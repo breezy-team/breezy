@@ -127,7 +127,7 @@ class UTextWrapper(textwrap.TextWrapper):
         # Figure out when indent is larger than the specified width, and make
         # sure at least one character is stripped off on every pass
         if width < 2:
-            space_left = chunks[-1] and self._width(chunks[-1][0]) or 1
+            space_left = (chunks[-1] and self._width(chunks[-1][0])) or 1
         else:
             space_left = width - cur_len
 
