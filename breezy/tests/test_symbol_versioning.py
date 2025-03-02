@@ -16,6 +16,7 @@
 
 """Symbol versioning tests."""
 
+import sys
 import warnings
 
 from breezy import symbol_versioning
@@ -95,14 +96,24 @@ class TestDeprecationWarnings(TestCase):
             DeprecationWarning,
             2,
         )
-        expected_docstring = (
-            "Deprecated method docstring.\n"
-            "\n"
-            "        This might explain stuff.\n"
-            "        \n"
-            "        This method was deprecated in version 0.7.0.\n"
-            "        "
-        )
+        if sys.version_info >= (3, 13):
+            expected_docstring = (
+                "Deprecated method docstring.\n"
+                "\n"
+                "This might explain stuff.\n"
+                "\n"
+                "This method was deprecated in version 0.7.0.\n"
+                ""
+            )
+        else:
+            expected_docstring = (
+                "Deprecated method docstring.\n"
+                "\n"
+                "        This might explain stuff.\n"
+                "        \n"
+                "        This method was deprecated in version 0.7.0.\n"
+                "        "
+            )
         self.check_deprecated_callable(
             expected_warning,
             expected_docstring,
