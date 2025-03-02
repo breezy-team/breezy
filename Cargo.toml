@@ -7,7 +7,7 @@ publish = false
 default-run = "brz"
 license = "GPL-2.0+"
 description = "Friendly distributed version control system"
-repository = "https://code.launchpad.net/brz"
+repository = "https://github.com/breezy-team/breezy"
 homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
 
