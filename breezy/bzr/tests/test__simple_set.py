@@ -16,6 +16,8 @@
 
 """Tests for the StaticTupleInterned type."""
 
+# ruff: noqa: C409
+
 import sys
 
 from breezy import tests

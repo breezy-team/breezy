@@ -715,8 +715,8 @@ class RevisionInstaller:
                         self._repository.add_inventory_by_delta(
                             parent_ids[0], delta, revision_id, parent_ids
                         )
-                except serializer.UnsupportedInventoryKind:
-                    raise errors.IncompatibleRevision(repr(self._repository))
+                except serializer.UnsupportedInventoryKind as e:
+                    raise errors.IncompatibleRevision(repr(self._repository)) from e
                 inventory_cache[revision_id] = target_inv
 
     def _handle_root(self, target_inv, parent_ids):

@@ -365,9 +365,9 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         try:
             repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
+        except errors.UnsuspendableWriteGroup as e:
             repo.abort_write_group()
-            raise tests.TestNotApplicable(reason)
+            raise tests.TestNotApplicable(reason) from e
 
     def test_suspend_write_group(self):
         repo = self.make_write_locked_repo()

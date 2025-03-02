@@ -150,8 +150,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile:
-            raise errors.NoRepositoryPresent(a_bzrdir)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NoRepositoryPresent(a_bzrdir) from e
         return klass._find_format(format_registry, "repository", format_string)
 
     def check_support_status(

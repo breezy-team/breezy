@@ -660,11 +660,9 @@ class Khayyam(TestBase):
 
         k = Weave()
         parents = set()
-        i = 0
-        for t in texts:
+        for i, t in enumerate(texts):
             k.add_lines(b"text%d" % i, list(parents), t)
             parents.add(b"text%d" % i)
-            i += 1
 
         self.log("k._weave=" + pformat(k._weave))
 

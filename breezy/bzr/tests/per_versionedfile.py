@@ -356,8 +356,8 @@ class VersionedFileTestMixIn:
         # is the test applicable to this vf implementation?
         try:
             vf.add_lines_with_ghosts(b"d", [], [])
-        except NotImplementedError:
-            raise TestSkipped("add_lines_with_ghosts is optional")
+        except NotImplementedError as e:
+            raise TestSkipped("add_lines_with_ghosts is optional") from e
         for sha, (version, lines) in zip(
             shas, (empty_text, sample_text_nl, sample_text_no_nl)
         ):
@@ -413,7 +413,7 @@ class VersionedFileTestMixIn:
         # happens).
         for length in range(20):
             version_lines = {}
-            vf = self.get_file("case-%d" % length)
+            vf = self.get_file(f"case-%{length}")
             prefix = b"step-%d"
             parents = []
             for step in range(length):
@@ -2575,7 +2575,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         if self.graph:
             self.assertEqual(actual_parents, expected.get_parent_map(expected.keys()))
         else:
-            for key, parents in actual_parents.items():
+            for _key, parents in actual_parents.items():
                 self.assertEqual(None, parents)
         for key in actual.keys():
             actual_text = next(

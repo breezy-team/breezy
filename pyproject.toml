@@ -126,6 +126,7 @@ ignore = [
     "ANN204",
     "ANN205",
     "ANN206",
+    "B904",  # assert
     "D100",  # Missing docstring in public module
     "D101",  # Missing docstring in public class
     "D103",  # Missing docstring in public function

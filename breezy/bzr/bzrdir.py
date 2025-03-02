@@ -941,8 +941,8 @@ class BzrDirMeta1(BzrDir):
                 branches = self._read_branch_list()
                 try:
                     branches.remove(name)
-                except ValueError:
-                    raise errors.NotBranchError(name)
+                except ValueError as e:
+                    raise errors.NotBranchError(name) from e
                 self._write_branch_list(branches)
             finally:
                 self.control_files.unlock()

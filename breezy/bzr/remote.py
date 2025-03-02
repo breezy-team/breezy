@@ -606,21 +606,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         control_name, repo_name, branch_name = response
         try:
             format = controldir.network_format_registry.get(control_name)
-        except KeyError:
-            raise errors.UnknownFormatError(kind="control", format=control_name)
+        except KeyError as e:
+            raise errors.UnknownFormatError(kind="control", format=control_name) from e
         if repo_name:
             try:
                 repo_format = _mod_repository.network_format_registry.get(repo_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind="repository", format=repo_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(kind="repository", format=repo_name) from e
             format.repository_format = repo_format
         if branch_name:
             try:
                 format.set_branch_format(
                     branch.network_format_registry.get(branch_name)
                 )
-            except KeyError:
-                raise errors.UnknownFormatError(kind="branch", format=branch_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(kind="branch", format=branch_name) from e
         return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
@@ -659,16 +659,16 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         branch_ref, branch_name = branch_info
         try:
             format = controldir.network_format_registry.get(control_name)
-        except KeyError:
-            raise errors.UnknownFormatError(kind="control", format=control_name)
+        except KeyError as e:
+            raise errors.UnknownFormatError(kind="control", format=control_name) from e
 
         if repo_name:
             try:
                 format.repository_format = _mod_repository.network_format_registry.get(
                     repo_name
                 )
-            except KeyError:
-                raise errors.UnknownFormatError(kind="repository", format=repo_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(kind="repository", format=repo_name) from e
         if branch_ref == b"ref":
             # XXX: we need possible_transports here to avoid reopening the
             # connection to the referenced location
@@ -679,8 +679,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             if branch_name:
                 try:
                     branch_format = branch.network_format_registry.get(branch_name)
-                except KeyError:
-                    raise errors.UnknownFormatError(kind="branch", format=branch_name)
+                except KeyError as e:
+                    raise errors.UnknownFormatError(kind="branch", format=branch_name) from e
                 format.set_branch_format(branch_format)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -1552,7 +1552,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             )
             if not m:
                 raise
-            raise errors.RevnoOutOfBounds(int(m.group(1)), (0, int(m.group(2))))
+            raise errors.RevnoOutOfBounds(int(m.group(1)), (0, int(m.group(2)))) from e
         if response[0] == b"ok":
             return True, response[1]
         elif response[0] == b"history-incomplete":
@@ -3481,10 +3481,10 @@ class RemoteBranchFormat(branch.BranchFormat):
                 self._custom_format = branch.network_format_registry.get(
                     self._network_name
                 )
-            except KeyError:
+            except KeyError as e:
                 raise errors.UnknownFormatError(
                     kind="branch", format=self._network_name
-                )
+                ) from e
 
     def get_format_description(self):
         self._ensure_real()
@@ -4155,13 +4155,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 repo_token or b"",
                 **err_context,
             )
-        except errors.LockContention:
+        except errors.LockContention as e:
             # The LockContention from the server doesn't have any
             # information about the lock_url. We re-raise LockContention
             # with valid lock_url.
             raise errors.LockContention(
                 "(remote lock)", self.repository.base.split(".bzr/")[0]
-            )
+            ) from e
         if response[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response
@@ -4469,7 +4469,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b"GhostRevisionsHaveNoRevno":
                     (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
-                    raise errors.GhostRevisionsHaveNoRevno(revid, ghost_revid)
+                    raise errors.GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
                 raise
             if response[0] == b"ok":
                 return tuple([int(x) for x in response[1:]])
@@ -4848,9 +4848,9 @@ def _translate_error(err, **context):
     def find(name):
         try:
             return context[name]
-        except KeyError:
+        except KeyError as e:
             mutter("Missing key '%s' in context %r", name, context)
-            raise err
+            raise err from e
 
     def get_path():
         """Get the path from the context if present, otherwise use first error
@@ -4861,9 +4861,9 @@ def _translate_error(err, **context):
         except KeyError:
             try:
                 return err.error_args[0].decode("utf-8")
-            except IndexError:
+            except IndexError as e:
                 mutter("Missing key 'path' in context %r", context)
-                raise err
+                raise err from e
 
     if not isinstance(err.error_verb, bytes):
         raise TypeError(err.error_verb)
@@ -4875,8 +4875,8 @@ def _translate_error(err, **context):
         raise translator(err, find, get_path)
     try:
         translator = no_context_error_translators.get(err.error_verb)
-    except KeyError:
-        raise UnknownErrorFromSmartServer(err)
+    except KeyError as e:
+        raise UnknownErrorFromSmartServer(err) from e
     else:
         raise translator(err)
 

@@ -319,7 +319,7 @@ class SmartServerRequestHandler:
             extra = " " + repr(extra_bytes[:40])
             if len(extra) > 33:
                 extra = extra[:29] + extra[-1] + "..."
-        trace.mutter("%12s: [%s] %s%s%s" % (action, self._thread_id, t, message, extra))
+        trace.mutter("%12s: [%s] %s%s%s", action, self._thread_id, t, message, extra)
 
     def accept_body(self, bytes):
         """Accept body data."""
@@ -328,7 +328,7 @@ class SmartServerRequestHandler:
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
         if "hpss" in debug.debug_flags:
-            self._trace("accept body", "%d bytes" % (len(bytes),), bytes)
+            self._trace("accept body", f"{len(bytes)} bytes", bytes)
 
     def end_of_body(self):
         """No more body data will be received."""
@@ -379,10 +379,10 @@ class SmartServerRequestHandler:
         args = args[1:]
         try:
             command = self._commands.get(cmd)
-        except LookupError:
+        except LookupError as e:
             if "hpss" in debug.debug_flags:
                 self._trace("hpss unknown request", cmd, repr(args)[1:-1])
-            raise errors.UnknownSmartMethod(cmd)
+            raise errors.UnknownSmartMethod(cmd) from e
         if "hpss" in debug.debug_flags:
             from . import vfs
 

@@ -113,7 +113,7 @@ class SmartTCPServer:
         try:
             self._server_socket.bind(sockaddr)
         except self._socket_error as message:
-            raise errors.CannotBindAddress(host, port, message)
+            raise errors.CannotBindAddress(host, port, message) from message
         self._sockname = self._server_socket.getsockname()
         self.port = self._sockname[1]
         self._server_socket.listen(1)
@@ -517,7 +517,7 @@ def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     try:
         bzr_server.set_up(transport, host, port, inet, timeout)
         bzr_server.smart_server.serve()
-    except:
+    except BaseException:
         hook_caught_exception = False
         for hook in SmartTCPServer.hooks["server_exception"]:
             hook_caught_exception = hook(sys.exc_info())

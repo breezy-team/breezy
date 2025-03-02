@@ -1681,11 +1681,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
             non_local_keys = needed_from_fallback - absent_keys
-            for keys, non_local_keys in self._group_keys_for_io(
+            for keys, nlk in self._group_keys_for_io(
                 present_keys, non_local_keys, positions
             ):
                 generator = _VFContentMapGenerator(
-                    self, keys, non_local_keys, global_map, ordering=ordering
+                    self, keys, nlk, global_map, ordering=ordering
                 )
                 yield from generator.get_record_stream()
         else:

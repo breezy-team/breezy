@@ -267,11 +267,11 @@ class TestRepository(TestCaseWithRepository):
             tree.put_file_bytes_non_atomic("foo", b"content\n")
             try:
                 rev_key = (tree.commit("foo"),)
-            except errors.IllegalPath:
+            except errors.IllegalPath as e:
                 raise tests.TestNotApplicable(
                     "file_id {!r} cannot be stored on this"
                     " platform for this repo format".format(file_id)
-                )
+                ) from e
             if repo._format.rich_root_data:
                 root_commit = (tree.path2id(""),) + rev_key
                 keys = {root_commit}
@@ -328,8 +328,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_parent_tree_id(b"ghost1")
         try:
             tree_a.commit("rev3", rev_id=b"rev3", allow_pointless=True)
-        except errors.RevisionNotPresent:
-            raise tests.TestNotApplicable("Cannot test with ghosts for this format.")
+        except errors.RevisionNotPresent as e:
+            raise tests.TestNotApplicable("Cannot test with ghosts for this format.") from e
         # add another reference to a ghost, and a second ghost.
         tree_a.add_parent_tree_id(b"ghost1")
         tree_a.add_parent_tree_id(b"ghost2")
@@ -408,8 +408,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         rev.parent_ids = [b"the_ghost"]
         try:
             repo.add_revision(b"ghost", rev)
-        except (errors.NoSuchRevision, errors.RevisionNotPresent):
-            raise tests.TestNotApplicable("Cannot test with ghosts for this format.")
+        except (errors.NoSuchRevision, errors.RevisionNotPresent) as e:
+            raise tests.TestNotApplicable("Cannot test with ghosts for this format.") from e
 
         inv = inventory.Inventory(revision_id=b"the_ghost")
         inv.root.revision = b"the_ghost"

@@ -242,8 +242,8 @@ class ReadVFile:
         result = self._string.read(length)
         if len(result) < length:
             raise errors.BzrError(
-                "wanted %d bytes but next "
-                "hunk only contains %d: %r..." % (length, len(result), result[:20])
+                f"wanted {length} bytes but next "
+                f"hunk only contains {len(result)}: {result[:20]!r}..."
             )
         return result
 
@@ -408,8 +408,8 @@ class BytesRecordReader(BaseReader):
         length_line = self._read_line()
         try:
             length = int(length_line)
-        except ValueError:
-            raise InvalidRecordError("{!r} is not a valid length.".format(length_line))
+        except ValueError as e:
+            raise InvalidRecordError("{!r} is not a valid length.".format(length_line)) from e
 
         # Read the list of names.
         names = []
@@ -532,8 +532,8 @@ class ContainerPushParser:
         if line is not None:
             try:
                 self._current_record_length = int(line)
-            except ValueError:
-                raise InvalidRecordError("{!r} is not a valid length.".format(line))
+            except ValueError as e:
+                raise InvalidRecordError("{!r} is not a valid length.".format(line)) from e
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):

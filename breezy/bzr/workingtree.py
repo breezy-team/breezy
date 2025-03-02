@@ -607,8 +607,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 try:
                     if next(confile) != CONFLICT_HEADER_1 + b"\n":
                         raise errors.ConflictFormatError()
-                except StopIteration:
-                    raise errors.ConflictFormatError()
+                except StopIteration as err:
+                    raise errors.ConflictFormatError() from err
                 reader = _mod_rio.RioReader(confile)
                 return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
@@ -767,7 +767,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path) from e
             raise
 
     def path_content_summary(
@@ -973,8 +973,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 try:
                     if next(hashfile) != MERGE_MODIFIED_HEADER_1 + b"\n":
                         raise errors.MergeModifiedFormatError()
-                except StopIteration:
-                    raise errors.MergeModifiedFormatError()
+                except StopIteration as err:
+                    raise errors.MergeModifiedFormatError() from err
                 for s in _mod_rio.RioReader(hashfile):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
@@ -1004,10 +1004,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 )
             try:
                 other_tree_path = self.relpath(other_tree.basedir)
-            except errors.PathNotChild:
+            except errors.PathNotChild as err:
                 raise errors.BadSubsumeSource(
                     self, other_tree, "Tree is not contained by the other"
-                )
+                ) from err
             new_root_parent = self.path2id(osutils.dirname(other_tree_path))
             if new_root_parent is None:
                 raise errors.BadSubsumeSource(
@@ -1555,7 +1555,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     " The working tree is in an inconsistent state."
                     " Please consider doing a 'bzr revert'."
                     " Error message is: {}".format(e),
-                )
+                ) from e
 
     def _move_entry(self, entry):
         inv = self.root_inventory

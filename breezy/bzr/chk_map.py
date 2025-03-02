@@ -133,11 +133,11 @@ class CHKMap:
                 delta, "New items are already in the map {!r}.".format(existing_new)
             )
         # Now apply changes.
-        for old, new, value in delta:
+        for old, new, _value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
                 has_deletes = True
-        for old, new, value in delta:
+        for _old, new, value in delta:
             if new is not None:
                 self.map(new, value)
         if has_deletes:

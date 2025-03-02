@@ -307,9 +307,9 @@ class TestSendStrictMixin(TestSendMixin):
             revs = self._default_sent_revs or [self.local]
         out, err = self.run_send(args, err_re=err_re)
         if len(revs) == 1:
-            bundling_revs = "Bundling %d revision.\n" % len(revs)
+            bundling_revs = f"Bundling {len(revs)} revision.\n"
         else:
-            bundling_revs = "Bundling %d revisions.\n" % len(revs)
+            bundling_revs = f"Bundling {len(revs)} revisions.\n"
         if with_warning:
             self.assertContainsRe(err, self._default_additional_warning)
             self.assertEndsWith(err, bundling_revs)

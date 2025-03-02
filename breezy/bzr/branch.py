@@ -715,7 +715,7 @@ class BzrBranch8(BzrBranch):
                     info_dict = {
                         s["file_id"].encode("utf-8"): (
                             s["branch_location"],
-                            s["tree_path"] if "tree_path" in s else None,
+                            s["tree_path"] if "tree_path" in s else None,  # noqa: SIM401
                         )
                         for s in stanzas
                     }
@@ -823,7 +823,7 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             try:
                 index = self._partial_revision_history_cache.index(revision_id)
-            except ValueError:
+            except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
                 except errors.RevisionNotPresent as exc:
@@ -832,9 +832,9 @@ class BzrBranch8(BzrBranch):
                     ) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
-                    raise errors.NoSuchRevision(self, revision_id)
+                    raise errors.NoSuchRevision(self, revision_id) from e
                 if self._partial_revision_history_cache[index] != revision_id:
-                    raise errors.NoSuchRevision(self, revision_id)
+                    raise errors.NoSuchRevision(self, revision_id) from e
             return self.revno() - index
 
 

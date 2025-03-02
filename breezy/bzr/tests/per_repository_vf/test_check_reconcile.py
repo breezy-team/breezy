@@ -324,7 +324,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \(rev2c\)",
             r"a-file-id version rev4 has parents \(rev2\) "
             r"but should have \(rev1a\)",
-            "%d inconsistent parents" % count,
+            f"{count} inconsistent parents"
         ]
 
     def populate_repository(self, repo):
@@ -589,7 +589,7 @@ class TooManyParentsScenario(BrokenRepoScenario):
         else:
             count = 1
         return (
-            "     %d inconsistent parents" % count,
+            f"     {count} inconsistent parents",
             (
                 r"      \* a-file-id version broken-revision has parents "
                 r"\(good-parent, bad-parent\) but "
@@ -681,7 +681,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         else:
             count = 1
         return (
-            "%d inconsistent parents" % count,
+            f"{count} inconsistent parents",
             r"\* a-file-id version current has parents "
             r"\(modified-something-else\) but should have \(basis\)",
         )
@@ -780,7 +780,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
         else:
             count = 2
         return (
-            "%d inconsistent parents" % count,
+            f"{count} inconsistent parents",
             r"\* a-file-id version broken-revision-1-2 has parents "
             r"\(parent-2, parent-1\) but should have "
             r"\(parent-1, parent-2\)",

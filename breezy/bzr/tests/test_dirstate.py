@@ -699,10 +699,10 @@ class TestTreeToDirState(TestCaseWithDirState):
         # create some trees to test from
         parents = []
         for i in range(7):
-            tree = self.make_branch_and_tree("tree%d" % i)
+            tree = self.make_branch_and_tree(f"tree{i}")
             self.build_tree(
                 [
-                    "tree%d/name" % i,
+                    f"tree{i}/name",
                 ]
             )
             tree.add(["name"], ids=[b"file-id%d" % i])

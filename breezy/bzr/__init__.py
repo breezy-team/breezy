@@ -53,12 +53,12 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except _mod_transport.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+        except _mod_transport.NoSuchFile as e:
+            raise errors.NotBranchError(path=transport.base) from e
         except errors.BadHttpRequest as e:
             if e.reason == "no such method: .bzr":
                 # hgweb
-                raise errors.NotBranchError(path=transport.base)
+                raise errors.NotBranchError(path=transport.base) from e
             raise
 
         try:
@@ -71,11 +71,11 @@ class BzrProber(controldir.Prober):
             )
         try:
             cls = klass.formats.get(first_line)
-        except KeyError:
+        except KeyError as e:
             if first_line.endswith(b"\r\n"):
-                raise LineEndingError(file=".bzr/branch-format")
+                raise LineEndingError(file=".bzr/branch-format") from e
             else:
-                raise errors.UnknownFormatError(format=first_line, kind="bzrdir")
+                raise errors.UnknownFormatError(format=first_line, kind="bzrdir") from e
         return cls.from_string(format_string)
 
     @classmethod
@@ -109,19 +109,19 @@ class RemoteBzrProber(controldir.Prober):
             errors.TransportNotPossible,
             errors.NoSmartMedium,
             errors.SmartProtocolError,
-        ):
+        ) as e:
             # no smart server, so not a branch for this format type.
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base) from e
         else:
             # Decline to open it if the server doesn't support our required
             # version (3) so that the VFS-based transport will do it.
             if medium.should_probe():
                 try:
                     server_version = medium.protocol_version()
-                except errors.SmartProtocolError:
+                except errors.SmartProtocolError as e:
                     # Apparently there's no usable smart server there, even though
                     # the medium supports the smart protocol.
-                    raise errors.NotBranchError(path=transport.base)
+                    raise errors.NotBranchError(path=transport.base) from e
                 if server_version != "2":
                     raise errors.NotBranchError(path=transport.base)
             from .remote import RemoteBzrDirFormat
@@ -183,11 +183,11 @@ def register_metadir(
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError as e:
-            raise ImportError(f"failed to load {full_name}: {e}")
-        except AttributeError:
+            raise ImportError(f"failed to load {full_name}: {e}") from e
+        except AttributeError as e:
             raise AttributeError(
                 "no factory {} in module {!r}".format(full_name, sys.modules[mod_name])
-            )
+            ) from e
         return factory()
 
     def helper():

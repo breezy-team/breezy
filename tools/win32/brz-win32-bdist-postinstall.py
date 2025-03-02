@@ -71,7 +71,7 @@ Congratulation! Brz successfully installed.
         batch_str = "@{} {} {}".format(python_path, script_path, args)
         # support of win98
         # if there is no HOME for brz then set it for Breezy manually
-        base = os.environ.get("brz_HOME", None)
+        base = os.environ.get("BRZ_HOME", None)
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:

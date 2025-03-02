@@ -61,8 +61,8 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
                 stanza.add(tag, "".join(accum_value))
             try:
                 colon_index = line.index(": ")
-            except ValueError:
-                raise ValueError("tag/value separator not found in line {!r}".format(real_l))
+            except ValueError as e:
+                raise ValueError("tag/value separator not found in line {!r}".format(real_l)) from e
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag {!r}".format(tag))

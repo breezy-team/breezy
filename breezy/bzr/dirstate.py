@@ -1445,7 +1445,7 @@ class DirState:
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(
                 delta, f"error from _get_entry. {e}"
-            )
+            ) from e
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True, key=operator.itemgetter(1)):
@@ -1655,7 +1655,7 @@ class DirState:
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(
                 delta, f"error from _get_entry. {e}"
-            )
+            ) from e
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -3939,7 +3939,7 @@ class ProcessEntryPython:
                     if target_parent_entry == (None, None):
                         raise AssertionError(
                             f"Could not find target parent in wt: {new_dirname}\nparent of: {entry}"
-                        )
+                        ) from None
                     target_parent_id = target_parent_entry[0][2]
                 if target_parent_id == entry[0][2]:
                     # This is the root, so the parent is None

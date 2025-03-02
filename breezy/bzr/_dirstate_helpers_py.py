@@ -25,7 +25,7 @@ import struct
 from .dirstate import DirState, DirstateCorrupt
 
 
-def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct(">6L").pack):
+def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct(">6L").pack):  # noqa: B008
     """Convert stat values into a packed representation.
 
     Not all of the fields from the stat included are strictly needed, and by

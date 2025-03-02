@@ -230,11 +230,9 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             # estimated compression ratio taken from bzr.dev itself.
             if self.no_extra_results or (first_loop_done and estimator.full()):
                 trace.mutter(
-                    "size: %d, z_size: %d"
-                    % (
-                        estimator._uncompressed_size_added,
-                        estimator._compressed_size_added,
-                    )
+                    "size: %d, z_size: %d",
+                    estimator._uncompressed_size_added,
+                    estimator._compressed_size_added,
                 )
                 next_revs = set()
                 break
@@ -322,7 +320,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
                 raise AssertionError(
                     "get_rev_id_for_revno raised RevisionNotPresent for "
                     "non-initial revision: " + err.revision
-                )
+                ) from err
             return FailedSmartServerResponse((b"nosuchrevision", err.revision))
         except errors.RevnoOutOfBounds as e:
             return FailedSmartServerResponse(
@@ -544,7 +542,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if not from_format.supports_chks:
             # Source not CHK: that's ok
             return False
-        if (
+        if (  # noqa: SIM103
             to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
             and from_format._serializer == to_format._serializer
@@ -882,7 +880,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
                 stream, src_format, self.tokens
             )
             self.insert_ok = True
-        except:
+        except BaseException:
             self.insert_exception = sys.exc_info()
             self.insert_ok = False
 

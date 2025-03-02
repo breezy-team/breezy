@@ -131,10 +131,10 @@ class Testament:
         r = []
         a = r.append
         a(self.long_header)
-        a("revision-id: {}\n".format(self.revision_id.decode("utf-8")))
-        a("committer: {}\n".format(self.committer))
-        a("timestamp: %d\n" % self.timestamp)
-        a("timezone: %d\n" % self.timezone)
+        a(f"revision-id: {self.revision_id.decode('utf-8')}\n")
+        a(f"committer: {self.committer}\n")
+        a(f"timestamp: {int(self.timestamp)}\n")
+        a(f"timezone: {int(self.timezone)}\n")
         # inventory length contains the root, which is not shown here
         a("parents:\n")
         for parent_id in sorted(self.parent_ids):

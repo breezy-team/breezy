@@ -200,7 +200,7 @@ class TestTCPServerInAThread(tests.TestCase):
         class FailingDuringResponseHandler(TCPConnectionHandler):
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
-            def handle_connection(request):
+            def handle_connection(request):  # noqa: N805
                 request.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We

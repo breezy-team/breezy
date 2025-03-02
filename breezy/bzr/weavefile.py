@@ -121,8 +121,8 @@ def _read_weave_v5(f, w):
 
     try:
         l = next(lines)
-    except StopIteration:
-        raise WeaveFormatError("invalid weave file: no header")
+    except StopIteration as err:
+        raise WeaveFormatError("invalid weave file: no header") from err
 
     if l != FORMAT_1:
         raise WeaveFormatError("invalid weave file header: {!r}".format(l))

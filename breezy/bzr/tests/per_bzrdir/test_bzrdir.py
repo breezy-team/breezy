@@ -211,10 +211,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         try:
             a_controldir.open_workingtree()
-        except (errors.NotLocalUrl, errors.NoWorkingTree):
+        except (errors.NotLocalUrl, errors.NoWorkingTree) as e:
             raise TestSkipped(
                 "bzrdir on transport {!r} has no working tree".format(a_controldir.transport)
-            )
+            ) from e
 
     def createWorkingTreeOrSkip(self, a_controldir):
         """Create a working tree on a_controldir, or raise TestSkipped.
@@ -232,10 +232,10 @@ class TestBzrDir(TestCaseWithBzrDir):
                 accelerator_tree=None,
                 hardlink=False,
             )
-        except errors.NotLocalUrl:
+        except errors.NotLocalUrl as e:
             raise TestSkipped(
                 "cannot make working tree with transport {!r}".format(a_controldir.transport)
-            )
+            ) from e
 
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree("commit_tree")
@@ -738,8 +738,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         config = self.make_controldir(".").get_config()
         try:
             config.set_default_stack_on("stack-on")
-        except errors.BzrError:
-            raise TestNotApplicable("Only relevant for stackable formats.")
+        except errors.BzrError as e:
+            raise TestNotApplicable("Only relevant for stackable formats.") from e
         # Initialize a bzrdir subject to the policy.
         t = self.get_transport("stacked")
         repo_fmt = controldir.format_registry.make_controldir("1.9")

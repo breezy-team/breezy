@@ -86,7 +86,7 @@ class Reconciler:
         self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
-                self.repo.reconcile_canonicalize_chks
+                self.repo.reconcile_canonicalize_chks  # noqa: B018
             except AttributeError:
                 raise errors.BzrError(
                     gettext("%s cannot canonicalize CHKs.") % (self.repo,)

@@ -985,10 +985,10 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         prefixed_bytes = self._extract_length_prefixed_bytes()
         try:
             decoded = bdecode_as_tuple(prefixed_bytes)
-        except ValueError:
+        except ValueError as e:
             raise errors.SmartProtocolError(
                 "Bytes {!r} not bencoded".format(prefixed_bytes)
-            )
+            ) from e
         return decoded
 
     def _extract_single_byte(self):
@@ -1030,8 +1030,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.headers_received(decoded)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
@@ -1053,8 +1053,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.byte_part_received(byte)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_bytes(self):
         # XXX: this should not buffer whole message part, but instead deliver
@@ -1063,16 +1063,16 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.bytes_part_received(prefixed_bytes)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_expecting_structure(self):
         structure = self._extract_prefixed_bencoded_data()
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.structure_part_received(structure)
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def done(self):
         self.unused_data = self._get_in_buffer()
@@ -1080,8 +1080,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.state_accept = self._state_accept_reading_unused
         try:
             self.message_handler.end_received()
-        except:
-            raise SmartMessageHandlerError(sys.exc_info())
+        except BaseException as e:
+            raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()
@@ -1240,7 +1240,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             if "hpss" in debug.debug_flags:
                 self._trace(
                     "body",
-                    "%d bytes" % (len(response.body),),
+                    f"{len(response.body)} bytes",
                     response.body,
                     include_time=True,
                 )
@@ -1269,14 +1269,14 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                         # actually buffered
                         self._trace(
                             "body chunk",
-                            "%d bytes" % (len(chunk),),
+                            f"{len(chunk)} bytes",
                             chunk,
                             suppress_time=True,
                         )
             if "hpss" in debug.debug_flags:
                 self._trace(
                     "body stream",
-                    "%d bytes %d chunks" % (num_bytes, count),
+                    f"{num_bytes} bytes {count} chunks",
                     first_chunk,
                 )
         self._write_end()
