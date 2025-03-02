@@ -22,8 +22,6 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_brz function.
 """
 
-from breezy import tests
-
 
 def load_tests(loader, basic_tests, pattern):
     suite = loader.suiteClass()

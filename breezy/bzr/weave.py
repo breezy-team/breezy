@@ -362,8 +362,8 @@ class Weave(VersionedFile):
             self.check_not_reserved_id(name)
         try:
             return self._name_map[name]
-        except KeyError:
-            raise RevisionNotPresent(name, self._weave_name)
+        except KeyError as err:
+            raise RevisionNotPresent(name, self._weave_name) from err
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -618,8 +618,8 @@ class Weave(VersionedFile):
         for i in indexes:
             try:
                 self._parents[i]
-            except IndexError:
-                raise IndexError("invalid version number {!r}".format(i))
+            except IndexError as err:
+                raise IndexError("invalid version number {!r}".format(i)) from err
 
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.

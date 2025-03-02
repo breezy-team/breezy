@@ -103,7 +103,7 @@ class BTreeTestCase(TestCaseWithTransport):
         """
         if not expected - slop < actual < expected + slop:
             self.fail(
-                "Expected around %d bytes compressed but got %d" % (expected, actual)
+                f"Expected around {expected} bytes compressed but got {actual} bytes."
             )
 
 

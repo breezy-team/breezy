@@ -201,7 +201,7 @@ class GraphIndexBuilder:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in self._nodes.items():
+                for key, (absent, references, value) in self._nodes.items():  # noqa: B007
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -388,9 +388,7 @@ class GraphIndexBuilder:
         result = BytesIO(b"".join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError(
-                "Failed index creation. Internal error:"
-                " mismatched output length and expected length: %d %d"
-                % (len(result.getvalue()), expected_bytes)
+                f"Failed index creation. Internal error: mismatched output length and expected length: {len(result.getvalue())} {expected_bytes}"
             )
         return result
 
@@ -570,8 +568,7 @@ class GraphIndex:
         self._buffer_all()
         if ref_list_num + 1 > self.node_ref_lists:
             raise ValueError(
-                "No ref list %d, index has %d ref lists"
-                % (ref_list_num, self.node_ref_lists)
+                f"No ref list {ref_list_num}, index has {self.node_ref_lists} ref lists"
             )
         refs = set()
         nodes = self._nodes
@@ -627,22 +624,22 @@ class GraphIndex:
             raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS) : -1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
             raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS) : -1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_LEN):
             raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN) : -1])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
 
     def _resolve_references(self, references):
         """Return the resolved key references for references.
@@ -993,22 +990,22 @@ class GraphIndex:
             raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS) :])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
             raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS) :])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
             raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN) :])
-        except ValueError:
-            raise BadIndexOptions(self)
+        except ValueError as e:
+            raise BadIndexOptions(self) from e
         # calculate the bytes we have processed
         header_end = len(signature) + len(lines[0]) + len(lines[1]) + len(lines[2]) + 3
         self._parsed_bytes(0, (), header_end, ())
@@ -1135,8 +1132,7 @@ class GraphIndex:
         trimmed_data = data[trim_start:trim_end]
         if not (trimmed_data):
             raise AssertionError(
-                "read unneeded data [%d:%d] from [%d:%d]"
-                % (trim_start, trim_end, offset, offset + len(data))
+                f"read unneeded data [{trim_start}:{trim_end}] from [{offset}:{offset + len(data)}]"
             )
         if trim_start:
             offset += trim_start
@@ -1697,7 +1693,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in self._nodes.items():
+            for key, (absent, references, value) in self._nodes.items():  # noqa: B007
                 if not absent:
                     yield self, key, value
 

@@ -295,7 +295,7 @@ class Annotator:
             else:
                 the_heads = heads(annotation)
                 if len(the_heads) == 1:
-                    for head in the_heads:
+                    for head in the_heads: # noqa: B007
                         break  # get the item out of the set
                 else:
                     head = self._resolve_annotation_tie(

@@ -1939,7 +1939,7 @@ class TestTerminalWidth(tests.TestCase):
         termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
-            termios.TIOCGWINSZ
+            termios.TIOCGWINSZ  # noqa: B018
         except AttributeError:
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass

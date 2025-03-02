@@ -482,8 +482,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # create a repository to get a real format instance, not the
         # template from the test suite parameterization.
         repo = self.make_repository(".")
-        repo._format.rich_root_data
-        repo._format.supports_tree_reference
+        repo._format.rich_root_data  # noqa: B018
+        repo._format.supports_tree_reference  # noqa: B018
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree("tree")
@@ -783,7 +783,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         an object with a get_parent_map method.
         """
         repo = self.make_repository("repo")
-        repo._make_parents_provider().get_parent_map
+        repo._make_parents_provider().get_parent_map  # noqa: B018
 
     def make_repository_and_foo_bar(self, shared=None):
         made_control = self.make_controldir("repository")

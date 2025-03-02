@@ -2029,9 +2029,9 @@ class PullResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                to_file.write("Now on revision %d.\n" % self.new_revno)
+                to_file.write(f"Now on revision {self.new_revno}.\n")
             if tag_updates:
-                to_file.write("%d tag(s) updated.\n" % len(tag_updates))
+                to_file.write(f"{len(tag_updates)} tag(s) updated.\n")
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
                     to_file.write("No revisions or tags to pull.\n")

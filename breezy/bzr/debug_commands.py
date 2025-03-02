@@ -83,7 +83,7 @@ class cmd_dump_btree(Command):
                 header_end, data = bt._parse_header_from_bytes(page_bytes)
                 self.outf.write(page_bytes[:header_end])
                 page_bytes = data
-            self.outf.write("\nPage %d\n" % (page_idx,))
+            self.outf.write(f"\nPage {page_idx}\n")
             if len(page_bytes) == 0:
                 self.outf.write("(empty)\n")
             else:

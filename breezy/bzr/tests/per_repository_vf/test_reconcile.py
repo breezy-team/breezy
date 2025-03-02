@@ -46,9 +46,9 @@ class TestReconcile(TestCaseWithRepository):
         self.assertEqual(0, reconciler.garbage_inventories)
         self.checkNoBackupInventory(d)
 
-    def checkNoBackupInventory(self, aBzrDir):
+    def checkNoBackupInventory(self, a_bzr_dir):
         """Check that there is no backup inventory in aBzrDir."""
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         for path in repo.control_transport.list_dir("."):
             self.assertFalse("inventory.backup" in path)
 
@@ -191,9 +191,9 @@ class TestsNeedingReweave(TestReconcile):
         self.assertEqual(1, result.garbage_inventories)
         self.check_missing_was_removed(repo)
 
-    def check_thorough_reweave_missing_revision(self, aBzrDir, reconcile, **kwargs):
+    def check_thorough_reweave_missing_revision(self, a_bzr_dir, reconcile, **kwargs):
         # actual low level test.
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         if not repo.has_revision(b"missing"):
             # the repo handles ghosts without corruption, so reconcile has
             # nothing to do here. Specifically, this test has the inventory
@@ -209,7 +209,7 @@ class TestsNeedingReweave(TestReconcile):
         # and one garbage inventories
         self.assertEqual(1, reconciler.garbage_inventories)
         # now the backup should have it but not the current inventory
-        repo = aBzrDir.open_repository()
+        repo = a_bzr_dir.open_repository()
         self.check_missing_was_removed(repo)
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
@@ -312,8 +312,8 @@ class TestsNeedingReweave(TestReconcile):
                         ((b"myfileid", b"ghost-text-parent"),),
                         [b"line1\n", b"line2\n"],
                     )
-                except errors.RevisionNotPresent:
-                    raise TestSkipped("text ghost parents not supported")
+                except errors.RevisionNotPresent as e:
+                    raise TestSkipped("text ghost parents not supported") from e
                 if repo.supports_rich_root():
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision), [], [])
             finally:

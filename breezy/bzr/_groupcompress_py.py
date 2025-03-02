@@ -36,7 +36,7 @@ class _OutputHandler:
     def add_copy(self, start_byte, end_byte):
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
-        for start_byte in range(start_byte, end_byte, 64 * 1024):
+        for start_byte in range(start_byte, end_byte, 64 * 1024):  # noqa: B020
             num_bytes = min(64 * 1024, end_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             self.out_lines.append(copy_bytes)
@@ -116,9 +116,8 @@ class LinesDeltaIndex:
         start_idx = len(self.lines)
         if len(new_lines) != len(index):
             raise AssertionError(
-                "The number of lines to be indexed does"
-                " not match the index/don't index flags: %d != %d"
-                % (len(new_lines), len(index))
+                "The number of lines to be indexed does" +
+                f" not match the index/don't index flags: {len(new_lines)} != {len(index)}"
             )
         for idx, do_index in enumerate(index):
             if not do_index:
@@ -451,8 +450,8 @@ def apply_delta(basis, delta):
     data = b"".join(lines)
     if len(data) != target_length:
         raise ValueError(
-            "Delta claimed to be %d long, but ended up"
-            " %d long" % (target_length, len(bytes))
+            f"Delta claimed to be {target_length} long, but ended up"
+            f" {len(bytes)} long"
         )
     return data
 

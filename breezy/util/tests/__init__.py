@@ -1,1 +1,1 @@
-True
+True  # noqa: B018

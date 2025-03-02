@@ -16,12 +16,9 @@
 
 """Export trees to tarballs, zipfiles, etc."""
 
-import os
-import time
-import warnings
 from typing import Iterator, cast
 
-from .. import errors, pyutils, registry, trace
+from .. import errors, registry
 
 
 class ArchiveFormatInfo:

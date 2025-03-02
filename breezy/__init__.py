@@ -81,9 +81,9 @@ def _format_version_tuple(version_info):
     1.4.0.wibble.0
     """
     if len(version_info) == 2:
-        main_version = "%d.%d" % version_info[:2]
+        main_version = f"{version_info[0]}.{version_info[1]}"
     else:
-        main_version = "%d.%d.%d" % version_info[:3]
+        main_version = f"{version_info[0]}.{version_info[1]}.{version_info[2]}"
     if len(version_info) <= 3:
         return main_version
 
@@ -100,7 +100,7 @@ def _format_version_tuple(version_info):
         sub_string = ".dev" + str(sub)
     elif release_type in ("alpha", "beta"):
         if version_info[2] == 0:
-            main_version = "%d.%d" % version_info[:2]
+            main_version = f"{version_info[0]}.{version_info[1]}"
         sub_string = "." + release_type[0] + str(sub)
     elif release_type == "candidate":
         sub_string = ".rc" + str(sub)

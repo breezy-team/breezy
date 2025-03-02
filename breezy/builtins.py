@@ -1008,14 +1008,14 @@ class cmd_cp(Command):
             if src_kind is None:
                 raise errors.CommandError(
                     gettext(
-                        "Could not copy {} => {} . {} is not versioned\\.".format(src, dst, src)
-                    )
+                        "Could not copy %s => %s . %s is not versioned\\."
+                    ) % (src, dst, src)
                 )
             if src_kind == "directory":
                 raise errors.CommandError(
                     gettext(
-                        "Could not copy {} => {} . {} is a directory.".format(src, dst, src)
-                    )
+                        "Could not copy %s => %s . %s is a directory."
+                    ) % (src, dst, src)
                 )
             dst_parent = osutils.split(dst)[0]
             if dst_parent != "":
@@ -1513,10 +1513,11 @@ class cmd_push(Command):
                     raise errors.CommandError(
                         gettext(
                             "No push location known or specified. To push to the "
-                            "parent branch (at {}), use 'brz push :parent'.".format(urlutils.unescape_for_display(
+                            "parent branch (at %s), use 'brz push :parent'."
+                        ) %
+                            (urlutils.unescape_for_display(
                                 parent_loc, self.outf.encoding
-                            ))
-                        )
+                            ),)
                     )
                 else:
                     raise errors.CommandError(

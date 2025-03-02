@@ -43,7 +43,7 @@ Download = "https://launchpad.net/brz/+download"
 Repository = "https://github.com/breezy-team/breezy"
 
 [project.optional-dependencies]
-fastimport = ["fastimport"]
+fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
@@ -127,6 +127,7 @@ ignore = [
     "ANN204",
     "ANN205",
     "ANN206",
+    "B904",  # assert
     "D100",  # Missing docstring in public module
     "D101",  # Missing docstring in public class
     "D103",  # Missing docstring in public function

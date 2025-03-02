@@ -59,19 +59,17 @@ def _load_data_py(kndx, fp):
             # corrupt we can't asssume that no other rows referring to the
             # index of this record actually mean the subsequent uncorrupt
             # one, so we error.
-            raise KnitCorrupt(kndx._filename, "line {!r}: {}".format(rec, e))
+            raise KnitCorrupt(kndx._filename, f"line {rec!r}: {e}") from e
 
         version_id, options, pos, size = rec[:4]
         try:
             pos = int(pos)
         except ValueError as e:
-            raise KnitCorrupt(
-                kndx._filename, "invalid position on line {!r}: {}".format(rec, e)
-            )
+            raise KnitCorrupt(kndx._filename, f"invalid position on line {rec!r}: {e}") from e
         try:
             size = int(size)
         except ValueError as e:
-            raise KnitCorrupt(kndx._filename, "invalid size on line {!r}: {}".format(rec, e))
+            raise KnitCorrupt(kndx._filename, f"invalid size on line {rec!r}: {e}") from e
 
         # See kndx._cache_version
         # only want the _history index to reference the 1st

@@ -183,14 +183,14 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         )
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
-        except errors.IllegalPath:
+        except errors.IllegalPath as e:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
                     "Old repository formats do not support file ids with <> on win32"
-                )
+                ) from e
             # This is not a known error condition
             raise
 
@@ -364,10 +364,10 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         revision_id = "r\xe9v-a".encode()
         try:
             main_wt.commit("a", rev_id=revision_id)
-        except errors.NonAsciiRevisionId:
+        except errors.NonAsciiRevisionId as e:
             raise tests.TestSkipped(
                 "non-ascii revision ids not supported by {}".format(self.repository_format)
-            )
+            ) from e
 
         repo = main_wt.branch.repository
         repo.lock_read()
@@ -401,14 +401,14 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         )
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
-        except errors.IllegalPath:
+        except errors.IllegalPath as e:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == "win32":
                 raise tests.TestSkipped(
                     "Old repository formats do not support file ids with <> on win32"
-                )
+                ) from e
             # This is not a known error condition
             raise
 

@@ -139,15 +139,15 @@ class MockTree(InventoryTree):
     def id2path(self, file_id, recurse="down"):
         try:
             return self.paths[file_id]
-        except KeyError:
-            raise errors.NoSuchId(file_id, self)
+        except KeyError as e:
+            raise errors.NoSuchId(file_id, self) from e
 
     def get_file(self, path):
         result = BytesIO()
         try:
             result.write(self.contents[path])
-        except KeyError:
-            raise _mod_transport.NoSuchFile(path)
+        except KeyError as e:
+            raise _mod_transport.NoSuchFile(path) from e
         result.seek(0, 0)
         return result
 
@@ -1109,8 +1109,8 @@ class BundleTester:
         tree.commit("hello", rev_id=b"rev2")
         try:
             bundle = read_bundle(self.create_bundle_text(b"null:", b"rev1")[0])
-        except errors.IncompatibleBundleFormat:
-            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
+        except errors.IncompatibleBundleFormat as e:
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3") from e
         repo = self.make_repository("repo", format="knit")
         bundle.install_revisions(repo)
 
@@ -1135,8 +1135,8 @@ class BundleTester:
         tree.commit("hello", rev_id=b"rev1")
         try:
             bundle = read_bundle(self.create_bundle_text(b"null:", b"rev1")[0])
-        except errors.IncompatibleBundleFormat:
-            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
+        except errors.IncompatibleBundleFormat as e:
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3") from e
         if isinstance(bundle, v09.BundleInfo09):
             raise tests.TestSkipped("Format 0.9 doesn't work with subtrees")
         repo = self.make_repository("repo", format="knit")
@@ -1149,10 +1149,10 @@ class BundleTester:
         self.b1 = self.tree1.branch
         try:
             self.tree1.commit("Revision/id/with/slashes", rev_id=b"rev/id")
-        except ValueError:
+        except ValueError as e:
             raise tests.TestSkipped(
                 "Repository doesn't support revision ids with slashes"
-            )
+            ) from e
         self.get_valid_bundle(b"null:", b"rev/id")
 
     def test_skip_file(self):

@@ -22,10 +22,6 @@ from io import BytesIO
 
 from .... import errors, registry
 from ....diff import internal_diff
-from ....revision import NULL_REVISION
-
-# For backwards-compatibility
-from ....timestamp import format_highres_date, unpack_highres_date
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = b"# Bazaar revision bundle v"
@@ -75,8 +71,8 @@ def read_bundle(f):
 def get_serializer(version):
     try:
         serializer = serializer_registry.get(version)
-    except KeyError:
-        raise errors.BundleNotSupported(version, "unknown bundle format")
+    except KeyError as e:
+        raise errors.BundleNotSupported(version, "unknown bundle format") from e
 
     return serializer(version)
 

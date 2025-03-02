@@ -1128,9 +1128,9 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         t = time.time() - 100.0
         try:
             os.utime("a", (t, t))
-        except OSError:
+        except OSError as e:
             # It looks like Win32 + FAT doesn't allow to change times on a dir.
-            raise tests.TestSkipped("can't update mtime of a dir on FAT")
+            raise tests.TestSkipped("can't update mtime of a dir on FAT") from e
         saved_packed_stat = entry[1][0][-1]
         self.assertIs(None, self.do_update_entry(state, entry, b"a"))
         # We *do* go ahead and update the information in the dirblocks, but we

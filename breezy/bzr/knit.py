@@ -621,8 +621,8 @@ class AnnotatedKnitContent(KnitContent):
             # missing annotation information because of a bug - see thread
             # around 20071015
             raise KnitCorrupt(
-                self, "line in annotated knit missing annotation information: {}".format(e)
-            )
+                self, f"line in annotated knit missing annotation information: {e}"
+            ) from e
         if self._should_strip_eol:
             lines[-1] = lines[-1].rstrip(b"\n")
         return lines
@@ -1681,11 +1681,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
             non_local_keys = needed_from_fallback - absent_keys
-            for keys, non_local_keys in self._group_keys_for_io(
+            for keys, nlk in self._group_keys_for_io(
                 present_keys, non_local_keys, positions
             ):
                 generator = _VFContentMapGenerator(
-                    self, keys, non_local_keys, global_map, ordering=ordering
+                    self, keys, nlk, global_map, ordering=ordering
                 )
                 yield from generator.get_record_stream()
         else:
@@ -2081,8 +2081,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         except Exception as e:
             raise KnitCorrupt(
                 self,
-                "While reading {{{}}} got {}({})".format(key, e.__class__.__name__, str(e)),
-            )
+                f"While reading {{{key}}} got {e.__class__.__name__}({e!s})"
+            ) from e
         return df, rec
 
     def _parse_record_unchecked(self, data):
@@ -2096,8 +2096,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             except Exception as e:
                 raise KnitCorrupt(
                     self,
-                    "Corrupt compressed record {!r}, got {}({})".format(data, e.__class__.__name__, str(e)),
-                )
+                    f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({e!s})"
+                ) from e
             header = record_contents.pop(0)
             rec = self._split_header(header)
             last_line = record_contents.pop()
@@ -2304,8 +2304,8 @@ class _ContentMapGenerator:
             while cursor is not None:
                 try:
                     record, record_details, digest, next = record_map[cursor]
-                except KeyError:
-                    raise RevisionNotPresent(cursor, self)
+                except KeyError as e:
+                    raise RevisionNotPresent(cursor, self) from e
                 components.append((cursor, record, record_details, digest))
                 cursor = next
                 if cursor in self._contents_map:
@@ -2314,7 +2314,7 @@ class _ContentMapGenerator:
                     break
 
             content = None
-            for component_id, record, record_details, digest in reversed(components):
+            for component_id, record, record_details, digest in reversed(components):  # noqa: B007
                 if component_id in self._contents_map:
                     content = self._contents_map[component_id]
                 else:
@@ -2804,8 +2804,8 @@ class _KndxIndex:
         self._load_prefixes([prefix])
         try:
             return self._kndx_cache[prefix][0][suffix][1]
-        except KeyError:
-            raise RevisionNotPresent(key, self)
+        except KeyError as e:
+            raise RevisionNotPresent(key, self) from e
 
     def find_ancestry(self, keys):
         """See CombinedGraphIndex.find_ancestry()."""
@@ -3137,7 +3137,7 @@ class _KnitGraphIndex:
             for key, (value, node_refs) in keys.items():
                 result.append((key, value, node_refs))
         else:
-            for key, (value, node_refs) in keys.items():
+            for key, (value, node_refs) in keys.items():  # noqa: B007
                 result.append((key, value))
         self._add_callback(result)
         if missing_compression_parents:
@@ -3292,8 +3292,8 @@ class _KnitGraphIndex:
     def _get_node(self, key):
         try:
             return list(self._get_entries([key]))[0]
-        except IndexError:
-            raise RevisionNotPresent(key, self)
+        except IndexError as e:
+            raise RevisionNotPresent(key, self) from e
 
     def get_options(self, key):
         """Return a list representing options.

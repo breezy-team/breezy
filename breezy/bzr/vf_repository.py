@@ -1477,12 +1477,10 @@ class VersionedFileRepository(Repository):
 
         # file ids that changed
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
-        count = 0
         num_file_ids = len(file_ids)
-        for file_id, altered_versions in file_ids.items():
+        for count, (file_id, altered_versions) in enumerate(file_ids.items()):
             if pb is not None:
                 pb.update(gettext("Fetch texts"), count, num_file_ids)
-            count += 1
             yield ("file", file_id, altered_versions)
 
     def _find_non_file_keys_to_fetch(self, revision_ids):
@@ -1955,7 +1953,7 @@ class StreamSink:
                 parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
             except inventory_delta.IncompatibleInventoryDelta as err:
                 mutter("Incompatible delta: %s", err.msg)
-                raise errors.IncompatibleRevision(self.target_repo._format)
+                raise errors.IncompatibleRevision(self.target_repo._format) from err
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             revision_id = new_id
             parents = [key[0] for key in record.parents]
@@ -2698,7 +2696,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                         root_keys_to_create.add((file_id, entry.revision))
                         continue
                 texts_possibly_new_in_tree.add((file_id, entry.revision))
-            for basis_id, basis_tree in possible_trees:
+            for _basis_id, basis_tree in possible_trees:
                 basis_inv = basis_tree.root_inventory
                 for file_key in list(texts_possibly_new_in_tree):
                     file_id, file_revision = file_key
@@ -2951,7 +2949,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
         if root.revision != rev.revision_id:
             raise errors.IncompatibleRevision(repr(repository))
     text_keys = {}
-    for path, ie in entries:
+    for _path, ie in entries:
         text_keys[(ie.file_id, ie.revision)] = ie
     text_parent_map = repository.texts.get_parent_map(text_keys)
     missing_texts = set(text_keys) - set(text_parent_map)

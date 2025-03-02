@@ -245,9 +245,8 @@ class _SmartClientRequest:
                 # TODO: We could recover from this without disconnecting if
                 # we recognise the protocol version.
                 trace.warning(
-                    "Server does not understand Bazaar network protocol %d,"
+                    f"Server does not understand Bazaar network protocol {protocol_version},"
                     " reconnecting.  (Upgrade the server to avoid this.)"
-                    % (protocol_version,)
                 )
                 self.client._medium.disconnect()
                 last_err = err

@@ -6,7 +6,7 @@
 
 import os
 
-from apport.hookutils import *
+from apport.hookutils import *  # noqa: F403
 
 brz_log = os.path.expanduser("~/.brz.log")
 dot_brz = os.path.expanduser("~/.config/breezy")

@@ -191,11 +191,6 @@ class InventoryDeltaSerializer:
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:
             line = to_line(delta_item, new_name)
-            # GZ 2017-06-09: Not really worth asserting this here
-            if line.__class__ != bytes:
-                raise InventoryDeltaError(
-                    "to_line gave non-bytes output %(line)r", line=lines[-1]
-                )
             lines.append(line)
         lines.sort()
         lines[0] = b"format: %s\n" % FORMAT_1

@@ -641,8 +641,8 @@ class VersionedFile:
         for version_id in version_ids:
             try:
                 knit_versions.update(parent_map[version_id])
-            except KeyError:
-                raise errors.RevisionNotPresent(version_id, self)
+            except KeyError as e:
+                raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
         lines = dict(zip(knit_versions, self._get_lf_split_line_list(knit_versions)))
@@ -653,12 +653,12 @@ class VersionedFile:
                 parents = [
                     lines[p] for p in parent_map[version_id] if p in knit_versions
                 ]
-            except KeyError:
+            except KeyError as e:
                 # I don't know how this could ever trigger.
                 # parent_map[version_id] was already triggered in the previous
                 # for loop, and lines[p] has the 'if p in knit_versions' check,
                 # so we again won't have a KeyError.
-                raise errors.RevisionNotPresent(version_id, self)
+                raise errors.RevisionNotPresent(version_id, self) from e
             if len(parents) > 0:
                 left_parent_blocks = self._extract_blocks(
                     version_id, parents[0], target
@@ -683,18 +683,18 @@ class VersionedFile:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(
             present_parents, self._get_lf_split_line_list(present_parents)
         ):
             mpvf.add_version(lines, parent_id, [])
-        for (version, parent_ids, expected_sha1, mpdiff), lines in zip(
+        for (version, parent_ids, _expected_sha1, mpdiff), lines in zip(
             records, mpvf.get_line_list(versions)
         ):
             if len(parent_ids) == 1:
@@ -725,7 +725,7 @@ class VersionedFile:
                 )
             vf_parents[version] = version_text
         sha1s = self.get_sha1s(versions)
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, _parent_ids, expected_sha1, _mpdiff in records:
             if expected_sha1 != sha1s[version]:
                 raise errors.VersionedFileInvalidChecksum(version)
 
@@ -798,8 +798,8 @@ class VersionedFile:
         """
         try:
             return list(self.get_parent_map([version_id])[version_id])
-        except KeyError:
-            raise errors.RevisionNotPresent(version_id, self)
+        except KeyError as e:
+            raise errors.RevisionNotPresent(version_id, self) from e
 
     def annotate(self, version_id):
         """Return a list of (version-id, line) tuples for version_id.
@@ -1256,11 +1256,11 @@ class VersionedFiles:
         vf_parents = {}
         mpvf = multiparent.MultiMemoryVersionedFile()
         versions = []
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, mpdiff in records:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, expected_sha1, mpdiff in records:
+        for version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.

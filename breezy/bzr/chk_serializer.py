@@ -47,7 +47,7 @@ def _validate_properties(props, _decode=cache_utf8._utf8_decode):
 def _is_format_10(value):
     if value != 10:
         raise ValueError(
-            "Format number was not recognized, expected 10 got %d" % (value,)
+            f"Format number was not recognized, expected 10 got {value!r}"
         )
     return 10
 
@@ -196,7 +196,7 @@ class CHKSerializer(serializer.Serializer):
                 return_from_cache=return_from_cache,
             )
         except xml_serializer.ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e) from e
 
     def read_inventory(self, f, revision_id=None):
         """Read an inventory from a file-like object."""
@@ -206,7 +206,7 @@ class CHKSerializer(serializer.Serializer):
             finally:
                 f.close()
         except xml_serializer.ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e) from e
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""

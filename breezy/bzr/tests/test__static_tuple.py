@@ -302,10 +302,10 @@ class TestStaticTuple(tests.TestCase):
         self.assertTrue(k1 != k2)
         if not self.check_strict_compare(k1, k2, mismatched_types):
             # Do the comparison, but we don't care about the result
-            k1 >= k2
-            k1 > k2
-            k1 <= k2
-            k1 < k2
+            k1 >= k2  # noqa: B015
+            k1 > k2  # noqa: B015
+            k1 <= k2  # noqa: B015
+            k1 < k2  # noqa: B015
 
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple("baz", "bing")
@@ -623,19 +623,19 @@ class TestStaticTuple(tests.TestCase):
     def test_pickle(self):
         st = self.module.StaticTuple("foo", "bar")
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertEqual(unpickled, st)
 
     def test_pickle_empty(self):
         st = self.module.StaticTuple()
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertIs(st, unpickled)
 
     def test_pickle_nested(self):
         st = self.module.StaticTuple("foo", self.module.StaticTuple("bar"))
         pickled = pickle.dumps(st)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
         self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):

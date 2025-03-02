@@ -44,7 +44,8 @@ from breezy.bzr.index import (
 )
 from .. import errors, lockable_files, lockdir
 from .. import transport as _mod_transport
-from ..bzr import btree_index, index
+from ..bzr import btree_index
+from ..bzr import index as _mod_index
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
@@ -1339,7 +1340,7 @@ class RepositoryPackCollection:
                 chk_index=chk_index,
             )
         except _mod_transport.NoSuchFile as e:
-            raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
+            raise errors.UnresumableWriteGroup(self.repo, [name], str(e)) from e
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
         return result
@@ -2094,7 +2095,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     # Most pack formats do not use chk lookups.
     supports_chks: bool = False
     # What index classes to use
-    index_builder_class: Type[index.GraphIndexBuilder]
+    index_builder_class: Type[_mod_index.GraphIndexBuilder]
     index_class: Type[object]
     _fetch_uses_deltas: bool = True
     fast_deltas: bool = False
@@ -2254,7 +2255,7 @@ class _DirectPackAccess:
         for index, offsets in request_lists:
             try:
                 transport, path = self._indices[index]
-            except KeyError:
+            except KeyError as e:
                 # A KeyError here indicates that someone has triggered an index
                 # reload, and this index has gone missing, we need to start
                 # over.
@@ -2264,12 +2265,12 @@ class _DirectPackAccess:
                     raise
                 raise RetryWithNewPacks(
                     index, reload_occurred=True, exc_info=sys.exc_info()
-                )
+                ) from e
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for _names, read_func in reader.iter_records():
                     yield read_func(None)
-            except _mod_transport.NoSuchFile:
+            except _mod_transport.NoSuchFile as e:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
@@ -2278,7 +2279,7 @@ class _DirectPackAccess:
                     transport.abspath(path),
                     reload_occurred=False,
                     exc_info=sys.exc_info(),
-                )
+                ) from e
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""

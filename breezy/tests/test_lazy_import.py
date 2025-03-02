@@ -110,7 +110,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj1
+            test_obj1  # noqa: B018
         except NameError:
             # test_obj1 shouldn't exist yet
             pass
@@ -152,7 +152,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj6
+            test_obj6  # noqa: B018
         except NameError:
             # test_obj6 shouldn't exist yet
             pass
@@ -179,7 +179,7 @@ class TestScopeReplacer(TestCase):
         And only that entry even after replacement.
         """
         try:
-            test_scope1
+            test_scope1  # noqa: B018
         except NameError:
             # test_scope1 shouldn't exist yet
             pass
@@ -221,7 +221,7 @@ class TestScopeReplacer(TestCase):
             return TestClass
 
         try:
-            test_class1
+            test_class1  # noqa: B018
         except NameError:
             # test_class2 shouldn't exist yet
             pass
@@ -250,7 +250,7 @@ class TestScopeReplacer(TestCase):
             return TestClass
 
         try:
-            test_class2
+            test_class2  # noqa: B018
         except NameError:
             # test_class2 shouldn't exist yet
             pass
@@ -286,7 +286,7 @@ class TestScopeReplacer(TestCase):
             return func
 
         try:
-            test_func1
+            test_func1  # noqa: B018
         except NameError:
             # test_func1 shouldn't exist yet
             pass
@@ -326,7 +326,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj2
+            test_obj2  # noqa: B018
         except NameError:
             # test_obj2 shouldn't exist yet
             pass
@@ -391,7 +391,7 @@ class TestScopeReplacer(TestCase):
             return TestClass()
 
         try:
-            test_obj4
+            test_obj4  # noqa: B018
         except NameError:
             # test_obj4 shouldn't exist yet
             pass
@@ -457,7 +457,7 @@ class TestScopeReplacer(TestCase):
             return scope[name]
 
         try:
-            test_obj7
+            test_obj7  # noqa: B018
         except NameError:
             # test_obj7 shouldn't exist yet
             pass
@@ -572,7 +572,7 @@ class TestImportReplacer(ImportReplacerHelper):
     def test_import_root(self):
         """Test 'import root-XXX as root1'."""
         try:
-            root1
+            root1  # noqa: B018
         except NameError:
             # root1 shouldn't exist yet
             pass
@@ -606,7 +606,7 @@ class TestImportReplacer(ImportReplacerHelper):
     def test_import_mod(self):
         """Test 'import root-XXX.mod-XXX as mod2'."""
         try:
-            mod1
+            mod1  # noqa: B018
         except NameError:
             # mod1 shouldn't exist yet
             pass
@@ -640,7 +640,7 @@ class TestImportReplacer(ImportReplacerHelper):
     def test_import_mod_from_root(self):
         """Test 'from root-XXX import mod-XXX as mod2'."""
         try:
-            mod2
+            mod2  # noqa: B018
         except NameError:
             # mod2 shouldn't exist yet
             pass
@@ -673,7 +673,7 @@ class TestImportReplacer(ImportReplacerHelper):
     def test_import_root_and_mod(self):
         """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3."""
         try:
-            root3
+            root3  # noqa: B018
         except NameError:
             # root3 shouldn't exist yet
             pass
@@ -722,7 +722,7 @@ class TestImportReplacer(ImportReplacerHelper):
         children to be imported.
         """
         try:
-            root4
+            root4  # noqa: B018
         except NameError:
             # root4 shouldn't exist yet
             pass
@@ -775,7 +775,7 @@ class TestImportReplacer(ImportReplacerHelper):
         reuse the intermediate lazy object.
         """
         try:
-            root5
+            root5  # noqa: B018
         except NameError:
             # root5 shouldn't exist yet
             pass
@@ -1212,7 +1212,7 @@ class TestImportProcessor(TestCase):
 class TestLazyImportProcessor(ImportReplacerHelper):
     def test_root(self):
         try:
-            root6
+            root6  # noqa: B018
         except NameError:
             pass  # root6 should not be defined yet
         else:
@@ -1247,7 +1247,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         reuse the intermediate lazy object.
         """
         try:
-            submoda7
+            submoda7  # noqa: B018
         except NameError:
             pass  # submoda7 should not be defined yet
         else:
@@ -1284,7 +1284,7 @@ import {root_name}.{sub_name}.{submoda_name} as submoda7
     def test_lazy_import(self):
         """Smoke test that lazy_import() does the right thing."""
         try:
-            root8
+            root8  # noqa: B018
         except NameError:
             pass  # root8 should not be defined yet
         else:
@@ -1388,6 +1388,6 @@ class TestScopeReplacerReentrance(TestCase):
         replacer = lazy_import.ScopeReplacer({}, factory, "name")
 
         def racer():
-            replacer.foo
+            replacer.foo  # noqa: B018
 
         self.run_race(racer)

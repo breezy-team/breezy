@@ -276,7 +276,7 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         try:
             return inventory.id2path(file_id)
-        except errors.NoSuchId:
+        except errors.NoSuchId as e:
             if recurse == "down":
                 if "evil" in debug.debug_flags:
                     trace.mutter_callsite(
@@ -288,7 +288,7 @@ class InventoryTree(Tree):
                         return osutils.pathjoin(path, subtree.id2path(file_id))
                     except errors.NoSuchId:
                         pass
-            raise errors.NoSuchId(self, file_id)
+            raise errors.NoSuchId(self, file_id) from e
 
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
@@ -985,8 +985,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
-        except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(path)
+        except errors.NoSuchRevision as e:
+            raise FileTimestampUnavailable(path) from e
         return revision.timestamp
 
     def get_file_size(self, path):
@@ -1080,8 +1080,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         subrepo = subdir.find_repository()
         try:
             revtree = subrepo.revision_tree(reference_revision)
-        except errors.NoSuchRevision:
-            raise MissingNestedTree(path)
+        except errors.NoSuchRevision as e:
+            raise MissingNestedTree(path) from e
         if file_id is not None and file_id != revtree.path2id(""):
             raise AssertionError(
                 "invalid root id: {!r} != {!r}".format(file_id, revtree.path2id(""))
@@ -1151,7 +1151,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         try:
             yield from self._repository.iter_files_bytes(repo_desired_files)
         except errors.RevisionNotPresent as e:
-            raise _mod_transport.NoSuchFile(e.file_id)
+            raise _mod_transport.NoSuchFile(e.file_id) from e
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter."""
@@ -1618,8 +1618,8 @@ class InterCHKRevisionTree(InterInventoryTree):
         if isinstance(source, RevisionTree) and isinstance(target, RevisionTree):
             try:
                 # Only CHK inventories have id_to_entry attribute
-                source.root_inventory.id_to_entry
-                target.root_inventory.id_to_entry
+                source.root_inventory.id_to_entry  # noqa: B018
+                target.root_inventory.id_to_entry  # noqa: B018
                 return True
             except AttributeError:
                 pass

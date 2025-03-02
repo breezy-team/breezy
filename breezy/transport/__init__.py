@@ -529,14 +529,12 @@ class Transport:
         """
         total = self._get_total(multi)
         result = []
-        count = 0
-        for entry in multi:
+        for count, entry in enumerate(multi):
             self._update_pb(pb, msg, count, total)
             if expand:
                 result.append(func(*entry))
             else:
                 result.append(func(entry))
-            count += 1
         return tuple(result)
 
     def abspath(self, relpath):

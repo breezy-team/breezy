@@ -90,8 +90,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
         pos += 1
         if len(elements) != width + 1:
             raise AssertionError(
-                "Incorrect number of elements (%d vs %d) for: %r"
-                % (len(elements), width + 1, line)
+                f"Incorrect number of elements ({len(elements)} vs {width + 1}) for: {line!r}"
             )
         num_value_lines = int(elements[-1])
         value_lines = lines[pos : pos + num_value_lines]
@@ -100,7 +99,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
         items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError(
-            "item count (%d) mismatch for key %s, bytes %r" % (length, key, bytes)
+            f"item count ({length}) mismatch for key {key}, bytes {bytes!r}"
         )
     result._items = items
     result._len = length

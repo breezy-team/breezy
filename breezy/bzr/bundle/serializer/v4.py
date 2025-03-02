@@ -246,7 +246,7 @@ class BundleReader:
         iterator = pack.iter_records_from_file(self._container_file)
         for names, bytes in iterator:
             if len(names) != 1:
-                raise errors.BadBundle("Record has %d names instead of 1" % len(names))
+                raise errors.BadBundle(f"Record has {len(names)} names instead of 1")
             metadata = bencode.bdecode(bytes)
             if metadata[b"storage_kind"] == b"header":
                 bytes = None
@@ -715,8 +715,8 @@ class RevisionInstaller:
                         self._repository.add_inventory_by_delta(
                             parent_ids[0], delta, revision_id, parent_ids
                         )
-                except serializer.UnsupportedInventoryKind:
-                    raise errors.IncompatibleRevision(repr(self._repository))
+                except serializer.UnsupportedInventoryKind as e:
+                    raise errors.IncompatibleRevision(repr(self._repository)) from e
                 inventory_cache[revision_id] = target_inv
 
     def _handle_root(self, target_inv, parent_ids):
