@@ -25,4 +25,4 @@ path = "breezy/main.rs"
 pyo3 = { workspace = true }
 
 [workspace.dependencies]
-pyo3 = ">=0.22,<0.23"
+pyo3 = ">=0.23,<0.24"
