@@ -40,6 +40,7 @@ dynamic = ["version", "scripts"]
 [project.urls]
 Homepage = "https://www.breezy-vcs.org/"
 Download = "https://launchpad.net/brz/+download"
+Repository = "https://github.com/breezy-team/breezy"
 
 [project.optional-dependencies]
 fastimport = ["fastimport"]

@@ -10,13 +10,17 @@ brz 3.3.10
 
 :3.3.10: UNRELEASED
 
+* Breezy itself is now hosted on GitHub -
+  https://github.com/breezy-team/breezy.
+  (Jelmer Vernooĳ)
+
 brz 3.3.9
 #########
 
 :3.3.9: 2024-10-20
 
 * Update pyo3 to 0.22, adding support for Python 3.13. (Jelmer Vernooĳ,
-  #2084288
+  #2084288)
 
 brz 3.3.8
 #########
