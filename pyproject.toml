@@ -22,10 +22,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "Operating System :: POSIX",
     "Programming Language :: Python",
+    "Programming Language :: Rust",
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "configobj",
     "fastbencode",
