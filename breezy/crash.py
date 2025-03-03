@@ -249,7 +249,7 @@ def _open_crash_file():
     if sys.platform == "win32":
         user_part = ""
     else:
-        user_part = ".%d" % os.getuid()
+        user_part = f".{os.getuid()}"
     filename = osutils.pathjoin(
         crash_dir, "brz{}.{}.crash".format(user_part, date_string)
     )

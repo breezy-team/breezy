@@ -1036,7 +1036,7 @@ class MergeCasesMixin:
         p = list(w.plan_merge(b"text1", b"text2"))
         for state, line in p:
             if line:
-                self.log("%12s | %s" % (state, line[:-1]))
+                self.log(f"{state:12} | {line[:-1]}")
 
         self.log("merge:")
         mt = BytesIO()
@@ -1124,7 +1124,7 @@ class MergeCasesMixin:
         p = list(w.plan_merge(b"text1", b"text2"))
         for state, line in p:
             if line:
-                self.log("%12s | %s" % (state, line[:-1]))
+                self.log(f"{state:12} | {line[:-1]}")
         self.log("merge result:")
         result_text = b"".join(w.weave_merge(p))
         self.log(result_text)

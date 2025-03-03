@@ -20,7 +20,6 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
-import breezy
 from breezy import transport
 
 from ... import version_info  # noqa: F401

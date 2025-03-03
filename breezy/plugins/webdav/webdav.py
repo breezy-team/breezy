@@ -398,7 +398,7 @@ class HttpDavTransport(urllib.HttpTransport):
         else:
             msg = ": " + info
         raise errors.InvalidHttpResponse(
-            url, "Unable to handle http code %d%s" % (response.status, msg)
+            url, f"Unable to handle http code {response.status}{msg}"
         )
 
     def open_write_stream(self, relpath, mode=None):
@@ -461,7 +461,7 @@ class HttpDavTransport(urllib.HttpTransport):
             exc_type, exc_val, exc_tb = sys.exc_info()
             try:
                 self.delete(tmp_relpath)
-            except:
+            except BaseException:
                 raise exc_type(exc_val).with_traceback(exc_tb)
             raise  # raise the original with its traceback if we can.
 

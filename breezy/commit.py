@@ -500,10 +500,9 @@ class Commit:
                 warning_lines = ["    " + name for name, _, _ in tag_conflicts]
                 note(
                     gettext(
-                        "Conflicting tags in bound branch:\n{}".format(
-                            "\n".join(warning_lines)
+                        "Conflicting tags in bound branch:\n%s") % (
+                            "\n".join(warning_lines),
                         )
-                    )
                 )
 
     def _select_reporter(self):

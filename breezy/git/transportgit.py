@@ -807,7 +807,7 @@ class TransportObjectStore(PackBasedObjectStore):
         for i, entry in enumerate(indexer):
             if progress is not None:
                 progress(
-                    ("generating index: %d/%d\r" % (i, num_objects)).encode("ascii")
+                    f"generating index: {i}/{num_objects}\r".encode("ascii")
                 )
             entries.append(entry)
 

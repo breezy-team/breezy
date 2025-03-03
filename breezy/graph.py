@@ -1384,11 +1384,7 @@ class _BreadthFirstSearcher:
         else:
             prefix = "starting"
         search = "{}={!r}".format(prefix, list(self._next_query))
-        return "_BreadthFirstSearcher(iterations=%d, %s, seen=%r)" % (
-            self._iterations,
-            search,
-            list(self.seen),
-        )
+        return f"_BreadthFirstSearcher(iterations={self._iterations}, {search}, seen={list(self.seen)!r})"
 
     def get_state(self):
         """Get the current state of this searcher.

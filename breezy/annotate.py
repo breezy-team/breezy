@@ -112,17 +112,11 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
     prevanno = ""
     for revno_str, author, date_str, _line_rev_id, text in annotation:
         if verbose:
-            anno = "%-*s %-*s %8s " % (
-                max_revno_len,
-                revno_str,
-                max_origin_len,
-                author,
-                date_str,
-            )
+            anno = f"{revno_str:<{max_revno_len}} {author:<{max_origin_len}} {date_str:>8} "
         else:
             if len(revno_str) > max_revno_len:
                 revno_str = revno_str[: max_revno_len - 1] + ">"
-            anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
+            anno = f"{revno_str:<{max_revno_len}} {author[:7]:<7} "
         if anno.lstrip() == "" and full:
             anno = prevanno
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
@@ -143,7 +137,7 @@ def _show_id_annotations(annotations, to_file, full, encoding):
         else:
             this = b""
         to_file.write(
-            "%*s | %s" % (max_origin_len, this.decode("utf-8"), text.decode(encoding))
+            f"{this.decode('utf-8'):>{max_origin_len}} | {text.decode(encoding)}"
         )
         last_rev_id = origin
     return

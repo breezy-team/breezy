@@ -486,7 +486,7 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (sha,) in self.db.execute("select sha1 from {}".format(table)):
+            for (sha,) in self.db.execute("select sha1 from {}".format(table)):  # noqa: S608
                 yield sha.encode("ascii")
 
 

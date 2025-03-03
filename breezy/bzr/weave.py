@@ -660,8 +660,8 @@ class Weave(VersionedFile):
 
         lineno = 0  # line of weave, 0-based
 
-        for l in self._weave:
-            if l.__class__ == tuple:
+        for lineno, l in enumerate(self._weave):
+            if isinstance(l, tuple):
                 c, v = l
                 if c == b"{":
                     istack.append(self._names[v])
@@ -675,7 +675,6 @@ class Weave(VersionedFile):
                     raise WeaveFormatError("unexpected instruction {!r}".format(v))
             else:
                 yield lineno, istack[-1], frozenset(dset), l
-            lineno += 1
 
         if istack:
             raise WeaveFormatError(
@@ -779,8 +778,8 @@ class Weave(VersionedFile):
         # 'in' test could dominate, so I'm leaving this change in place - when
         # its fast enough to consider profiling big datasets we can review.
 
-        for l in self._weave:
-            if l.__class__ == tuple:
+        for lineno, l in enumerate(self._weave):
+            if isinstance(l, tuple):
                 c, v = l
                 isactive = None
                 if c == b"{":
@@ -801,7 +800,6 @@ class Weave(VersionedFile):
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
                     result.append((istack[-1], lineno, l))
-            lineno += 1
         if istack:
             raise WeaveFormatError(
                 "unclosed insertion blocks at end of weave: {}".format(istack)
@@ -859,8 +857,7 @@ class Weave(VersionedFile):
                 inclusions.sort()
                 if inclusions[-1] >= version:
                     raise WeaveFormatError(
-                        "invalid included version %d for index %d"
-                        % (inclusions[-1], version)
+                        f"invalid included version {inclusions[-1]} for index {version}"
                     )
 
         # try extracting all versions; parallel extraction is used

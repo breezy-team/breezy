@@ -437,8 +437,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         if "hpss" in debug.debug_flags:
             thread_id = _thread.get_ident()
             trace.mutter(
-                "%12s: [%s] %d bytes to the socket in %.3fs"
-                % ("wrote", thread_id, len(bytes), osutils.perf_counter() - tstart)
+                "%12s: [%s] %d bytes to the socket in %.3fs",
+                "wrote", thread_id, len(bytes), osutils.perf_counter() - tstart
             )
 
 

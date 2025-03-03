@@ -156,7 +156,7 @@ class FIFOCache(dict):
                 for key, val in args[0]:
                     self.add(key, val)
         elif len(args) > 1:
-            raise TypeError("update expected at most 1 argument, got %d" % len(args))
+            raise TypeError(f"update expected at most 1 argument, got {len(args)}")
         if kwargs:
             for key in kwargs:
                 self.add(key, kwargs[key])

@@ -1700,7 +1700,7 @@ class AuthenticationConfig:
         if scheme is not None:
             values["scheme"] = scheme
         if port is not None:
-            values["port"] = "%d" % port
+            values["port"] = str(port)
         if path is not None:
             values["path"] = path
         if verify_certificates is not None:
@@ -1757,7 +1757,7 @@ class AuthenticationConfig:
                     prompt = "{}".format(scheme.upper()) + " %(host)s username"
                 # Special handling for optional fields in the prompt
                 if port is not None:
-                    prompt_host = "%s:%d" % (host, port)
+                    prompt_host = f"{host}:{port}"
                 else:
                     prompt_host = host
                 user = ui.ui_factory.get_username(prompt, host=prompt_host)
@@ -1799,7 +1799,7 @@ class AuthenticationConfig:
                 prompt = "{}".format(scheme.upper()) + " %(user)s@%(host)s password"
             # Special handling for optional fields in the prompt
             if port is not None:
-                prompt_host = "%s:%d" % (host, port)
+                prompt_host = f"{host}:{port}"
             else:
                 prompt_host = host
             password = ui.ui_factory.get_password(prompt, host=prompt_host, user=user)
@@ -2959,11 +2959,10 @@ class MutableSection(Section):
                 # storage.
                 trace.warning(
                     gettext(
-                        "Option {} in section {} of {} was changed"
-                        " from {} to {}. The {} value will be saved.".format(
+                        "Option %s in section %s of %s was changed"
+                        " from %s to %s. The %s value will be saved.") % (
                             k, self.id, store.external_url(), expected, reloaded, actual
                         )
-                    )
                 )
         # No need to keep track of these changes
         self.reset_changes()

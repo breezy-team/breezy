@@ -380,7 +380,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 )
             )
             i += 1
-            propname = "git-mergetag-%d" % i
+            propname = f"git-mergetag-{i}"
         try:
             extra = commit._extra
         except AttributeError:
@@ -457,7 +457,7 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit.commit_time != commit.author_time:
             rev.properties["author-timestamp"] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
-            rev.properties["author-timezone"] = "%d" % commit.author_timezone
+            rev.properties["author-timezone"] = f"{int(commit.author_timezone)}"
         if commit._author_timezone_neg_utc:
             rev.properties["author-timezone-neg-utc"] = ""
         if commit._commit_timezone_neg_utc:
@@ -468,7 +468,7 @@ class BzrGitMapping(foreign.VcsMapping):
             )
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
-                rev.properties["git-mergetag-%d" % i] = tag.as_raw_string().decode(
+                rev.properties[f"git-mergetag-{i}"] = tag.as_raw_string().decode(
                     "utf-8", "surrogateescape"
                 )
         rev.timestamp = commit.commit_time
@@ -674,11 +674,7 @@ def mode_kind(mode):
             return "tree-reference"
         else:
             raise AssertionError(
-                "Unknown file kind %d, perms=%o."
-                % (
-                    file_kind,
-                    mode,
-                )
+                f"Unknown file kind {file_kind}, perms={oct(mode)}."
             )
     else:
         raise AssertionError("Unknown kind, perms={!r}.".format(mode))

@@ -1260,7 +1260,7 @@ class VersionedFiles:
             versions.append(version)
             mpvf.add_diff(mpdiff, version, parent_ids)
         needed_parents = set()
-        for version, parent_ids, _expected_sha1, _mpdiff in records:
+        for _version, parent_ids, _expected_sha1, _mpdiff in records:
             needed_parents.update(p for p in parent_ids if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.

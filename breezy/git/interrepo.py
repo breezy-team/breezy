@@ -280,7 +280,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
         if not lossy and not self.mapping.roundtripping:
-            for git_sha, bzr_revid in revs:
+            for _git_sha, bzr_revid in revs:
                 if bzr_revid is not None and needs_roundtripping(
                     self.source, bzr_revid
                 ):

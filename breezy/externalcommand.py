@@ -55,9 +55,9 @@ class ExternalCommand(Command):
         raise NotImplementedError("should not be called on {!r}".format(self))
 
     def run_argv_aliases(self, argv, alias_argv=None):
-        return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)
+        return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)  # noqa: S606
 
     def help(self):
         m = "external command from {}\n\n".format(self.path)
-        pipe = os.popen("{} --help".format(self.path))
+        pipe = os.popen("{} --help".format(self.path))  # noqa: S605
         return m + pipe.read()

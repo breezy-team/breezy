@@ -373,9 +373,9 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
         if rc not in (0, 1):
             # returns 1 if files differ; that's OK
             if rc < 0:
-                msg = "signal %d" % (-rc)
+                msg = f"signal {-rc}"
             else:
-                msg = "exit code %d" % rc
+                msg = f"exit code {rc}"
 
             raise errors.BzrError(
                 "external diff failed with {}; command: {!r}".format(msg, diffcmd)

@@ -34,7 +34,7 @@ def only_raises(*errors):
                 return unbound(*args, **kwargs)
             except errors:
                 raise
-            except:
+            except BaseException:
                 trace.mutter("Error suppressed by only_raises:")
                 trace.log_exception_quietly()
 

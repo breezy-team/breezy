@@ -308,12 +308,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
             id_unused_versions = {
                 key[-1] for key in unused_versions if key[0] == file_id
             }
-            if file_id in file_id_versions:
-                file_versions = file_id_versions[file_id]
-            else:
-                # This id was present in the disk store but is not referenced
-                # by any revision at all.
-                file_versions = []
+            file_versions = file_id_versions.get(file_id, [])
             self._fix_text_parent(
                 file_id, versions_with_bad_parents, id_unused_versions, file_versions
             )

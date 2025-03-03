@@ -384,7 +384,7 @@ def probe_for_provider(cmd_name):
     raise NoPluginAvailable(cmd_name)
 
 
-def _get_bzr_command(cmd_or_None, cmd_name):
+def _get_bzr_command(cmd_or_none, cmd_name):
     """Get a command from bzr's core."""
     try:
         cmd_class = builtin_command_registry.get(cmd_name)
@@ -392,14 +392,14 @@ def _get_bzr_command(cmd_or_None, cmd_name):
         pass
     else:
         return cmd_class()
-    return cmd_or_None
+    return cmd_or_none
 
 
-def _get_external_command(cmd_or_None, cmd_name):
+def _get_external_command(cmd_or_none, cmd_name):
     """Lookup a command that is a shell script."""
     # Only do external command lookups when no command is found so far.
-    if cmd_or_None is not None:
-        return cmd_or_None
+    if cmd_or_none is not None:
+        return cmd_or_none
     from breezy.externalcommand import ExternalCommand
 
     cmd_obj = ExternalCommand.find_command(cmd_name)
@@ -407,7 +407,7 @@ def _get_external_command(cmd_or_None, cmd_name):
         return cmd_obj
 
 
-def _get_plugin_command(cmd_or_None, cmd_name):
+def _get_plugin_command(cmd_or_none, cmd_name):
     """Get a command from brz's plugins."""
     try:
         return plugin_cmds.get(cmd_name)()
@@ -417,7 +417,7 @@ def _get_plugin_command(cmd_or_None, cmd_name):
         info = plugin_cmds.get_info(key)
         if cmd_name in info.aliases:
             return plugin_cmds.get(key)()
-    return cmd_or_None
+    return cmd_or_none
 
 
 class Command:
@@ -888,8 +888,8 @@ class CommandHooks(Hooks):
         self.add_hook(
             "get_command",
             "Called when creating a single command. Called with "
-            "(cmd_or_None, command_name). get_command should either return "
-            "the cmd_or_None parameter, or a replacement Command object that "
+            "(cmd_or_none, command_name). get_command should either return "
+            "the cmd_or_none parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "breezy.commands.register_command or plugin_cmds.register_lazy.",

@@ -144,7 +144,7 @@ class ChunkWriter:
         if self.bytes_out_len > self.chunk_size:
             raise AssertionError(
                 "Somehow we ended up with too much"
-                " compressed data, %d > %d" % (self.bytes_out_len, self.chunk_size)
+                f" compressed data, {self.bytes_out_len} > {self.chunk_size}"
             )
         nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:

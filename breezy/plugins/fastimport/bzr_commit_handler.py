@@ -193,7 +193,7 @@ class CommitHandler(processor.CommitHandler):
                 try:
                     inv = self.get_inventory(revision_id)
                     present.append(revision_id)
-                except:
+                except BaseException:
                     inv = self._init_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)

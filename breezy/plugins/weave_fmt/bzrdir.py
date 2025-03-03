@@ -354,11 +354,9 @@ class ConvertBzrDir4To5(Converter):
         transaction = WriteTransaction()
 
         try:
-            i = 0
-            for file_id, file_weave in self.text_weaves.items():
+            for i, (file_id, file_weave) in enumerate(self.text_weaves.items()):
                 self.pb.update(gettext("writing weave"), i, len(self.text_weaves))
                 weaves._put_weave(file_id, file_weave, transaction)
-                i += 1
             self.pb.update(gettext("inventory"), 0, 1)
             controlweaves._put_weave(b"inventory", self.inv_weave, transaction)
             self.pb.update(gettext("inventory"), 1, 1)
@@ -651,7 +649,7 @@ class ConvertBzrDir6ToMeta(Converter):
         if not has_checkout:
             ui.ui_factory.note(gettext("No working tree."))
             # If some checkout files are there, we may as well get rid of them.
-            for name, mandatory in checkout_files:
+            for name, _mandatory in checkout_files:
                 if name in bzrcontents:
                     self.controldir.transport.delete(name)
         else:

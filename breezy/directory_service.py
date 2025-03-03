@@ -168,7 +168,7 @@ class AliasDirectory(Directory):
         alias_lines = []
         for key in cls.branch_aliases.keys():
             help = cls.branch_aliases.get_help(key)
-            alias_lines.append("  :%-10s%s\n" % (key, help))
+            alias_lines.append(f"  :{key:<10}{help}\n")
         return """\
 Location aliases
 ================

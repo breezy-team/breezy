@@ -1128,7 +1128,7 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
         self.path = path
         self.code = code
         self.extra = extra or ""
-        full_msg = "status code %d unexpected" % code
+        full_msg = f"status code {code} unexpected"
         if extra is not None:
             full_msg += ": " + extra
         InvalidHttpResponse.__init__(self, path, full_msg, headers=headers)
