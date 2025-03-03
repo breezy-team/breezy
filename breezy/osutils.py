@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, List
+from typing import Callable
 
 from .lazy_import import lazy_import
 
@@ -803,7 +803,7 @@ def format_date(t, offset=0, timezone="original", date_fmt=None, show_offset=Tru
 
 
 # Cache of formatted offset strings
-_offset_cache: Dict[int, str] = {}
+_offset_cache: dict[int, str] = {}
 
 
 def format_date_with_offset_in_original_timezone(t, offset=0, _cache=_offset_cache):
@@ -863,10 +863,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
         raise UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
-    if show_offset:
-        offset_str = " %+03d%02d" % (offset / 3600, (offset / 60) % 60)
-    else:
-        offset_str = ""
+    offset_str = (" %+03d%02d" % (offset / 3600, (offset / 60) % 60)) if show_offset else ""
     return (date_fmt, tt, offset_str)
 
 
@@ -892,12 +889,9 @@ def format_delta(delta):
     seconds = delta
     if seconds < 90:  # print seconds up to 90 seconds
         if seconds == 1:
-            return "%d second %s" % (
-                seconds,
-                direction,
-            )
+            return f"{seconds} second {direction}"
         else:
-            return "%d seconds %s" % (seconds, direction)
+            return f"{seconds} seconds {direction}"
 
     minutes = int(seconds / 60)
     seconds -= 60 * minutes
@@ -914,12 +908,7 @@ def format_delta(delta):
                 direction,
             )
         else:
-            return "%d minutes, %d second%s %s" % (
-                minutes,
-                seconds,
-                plural_seconds,
-                direction,
-            )
+            return f"{minutes} minutes, {seconds} second{plural_seconds} {direction}"
 
     hours = int(minutes / 60)
     minutes -= 60 * hours
@@ -1169,10 +1158,8 @@ def supports_hardlinks(path):
     else:
         if fs_type is None:
             return sys.platform != "win32"
-        if fs_type in ("vfat", "ntfs"):
-            # filesystems known to not support hardlinks
-            return False
-        return True
+        # filesystems known to not support hardlinks
+        return fs_type not in ("vfat", "ntfs")
 
 
 def readlink(abspath):
@@ -1637,7 +1624,7 @@ def set_or_unset_env(env_variable, value):
     return orig_val
 
 
-_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+_valid_win32_path_re = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
 
 
 def check_legal_path(path):
@@ -1647,7 +1634,7 @@ def check_legal_path(path):
     """
     if sys.platform != "win32":
         return
-    if _validWin32PathRE.match(path) is None:
+    if _valid_win32_path_re.match(path) is None:
         raise errors.IllegalPath(path)
 
 
@@ -1999,7 +1986,7 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+_end_of_stream_errors: list[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ["WSAECONNRESET", "WSAECONNABORTED"]:
     try:
         _end_of_stream_errors.append(getattr(errno, _eno))
@@ -2325,7 +2312,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             self.stream.write(data)
 
 
-def available_backup_name(base, exists):
+def available_backup_name(base: str, exists: Callable[[str], bool]) -> str:
     """Find a non-existing backup file name.
 
     This will *not* create anything, this only return a 'free' entry.  This
@@ -2338,10 +2325,10 @@ def available_backup_name(base, exists):
     :param exists: A callable returning True if the path parameter exists.
     """
     counter = 1
-    name = "%s.~%d~" % (base, counter)
+    name = f"{base}.~{counter}~"
     while exists(name):
         counter += 1
-        name = "%s.~%d~" % (base, counter)
+        name = f"{base}.~{counter}~"
     return name
 
 
@@ -2409,7 +2396,7 @@ def _posix_is_local_pid_dead(pid):
             # exists, though not ours
             return False
         else:
-            trace.mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            trace.mutter("os.kill(%d, 0) failed: %s", pid, e)
             # Don't really know.
             return False
     else:

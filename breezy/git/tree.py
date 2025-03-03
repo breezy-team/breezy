@@ -24,7 +24,7 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
-from typing import List, Set, Tuple, Union
+from typing import Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -1588,7 +1588,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _add_missing_parent_ids(
         self, path: str, dir_ids
-    ) -> List[Tuple[str, GitTreeDirectory]]:
+    ) -> list[tuple[str, GitTreeDirectory]]:
         if path in dir_ids:
             return []
         parent = posixpath.dirname(path).strip("/")
@@ -1870,7 +1870,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
 def snapshot_workingtree(
     target: MutableGitIndexTree, want_unversioned: bool = False
-) -> Tuple[ObjectID, Set[bytes]]:
+) -> tuple[ObjectID, set[bytes]]:
     """Snapshot a working tree into a tree object."""
     extras = set()
     blobs = {}

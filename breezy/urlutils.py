@@ -20,7 +20,7 @@ import os
 import posixpath
 import re
 import sys
-from typing import Tuple, Union
+from typing import Union
 from urllib import parse as urlparse
 
 from . import errors, osutils
@@ -424,7 +424,7 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
+def split(url: str, exclude_trailing_slash: bool = True) -> tuple[str, str]:
     """Split a URL into its parent directory and a child directory.
 
     Args:

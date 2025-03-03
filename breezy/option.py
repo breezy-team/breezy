@@ -21,7 +21,7 @@ __docformat__ = "google"
 
 import optparse
 import re
-from typing import Callable, Dict
+from typing import Callable
 
 from . import errors, revisionspec
 from . import registry as _mod_registry
@@ -143,12 +143,12 @@ class Option:
     """
 
     # The dictionary of standard options. These are always legal.
-    STD_OPTIONS: Dict[str, "Option"] = {}
+    STD_OPTIONS: dict[str, "Option"] = {}
 
     # The dictionary of commonly used options. these are only legal
     # if a command explicitly references them by name in the list
     # of supported options.
-    OPTIONS: Dict[str, "Option"] = {}
+    OPTIONS: dict[str, "Option"] = {}
 
     def __init__(
         self,

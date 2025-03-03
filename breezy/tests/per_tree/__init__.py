@@ -27,7 +27,7 @@ Specific tests for individual variations are in other places such as:
 
 import contextlib
 
-from breezy import errors, tests, transform, transport
+from breezy import tests, transform, transport
 from breezy.bzr.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,

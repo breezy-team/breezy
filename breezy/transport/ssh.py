@@ -25,7 +25,6 @@ import socket
 import subprocess
 import sys
 from binascii import hexlify
-from typing import Dict, Set, Tuple, Type
 
 from .. import bedding, config, errors, osutils, trace, ui
 
@@ -43,8 +42,8 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
-BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
+SYSTEM_HOSTKEYS: dict[str, dict[str, str]] = {}
+BRZ_HOSTKEYS: dict[str, dict[str, str]] = {}
 
 
 class SSHVendorManager:
@@ -340,7 +339,7 @@ class ParamikoVendor(SSHVendor):
             )
 
 
-_ssh_connection_errors: Tuple[Type[Exception], ...] = (
+_ssh_connection_errors: tuple[type[Exception], ...] = (
     EOFError,
     OSError,
     IOError,
@@ -699,7 +698,7 @@ def os_specific_subprocess_params():
 
 import weakref
 
-_subproc_weakrefs: Set[weakref.ref] = set()
+_subproc_weakrefs: set[weakref.ref] = set()
 
 
 def _close_ssh_proc(proc, sock):

@@ -66,7 +66,7 @@ def write_to_cmd(args, input=""):
     stdout, stderr = process.communicate(input)
     status = process.wait()
     if status < 0:
-        raise Exception("%s killed by signal %i" % (args[0], -status))
+        raise Exception(f"{args[0]} killed by signal {-status}")
     return stdout, stderr, status
 
 
@@ -147,7 +147,7 @@ def run_patch(
     target_file=None,
     out=None,
 ):
-    args = [_patch_cmd, "-d", directory, "-s", "-p%d" % strip, "-f"]
+    args = [_patch_cmd, "-d", directory, "-s", f"-p{strip}", "-f"]
     if quiet:
         args.append("--quiet")
 

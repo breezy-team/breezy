@@ -19,7 +19,6 @@
 import codecs
 import locale
 import sys
-from typing import Set
 
 from .. import osutils
 from . import TestCase
@@ -35,7 +34,7 @@ class FakeCodec:
     """
 
     _registered: bool = False
-    _enabled_encodings: Set[str] = set()
+    _enabled_encodings: set[str] = set()
 
     def add(self, encoding_name):
         """Adding encoding name to fake.

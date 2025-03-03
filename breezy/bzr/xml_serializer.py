@@ -39,7 +39,7 @@ __all__ = [
 ]
 
 import re
-from typing import Dict, Union
+from typing import Union
 from xml.etree.ElementTree import (
     Element,
     ElementTree,
@@ -201,7 +201,7 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
         )
 
 
-_to_escaped_map: Dict[Union[bytes, str], str] = {}
+_to_escaped_map: dict[Union[bytes, str], str] = {}
 
 
 def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):

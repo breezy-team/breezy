@@ -19,7 +19,8 @@
 # ruff: noqa: D212
 # ruff: noqa: D415
 
-from typing import Callable, Iterable, Iterator, List, Optional
+from collections.abc import Iterable, Iterator
+from typing import Callable, Optional
 
 
 class IterableFileBase:
@@ -250,7 +251,7 @@ class IterableFile:
         """
         return self.read_to(b"\n", size)
 
-    def readlines(self, sizehint=None) -> List[bytes]:
+    def readlines(self, sizehint=None) -> list[bytes]:
         """
         >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readlines()
@@ -261,7 +262,7 @@ class IterableFile:
         Traceback (most recent call last):
         ValueError: File is closed.
         """
-        lines: List[bytes] = []
+        lines: list[bytes] = []
         while True:
             line = self.readline()
             if line == b"":

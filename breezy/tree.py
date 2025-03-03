@@ -18,7 +18,8 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Union, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Optional, Union, cast
 
 from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
@@ -44,7 +45,7 @@ class MissingNestedTree(errors.BzrError):
 class TreeEntry:
     """An entry that implements the minimum interface used by commands."""
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
@@ -67,7 +68,7 @@ class TreeEntry:
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     kind = "directory"
 
@@ -78,7 +79,7 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     kind = "file"
 
@@ -89,7 +90,7 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     kind = "symlink"
 
@@ -100,7 +101,7 @@ class TreeLink(TreeEntry):
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     kind = "tree-reference"
 
@@ -332,7 +333,7 @@ class Tree:
         raise NotImplementedError(self.all_versioned_paths)
 
     def iter_entries_by_dir(
-        self, specific_files: Optional[List[str]] = None, recurse_nested: bool = False
+        self, specific_files: Optional[list[str]] = None, recurse_nested: bool = False
     ):
         """Walk the tree in 'by_dir' order.
 
@@ -856,8 +857,8 @@ class InterTree(InterObject[Tree]):
     def compare(
         self,
         want_unchanged: bool = False,
-        specific_files: Optional[List[str]] = None,
-        extra_trees: Optional[List[Tree]] = None,
+        specific_files: Optional[list[str]] = None,
+        extra_trees: Optional[list[Tree]] = None,
         require_versioned: bool = False,
         include_root: bool = False,
         want_unversioned: bool = False,
@@ -900,9 +901,9 @@ class InterTree(InterObject[Tree]):
     def iter_changes(
         self,
         include_unchanged: bool = False,
-        specific_files: Optional[List[str]] = None,
+        specific_files: Optional[list[str]] = None,
         pb=None,
-        extra_trees: Optional[List[Tree]] = None,
+        extra_trees: Optional[list[Tree]] = None,
         require_versioned: bool = True,
         want_unversioned: bool = False,
     ):
@@ -1000,8 +1001,8 @@ class InterTree(InterObject[Tree]):
         raise NotImplementedError(self.find_source_path)
 
     def find_target_paths(
-        self, paths: List[str], recurse="none"
-    ) -> Dict[str, Optional[str]]:
+        self, paths: list[str], recurse="none"
+    ) -> dict[str, Optional[str]]:
         """Find target tree paths.
 
         Args:
@@ -1015,8 +1016,8 @@ class InterTree(InterObject[Tree]):
         return ret
 
     def find_source_paths(
-        self, paths: List[str], recurse: str = "none"
-    ) -> Dict[str, Optional[str]]:
+        self, paths: list[str], recurse: str = "none"
+    ) -> dict[str, Optional[str]]:
         """Find source tree paths.
 
         Args:
@@ -1031,8 +1032,8 @@ class InterTree(InterObject[Tree]):
 
 
 def find_previous_paths(
-    from_tree: Tree, to_tree: Tree, paths: List[str], recurse: str = "none"
-) -> Dict[str, Optional[str]]:
+    from_tree: Tree, to_tree: Tree, paths: list[str], recurse: str = "none"
+) -> dict[str, Optional[str]]:
     """Find previous tree paths.
 
     Args:

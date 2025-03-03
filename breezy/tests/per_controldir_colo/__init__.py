@@ -23,6 +23,13 @@ have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
 
+__all__ = [
+    'TestCaseWithControlDir',
+    'load_tests',
+    'make_scenarios',
+]
+
+
 from breezy.controldir import ControlDirFormat
 from breezy.tests import default_transport, multiply_tests, test_server
 from breezy.tests.per_controldir import TestCaseWithControlDir, make_scenarios

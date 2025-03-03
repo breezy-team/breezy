@@ -19,7 +19,6 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Type
 
 from . import config as _mod_config
 from . import email_message, errors, msgeditor, osutils, registry, urlutils
@@ -112,7 +111,7 @@ class MailClient:
         return ""
 
 
-mail_client_registry = registry.Registry[str, Type[MailClient]]()
+mail_client_registry = registry.Registry[str, type[MailClient]]()
 
 
 class Editor(MailClient):

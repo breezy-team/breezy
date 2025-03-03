@@ -21,7 +21,7 @@ import os
 import struct
 from copy import copy
 from io import BytesIO
-from typing import Any, Tuple
+from typing import Any
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -49,7 +49,7 @@ from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
 
-adapter_registry = Registry[Tuple[str, str], Any]()
+adapter_registry = Registry[tuple[str, str], Any]()
 adapter_registry.register_lazy(
     ("knit-annotated-delta-gz", "knit-delta-gz"),
     "breezy.bzr.knit",

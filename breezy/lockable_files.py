@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional, Type
+from typing import Optional
 
 from . import counted_lock, errors, lock, transactions, urlutils
 from .decorators import only_raises
@@ -50,7 +50,7 @@ class LockableFiles:
     _transaction: Optional[transactions.Transaction]
 
     def __init__(
-        self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]
+        self, transport: Transport, lock_name: str, lock_class: type[lock.Lock]
     ) -> None:
         """Create a LockableFiles group.
 

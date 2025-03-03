@@ -49,7 +49,7 @@ import traceback
 import unittest
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable, Set
+from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools
@@ -373,8 +373,8 @@ class ExtendedTestResult(testtools.TextTestResult):
             self._delta_to_float(self._now() - self._start_datetime, 3)
         )
 
-    def _testTimeString(self, testCase):
-        benchmark_time = self._extractBenchmarkTime(testCase)
+    def _testTimeString(self, test_case):
+        benchmark_time = self._extractBenchmarkTime(test_case)
         if benchmark_time is not None:
             return self._formatTime(benchmark_time) + "*"
         else:
@@ -1465,8 +1465,8 @@ class TestCase(testtools.TestCase):
                 "value(s) {!r} not present in container {!r}".format(missing, superlist)
             )
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
-        """Fail unless excClass is raised when the iterator from func is used.
+    def assertListRaises(self, exc_class, func, *args, **kwargs):
+        """Fail unless exc_class is raised when the iterator from func is used.
 
         Many functions can return generators this makes sure
         to wrap them in a list() call to make sure the whole generator
@@ -1474,19 +1474,19 @@ class TestCase(testtools.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass as e:
+        except exc_class as e:
             return e
         else:
-            if getattr(excClass, "__name__", None) is not None:
-                excName = excClass.__name__
+            if getattr(exc_class, "__name__", None) is not None:
+                excName = exc_class.__name__
             else:
-                excName = str(excClass)
+                excName = str(exc_class)
             raise self.failureException("{} not raised".format(excName))
 
-    def assertRaises(self, excClass, callableObj, *args, **kwargs):
+    def assertRaises(self, exc_class, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
 
-        :param excClass: As for the except statement, this may be either an
+        :param exc_class: As for the except statement, this may be either an
             exception class, or a tuple of classes.
         :param callableObj: A callable, will be passed ``*args`` and
             ``**kwargs``.
@@ -1495,14 +1495,14 @@ class TestCase(testtools.TestCase):
         """
         try:
             callableObj(*args, **kwargs)
-        except excClass as e:
+        except exc_class as e:
             return e
         else:
-            if getattr(excClass, "__name__", None) is not None:
-                excName = excClass.__name__
+            if getattr(exc_class, "__name__", None) is not None:
+                excName = exc_class.__name__
             else:
                 # probably a tuple
-                excName = str(excClass)
+                excName = str(exc_class)
             raise self.failureException("{} not raised".format(excName))
 
     def assertIs(self, left, right, message=None):
@@ -3721,7 +3721,7 @@ def fork_for_tests(suite):
                     SubUnitBzrProtocolClientv1(stream)
                 )
                 process_suite.run(subunit_result)
-            except:
+            except:  # noqa: E722
                 # Try and report traceback on stream, but exit with error even
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
@@ -3855,7 +3855,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags: Set[str] = set()
+selftest_debug_flags: set[str] = set()
 
 
 def selftest(

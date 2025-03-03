@@ -575,11 +575,7 @@ class TreeTransformBase(TreeTransform):
 
             to_name = self.final_name(trans_id)
             to_kind = self.final_kind(trans_id)
-            if trans_id in self._new_executability:
-                to_executable = self._new_executability[trans_id]
-            else:
-                to_executable = from_executable
-
+            to_executable = self._new_executability[trans_id] if trans_id in self._new_executability else from_executable
             if from_versioned and from_kind != to_kind:
                 modified = True
             elif to_kind in ("file", "symlink") and (trans_id in self._new_contents):

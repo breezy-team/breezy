@@ -20,7 +20,7 @@
 import re
 import shutil
 import tempfile
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
@@ -777,7 +777,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewer_objs: List[Any] = []
+            reviewer_objs: list[Any] = []
         else:
             reviewer_objs = []
             for reviewer in reviewers:

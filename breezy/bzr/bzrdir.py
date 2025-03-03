@@ -27,7 +27,7 @@ objects returned.
 
 import contextlib
 import sys
-from typing import Set, cast
+from typing import cast
 
 from ..lazy_import import lazy_import
 
@@ -1226,7 +1226,7 @@ class BzrFormat:
     :ivar features: Dictionary mapping feature names to their necessity
     """
 
-    _present_features: Set[str] = set()
+    _present_features: set[str] = set()
 
     def __init__(self):
         self.features = {}

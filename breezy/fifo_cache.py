@@ -17,7 +17,7 @@
 """A simple first-in-first-out (FIFO) cache."""
 
 from collections import deque
-from typing import Any, Callable, Deque, Dict
+from typing import Any, Callable
 
 
 class FIFOCache(dict):
@@ -30,10 +30,10 @@ class FIFOCache(dict):
             self._after_cleanup_count = self._max_cache * 8 // 10
         else:
             self._after_cleanup_count = min(after_cleanup_count, self._max_cache)
-        self._cleanup: Dict[
+        self._cleanup: dict[
             Any, Callable[[], None]
         ] = {}  # map to cleanup functions when items are removed
-        self._queue: Deque[Any] = deque()  # Track when things are accessed
+        self._queue: deque[Any] = deque()  # Track when things are accessed
 
     def __setitem__(self, key, value):
         """Add a value to the cache, there will be no cleanup function."""

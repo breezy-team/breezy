@@ -11,7 +11,7 @@ import pickle
 import sys
 import threading
 from _lsprof import Profiler, profiler_entry
-from typing import Dict, TextIO
+from typing import TextIO
 
 from . import errors
 
@@ -313,7 +313,7 @@ class _CallTreeFilter:
         out_file.write("%d %d\n" % (lineno, totaltime))
 
 
-_fn2mod: Dict[str, object] = {}
+_fn2mod: dict[str, object] = {}
 
 
 def label(code, calltree=False):

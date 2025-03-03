@@ -30,14 +30,14 @@ import errno
 import sys
 from io import BytesIO
 from stat import S_ISDIR
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, TypeVar
 
 from .. import errors, hooks, osutils, registry, ui, urlutils
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
-_file_streams: Dict[str, Any] = {}
+_file_streams: dict[str, Any] = {}
 
 
 def _get_protocol_handlers():

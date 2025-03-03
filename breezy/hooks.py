@@ -18,8 +18,6 @@ __docformat__ = "google"
 
 """Support for plugin hooking logic."""
 
-from typing import Dict, List, Tuple
-
 from . import errors, registry
 from .lazy_import import lazy_import
 
@@ -437,7 +435,7 @@ def hooks_help_text(topic):
 
 # Lazily registered hooks. Maps (module, name, hook_name) tuples
 # to lists of tuples with objectgetters and names
-_lazy_hooks: Dict[Tuple[str, str, str], List[Tuple[registry._ObjectGetter, str]]] = {}
+_lazy_hooks: dict[tuple[str, str, str], list[tuple[registry._ObjectGetter, str]]] = {}
 
 
 def install_lazy_named_hook(

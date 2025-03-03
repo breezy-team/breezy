@@ -12,7 +12,7 @@ try:
     import locale
 
     locale.setlocale(locale.LC_ALL, "")
-except:
+except BaseException:
     pass
 
 from docutils.core import default_description, publish_cmdline

@@ -19,7 +19,6 @@
 import logging
 import unittest
 import weakref
-from typing import Dict, List
 
 from .. import pyutils
 
@@ -140,7 +139,7 @@ class TestLoader(unittest.TestLoader):
 
     suiteClass = TestSuite
     # Memoize test names by test class dict
-    test_func_names: Dict[str, List[str]] = {}
+    test_func_names: dict[str, list[str]] = {}
 
     def loadTestsFromModuleNames(self, names):
         """Use a custom means to load tests from modules.
@@ -194,8 +193,8 @@ class FilteredByModuleTestLoader(TestLoader):
 class TestVisitor:
     """A visitor for Tests."""
 
-    def visitSuite(self, aTestSuite):
+    def visitSuite(self, a_test_suite):
         pass
 
-    def visitCase(self, aTestCase):
+    def visitCase(self, a_test_case):
         pass

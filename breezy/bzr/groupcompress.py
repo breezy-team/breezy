@@ -18,7 +18,6 @@
 
 import time
 import zlib
-from typing import Type
 
 from ..lazy_import import lazy_import
 
@@ -2339,7 +2338,7 @@ class _GCGraphIndex:
             key_dependencies.add_references(node[1], node[3][0])
 
 
-GroupCompressor: Type[_CommonGroupCompressor]
+GroupCompressor: type[_CommonGroupCompressor]
 
 
 from ._groupcompress_py import (

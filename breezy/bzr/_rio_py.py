@@ -17,7 +17,8 @@
 """Python implementation of _read_stanza_*."""
 
 import re
-from typing import Iterator, Optional
+from collections.abc import Iterator
+from typing import Optional
 
 from .rio import Stanza
 

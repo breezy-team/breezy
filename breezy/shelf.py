@@ -443,7 +443,7 @@ class ShelfManager:
         self.transport.ensure_base()
 
     def get_shelf_filename(self, shelf_id):
-        return "shelf-%d" % shelf_id
+        return f"shelf-{shelf_id}"
 
     def get_shelf_ids(self, filenames):
         matcher = re.compile("shelf-([1-9][0-9]*)")

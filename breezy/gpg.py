@@ -18,7 +18,7 @@
 """GPG signing and checking logic."""
 
 import os
-from typing import Dict, List, Optional
+from typing import Optional
 
 from . import config, errors, trace, ui
 from .i18n import gettext, ngettext
@@ -171,7 +171,7 @@ def _set_gpg_tty():
 class GPGStrategy:
     """GPG Signing and checking facilities."""
 
-    acceptable_keys: Optional[List[str]] = None
+    acceptable_keys: Optional[list[str]] = None
 
     def __init__(self, config_stack):
         self._config_stack = config_stack
@@ -403,9 +403,9 @@ def expired_commit_message(count):
     ).format(count[SIGNATURE_EXPIRED])
 
 
-def verbose_expired_key_message(result, repo) -> List[str]:
+def verbose_expired_key_message(result, repo) -> list[str]:
     """Takes a verify result and returns list of expired key info."""
-    signers: Dict[str, int] = {}
+    signers: dict[str, int] = {}
     fingerprint_to_authors = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_EXPIRED:
@@ -414,7 +414,7 @@ def verbose_expired_key_message(result, repo) -> List[str]:
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
             fingerprint_to_authors[fingerprint] = authors
-    ret: List[str] = []
+    ret: list[str] = []
     for fingerprint, number in signers.items():
         ret.append(
             ngettext(
@@ -426,14 +426,14 @@ def verbose_expired_key_message(result, repo) -> List[str]:
     return ret
 
 
-def verbose_valid_message(result) -> List[str]:
+def verbose_valid_message(result) -> list[str]:
     """Takes a verify result and returns list of signed commits strings."""
-    signers: Dict[str, int] = {}
+    signers: dict[str, int] = {}
     for _rev_id, validity, uid in result:
         if validity == SIGNATURE_VALID:
             signers.setdefault(uid, 0)
             signers[uid] += 1
-    ret: List[str] = []
+    ret: list[str] = []
     for uid, number in signers.items():
         ret.append(
             ngettext("{0} signed {1} commit", "{0} signed {1} commits", number).format(
@@ -443,16 +443,16 @@ def verbose_valid_message(result) -> List[str]:
     return ret
 
 
-def verbose_not_valid_message(result, repo) -> List[str]:
+def verbose_not_valid_message(result, repo) -> list[str]:
     """Takes a verify result and returns list of not valid commit info."""
-    signers: Dict[str, int] = {}
+    signers: dict[str, int] = {}
     for rev_id, validity, _empty in result:
         if validity == SIGNATURE_NOT_VALID:
             revision = repo.get_revision(rev_id)
             authors = ", ".join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    ret: List[str] = []
+    ret: list[str] = []
     for authors, number in signers.items():
         ret.append(
             ngettext(
@@ -462,16 +462,16 @@ def verbose_not_valid_message(result, repo) -> List[str]:
     return ret
 
 
-def verbose_not_signed_message(result, repo) -> List[str]:
+def verbose_not_signed_message(result, repo) -> list[str]:
     """Takes a verify result and returns list of not signed commit info."""
-    signers: Dict[str, int] = {}
+    signers: dict[str, int] = {}
     for rev_id, validity, _empty in result:
         if validity == SIGNATURE_NOT_SIGNED:
             revision = repo.get_revision(rev_id)
             authors = ", ".join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    ret: List[str] = []
+    ret: list[str] = []
     for authors, number in signers.items():
         ret.append(
             ngettext(
@@ -481,14 +481,14 @@ def verbose_not_signed_message(result, repo) -> List[str]:
     return ret
 
 
-def verbose_missing_key_message(result) -> List[str]:
+def verbose_missing_key_message(result) -> list[str]:
     """Takes a verify result and returns list of missing key info."""
-    signers: Dict[str, int] = {}
+    signers: dict[str, int] = {}
     for _rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_KEY_MISSING:
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
-    ret: List[str] = []
+    ret: list[str] = []
     for fingerprint, number in list(signers.items()):
         ret.append(
             ngettext(

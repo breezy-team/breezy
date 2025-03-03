@@ -25,6 +25,7 @@ from . import controldir, errors, osutils, urlutils
 from . import hooks as _mod_hooks
 from .bzr import bzrdir
 from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
+from .i18n import gettext
 from .missing import find_unmerged
 
 
@@ -248,7 +249,7 @@ def _show_missing_revisions_branch(branch, outfile):
         if remote_extra:
             outfile.write("\n")
             outfile.write(
-                ("Branch is out of date: missing %d revision%s.\n")
+                gettext("Branch is out of date: missing %d revision%s.\n")
                 % (len(remote_extra), plural(len(remote_extra)))
             )
 
@@ -270,7 +271,7 @@ def _show_missing_revisions_working(working, outfile):
         missing_count = branch_revno - tree_last_revno
         outfile.write("\n")
         outfile.write(
-            ("Working tree is out of date: missing %d revision%s.\n")
+            gettext("Working tree is out of date: missing %d revision%s.\n")
             % (missing_count, plural(missing_count))
         )
 

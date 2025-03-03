@@ -78,8 +78,9 @@ up=pull
 
 import os
 import sys
+from collections.abc import Iterable
 from io import BytesIO
-from typing import Callable, Dict, Iterable, Tuple, cast
+from typing import Callable, cast
 
 import configobj
 
@@ -3208,7 +3209,7 @@ class IniFileStore(Store):
         for hook in ConfigHooks["save"]:
             hook(self)
 
-    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
+    def get_sections(self) -> Iterable[tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
         Returns: An iterable of (store, section).
@@ -3609,7 +3610,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores: Dict[str, Store] = {}
+_shared_stores: dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 

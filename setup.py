@@ -10,9 +10,7 @@ import os
 import os.path
 import sys
 
-try:
-    import setuptools
-except ModuleNotFoundError as e:
+if not importlib.util.find_spec("setuptools"):
     sys.stderr.write("[ERROR] Please install setuptools ({})\n".format(e))
     sys.exit(1)
 

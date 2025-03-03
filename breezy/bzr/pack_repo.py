@@ -16,7 +16,6 @@
 
 import re
 import sys
-from typing import Type
 
 from ..lazy_import import lazy_import
 
@@ -922,10 +921,10 @@ class RepositoryPackCollection:
     :ivar _names: map of {pack_name: (index_size,)}
     """
 
-    pack_factory: Type[NewPack]
-    resumed_pack_factory: Type[ResumedPack]
-    normal_packer_class: Type[Packer]
-    optimising_packer_class: Type[Packer]
+    pack_factory: type[NewPack]
+    resumed_pack_factory: type[ResumedPack]
+    normal_packer_class: type[Packer]
+    optimising_packer_class: type[Packer]
 
     def __init__(
         self,
@@ -1884,7 +1883,7 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them to None ensures that if the constructor is changed to not initialize
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
-    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _commit_builder_class: type[VersionedFileCommitBuilder]
     _serializer: Serializer
 
     def __init__(
@@ -2080,11 +2079,11 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
 
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
-    repository_class: Type[PackRepository]
+    repository_class: type[PackRepository]
     # Set this attribute in derived classes to control the
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
-    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _commit_builder_class: type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer: Serializer
@@ -2095,8 +2094,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     # Most pack formats do not use chk lookups.
     supports_chks: bool = False
     # What index classes to use
-    index_builder_class: Type[_mod_index.GraphIndexBuilder]
-    index_class: Type[object]
+    index_builder_class: type[_mod_index.GraphIndexBuilder]
+    index_class: type[object]
     _fetch_uses_deltas: bool = True
     fast_deltas: bool = False
     supports_funky_characters: bool = True
