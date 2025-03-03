@@ -369,7 +369,9 @@ def rebase(repository, replace_map, revision_rewriter):
         for i, revid in enumerate(todo):
             pb.update("rebase revisions", i, len(todo))
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple), "Expected tuple for {!r}".format(newparents)
+            assert isinstance(newparents, tuple), "Expected tuple for {!r}".format(
+                newparents
+            )
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
@@ -519,7 +521,9 @@ class WorkingTreeRevisionRewriter:
             oldrevid, oldrev.parent_ids, newrevid, newparents
         )
         mutter(
-            "replaying {!r} as {!r} with base {!r} and new parents {!r}".format(oldrevid, newrevid, base_revid, newparents)
+            "replaying {!r} as {!r} with base {!r} and new parents {!r}".format(
+                oldrevid, newrevid, base_revid, newparents
+            )
         )
         merger.set_base_revision(base_revid, self.wt.branch)
         merger.merge_type = merge_type

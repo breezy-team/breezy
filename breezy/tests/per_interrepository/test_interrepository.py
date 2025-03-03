@@ -33,8 +33,9 @@ from breezy.workingtree import WorkingTree
 def check_repo_format_for_funky_id_on_win32(repo):
     if not repo._format.supports_funky_characters and sys.platform == "win32":
         raise TestSkipped(
-            "funky chars not allowed on this platform in repository"
-            " {}".format(repo.__class__.__name__)
+            "funky chars not allowed on this platform in repository {}".format(
+                repo.__class__.__name__
+            )
         )
 
 
@@ -181,9 +182,10 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # In this test we fetch 'tip' which should not fetch 'ghost'
         has_ghost = self.make_repository("has_ghost")
         missing_ghost = self.make_repository("missing_ghost")
-        if [
-            repo._format.supports_ghosts for repo in (has_ghost, missing_ghost)
-        ] != [True, True]:
+        if [repo._format.supports_ghosts for repo in (has_ghost, missing_ghost)] != [
+            True,
+            True,
+        ]:
             raise TestNotApplicable("Need ghost support.")
 
         def add_commit(repo, revision_id, parent_ids):

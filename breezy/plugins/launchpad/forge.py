@@ -347,8 +347,10 @@ class Launchpad(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
+
             def tag_selector(t):
                 return False
+
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport(GIT_SCHEME_MAP["ssh"] + to_path)
         try:

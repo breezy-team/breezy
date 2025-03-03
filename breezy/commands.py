@@ -62,7 +62,9 @@ class CommandAvailableInPlugin(Exception):
         _fmt = (
             '"{}" is not a standard brz command. \n'
             "However, the following official plugin provides this command: {}\n"
-            "You can install it by going to: {}".format(self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"])
+            "You can install it by going to: {}".format(
+                self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"]
+            )
         )
 
         return _fmt
@@ -134,9 +136,13 @@ class CommandRegistry(registry.Registry):
             )
         except KeyError:
             trace.warning("Two plugins defined the same command: {!r}".format(k))
-            trace.warning("Not loading the one in {!r}".format(sys.modules[cmd.__module__]))
             trace.warning(
-                "Previously this command was registered from {!r}".format(sys.modules[previous.__module__])
+                "Not loading the one in {!r}".format(sys.modules[cmd.__module__])
+            )
+            trace.warning(
+                "Previously this command was registered from {!r}".format(
+                    sys.modules[previous.__module__]
+                )
             )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
@@ -835,7 +841,9 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError("no implementation of command {!r}".format(self.name()))
+        raise NotImplementedError(
+            "no implementation of command {!r}".format(self.name())
+        )
 
     def help(self):
         """Return help message for this class."""

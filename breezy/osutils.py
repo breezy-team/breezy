@@ -27,8 +27,8 @@ from typing import Callable
 from .lazy_import import lazy_import
 
 __all__ = [
-    'md5',
-    'sha',
+    "md5",
+    "sha",
 ]
 
 lazy_import(
@@ -508,7 +508,9 @@ def get_terminal_encoding(trace=False):
         sys.stderr.write(
             "brz: warning:"
             " unknown terminal encoding {}.\n"
-            "  Using encoding {} instead.\n".format(output_encoding, get_user_encoding())
+            "  Using encoding {} instead.\n".format(
+                output_encoding, get_user_encoding()
+            )
         )
         output_encoding = get_user_encoding()
 
@@ -863,7 +865,9 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
         raise UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
-    offset_str = (" %+03d%02d" % (offset / 3600, (offset / 60) % 60)) if show_offset else ""
+    offset_str = (
+        (" %+03d%02d" % (offset / 3600, (offset / 60) % 60)) if show_offset else ""
+    )
     return (date_fmt, tt, offset_str)
 
 
@@ -1370,7 +1374,6 @@ def _accessible_normalized_filename(path):
 
 
 def _inaccessible_normalized_filename(path):
-
     if isinstance(path, bytes):
         path = path.decode(sys.getfilesystemencoding())
     normalized = unicodedata.normalize("NFC", path)
@@ -1846,6 +1849,7 @@ def copy_tree(from_path, to_path, handlers=None):
 
     if handlers is None:
         handlers = {}
+
     def copy_dir(source, dest):
         os.mkdir(dest)
 
@@ -2065,7 +2069,9 @@ def send_all(sock, bytes, report_activity=None):
                 raise
         else:
             if sent == 0:
-                raise errors.ConnectionReset("Sending to {} returned 0 bytes".format(sock))
+                raise errors.ConnectionReset(
+                    "Sending to {} returned 0 bytes".format(sock)
+                )
             sent_total += sent
             if report_activity is not None:
                 report_activity(sent, "write")

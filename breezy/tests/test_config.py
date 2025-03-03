@@ -2581,7 +2581,9 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertEqual(
             warnings,
             [
-                "Permission denied while trying to load configuration store {}.".format(store.external_url())
+                "Permission denied while trying to load configuration store {}.".format(
+                    store.external_url()
+                )
             ],
         )
 
@@ -2990,7 +2992,9 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
-                "{} is not meant to be compatible with the old config design".format(self.stack)
+                "{} is not meant to be compatible with the old config design".format(
+                    self.stack
+                )
             )
         self.stack.set("one", "1")
         self.stack.set("two", "2")

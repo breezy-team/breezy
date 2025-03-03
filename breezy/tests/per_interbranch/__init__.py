@@ -24,8 +24,8 @@ itself rather than in tests/per_interbranch/*.py.
 """
 
 __all__ = [
-    'GenericInterBranch',
-    'TestCaseWithInterBranch',
+    "GenericInterBranch",
+    "TestCaseWithInterBranch",
 ]
 
 from typing import Any

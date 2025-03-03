@@ -275,7 +275,9 @@ class Serializer_v8(XMLSerializer):
             return
         for prop_elt in props_elt:
             if prop_elt.tag != "property":
-                raise AssertionError("bad tag under properties list: {!r}".format(prop_elt.tag))
+                raise AssertionError(
+                    "bad tag under properties list: {!r}".format(prop_elt.tag)
+                )
             name = prop_elt.get("name")
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads

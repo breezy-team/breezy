@@ -70,7 +70,9 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError(
-            "don't know how to export {{{}}} of kind {!r}".format(final_path, entry.kind)
+            "don't know how to export {{{}}} of kind {!r}".format(
+                final_path, entry.kind
+            )
         )
     return (item, fileobj)
 
@@ -88,7 +90,10 @@ def tarball_generator(
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
-    with closing(tarfile.open(None, "w:{}".format(format), buf)) as ball, tree.lock_read():
+    with (
+        closing(tarfile.open(None, "w:{}".format(format), buf)) as ball,
+        tree.lock_read(),
+    ):
         for final_path, tree_path, entry in _export_iter_entries(
             tree, subdir, recurse_nested=recurse_nested
         ):

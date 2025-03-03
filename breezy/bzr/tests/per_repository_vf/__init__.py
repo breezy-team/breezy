@@ -21,9 +21,9 @@ For more generic per-repository tests, see breezy.tests.per_repository.
 """
 
 __all__ = [
-    'TestCaseWithRepository',
-    'all_repository_vf_format_scenarios',
-    'load_tests',
+    "TestCaseWithRepository",
+    "all_repository_vf_format_scenarios",
+    "load_tests",
 ]
 
 from breezy.tests.per_repository import (

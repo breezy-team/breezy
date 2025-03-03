@@ -205,7 +205,9 @@ Message: %(message)s.
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
         boundary = "%d" % random.randint(0, 0x7FFFFFFF)
-        self.send_header("Content-Type", "multipart/byteranges; boundary={}".format(boundary))
+        self.send_header(
+            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
+        )
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -449,7 +451,9 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             or isinstance(backing_transport_server, test_server.LocalURLServer)
         ):
             raise AssertionError(
-                "HTTPServer currently assumes local transport, got {}".format(backing_transport_server)
+                "HTTPServer currently assumes local transport, got {}".format(
+                    backing_transport_server
+                )
             )
         self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)

@@ -52,7 +52,9 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.run_bzr("checkout --lightweight branch checkout")
         out, err = self.run_bzr("update checkout")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch {}\n".format(osutils.pathjoin(self.test_dir, "branch")),
+            "Tree is up to date at revision 0 of branch {}\n".format(
+                osutils.pathjoin(self.test_dir, "branch")
+            ),
             err,
         )
         self.assertEqual("", out)
@@ -85,10 +87,12 @@ $ brz update checkout
             """+N  file
 All changes applied successfully.
 Updated to revision 1 of branch {}
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "branch",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "branch",
+                )
+            ),
             err,
         )
         self.assertPathExists("branch/file")
@@ -107,10 +111,12 @@ Updated to revision 1 of branch {}
             """+N  file
 All changes applied successfully.
 Updated to revision 1 of branch {}
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "branch",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "branch",
+                )
+            ),
             err,
         )
         self.assertEqual("", out)
@@ -137,10 +143,12 @@ Updated to revision 1 of branch {}
 Text conflict in file
 1 conflicts encountered.
 Updated to revision 2 of branch {}
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "branch",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "branch",
+                )
+            ),
             err,
         )
         self.assertEqual("", out)
@@ -184,10 +192,12 @@ All changes applied successfully.
 All changes applied successfully.
 Updated to revision 2 of branch {}
 Your local commits will now show as pending merges with 'brz status', and can be committed with 'brz commit'.
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "master",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "master",
+                )
+            ),
             err,
         )
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
@@ -238,10 +248,12 @@ Your local commits will now show as pending merges with 'brz status', and can be
             """+N  file3
 All changes applied successfully.
 Updated to revision 2 of branch {}
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "master",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "master",
+                )
+            ),
             err,
         )
         # The pending merges should still be there
@@ -291,10 +303,12 @@ Updated to revision 2 of branch {}
         self.assertEqualDiff(
             """All changes applied successfully.
 Updated to revision 2 of branch {}
-""".format(osutils.pathjoin(
-                self.test_dir,
-                "master",
-            )),
+""".format(
+                osutils.pathjoin(
+                    self.test_dir,
+                    "master",
+                )
+            ),
             err,
         )
         # The pending merges should still be there

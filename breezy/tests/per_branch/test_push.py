@@ -270,9 +270,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             ],
         )
         revid2 = builder.build_snapshot([revid1], [])
-        builder.build_snapshot(
-            [revid2], [("modify", ("filename", b"new-content\n"))]
-        )
+        builder.build_snapshot([revid2], [("modify", ("filename", b"new-content\n"))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.

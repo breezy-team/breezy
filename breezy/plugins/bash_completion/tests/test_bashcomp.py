@@ -86,14 +86,18 @@ class BashCompletionMixin:
         missing = set(words) - self.completion_result
         if missing:
             raise AssertionError(
-                "Completion should contain {!r} but it has {!r}".format(missing, self.completion_result)
+                "Completion should contain {!r} but it has {!r}".format(
+                    missing, self.completion_result
+                )
             )
 
     def assertCompletionOmits(self, *words):
         surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError(
-                "Completion should omit {!r} but it has {!r}".format(surplus, self.completion_result)
+                "Completion should omit {!r} but it has {!r}".format(
+                    surplus, self.completion_result
+                )
             )
 
     def get_script(self):

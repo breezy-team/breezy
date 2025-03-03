@@ -120,7 +120,9 @@ class UploadUtilsMixin:
         if expected_mode == mode:
             return
         raise AssertionError(
-            "For path {}, mode is {} not {}".format(full_path, oct(mode), oct(expected_mode))
+            "For path {}, mode is {} not {}".format(
+                full_path, oct(mode), oct(expected_mode)
+            )
         )
 
     def assertUpPathDoesNotExist(self, path, base=upload_dir):

@@ -16,7 +16,6 @@
 
 """Tests for repository write groups."""
 
-
 from breezy import controldir, errors, memorytree, tests
 from breezy.bzr import branch as bzrbranch
 from breezy.bzr import remote, versionedfile

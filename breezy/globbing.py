@@ -102,8 +102,9 @@ def _sub_group(m):
 def _invalid_regex(repl):
     def _(m):
         warning(
-            "'{}' not allowed within a regular expression. "
-            "Replacing with '{}'".format(m, repl)
+            "'{}' not allowed within a regular expression. Replacing with '{}'".format(
+                m, repl
+            )
         )
         return repl
 

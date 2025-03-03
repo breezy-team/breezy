@@ -212,7 +212,9 @@ class cmd_git_refs(Command):
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in sorted(refs.as_dict().items()):
-                self.outf.write("{} -> {}\n".format(k.decode("utf-8"), v.decode("utf-8")))
+                self.outf.write(
+                    "{} -> {}\n".format(k.decode("utf-8"), v.decode("utf-8"))
+                )
 
 
 class cmd_git_apply(Command):

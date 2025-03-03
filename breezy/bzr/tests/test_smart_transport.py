@@ -3473,7 +3473,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.assertEqual(
             expected_count,
             len(self.writes),
-            f"Too many writes: {len(self.writes)}, expected {expected_count}"
+            f"Too many writes: {len(self.writes)}, expected {expected_count}",
         )
 
     def test_send_error_writes_just_once(self):

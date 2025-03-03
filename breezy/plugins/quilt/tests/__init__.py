@@ -17,12 +17,12 @@
 #
 
 __all__ = [
-    'TestCaseInTempDir',
-    'TestCaseWithTransport',
-    'TestUtil',
-    'load_tests',
-    'multiply_tests',
-    'quilt_feature',
+    "TestCaseInTempDir",
+    "TestCaseWithTransport",
+    "TestUtil",
+    "load_tests",
+    "multiply_tests",
+    "quilt_feature",
 ]
 
 

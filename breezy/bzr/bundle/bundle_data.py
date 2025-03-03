@@ -255,8 +255,8 @@ class BundleInfo:
         if len(missing) > 0:
             # I don't know if this is an error yet
             warning(
-                "Not all revision hashes could be validated."
-                " Unable validate %d hashes", len(missing)
+                "Not all revision hashes could be validated. Unable validate %d hashes",
+                len(missing),
             )
         mutter("Verified %d sha hashes for the bundle.", count)
         self._validated_revisions_against_repo = True
@@ -276,8 +276,9 @@ class BundleInfo:
             with open(",,bogus-inv", "wb") as f:
                 f.writelines(cs)
             warning(
-                "Inventory sha hash mismatch for revision {}. {}"
-                " != {}".format(revision_id, sha1, rev.inventory_sha1)
+                "Inventory sha hash mismatch for revision {}. {} != {}".format(
+                    revision_id, sha1, rev.inventory_sha1
+                )
             )
 
     def _testament(self, revision, tree):
@@ -299,7 +300,9 @@ class BundleInfo:
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
-            raise BzrError("Revision {{{}}} given twice in the list".format(rev.revision_id))
+            raise BzrError(
+                "Revision {{{}}} given twice in the list".format(rev.revision_id)
+            )
         rev_to_sha1[rev.revision_id] = sha1
 
     def _update_tree(self, bundle_tree, revision_id):
@@ -408,7 +411,9 @@ class BundleInfo:
             info = extra.split(" // ")
             if len(info) < 1:
                 raise BzrError(
-                    "modified action lines have at leastthe path in them: {!r}".format(extra)
+                    "modified action lines have at leastthe path in them: {!r}".format(
+                        extra
+                    )
                 )
             path = info[0]
 
@@ -426,7 +431,9 @@ class BundleInfo:
         for action_line, lines in self.get_revision_info(revision_id).tree_actions:
             first = action_line.find(" ")
             if first == -1:
-                raise BzrError("Bogus action line (no opening space): {!r}".format(action_line))
+                raise BzrError(
+                    "Bogus action line (no opening space): {!r}".format(action_line)
+                )
             second = action_line.find(" ", first + 1)
             if second == -1:
                 raise BzrError(
@@ -436,8 +443,9 @@ class BundleInfo:
             kind = action_line[first + 1 : second]
             if kind not in ("file", "directory", "symlink"):
                 raise BzrError(
-                    "Bogus action line"
-                    " (invalid object kind {!r}): {!r}".format(kind, action_line)
+                    "Bogus action line (invalid object kind {!r}): {!r}".format(
+                        kind, action_line
+                    )
                 )
             extra = action_line[second + 1 :]
 
@@ -502,8 +510,9 @@ class BundleTree(InventoryTree):
     def note_last_changed(self, file_id, revision_id):
         if file_id in self._last_changed and self._last_changed[file_id] != revision_id:
             raise BzrError(
-                "Mismatched last-changed revision for file_id {{{}}}"
-                ": {} != {}".format(file_id, self._last_changed[file_id], revision_id)
+                "Mismatched last-changed revision for file_id {{{}}}: {} != {}".format(
+                    file_id, self._last_changed[file_id], revision_id
+                )
             )
         self._last_changed[file_id] = revision_id
 
@@ -710,7 +719,9 @@ class BundleTree(InventoryTree):
             if kind == "file":
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
                 if ie.text_size is None:
-                    raise BzrError("Got a text_size of None for file_id {!r}".format(file_id))
+                    raise BzrError(
+                        "Got a text_size of None for file_id {!r}".format(file_id)
+                    )
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

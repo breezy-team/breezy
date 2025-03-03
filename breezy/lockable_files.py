@@ -231,7 +231,9 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError("Branch {} is in a transaction already.".format(self))
+            raise errors.LockError(
+                "Branch {} is in a transaction already.".format(self)
+            )
         self._transaction = new_transaction
 
     def _finish_transaction(self):

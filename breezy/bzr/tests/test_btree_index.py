@@ -296,7 +296,9 @@ class TestBTreeBuilder(BTreeTestCase):
         # Seed the metadata, we're using internal calls now.
         index.key_count()
         self.assertEqual(
-            3, len(index._row_lengths), "Not enough rows: {!r}".format(index._row_lengths)
+            3,
+            len(index._row_lengths),
+            "Not enough rows: {!r}".format(index._row_lengths),
         )
         self.assertEqual(4, len(index._row_offsets))
         self.assertEqual(sum(index._row_lengths), index._row_offsets[-1])
@@ -920,7 +922,9 @@ class TestBTreeIndex(BTreeTestCase):
             self.assertTrue(node[0] is index)
             bare_nodes.append(node[1:])
         self.assertEqual(
-            3, len(index._row_lengths), "Not enough rows: {!r}".format(index._row_lengths)
+            3,
+            len(index._row_lengths),
+            "Not enough rows: {!r}".format(index._row_lengths),
         )
         # Should be as long as the nodes we supplied
         self.assertEqual(20000, len(found_nodes))

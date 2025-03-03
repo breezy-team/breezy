@@ -43,7 +43,9 @@ from ..tree import InterTree, TreeChange
 
 
 class ReturnsUnlockable(Matcher):
-    """A matcher that checks for the pattern we want lock* methods to have:
+    """Check that a method returns an object with an unlock method.
+
+    A matcher that checks for the pattern we want lock* methods to have:
 
     They should return an object with an unlock() method.
     Calling that method should unlock the original object.

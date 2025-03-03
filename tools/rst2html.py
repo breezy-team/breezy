@@ -27,7 +27,9 @@ if True:  # this is still required in the distutils trunk as-at June 2008.
     Body.pats["optname"] = r"[a-zA-Z0-9][a-zA-Z0-9._-]*"
     Body.pats["longopt"] = r"(--|/){optname}([ =]{optarg})?".format(**Body.pats)
     Body.pats["option"] = r"({shortopt}|{longopt})".format(**Body.pats)
-    Body.patterns["option_marker"] = r"{option}(, {option})*(  +| ?$)".format(**Body.pats)
+    Body.patterns["option_marker"] = r"{option}(, {option})*(  +| ?$)".format(
+        **Body.pats
+    )
 
 
 description = (

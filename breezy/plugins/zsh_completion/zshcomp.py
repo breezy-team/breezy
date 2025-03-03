@@ -188,9 +188,9 @@ class DataCollector:
             cmd_data.options.extend(self.option(opt))
 
         if name == "help" or "help" in cmd.aliases:
-            cmd_data.fixed_words = "($cmds {})".format(" ".join(
-                sorted(help_topics.topic_registry.keys())
-            ))
+            cmd_data.fixed_words = "($cmds {})".format(
+                " ".join(sorted(help_topics.topic_registry.keys()))
+            )
 
         return cmd_data
 
@@ -208,7 +208,9 @@ class DataCollector:
                     enum_data.registry_keys = opt.registry.keys()
                 except ImportError as e:
                     enum_data.error_messages.append(
-                        "ERROR getting registry keys for '--{}': {}".format(opt.name, str(e).split("\n")[0])
+                        "ERROR getting registry keys for '--{}': {}".format(
+                            opt.name, str(e).split("\n")[0]
+                        )
                     )
         return sorted(optswitches.values())
 

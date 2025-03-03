@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-
 from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
 from ...revision import NULL_REVISION
 from .classify import classify_delta
@@ -292,7 +291,9 @@ class cmd_ancestor_growth(commands.Command):
             revno = 0
             cur_parents = 0
             sorted_graph = tsort.merge_sort(graph.iter_ancestry([last_rev]), last_rev)
-            for cur_parents, (_num, _node_name, depth, _isend) in enumerate(reversed(sorted_graph), 1):
+            for cur_parents, (_num, _node_name, depth, _isend) in enumerate(
+                reversed(sorted_graph), 1
+            ):
                 if depth == 0:
                     revno += 1
                     self.outf.write("%4d, %4d\n" % (revno, cur_parents))

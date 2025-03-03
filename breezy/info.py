@@ -199,11 +199,17 @@ def _show_format_info(
     outfile.write("\n")
     outfile.write("Format:\n")
     if control:
-        outfile.write("       control: {}\n".format(control._format.get_format_description()))
+        outfile.write(
+            "       control: {}\n".format(control._format.get_format_description())
+        )
     if working:
-        outfile.write("  working tree: {}\n".format(working._format.get_format_description()))
+        outfile.write(
+            "  working tree: {}\n".format(working._format.get_format_description())
+        )
     if branch:
-        outfile.write("        branch: {}\n".format(branch._format.get_format_description()))
+        outfile.write(
+            "        branch: {}\n".format(branch._format.get_format_description())
+        )
     if repository:
         outfile.write(
             "    repository: {}\n".format(repository._format.get_format_description())
@@ -213,8 +219,7 @@ def _show_format_info(
 def _show_locking_info(repository=None, branch=None, working=None, outfile=None):
     """Show locking status of working, branch and repository."""
     if (
-        (repository
-        and repository.get_physical_lock_status())
+        (repository and repository.get_physical_lock_status())
         or (branch and branch.get_physical_lock_status())
         or (working and working.get_physical_lock_status())
     ):

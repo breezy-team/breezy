@@ -2,6 +2,7 @@
 # Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
+import importlib.util
 import getopt
 import re
 import sys

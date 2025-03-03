@@ -2062,9 +2062,7 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
 
     def test_construct_with_callback(self):
         idx = _mod_index.InMemoryGraphIndex()
-        _mod_index.GraphIndexPrefixAdapter(
-            idx, (b"prefix",), 1, idx.add_nodes
-        )
+        _mod_index.GraphIndexPrefixAdapter(idx, (b"prefix",), 1, idx.add_nodes)
 
     def test_iter_all_entries_cross_prefix_map_errors(self):
         index, adapter = self.make_index(

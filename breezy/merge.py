@@ -644,15 +644,17 @@ class Merger:
             kwargs["reprocess"] = self.reprocess
         elif self.reprocess:
             raise errors.BzrError(
-                "Conflict reduction is not supported for merge"
-                " type {}.".format(self.merge_type)
+                "Conflict reduction is not supported for merge type {}.".format(
+                    self.merge_type
+                )
             )
         if self.merge_type.supports_show_base:
             kwargs["show_base"] = self.show_base
         elif self.show_base:
             raise errors.BzrError(
-                "Showing base is not supported for this"
-                " merge type. {}".format(self.merge_type)
+                "Showing base is not supported for this merge type. {}".format(
+                    self.merge_type
+                )
             )
         if (
             not getattr(self.merge_type, "supports_reverse_cherrypick", True)
@@ -1348,7 +1350,9 @@ class Merge3Merger:
                 # the tree root.
                 if names[self.winner_idx[parent_id_winner]] != "":
                     raise AssertionError(
-                        "File looks like a root, but named {}".format(names[self.winner_idx[parent_id_winner]])
+                        "File looks like a root, but named {}".format(
+                            names[self.winner_idx[parent_id_winner]]
+                        )
                     )
                 parent_trans_id = transform.ROOT_PARENT
             else:
@@ -1519,7 +1523,9 @@ class Merge3Merger:
             return "delete", None
         else:
             raise AssertionError(
-                "winner is OTHER, but file {!r} not in THIS or OTHER tree".format(merge_hook_params.base_path)
+                "winner is OTHER, but file {!r} not in THIS or OTHER tree".format(
+                    merge_hook_params.base_path
+                )
             )
 
     def merge_contents(self, merge_hook_params):
@@ -2474,7 +2480,9 @@ class _PlanMerge(_PlanMergeBase):
             else:
                 if self._head_key != self.b_key:
                     raise AssertionError(
-                        "There was an invalid head: {} != {}".format(self.b_key, self._head_key)
+                        "There was an invalid head: {} != {}".format(
+                            self.b_key, self._head_key
+                        )
                     )
                 plan = "new-b"
             head_rev = self._head_key[-1]
@@ -2484,7 +2492,9 @@ class _PlanMerge(_PlanMergeBase):
 
 
 class _PlanLCAMerge(_PlanMergeBase):
-    """This merge algorithm differs from _PlanMerge in that:
+    """Least Common Ancestor merge plan generator.
+
+    This merge algorithm differs from _PlanMerge in that:
 
     1. comparisons are done against LCAs only
     2. cases where a contested line is new versus one LCA but old versus

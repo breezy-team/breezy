@@ -612,7 +612,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             try:
                 repo_format = _mod_repository.network_format_registry.get(repo_name)
             except KeyError as e:
-                raise errors.UnknownFormatError(kind="repository", format=repo_name) from e
+                raise errors.UnknownFormatError(
+                    kind="repository", format=repo_name
+                ) from e
             format.repository_format = repo_format
         if branch_name:
             try:
@@ -620,7 +622,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                     branch.network_format_registry.get(branch_name)
                 )
             except KeyError as e:
-                raise errors.UnknownFormatError(kind="branch", format=branch_name) from e
+                raise errors.UnknownFormatError(
+                    kind="branch", format=branch_name
+                ) from e
         return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
@@ -668,7 +672,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                     repo_name
                 )
             except KeyError as e:
-                raise errors.UnknownFormatError(kind="repository", format=repo_name) from e
+                raise errors.UnknownFormatError(
+                    kind="repository", format=repo_name
+                ) from e
         if branch_ref == b"ref":
             # XXX: we need possible_transports here to avoid reopening the
             # connection to the referenced location
@@ -680,7 +686,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
                 try:
                     branch_format = branch.network_format_registry.get(branch_name)
                 except KeyError as e:
-                    raise errors.UnknownFormatError(kind="branch", format=branch_name) from e
+                    raise errors.UnknownFormatError(
+                        kind="branch", format=branch_name
+                    ) from e
                 format.set_branch_format(branch_format)
         else:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -723,7 +731,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
                 raise AssertionError(
-                    "need a RemoteRepository to use with RemoteBranch, got {!r}".format(repository)
+                    "need a RemoteRepository to use with RemoteBranch, got {!r}".format(
+                        repository
+                    )
                 )
             result = RemoteBranch(self, repository, real_branch, name=name)
         else:
@@ -2252,7 +2262,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         except StopIteration:
             return
         if substream_kind != "inventory-deltas":
-            raise AssertionError("Unexpected stream {!r} received".format(substream_kind))
+            raise AssertionError(
+                "Unexpected stream {!r} received".format(substream_kind)
+            )
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
                 deserializer.parse_text_bytes(record.get_bytes_as("lines"))
@@ -2450,7 +2462,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         # IncompatibleRepositories when asked to fetch.
         inter = _mod_repository.InterRepository.get(source, self)
         if fetch_spec is not None and not getattr(inter, "supports_fetch_spec", False):
-            raise errors.UnsupportedOperation("fetch_spec not supported for {!r}".format(inter))
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for {!r}".format(inter)
+            )
         return inter.fetch(
             revision_id=revision_id,
             find_ghosts=find_ghosts,
@@ -3587,7 +3601,9 @@ class RemoteBranchFormat(branch.BranchFormat):
             if url_diff != ".":
                 raise AssertionError(
                     "repository.user_url {!r} does not match URL from server "
-                    "response ({!r} + {!r})".format(repository.user_url, a_controldir.user_url, repo_path)
+                    "response ({!r} + {!r})".format(
+                        repository.user_url, a_controldir.user_url, repo_path
+                    )
                 )
             remote_repo = repository
         else:
@@ -3980,7 +3996,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(
                     "can't cope with fallback repositories "
-                    "of {!r} (fallbacks: {!r})".format(old_repository, old_repository._fallback_repositories)
+                    "of {!r} (fallbacks: {!r})".format(
+                        old_repository, old_repository._fallback_repositories
+                    )
                 )
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
@@ -3994,7 +4012,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError(
-                    "didn't expect {!r} to have fallback_repositories".format(self.repository)
+                    "didn't expect {!r} to have fallback_repositories".format(
+                        self.repository
+                    )
                 )
             # Replace self.repository with the new repository.
             # Do our best to transfer the lock state (i.e. lock-tokens and

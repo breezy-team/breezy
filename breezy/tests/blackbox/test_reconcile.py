@@ -35,7 +35,9 @@ class TrivialTest(tests.TestCaseWithTransport):
             "revision_history ok.\n"
             "Reconciling repository {}\n"
             "{}"
-            "Reconciliation complete.\n".format(t.branch.base, t.controldir.root_transport.base, does_backup_text),
+            "Reconciliation complete.\n".format(
+                t.branch.base, t.controldir.root_transport.base, does_backup_text
+            ),
         )
         self.assertEqualDiff(err, "")
 
@@ -58,7 +60,9 @@ class TrivialTest(tests.TestCaseWithTransport):
             "revision_history ok.\n"
             "Reconciling repository {}\n"
             "{}"
-            "Reconciliation complete.\n".format(t.branch.base, t.controldir.root_transport.base, does_backup_text)
+            "Reconciliation complete.\n".format(
+                t.branch.base, t.controldir.root_transport.base, does_backup_text
+            )
         )
         self.assertEqualDiff(expected, out)
         self.assertEqualDiff(err, "")

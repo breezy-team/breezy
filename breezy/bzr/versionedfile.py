@@ -1115,7 +1115,10 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and chr(c)) or ("%{:02x}".format(c)) for c in bytearray(prefix)]
+        r = [
+            ((c in self._safe) and chr(c)) or ("%{:02x}".format(c))
+            for c in bytearray(prefix)
+        ]
         return "".join(r).encode("ascii")
 
     def _unescape(self, basename):

@@ -806,9 +806,7 @@ class TransportObjectStore(PackBasedObjectStore):
         entries = []
         for i, entry in enumerate(indexer):
             if progress is not None:
-                progress(
-                    f"generating index: {i}/{num_objects}\r".encode("ascii")
-                )
+                progress(f"generating index: {i}/{num_objects}\r".encode("ascii"))
             entries.append(entry)
 
         pack_sha, extra_entries = extend_pack(

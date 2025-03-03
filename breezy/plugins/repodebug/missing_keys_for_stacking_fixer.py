@@ -42,7 +42,9 @@ class cmd_fix_missing_keys_for_stacking(Command):
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL):
-            raise errors.CommandError("Not a branch or invalid URL: {}".format(branch_url))
+            raise errors.CommandError(
+                "Not a branch or invalid URL: {}".format(branch_url)
+            )
         b.lock_read()
         try:
             b.get_stacked_on_url()

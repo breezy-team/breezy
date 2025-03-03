@@ -23,19 +23,19 @@
 # ElementTree bits
 
 __all__ = [
-    'Element',
-    'ElementTree',
-    'SubElement',
-    'XMLSerializer',
-    'escape_invalid_chars',
-    'fromstring',
-    'fromstringlist',
-    'get_utf8_or_ascii',
-    'serialize_inventory_flat',
-    'tostring',
-    'tostringlist',
-    'unpack_inventory_entry',
-    'unpack_inventory_flat',
+    "Element",
+    "ElementTree",
+    "SubElement",
+    "XMLSerializer",
+    "escape_invalid_chars",
+    "fromstring",
+    "fromstringlist",
+    "get_utf8_or_ascii",
+    "serialize_inventory_flat",
+    "tostring",
+    "tostringlist",
+    "unpack_inventory_entry",
+    "unpack_inventory_flat",
 ]
 
 import re
@@ -347,7 +347,9 @@ def unpack_inventory_flat(
         raise serializer.UnexpectedInventoryFormat("Root tag is {!r}".format(elt.tag))
     format = elt.get("format")
     if (format is None and format_num is not None) or format.encode() != format_num:
-        raise serializer.UnexpectedInventoryFormat("Invalid format version {!r}".format(format))
+        raise serializer.UnexpectedInventoryFormat(
+            "Invalid format version {!r}".format(format)
+        )
     revision_id = elt.get("revision_id")
     if revision_id is not None:
         revision_id = revision_id.encode("utf-8")

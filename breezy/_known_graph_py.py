@@ -160,7 +160,9 @@ class KnownGraph:
                 else:
                     raise ValueError(
                         "Parent key mismatch, existing node {}"
-                        " has parents of {} not {}".format(key, existing_parent_keys, parent_keys)
+                        " has parents of {} not {}".format(
+                            key, existing_parent_keys, parent_keys
+                        )
                     )
         else:
             node = _KnownGraphNode(key, parent_keys)

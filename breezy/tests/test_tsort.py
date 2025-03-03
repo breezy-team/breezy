@@ -48,11 +48,15 @@ class TopoSortTests(TestCase):
             for parent in parents:
                 if sort_result.index(node) < sort_result.index(parent):
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(parent, node, sort_result)
+                        "parent {} must come before child {}:\n{}".format(
+                            parent, node, sort_result
+                        )
                     )
                 if iter_result.index(node) < iter_result.index(parent):
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(parent, node, iter_result)
+                        "parent {} must come before child {}:\n{}".format(
+                            parent, node, iter_result
+                        )
                     )
 
     def test_tsort_empty(self):

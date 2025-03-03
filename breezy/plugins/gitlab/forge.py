@@ -587,7 +587,9 @@ class GitLab(Forge):
             parameters["page"] = page
             response = self._api_request(
                 "GET",
-                path + "?" + "&".join(["{}={}".format(*item) for item in parameters.items()]),
+                path
+                + "?"
+                + "&".join(["{}={}".format(*item) for item in parameters.items()]),
             )
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
@@ -725,8 +727,10 @@ class GitLab(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
+
             def tag_selector(t):
                 return False
+
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(
             base_branch
         )

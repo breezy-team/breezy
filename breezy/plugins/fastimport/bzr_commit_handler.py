@@ -254,7 +254,9 @@ class CommitHandler(processor.CommitHandler):
         except UnicodeDecodeError:
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
-            self.warning("path {!r} not in utf8 - replacing unknown characters".format(path))
+            self.warning(
+                "path {!r} not in utf8 - replacing unknown characters".format(path)
+            )
             return path.decode("utf-8", "replace")
 
     def _format_name_email(self, section, name, email):
@@ -375,7 +377,9 @@ class CommitHandler(processor.CommitHandler):
             self.data_for_commit[file_id] = b""
         else:
             self.warning(
-                "Cannot import items of kind '{}' yet - ignoring '{}'".format(kind, path)
+                "Cannot import items of kind '{}' yet - ignoring '{}'".format(
+                    kind, path
+                )
             )
             return
         # Record it
@@ -386,7 +390,9 @@ class CommitHandler(processor.CommitHandler):
                 self.record_new(path, ie)
             except:
                 print(
-                    "failed to add path '{}' with entry '{}' in command {}".format(path, ie, self.command.id)
+                    "failed to add path '{}' with entry '{}' in command {}".format(
+                        path, ie, self.command.id
+                    )
                 )
                 print("parent's children are:\n{!r}\n".format(ie.parent_id.children))
                 raise
@@ -519,7 +525,9 @@ class CommitHandler(processor.CommitHandler):
         file_id = inv.path2id(old_path)
         if file_id is None:
             self.warning(
-                "ignoring rename of {} to {} - old path does not exist".format(old_path, new_path)
+                "ignoring rename of {} to {} - old path does not exist".format(
+                    old_path, new_path
+                )
             )
             return
         ie = inv.get_entry(file_id)
@@ -628,7 +636,9 @@ class CommitHandler(processor.CommitHandler):
                 new_inv.apply_delta(delta)
             except errors.InconsistentDelta:
                 self.mutter(
-                    "INCONSISTENT DELTA IS:\n{}".format("\n".join([str(de) for de in delta]))
+                    "INCONSISTENT DELTA IS:\n{}".format(
+                        "\n".join([str(de) for de in delta])
+                    )
                 )
                 raise
         return new_inv

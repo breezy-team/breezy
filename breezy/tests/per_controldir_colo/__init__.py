@@ -24,9 +24,9 @@ run.
 """
 
 __all__ = [
-    'TestCaseWithControlDir',
-    'load_tests',
-    'make_scenarios',
+    "TestCaseWithControlDir",
+    "load_tests",
+    "make_scenarios",
 ]
 
 

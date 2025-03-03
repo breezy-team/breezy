@@ -1653,7 +1653,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             if ordering != "unordered":
                 raise AssertionError(
                     "valid values for ordering are:"
-                    ' "unordered", "groupcompress" or "topological" not: {!r}'.format(ordering)
+                    ' "unordered", "groupcompress" or "topological" not: {!r}'.format(
+                        ordering
+                    )
                 )
             # Just group by source; remote sources first.
             present_keys = []
@@ -2080,8 +2082,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             rec = self._check_header(key, df.readline())
         except Exception as e:
             raise KnitCorrupt(
-                self,
-                f"While reading {{{key}}} got {e.__class__.__name__}({e!s})"
+                self, f"While reading {{{key}}} got {e.__class__.__name__}({e!s})"
             ) from e
         return df, rec
 
@@ -2096,7 +2097,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             except Exception as e:
                 raise KnitCorrupt(
                     self,
-                    f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({e!s})"
+                    f"Corrupt compressed record {data!r}, got {e.__class__.__name__}({e!s})",
                 ) from e
             header = record_contents.pop(0)
             rec = self._split_header(header)
@@ -2104,13 +2105,16 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             if len(record_contents) != int(rec[2]):
                 raise KnitCorrupt(
                     self,
-                    "incorrect number of lines {} != {}"
-                    " for version {{{}}} {}".format(len(record_contents), int(rec[2]), rec[1], record_contents),
+                    "incorrect number of lines {} != {} for version {{{}}} {}".format(
+                        len(record_contents), int(rec[2]), rec[1], record_contents
+                    ),
                 )
             if last_line != b"end %s\n" % rec[1]:
                 raise KnitCorrupt(
                     self,
-                    "unexpected version end line {!r}, wanted {!r}".format(last_line, rec[1]),
+                    "unexpected version end line {!r}, wanted {!r}".format(
+                        last_line, rec[1]
+                    ),
                 )
         return rec, record_contents
 
@@ -2195,7 +2199,9 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         chunks.append(b"end " + key[-1] + b"\n")
         for chunk in chunks:
             if not isinstance(chunk, bytes):
-                raise AssertionError("data must be plain bytes was {}".format(type(chunk)))
+                raise AssertionError(
+                    "data must be plain bytes was {}".format(type(chunk))
+                )
         if lines and not lines[-1].endswith(b"\n"):
             raise ValueError("corrupt lines value {!r}".format(lines))
         compressed_chunks = tuned_gzip.chunks_to_gzip(chunks)
@@ -2674,7 +2680,9 @@ class _KndxIndex:
                         ]
                     )
                     if not isinstance(line, bytes):
-                        raise AssertionError("data must be utf8 was {}".format(type(line)))
+                        raise AssertionError(
+                            "data must be utf8 was {}".format(type(line))
+                        )
                     lines.append(line)
                     self._cache_key(key, options, pos, size, parents)
                 if len(orig_history):
@@ -3128,8 +3136,9 @@ class _KnitGraphIndex:
                     node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(
                         self,
-                        "inconsistent details in add_records"
-                        ": {} {}".format((value, node_refs), passed),
+                        "inconsistent details in add_records: {} {}".format(
+                            (value, node_refs), passed
+                        ),
                     )
                 del keys[key]
         result = []
@@ -3429,7 +3438,9 @@ class _KnitKeyAccess:
         """
         raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError("data must be plain bytes was {}".format(type(raw_data)))
+            raise AssertionError(
+                "data must be plain bytes was {}".format(type(raw_data))
+            )
         result = []
         offset = 0
         # TODO: This can be tuned for writing to sftp and other servers where

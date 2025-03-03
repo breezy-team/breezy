@@ -630,8 +630,10 @@ class GitHub(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
+
             def tag_selector(t):
                 return False
+
         base_owner, base_project, base_branch_name = parse_github_branch_url(
             base_branch
         )
@@ -737,11 +739,8 @@ class GitHub(Forge):
             state=state[status],
         )
         for pull in pulls:
-            if (
-                (status == "closed"
-                and pull["merged"])
-                or (status == "merged"
-                and not pull["merged"])
+            if (status == "closed" and pull["merged"]) or (
+                status == "merged" and not pull["merged"]
             ):
                 continue
             if pull["head"]["ref"] != source_branch_name:

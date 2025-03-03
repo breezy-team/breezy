@@ -553,7 +553,8 @@ class BzrDir(controldir.ControlDir):
             backup_dir = self._available_backup_name("backup.bzr")
             new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note(
-                gettext("making backup of %s\n  to %s") % (
+                gettext("making backup of %s\n  to %s")
+                % (
                     urlutils.unescape_for_display(old_path, "utf-8"),
                     urlutils.unescape_for_display(new_path, "utf-8"),
                 )
@@ -577,9 +578,8 @@ class BzrDir(controldir.ControlDir):
                 to_path = f".bzr.retired.{i}"
                 self.root_transport.rename(".bzr", to_path)
                 note(
-                    gettext("renamed %s to %s") % (
-                        self.root_transport.abspath(".bzr"), to_path
-                    )
+                    gettext("renamed %s to %s")
+                    % (self.root_transport.abspath(".bzr"), to_path)
                 )
                 return
             except (errors.TransportError, OSError, errors.PathError):
@@ -829,7 +829,9 @@ class BzrDir(controldir.ControlDir):
         """
         if cls is not BzrDir:
             raise AssertionError(
-                "BzrDir.create always creates the default format, not one of {!r}".format(cls)
+                "BzrDir.create always creates the default format, not one of {!r}".format(
+                    cls
+                )
             )
         if format is None:
             format = BzrDirFormat.get_default_format()
@@ -1549,8 +1551,9 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             found_format = controldir.ControlDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError(
-                    "{} was asked to open {}, but it seems to need "
-                    "format {}".format(self, transport, found_format)
+                    "{} was asked to open {}, but it seems to need format {}".format(
+                        self, transport, found_format
+                    )
                 )
             # Allow subclasses - use the found format.
             self._supply_sub_formats_to(found_format)
@@ -2038,7 +2041,8 @@ class CreateRepository(controldir.RepositoryAcquisitionPolicy):
                 # We have picked up automatic stacking somewhere.
                 note(
                     gettext("Using default stacking branch %s at %s"),
-                    self._stack_on, self._stack_on_pwd
+                    self._stack_on,
+                    self._stack_on_pwd,
                 )
         repository = self._controldir.create_repository(shared=shared)
         self._add_fallback(repository, possible_transports=possible_transports)

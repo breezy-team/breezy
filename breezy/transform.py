@@ -554,7 +554,9 @@ def move_orphan(tt, orphan_id, parent_id):
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
     trace.warning(
-        "{} has been orphaned in {}".format(joinpath(parent_path, actual_name), orphan_dir_basename)
+        "{} has been orphaned in {}".format(
+            joinpath(parent_path, actual_name), orphan_dir_basename
+        )
     )
 
 

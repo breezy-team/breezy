@@ -72,7 +72,6 @@ def ca_certs_from_store(path):
 
 
 def cert_reqs_from_store(unicode_str):
-
     try:
         return {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
     except KeyError:

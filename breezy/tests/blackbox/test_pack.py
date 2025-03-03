@@ -17,7 +17,6 @@
 
 """Tests of the 'brz pack' command."""
 
-
 from breezy import tests
 
 

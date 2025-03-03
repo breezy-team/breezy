@@ -234,7 +234,9 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Write lock taken w/ an open read lock on: {}".format(self.filename)
+                        "Write lock taken w/ an open read lock on: {}".format(
+                            self.filename
+                        )
                     )
 
             self._open(self.filename, "rb+")
@@ -271,7 +273,9 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Read lock taken w/ an open write lock on: {}".format(self.filename)
+                        "Read lock taken w/ an open write lock on: {}".format(
+                            self.filename
+                        )
                     )
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1

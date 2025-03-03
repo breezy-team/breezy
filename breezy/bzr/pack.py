@@ -409,7 +409,9 @@ class BytesRecordReader(BaseReader):
         try:
             length = int(length_line)
         except ValueError as e:
-            raise InvalidRecordError("{!r} is not a valid length.".format(length_line)) from e
+            raise InvalidRecordError(
+                "{!r} is not a valid length.".format(length_line)
+            ) from e
 
         # Read the list of names.
         names = []
@@ -533,7 +535,9 @@ class ContainerPushParser:
             try:
                 self._current_record_length = int(line)
             except ValueError as e:
-                raise InvalidRecordError("{!r} is not a valid length.".format(line)) from e
+                raise InvalidRecordError(
+                    "{!r} is not a valid length.".format(line)
+                ) from e
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):

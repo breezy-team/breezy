@@ -1587,7 +1587,9 @@ class TestSetUnsetEnv(tests.TestCase):
         uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
-                "Cannot find a unicode character that works in encoding {}".format(osutils.get_user_encoding())
+                "Cannot find a unicode character that works in encoding {}".format(
+                    osutils.get_user_encoding()
+                )
             )
 
         osutils.set_or_unset_env("BRZ_TEST_ENV_VAR", uni_val)
@@ -2009,7 +2011,9 @@ class TestGetuserUnicode(tests.TestCase):
         uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
-                "Cannot find a unicode character that works in encoding {}".format(osutils.get_user_encoding())
+                "Cannot find a unicode character that works in encoding {}".format(
+                    osutils.get_user_encoding()
+                )
             )
         uni_username = "jrandom" + uni_val
         uni_username.encode(ue)

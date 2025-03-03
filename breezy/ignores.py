@@ -74,8 +74,8 @@ def parse_ignore_file(f):
             except UnicodeDecodeError:
                 # report error about line (idx+1)
                 trace.warning(
-                    ".bzrignore: On Line #%d, malformed utf8 character. "
-                    "Ignoring line.", line_number + 1
+                    ".bzrignore: On Line #%d, malformed utf8 character. Ignoring line.",
+                    line_number + 1,
                 )
 
     # Append each line to ignore list if it's not a comment line

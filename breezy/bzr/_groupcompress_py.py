@@ -116,8 +116,8 @@ class LinesDeltaIndex:
         start_idx = len(self.lines)
         if len(new_lines) != len(index):
             raise AssertionError(
-                "The number of lines to be indexed does" +
-                f" not match the index/don't index flags: {len(new_lines)} != {len(index)}"
+                "The number of lines to be indexed does"
+                + f" not match the index/don't index flags: {len(new_lines)} != {len(index)}"
             )
         for idx, do_index in enumerate(index):
             if not do_index:
@@ -450,8 +450,7 @@ def apply_delta(basis, delta):
     data = b"".join(lines)
     if len(data) != target_length:
         raise ValueError(
-            f"Delta claimed to be {target_length} long, but ended up"
-            f" {len(bytes)} long"
+            f"Delta claimed to be {target_length} long, but ended up {len(bytes)} long"
         )
     return data
 

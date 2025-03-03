@@ -718,9 +718,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
 
         def tree_iter_changes(files):
-            return list(tree.iter_changes(
+            return list(
+                tree.iter_changes(
                     tree.basis_tree(), specific_files=files, require_versioned=True
-                ))
+                )
+            )
 
         e = self.assertRaises(
             errors.PathsNotVersionedError, tree_iter_changes, ["bar", "foo"]

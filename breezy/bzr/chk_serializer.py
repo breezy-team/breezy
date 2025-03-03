@@ -16,7 +16,6 @@
 
 """Serializer object for CHK based inventory storage."""
 
-
 import fastbencode as bencode
 
 from .. import lazy_import
@@ -46,9 +45,7 @@ def _validate_properties(props, _decode=cache_utf8._utf8_decode):
 
 def _is_format_10(value):
     if value != 10:
-        raise ValueError(
-            f"Format number was not recognized, expected 10 got {value!r}"
-        )
+        raise ValueError(f"Format number was not recognized, expected 10 got {value!r}")
     return 10
 
 
@@ -126,8 +123,9 @@ class BEncodeRevisionSerializer1:
             var_name, expected_type, validator = schema[key]
             if value.__class__ is not expected_type:
                 raise ValueError(
-                    "key {} did not conform to the expected type"
-                    " {}, but was {}".format(key, expected_type, type(value))
+                    "key {} did not conform to the expected type {}, but was {}".format(
+                        key, expected_type, type(value)
+                    )
                 )
             if validator is not None:
                 value = validator(value)
@@ -137,7 +135,9 @@ class BEncodeRevisionSerializer1:
                 key for key, (var_name, _, _) in schema.items() if var_name not in bits
             ]
             raise ValueError(
-                "Revision text was missing expected keys {}. text {!r}".format(missing, text)
+                "Revision text was missing expected keys {}. text {!r}".format(
+                    missing, text
+                )
             )
         del bits[None]  # Get rid of 'format' since it doesn't get mapped
         rev = _mod_revision.Revision(**bits)

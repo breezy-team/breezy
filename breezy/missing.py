@@ -200,7 +200,9 @@ def _find_unmerged(
     else:
         if restrict != "all":
             raise ValueError(
-                'param restrict not one of "all", "local", "remote": {!r}'.format(restrict)
+                'param restrict not one of "all", "local", "remote": {!r}'.format(
+                    restrict
+                )
             )
         local_extra, remote_extra = graph.find_difference(
             local_revision_id, remote_revision_id

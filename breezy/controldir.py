@@ -1618,7 +1618,9 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
 
         if default_realkey is not None:
             output += wrapped(
-                default_realkey, "(default) {}".format(default_help), self.get_info("default")
+                default_realkey,
+                "(default) {}".format(default_help),
+                self.get_info("default"),
             )
         deprecated_pairs = []
         experimental_pairs = []

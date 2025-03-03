@@ -319,7 +319,9 @@ class InterToLocalGitRepository(InterToGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
@@ -541,7 +543,9 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
         else:
             interesting_heads = None
 
@@ -718,7 +722,9 @@ class InterGitGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(

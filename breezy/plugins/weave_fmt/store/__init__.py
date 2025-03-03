@@ -90,7 +90,9 @@ class TransportStore(Store):
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
             raise BzrError(
-                "store {!r} already contains id {!r}".format(self._transport.base, fileid)
+                "store {!r} already contains id {!r}".format(
+                    self._transport.base, fileid
+                )
             )
 
         # Most of the time, just adding the file will work

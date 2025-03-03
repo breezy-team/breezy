@@ -589,7 +589,9 @@ class DirState:
             block.insert(entry_index, entry_data)
         else:
             if block[entry_index][1][0][0] != b"a":
-                raise AssertionError(" {!r}({!r}) already added".format(basename, file_id))
+                raise AssertionError(
+                    " {!r}({!r}) already added".format(basename, file_id)
+                )
             block[entry_index][1][0] = entry_data[1][0]
 
         if kind == "directory":
@@ -1463,7 +1465,9 @@ class DirState:
                 self._raise_invalid(
                     path,
                     file_id,
-                    "Attempt to remove path has wrong id - found {!r}.".format(entry[0][2]),
+                    "Attempt to remove path has wrong id - found {!r}.".format(
+                        entry[0][2]
+                    ),
                 )
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
@@ -1736,7 +1740,9 @@ class DirState:
                     self._raise_invalid(
                         new_path,
                         file_id,
-                        "considered a real add but still had old_path at {}".format(old_path),
+                        "considered a real add but still had old_path at {}".format(
+                            old_path
+                        ),
                     )
             if present:
                 entry = block[entry_index]
@@ -1775,7 +1781,9 @@ class DirState:
                             new_path,
                             file_id,
                             "we have an add record for path, but the path"
-                            " is already present with another file_id {}".format(maybe_entry[0][2]),
+                            " is already present with another file_id {}".format(
+                                maybe_entry[0][2]
+                            ),
                         )
 
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS, new_details])
@@ -2285,7 +2293,9 @@ class DirState:
                         return None, None
                     if entry[1][tree_index][0] != b"r":
                         raise AssertionError(
-                            "entry {!r} has invalid minikind {!r} for tree {!r}".format(entry, entry[1][tree_index][0], tree_index)
+                            "entry {!r} has invalid minikind {!r} for tree {!r}".format(
+                                entry, entry[1][tree_index][0], tree_index
+                            )
                         )
                     real_path = entry[1][tree_index][1]
                     return self._get_entry(
@@ -3233,7 +3243,9 @@ class DirState:
                     )
                     if not present:
                         raise AssertionError(
-                            "update_minimal: could not find other entry for {}".format(other_key)
+                            "update_minimal: could not find other entry for {}".format(
+                                other_key
+                            )
                         )
                     if path_utf8 is None:
                         raise AssertionError("no path")
@@ -3414,11 +3426,15 @@ class DirState:
                 if dirblock[0] != entry[0][0]:
                     raise AssertionError(
                         "entry key for {!r}"
-                        "doesn't match directory name in\n{!r}".format(entry, pformat(dirblock))
+                        "doesn't match directory name in\n{!r}".format(
+                            entry, pformat(dirblock)
+                        )
                     )
             if dirblock[1] != sorted(dirblock[1]):
                 raise AssertionError(
-                    "dirblock for {!r} is not sorted:\n{}".format(dirblock[0], pformat(dirblock))
+                    "dirblock for {!r} is not sorted:\n{}".format(
+                        dirblock[0], pformat(dirblock)
+                    )
                 )
 
         def check_valid_parent():
@@ -3439,8 +3455,7 @@ class DirState:
                 )
             if parent_entry[1][tree_index][0] != b"d":
                 raise AssertionError(
-                    "Parent entry for {} is not marked as a valid"
-                    " directory. {}".format(
+                    "Parent entry for {} is not marked as a valid directory. {}".format(
                         this_path,
                         parent_entry,
                     )
@@ -3480,13 +3495,17 @@ class DirState:
                         if previous_path is not None:
                             raise AssertionError(
                                 "file {} is absent in row {!r} but also present "
-                                "at {!r}".format(file_id.decode("utf-8"), entry, previous_path)
+                                "at {!r}".format(
+                                    file_id.decode("utf-8"), entry, previous_path
+                                )
                             )
                     elif minikind == b"r":
                         target_location = tree_state[1]
                         if previous_path != target_location:
                             raise AssertionError(
-                                "file {} relocation in row {!r} but also at {!r}".format(file_id, entry, previous_path)
+                                "file {} relocation in row {!r} but also at {!r}".format(
+                                    file_id, entry, previous_path
+                                )
                             )
                     else:
                         # a file, directory, etc - may have been previously
@@ -3494,7 +3513,9 @@ class DirState:
                         if previous_path != this_path:
                             raise AssertionError(
                                 "entry {!r} inconsistent with previous path {!r} "
-                                "seen at {!r}".format(entry, previous_path, previous_loc)
+                                "seen at {!r}".format(
+                                    entry, previous_path, previous_loc
+                                )
                             )
                         check_valid_parent()
                 else:
@@ -3518,7 +3539,9 @@ class DirState:
                     # file_id
                     if entry_key[2] != file_id:
                         raise AssertionError(
-                            "file_id {!r} did not match entry key {}".format(file_id, entry_key)
+                            "file_id {!r} did not match entry key {}".format(
+                                file_id, entry_key
+                            )
                         )
                     # And that from this entry key, we can look up the original
                     # record
@@ -4064,7 +4087,9 @@ class ProcessEntryPython:
         else:
             raise AssertionError(
                 "don't know how to compare "
-                "source_minikind={!r}, target_minikind={!r}".format(source_minikind, target_minikind)
+                "source_minikind={!r}, target_minikind={!r}".format(
+                    source_minikind, target_minikind
+                )
             )
         return None, None
 
@@ -4538,7 +4563,9 @@ class ProcessEntryPython:
                 if changed is None:
                     raise AssertionError(
                         "Got entry<->path mismatch for specific path "
-                        "{!r} entry {!r} path_info {!r} ".format(path_utf8, entry, path_info)
+                        "{!r} entry {!r} path_info {!r} ".format(
+                            path_utf8, entry, path_info
+                        )
                     )
                 # Only include changes - we're outside the users requested
                 # expansion.

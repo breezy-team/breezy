@@ -337,7 +337,9 @@ class BzrFastExporter:
             if tree.kind(path) != "directory":
                 return False
         except _mod_transport.NoSuchFile:
-            self.warning("Skipping empty_dir detection - no file_id for {}".format(path))
+            self.warning(
+                "Skipping empty_dir detection - no file_id for {}".format(path)
+            )
             return False
 
         # Use treewalk to find the contents of our directory
@@ -562,7 +564,9 @@ class BzrFastExporter:
                     )
             else:
                 self.warning(
-                    "cannot export '{}' of kind {} yet - ignoring".format(change.path[1], change.kind[1])
+                    "cannot export '{}' of kind {} yet - ignoring".format(
+                        change.path[1], change.kind[1]
+                    )
                 )
 
         # TODO(jelmer): Improve performance on remote repositories
@@ -673,12 +677,16 @@ class BzrFastExporter:
         for old, new in renamed:
             if path == old:
                 self.note(
-                    "Changing path {} given rename to {} in revision {}".format(path, new, revision_id)
+                    "Changing path {} given rename to {} in revision {}".format(
+                        path, new, revision_id
+                    )
                 )
                 path = new
             elif path.startswith(old + "/"):
                 self.note(
-                    "Adjusting path {} given rename of {} to {} in revision {}".format(path, old, new, revision_id)
+                    "Adjusting path {} given rename of {} to {} in revision {}".format(
+                        path, old, new, revision_id
+                    )
                 )
                 path = path.replace(old + "/", new + "/")
         return path
@@ -689,8 +697,9 @@ class BzrFastExporter:
                 mark = self.revid_to_mark[revid]
             except KeyError:
                 self.warning(
-                    "not creating tag {!r} pointing to non-existent "
-                    "revision {}".format(tag, revid)
+                    "not creating tag {!r} pointing to non-existent revision {}".format(
+                        tag, revid
+                    )
                 )
             else:
                 git_ref = b"refs/tags/%s" % tag.encode("utf-8")

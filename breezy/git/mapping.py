@@ -97,7 +97,9 @@ def unescape_file_id(file_id):
             elif file_id[i + 1 : i + 2] == b"c":
                 ret.append(b"\x0c"[0])
             else:
-                raise ValueError("unknown escape character {}".format(file_id[i + 1 : i + 2]))
+                raise ValueError(
+                    "unknown escape character {}".format(file_id[i + 1 : i + 2])
+                )
             i += 1
         i += 1
     return bytes(ret)
@@ -673,9 +675,7 @@ def mode_kind(mode):
         elif file_kind == 6:
             return "tree-reference"
         else:
-            raise AssertionError(
-                f"Unknown file kind {file_kind}, perms={oct(mode)}."
-            )
+            raise AssertionError(f"Unknown file kind {file_kind}, perms={oct(mode)}.")
     else:
         raise AssertionError("Unknown kind, perms={!r}.".format(mode))
 

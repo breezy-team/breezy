@@ -575,7 +575,11 @@ class TreeTransformBase(TreeTransform):
 
             to_name = self.final_name(trans_id)
             to_kind = self.final_kind(trans_id)
-            to_executable = self._new_executability[trans_id] if trans_id in self._new_executability else from_executable
+            to_executable = (
+                self._new_executability[trans_id]
+                if trans_id in self._new_executability
+                else from_executable
+            )
             if from_versioned and from_kind != to_kind:
                 modified = True
             elif to_kind in ("file", "symlink") and (trans_id in self._new_contents):
@@ -665,7 +669,9 @@ class TreeTransformBase(TreeTransform):
                 parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError(
-                "TreeTransform not based on branch basis: {}".format(self._tree.get_revision_id().decode("utf-8"))
+                "TreeTransform not based on branch basis: {}".format(
+                    self._tree.get_revision_id().decode("utf-8")
+                )
             )
         from .. import commit
 
@@ -1477,7 +1483,9 @@ class GitTreeTransform(DiskTreeTransform):
                     with open(os.path.join(full_path, ".git"), "w") as f:
                         submodule_abspath = submodule_transport.local_abspath(".")
                         f.write(
-                            "gitdir: {}\n".format(os.path.relpath(submodule_abspath, full_path))
+                            "gitdir: {}\n".format(
+                                os.path.relpath(submodule_abspath, full_path)
+                            )
                         )
         for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the

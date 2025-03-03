@@ -137,9 +137,7 @@ class TestMergeImplementation(TestCaseWithTransport):
             [base_id], [("modify", ("foo", b"a\nc\nd\ne\n"))]
         )
         # Modify 'b\n', add 'X\n'
-        builder.build_snapshot(
-            [base_id], [("modify", ("foo", b"a\nb2\nc\nd\nX\ne\n"))]
-        )
+        builder.build_snapshot([base_id], [("modify", ("foo", b"a\nb2\nc\nd\nX\ne\n"))])
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()

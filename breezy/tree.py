@@ -455,8 +455,9 @@ class Tree:
 
     def get_reference_revision(self, path):
         raise NotImplementedError(
-            "Tree subclass {} must implement "
-            "get_reference_revision".format(self.__class__.__name__)
+            "Tree subclass {} must implement get_reference_revision".format(
+                self.__class__.__name__
+            )
         )
 
     def _comparison_data(self, entry, path):
@@ -620,7 +621,9 @@ class Tree:
         """
         raise NotImplementedError(self.is_versioned)
 
-    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
+    def find_related_paths_across_trees(
+        self, paths, trees=None, require_versioned=True
+    ):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 

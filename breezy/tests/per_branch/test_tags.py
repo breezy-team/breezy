@@ -32,7 +32,9 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # tests...
         branch = self.make_branch("probe")
         if not branch._format.supports_tags():
-            raise tests.TestSkipped("format {} doesn't support tags".format(branch._format))
+            raise tests.TestSkipped(
+                "format {} doesn't support tags".format(branch._format)
+            )
 
     def make_branch_with_revisions(self, relpath, revisions):
         builder = self.make_branch_builder(relpath)
@@ -280,7 +282,9 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         super().setUp()
         branch1 = self.make_branch("tags-probe")
         if not branch1._format.supports_tags():
-            raise tests.TestSkipped("format {} doesn't support tags".format(branch1._format))
+            raise tests.TestSkipped(
+                "format {} doesn't support tags".format(branch1._format)
+            )
         branch2 = self.make_branch("bind-probe")
         try:
             branch2.bind(branch1)

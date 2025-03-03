@@ -48,7 +48,9 @@ class TestHexAndUnhex(TestBtreeSerializer):
                 mod_hex = binascii.hexlify(mod_unhex)
             self.fail(
                 "_py_unhexlify returned a different answer"
-                " from binascii:\n    {!r}\n != {!r}".format(binascii.hexlify(ba_unhex), mod_hex)
+                " from binascii:\n    {!r}\n != {!r}".format(
+                    binascii.hexlify(ba_unhex), mod_hex
+                )
             )
 
     def assertFailUnhexlify(self, as_hex):

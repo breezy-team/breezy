@@ -48,7 +48,9 @@ class TestApportReporting(tests.TestCaseInTempDir):
             crash_filename = crash.report_bug_to_apport(sys.exc_info(), stderr)
 
         # message explaining the crash
-        self.assertContainsRe(stderr.getvalue(), "    apport-bug {}".format(crash_filename))
+        self.assertContainsRe(
+            stderr.getvalue(), "    apport-bug {}".format(crash_filename)
+        )
 
         with open(crash_filename) as crash_file:
             report = crash_file.read()

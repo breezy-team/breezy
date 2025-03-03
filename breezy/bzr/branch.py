@@ -541,7 +541,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(
                     "can't cope with fallback repositories "
-                    "of {!r} (fallbacks: {!r})".format(old_repository, old_repository._fallback_repositories)
+                    "of {!r} (fallbacks: {!r})".format(
+                        old_repository, old_repository._fallback_repositories
+                    )
                 )
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
@@ -555,7 +557,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
                 raise AssertionError(
-                    "didn't expect {!r} to have fallback_repositories".format(self.repository)
+                    "didn't expect {!r} to have fallback_repositories".format(
+                        self.repository
+                    )
                 )
             # Replace self.repository with the new repository.
             # Do our best to transfer the lock state (i.e. lock-tokens and
@@ -938,7 +942,9 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         if not _found:
             format = BranchFormatMetadir.find_format(a_controldir, name=name)
             if format.__class__ != self.__class__:
-                raise AssertionError("wrong format {!r} found for {!r}".format(format, self))
+                raise AssertionError(
+                    "wrong format {!r} found for {!r}".format(format, self)
+                )
         transport = a_controldir.get_branch_transport(None, name=name)
         try:
             control_files = lockable_files.LockableFiles(
@@ -1237,7 +1243,9 @@ class BranchReferenceFormat(BranchFormatMetadir):
         if not _found:
             format = BranchFormatMetadir.find_format(a_controldir, name=name)
             if format.__class__ != self.__class__:
-                raise AssertionError("wrong format {!r} found for {!r}".format(format, self))
+                raise AssertionError(
+                    "wrong format {!r} found for {!r}".format(format, self)
+                )
         if location is None:
             location = self.get_reference(a_controldir, name)
         real_bzrdir = ControlDir.open(location, possible_transports=possible_transports)

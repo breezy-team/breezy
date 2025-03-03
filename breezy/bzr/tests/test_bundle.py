@@ -534,7 +534,9 @@ class BundleTester:
         for rev in info.real_revisions:
             self.assertTrue(
                 not repository.has_revision(rev.revision_id),
-                "Revision {{{}}} present before applying bundle".format(rev.revision_id),
+                "Revision {{{}}} present before applying bundle".format(
+                    rev.revision_id
+                ),
             )
         merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 
@@ -1128,9 +1130,7 @@ class BundleTester:
     def test_with_subtree(self):
         tree = self.make_branch_and_tree("tree", format="dirstate-with-subtree")
         self.b1 = tree.branch
-        self.make_branch_and_tree(
-            "tree/subtree", format="dirstate-with-subtree"
-        )
+        self.make_branch_and_tree("tree/subtree", format="dirstate-with-subtree")
         tree.add("subtree")
         tree.commit("hello", rev_id=b"rev1")
         try:
@@ -1463,7 +1463,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id=b"A")
         self.assertFalse(branch.repository.has_signature_for_revision_id(b"A"))
         try:
-
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()

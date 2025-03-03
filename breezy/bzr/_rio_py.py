@@ -53,7 +53,9 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
             if tag is None:
                 raise ValueError("invalid continuation line {!r}".format(real_l))
             if accum_value is None:
-                raise ValueError("missing initial line for continuation {!r}".format(real_l))
+                raise ValueError(
+                    "missing initial line for continuation {!r}".format(real_l)
+                )
             accum_value.append("\n" + line[1:-1])
         else:  # new tag:value line
             if tag is not None:
@@ -63,7 +65,9 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
             try:
                 colon_index = line.index(": ")
             except ValueError as e:
-                raise ValueError("tag/value separator not found in line {!r}".format(real_l)) from e
+                raise ValueError(
+                    "tag/value separator not found in line {!r}".format(real_l)
+                ) from e
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag {!r}".format(tag))

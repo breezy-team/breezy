@@ -56,8 +56,9 @@ class MsgEditorTest(TestCaseWithTransport):
             self.build_tree_contents([(filename, b"contents of hello")])
         except UnicodeEncodeError:
             self.skipTest(
-                "can't build unicode working tree in "
-                "filesystem encoding {}".format(sys.getfilesystemencoding())
+                "can't build unicode working tree in filesystem encoding {}".format(
+                    sys.getfilesystemencoding()
+                )
             )
         working_tree.add(filename)
         return working_tree
@@ -235,7 +236,9 @@ if len(sys.argv) == 2:
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
             self.skipTest(
-                "Cannot find a unicode character that works in encoding {}".format(osutils.get_user_encoding())
+                "Cannot find a unicode character that works in encoding {}".format(
+                    osutils.get_user_encoding()
+                )
             )
 
         self.assertEqual(

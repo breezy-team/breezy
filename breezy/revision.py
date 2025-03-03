@@ -102,7 +102,9 @@ class Revision:
             if not_text or osutils.contains_whitespace(name):
                 raise ValueError("invalid property name {!r}".format(name))
             if not isinstance(value, (str, bytes)):
-                raise ValueError("invalid property value {!r} for {!r}".format(value, name))
+                raise ValueError(
+                    "invalid property value {!r} for {!r}".format(value, name)
+                )
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.

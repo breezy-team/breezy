@@ -17,7 +17,6 @@
 
 """Tests for decorator functions."""
 
-
 from .. import decorators
 from . import TestCase
 

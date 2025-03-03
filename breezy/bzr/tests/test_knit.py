@@ -603,9 +603,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess({"foo": (transport, "different-packname")})
-        self.assertListRaises(
-            _mod_transport.NoSuchFile, access.get_raw_records, memos
-        )
+        self.assertListRaises(_mod_transport.NoSuchFile, access.get_raw_records, memos)
 
     def test_failing_readv_raises_retry(self):
         memos = self.make_pack_file()
@@ -639,9 +637,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b"1234567890"], list(access.get_raw_records(memos[:1])))
         self.assertEqual([b"12345"], list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        self.assertListRaises(
-            _mod_transport.NoSuchFile, access.get_raw_records, memos
-        )
+        self.assertListRaises(_mod_transport.NoSuchFile, access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
         access = pack_repo._DirectPackAccess({}, reload_func=None)

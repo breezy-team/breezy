@@ -219,7 +219,9 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         return "tree-reference"
 
     def __repr__(self):
-        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})").format(
+        return (
+            "{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})"
+        ).format(
             type(self).__name__,
             self.file_id,
             self.name,
@@ -288,7 +290,9 @@ class GitTree(_mod_tree.Tree):
 
         return GitTransformPreview(self, pb=pb)
 
-    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
+    def find_related_paths_across_trees(
+        self, paths, trees=None, require_versioned=True
+    ):
         if trees is None:
             trees = []
         if paths is None:

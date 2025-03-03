@@ -541,7 +541,6 @@ class Weave(VersionedFile):
 
         ancestors = self._inclusions(parents)
 
-
         # basis a list of (origin, lineno, line)
         basis_lineno = []
         basis_lines = []
@@ -830,7 +829,9 @@ class Weave(VersionedFile):
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
             raise WeaveInvalidChecksum(
-                "file {}, revision {}, expected: {}, measured {}".format(self._weave_name, version_id, expected_sha1, measured_sha1)
+                "file {}, revision {}, expected: {}, measured {}".format(
+                    self._weave_name, version_id, expected_sha1, measured_sha1
+                )
             )
         return result
 
@@ -906,8 +907,9 @@ class Weave(VersionedFile):
             expected = self._sha1s[i]
             if hd != expected:
                 raise WeaveInvalidChecksum(
-                    "mismatched sha1 for version {}: "
-                    "got {}, expected {}".format(version, hd, expected)
+                    "mismatched sha1 for version {}: got {}, expected {}".format(
+                        version, hd, expected
+                    )
                 )
 
         # TODO: check insertions are properly nested, that there are
@@ -922,7 +924,9 @@ class Weave(VersionedFile):
             if parent_name not in self._name_map:
                 # should not be possible
                 raise WeaveError(
-                    "missing parent {{{}}} of {{{}}} in {!r}".format(parent_name, other._name_map[other_idx], self)
+                    "missing parent {{{}}} of {{{}}} in {!r}".format(
+                        parent_name, other._name_map[other_idx], self
+                    )
                 )
             new_parents.append(self._name_map[parent_name])
         return new_parents
@@ -950,7 +954,9 @@ class Weave(VersionedFile):
             n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch(
-                    "inconsistent parents for version {{{}}}: {} vs {}".format(name, n1, n2)
+                    "inconsistent parents for version {{{}}}: {} vs {}".format(
+                        name, n1, n2
+                    )
                 )
             else:
                 return True  # ok!

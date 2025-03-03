@@ -322,9 +322,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
 
         self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
         repo_transport = a_controldir.get_repository_transport(None)
-        lockable_files.LockableFiles(
-            repo_transport, "lock", lockdir.LockDir
-        )
+        lockable_files.LockableFiles(repo_transport, "lock", lockdir.LockDir)
         transactions.WriteTransaction()
         result = self.open(a_controldir=a_controldir, _found=True)
         result.lock_write()

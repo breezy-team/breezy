@@ -143,9 +143,7 @@ class TestGitBranchBuilder(tests.TestCase):
         builder.set_file("foo", b"contents\nfoo\n", False)
         r1 = builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
         builder.commit(b"Joe Foo <joe@foo.com>", "second", timestamp=1194586405)
-        builder.commit(
-            b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1
-        )
+        builder.commit(b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1)
 
         self.assertEqualDiff(
             b"blob\nmark :1\ndata 13\ncontents\nfoo\n\n"
@@ -182,9 +180,7 @@ class TestGitBranchBuilder(tests.TestCase):
         builder.set_file("foo", b"contents\nfoo\n", False)
         r1 = builder.commit(b"Joe Foo <joe@foo.com>", "first", timestamp=1194586400)
         r2 = builder.commit(b"Joe Foo <joe@foo.com>", "second", timestamp=1194586405)
-        builder.commit(
-            b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1
-        )
+        builder.commit(b"Joe Foo <joe@foo.com>", "third", timestamp=1194586410, base=r1)
         builder.commit(
             b"Joe Foo <joe@foo.com>", "Merge", timestamp=1194586415, merge=[r2]
         )

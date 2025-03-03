@@ -43,12 +43,14 @@ class _NoVfsCallsMismatch(Mismatch):
         self.vfs_calls = vfs_calls
 
     def describe(self):
-        return "no VFS calls expected, got: {}".format(",".join(
-            [
-                "{}({})".format(c.method, ", ".join([repr(a) for a in c.args]))
-                for c in self.vfs_calls
-            ]
-        ))
+        return "no VFS calls expected, got: {}".format(
+            ",".join(
+                [
+                    "{}({})".format(c.method, ", ".join([repr(a) for a in c.args]))
+                    for c in self.vfs_calls
+                ]
+            )
+        )
 
 
 class ContainsNoVfsCalls(Matcher):

@@ -17,7 +17,6 @@
 
 """Black-box tests for 'brz modified', which shows modified files."""
 
-
 from breezy.tests import TestCaseWithTransport
 
 

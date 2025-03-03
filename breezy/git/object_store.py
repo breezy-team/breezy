@@ -149,9 +149,7 @@ def _check_expected_sha(expected_sha, object):
                 "Invalid sha for {!r}: {}".format(object, sha_to_hex(expected_sha))
             )
     else:
-        raise AssertionError(
-            f"Unknown length {len(expected_sha)} for {expected_sha!r}"
-        )
+        raise AssertionError(f"Unknown length {len(expected_sha)} for {expected_sha!r}")
 
 
 def directory_to_tree(

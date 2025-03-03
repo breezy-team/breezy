@@ -80,7 +80,9 @@ def unpack_highres_date(date):
     # Weekday parsing is locale sensitive, so drop the weekday
     space_loc = date.find(" ")
     if space_loc == -1 or date[:space_loc] not in osutils.weekdays:
-        raise ValueError("Date string does not contain a day of week: {!r}".format(date))
+        raise ValueError(
+            "Date string does not contain a day of week: {!r}".format(date)
+        )
     # Up until the first period is a datestamp that is generated
     # as normal from time.strftime, so use time.strptime to
     # parse it
@@ -125,7 +127,10 @@ def format_patch_date(secs, offset=0):
         from warnings import warn
 
         warn(
-            "gmtime of negative time ({}, {}) may not work on Windows".format(secs, offset), stacklevel=2
+            "gmtime of negative time ({}, {}) may not work on Windows".format(
+                secs, offset
+            ),
+            stacklevel=2,
         )
     return osutils.format_date(secs, offset=offset, date_fmt="%Y-%m-%d %H:%M:%S")
 
@@ -144,7 +149,9 @@ def parse_patch_date(date_str):
     match = RE_PATCHDATE.match(date_str)
     if match is None:
         if RE_PATCHDATE_NOOFFSET.match(date_str) is not None:
-            raise ValueError("time data {!r} is missing a timezone offset".format(date_str))
+            raise ValueError(
+                "time data {!r} is missing a timezone offset".format(date_str)
+            )
         else:
             raise ValueError(
                 "time data {!r} does not match format ".format(date_str)

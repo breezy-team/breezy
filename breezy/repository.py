@@ -315,7 +315,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 )
                 return
             raise errors.BzrError(
-                "mismatched lock context and write group. {!r}, {!r}".format(self._write_group, self.get_transaction())
+                "mismatched lock context and write group. {!r}, {!r}".format(
+                    self._write_group, self.get_transaction()
+                )
             )
         try:
             self._abort_write_group()
@@ -671,8 +673,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError(
-                "mismatched lock context {!r} and "
-                "write group {!r}.".format(self.get_transaction(), self._write_group)
+                "mismatched lock context {!r} and write group {!r}.".format(
+                    self.get_transaction(), self._write_group
+                )
             )
         result = self._commit_write_group()
         self._write_group = None
@@ -1247,7 +1250,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 return
             warning(
                 "Format {} for {} is deprecated -"
-                " please use 'brz upgrade' to get better performance".format(self._format, self.controldir.transport.base)
+                " please use 'brz upgrade' to get better performance".format(
+                    self._format, self.controldir.transport.base
+                )
             )
         finally:
             _deprecation_warning_done = True

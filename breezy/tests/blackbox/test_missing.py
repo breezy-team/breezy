@@ -215,7 +215,9 @@ class TestMissing(tests.TestCaseWithTransport):
         # check last location
         lines, err = self.run_bzr("missing", working_dir="b")
         self.assertEqual(
-            "Using saved parent location: {}\nBranches are up to date.\n".format(location),
+            "Using saved parent location: {}\nBranches are up to date.\n".format(
+                location
+            ),
             lines,
         )
         self.assertEqual("", err)

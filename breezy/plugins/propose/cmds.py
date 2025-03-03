@@ -347,7 +347,9 @@ class cmd_my_merge_proposals(Command):
                         source_branch_url = mp.get_source_branch_url()
                         if source_branch_url:
                             self.outf.write(
-                                "(Merging {} into {})\n".format(source_branch_url, mp.get_target_branch_url())
+                                "(Merging {} into {})\n".format(
+                                    source_branch_url, mp.get_target_branch_url()
+                                )
                             )
                         else:
                             self.outf.write(

@@ -243,7 +243,9 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
-            raise TypeError("raw_bytes must be bytes string, not {}".format(type(raw_bytes)))
+            raise TypeError(
+                "raw_bytes must be bytes string, not {}".format(type(raw_bytes))
+            )
         resp = self._call_with_body_bytes(
             b"put",
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),

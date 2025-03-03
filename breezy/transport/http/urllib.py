@@ -712,7 +712,9 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
                 trace.mutter("> " + "\n> ".join(hdrs) + "\n")
             if self._debuglevel >= 1:
                 print(
-                    "Request sent: [{!r}] from ({})".format(request, request.connection.sock.getsockname())
+                    "Request sent: [{!r}] from ({})".format(
+                        request, request.connection.sock.getsockname()
+                    )
                 )
             response = connection.getresponse()
             convert_to_addinfourl = True
@@ -1759,8 +1761,9 @@ class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
             raise errors.TransportError(
-                "Server refuses to fulfill the request (403 Forbidden)"
-                " for {}".format(req.get_full_url())
+                "Server refuses to fulfill the request (403 Forbidden) for {}".format(
+                    req.get_full_url()
+                )
             )
         else:
             raise errors.UnexpectedHttpStatus(
@@ -1864,7 +1867,9 @@ class HttpTransport(ConnectedTransport):
         request = Request(method, url, data, headers)
         request.follow_redirections = urlopen_kw.pop("retries", 0) > 0
         if urlopen_kw:
-            raise NotImplementedError("unknown arguments: {!r}".format(urlopen_kw.keys()))
+            raise NotImplementedError(
+                "unknown arguments: {!r}".format(urlopen_kw.keys())
+            )
         connection = self._get_connection()
         if connection is not None:
             # Give back shared info
@@ -2233,7 +2238,9 @@ class HttpTransport(ConnectedTransport):
             elif self._range_hint == "single":
                 max_ranges = total
             else:
-                raise AssertionError("Unknown _range_hint {!r}".format(self._range_hint))
+                raise AssertionError(
+                    "Unknown _range_hint {!r}".format(self._range_hint)
+                )
             # TODO: Some web servers may ignore the range requests and return
             # the whole file, we may want to detect that and avoid further
             # requests.

@@ -144,7 +144,9 @@ class SmartMedium:
             raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
-                "_push_back called when self._push_back_buffer is {!r}".format(self._push_back_buffer)
+                "_push_back called when self._push_back_buffer is {!r}".format(
+                    self._push_back_buffer
+                )
             )
         if data == b"":
             return
@@ -438,7 +440,10 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             thread_id = _thread.get_ident()
             trace.mutter(
                 "%12s: [%s] %d bytes to the socket in %.3fs",
-                "wrote", thread_id, len(bytes), osutils.perf_counter() - tstart
+                "wrote",
+                thread_id,
+                len(bytes),
+                osutils.perf_counter() - tstart,
             )
 
 
@@ -821,7 +826,9 @@ class SmartClientMedium(SmartMedium):
             if "hpss" in debug.debug_flags:
                 ui.ui_factory.show_warning(
                     "_remember_remote_is_before({!r}) called, but "
-                    "_remember_remote_is_before({!r}) was called previously.".format(version_tuple, self._remote_version_is_before)
+                    "_remember_remote_is_before({!r}) was called previously.".format(
+                        version_tuple, self._remote_version_is_before
+                    )
                 )
             return
         self._remote_version_is_before = version_tuple
@@ -943,7 +950,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
             self._writeable_pipe.write(data)
         except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
-                raise errors.ConnectionReset("Error trying to write to subprocess", e) from e
+                raise errors.ConnectionReset(
+                    "Error trying to write to subprocess", e
+                ) from e
             raise
         self._report_activity(len(data), "write")
 
@@ -1065,7 +1074,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             )
         else:
             raise AssertionError(
-                "Unexpected io_kind {!r} from {!r}".format(io_kind, self._ssh_connection)
+                "Unexpected io_kind {!r} from {!r}".format(
+                    io_kind, self._ssh_connection
+                )
             )
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)

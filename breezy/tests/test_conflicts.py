@@ -346,7 +346,11 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
         [
             # File modified on both sides
             (
-                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "filed_modified_A",
                     {"actions": "modify_file_A", "check": "file_has_content_A"},
@@ -439,7 +443,11 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         [
             # File modified/deleted
             (
-                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "file_modified",
                     {"actions": "modify_file", "check": "file_has_more_content"},
@@ -452,7 +460,9 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
             # File renamed-modified/deleted
             (
                 {
-                    "_base_actions": "create_file", "_path": "new-file", "_file_id": b"file-id"
+                    "_base_actions": "create_file",
+                    "_path": "new-file",
+                    "_file_id": b"file-id",
                 },
                 (
                     "file_renamed_and_modified",
@@ -483,7 +493,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                 (
                     "file_deleted_in_dir",
                     {
-                        "actions": "delete_file_in_dir", "check": "file_in_dir_doesnt_exist"
+                        "actions": "delete_file_in_dir",
+                        "check": "file_in_dir_doesnt_exist",
                     },
                 ),
             ),

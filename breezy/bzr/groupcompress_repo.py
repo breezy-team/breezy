@@ -442,7 +442,9 @@ class GCCHKPacker(Packer):
             if really_missing:
                 missing_inventories = sorted(really_missing)
                 raise ValueError(
-                    "We are missing inventories for revisions: {}".format(missing_inventories)
+                    "We are missing inventories for revisions: {}".format(
+                        missing_inventories
+                    )
                 )
         self._copy_stream(
             source_vf,
@@ -785,7 +787,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
             problems.append(
-                "inventories missing for revisions {}".format(sorted(missing_corresponding))
+                "inventories missing for revisions {}".format(
+                    sorted(missing_corresponding)
+                )
             )
             return problems
         # Are any chk root entries missing for any inventories?  This includes

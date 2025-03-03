@@ -323,7 +323,9 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
                     continue
                 if node_idx[node] <= node_idx[parent]:
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(parent, node, sort_result)
+                        "parent {} must come before child {}:\n{}".format(
+                            parent, node, sort_result
+                        )
                     )
 
     def test_topo_sort_empty(self):

@@ -213,7 +213,9 @@ def dir_exporter_generator(
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
-                    "Failed to create symlink {!r} -> {!r}, error: {}".format(fullpath, symlink_target, e)
+                    "Failed to create symlink {!r} -> {!r}, error: {}".format(
+                        fullpath, symlink_target, e
+                    )
                 )
         else:
             raise errors.BzrError(

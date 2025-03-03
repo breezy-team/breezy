@@ -429,7 +429,9 @@ def _load_plugin_module(name, dir):
     except errors.IncompatibleVersion as e:
         warning_message = (
             "Unable to load plugin {!r}. It supports {} "
-            "versions {!r} but the current version is {}".format(name, e.api.__name__, e.wanted, e.current)
+            "versions {!r} but the current version is {}".format(
+                name, e.api.__name__, e.wanted, e.current
+            )
         )
         return record_plugin_warning(warning_message)
     except Exception as e:

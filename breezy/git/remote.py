@@ -609,7 +609,10 @@ class RemoteGitDir(GitDir):
         if self._refs is not None:
             return self._refs
         result = self.fetch_pack(
-            lambda x: None, None, lambda x: None, lambda x: trace.mutter("git: {}".format(x))
+            lambda x: None,
+            None,
+            lambda x: None,
+            lambda x: trace.mutter("git: {}".format(x)),
         )
         self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
         return self._refs

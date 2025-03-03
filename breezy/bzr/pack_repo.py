@@ -757,7 +757,9 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                "{} already has a writable index through {}".format(self, self.add_callback)
+                "{} already has a writable index through {}".format(
+                    self, self.add_callback
+                )
             )
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
@@ -841,8 +843,9 @@ class Packer:
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
             raise errors.BzrError(
-                "call to {}.pack() while another pack is"
-                " being written.".format(self.__class__.__name__)
+                "call to {}.pack() while another pack is being written.".format(
+                    self.__class__.__name__
+                )
             )
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
@@ -1798,7 +1801,9 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository {} has missing compression parent(s) {!r} ".format(self.repo, sorted(all_missing))
+                "Repository {} has missing compression parent(s) {!r} ".format(
+                    self.repo, sorted(all_missing)
+                )
             )
         problems = self._check_new_inventories()
         if problems:
@@ -2210,7 +2215,9 @@ class _DirectPackAccess:
         """
         raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError("data must be plain bytes was {}".format(type(raw_data)))
+            raise AssertionError(
+                "data must be plain bytes was {}".format(type(raw_data))
+            )
         result = []
         offset = 0
         for key, size in key_sizes:

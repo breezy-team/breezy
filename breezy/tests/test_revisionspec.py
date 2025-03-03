@@ -64,13 +64,16 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.assertEqual(
             exp_revno,
             rev_info.revno,
-            "Revision spec: {!r} returned wrong revno: {!r} != {!r}".format(revision_spec, exp_revno, rev_info.revno),
+            "Revision spec: {!r} returned wrong revno: {!r} != {!r}".format(
+                revision_spec, exp_revno, rev_info.revno
+            ),
         )
         self.assertEqual(
             exp_revision_id,
             rev_info.rev_id,
-            "Revision spec: {!r} returned wrong revision id:"
-            " {!r} != {!r}".format(revision_spec, exp_revision_id, rev_info.rev_id),
+            "Revision spec: {!r} returned wrong revision id: {!r} != {!r}".format(
+                revision_spec, exp_revision_id, rev_info.rev_id
+            ),
         )
 
     def assertInvalid(self, revision_spec, extra="", invalid_as_revision_id=True):
@@ -81,8 +84,9 @@ class TestRevisionSpec(TestCaseWithTransport):
             self.assertEqual(extra, e.extra)
         else:
             self.fail(
-                "Expected InvalidRevisionSpec to be raised for"
-                " {!r}.in_history".format(revision_spec)
+                "Expected InvalidRevisionSpec to be raised for {!r}.in_history".format(
+                    revision_spec
+                )
             )
         if invalid_as_revision_id:
             try:

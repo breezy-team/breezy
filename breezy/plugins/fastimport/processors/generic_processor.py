@@ -556,7 +556,9 @@ class GenericProcessor(processor.ImportProcessor):
             if cmd.from_ is not None:
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:
-                self.warning("ignoring reset refs/tags/{} - no from clause".format(tag_name))
+                self.warning(
+                    "ignoring reset refs/tags/{} - no from clause".format(tag_name)
+                )
             return
 
         if cmd.from_ is not None:
