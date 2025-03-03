@@ -46,7 +46,7 @@ class _Serializer_v4(XMLSerializer):
         e.set("kind", ie.kind)
 
         if ie.text_size is not None:
-            e.set("text_size", "%d" % ie.text_size)
+            e.set("text_size", f"{int(ie.text_size)}")
 
         for f in ["text_id", "text_sha1", "symlink_target"]:
             v = getattr(ie, f)

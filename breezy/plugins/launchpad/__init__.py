@@ -35,12 +35,6 @@ The plugin also provides the following commands:
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
 from ... import (
-    branch as _mod_branch,
-)  # Since we are a built-in plugin we share the breezy version
-from ... import config as _mod_config
-from ... import (
-    lazy_regex,
-    trace,
     version_info,  # noqa: F401
 )
 from ...commands import plugin_cmds

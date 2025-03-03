@@ -16,7 +16,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from .... import tests
+__all__ = [
+    'TestCaseInTempDir',
+    'TestCaseWithTransport',
+    'TestUtil',
+    'multiply_tests',
+    'quilt_feature',
+    'load_tests',
+]
+
+
 from ....tests import TestCaseInTempDir, TestCaseWithTransport, TestUtil, multiply_tests
 from ....tests.features import ExecutableFeature
 

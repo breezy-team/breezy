@@ -437,8 +437,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                 if not isinstance(row, _LeafBuilderRow):
                     raise AssertionError(
                         "Incorrect amount of data copied"
-                        " expected: %d, got: %d"
-                        % ((row.nodes - 1) * _PAGE_SIZE, copied_len)
+                        f" expected: {(row.nodes - 1) * _PAGE_SIZE}, got: {copied_len}"
                     )
         result.flush()
         size = result.tell()
@@ -1031,7 +1030,7 @@ class BTreeGraphIndex:
                     yield (self, key, value, refs)
         else:
             for _, node in nodes:
-                for key, (value, refs) in node.all_items():
+                for key, (value, _refs) in node.all_items():
                     yield (self, key, value)
 
     @staticmethod

@@ -71,13 +71,7 @@ class SearchResult(AbstractSearchResult):
             exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ", ...]"
         else:
             exclude_keys_repr = repr(exclude_keys)
-        return "<%s %s:(%s, %s, %d)>" % (
-            self.__class__.__name__,
-            kind,
-            start_keys_repr,
-            exclude_keys_repr,
-            key_count,
-        )
+        return f"<{self.__class__.__name__} {kind}:({start_keys_repr}, {exclude_keys_repr}, {key_count})>"
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -168,7 +162,7 @@ class PendingAncestryResult(AbstractSearchResult):
     def __repr__(self):
         if len(self.heads) > 5:
             heads_repr = repr(list(self.heads)[:5])[:-1]
-            heads_repr += ", <%d more>...]" % (len(self.heads) - 5,)
+            heads_repr += f", <{len(self.heads) - 5} more>...]"
         else:
             heads_repr = repr(self.heads)
         return "<{} heads:{} repo:{!r}>".format(

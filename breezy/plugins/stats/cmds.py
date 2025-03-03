@@ -292,8 +292,7 @@ class cmd_ancestor_growth(commands.Command):
             revno = 0
             cur_parents = 0
             sorted_graph = tsort.merge_sort(graph.iter_ancestry([last_rev]), last_rev)
-            for _num, _node_name, depth, _isend in reversed(sorted_graph):
-                cur_parents += 1
+            for cur_parents, (_num, _node_name, depth, _isend) in enumerate(reversed(sorted_graph), 1):
                 if depth == 0:
                     revno += 1
                     self.outf.write("%4d, %4d\n" % (revno, cur_parents))
@@ -303,15 +302,13 @@ def gather_class_stats(repository, revs):
     ret = {}
     total = 0
     with ui.ui_factory.nested_progress_bar() as pb, repository.lock_read():
-        i = 0
-        for delta in repository.get_revision_deltas(revs):
+        for i, delta in enumerate(repository.get_revision_deltas(revs)):
             pb.update("classifying commits", i, len(revs))
             for c in classify_delta(delta):
                 if c not in ret:
                     ret[c] = 0
                 ret[c] += 1
                 total += 1
-            i += 1
     return ret, total
 
 

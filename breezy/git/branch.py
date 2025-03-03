@@ -932,11 +932,10 @@ class GitBranchPullResult(branch.PullResult):
                 to_file.write("No revisions to pull.\n")
             elif self.new_git_head is not None:
                 to_file.write(
-                    "Now on revision %d (git sha: %s).\n"
-                    % (self.new_revno, self.new_git_head)
+                    f"Now on revision {self.new_revno} (git sha: {self.new_git_head}).\n"
                 )
             else:
-                to_file.write("Now on revision %d.\n" % (self.new_revno,))
+                to_file.write(f"Now on revision {self.new_revno}.\n")
         self._show_tag_conficts(to_file)
 
     def _lookup_revno(self, revid):

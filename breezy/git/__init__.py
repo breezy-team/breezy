@@ -29,7 +29,7 @@ dulwich_minimum_version = (0, 19, 11)
 
 from .. import __version__ as breezy_version
 from .. import errors as brz_errors
-from .. import trace, urlutils, version_info
+from .. import trace, urlutils
 from ..commands import plugin_cmds
 from ..controldir import ControlDirFormat, Prober, format_registry
 from ..controldir import network_format_registry as controldir_network_format_registry
@@ -55,8 +55,8 @@ def import_dulwich():
         if dulwich_version < dulwich_minimum_version:
             raise brz_errors.DependencyNotPresent(
                 "dulwich",
-                "bzr-git: Dulwich is too old; at least %d.%d.%d is required"
-                % dulwich_minimum_version,
+                "bzr-git: Dulwich is too old; at least "
+                f"{dulwich_minimum_version[0]}.{dulwich_minimum_version[1]}.{dulwich_minimum_version[2]} is required"
             )
 
 

@@ -1198,7 +1198,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             extra = " " + repr(extra_bytes[:40])
             if len(extra) > 33:
                 extra = extra[:29] + extra[-1] + "..."
-        mutter("%12s: [%s] %s%s%s" % (action, self._thread_id, t, message, extra))
+        mutter("%12s: [%s] %s%s%s", action, self._thread_id, t, message, extra)
 
     def send_error(self, exception):
         if self.response_sent:

@@ -21,7 +21,6 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import errors
 from ... import transport as _mod_transport
 from ...bzr.bzrdir import BzrFormat
 from ...commands import plugin_cmds
@@ -61,7 +60,7 @@ def show_rebase_summary(params):
     except _mod_transport.NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
-    params.to_file.write("Rebase in progress. (%d revisions left)\n" % len(todo))
+    params.to_file.write(f"Rebase in progress. ({len(todo)} revisions left)\n")
 
 
 from ...hooks import install_lazy_named_hook

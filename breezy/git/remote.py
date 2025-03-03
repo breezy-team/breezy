@@ -845,7 +845,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise NotGitRepository()
         elif response.status != 200:
             raise GitProtocolError(
-                "unexpected http resp %d for %s" % (response.status, url)
+                f"unexpected http resp {response.status} for {url}",
             )
 
         read = response.read

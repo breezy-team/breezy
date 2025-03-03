@@ -359,7 +359,8 @@ class Patch(BinaryPatch):
 
     def stats_str(self):
         """Return a string of patch statistics."""
-        return "%i inserts, %i removes in %i hunks" % self.stats_values()
+        (inserts, removes, hunks) = self.stats_values()
+        return f"{inserts} inserts, {removes} removes in {hunks} hunks"
 
     def pos_in_mod(self, position):
         newpos = position

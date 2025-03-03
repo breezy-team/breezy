@@ -188,7 +188,7 @@ def _show_control_dir_info(control, outfile):
     if control._format.colocated_branches:
         outfile.write("\n")
         outfile.write("Control directory:\n")
-        outfile.write("         %d branches\n" % len(control.list_branches()))
+        outfile.write(f"         {len(control.list_branches())} branches\n")
 
 
 def _show_format_info(

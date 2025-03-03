@@ -150,7 +150,7 @@ def _check_expected_sha(expected_sha, object):
             )
     else:
         raise AssertionError(
-            "Unknown length %d for %r" % (len(expected_sha), expected_sha)
+            f"Unknown length {len(expected_sha)} for {expected_sha!r}"
         )
 
 

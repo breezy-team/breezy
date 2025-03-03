@@ -249,7 +249,7 @@ class PluginData:
         if version is None:
             try:
                 version = breezy.plugin.plugins()[name].__version__
-            except:
+            except BaseException:
                 version = "unknown"
         self.name = name
         self.version = version

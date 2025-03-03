@@ -50,7 +50,7 @@ class EmailSender:
         fields = {
             "committer": self.revision.committer,
             "message": self.revision.get_summary(),
-            "revision": "%d" % self.revno,
+            "revision": str(self.revno),
             "url": self.url(),
         }
         for name, value in fields.items():
@@ -131,10 +131,7 @@ class EmailSender:
         if numlines <= difflimit:
             return diff_content.getvalue()
         else:
-            return "\nDiff too large for email (%d lines, the limit is %d).\n" % (
-                numlines,
-                difflimit,
-            )
+            return f"\nDiff too large for email ({numlines} lines, the limit is {difflimit}).\n"
 
     def difflimit(self):
         """Maximum number of lines of diff to show."""
@@ -258,11 +255,7 @@ class EmailSender:
     def subject(self):
         _subject = self.config.get("post_commit_subject")
         if _subject is None:
-            _subject = "Rev %d: %s in %s" % (
-                self.revno,
-                self.revision.get_summary(),
-                self.url(),
-            )
+            _subject = f"Rev {self.revno}: {self.revision.get_summary()} in {self.url()}"
         return self._format(_subject)
 
     def diff_filename(self):

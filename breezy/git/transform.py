@@ -1462,7 +1462,7 @@ class GitTreeTransform(DiskTreeTransform):
                     for (
                         submodule_path,
                         _submodule_url,
-                        submodule_name,
+                        _submodule_name,
                     ) in self._tree._submodule_config():
                         if decode_git_path(submodule_path) == path:
                             break
@@ -1483,7 +1483,7 @@ class GitTreeTransform(DiskTreeTransform):
                         f.write(
                             "gitdir: {}\n".format(os.path.relpath(submodule_abspath, full_path))
                         )
-        for path, trans_id in new_paths:
+        for _path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
             if trans_id in self._limbo_files:

@@ -695,7 +695,7 @@ class cmd_revision_info(Command):
 
         self.cleanup_now()
         for revno, revid in revinfos:
-            self.outf.write("%*s %s\n" % (maxlen, revno, revid.decode("utf-8")))
+            self.outf.write(f"{revno:>{maxlen}} {revid.decode('utf-8')}\n")
 
 
 class cmd_add(Command):
@@ -940,7 +940,7 @@ class cmd_inventory(Command):
             if path == "" and not include_root:
                 continue
             if show_ids:
-                self.outf.write("%-50s %s\n" % (path, entry.file_id.decode("utf-8")))
+                self.outf.write(f"{path:<50} {entry.file_id.decode('utf-8')}\n")
             else:
                 self.outf.write(path)
                 self.outf.write("\n")
@@ -3332,7 +3332,7 @@ class cmd_touching_revisions(Command):
                 tree.branch.repository, tree.branch.last_revision(), tree, relpath
             )
             for revno, _revision_id, what in reversed(list(touching_revs)):
-                self.outf.write("%6d %s\n" % (revno, what))
+                self.outf.write(f"{revno:6d} {what}\n")
 
 
 class cmd_ls(Command):
@@ -3445,9 +3445,9 @@ class cmd_ls(Command):
             outstring = fp + kindch
             ui.ui_factory.clear_term()
             if verbose:
-                outstring = "%-8s %s" % (fc, outstring)
+                outstring = f"{fc:<8} {outstring}"
                 if show_ids and getattr(entry, "file_id", None) is not None:
-                    outstring = "%-50s %s" % (outstring, entry.file_id.decode("utf-8"))
+                    outstring = f"{outstring:<50} {entry.file_id.decode('utf-8')}"
                 self.outf.write(outstring + "\n")
             elif null:
                 self.outf.write(fp + "\0")
@@ -3462,7 +3462,7 @@ class cmd_ls(Command):
                         my_id = entry.file_id.decode("utf-8")
                     else:
                         my_id = ""
-                    self.outf.write("%-50s %s\n" % (outstring, my_id))
+                    self.outf.write(f"{outstring:<50} {my_id}\n")
                 else:
                     self.outf.write(outstring + "\n")
 
@@ -3646,7 +3646,7 @@ class cmd_ignored(Command):
                 continue
             # XXX: Slightly inefficient since this was already calculated
             pat = tree.is_ignored(path)
-            self.outf.write("%-50s %s\n" % (path, pat))
+            self.outf.write(f"{path:<50} {pat}\n")
 
 
 class cmd_lookup_revision(Command):
@@ -6875,7 +6875,7 @@ class cmd_tags(Command):
             tags = [(tag, revid.decode("utf-8")) for (tag, revid) in tags]
         self.cleanup_now()
         for tag, revspec in tags:
-            self.outf.write("%-20s %s\n" % (tag, revspec))
+            self.outf.write(f"{tag:<20} {revspec}\n")
 
     def _tags_for_range(self, branch, revision):
         rev1, rev2 = _get_revision_range(revision, branch, self.name())
@@ -7301,7 +7301,7 @@ class cmd_view(Command):
                     else:
                         active = "  "
                     view_str = views.view_display_str(view_dict[view])
-                    self.outf.write("%s %-20s %s\n" % (active, view, view_str))
+                    self.outf.write(f"{active} {view:<20} {view_str}\n")
             else:
                 self.outf.write(gettext("No views defined.\n"))
         elif file_list:
@@ -7488,7 +7488,7 @@ class cmd_shelve(Command):
             message = manager.get_metadata(shelf_id).get(b"message")
             if message is None:
                 message = "<no message>"
-            self.outf.write("%3d: %s\n" % (shelf_id, message))
+            self.outf.write(f"{shelf_id:3d}: {message}\n")
         return 1
 
 
