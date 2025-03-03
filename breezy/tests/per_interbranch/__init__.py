@@ -23,7 +23,12 @@ Specific tests for individual formats are in the tests for the formats
 itself rather than in tests/per_interbranch/*.py.
 """
 
-from typing import Any, List
+__all__ = [
+    "GenericInterBranch",
+    "TestCaseWithInterBranch",
+]
+
+from typing import Any
 
 from breezy import branchbuilder
 from breezy.branch import GenericInterBranch, InterBranch
@@ -176,7 +181,7 @@ class StubMatchingInter:
     and added rather than actually trying to do something.
     """
 
-    _uses: List[Any] = []
+    _uses: list[Any] = []
 
     def __init__(self, source, target):
         self.source = source

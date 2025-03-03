@@ -48,7 +48,7 @@ try:
     import locale
 
     locale.setlocale(locale.LC_ALL, "")
-except:
+except BaseException:
     pass
 
 import sys

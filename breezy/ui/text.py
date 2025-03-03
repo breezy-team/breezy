@@ -360,7 +360,9 @@ class TextUIFactory(UIFactory):
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn("{!r} updated but no tasks are active".format(task), stacklevel=2)
+            warnings.warn(
+                "{!r} updated but no tasks are active".format(task), stacklevel=2
+            )
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual

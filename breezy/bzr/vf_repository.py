@@ -717,7 +717,9 @@ class VersionedFileRepository(Repository):
         if not (inv.revision_id is None or inv.revision_id == revision_id):
             raise AssertionError(
                 "Mismatch between inventory revision"
-                " id and insertion revid ({!r}, {!r})".format(inv.revision_id, revision_id)
+                " id and insertion revid ({!r}, {!r})".format(
+                    inv.revision_id, revision_id
+                )
             )
         if inv.root is None:
             raise errors.RootMissing()
@@ -937,7 +939,9 @@ class VersionedFileRepository(Repository):
         sum(map(len, chunks))
         if item_data and sha1 != item_data[1]:
             checker._report_items.append(
-                "sha1 mismatch: {} has sha1 {} expected {} referenced by {}".format(record.key, sha1, item_data[1], item_data[2])
+                "sha1 mismatch: {} has sha1 {} expected {} referenced by {}".format(
+                    record.key, sha1, item_data[1], item_data[2]
+                )
             )
 
     def _eliminate_revisions_not_present(self, revision_ids):
@@ -1016,7 +1020,9 @@ class VersionedFileRepository(Repository):
             return FetchResult(0)
         inter = InterRepository.get(source, self)
         if fetch_spec is not None and not getattr(inter, "supports_fetch_spec", False):
-            raise errors.UnsupportedOperation("fetch_spec not supported for {!r}".format(inter))
+            raise errors.UnsupportedOperation(
+                "fetch_spec not supported for {!r}".format(inter)
+            )
         return inter.fetch(
             revision_id=revision_id,
             find_ghosts=find_ghosts,

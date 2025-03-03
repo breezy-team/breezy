@@ -30,14 +30,14 @@ import errno
 import sys
 from io import BytesIO
 from stat import S_ISDIR
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, TypeVar
 
 from .. import errors, hooks, osutils, registry, ui, urlutils
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
-_file_streams: Dict[str, Any] = {}
+_file_streams: dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
@@ -866,7 +866,9 @@ class Transport:
                 if start < last_end:
                     raise ValueError(
                         "Overlapping range not allowed:"
-                        " last range ended at {}, new one starts at {}".format(last_end, start)
+                        " last range ended at {}, new one starts at {}".format(
+                            last_end, start
+                        )
                     )
                 cur.length = end - cur.start
                 cur.ranges.append((start - cur.start, size))
@@ -1177,11 +1179,15 @@ class Transport:
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Hard links are not supported on {}".format(self))
+        raise errors.TransportNotPossible(
+            "Hard links are not supported on {}".format(self)
+        )
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Symlinks are not supported on {}".format(self))
+        raise errors.TransportNotPossible(
+            "Symlinks are not supported on {}".format(self)
+        )
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1210,7 +1216,9 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on {}".format(self))
+        raise errors.TransportNotPossible(
+            "transport locks not supported on {}".format(self)
+        )
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1223,7 +1231,9 @@ class Transport:
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on {}".format(self))
+        raise errors.TransportNotPossible(
+            "transport locks not supported on {}".format(self)
+        )
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1622,7 +1632,11 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
-            mutter("failed to instantiate transport {!r} for {!r}: {!r}".format(factory, base, e))
+            mutter(
+                "failed to instantiate transport {!r} for {!r}: {!r}".format(
+                    factory, base, e
+                )
+            )
             last_err = e
             continue
     return None, last_err

@@ -24,7 +24,7 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
-from typing import List, Set, Tuple, Union
+from typing import Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -219,7 +219,9 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         return "tree-reference"
 
     def __repr__(self):
-        return ("{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})").format(
+        return (
+            "{}(file_id={!r}, name={!r}, parent_id={!r}, reference_revision={!r})"
+        ).format(
             type(self).__name__,
             self.file_id,
             self.name,
@@ -288,7 +290,9 @@ class GitTree(_mod_tree.Tree):
 
         return GitTransformPreview(self, pb=pb)
 
-    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
+    def find_related_paths_across_trees(
+        self, paths, trees=None, require_versioned=True
+    ):
         if trees is None:
             trees = []
         if paths is None:
@@ -1588,7 +1592,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _add_missing_parent_ids(
         self, path: str, dir_ids
-    ) -> List[Tuple[str, GitTreeDirectory]]:
+    ) -> list[tuple[str, GitTreeDirectory]]:
         if path in dir_ids:
             return []
         parent = posixpath.dirname(path).strip("/")
@@ -1870,7 +1874,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
 def snapshot_workingtree(
     target: MutableGitIndexTree, want_unversioned: bool = False
-) -> Tuple[ObjectID, Set[bytes]]:
+) -> tuple[ObjectID, set[bytes]]:
     """Snapshot a working tree into a tree object."""
     extras = set()
     blobs = {}

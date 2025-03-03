@@ -161,7 +161,9 @@ class TestInfo(tests.TestCaseWithTransport):
             self.assertEqual(
                 expected,
                 format_description,
-                "checkout of format called {!r} was described as {!r}".format(expected, format_description),
+                "checkout of format called {!r} was described as {!r}".format(
+                    expected, format_description
+                ),
             )
         finally:
             control._format.workingtree_format = old_format

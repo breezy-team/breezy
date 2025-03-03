@@ -333,7 +333,9 @@ class TestSource(TestSourceHelper):
                     break
         if badfiles:
             self.fail(
-                "these files contain an assert statement and should not:\n{}".format("\n".join(badfiles))
+                "these files contain an assert statement and should not:\n{}".format(
+                    "\n".join(badfiles)
+                )
             )
 
     def test_extension_exceptions(self):

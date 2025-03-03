@@ -450,7 +450,9 @@ def verify_commit_reconstruction(
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
                     raise AssertionError(
-                        "Modes for {} differ: {:o} != {:o}".format(path, old_obj[name][0], new_obj[name][0])
+                        "Modes for {} differ: {:o} != {:o}".format(
+                            path, old_obj[name][0], new_obj[name][0]
+                        )
                     )
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper

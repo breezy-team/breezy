@@ -413,7 +413,9 @@ class TestStacking(TestCaseWithBranch):
         # see https://bugs.launchpad.net/bzr/+bug/252821
         stack_on = self.make_branch_and_tree("stack-on")
         if not stack_on.branch._format.supports_stacking():
-            raise TestNotApplicable("{!r} does not support stacking".format(self.branch_format))
+            raise TestNotApplicable(
+                "{!r} does not support stacking".format(self.branch_format)
+            )
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])
         stack_on.add("a")
@@ -431,7 +433,9 @@ class TestStacking(TestCaseWithBranch):
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
-            raise TestNotApplicable("{!r} does not support stacking".format(self.branch_format))
+            raise TestNotApplicable(
+                "{!r} does not support stacking".format(self.branch_format)
+            )
         stack_on = self.make_branch_and_tree("stack-on")
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])

@@ -23,7 +23,7 @@ import os
 import sys
 import types
 from io import StringIO
-from typing import Any, Dict, List
+from typing import Any
 
 import breezy
 
@@ -156,7 +156,7 @@ dir_source = '{}'
 
 
 class TestLoadingPlugins(BaseTestPlugins):
-    activeattributes: Dict[str, List[Any]] = {}
+    activeattributes: dict[str, list[Any]] = {}
 
     def test_plugins_with_the_same_name_are_not_loaded(self):
         # This test tests that having two plugins in different directories does

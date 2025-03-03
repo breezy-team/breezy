@@ -54,7 +54,9 @@ class GitFileLastChangeScanner:
         if path == b"":
             target_mode = stat.S_IFDIR
         if target_mode is None:
-            raise AssertionError("sha {!r} for {!r} in {!r}".format(target_sha, path, commit_id))
+            raise AssertionError(
+                "sha {!r} for {!r} in {!r}".format(target_sha, path, commit_id)
+            )
         while True:
             parent_commits = []
             for parent_id in commit.parents:

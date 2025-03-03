@@ -652,7 +652,9 @@ class SFTPTransport(ConnectedTransport):
                             "About to chmod {} over sftp, which will result"
                             " in its suid or sgid bits being cleared.  If"
                             " you want to preserve those bits, change your "
-                            " environment on the server to use umask 0{:03o}.".format(abspath, 0o777 - mode)
+                            " environment on the server to use umask 0{:03o}.".format(
+                                abspath, 0o777 - mode
+                            )
                         )
                     self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, OSError) as e:

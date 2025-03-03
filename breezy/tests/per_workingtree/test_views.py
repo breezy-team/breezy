@@ -159,7 +159,9 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
         fmt = self.workingtree_format
         supported = fmt.supports_views
         if supported is None:
-            warn("Format {} doesn't declare whether it supports views or not".format(fmt))
+            warn(
+                "Format {} doesn't declare whether it supports views or not".format(fmt)
+            )
             raise TestSkipped("No view support at all")
         if supported():
             raise TestSkipped("Format {} declares that views are supported".format(fmt))

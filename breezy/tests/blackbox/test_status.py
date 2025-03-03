@@ -819,8 +819,9 @@ class TestStatusEncodings(TestCaseWithTransport):
             self.build_tree_contents([(filename, b"contents of hello")])
         except UnicodeEncodeError:
             raise TestSkipped(
-                "can't build unicode working tree in "
-                "filesystem encoding {}".format(sys.getfilesystemencoding())
+                "can't build unicode working tree in filesystem encoding {}".format(
+                    sys.getfilesystemencoding()
+                )
             )
         working_tree.add(filename)
         return working_tree

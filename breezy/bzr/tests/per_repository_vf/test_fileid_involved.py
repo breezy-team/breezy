@@ -366,7 +366,9 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
             main_wt.commit("a", rev_id=revision_id)
         except errors.NonAsciiRevisionId as e:
             raise tests.TestSkipped(
-                "non-ascii revision ids not supported by {}".format(self.repository_format)
+                "non-ascii revision ids not supported by {}".format(
+                    self.repository_format
+                )
             ) from e
 
         repo = main_wt.branch.repository

@@ -876,8 +876,9 @@ class TestConvertImportToMap(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Import of {!r} was not converted correctly"
-            " {} != {}".format(import_strings, expected, proc.imports),
+            "Import of {!r} was not converted correctly {} != {}".format(
+                import_strings, expected, proc.imports
+            ),
         )
 
     def test_import_one(self):
@@ -969,8 +970,9 @@ class TestFromToMap(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Import of {!r} was not converted correctly"
-            " {} != {}".format(from_strings, expected, proc.imports),
+            "Import of {!r} was not converted correctly {} != {}".format(
+                from_strings, expected, proc.imports
+            ),
         )
 
     def test_from_one_import_two(self):
@@ -1063,7 +1065,9 @@ class TestImportProcessor(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Incorrect processing of:\n{}\n{}\n!=\n{}".format(text, expected, proc.imports),
+            "Incorrect processing of:\n{}\n{}\n!=\n{}".format(
+                text, expected, proc.imports
+            ),
         )
 
     def test_import_one(self):
@@ -1253,11 +1257,9 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         else:
             self.fail("submoda7 was not supposed to exist yet")
 
-        text = (
-            """\
+        text = """\
 import {root_name}.{sub_name}.{submoda_name} as submoda7
 """.format(**self.__dict__)
-        )
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 

@@ -260,8 +260,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
     return out
 
 
-_basic_help = (
-    """Breezy {} -- a free distributed version-control tool
+_basic_help = """Breezy {} -- a free distributed version-control tool
 https://www.breezy-vcs.org/
 
 Basic commands:
@@ -286,7 +285,6 @@ Basic commands:
   brz help commands  list all commands
   brz help topics    list all help topics
 """.format(breezy.__version__)
-)
 
 
 _global_options = """Global Options

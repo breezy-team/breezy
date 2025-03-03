@@ -274,7 +274,9 @@ class RevisionStore:
         if ie.revision != self._current_rev_id:
             raise AssertionError(
                 "start_new_revision() registered a different"
-                " revision ({}) to that in the inventory entry ({})".format(self._current_rev_id, ie.revision)
+                " revision ({}) to that in the inventory entry ({})".format(
+                    self._current_rev_id, ie.revision
+                )
             )
 
         # Find the heads. This code is lifted from

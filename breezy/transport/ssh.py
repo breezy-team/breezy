@@ -25,7 +25,6 @@ import socket
 import subprocess
 import sys
 from binascii import hexlify
-from typing import Dict, Set, Tuple, Type
 
 from .. import bedding, config, errors, osutils, trace, ui
 
@@ -43,8 +42,8 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
-BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
+SYSTEM_HOSTKEYS: dict[str, dict[str, str]] = {}
+BRZ_HOSTKEYS: dict[str, dict[str, str]] = {}
 
 
 class SSHVendorManager:
@@ -311,7 +310,9 @@ class ParamikoVendor(SSHVendor):
             filename1 = os.path.expanduser("~/.ssh/known_hosts")
             filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
-                "Host keys for {} do not match!  {} != {}".format(host, our_server_key_hex, server_key_hex),
+                "Host keys for {} do not match!  {} != {}".format(
+                    host, our_server_key_hex, server_key_hex
+                ),
                 ["Try editing {} or {}".format(filename1, filename2)],
             )
 
@@ -340,7 +341,7 @@ class ParamikoVendor(SSHVendor):
             )
 
 
-_ssh_connection_errors: Tuple[Type[Exception], ...] = (
+_ssh_connection_errors: tuple[type[Exception], ...] = (
     EOFError,
     OSError,
     IOError,
@@ -531,7 +532,9 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         username = auth.get_user("ssh", host, port=port, default=getpass.getuser())
     agent = paramiko.Agent()
     for key in agent.get_keys():
-        trace.mutter("Trying SSH agent key {}".format(hexlify(key.get_fingerprint()).upper()))
+        trace.mutter(
+            "Trying SSH agent key {}".format(hexlify(key.get_fingerprint()).upper())
+        )
         try:
             paramiko_transport.auth_publickey(username, key)
             return
@@ -577,7 +580,9 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     ):
         raise errors.ConnectionError(
             "Unable to authenticate to SSH host as"
-            "\n  {}@{}\nsupported auth types: {}".format(username, host, supported_auth_types)
+            "\n  {}@{}\nsupported auth types: {}".format(
+                username, host, supported_auth_types
+            )
         )
 
     if password:
@@ -595,7 +600,9 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException as e:
             raise errors.ConnectionError(
-                "Unable to authenticate to SSH host as\n  {}@{}\n".format(username, host),
+                "Unable to authenticate to SSH host as\n  {}@{}\n".format(
+                    username, host
+                ),
                 e,
             )
     else:
@@ -620,7 +627,9 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
             return True
         except paramiko.SSHException:
             trace.mutter(
-                "SSH authentication via {} key failed.".format(os.path.basename(filename))
+                "SSH authentication via {} key failed.".format(
+                    os.path.basename(filename)
+                )
             )
     except paramiko.SSHException:
         trace.mutter(
@@ -699,7 +708,7 @@ def os_specific_subprocess_params():
 
 import weakref
 
-_subproc_weakrefs: Set[weakref.ref] = set()
+_subproc_weakrefs: set[weakref.ref] = set()
 
 
 def _close_ssh_proc(proc, sock):

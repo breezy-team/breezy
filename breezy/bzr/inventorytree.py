@@ -172,7 +172,9 @@ class InventoryTree(Tree):
             file_id = file_id[0]
         return self.root_inventory, file_id
 
-    def find_related_paths_across_trees(self, paths, trees=None, require_versioned=True):
+    def find_related_paths_across_trees(
+        self, paths, trees=None, require_versioned=True
+    ):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 

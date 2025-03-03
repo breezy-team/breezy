@@ -102,8 +102,9 @@ class TestBisectPathMixin:
         self.assertEqual(
             bisect_split_idx,
             bisect_path_idx,
-            "{} disagreed. {} != {}"
-            " for key {!r}".format(bisect_path.__name__, bisect_split_idx, bisect_path_idx, path),
+            "{} disagreed. {} != {} for key {!r}".format(
+                bisect_path.__name__, bisect_split_idx, bisect_path_idx, path
+            ),
         )
         if exists:
             self.assertEqual(path, paths[bisect_path_idx + offset])
@@ -303,8 +304,9 @@ class TestBisectDirblock(tests.TestCase):
         self.assertEqual(
             bisect_left_idx,
             bisect_split_idx,
-            "bisect_split disagreed. {} != {}"
-            " for key {!r}".format(bisect_left_idx, bisect_split_idx, path),
+            "bisect_split disagreed. {} != {} for key {!r}".format(
+                bisect_left_idx, bisect_split_idx, path
+            ),
         )
 
     def paths_to_dirblocks(self, paths):
@@ -585,7 +587,9 @@ class TestLtPathByDirblock(tests.TestCase):
                 self.assertEqual(
                     idx1 < idx2,
                     lt_result,
-                    "{} did not state that {!r} < {!r}, lt={}".format(lt_path_by_dirblock.__name__, path1, path2, lt_result),
+                    "{} did not state that {!r} < {!r}, lt={}".format(
+                        lt_path_by_dirblock.__name__, path1, path2, lt_result
+                    ),
                 )
 
     def test_cmp_simple_paths(self):

@@ -17,7 +17,8 @@
 
 import os
 import re
-from typing import Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Optional
 
 from .errors import BzrError
 
@@ -420,8 +421,8 @@ def iter_file_patch(
     # allow_dirty or restrict those to only being before the patch is found
     # (as allow_dirty does).
     regex = re.compile(binary_files_re)
-    saved_lines: List[bytes] = []
-    dirty_head: List[bytes] = []
+    saved_lines: list[bytes] = []
+    dirty_head: list[bytes] = []
     orig_range = 0
     beginning = True
 

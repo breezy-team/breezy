@@ -260,7 +260,9 @@ brz: ERROR: No changes to commit.\
         a_tree.branch.create_checkout("b")
         expected = "{}/".format(osutils.abspath("a"))
         out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
-        self.assertEqual(err, "Committing to: {}\nCommitted revision 2.\n".format(expected))
+        self.assertEqual(
+            err, "Committing to: {}\nCommitted revision 2.\n".format(expected)
+        )
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line

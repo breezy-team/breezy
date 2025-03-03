@@ -19,7 +19,6 @@
 import errno
 import os
 from io import BytesIO
-from typing import Set
 
 from .lazy_import import lazy_import
 
@@ -75,8 +74,8 @@ def parse_ignore_file(f):
             except UnicodeDecodeError:
                 # report error about line (idx+1)
                 trace.warning(
-                    ".bzrignore: On Line #%d, malformed utf8 character. "
-                    "Ignoring line.", line_number + 1
+                    ".bzrignore: On Line #%d, malformed utf8 character. Ignoring line.",
+                    line_number + 1,
                 )
 
     # Append each line to ignore list if it's not a comment line
@@ -157,7 +156,7 @@ def add_unique_user_ignores(new_ignores):
     return to_add
 
 
-_runtime_ignores: Set[str] = set()
+_runtime_ignores: set[str] = set()
 
 
 def add_runtime_ignores(ignores):

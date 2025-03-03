@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Optional, Type
+from typing import Optional
 
 from breezy import revision, workingtree
 from breezy.i18n import gettext
@@ -138,7 +138,7 @@ class RevisionSpec:
     """
 
     prefix: Optional[str] = None
-    dwim_catchable_exceptions: List[Type[Exception]] = [InvalidRevisionSpec]
+    dwim_catchable_exceptions: list[type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
     If the revspec is part of ``dwim_revspecs``, it may be tried with an
@@ -287,7 +287,7 @@ class RevisionSpec_dwim(RevisionSpec):
     _revno_regex = lazy_regex.lazy_compile(r"^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$")
 
     # The revspecs to try
-    _possible_revspecs: List[Type[registry._ObjectGetter]] = []
+    _possible_revspecs: list[type[registry._ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)

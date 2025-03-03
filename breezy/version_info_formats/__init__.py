@@ -18,7 +18,6 @@
 
 import time
 from contextlib import ExitStack
-from typing import Type
 
 from breezy import registry
 from breezy import revision as _mod_revision
@@ -194,7 +193,7 @@ class VersionInfoBuilder:
         raise NotImplementedError(VersionInfoBuilder.generate)
 
 
-format_registry = registry.Registry[str, Type[VersionInfoBuilder]]()
+format_registry = registry.Registry[str, type[VersionInfoBuilder]]()
 
 
 format_registry.register_lazy(

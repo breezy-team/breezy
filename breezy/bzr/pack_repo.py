@@ -16,7 +16,6 @@
 
 import re
 import sys
-from typing import Type
 
 from ..lazy_import import lazy_import
 
@@ -758,7 +757,9 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                "{} already has a writable index through {}".format(self, self.add_callback)
+                "{} already has a writable index through {}".format(
+                    self, self.add_callback
+                )
             )
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
@@ -842,8 +843,9 @@ class Packer:
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
             raise errors.BzrError(
-                "call to {}.pack() while another pack is"
-                " being written.".format(self.__class__.__name__)
+                "call to {}.pack() while another pack is being written.".format(
+                    self.__class__.__name__
+                )
             )
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
@@ -922,10 +924,10 @@ class RepositoryPackCollection:
     :ivar _names: map of {pack_name: (index_size,)}
     """
 
-    pack_factory: Type[NewPack]
-    resumed_pack_factory: Type[ResumedPack]
-    normal_packer_class: Type[Packer]
-    optimising_packer_class: Type[Packer]
+    pack_factory: type[NewPack]
+    resumed_pack_factory: type[ResumedPack]
+    normal_packer_class: type[Packer]
+    optimising_packer_class: type[Packer]
 
     def __init__(
         self,
@@ -1799,7 +1801,9 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository {} has missing compression parent(s) {!r} ".format(self.repo, sorted(all_missing))
+                "Repository {} has missing compression parent(s) {!r} ".format(
+                    self.repo, sorted(all_missing)
+                )
             )
         problems = self._check_new_inventories()
         if problems:
@@ -1884,7 +1888,7 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them to None ensures that if the constructor is changed to not initialize
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
-    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _commit_builder_class: type[VersionedFileCommitBuilder]
     _serializer: Serializer
 
     def __init__(
@@ -2080,11 +2084,11 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
 
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
-    repository_class: Type[PackRepository]
+    repository_class: type[PackRepository]
     # Set this attribute in derived classes to control the
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
-    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _commit_builder_class: type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer: Serializer
@@ -2095,8 +2099,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     # Most pack formats do not use chk lookups.
     supports_chks: bool = False
     # What index classes to use
-    index_builder_class: Type[_mod_index.GraphIndexBuilder]
-    index_class: Type[object]
+    index_builder_class: type[_mod_index.GraphIndexBuilder]
+    index_class: type[object]
     _fetch_uses_deltas: bool = True
     fast_deltas: bool = False
     supports_funky_characters: bool = True
@@ -2211,7 +2215,9 @@ class _DirectPackAccess:
         """
         raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError("data must be plain bytes was {}".format(type(raw_data)))
+            raise AssertionError(
+                "data must be plain bytes was {}".format(type(raw_data))
+            )
         result = []
         offset = 0
         for key, size in key_sizes:

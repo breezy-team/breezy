@@ -25,7 +25,8 @@ class ErrorsTest(TestCaseWithMemoryTransport):
         branch = self.make_branch("some_branch")
         error = bugtracker.UnknownBugTrackerAbbreviation("xxx", branch)
         self.assertEqual(
-            "Cannot find registered bug tracker called xxx on {}".format(branch), str(error)
+            "Cannot find registered bug tracker called xxx on {}".format(branch),
+            str(error),
         )
 
     def test_malformed_bug_identifier(self):

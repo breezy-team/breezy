@@ -224,7 +224,9 @@ Location:
 
 class TestReconfigureStacking(tests.TestCaseWithTransport):
     def test_reconfigure_stacking(self):
-        """Test a fairly realistic scenario for stacking:
+        """Test stacking reconfiguration.
+
+        Test a fairly realistic scenario for stacking:
 
          * make a branch with some history
          * branch it

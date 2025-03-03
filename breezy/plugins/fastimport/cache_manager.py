@@ -161,8 +161,12 @@ class CacheManager:
                 size = size / 1024
                 unit = "G"
         note(
-            "    %-12s: %8.1f %s (%d %s)"
-            % (label, size, unit, count, single_plural(count, "item", "items"))
+            "    %-12s: %8.1f %s (%d %s)",
+            label,
+            size,
+            unit,
+            count,
+            single_plural(count, "item", "items"),
         )
 
     def clear_all(self):
@@ -221,8 +225,11 @@ class CacheManager:
             del blob
             count += 1
         trace.note(
-            "flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk"
-            % (count, total_blobs, bytes / 1024.0 / 1024, n_small_bytes / 1024.0 / 1024)
+            "flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk",
+            count,
+            total_blobs,
+            bytes / 1024.0 / 1024,
+            n_small_bytes / 1024.0 / 1024,
         )
 
     def store_blob(self, id, data):

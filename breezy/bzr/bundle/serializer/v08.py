@@ -443,7 +443,9 @@ class BundleReader:
             value = self._read_many(indent=indent + 2)
         else:
             raise errors.MalformedHeader(
-                "While looking for key: value pairs, did not find the colon {!r}".format(line)
+                "While looking for key: value pairs, did not find the colon {!r}".format(
+                    line
+                )
             )
 
         key = key.replace(" ", "_")

@@ -559,7 +559,9 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertTrue("post_commit" in hooks, "post_commit not in {}".format(hooks))
         self.assertTrue("pre_commit" in hooks, "pre_commit not in {}".format(hooks))
         self.assertTrue("post_pull" in hooks, "post_pull not in {}".format(hooks))
-        self.assertTrue("post_uncommit" in hooks, "post_uncommit not in {}".format(hooks))
+        self.assertTrue(
+            "post_uncommit" in hooks, "post_uncommit not in {}".format(hooks)
+        )
         self.assertTrue(
             "post_change_branch_tip" in hooks,
             "post_change_branch_tip not in {}".format(hooks),

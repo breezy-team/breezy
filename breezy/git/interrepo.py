@@ -17,7 +17,7 @@
 """InterRepository operations."""
 
 import itertools
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional
 
 from dulwich.errors import NotCommitError
 from dulwich.object_store import ObjectStoreGraphWalker
@@ -54,9 +54,9 @@ from .remote import RemoteGitError, RemoteGitRepository
 from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
 from .unpeel_map import UnpeelMap
 
-EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]
-EitherRefDict = Dict[bytes, EitherId]
-RevidMap = Dict[RevisionID, Tuple[ObjectID, RevisionID]]
+EitherId = tuple[Optional[RevisionID], Optional[ObjectID]]
+EitherRefDict = dict[bytes, EitherId]
+RevidMap = dict[RevisionID, tuple[ObjectID, RevisionID]]
 
 
 class InterToGitRepository(InterRepository):
@@ -79,10 +79,10 @@ class InterToGitRepository(InterRepository):
 
     def fetch_refs(
         self,
-        update_refs: Callable[[Dict[bytes, ObjectID]], Dict[bytes, ObjectID]],
+        update_refs: Callable[[dict[bytes, ObjectID]], dict[bytes, ObjectID]],
         lossy: bool,
         overwrite: bool = False,
-    ) -> Tuple[RevidMap, Dict[bytes, ObjectID]]:
+    ) -> tuple[RevidMap, dict[bytes, ObjectID]]:
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -319,7 +319,9 @@ class InterToLocalGitRepository(InterToGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
@@ -346,7 +348,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             raise NoPushSupport(self.source, self.target, self.mapping)
 
         unpeel_map = UnpeelMap.from_repository(self.source)
-        revidmap: Dict[bytes, bytes] = {}
+        revidmap: dict[bytes, bytes] = {}
 
         def git_update_refs(old_refs):
             ret = {}
@@ -541,7 +543,9 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
         else:
             interesting_heads = None
 
@@ -669,7 +673,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
     def fetch_refs(
         self, update_refs, lossy: bool = False, overwrite: bool = False
-    ) -> Tuple[RevidMap, EitherRefDict, EitherRefDict]:
+    ) -> tuple[RevidMap, EitherRefDict, EitherRefDict]:
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self._get_target_either_refs()
@@ -718,7 +722,9 @@ class InterGitGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 heads = recipe[1]
             else:
-                raise AssertionError("Unsupported search result type {}".format(recipe[0]))
+                raise AssertionError(
+                    "Unsupported search result type {}".format(recipe[0])
+                )
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(

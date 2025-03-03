@@ -325,7 +325,9 @@ class BasicAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm))
+        self.send_header(
+            tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm)
+        )
 
 
 # FIXME: We could send an Authentication-Info header too when
@@ -371,7 +373,9 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
-        self.send_header(tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm))
+        self.send_header(
+            tcs.auth_header_sent, 'Basic realm="{}"'.format(tcs.auth_realm)
+        )
         header = 'Digest realm="{}", '.format(tcs.auth_realm)
         header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce, "MD5")
         self.send_header(tcs.auth_header_sent, header)

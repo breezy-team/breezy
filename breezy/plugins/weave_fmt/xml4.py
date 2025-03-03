@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List
-
 from ...bzr import inventory
 from ...bzr.inventory import ROOT_ID, Inventory
 from ...bzr.xml_serializer import (
@@ -36,7 +34,7 @@ class _Serializer_v4(XMLSerializer):
     v4 serialisation is no longer supported, only deserialisation.
     """
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element."""

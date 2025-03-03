@@ -20,7 +20,7 @@ import os
 import posixpath
 import re
 import sys
-from typing import Tuple, Union
+from typing import Union
 from urllib import parse as urlparse
 
 from . import errors, osutils
@@ -343,7 +343,9 @@ def normalize_url(url):
             if c not in _url_safe_characters:
                 raise InvalidURL(
                     url,
-                    "URLs can only contain specific safe characters (not {!r})".format(c),
+                    "URLs can only contain specific safe characters (not {!r})".format(
+                        c
+                    ),
                 )
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
         return str(prefix + "".join(path))
@@ -424,7 +426,7 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
+def split(url: str, exclude_trailing_slash: bool = True) -> tuple[str, str]:
     """Split a URL into its parent directory and a child directory.
 
     Args:
@@ -554,7 +556,9 @@ def join_segment_parameters(url, parameters):
         if not isinstance(key, str):
             raise TypeError("parameter key {!r} is not a str".format(key))
         if not isinstance(value, str):
-            raise TypeError("parameter value {!r} for {!r} is not a str".format(value, key))
+            raise TypeError(
+                "parameter value {!r} for {!r} is not a str".format(value, key)
+            )
         if "=" in key:
             raise InvalidURLJoin("= exists in parameter key", url, parameters)
         new_parameters[key] = value
@@ -885,7 +889,9 @@ class URL:
                 try:
                     port = int(port)
                 except ValueError:
-                    raise InvalidURL("invalid port number {} in url:\n{}".format(port, url))
+                    raise InvalidURL(
+                        "invalid port number {} in url:\n{}".format(port, url)
+                    )
             else:
                 port = None
         if host != "" and host[0] == "[" and host[-1] == "]":  # IPv6

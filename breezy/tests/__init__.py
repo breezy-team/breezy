@@ -49,7 +49,7 @@ import traceback
 import unittest
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable, Set
+from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools
@@ -373,8 +373,8 @@ class ExtendedTestResult(testtools.TextTestResult):
             self._delta_to_float(self._now() - self._start_datetime, 3)
         )
 
-    def _testTimeString(self, testCase):
-        benchmark_time = self._extractBenchmarkTime(testCase)
+    def _testTimeString(self, test_case):
+        benchmark_time = self._extractBenchmarkTime(test_case)
         if benchmark_time is not None:
             return self._formatTime(benchmark_time) + "*"
         else:
@@ -725,17 +725,23 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.stream.write(
-            "ERROR {}\n{}\n".format(self._testTimeString(test), self._error_summary(err))
+            "ERROR {}\n{}\n".format(
+                self._testTimeString(test), self._error_summary(err)
+            )
         )
 
     def report_failure(self, test, err):
         self.stream.write(
-            " FAIL {}\n{}\n".format(self._testTimeString(test), self._error_summary(err))
+            " FAIL {}\n{}\n".format(
+                self._testTimeString(test), self._error_summary(err)
+            )
         )
 
     def report_known_failure(self, test, err):
         self.stream.write(
-            "XFAIL {}\n{}\n".format(self._testTimeString(test), self._error_summary(err))
+            "XFAIL {}\n{}\n".format(
+                self._testTimeString(test), self._error_summary(err)
+            )
         )
 
     def report_unexpected_success(self, test, reason):
@@ -760,12 +766,16 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write(" SKIP {}\n{}\n".format(self._testTimeString(test), reason))
 
     def report_not_applicable(self, test, reason):
-        self.stream.write("  N/A {}\n    {}\n".format(self._testTimeString(test), reason))
+        self.stream.write(
+            "  N/A {}\n    {}\n".format(self._testTimeString(test), reason)
+        )
 
     def report_unsupported(self, test, feature):
         """Test cannot be run because feature is missing."""
         self.stream.write(
-            "NODEP {}\n    The feature '{}' is not available.\n".format(self._testTimeString(test), feature)
+            "NODEP {}\n    The feature '{}' is not available.\n".format(
+                self._testTimeString(test), feature
+            )
         )
 
 
@@ -1230,7 +1240,9 @@ class TestCase(testtools.TestCase):
         # self.permit_transport()
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
             raise errors.BzrError(
-                "Attempt to escape test isolation: {!r} {!r}".format(url, self._bzr_selftest_roots)
+                "Attempt to escape test isolation: {!r} {!r}".format(
+                    url, self._bzr_selftest_roots
+                )
             )
 
     def record_directory_isolation(self):
@@ -1324,7 +1336,9 @@ class TestCase(testtools.TestCase):
         if message:
             message += "\n"
         raise AssertionError(
-            "{}not equal:\na = {}\nb = {}\n".format(message, pprint.pformat(a), pprint.pformat(b))
+            "{}not equal:\na = {}\nb = {}\n".format(
+                message, pprint.pformat(a), pprint.pformat(b)
+            )
         )
 
     # FIXME: This is deprecated in unittest2 but plugins may still use it so we
@@ -1437,7 +1451,9 @@ class TestCase(testtools.TestCase):
             ) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
-                    'pattern "{}" not found in\n"""\\\n{}"""\n'.format(needle_re, haystack)
+                    'pattern "{}" not found in\n"""\\\n{}"""\n'.format(
+                        needle_re, haystack
+                    )
                 )
             else:
                 raise AssertionError(
@@ -1447,7 +1463,9 @@ class TestCase(testtools.TestCase):
     def assertNotContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a does not match a regular expression."""
         if re.search(needle_re, haystack, flags):
-            raise AssertionError('pattern "{}" found in "{}"'.format(needle_re, haystack))
+            raise AssertionError(
+                'pattern "{}" found in "{}"'.format(needle_re, haystack)
+            )
 
     def assertContainsString(self, haystack, needle):
         if haystack.find(needle) == -1:
@@ -1465,8 +1483,8 @@ class TestCase(testtools.TestCase):
                 "value(s) {!r} not present in container {!r}".format(missing, superlist)
             )
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
-        """Fail unless excClass is raised when the iterator from func is used.
+    def assertListRaises(self, exc_class, func, *args, **kwargs):
+        """Fail unless exc_class is raised when the iterator from func is used.
 
         Many functions can return generators this makes sure
         to wrap them in a list() call to make sure the whole generator
@@ -1474,19 +1492,19 @@ class TestCase(testtools.TestCase):
         """
         try:
             list(func(*args, **kwargs))
-        except excClass as e:
+        except exc_class as e:
             return e
         else:
-            if getattr(excClass, "__name__", None) is not None:
-                excName = excClass.__name__
+            if getattr(exc_class, "__name__", None) is not None:
+                excName = exc_class.__name__
             else:
-                excName = str(excClass)
+                excName = str(exc_class)
             raise self.failureException("{} not raised".format(excName))
 
-    def assertRaises(self, excClass, callableObj, *args, **kwargs):
+    def assertRaises(self, exc_class, callableObj, *args, **kwargs):
         """Assert that a callable raises a particular exception.
 
-        :param excClass: As for the except statement, this may be either an
+        :param exc_class: As for the except statement, this may be either an
             exception class, or a tuple of classes.
         :param callableObj: A callable, will be passed ``*args`` and
             ``**kwargs``.
@@ -1495,14 +1513,14 @@ class TestCase(testtools.TestCase):
         """
         try:
             callableObj(*args, **kwargs)
-        except excClass as e:
+        except exc_class as e:
             return e
         else:
-            if getattr(excClass, "__name__", None) is not None:
-                excName = excClass.__name__
+            if getattr(exc_class, "__name__", None) is not None:
+                excName = exc_class.__name__
             else:
                 # probably a tuple
-                excName = str(excClass)
+                excName = str(exc_class)
             raise self.failureException("{} not raised".format(excName))
 
     def assertIs(self, left, right, message=None):
@@ -1531,7 +1549,9 @@ class TestCase(testtools.TestCase):
         self.assertEqual(
             mode,
             actual_mode,
-            "mode of {!r} incorrect ({} != {})".format(path, oct(mode), oct(actual_mode)),
+            "mode of {!r} incorrect ({} != {})".format(
+                path, oct(mode), oct(actual_mode)
+            ),
         )
 
     def assertIsSameRealPath(self, path1, path2):
@@ -1649,7 +1669,9 @@ class TestCase(testtools.TestCase):
             a_callable, deprecation_format
         )
         if len(call_warnings) == 0:
-            self.fail("No deprecation warning generated by call to {}".format(a_callable))
+            self.fail(
+                "No deprecation warning generated by call to {}".format(a_callable)
+            )
         self.assertEqual(expected_first_warning, call_warnings[0])
         return result
 
@@ -3165,7 +3187,9 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except _mod_transport.NoSuchFile:
             self.fail("path {} is not a directory; no such file".format(relpath))
         if not stat.S_ISDIR(mode):
-            self.fail("path {} is not a directory; has mode {:#o}".format(relpath, mode))
+            self.fail(
+                "path {} is not a directory; has mode {:#o}".format(relpath, mode)
+            )
 
     def assertTreesEqual(self, left, right):
         """Check that left and right have the same content and properties."""
@@ -3721,7 +3745,7 @@ def fork_for_tests(suite):
                     SubUnitBzrProtocolClientv1(stream)
                 )
                 process_suite.run(subunit_result)
-            except:
+            except:  # noqa: E722
                 # Try and report traceback on stream, but exit with error even
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
@@ -3855,7 +3879,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags: Set[str] = set()
+selftest_debug_flags: set[str] = set()
 
 
 def selftest(
@@ -4066,7 +4090,9 @@ class TestPrefixAliasRegistry(registry.Registry):
         except KeyError:
             actual = self.get(key)
             trace.note(
-                "Test prefix alias {} is already used for {}, ignoring {}".format(key, actual, obj)
+                "Test prefix alias {} is already used for {}, ignoring {}".format(
+                    key, actual, obj
+                )
             )
 
     def resolve_alias(self, id_start):
@@ -4078,7 +4104,9 @@ class TestPrefixAliasRegistry(registry.Registry):
         try:
             parts[0] = self.get(parts[0])
         except KeyError:
-            raise errors.CommandError("{} is not a known test prefix alias".format(parts[0]))
+            raise errors.CommandError(
+                "{} is not a known test prefix alias".format(parts[0])
+            )
         return ".".join(parts)
 
 
@@ -4604,7 +4632,9 @@ def _rmtree_temp_dir(dirname, test_id=None):
             .encode("ascii", "replace")
         )
         sys.stderr.write(
-            "Unable to remove testing dir {}\n{}".format(os.path.basename(dirname), printable_e)
+            "Unable to remove testing dir {}\n{}".format(
+                os.path.basename(dirname), printable_e
+            )
         )
 
 

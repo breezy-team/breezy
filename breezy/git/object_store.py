@@ -19,7 +19,7 @@
 
 import posixpath
 import stat
-from typing import Dict, Iterable, Iterator, List
+from collections.abc import Iterable, Iterator
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -149,9 +149,7 @@ def _check_expected_sha(expected_sha, object):
                 "Invalid sha for {!r}: {}".format(object, sha_to_hex(expected_sha))
             )
     else:
-        raise AssertionError(
-            f"Unknown length {len(expected_sha)} for {expected_sha!r}"
-        )
+        raise AssertionError(f"Unknown length {len(expected_sha)} for {expected_sha!r}")
 
 
 def directory_to_tree(
@@ -696,8 +694,8 @@ class BazaarObjectStore(BaseObjectStore):
         self._map_updated = False
         self.repository.unlock()
 
-    def lookup_git_shas(self, shas: Iterable[ObjectID]) -> Dict[ObjectID, List]:
-        ret: Dict[ObjectID, List] = {}
+    def lookup_git_shas(self, shas: Iterable[ObjectID]) -> dict[ObjectID, list]:
+        ret: dict[ObjectID, list] = {}
         for sha in shas:
             if sha == ZERO_SHA:
                 ret[sha] = [("commit", (NULL_REVISION, None, {}))]
@@ -811,7 +809,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param want: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: Dict[ObjectID, List] = self.lookup_git_shas(have + want)
+        ret: dict[ObjectID, List] = self.lookup_git_shas(have + want)
         for commit_sha in have:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:

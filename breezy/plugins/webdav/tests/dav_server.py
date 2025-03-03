@@ -351,8 +351,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             prop["exec"] = _prop("bzr", "executable", is_exec)
         prop["status"] = _prop("D", "status", "HTTP/1.1 200 OK")
 
-        response = (
-            """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
+        response = """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
     {href}
     <D:propstat>
         <D:prop>
@@ -364,7 +363,6 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     </D:propstat>
 </D:response>
 """.format(**prop)
-        )
         return response, st
 
     def _generate_dir_responses(self, path, depth):

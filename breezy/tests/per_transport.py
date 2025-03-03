@@ -46,7 +46,9 @@ def get_transport_test_permutations(module):
     """Get the permutations module wants to have tested."""
     if getattr(module, "get_test_permutations", None) is None:
         raise AssertionError(
-            "transport module {} doesn't provide get_test_permutations()".format(module.__name__)
+            "transport module {} doesn't provide get_test_permutations()".format(
+                module.__name__
+            )
         )
         return []
     return module.get_test_permutations()
@@ -1015,7 +1017,9 @@ class TransportTests(TestTransportImplementation):
             self.assertEqual(st[ST_NLINK], 2)
         except TransportNotPossible:
             raise TestSkipped(
-                "Transport {} does not support hardlinks.".format(self._server.__class__)
+                "Transport {} does not support hardlinks.".format(
+                    self._server.__class__
+                )
             )
 
     def test_symlink(self):
@@ -1036,7 +1040,8 @@ class TransportTests(TestTransportImplementation):
 
             st = t.stat(link_name)
             self.assertTrue(
-                S_ISLNK(st.st_mode), "expected symlink, got mode {:o}".format(st.st_mode)
+                S_ISLNK(st.st_mode),
+                "expected symlink, got mode {:o}".format(st.st_mode),
             )
         except TransportNotPossible:
             raise TestSkipped(

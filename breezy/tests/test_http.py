@@ -450,7 +450,9 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(
             server.logs[0].find(
-                '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/{}'.format(breezy.__version__)
+                '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/{}'.format(
+                    breezy.__version__
+                )
             )
             > -1
         )
@@ -927,7 +929,9 @@ class MultipleRangeWithoutContentLengthRequestHandler(
         # XXX: this is strange; the 'random' name below seems undefined and
         # yet the tests pass -- mbp 2010-10-11 bug 658773
         boundary = "%d" % random.randint(0, 0x7FFFFFFF)
-        self.send_header("Content-Type", "multipart/byteranges; boundary={}".format(boundary))
+        self.send_header(
+            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
+        )
         self.end_headers()
         for start, end in ranges:
             self.wfile.write(b"--%s\r\n" % boundary.encode("ascii"))
@@ -959,7 +963,9 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
         boundary = "tagada"
-        self.send_header("Content-Type", "multipart/byteranges; boundary={}".format(boundary))
+        self.send_header(
+            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
+        )
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -1034,7 +1040,9 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
         boundary = "tagada"
-        self.send_header("Content-Type", "multipart/byteranges; boundary={}".format(boundary))
+        self.send_header(
+            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
+        )
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -1931,9 +1939,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # we have defined a socket which is not bound to an
         # address. The test framework never uses this client
         # address, so far...
-        http_utils.SmartRequestHandler(
-            socket, ("localhost", 80), httpd
-        )
+        http_utils.SmartRequestHandler(socket, ("localhost", 80), httpd)
         response = socket.writefile.getvalue()
         self.assertStartsWith(
             response, b"%s 200 " % self._protocol_version.encode("ascii")

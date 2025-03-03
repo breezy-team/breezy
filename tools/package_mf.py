@@ -61,7 +61,7 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                 self.import_module(
                     partname, ".".join(path), self.modules.get(parent_path, None)
                 )
-            except:
+            except BaseException:
                 pass
         stack = [(fqname, parent_path)]
         while stack:

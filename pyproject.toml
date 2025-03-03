@@ -153,6 +153,7 @@ ignore = [
 
     "S602",  # subprocess with shell=True
     "S603",  # check for execution of untrusted input
+    "S101",  # use of assert
     "S105",  # "hardcoded password"; false positives on "pwd"
     "S106",  # "hardcoded password"; false positives on "pwd"
     "S110",  # "consider logging exception"

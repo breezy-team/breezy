@@ -524,7 +524,9 @@ class TestingTCPServerInAThread(transport.Server):
         self.host, self.port = self.server.server_address
         self._server_thread.name = self.server.server_address
         if debug_threads():
-            sys.stderr.write("Server thread {} started\n".format(self._server_thread.name))
+            sys.stderr.write(
+                "Server thread {} started\n".format(self._server_thread.name)
+            )
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()

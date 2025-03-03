@@ -114,7 +114,9 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.overrideAttr(trace, "warning", warning)
         wt.smart_add((".",))
         self.assertFalse(wt.is_versioned("nested"))
-        self.assertEqual(["skipping nested tree {!r}".format(nested_wt.basedir)], warnings)
+        self.assertEqual(
+            ["skipping nested tree {!r}".format(nested_wt.basedir)], warnings
+        )
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree."""

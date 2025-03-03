@@ -27,7 +27,7 @@ import itertools
 import re
 import sys
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Optional
 
 from . import branch as _mod_branch
 from . import errors
@@ -40,16 +40,16 @@ from .revision import RevisionID
 
 
 TagSelector = Callable[[str], bool]
-TagUpdates = Dict[str, RevisionID]
-TagConflict = Tuple[str, bytes, bytes]
+TagUpdates = dict[str, RevisionID]
+TagConflict = tuple[str, bytes, bytes]
 
 
 def _reconcile_tags(
-    source_dict: Dict[str, bytes],
-    dest_dict: Dict[str, bytes],
+    source_dict: dict[str, bytes],
+    dest_dict: dict[str, bytes],
     overwrite: bool,
     selector: Optional[TagSelector],
-) -> Tuple[Dict[str, RevisionID], TagUpdates, List[TagConflict]]:
+) -> tuple[dict[str, RevisionID], TagUpdates, list[TagConflict]]:
     """Do a two-way merge of two tag dictionaries.
 
     * only in source => source value
@@ -81,11 +81,11 @@ class Tags:
     def __init__(self, branch):
         self.branch = branch
 
-    def get_tag_dict(self) -> Dict[str, RevisionID]:
+    def get_tag_dict(self) -> dict[str, RevisionID]:
         """Return a dictionary mapping tags to revision ids."""
         raise NotImplementedError(self.get_tag_dict)
 
-    def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
+    def get_reverse_tag_dict(self) -> dict[RevisionID, set[str]]:
         """Returns a dict with revisions as keys
         and a list of tags for that revision as value.
         """
@@ -101,7 +101,7 @@ class Tags:
         overwrite: bool = False,
         ignore_master: bool = False,
         selector: Optional[TagSelector] = None,
-    ) -> Tuple[TagUpdates, Set[TagConflict]]:
+    ) -> tuple[TagUpdates, set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -154,7 +154,7 @@ class Tags:
         """
         raise NotImplementedError(self.delete_tag)
 
-    def rename_revisions(self, rename_map: Dict[RevisionID, RevisionID]) -> None:
+    def rename_revisions(self, rename_map: dict[RevisionID, RevisionID]) -> None:
         """Rename revisions in this tags dictionary.
 
         :param rename_map: Dictionary mapping old revids to new revids
@@ -213,7 +213,7 @@ class InterTags(InterObject[Tags]):
         overwrite: bool = False,
         ignore_master: bool = False,
         selector: Optional[TagSelector] = None,
-    ) -> Tuple[TagUpdates, Set[TagConflict]]:
+    ) -> tuple[TagUpdates, set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -379,7 +379,7 @@ def sort_time(branch, tags):
     tags.sort(key=lambda x: timestamps[x[1]])
 
 
-tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, List[str]], List[str]]]()
+tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, list[str]], list[str]]]()
 tag_sort_methods.register(
     "natural", sort_natural, "Sort numeric substrings as numbers. (default)"
 )

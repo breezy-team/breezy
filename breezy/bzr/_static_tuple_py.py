@@ -20,8 +20,6 @@ Note that it is generally just implemented as using tuples of tuples of
 strings.
 """
 
-from typing import Dict
-
 
 class StaticTuple(tuple):
     """A static type, similar to a tuple of strings."""
@@ -82,4 +80,4 @@ _valid_types = (bytes, str, StaticTuple, int, float, None.__class__, bool)
 # the _empty_tuple singleton has been created yet or not.
 _empty_tuple = None
 _empty_tuple = StaticTuple()
-_interned_tuples: Dict[StaticTuple, StaticTuple] = {}
+_interned_tuples: dict[StaticTuple, StaticTuple] = {}

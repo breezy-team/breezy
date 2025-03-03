@@ -78,8 +78,9 @@ up=pull
 
 import os
 import sys
+from collections.abc import Iterable
 from io import BytesIO
-from typing import Callable, Dict, Iterable, Tuple, cast
+from typing import Callable, cast
 
 import configobj
 
@@ -453,8 +454,9 @@ class Config:
                 value = self._expand_options_in_list(value)
             elif isinstance(value, dict):
                 trace.warning(
-                    'Cannot expand "{}":'
-                    " Dicts do not support option expansion".format(option_name)
+                    'Cannot expand "{}": Dicts do not support option expansion'.format(
+                        option_name
+                    )
                 )
             else:
                 value = self._expand_options_in_string(value)
@@ -1786,8 +1788,9 @@ class AuthenticationConfig:
             password = credentials["password"]
             if password is not None and scheme == "ssh":
                 trace.warning(
-                    "password ignored in section [{}],"
-                    " use an ssh agent instead".format(credentials["name"])
+                    "password ignored in section [{}], use an ssh agent instead".format(
+                        credentials["name"]
+                    )
                 )
                 password = None
         else:
@@ -2179,7 +2182,9 @@ class Option:
             self.default = default
         else:
             # other python objects are not expected
-            raise AssertionError("{!r} is not supported as a default value".format(default))
+            raise AssertionError(
+                "{!r} is not supported as a default value".format(default)
+            )
         self.default_from_env = default_from_env
         self._help = help
         self.from_unicode = from_unicode
@@ -2239,7 +2244,9 @@ class Option:
                 value = self.default()
                 if not isinstance(value, str):
                     raise AssertionError(
-                        "Callable default value for '{}' should be unicode".format(self.name)
+                        "Callable default value for '{}' should be unicode".format(
+                            self.name
+                        )
                     )
             else:
                 value = self.default
@@ -2960,9 +2967,9 @@ class MutableSection(Section):
                 trace.warning(
                     gettext(
                         "Option %s in section %s of %s was changed"
-                        " from %s to %s. The %s value will be saved.") % (
-                            k, self.id, store.external_url(), expected, reloaded, actual
-                        )
+                        " from %s to %s. The %s value will be saved."
+                    )
+                    % (k, self.id, store.external_url(), expected, reloaded, actual)
                 )
         # No need to keep track of these changes
         self.reset_changes()
@@ -3208,7 +3215,7 @@ class IniFileStore(Store):
         for hook in ConfigHooks["save"]:
             hook(self)
 
-    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
+    def get_sections(self) -> Iterable[tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
         Returns: An iterable of (store, section).
@@ -3609,7 +3616,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores: Dict[str, Store] = {}
+_shared_stores: dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 
@@ -3683,7 +3690,9 @@ class Stack:
                     else:
                         trace.warning(
                             'Cannot expand "{}":'
-                            " {} does not support option expansion".format(name, type(val))
+                            " {} does not support option expansion".format(
+                                name, type(val)
+                            )
                         )
                 if opt is None:
                     val = found_store.unquote(val)

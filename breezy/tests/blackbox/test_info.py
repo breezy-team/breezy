@@ -1438,9 +1438,9 @@ Location:
         tree_data = ""
         extra_space = ""
         if light_checkout:
-            tree_data = "  light checkout root: {}\n".format(friendly_location(
-                lco_tree.controldir.root_transport.base
-            ))
+            tree_data = "  light checkout root: {}\n".format(
+                friendly_location(lco_tree.controldir.root_transport.base)
+            )
             extra_space = " "
         if lco_tree.branch.get_bound_location() is not None:
             tree_data += "{}       checkout root: {}\n".format(
@@ -1448,9 +1448,11 @@ Location:
                 friendly_location(lco_tree.branch.controldir.root_transport.base),
             )
         if shared_repo is not None:
-            branch_data = "   checkout of branch: {}\n    shared repository: {}\n".format(
-                friendly_location(repo_branch.controldir.root_transport.base),
-                friendly_location(shared_repo.controldir.root_transport.base),
+            branch_data = (
+                "   checkout of branch: {}\n    shared repository: {}\n".format(
+                    friendly_location(repo_branch.controldir.root_transport.base),
+                    friendly_location(shared_repo.controldir.root_transport.base),
+                )
             )
         elif repo_branch is not None:
             branch_data = "{}  checkout of branch: {}\n".format(
@@ -1458,8 +1460,8 @@ Location:
                 friendly_location(repo_branch.controldir.root_transport.base),
             )
         else:
-            branch_data = (
-                "   checkout of branch: {}\n".format(lco_tree.branch.controldir.root_transport.base)
+            branch_data = "   checkout of branch: {}\n".format(
+                lco_tree.branch.controldir.root_transport.base
             )
 
         if verbose >= 2:

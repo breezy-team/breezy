@@ -186,7 +186,9 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_removed is not None:
             self.assertEqual(
-                len(removed), len(expected_removed), "{} is removed".format(str(removed))
+                len(removed),
+                len(expected_removed),
+                "{} is removed".format(str(removed)),
             )
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
@@ -199,7 +201,9 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 )
         if expected_modified is not None:
             self.assertEqual(
-                len(modified), len(expected_modified), "{} is modified".format(str(modified))
+                len(modified),
+                len(expected_modified),
+                "{} is modified".format(str(modified)),
             )
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:

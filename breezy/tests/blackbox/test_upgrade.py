@@ -89,7 +89,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr("upgrade current_format_branch", retcode=0)
         self.assertEqual(
             "Upgrading branch {}/ ...\n"
-            "The branch format {} is already at the most recent format.\n".format(burl, "Meta directory format 1"),
+            "The branch format {} is already at the most recent format.\n".format(
+                burl, "Meta directory format 1"
+            ),
             out,
         )
 
@@ -104,7 +106,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         self.assertEqual(
             "Upgrading branch {}/ ...\nThis is a checkout."
             " The branch ({}/) needs to be upgraded separately.\n"
-            "The branch format {} is already at the most recent format.\n".format(curl, burl, "Meta directory format 1"),
+            "The branch format {} is already at the most recent format.\n".format(
+                curl, burl, "Meta directory format 1"
+            ),
             out,
         )
 

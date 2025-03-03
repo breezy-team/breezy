@@ -50,7 +50,14 @@ breezy.ui.text.TextUIFactory
 import warnings
 
 _valid_boolean_strings = {
-    "yes": True, "no": False, "y": True, "n": False, "on": True, "off": False, "true": True, "false": False
+    "yes": True,
+    "no": False,
+    "y": True,
+    "n": False,
+    "on": True,
+    "off": False,
+    "true": True,
+    "false": False,
 }
 _valid_boolean_strings["1"] = True
 _valid_boolean_strings["0"] = False
@@ -287,11 +294,16 @@ class UIFactory:
     def _progress_finished(self, task):
         """Called by the ProgressTask when it finishes."""
         if not self._task_stack:
-            warnings.warn("{!r} finished but nothing is active".format(task), stacklevel=2)
+            warnings.warn(
+                "{!r} finished but nothing is active".format(task), stacklevel=2
+            )
         if task in self._task_stack:
             self._task_stack.remove(task)
         else:
-            warnings.warn("{!r} is not in active stack {!r}".format(task, self._task_stack), stacklevel=2)
+            warnings.warn(
+                "{!r} is not in active stack {!r}".format(task, self._task_stack),
+                stacklevel=2,
+            )
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -319,7 +331,9 @@ class UIFactory:
             template = self._user_warning_templates[warning_id]
         except KeyError:
             fail = "brz warning: {!r}, {!r}".format(warning_id, message_args)
-            warnings.warn("no template for warning: " + fail, stacklevel=2)  # so tests will fail etc
+            warnings.warn(
+                "no template for warning: " + fail, stacklevel=2
+            )  # so tests will fail etc
             return str(fail)
         try:
             return str(template) % message_args
@@ -526,7 +540,9 @@ class CannedInputUIFactory(SilentUIFactory):
 
     def assert_all_input_consumed(self):
         if self.responses:
-            raise AssertionError("expected all input in {!r} to be consumed".format(self))
+            raise AssertionError(
+                "expected all input in {!r} to be consumed".format(self)
+            )
 
 
 ui_factory = SilentUIFactory()

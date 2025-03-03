@@ -47,7 +47,9 @@ class TCPClient:
 
     def connect(self, addr):
         if self.sock is not None:
-            raise AssertionError("Already connected to {!r}".format(self.sock.getsockname()))
+            raise AssertionError(
+                "Already connected to {!r}".format(self.sock.getsockname())
+            )
         self.sock = osutils.connect_socket(addr)
 
     def disconnect(self):

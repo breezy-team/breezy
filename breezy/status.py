@@ -359,8 +359,9 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
             raise AssertionError(
-                "Somehow we misunderstood how"
-                " iter_topo_order works {} != {}".format(first, merge)
+                "Somehow we misunderstood how iter_topo_order works {} != {}".format(
+                    first, merge
+                )
             )
         for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]

@@ -25,6 +25,7 @@ from . import controldir, errors, osutils, urlutils
 from . import hooks as _mod_hooks
 from .bzr import bzrdir
 from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
+from .i18n import gettext
 from .missing import find_unmerged
 
 
@@ -198,11 +199,17 @@ def _show_format_info(
     outfile.write("\n")
     outfile.write("Format:\n")
     if control:
-        outfile.write("       control: {}\n".format(control._format.get_format_description()))
+        outfile.write(
+            "       control: {}\n".format(control._format.get_format_description())
+        )
     if working:
-        outfile.write("  working tree: {}\n".format(working._format.get_format_description()))
+        outfile.write(
+            "  working tree: {}\n".format(working._format.get_format_description())
+        )
     if branch:
-        outfile.write("        branch: {}\n".format(branch._format.get_format_description()))
+        outfile.write(
+            "        branch: {}\n".format(branch._format.get_format_description())
+        )
     if repository:
         outfile.write(
             "    repository: {}\n".format(repository._format.get_format_description())
@@ -212,8 +219,7 @@ def _show_format_info(
 def _show_locking_info(repository=None, branch=None, working=None, outfile=None):
     """Show locking status of working, branch and repository."""
     if (
-        (repository
-        and repository.get_physical_lock_status())
+        (repository and repository.get_physical_lock_status())
         or (branch and branch.get_physical_lock_status())
         or (working and working.get_physical_lock_status())
     ):
@@ -248,7 +254,7 @@ def _show_missing_revisions_branch(branch, outfile):
         if remote_extra:
             outfile.write("\n")
             outfile.write(
-                ("Branch is out of date: missing %d revision%s.\n")
+                gettext("Branch is out of date: missing %d revision%s.\n")
                 % (len(remote_extra), plural(len(remote_extra)))
             )
 
@@ -270,7 +276,7 @@ def _show_missing_revisions_working(working, outfile):
         missing_count = branch_revno - tree_last_revno
         outfile.write("\n")
         outfile.write(
-            ("Working tree is out of date: missing %d revision%s.\n")
+            gettext("Working tree is out of date: missing %d revision%s.\n")
             % (missing_count, plural(missing_count))
         )
 

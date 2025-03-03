@@ -319,7 +319,9 @@ def _send_chunks(stream, write_func):
             return
         else:
             raise errors.BzrError(
-                "Chunks must be str or FailedSmartServerResponse, got {!r}".format(chunk)
+                "Chunks must be str or FailedSmartServerResponse, got {!r}".format(
+                    chunk
+                )
             )
 
 
@@ -362,7 +364,9 @@ class _StatefulDecoder:
         in_buffer = b"".join(self._in_buffer_list)
         if len(in_buffer) != self._in_buffer_len:
             raise AssertionError(
-                "Length of buffer did not match expected value: {} != {}".format(*self._in_buffer_len),
+                "Length of buffer did not match expected value: {} != {}".format(
+                    *self._in_buffer_len
+                ),
                 len(in_buffer),
             )
         self._in_buffer_list = [in_buffer]
@@ -869,7 +873,9 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
             self._request.finished_reading()
             raise errors.ErrorFromSmartServer(result)
         else:
-            raise errors.SmartProtocolError("bad protocol status {!r}".format(response_status))
+            raise errors.SmartProtocolError(
+                "bad protocol status {!r}".format(response_status)
+            )
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
@@ -1223,7 +1229,9 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def send_response(self, response):
         if self.response_sent:
             raise AssertionError(
-                "send_response({!r}) called, but response already sent.".format(response)
+                "send_response({!r}) called, but response already sent.".format(
+                    response
+                )
             )
         self.response_sent = True
         self._write_protocol_version()

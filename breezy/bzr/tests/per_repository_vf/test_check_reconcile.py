@@ -324,7 +324,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \(rev2c\)",
             r"a-file-id version rev4 has parents \(rev2\) "
             r"but should have \(rev1a\)",
-            f"{count} inconsistent parents"
+            f"{count} inconsistent parents",
         ]
 
     def populate_repository(self, repo):
@@ -988,7 +988,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 self.assertEqual(
                     expected_parents,
                     found_parents,
-                    "{} reconcile {} has parents {}, should have {}.".format(when_description, version, found_parents, expected_parents),
+                    "{} reconcile {} has parents {}, should have {}.".format(
+                        when_description, version, found_parents, expected_parents
+                    ),
                 )
 
     def prepare_test_repository(self):

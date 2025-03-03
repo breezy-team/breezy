@@ -234,7 +234,9 @@ class ScriptRunner:
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) + " in stderr of running command {}".format(cmd))
+            raise AssertionError(
+                str(e) + " in stderr of running command {}".format(cmd)
+            )
         if retcode and not error and actual_error:
             test_case.fail(
                 "In \n\t{}\nUnexpected error: {}".format(" ".join(cmd), actual_error)
@@ -248,7 +250,9 @@ class ScriptRunner:
             elif expected == "...\n":
                 return
             else:
-                test_case.fail("expected output: {!r}, but found nothing".format(expected))
+                test_case.fail(
+                    "expected output: {!r}, but found nothing".format(expected)
+                )
 
         null_output_matches_anything = getattr(
             self, "null_output_matches_anything", False

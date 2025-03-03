@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from . import debug, errors, osutils, revision, trace
+from . import debug, errors, osutils, trace
+from . import revision as _mod_revision
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -351,7 +352,7 @@ class Graph:
         known_revnos = dict(known_revision_ids)
         cur_tip = target_revision_id
         num_steps = 0
-        NULL_REVISION = revision.NULL_REVISION
+        NULL_REVISION = _mod_revision.NULL_REVISION
         known_revnos[NULL_REVISION] = 0
 
         searching_known_tips = list(known_revnos)
@@ -858,11 +859,11 @@ class Graph:
             order if they need it.
         """
         candidate_heads = set(keys)
-        if revision.NULL_REVISION in candidate_heads:
+        if _mod_revision.NULL_REVISION in candidate_heads:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_heads.remove(revision.NULL_REVISION)
+            candidate_heads.remove(_mod_revision.NULL_REVISION)
             if not candidate_heads:
-                return {revision.NULL_REVISION}
+                return {_mod_revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = {c: self._make_breadth_first_searcher([c]) for c in candidate_heads}

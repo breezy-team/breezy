@@ -329,7 +329,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         try:
             tree_a.commit("rev3", rev_id=b"rev3", allow_pointless=True)
         except errors.RevisionNotPresent as e:
-            raise tests.TestNotApplicable("Cannot test with ghosts for this format.") from e
+            raise tests.TestNotApplicable(
+                "Cannot test with ghosts for this format."
+            ) from e
         # add another reference to a ghost, and a second ghost.
         tree_a.add_parent_tree_id(b"ghost1")
         tree_a.add_parent_tree_id(b"ghost2")
@@ -409,7 +411,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         try:
             repo.add_revision(b"ghost", rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent) as e:
-            raise tests.TestNotApplicable("Cannot test with ghosts for this format.") from e
+            raise tests.TestNotApplicable(
+                "Cannot test with ghosts for this format."
+            ) from e
 
         inv = inventory.Inventory(revision_id=b"the_ghost")
         inv.root.revision = b"the_ghost"

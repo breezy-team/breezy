@@ -318,9 +318,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
                 "control dir format does not support colocated branches"
             )
         try:
-            self.branch_format.initialize(
-                repo.controldir, name="branch1"
-            )
+            self.branch_format.initialize(repo.controldir, name="branch1")
         except errors.UninitializableFormat:
             # branch references are not default init'able and
             # not all bzrdirs support colocated branches.
@@ -438,7 +436,9 @@ class TestBranch(per_branch.TestCaseWithBranch):
             rev1 = checkout_b.commit("rev1")
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
-                "roundtripping between {!r} and {!r} not supported".format(checkout_b.branch, checkout_b.branch.get_master_branch())
+                "roundtripping between {!r} and {!r} not supported".format(
+                    checkout_b.branch, checkout_b.branch.get_master_branch()
+                )
             )
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)

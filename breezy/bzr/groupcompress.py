@@ -18,7 +18,6 @@
 
 import time
 import zlib
-from typing import Type
 
 from ..lazy_import import lazy_import
 
@@ -183,7 +182,9 @@ class GroupCompressBlock:
                     if not self._z_content_decompressor.unconsumed_tail:
                         self._z_content_decompressor = None
             else:
-                raise AssertionError("Unknown compressor: {!r}".format(self._compressor_name))
+                raise AssertionError(
+                    "Unknown compressor: {!r}".format(self._compressor_name)
+                )
         # Any bytes remaining to be decompressed will be in the decompressors
         # 'unconsumed_tail'
 
@@ -286,8 +287,9 @@ class GroupCompressBlock:
         content_start = start + 1 + len_len
         if end != content_start + content_len:
             raise ValueError(
-                "end != len according to field header"
-                " {} != {}".format(end, content_start + content_len)
+                "end != len according to field header {} != {}".format(
+                    end, content_start + content_len
+                )
             )
         if c == b"f":
             return [self._content[content_start:end]]
@@ -939,8 +941,9 @@ class _CommonGroupCompressor:
             data_len = delta_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError(
-                    "Index claimed delta len, but stored bytes"
-                    " claim {} != {}".format(len(stored_bytes), data_len)
+                    "Index claimed delta len, but stored bytes claim {} != {}".format(
+                        len(stored_bytes), data_len
+                    )
                 )
             data = [apply_delta(source, stored_bytes[offset + 1 :])]
         data_sha1 = osutils.sha_strings(data)
@@ -1078,8 +1081,9 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.labels_deltas[key] = (start, chunk_start, self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError(
-                "the delta index is out of sync"
-                "with the output lines {} != {}".format(self._delta_index._source_offset, self.endpoint)
+                "the delta index is out of syncwith the output lines {} != {}".format(
+                    self._delta_index._source_offset, self.endpoint
+                )
             )
         return start, self.endpoint, type
 
@@ -2167,7 +2171,8 @@ class _GCGraphIndex:
                     details = "{} {} {}".format(key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(
-                            self, "inconsistent details in add_records: {}".format(details)
+                            self,
+                            "inconsistent details in add_records: {}".format(details),
                         )
                     else:
                         trace.warning(
@@ -2339,7 +2344,7 @@ class _GCGraphIndex:
             key_dependencies.add_references(node[1], node[3][0])
 
 
-GroupCompressor: Type[_CommonGroupCompressor]
+GroupCompressor: type[_CommonGroupCompressor]
 
 
 from ._groupcompress_py import (

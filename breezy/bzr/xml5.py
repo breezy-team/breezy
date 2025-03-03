@@ -38,7 +38,9 @@ class Serializer_v5(xml6.Serializer_v6):
         format = elt.get("format")
         if format is not None:
             if format != "5":
-                raise errors.BzrError("invalid format version {!r} on inventory".format(format))
+                raise errors.BzrError(
+                    "invalid format version {!r} on inventory".format(format)
+                )
         data_revision_id = elt.get("revision_id")
         if data_revision_id is not None:
             revision_id = data_revision_id.encode("utf-8")
@@ -60,7 +62,9 @@ class Serializer_v5(xml6.Serializer_v6):
             try:
                 parent = byid[parent_id]
             except KeyError:
-                raise errors.BzrError("parent_id {{{}}} not in inventory".format(parent_id))
+                raise errors.BzrError(
+                    "parent_id {{{}}} not in inventory".format(parent_id)
+                )
             if ie.file_id in byid:
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             if ie.name in parent.children:

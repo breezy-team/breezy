@@ -863,7 +863,9 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("{!r} doesn't support stacking".format(self.format_name))
+            raise TestNotApplicable(
+                "{!r} doesn't support stacking".format(self.format_name)
+            )
         super().setUp()
 
     def get_format(self):

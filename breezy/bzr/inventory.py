@@ -582,7 +582,9 @@ class InventoryLink(InventoryEntry):
         """See InventoryEntry._check."""
         if self.symlink_target is None:
             checker._report_items.append(
-                "symlink {{{}}} has no target in revision {{{}}}".format(self.file_id, tree_revision_id)
+                "symlink {{{}}} has no target in revision {{{}}}".format(
+                    self.file_id, tree_revision_id
+                )
             )
         # Symlinks are stored as ''
         checker.add_pending_item(
@@ -1481,13 +1483,17 @@ class Inventory(CommonInventory):
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
             raise errors.BzrError(
-                "{!r} already exists in {!r}".format(new_name, self.id2path(new_parent_id))
+                "{!r} already exists in {!r}".format(
+                    new_name, self.id2path(new_parent_id)
+                )
             )
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
             raise errors.BzrError(
-                "cannot move directory {!r} into a subdirectory of itself, {!r}".format(self.id2path(file_id), self.id2path(new_parent_id))
+                "cannot move directory {!r} into a subdirectory of itself, {!r}".format(
+                    self.id2path(file_id), self.id2path(new_parent_id)
+                )
             )
 
         file_ie = self._byid[file_id]
@@ -1876,7 +1882,9 @@ class CHKInventory(CommonInventory):
                     raise errors.InconsistentDelta(
                         old_path,
                         file_id,
-                        "Entry was at wrong other path {!r}.".format(self.id2path(file_id)),
+                        "Entry was at wrong other path {!r}.".format(
+                            self.id2path(file_id)
+                        ),
                     )
                 altered.add(file_id)
             id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))
@@ -1981,7 +1989,9 @@ class CHKInventory(CommonInventory):
         for line in lines[1:]:
             key, value = line.rstrip(b"\n").split(b": ", 1)
             if key not in allowed_keys:
-                raise errors.BzrError("Unknown key in inventory: {!r}\n{!r}".format(key, bytes))
+                raise errors.BzrError(
+                    "Unknown key in inventory: {!r}\n{!r}".format(key, bytes)
+                )
             if key in info:
                 raise errors.BzrError(
                     "Duplicate key in inventory: {!r}\n{!r}".format(key, bytes)
@@ -1993,12 +2003,15 @@ class CHKInventory(CommonInventory):
         parent_id_basename_to_file_id = info.get(b"parent_id_basename_to_file_id")
         if not parent_id_basename_to_file_id.startswith(b"sha1:"):
             raise ValueError(
-                "parent_id_basename_to_file_id should be a sha1"
-                " key not {!r}".format(parent_id_basename_to_file_id)
+                "parent_id_basename_to_file_id should be a sha1 key not {!r}".format(
+                    parent_id_basename_to_file_id
+                )
             )
         id_to_entry = info[b"id_to_entry"]
         if not id_to_entry.startswith(b"sha1:"):
-            raise ValueError("id_to_entry should be a sha1 key not {!r}".format(id_to_entry))
+            raise ValueError(
+                "id_to_entry should be a sha1 key not {!r}".format(id_to_entry)
+            )
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
@@ -2024,7 +2037,9 @@ class CHKInventory(CommonInventory):
         )
         if (result.revision_id,) != expected_revision_id:
             raise ValueError(
-                "Mismatched revision id and expected: {!r}, {!r}".format(result.revision_id, expected_revision_id)
+                "Mismatched revision id and expected: {!r}, {!r}".format(
+                    result.revision_id, expected_revision_id
+                )
             )
         return result
 
@@ -2252,7 +2267,9 @@ class CHKInventory(CommonInventory):
                     "Data inconsistency detected."
                     " In the parent_id_basename_to_file_id map, file_id"
                     " {{{}}} is listed as having basename {!r}, but in the"
-                    " id_to_entry map it is {!r}".format(child_file_id, basename, ie.name)
+                    " id_to_entry map it is {!r}".format(
+                        child_file_id, basename, ie.name
+                    )
                 )
             parent_ie._children[basename] = ie
         self._fully_cached = True
@@ -2400,8 +2417,9 @@ class CHKInventory(CommonInventory):
                 for (parent_id, name_utf8), file_id in items:  # noqa: B007
                     if parent_id != current_id or name_utf8 != basename_utf8:
                         raise errors.BzrError(
-                            "corrupt inventory lookup! "
-                            "{!r} {!r} {!r} {!r}".format(parent_id, current_id, name_utf8, basename_utf8)
+                            "corrupt inventory lookup! {!r} {!r} {!r} {!r}".format(
+                                parent_id, current_id, name_utf8, basename_utf8
+                            )
                         )
                 if file_id is None:
                     return None
@@ -2616,11 +2634,15 @@ def _check_delta_ids_are_valid(delta):
         entry = item[3]
         if item[2] is None:
             raise errors.InconsistentDelta(
-                item[0] or item[1], item[2], "entry with file_id None {!r}".format(entry)
+                item[0] or item[1],
+                item[2],
+                "entry with file_id None {!r}".format(entry),
             )
         if not isinstance(item[2], bytes):
             raise errors.InconsistentDelta(
-                item[0] or item[1], item[2], "entry with non bytes file_id {!r}".format(entry)
+                item[0] or item[1],
+                item[2],
+                "entry with non bytes file_id {!r}".format(entry),
             )
         yield item
 

@@ -969,7 +969,9 @@ class LeafNode(Node):
             if not serialized.startswith(self._common_serialised_prefix):
                 raise AssertionError(
                     "We thought the common prefix was {!r}"
-                    " but entry {!r} does not have it in common".format(self._common_serialised_prefix, serialized)
+                    " but entry {!r} does not have it in common".format(
+                        self._common_serialised_prefix, serialized
+                    )
                 )
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
@@ -1072,7 +1074,9 @@ class InternalNode(Node):
             raise AssertionError("_search_prefix should not be None")
         if not prefix.startswith(self._search_prefix):
             raise AssertionError(
-                "prefixes mismatch: {} must start with {}".format(prefix, self._search_prefix)
+                "prefixes mismatch: {} must start with {}".format(
+                    prefix, self._search_prefix
+                )
             )
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError(
@@ -1315,10 +1319,8 @@ class InternalNode(Node):
                     new_size = child._current_size()
                     shrinkage = old_size - new_size
                     if (
-                        (shrinkage > 0
-                        and new_size < _INTERESTING_NEW_SIZE)
-                        or shrinkage > _INTERESTING_SHRINKAGE_LIMIT
-                    ):
+                        shrinkage > 0 and new_size < _INTERESTING_NEW_SIZE
+                    ) or shrinkage > _INTERESTING_SHRINKAGE_LIMIT:
                         trace.mutter(
                             "checking remap as size shrunk by %d to be %d",
                             shrinkage,
@@ -1380,7 +1382,9 @@ class InternalNode(Node):
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
                 raise AssertionError(
-                    "prefixes mismatch: {} must start with {}".format(serialised, self._search_prefix)
+                    "prefixes mismatch: {} must start with {}".format(
+                        serialised, self._search_prefix
+                    )
                 )
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -1815,10 +1819,10 @@ def _check_key(key):
     if not isinstance(key, StaticTuple):
         raise TypeError("key {!r} is not StaticTuple but {}".format(key, type(key)))
     if len(key) != 1:
-        raise ValueError(
-            f"key {key!r} should have length 1, not {len(key)}"
-        )
+        raise ValueError(f"key {key!r} should have length 1, not {len(key)}")
     if not isinstance(key[0], str):
-        raise TypeError("key {!r} should hold a str, not {!r}".format(key, type(key[0])))
+        raise TypeError(
+            "key {!r} should hold a str, not {!r}".format(key, type(key[0]))
+        )
     if not key[0].startswith("sha1:"):
         raise ValueError("key {!r} should point to a sha1:".format(key))

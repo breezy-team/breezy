@@ -70,7 +70,9 @@ class TestPush(tests.TestCaseWithTransport):
                 "",
                 "brz: ERROR: No push location known or specified. "
                 "To push to the parent branch "
-                "(at {}), use 'brz push :parent'.\n".format(urlutils.unescape_for_display(tree_b.branch.base, "utf-8")),
+                "(at {}), use 'brz push :parent'.\n".format(
+                    urlutils.unescape_for_display(tree_b.branch.base, "utf-8")
+                ),
             ),
         )
 
@@ -190,8 +192,9 @@ class TestPush(tests.TestCaseWithTransport):
         push_loc = t.branch.controldir.open_branch().get_push_location()
         out, err = self.run_bzr("push", working_dir="tree")
         self.assertEqual(
-            "Using saved push location: {}\n"
-            "No new revisions or tags to push.\n".format(urlutils.local_path_from_url(push_loc)),
+            "Using saved push location: {}\nNo new revisions or tags to push.\n".format(
+                urlutils.local_path_from_url(push_loc)
+            ),
             err,
         )
         out, err = self.run_bzr("push -q", working_dir="tree")
@@ -250,7 +253,9 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr("push -d from to-one")
         self.assertPathExists("to-one")
         self.run_bzr(
-            "push -d {} {}".format(*tuple(map(urlutils.local_path_to_url, ["from", "to-two"])))
+            "push -d {} {}".format(
+                *tuple(map(urlutils.local_path_to_url, ["from", "to-two"]))
+            )
         )
         self.assertPathExists("to-two")
 
@@ -436,7 +441,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -460,7 +467,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -475,7 +484,9 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
@@ -497,7 +508,8 @@ class TestPush(tests.TestCaseWithTransport):
         )
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_public_url), err
+            "Created new stacked branch referring to {}.\n".format(trunk_public_url),
+            err,
         )
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 
@@ -697,7 +709,9 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         destination_url = self.memory_server.get_url() + "infinite-loop"
         out, err = self.run_bzr_error(
             [
-                "Too many redirections trying to make {}\\.\n".format(re.escape(destination_url))
+                "Too many redirections trying to make {}\\.\n".format(
+                    re.escape(destination_url)
+                )
             ],
             ["push", "-d", "tree", destination_url],
             retcode=3,

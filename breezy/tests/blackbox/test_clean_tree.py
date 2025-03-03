@@ -18,7 +18,6 @@
 
 """Tests of the 'brz clean-tree' command."""
 
-
 from breezy import ignores
 from breezy.tests import TestCaseWithTransport
 from breezy.tests.script import run_script

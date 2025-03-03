@@ -25,7 +25,7 @@ from distutils import log  # type: ignore
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.spawn import find_executable
-from typing import List, Optional
+from typing import Optional
 
 
 class build_mo(Command):
@@ -49,7 +49,7 @@ class build_mo(Command):
     source_dir: Optional[str]
     build_dir: Optional[str]
     output_base: Optional[str]
-    lang: Optional[List[str]]
+    lang: Optional[list[str]]
 
     def initialize_options(self) -> None:
         self.build_dir = None

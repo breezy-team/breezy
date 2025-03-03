@@ -101,14 +101,18 @@ class TestNonAscii(tests.TestCaseWithTransport):
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
                 raise tests.TestSkipped(
-                    'Unable to represent path {!r} in filesystem encoding "{}"'.format(thing, fs_enc)
+                    'Unable to represent path {!r} in filesystem encoding "{}"'.format(
+                        thing, fs_enc
+                    )
                 )
             try:
                 thing.encode(terminal_enc)
             except UnicodeEncodeError:
                 raise tests.TestSkipped(
                     'Unable to represent path {!r} in terminal encoding "{}"'
-                    ' (even though it is valid in filesystem encoding "{}")'.format(thing, terminal_enc, fs_enc)
+                    ' (even though it is valid in filesystem encoding "{}")'.format(
+                        thing, terminal_enc, fs_enc
+                    )
                 )
 
     def create_base(self):
@@ -271,8 +275,9 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(
-            "Using saved parent location: {}/\n"
-            "No revisions or tags to pull.\n".format(expected),
+            "Using saved parent location: {}/\nNo revisions or tags to pull.\n".format(
+                expected
+            ),
             txt,
         )
 

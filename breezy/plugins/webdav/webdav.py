@@ -237,7 +237,9 @@ def _extract_stat_info(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(url, msg="Malformed xml response: {}".format(e))
+        raise errors.InvalidHttpResponse(
+            url, msg="Malformed xml response: {}".format(e)
+        )
     if handler.is_dir:
         size = -1  # directory sizes are meaningless for bzr
         is_exec = True
@@ -293,7 +295,9 @@ def _extract_dir_content(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(url, msg="Malformed xml response: {}".format(e))
+        raise errors.InvalidHttpResponse(
+            url, msg="Malformed xml response: {}".format(e)
+        )
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
@@ -672,7 +676,9 @@ class HttpDavTransport(urllib.HttpTransport):
         # investivation.
         if code not in (201, 204):
             self._raise_http_error(
-                abs_from, response, "unable to copy from {!r} to {!r}".format(abs_from, abs_to)
+                abs_from,
+                response,
+                "unable to copy from {!r} to {!r}".format(abs_from, abs_to),
             )
 
     def copy_to(self, relpaths, other, mode=None, pb=None):

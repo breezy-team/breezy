@@ -16,7 +16,6 @@
 
 """Blackbox tests for -D debug options."""
 
-
 from breezy import tests
 
 
@@ -46,7 +45,9 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         # connected to a real TextUIFactory. The NullProgressView always
         # ignores transport activity.
         out, err = self.run_brz_subprocess(
-            "branch -Dbytes -Oprogress_bar=text {}/tree target".format(remote_trans.base)
+            "branch -Dbytes -Oprogress_bar=text {}/tree target".format(
+                remote_trans.base
+            )
         )
         self.assertContainsRe(err, b"Branched 1 revision")
         self.assertContainsRe(err, b"Transferred:.*kB")

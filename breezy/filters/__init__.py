@@ -42,7 +42,7 @@ Note that context is currently only supported for write converters.
 
 
 from io import BytesIO
-from typing import Callable, Dict, List, Tuple
+from typing import Callable
 
 from .. import osutils, registry
 
@@ -62,8 +62,8 @@ class ContentFilter:
         return "reader: {}, writer: {}".format(self.reader, self.writer)
 
 
-Preferences = List[Tuple[str, str]]
-Stack = List[ContentFilter]
+Preferences = list[tuple[str, str]]
+Stack = list[ContentFilter]
 
 
 class ContentFilterContext:
@@ -168,12 +168,12 @@ class FilteredStat:
 
 
 # The registry of filter stacks indexed by name.
-filter_stacks_registry = registry.Registry[str, Callable[[str], List[ContentFilter]]]()
+filter_stacks_registry = registry.Registry[str, Callable[[str], list[ContentFilter]]]()
 
 
 # Cache of preferences -> stack
 # TODO: make this per branch (say) rather than global
-_stack_cache: Dict[Preferences, Stack] = {}
+_stack_cache: dict[Preferences, Stack] = {}
 
 
 def _get_registered_names():

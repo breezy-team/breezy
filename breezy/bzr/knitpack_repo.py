@@ -554,8 +554,9 @@ class KnitPackStreamSource(StreamSource):
         def find_text_keys_from_content(record):
             if record.storage_kind not in ("knit-delta-gz", "knit-ft-gz"):
                 raise ValueError(
-                    "Unknown content storage kind for"
-                    " inventory text: {}".format(record.storage_kind)
+                    "Unknown content storage kind for inventory text: {}".format(
+                        record.storage_kind
+                    )
                 )
             # It's a knit record, it has a _raw_record field (even if it was
             # reconstituted from a network stream).
@@ -1196,7 +1197,9 @@ class KnitReconcilePacker(KnitPacker):
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
             raise errors.BzrCheckError(
-                "Reference to missing compression parents {!r}".format(missing_text_keys)
+                "Reference to missing compression parents {!r}".format(
+                    missing_text_keys
+                )
             )
         self._log_copied_texts()
 

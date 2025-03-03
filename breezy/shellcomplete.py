@@ -54,7 +54,9 @@ def shellcomplete_on_options(options, outfile=None):
         short_name = opt.short_name()
         if short_name:
             outfile.write(
-                '"(--{} -{})"{{--{},-{}}}\n'.format(opt.name, short_name, opt.name, short_name)
+                '"(--{} -{})"{{--{},-{}}}\n'.format(
+                    opt.name, short_name, opt.name, short_name
+                )
             )
         else:
             outfile.write("--{}\n".format(opt.name))

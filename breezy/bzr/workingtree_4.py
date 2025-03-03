@@ -363,11 +363,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # These checks cost us around 40ms on a 55k entry tree
                 if file_id in inv_byid:
                     raise AssertionError(
-                        "file_id {} already in"
-                        " inventory as {}".format(file_id, inv_byid[file_id])
+                        "file_id {} already in inventory as {}".format(
+                            file_id, inv_byid[file_id]
+                        )
                     )
                 if name_unicode in parent_ie.children:
-                    raise AssertionError("name {!r} already in parent".format(name_unicode))
+                    raise AssertionError(
+                        "name {!r} already in parent".format(name_unicode)
+                    )
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
@@ -1971,11 +1974,14 @@ class DirStateRevisionTree(InventoryTree):
                 # These checks cost us around 40ms on a 55k entry tree
                 if file_id in inv_byid:
                     raise AssertionError(
-                        "file_id {} already in"
-                        " inventory as {}".format(file_id, inv_byid[file_id])
+                        "file_id {} already in inventory as {}".format(
+                            file_id, inv_byid[file_id]
+                        )
                     )
                 if name_unicode in parent_ie.children:
-                    raise AssertionError("name {!r} already in parent".format(name_unicode))
+                    raise AssertionError(
+                        "name {!r} already in parent".format(name_unicode)
+                    )
                 inv_byid[file_id] = inv_entry
                 parent_ie.children[name_unicode] = inv_entry
         self._inventory = inv
@@ -2257,7 +2263,9 @@ class InterDirStateTree(InterInventoryTree):
     def __init__(self, source, target):
         super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception("invalid source {!r} and target {!r}".format(source, target))
+            raise Exception(
+                "invalid source {!r} and target {!r}".format(source, target)
+            )
 
     @staticmethod
     def make_source_parent_tree(source, target):
@@ -2341,7 +2349,9 @@ class InterDirStateTree(InterInventoryTree):
         ):
             raise AssertionError(
                 "revision {{{}}} is not stored in {{{}}}, but {} "
-                "can only be used for trees stored in the dirstate".format(self.source._revision_id, self.target, self.iter_changes)
+                "can only be used for trees stored in the dirstate".format(
+                    self.source._revision_id, self.target, self.iter_changes
+                )
             )
         target_index = 0
         if self.source._revision_id == _mod_revision.NULL_REVISION:

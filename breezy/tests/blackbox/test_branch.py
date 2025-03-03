@@ -83,7 +83,9 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr("branch {},branch=somecolo".format(local_path_to_url("b/a")))
+        out, err = self.run_bzr(
+            "branch {},branch=somecolo".format(local_path_to_url("b/a"))
+        )
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -93,7 +95,9 @@ class TestBranch(tests.TestCaseWithTransport):
         os.mkdir("b")
         tree = self.example_branch("b/a", format="development-colo")
         tree.controldir.create_branch(name="somecolo")
-        out, err = self.run_bzr("branch -b somecolo {}".format(local_path_to_url("b/a")))
+        out, err = self.run_bzr(
+            "branch -b somecolo {}".format(local_path_to_url("b/a"))
+        )
         self.assertEqual("", out)
         self.assertEqual("Branched 0 revisions.\n", err)
         self.assertPathExists("a")
@@ -463,7 +467,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "branch", "--stacked", "branch2"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(branch_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                branch_tree.branch.base
+            ),
             err,
         )
         self.assertEqual(
@@ -486,7 +492,9 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["branch", "--stacked", "mainline", "newbranch"])
         self.assertEqual("", out)
         self.assertEqual(
-            "Created new stacked branch referring to {}.\n".format(trunk_tree.branch.base),
+            "Created new stacked branch referring to {}.\n".format(
+                trunk_tree.branch.base
+            ),
             err,
         )
         self.assertRevisionNotInRepository("newbranch", original_revid)

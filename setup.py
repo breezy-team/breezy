@@ -6,13 +6,12 @@ Run it with
  './setup.py --help' for more options.
 """
 
+import importlib.util
 import os
 import os.path
 import sys
 
-try:
-    import setuptools
-except ModuleNotFoundError as e:
+if not importlib.util.find_spec("setuptools"):
     sys.stderr.write("[ERROR] Please install setuptools ({})\n".format(e))
     sys.exit(1)
 
@@ -105,8 +104,9 @@ else:
     cython_version_info = Version(cython_version)
     if cython_version_info < Version(minimum_cython_version):
         print(
-            "Version of Cython is too old. "
-            "Current is {}, need at least {}.".format(cython_version, minimum_cython_version)
+            "Version of Cython is too old. Current is {}, need at least {}.".format(
+                cython_version, minimum_cython_version
+            )
         )
         print(
             "If the .c files are available, they will be built,"

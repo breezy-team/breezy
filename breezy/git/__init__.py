@@ -56,7 +56,7 @@ def import_dulwich():
             raise brz_errors.DependencyNotPresent(
                 "dulwich",
                 "bzr-git: Dulwich is too old; at least "
-                f"{dulwich_minimum_version[0]}.{dulwich_minimum_version[1]}.{dulwich_minimum_version[2]} is required"
+                f"{dulwich_minimum_version[0]}.{dulwich_minimum_version[1]}.{dulwich_minimum_version[2]} is required",
             )
 
 

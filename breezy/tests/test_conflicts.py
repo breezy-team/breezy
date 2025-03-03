@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import Any, Callable, Dict, List, Tuple, Type
+from typing import Any, Callable
 
 from .. import conflicts, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
@@ -231,7 +231,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     # Set by daughter classes
-    _conflict_type: Type[conflicts.Conflict]
+    _conflict_type: type[conflicts.Conflict]
     _assert_conflict: Callable[[Any, Any, Any], Any]
 
     # Set by load_tests
@@ -239,8 +239,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    scenarios: List[
-        Tuple[Dict[str, Any], Tuple[str, Dict[str, Any]], Tuple[str, Dict[str, Any]]]
+    scenarios: list[
+        tuple[dict[str, Any], tuple[str, dict[str, Any]], tuple[str, dict[str, Any]]]
     ] = []
     """The scenario list for the conflict type defined by the class.
 
@@ -346,7 +346,11 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
         [
             # File modified on both sides
             (
-                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "filed_modified_A",
                     {"actions": "modify_file_A", "check": "file_has_content_A"},
@@ -439,7 +443,11 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         [
             # File modified/deleted
             (
-                {"_base_actions": "create_file", "_path": "file", "_file_id": b"file-id"},
+                {
+                    "_base_actions": "create_file",
+                    "_path": "file",
+                    "_file_id": b"file-id",
+                },
                 (
                     "file_modified",
                     {"actions": "modify_file", "check": "file_has_more_content"},
@@ -452,7 +460,9 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
             # File renamed-modified/deleted
             (
                 {
-                    "_base_actions": "create_file", "_path": "new-file", "_file_id": b"file-id"
+                    "_base_actions": "create_file",
+                    "_path": "new-file",
+                    "_file_id": b"file-id",
                 },
                 (
                     "file_renamed_and_modified",
@@ -483,7 +493,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                 (
                     "file_deleted_in_dir",
                     {
-                        "actions": "delete_file_in_dir", "check": "file_in_dir_doesnt_exist"
+                        "actions": "delete_file_in_dir",
+                        "check": "file_in_dir_doesnt_exist",
                     },
                 ),
             ),

@@ -255,7 +255,9 @@ class EmailSender:
     def subject(self):
         _subject = self.config.get("post_commit_subject")
         if _subject is None:
-            _subject = f"Rev {self.revno}: {self.revision.get_summary()} in {self.url()}"
+            _subject = (
+                f"Rev {self.revno}: {self.revision.get_summary()} in {self.url()}"
+            )
         return self._format(_subject)
 
     def diff_filename(self):

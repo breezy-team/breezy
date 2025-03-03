@@ -93,7 +93,9 @@ class ResponseFile:
         if whence == os.SEEK_SET:
             if offset < self._pos:
                 raise AssertionError(
-                    "Can't seek backwards, pos: {}, offset: {}".format(self._pos, offset)
+                    "Can't seek backwards, pos: {}, offset: {}".format(
+                        self._pos, offset
+                    )
                 )
             to_discard = offset - self._pos
         elif whence == os.SEEK_CUR:
@@ -197,7 +199,9 @@ class RangeFile(ResponseFile):
             ):
                 raise errors.InvalidHttpResponse(
                     self._path,
-                    "Expected a boundary ({}) line, got '{}'".format(self._boundary, boundary_line),
+                    "Expected a boundary ({}) line, got '{}'".format(
+                        self._boundary, boundary_line
+                    ),
                 )
 
     def _unquote_boundary(self, b):
@@ -299,14 +303,18 @@ class RangeFile(ResponseFile):
             raise errors.InvalidRange(
                 self._path,
                 self._pos,
-                "Can't read {} bytes before range ({}, {})".format(size, self._start, self._size),
+                "Can't read {} bytes before range ({}, {})".format(
+                    size, self._start, self._size
+                ),
             )
         if self._size > 0:
             if size > 0 and self._pos + size > self._start + self._size:
                 raise errors.InvalidRange(
                     self._path,
                     self._pos,
-                    "Can't read {} bytes across range ({}, {})".format(size, self._start, self._size),
+                    "Can't read {} bytes across range ({}, {})".format(
+                        size, self._start, self._size
+                    ),
                 )
 
         # read data from file

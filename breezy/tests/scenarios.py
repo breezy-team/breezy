@@ -25,11 +25,11 @@ This is similar to the interface provided by
 """
 
 __all__ = [
-    'iter_suite_tests',
-    'load_tests_apply_scenarios',
-    'multiply_scenarios',
-    'multiply_tests',
-    'multiply_tests_by_their_scenarios',
+    "iter_suite_tests",
+    "load_tests_apply_scenarios",
+    "multiply_scenarios",
+    "multiply_tests",
+    "multiply_tests_by_their_scenarios",
 ]
 
 from . import iter_suite_tests, multiply_scenarios, multiply_tests

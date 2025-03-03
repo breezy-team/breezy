@@ -1021,7 +1021,6 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
 class MergeCasesMixin:
     def doMerge(self, base, a, b, mp):
-
         def addcrlf(x):
             return x + b"\n"
 

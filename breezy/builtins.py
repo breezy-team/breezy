@@ -1007,15 +1007,13 @@ class cmd_cp(Command):
                 ) from exc
             if src_kind is None:
                 raise errors.CommandError(
-                    gettext(
-                        "Could not copy %s => %s . %s is not versioned\\."
-                    ) % (src, dst, src)
+                    gettext("Could not copy %s => %s . %s is not versioned\\.")
+                    % (src, dst, src)
                 )
             if src_kind == "directory":
                 raise errors.CommandError(
-                    gettext(
-                        "Could not copy %s => %s . %s is a directory."
-                    ) % (src, dst, src)
+                    gettext("Could not copy %s => %s . %s is a directory.")
+                    % (src, dst, src)
                 )
             dst_parent = osutils.split(dst)[0]
             if dst_parent != "":
@@ -1514,10 +1512,12 @@ class cmd_push(Command):
                         gettext(
                             "No push location known or specified. To push to the "
                             "parent branch (at %s), use 'brz push :parent'."
-                        ) %
-                            (urlutils.unescape_for_display(
+                        )
+                        % (
+                            urlutils.unescape_for_display(
                                 parent_loc, self.outf.encoding
-                            ),)
+                            ),
+                        )
                     )
                 else:
                     raise errors.CommandError(
@@ -1765,9 +1765,11 @@ class cmd_branches(Command):
                 raise errors.CommandError("Can't scan this type of location.")
             for b in controldir.ControlDir.find_branches(t):
                 self.outf.write(
-                    "{}\n".format(urlutils.unescape_for_display(
-                        urlutils.relative_url(t.base, b.base), self.outf.encoding
-                    ).rstrip("/"))
+                    "{}\n".format(
+                        urlutils.unescape_for_display(
+                            urlutils.relative_url(t.base, b.base), self.outf.encoding
+                        ).rstrip("/")
+                    )
                 )
         else:
             dir = controldir.ControlDir.open_containing(location)[0]
@@ -1913,9 +1915,7 @@ class cmd_clone(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = urlutils.derive_to_location(from_location)
-        br_from.controldir.clone(
-            to_location, revision_id=revision_id
-        )
+        br_from.controldir.clone(to_location, revision_id=revision_id)
         note(gettext("Created new control directory."))
 
 
@@ -4131,7 +4131,9 @@ class cmd_commit(Command):
             if file_exists:
                 warning_msg = (
                     'The commit message is a file name: "{f}".\n'
-                    '(use --file "{f}" to take commit message from that file)'.format(f=message)
+                    '(use --file "{f}" to take commit message from that file)'.format(
+                        f=message
+                    )
                 )
                 ui.ui_factory.show_warning(warning_msg)
             if "\r" in message:
@@ -7339,7 +7341,9 @@ class cmd_hooks(Command):
                 found_hooks = list(hook_point)
                 if found_hooks:
                     for hook in found_hooks:
-                        self.outf.write("    {}\n".format(some_hooks.get_hook_name(hook)))
+                        self.outf.write(
+                            "    {}\n".format(some_hooks.get_hook_name(hook))
+                        )
                 else:
                     self.outf.write(gettext("    <no hooks installed>\n"))
 

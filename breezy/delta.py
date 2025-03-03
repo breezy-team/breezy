@@ -260,8 +260,9 @@ class _ChangeReporter:
             self.view_name = view_info[0]
             self.view_files = view_info[1]
             self.output(
-                "Operating on whole tree but only reporting on "
-                "'{}' view.".format(self.view_name)
+                "Operating on whole tree but only reporting on '{}' view.".format(
+                    self.view_name
+                )
             )
 
     def report(self, paths, versioned, renamed, copied, modified, exe_change, kind):

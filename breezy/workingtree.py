@@ -32,7 +32,7 @@ WorkingTree.open(dir).
 import contextlib
 import errno
 import os
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -210,7 +210,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
-    def open_containing(path: Optional[str] = None) -> Tuple["WorkingTree", str]:
+    def open_containing(path: Optional[str] = None) -> tuple["WorkingTree", str]:
         """Open an existing working tree which has its root about path.
 
         This probes for a working tree at path and searches upwards from there.

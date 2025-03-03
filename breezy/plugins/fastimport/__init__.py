@@ -88,4 +88,6 @@ for name in [
     "fast_import",
     "fast_export",
 ]:
-    plugin_cmds.register_lazy("cmd_{}".format(name), [], "breezy.plugins.fastimport.cmds")
+    plugin_cmds.register_lazy(
+        "cmd_{}".format(name), [], "breezy.plugins.fastimport.cmds"
+    )

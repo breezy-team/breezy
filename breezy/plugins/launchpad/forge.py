@@ -20,7 +20,7 @@
 import re
 import shutil
 import tempfile
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
@@ -347,8 +347,10 @@ class Launchpad(Forge):
         tag_selector=None,
     ):
         if tag_selector is None:
+
             def tag_selector(t):
                 return False
+
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport(GIT_SCHEME_MAP["ssh"] + to_path)
         try:
@@ -777,7 +779,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewer_objs: List[Any] = []
+            reviewer_objs: list[Any] = []
         else:
             reviewer_objs = []
             for reviewer in reviewers:

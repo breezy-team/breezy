@@ -38,7 +38,7 @@ import errno
 import os
 import sys
 import warnings
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 from . import debug, errors, osutils, trace
 from .hooks import Hooks
@@ -208,7 +208,7 @@ class _OSLock:
         raise NotImplementedError()
 
 
-_lock_classes: List[Tuple[str, Any, Any]] = []
+_lock_classes: list[tuple[str, Any, Any]] = []
 
 
 if have_fcntl:
@@ -219,7 +219,7 @@ if have_fcntl:
             self._clear_f()
 
     class _fcntl_WriteLock(_fcntl_FileLock):
-        _open_locks: Set[str] = set()
+        _open_locks: set[str] = set()
 
         def __init__(self, filename):
             super().__init__()
@@ -234,7 +234,9 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Write lock taken w/ an open read lock on: {}".format(self.filename)
+                        "Write lock taken w/ an open read lock on: {}".format(
+                            self.filename
+                        )
                     )
 
             self._open(self.filename, "rb+")
@@ -259,7 +261,7 @@ if have_fcntl:
             self._unlock()
 
     class _fcntl_ReadLock(_fcntl_FileLock):
-        _open_locks: Dict[str, int] = {}
+        _open_locks: dict[str, int] = {}
 
         def __init__(self, filename):
             super().__init__()
@@ -271,7 +273,9 @@ if have_fcntl:
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter(
-                        "Read lock taken w/ an open write lock on: {}".format(self.filename)
+                        "Read lock taken w/ an open write lock on: {}".format(
+                            self.filename
+                        )
                     )
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1

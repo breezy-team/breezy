@@ -26,7 +26,7 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from . import i18n, option, trace
 from .lazy_import import lazy_import
@@ -62,7 +62,9 @@ class CommandAvailableInPlugin(Exception):
         _fmt = (
             '"{}" is not a standard brz command. \n'
             "However, the following official plugin provides this command: {}\n"
-            "You can install it by going to: {}".format(self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"])
+            "You can install it by going to: {}".format(
+                self.cmd_name, self.plugin_metadata["name"], self.plugin_metadata["url"]
+            )
         )
 
         return _fmt
@@ -134,9 +136,13 @@ class CommandRegistry(registry.Registry):
             )
         except KeyError:
             trace.warning("Two plugins defined the same command: {!r}".format(k))
-            trace.warning("Not loading the one in {!r}".format(sys.modules[cmd.__module__]))
             trace.warning(
-                "Previously this command was registered from {!r}".format(sys.modules[previous.__module__])
+                "Not loading the one in {!r}".format(sys.modules[cmd.__module__])
+            )
+            trace.warning(
+                "Previously this command was registered from {!r}".format(
+                    sys.modules[previous.__module__]
+                )
             )
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
@@ -486,13 +492,13 @@ class Command:
                 __doc__ = "My help goes here"
     """
 
-    aliases: List[str] = []
-    takes_args: List[str] = []
-    takes_options: List[Union[str, option.Option]] = []
+    aliases: list[str] = []
+    takes_args: list[str] = []
+    takes_options: list[Union[str, option.Option]] = []
     encoding_type: str = "strict"
     invoked_as: Optional[str] = None
     l10n: bool = True
-    _see_also: List[str]
+    _see_also: list[str]
 
     hidden: bool = False
 
@@ -835,7 +841,9 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError("no implementation of command {!r}".format(self.name()))
+        raise NotImplementedError(
+            "no implementation of command {!r}".format(self.name())
+        )
 
     def help(self):
         """Return help message for this class."""

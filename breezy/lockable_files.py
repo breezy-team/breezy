@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional, Type
+from typing import Optional
 
 from . import counted_lock, errors, lock, transactions, urlutils
 from .decorators import only_raises
@@ -50,7 +50,7 @@ class LockableFiles:
     _transaction: Optional[transactions.Transaction]
 
     def __init__(
-        self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]
+        self, transport: Transport, lock_name: str, lock_class: type[lock.Lock]
     ) -> None:
         """Create a LockableFiles group.
 
@@ -231,7 +231,9 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError("Branch {} is in a transaction already.".format(self))
+            raise errors.LockError(
+                "Branch {} is in a transaction already.".format(self)
+            )
         self._transaction = new_transaction
 
     def _finish_transaction(self):

@@ -137,7 +137,8 @@ $ brz branch adduser -rrevid:{revid} {branch_name}
             null_output_matches_anything=True,
         )
         self.assertFileEqual(
-            _Adduser["{revid}_pot".format(**env)], "{branch_name}/po/adduser.pot".format(**env)
+            _Adduser["{revid}_pot".format(**env)],
+            "{branch_name}/po/adduser.pot".format(**env),
         )
         self.assertFileEqual(
             _Adduser["{revid}_po".format(**env)], "{branch_name}/po/fr.po".format(**env)

@@ -16,8 +16,6 @@
 
 """Tests for directory lookup through Launchpad.net."""
 
-
-
 from ... import transport
 from ...branch import Branch
 from ...directory_service import directories

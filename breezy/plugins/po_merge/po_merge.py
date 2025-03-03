@@ -111,7 +111,9 @@ class PoMerger(merge.PerFileMerger):
                 break
         else:
             trace.mutter(
-                "PoMerger did not match for {} and {}".format(self.po_dirs, self.po_glob)
+                "PoMerger did not match for {} and {}".format(
+                    self.po_dirs, self.po_glob
+                )
             )
             return False
         # Do we have the corresponding .pot file

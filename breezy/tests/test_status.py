@@ -184,7 +184,8 @@ class TestHooks(TestCaseWithTransport):
         ]
         for a in attrs:
             self.assertTrue(
-                hasattr(params, a), 'Attribute "{}" not found in StatusHookParam'.format(a)
+                hasattr(params, a),
+                'Attribute "{}" not found in StatusHookParam'.format(a),
             )
 
     def test_pre_status_hook(self):
@@ -219,5 +220,6 @@ class TestHooks(TestCaseWithTransport):
         ]
         for a in attrs:
             self.assertTrue(
-                hasattr(params, a), 'Attribute "{}" not found in StatusHookParam'.format(a)
+                hasattr(params, a),
+                'Attribute "{}" not found in StatusHookParam'.format(a),
             )

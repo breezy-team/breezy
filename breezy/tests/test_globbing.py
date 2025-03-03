@@ -31,14 +31,18 @@ class TestGlobster(TestCase):
                 self.assertTrue(
                     globster.match(name),
                     repr(
-                        'name "{}" does not match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)
+                        'name "{}" does not match glob "{}" (re={})'.format(
+                            name, glob, globster._regex_patterns[0][0].pattern
+                        )
                     ),
                 )
             for name in negative:
                 self.assertFalse(
                     globster.match(name),
                     repr(
-                        'name "{}" does match glob "{}" (re={})'.format(name, glob, globster._regex_patterns[0][0].pattern)
+                        'name "{}" does match glob "{}" (re={})'.format(
+                            name, glob, globster._regex_patterns[0][0].pattern
+                        )
                     ),
                 )
 

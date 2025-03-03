@@ -52,7 +52,7 @@ import itertools
 import re
 import sys
 from io import BytesIO
-from typing import Callable, Dict, List
+from typing import Callable
 from warnings import warn
 
 from .lazy_import import lazy_import
@@ -642,7 +642,7 @@ class _DefaultLogGenerator(LogGenerator):
             if file_count != 1:
                 raise errors.BzrError(
                     "illegal LogRequest: must match-using-deltas "
-                    "when logging %d files" % file_count
+                    f"when logging {file_count} files"
                 )
             return _log_revision_iterator_using_per_file_graph(
                 self.branch,
@@ -1046,21 +1046,21 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     if not match:
         return log_rev_iterator
     # Use lazy_compile so mapping to InvalidPattern error occurs.
-    searchRE = [
+    search_re = [
         (k, [lazy_regex.lazy_compile(x, re.IGNORECASE) for x in v])
         for k, v in match.items()
     ]
-    return _filter_re(searchRE, log_rev_iterator)
+    return _filter_re(search_re, log_rev_iterator)
 
 
-def _filter_re(searchRE, log_rev_iterator):
+def _filter_re(search_re, log_rev_iterator):
     for revs in log_rev_iterator:
-        new_revs = [rev for rev in revs if _match_filter(searchRE, rev[1])]
+        new_revs = [rev for rev in revs if _match_filter(search_re, rev[1])]
         if new_revs:
             yield new_revs
 
 
-def _match_filter(searchRE, rev):
+def _match_filter(search_re, rev):
     strings = {
         "message": (rev.message,),
         "committer": (rev.committer,),
@@ -1068,7 +1068,7 @@ def _match_filter(searchRE, rev):
         "bugs": list(rev.iter_bugs()),
     }
     strings[""] = [item for inner_list in strings.values() for item in inner_list]
-    for k, v in searchRE:
+    for k, v in search_re:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
@@ -2097,7 +2097,7 @@ def author_list_committer(rev):
 
 
 author_list_registry = registry.Registry[
-    str, Callable[[_mod_revision.Revision], List[str]]
+    str, Callable[[_mod_revision.Revision], list[str]]
 ]()
 
 author_list_registry.register("all", author_list_all, "All authors")
@@ -2352,7 +2352,7 @@ def _get_kind_for_file(tree, path):
 
 
 properties_handler_registry = registry.Registry[
-    str, Callable[[Dict[str, str]], Dict[str, str]]
+    str, Callable[[dict[str, str]], dict[str, str]]
 ]()
 
 # Use the properties handlers to print out bug information if available

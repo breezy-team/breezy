@@ -136,7 +136,9 @@ def report_bug_to_apport(exc_info, stderr):
             "\n"
             "You can report this problem to Breezy's developers by running\n"
             "    apport-bug {}\n"
-            "if a bug-reporting window does not automatically appear.\n".format(crash_filename)
+            "if a bug-reporting window does not automatically appear.\n".format(
+                crash_filename
+            )
         )
         # XXX: on Windows, Mac, and other platforms where we might have the
         # apport libraries but not have an apport always running, we could

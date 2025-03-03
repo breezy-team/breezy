@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Optional
+from typing import Optional
 
 from .. import lazy_regex, trace
 from .. import revision as _mod_revision
@@ -63,7 +63,7 @@ class Serializer_v8(XMLSerializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     root_id: Optional[bytes] = None
     support_altered_by_hack = True
@@ -275,7 +275,9 @@ class Serializer_v8(XMLSerializer):
             return
         for prop_elt in props_elt:
             if prop_elt.tag != "property":
-                raise AssertionError("bad tag under properties list: {!r}".format(prop_elt.tag))
+                raise AssertionError(
+                    "bad tag under properties list: {!r}".format(prop_elt.tag)
+                )
             name = prop_elt.get("name")
             value = prop_elt.text
             # If a property had an empty value ('') cElementTree reads

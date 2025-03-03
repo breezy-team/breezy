@@ -3,14 +3,18 @@
 # are not yet marked Fix Released in Launchpad
 
 import getopt
+import importlib.util
 import re
 import sys
 
+if not importlib.util.find_spec("launchpadlib.launchpad"):
+    print("Please install launchpadlib")
+    sys.exit(1)
+
 try:
-    from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors
 except ModuleNotFoundError:
-    print("Please install launchpadlib from lp:launchpadlib")
+    print("Please install lazr.restfulclient")
     sys.exit(1)
 try:
     import hydrazine
@@ -114,7 +118,7 @@ for bugno, section in bugnos:
 
     if not found_brz:
         print_bug_url(bugno)
-        print("Bug %d was mentioned in NEWS but is not marked as affecting brz" % bugno)
+        print(f"Bug {bugno} was mentioned in NEWS but is not marked as affecting brz")
     elif not fix_released:
         print_bug_url(bugno)
         report_notmarked(bug, task, section)

@@ -850,7 +850,9 @@ class TreeTransformBase(TreeTransform):
                 parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError(
-                "TreeTransform not based on branch basis: {}".format(self._tree.get_revision_id().decode("utf-8"))
+                "TreeTransform not based on branch basis: {}".format(
+                    self._tree.get_revision_id().decode("utf-8")
+                )
             )
         from .. import commit
 
