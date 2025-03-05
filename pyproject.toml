@@ -186,3 +186,7 @@ unfixable = ["ANN204"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.cibuildwheel.linux]
+skip = "*-musllinux_*"
+archs = ["auto", "aarch64"]
