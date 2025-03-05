@@ -100,14 +100,12 @@ jobs:
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.12"'
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
-            rustup default nightly &&
-            rustup target add all &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
             yum install libatomic -y &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
-            rustup target add all &&
             rustup show
       - name: Upload wheels
         uses: actions/upload-artifact@v4
