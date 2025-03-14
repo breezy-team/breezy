@@ -5,6 +5,11 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.11
+##########
+
+:3.3.11: UNRELEASED
+
 brz 3.3.10
 ##########
 

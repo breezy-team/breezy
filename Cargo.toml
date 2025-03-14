@@ -15,7 +15,7 @@ documentation = "https://www.breezy-vcs.org/doc/"
 members = ["lib-rio"]
 
 [workspace.package]
-version = "3.3.10"
+version = "3.3.11"
 
 [[bin]]
 name = "brz"
