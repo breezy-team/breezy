@@ -16,7 +16,7 @@
 
 import contextlib
 import tempfile
-from typing import Type
+from typing import Optional, Type
 
 from .lazy_import import lazy_import
 
@@ -176,7 +176,7 @@ class ConfigurableFileMerger(PerFileMerger):
     """
 
     name_prefix: str
-    default_files = None
+    default_files: Optional[list[str]] = None
 
     def __init__(self, merger):
         super().__init__(merger)

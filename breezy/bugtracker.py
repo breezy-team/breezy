@@ -320,6 +320,8 @@ def decode_bug_urls(bug_lines):
     :return: iterator over (url, status) tuples
     """
     for line in bug_lines:
+        if not line:
+            continue
         try:
             url, status = line.split(None, 2)
         except ValueError as exc:

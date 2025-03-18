@@ -445,7 +445,7 @@ class ForeignRevisionTests(tests.TestCase):
         rev = foreign.ForeignRevision(
             (b"a", b"foreign", b"revid"),
             mapp,
-            b"roundtripped-revid",
+            revision_id=b"roundtripped-revid",
             parent_ids=[],
             message="",
             committer="",

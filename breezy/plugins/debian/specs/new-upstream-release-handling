@@ -1,0 +1,130 @@
+Handling of new upstream releases
+=================================
+
+Status: Partial implementation
+
+Rationale
+---------
+
+A new upstream version is a very common task in packaging. I believe it is
+possible for the plugin to understand how the package is structured enough
+for this to work, at least for current configurations.
+
+Implementing this spec would add a way to simply update the package to a 
+new upstream version.
+
+It is part of a bigger idea to do similar things for other packaging tasks,
+making it more uniform across packages to do common tasks.
+
+Idea
+----
+
+The plugin works in several modes, and it should be able to infer from which
+mode it is in to work out how to import a new upstream release.
+
+A new upstream release is a very easy task in most cases (ignoring actual
+changes in the new version, thinking only in terms of versions/tarballs etc.)
+
+The following modes are currently supported by the plugin. For each the
+basic idea of a new upstream is shown.
+
+Native package - it is upstream, so a new version is just a dch to add a new
+                 changelog stanza
+
+Full source basic - This requires the branch updating with the code from the
+                    new release, the changelog stanza being created and the
+                    appropriate tarball being available.
+
+Full source split - This just requires a new changelog stanza.
+
+Merge mode basic - Requires the new tarball and the changelog stanza.
+
+Merge mode export upstream - Requires the new changelog stanza, and the
+                             revision id of the release in the upstream branch.
+
+As you can see each requires the changelog stanza, which is easy. The tarball
+requirements could be made easy if upstream-tarball-fetching is implemented.
+
+The two complicated ones are Full source basic and merge mode export upstream.
+
+The latter is slightly easier, either the user is using a mirror they only
+pull on releases, in which case the revision id isn't needed (but a flag should
+be required, as this case shouldn't be assumed as it would cause problems if it
+was got wrong). If the revision id is needed then the user can provide it, and
+the plugin update the config file as required. There needs to be consideration
+of whether to pull before the revision is checked for or needed.
+
+The full source basic case is more complicated. It works like basic merge mode
+in but the branch needs to be updated somehow. Either unpacked from the 
+new tarball or got via a pull. Actually the split case might need a pull
+as well. In these cases it is hard to know what to do. I need to think about
+it.
+
+Design
+------
+
+A new command something like that takes the version number and does the right
+thing, or errors out if it doesn't have the information to decide. Perhaps it
+could prompt for the information it needs.
+
+Normal mode
+-----------
+
+In normal mode, where the branch stores the whole package and new releases
+are imported from tarballs and upstream branch is used. In this branch there
+is a commit for each new upstream version. The packaging changes are then done
+on a separate branch.
+
+The upstream branch does not have to be explicit, it can be handled by the
+plugin in the simple branch.
+
+If the upstream branch is explicit, then the plugin opens the branch, imports
+the tarball, and then merges the changes back in to the packaging branch,
+where the user can make the necessary changes, and then commit.
+
+If the upstream branch is implicit, then the last import needs to be
+identified, and the tree set to that revision, and the import done on top of
+that, and then the old head merged in to the newly created one. This is a
+merge in the other direction to the explicit branch case, but makes more sense
+with the implicit branch handling strategy (the 'loom' idea).
+
+The last import commit must be known, there are several ways this could be
+done:
+
+ * Have the user specify it.
+ * Store it in a text file.
+ * Use a revision property.
+ * Use tags.
+
+The last seems the most appropriate, and tags have been available in Bazaar
+for a while now. At each import the commit can be tagged with
+'upstream-<version>'. When the next merge is performed the old version number
+can be derived from the changelog, and the tag looked up. If it is not present
+then the user can be requested to tag the version themseleves. There is a
+chance that the branch doesn't include the old version, in which case the
+user could provide an older version to look up, or if there is no upstream
+branch a new one could be created.
+
+The tags could also be seen as useful themselves, as it makes it easy to see
+things like the current packaging changes by diffing te HEAD with the tag
+for the last upstream version. If tags are also made for packaging releases
+then they could be even more useful.
+
+UI
+--
+
+A new command
+
+  bzr deb merge-upstream
+
+that takes the new upstream version as an argument. A tarball must be supplied
+for those modes that need it, and can be supplied for those that can use it.
+This tarball can be local or remote.
+
+Code changes
+------------
+
+* New command
+* "Intelligence" to infer what needs to be done from config files and any other
+  information it can grab.
+

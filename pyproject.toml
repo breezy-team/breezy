@@ -25,6 +25,14 @@ classifiers = [
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
+dependencies = [
+    "pyyaml",
+    "breezy>=3.3.0.dev.0",
+    "debmutate[watch]>=0.60",
+    "python_debian",
+    "python-apt@git+https://salsa.debian.org/apt-team/python-apt",
+    "distro-info",
+]
 requires-python = ">=3.9"
 dependencies = [
     "configobj",
@@ -36,13 +44,34 @@ dependencies = [
     "pyyaml",
     "tzlocal",
 ]
-dynamic = ["version", "scripts"]
+dynamic = ["version"]
+
+[project.scripts]
+deb-update-packaging = "breezy.plugins.debian.update_packaging:main"
+deb-vcs-up-to-date = "breezy.plugins.debian.vcs_up_to_date:main"
+deb-move-orphaned = "breezy.plugins.debian.move_orphaned:main"
+deb-import-uncommitted = "breezy.plugins.debian.import_uncommitted:main"
+deb-auto-backport = "breezy.plugins.debian.merge_package:auto_backport"
+deb-new-upstream = "breezy.plugins.debian.new_upstream:main"
+deb-merge = "breezy.plugins.debian.merge_package:main"
+
+# TODO(jelmer): Only install the git scripts if Dulwich was found.
+"git-remote-bzr" = "breezy.git.git_remote_bzr:main"
+"bzr-receive-pack" = "breezy.git.bzr_receive_pack:main"
+"bzr-upload-pack" = "breezy.git.bzr_upload_pack:main"
 
 [project.urls]
 Homepage = "https://www.breezy-vcs.org/"
 Download = "https://launchpad.net/brz/+download"
 
 [project.optional-dependencies]
+debian = [
+    "pyyaml",
+    "debmutate[watch]>=0.60",
+    "python_debian",
+    "python-apt",
+    "distro-info",
+]
 fastimport = ["fastimport"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
@@ -72,6 +101,7 @@ testing = [
     "python-subunit",
     "dulwich>=0.21.6",
 ]
+udd = ["psycopg2"]
 
 [tool.setuptools]
 zip-safe = false

@@ -1,0 +1,154 @@
+Importing from source packages
+==============================
+
+Status: Part Implementation.
+
+Aim
+---
+
+When a package has not been maintained in a VCS before the history information
+is in the source packages. There will generally be a series of these for each
+package.
+
+The plugin should support creating a branch from these files.
+
+Services like snapshot.debian.net can be used to get old versions of a package,
+and providing a way to import from them automatically will be a great aid to
+maintainers without copies of all of their uploaded packages.
+
+It should also aim to support incremental imports, so that the command can
+be used in an extant branch to import a .dsc in to the current state. This
+would allow uploads outside of the packaging system to be incorporated.
+
+Design
+------
+
+If there are multiple .dscs provided then they should be sorted in to ascending
+version number. Then for each it should be imported. If it has an
+.orig.tar.gz then it should be imported first on to the upstream branch,
+adding a tag for use with new-upstream-release-handling. Then the .diff.gz
+should be applied, and the result committed on the packaging branch as a merge
+with the upstream.
+
+If there is no .orig.tar.gz the tree should be set at the corresponding
+upstream import and the diff applied on to the tree. However the commit should
+have a single parent of the last commit on the packaging branch.
+
+Each revision on the packaging branch should be tagged to match the tag
+scheme used for uploads.
+
+The revision graph will evolve like this, starting from an empty branch.
+
+  upstream
+
+  packaging
+
+Import the first upstream
+
+  upstream  ---1
+
+  packaging
+
+Add the packaging diff
+
+  upstream  ---1
+                \
+  packaging      1.1
+
+Add the next packaging diff.
+
+  upstream  ---1
+                \
+  packaging      1.1---1.2
+
+Then import the next upstream, using the diff to provide the merge commit.
+
+  upstream  ---1-----------2
+                \           \
+  packaging      1.1---1.2---2.1
+
+and continue on like that until all is imported.
+
+There should be no conflicts, as the merge commits aren't done as merges,
+the second parent (along the packaging branch) is just added to represent the
+history. In reality the tree of that commit is just the result of applying the
+.diff.gz to the .orig.tar.gz, i.e. the package.
+
+In the case where you have an existing branch that you want to import a
+.dsc on to then there are many cases to handle.
+
+Consider a simple case where the .dsc is a new revision of the last upstream
+version and there was no development in the meantime. To start the graph
+looks like
+
+  upstream ---1
+               \
+  packaging     1.1
+
+and we want to just apply the diff on to the upstream and commit it as the
+new revision on the packaging branch
+
+  upstream ---1
+               \
+  packaging     1.1---1.2
+
+which looks just like one step of one variation of the non-incremental version
+described above.
+
+Where there has been development then the new version should in fact be merged
+in to the packaging branch. As there is currently no way to know when a package
+was uploaded, then this should in fact happen all the time, meaning that the
+above picture would look like
+
+  upstream ---1
+              |\
+  packaging   | 1.1---a
+              \      /
+               1.2---
+
+Leaving the actual resolution up to the user.
+
+There is a chance that the imported dsc is actually an older version than
+the current tip, but as it can't be inserted further back in to the history
+I think the above approach is best, as it gets the information in to the
+branch, and gives the user a chance to merge any important changes.
+
+If the .dsc to import is a new upstream version that hasn't been seen yet then
+we need to incorporate that as well. This is straightforward if the upstream
+is newer than the old version, however there is a chance that it would not be.
+
+In those cases again a temporary branch should be used and merged in to the
+upstream, but as the winner is known there is no need to generate conflicts
+in this case. This means that the version to import can be compared to the
+others in the branch to find whether to use the easy or hard method. Perhaps
+there is a case to always use the hard method, as it will indicate the merged
+in nature of the import, but that whether that is needed or wise for the
+upstream branch is debatable.
+
+Implementation
+--------------
+
+The incrememtal import support is not present yet.
+
+Also left to do is implementations for other modes, especially native. Merge
+mode is complicated by the fact that the old packages may have changes outside
+debian/.
+
+UI
+--
+
+Have a command
+
+  bzr import-dsc
+
+which imports a set of .dsc files, given on the command line. Can either be
+local or remote.
+
+Could also take a file which lists the files to import.
+
+A --snapshot option that supplements the files on the command line
+with those stored at snapshot.d.n. This might need to take the name of the
+package as an option, but it would be better to avoid that.
+
+An option to name the output branch would be good.
+

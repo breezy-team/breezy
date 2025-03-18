@@ -1,0 +1,52 @@
+A command to help when starting a new package with builddeb
+===========================================================
+
+Status: Draft
+
+Rationale
+---------
+
+When a new user of the plugin (or even an old user with a new package) wants
+to setup or convert a branch to use builddeb then they might need to set
+various options.
+
+There are several modes to work in, and if the wrong one is selected the
+user probably can't build unless they work out what option is needed. The
+plugin can help here with helpful error messages to suggest why an error might
+happen. However if the setup is completely wrong then it might take the user
+a while.
+
+Also doing this might allow more explicit choices to be recorded, rather
+than having to infer them, perhaps helping with the
+new-upstream-release-handling and it's ilk.
+
+If there are sources provided the branch can be initialised with some history.
+
+Design
+------
+
+A command could be added that interactively asked questions about how the
+user wanted to work, and stored the values in config files, so that a bzr bd
+would then build the package how they wanted.
+
+It could also actually create branches and things as well if needed, though
+a first pass might just do config files and suggest the next steps.
+
+The number of combinations might be huge, depending on how much the command
+wanted to "help".
+
+I'm not sure how the command should behave if it detects a configured branch.
+On one hand it might make it more complicated, on the other a user will
+probably want to re-run it to correct any mistakes. Perhaps a separate command
+could support configuration at any time, but it would probably share a lot of
+code and so be largely redundant to have two commands.
+
+Code Changes
+------------
+
+ * New command to implement this.
+ * Knowledge in the command of what parts a certain configuration requires.
+ * Ability to work out what bits are extant.
+ * Perhaps the ability to create branches, import tarballs etc. though bzrlib
+   and bzrtools might be useful here.
+
