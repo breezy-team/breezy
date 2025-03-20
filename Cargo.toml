@@ -19,7 +19,7 @@ version = "3.3.11"
 
 [[bin]]
 name = "brz"
-path = "breezy/main.rs"
+path = "src/main.rs"
 
 [dependencies]
 pyo3 = { workspace = true }
