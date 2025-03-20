@@ -23,7 +23,7 @@ version = "3.4.0"
 
 [[bin]]
 name = "brz"
-path = "breezy/main.rs"
+path = "src/main.rs"
 
 [lib]
 
