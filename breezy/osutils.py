@@ -759,26 +759,18 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
-    from datetime import datetime
-
     if t is None:
         t = time.time()
-    try:
-        from datetime import UTC
-    except ImportError:
-        offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
-    else:
-        from zoneinfo import ZoneInfo
 
-        now = datetime.now()
-        tzinfo = now.astimezone().tzinfo
-        if tzinfo is None:
-            raise errors.BzrError("No timezone information available")
-        zoneinfo = ZoneInfo(tzinfo.tzname(now))
+    local_time = time.localtime(t)
+    utc_time = time.gmtime(t)
 
-        offset = datetime.fromtimestamp(t, zoneinfo) - datetime.fromtimestamp(t, UTC)
+    local_seconds = time.mktime(local_time)
+    utc_seconds = time.mktime(utc_time)
 
-    return offset.days * 86400 + offset.seconds
+    offset = int(local_seconds - utc_seconds)
+
+    return offset
 
 
 weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

@@ -15,3 +15,10 @@ build/
 /Cargo.lock
 *.cpython-*.so
 .testrepository
+selftest.log
+doc/en/user-reference/*.txt
+doc/en/_build/
+doc/developers/_build/
+.*.swp
+doc/developers/Makefile
+doc/developers/make.bat
