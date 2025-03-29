@@ -246,7 +246,7 @@ class TestTCPServerInAThread(tests.TestCase):
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
-                self.connection_thread = threading.currentThread()
+                self.connection_thread = threading.current_thread()
                 self.connection_thread.set_sync_event(caught)
                 raise CantServe()
 
