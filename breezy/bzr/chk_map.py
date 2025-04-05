@@ -39,7 +39,7 @@ Densely packed upper nodes.
 import heapq
 import threading
 from collections.abc import Callable, Generator, Iterator
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 from .. import errors, lru_cache, osutils, registry, trace
 from .._bzr_rs import chk_map as _chk_map_rs
@@ -95,7 +95,7 @@ def _search_key_plain(key: Key) -> SerialisedKey:
     return b"\x00".join(key)
 
 
-search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes], None]()
+search_key_registry = registry.Registry[bytes, Callable[[Key], SerialisedKey], None]()
 search_key_registry.register(b"plain", _search_key_plain)
 
 
@@ -103,6 +103,7 @@ class CHKMap:
     """A persistent map from string to string backed by a CHK store."""
 
     __slots__ = ("_root_node", "_search_key_func", "_store")
+    _root_node: Union["Node", Key]
 
     def __init__(
         self,
@@ -551,6 +552,8 @@ class CHKMap:
     ) -> Iterator[tuple[Key, bytes]]:
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
+        if isinstance(self._root_node, tuple):
+            raise AssertionError("Cannot iterate over a map with a tuple root node")
         if key_filter is not None:
             key_filter = [tuple(key) for key in key_filter]
         return self._root_node.iteritems(self._store, key_filter=key_filter)
@@ -581,6 +584,8 @@ class CHKMap:
         key = tuple(key)
         # Need a root object.
         self._ensure_root()
+        if isinstance(self._root_node, tuple):
+            raise AssertionError("Cannot map a key to a tuple root node")
         prefix, node_details = self._root_node.map(self._store, key, value)
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
@@ -677,6 +682,22 @@ class Node:
             self._search_prefix,
             items_str,
         )
+
+    def iteritems(self, store, key_filter=None):
+        """Iterate over items in the node.
+
+        :param key_filter: A filter to apply to the node. It should be a
+            list/set/dict or similar repeatedly iterable container.
+        """
+        raise NotImplementedError(self.iteritems)
+
+    def unmap(self, store, key):
+        """Unmap key from the node."""
+        raise NotImplementedError(self.unmap)
+
+    def map(self, store, key: Key, value):
+        """Map key to value."""
+        raise NotImplementedError(self.map)
 
     def key(self) -> Key:
         """Return the key for this node."""
@@ -925,7 +946,9 @@ class LeafNode(Node):
                 raise AssertionError(f"{self._search_prefix!r} must be known")
             return self._search_prefix, [(b"", self)]
 
-    _serialise_key = b"\x00".join
+    @staticmethod
+    def _serialise_key(key):
+        return b"\x00".join(key)
 
     def serialise(self, store):
         """Serialise the LeafNode to store.
@@ -958,9 +981,7 @@ class LeafNode(Node):
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = (
-            b"sha1:" + sha1,
-        )
+        self._key = (b"sha1:" + sha1,)
         data = b"".join(lines)
         if len(data) != self._current_size():
             raise AssertionError("Invalid _current_size")
@@ -1330,10 +1351,8 @@ class InternalNode(Node):
                     new_size = child._current_size()
                     shrinkage = old_size - new_size
                     if (
-                        (shrinkage > 0
-                        and new_size < _INTERESTING_NEW_SIZE)
-                        or shrinkage > _INTERESTING_SHRINKAGE_LIMIT
-                    ):
+                        shrinkage > 0 and new_size < _INTERESTING_NEW_SIZE
+                    ) or shrinkage > _INTERESTING_SHRINKAGE_LIMIT:
                         trace.mutter(
                             "checking remap as size shrunk by %d to be %d",
                             shrinkage,
@@ -1401,9 +1420,7 @@ class InternalNode(Node):
                 )
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = (
-            b"sha1:" + sha1,
-        )
+        self._key = (b"sha1:" + sha1,)
         _get_cache()[self._key] = b"".join(lines)
         yield self._key
 
@@ -1467,6 +1484,8 @@ class InternalNode(Node):
         self._len -= 1
         unmapped: Optional[Node]
         unmapped = child.unmap(store, key)
+        if unmapped is None:
+            raise AssertionError("unmap returned None, but we expected a node")
         self._key = None
         search_key = self._search_key(key)
         if len(unmapped) == 0:

@@ -535,7 +535,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if not from_format.supports_chks:
             # Source not CHK: that's ok
             return False
-        if (
+        if (  # noqa: SIM103
             to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
             and from_format._revision_serializer == to_format._revision_serializer

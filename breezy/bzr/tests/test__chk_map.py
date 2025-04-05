@@ -52,9 +52,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
     def test_deserialise_empty(self):
         node = self.module._deserialise_leaf_node(
             b"chkleaf:\n10\n1\n0\n\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertEqual(0, len(node))
         self.assertEqual(10, node.maximum_size)
@@ -160,9 +158,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
             (ValueError, IndexError),
             self.module._deserialise_internal_node,
             text,
-            (
-                b"not-a-real-sha",
-            ),
+            (b"not-a-real-sha",),
         )
 
     def test_raises_on_non_internal(self):
@@ -181,9 +177,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
     def test_deserialise_one(self):
         node = self.module._deserialise_internal_node(
             b"chknode:\n10\n1\n1\n\na\x00sha1:abcd\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
@@ -195,9 +189,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
     def test_deserialise_with_prefix(self):
         node = self.module._deserialise_internal_node(
             b"chknode:\n10\n1\n1\npref\na\x00sha1:abcd\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
@@ -208,9 +200,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
         node = self.module._deserialise_internal_node(
             b"chknode:\n10\n1\n1\npref\n\x00sha1:abcd\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
@@ -222,9 +212,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
     def test_deserialise_pref_with_null(self):
         node = self.module._deserialise_internal_node(
             b"chknode:\n10\n1\n1\npref\x00fo\n\x00sha1:abcd\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
@@ -236,9 +224,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
     def test_deserialise_with_null_pref(self):
         node = self.module._deserialise_internal_node(
             b"chknode:\n10\n1\n1\npref\x00fo\n\x00\x00sha1:abcd\n",
-            (
-                b"sha1:1234",
-            ),
+            (b"sha1:1234",),
         )
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))

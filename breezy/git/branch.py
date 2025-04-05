@@ -1001,7 +1001,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         if isinstance(target, GitBranch):
             # InterLocalGitRemoteGitBranch or InterToGitBranch should be used
             return False
-        if getattr(cls._get_interrepo(source, target), "fetch_objects", None) is None:
+        if getattr(cls._get_interrepo(source, target), "fetch_objects", None) is None:  # noqa: SIM103
             # fetch_objects is necessary for this to work
             return False
         return True

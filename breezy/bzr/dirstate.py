@@ -2579,7 +2579,7 @@ class DirState:
         if entry[0][2] == new_id:
             # Nothing to change.
             return
-        if new_id.__class__ != bytes:
+        if not isinstance(new_id, bytes):
             raise AssertionError(f"must be a utf8 file_id not {type(new_id)}")
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
@@ -2695,7 +2695,11 @@ class DirState:
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
                         by_path[entry_key][tree_index] = (
-                            b"r", path_utf8, 0, False, b""
+                            b"r",
+                            path_utf8,
+                            0,
+                            False,
+                            b"",
                         )
                 # by path consistency: Insert into an existing path record
                 # (trivial), or add a new one with relocation pointers for the

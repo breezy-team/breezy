@@ -1674,9 +1674,7 @@ class RepositoryPackCollection:
         (removed, added, modified) = self._syncronize_pack_names_from_disk_nodes(
             disk_nodes
         )
-        if removed or added or modified:
-            return True
-        return False
+        return bool(removed or added or modified)
 
     def _restart_autopack(self):
         """Reload the pack names list, and restart the autopack code."""

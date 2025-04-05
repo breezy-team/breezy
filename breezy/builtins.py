@@ -1256,22 +1256,9 @@ class cmd_pull(Command):
         show_base=False,
         overwrite_tags=False,
     ):
-        pass
-
-    def run(
-        self,
-        location=None,
-        remember=None,
-        overwrite=False,
-        revision=None,
-        verbose=False,
-        directory=None,
-        local=False,
-        show_base=False,
-        overwrite_tags=False,
-    ):
         from . import mergeable as _mod_mergeable
         from .workingtree import WorkingTree
+
         if overwrite:
             overwrite = ["history", "tags"]
         elif overwrite_tags:
@@ -2166,10 +2153,8 @@ class cmd_remove(Command):
     encoding_type = "replace"
 
     def run(self, file_list, verbose=False, new=False, file_deletion_strategy="safe"):
-        pass
-
-    def run(self, file_list, verbose=False, new=False, file_deletion_strategy="safe"):
         from .workingtree import WorkingTree
+
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:

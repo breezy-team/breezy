@@ -114,9 +114,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     for line in lines[5:]:
         line = common_prefix + line
         prefix, flat_key = line.rsplit(b"\x00", 1)
-        items[prefix] = (
-            flat_key,
-        )
+        items[prefix] = (flat_key,)
     if len(items) == 0:
         raise AssertionError(f"We didn't find any item for {key}")
     result._items = items

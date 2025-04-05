@@ -16,10 +16,7 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX
-
-from dulwich.refs import PEELED_TAG_SUFFIX
-
+from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX, PEELED_TAG_SUFFIX
 from dulwich.repo import RefsContainer
 
 from .. import controldir, errors

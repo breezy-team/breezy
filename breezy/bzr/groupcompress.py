@@ -1902,7 +1902,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 parents = tuple([tuple(p) for p in record.parents])
             else:
                 parents = None
-            refs = (parents, )
+            refs = (parents,)
             keys_to_add.append((key, b"%d %d" % (start_point, end_point), refs))
         if len(keys_to_add):
             flush(self._compressor.flush())

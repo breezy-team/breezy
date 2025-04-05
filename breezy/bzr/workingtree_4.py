@@ -2462,7 +2462,7 @@ class InterDirStateTree(InterInventoryTree):
         if not isinstance(source, (revisiontree.RevisionTree, DirStateRevisionTree)):
             return False
         # the source revid must be in the target dirstate
-        if not (
+        if not (  # noqa: SIM103
             source._revision_id == _mod_revision.NULL_REVISION
             or source._revision_id in target.get_parent_ids()
         ):

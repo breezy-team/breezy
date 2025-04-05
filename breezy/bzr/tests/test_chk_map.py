@@ -1294,15 +1294,9 @@ class TestMap(TestCaseWithStore):
 
     def test_iteritems_keys_prefixed_by_2_width_nodes_hashed(self):
         search_key_func = chk_map.search_key_registry.get(b"hash-16-way")
-        self.assertEqual(
-            b"E8B7BE43\x00E8B7BE43", search_key_func((b"a", b"a"))
-        )
-        self.assertEqual(
-            b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b"))
-        )
-        self.assertEqual(
-            b"71BEEFF9\x0000000000", search_key_func((b"b", b""))
-        )
+        self.assertEqual(b"E8B7BE43\x00E8B7BE43", search_key_func((b"a", b"a")))
+        self.assertEqual(b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b")))
+        self.assertEqual(b"71BEEFF9\x0000000000", search_key_func((b"b", b"")))
         chkmap = self._get_map(
             {
                 (b"a", b"a"): b"content here",
@@ -2099,34 +2093,22 @@ class TestInternalNode(TestCaseWithStore):
         leaf1 = LeafNode(search_key_func=search_key_func)
         leaf1.map(
             None,
-            (
-                b"foo bar",
-            ),
+            (b"foo bar",),
             b"quux",
         )
         leaf2 = LeafNode(search_key_func=search_key_func)
         leaf2.map(
             None,
-            (
-                b"strange",
-            ),
+            (b"strange",),
             b"beast",
         )
         self.assertEqual(
             b"\xbeF\x014",
-            search_key_func(
-                (
-                    b"foo bar",
-                )
-            ),
+            search_key_func((b"foo bar",)),
         )
         self.assertEqual(
             b"\x85\xfa\xf7K",
-            search_key_func(
-                (
-                    b"strange",
-                )
-            ),
+            search_key_func((b"strange",)),
         )
         node.add_node(b"\xbe", leaf1)
         # This sets up a path that should not be followed - it will error if
@@ -2139,12 +2121,8 @@ class TestInternalNode(TestCaseWithStore):
                 node.iteritems(
                     None,
                     [
-                        (
-                            b"strange",
-                        ),
-                        (
-                            b"weird",
-                        ),
+                        (b"strange",),
+                        (b"weird",),
                     ],
                 )
             ),
@@ -2161,13 +2139,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(
             2,
-            len(
-                [
-                    value
-                    for value in node._items.values()
-                    if isinstance(value, tuple)
-                ]
-            ),
+            len([value for value in node._items.values() if isinstance(value, tuple)]),
         )
         # now, mapping to k3 should add a k3 leaf
         prefix, nodes = node.map(None, (b"k3",), b"quux")
@@ -2211,13 +2183,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(
             2,
-            len(
-                [
-                    value
-                    for value in node._items.values()
-                    if isinstance(value, tuple)
-                ]
-            ),
+            len([value for value in node._items.values() if isinstance(value, tuple)]),
         )
         # now, mapping to k23 causes k22 ('k2' in node) to split into k22 and
         # k23, which for simplicity in the current implementation generates
@@ -2268,17 +2234,11 @@ class TestInternalNode(TestCaseWithStore):
         node = InternalNode(search_key_func=search_key_func)
         node._key_width = 2
         node._node_width = 4
-        self.assertEqual(
-            b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b"))
-        )
+        self.assertEqual(b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b")))
         self.assertEqual(b"E8B7", node._search_prefix_filter((b"a", b"b")))
         self.assertEqual(
             b"E8B7",
-            node._search_prefix_filter(
-                (
-                    b"a",
-                )
-            ),
+            node._search_prefix_filter((b"a",)),
         )
 
     def test_unmap_k23_from_k1_k22_k23_gives_k1_k22_tree_new(self):
@@ -3169,25 +3129,19 @@ class TestSearchKeys(tests.TestCase):
     def test_simple_16(self):
         self.assertSearchKey16(
             b"8C736521",
-            (
-                b"foo",
-            ),
+            (b"foo",),
         )
         self.assertSearchKey16(b"8C736521\x008C736521", (b"foo", b"foo"))
         self.assertSearchKey16(b"8C736521\x0076FF8CAA", (b"foo", b"bar"))
         self.assertSearchKey16(
             b"ED82CD11",
-            (
-                b"abcd",
-            ),
+            (b"abcd",),
         )
 
     def test_simple_255(self):
         self.assertSearchKey255(
             b"\x8cse!",
-            (
-                b"foo",
-            ),
+            (b"foo",),
         )
         self.assertSearchKey255(b"\x8cse!\x00\x8cse!", (b"foo", b"foo"))
         self.assertSearchKey255(b"\x8cse!\x00v\xff\x8c\xaa", (b"foo", b"bar"))
@@ -3200,11 +3154,7 @@ class TestSearchKeys(tests.TestCase):
         # character, but all other 255 values should be present
         chars_used = set()
         for char_in in range(256):
-            search_key = _search_key_255(
-                (
-                    bytes([char_in]),
-                )
-            )
+            search_key = _search_key_255((bytes([char_in]),))
             chars_used.update([bytes([x]) for x in search_key])
         all_chars = {bytes([x]) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)

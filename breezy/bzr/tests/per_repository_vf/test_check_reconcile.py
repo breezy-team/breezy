@@ -19,7 +19,6 @@
 That is, tests for reconcile and check.
 """
 
-
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,

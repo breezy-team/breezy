@@ -397,17 +397,9 @@ class CHKInventory:
             _parent_id,
             _name_utf8,
         ), file_id in self.parent_id_basename_to_file_id.iteritems(
-            key_filter=[
-                (
-                    dir_id,
-                )
-            ]
+            key_filter=[(dir_id,)]
         ):
-            child_keys.add(
-                (
-                    file_id,
-                )
-            )
+            child_keys.add((file_id,))
         cached = set()
         for file_id_key in child_keys:
             entry = self._fileid_to_entry_cache.get(file_id_key[0], None)
@@ -487,12 +479,7 @@ class CHKInventory:
         while directories_to_expand:
             # Expand directories by looking in the
             # parent_id_basename_to_file_id map
-            keys = [
-                (
-                    f,
-                )
-                for f in directories_to_expand
-            ]
+            keys = [(f,) for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
             next_file_ids = {item[1] for item in items}
@@ -632,9 +619,7 @@ class CHKInventory:
                         del result._path_to_fileid_cache[old_path]
                 deletes.add(file_id)
             else:
-                new_key = (
-                    file_id,
-                )
+                new_key = (file_id,)
                 new_value = _chk_inventory_entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
@@ -643,9 +628,7 @@ class CHKInventory:
             if old_path is None:
                 old_key = None
             else:
-                old_key = (
-                    file_id,
-                )
+                old_key = (file_id,)
                 if self.id2path(file_id) != old_path:
                     raise errors.InconsistentDelta(
                         old_path,
@@ -781,9 +764,7 @@ class CHKInventory:
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 chk_store,
-                (
-                    parent_id_basename_to_file_id,
-                ),
+                (parent_id_basename_to_file_id,),
                 search_key_func=search_key_func,
             )
         else:
@@ -791,9 +772,7 @@ class CHKInventory:
 
         result.id_to_entry = chk_map.CHKMap(
             chk_store,
-            (
-                id_to_entry,
-            ),
+            (id_to_entry,),
             search_key_func=search_key_func,
         )
         if (result.revision_id,) != expected_revision_id:
@@ -824,9 +803,7 @@ class CHKInventory:
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for _path, entry in inventory.iter_entries():
-            key = (
-                entry.file_id,
-            )
+            key = (entry.file_id,)
             id_to_entry_dict[key] = _chk_inventory_entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
@@ -876,27 +853,19 @@ class CHKInventory:
             return result
         try:
             return self._bytes_to_entry(
-                next(
-                    self.id_to_entry.iteritems(
-                        [
-                            (
-                                file_id,
-                            )
-                        ]
-                    )
-                )[1]
+                next(self.id_to_entry.iteritems([(file_id,)]))[1]
             )
         except StopIteration as e:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id) from e
 
-    def _getitems(self, file_ids: Iterable[FileId]) -> list[InventoryEntry]:
+    def _getitems(self, file_ids: Iterable[FileId]) -> list[InventoryEntry]:  # type: ignore
         """Similar to get_entry, but lets you query for multiple.
 
         The returned order is undefined. And currently if an item doesn't
         exist, it isn't included in the output.
         """
-        result: list[InventoryEntry] = []
+        result: list[InventoryEntry] = []  # type: ignore
         remaining: list[FileId] = []
         for file_id in file_ids:
             entry = self._fileid_to_entry_cache.get(file_id, None)
@@ -904,12 +873,7 @@ class CHKInventory:
                 remaining.append(file_id)
             else:
                 result.append(entry)
-        file_keys = [
-            (
-                f,
-            )
-            for f in remaining
-        ]
+        file_keys = [(f,) for f in remaining]
         for _file_key, value in self.id_to_entry.iteritems(file_keys):
             entry = self._bytes_to_entry(value)
             result.append(entry)
@@ -920,20 +884,7 @@ class CHKInventory:
         # Perhaps have an explicit 'contains' method on CHKMap ?
         if self._fileid_to_entry_cache.get(file_id, None) is not None:
             return True
-        return (
-            len(
-                list(
-                    self.id_to_entry.iteritems(
-                        [
-                            (
-                                file_id,
-                            )
-                        ]
-                    )
-                )
-            )
-            == 1
-        )
+        return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def is_root(self, file_id):
         return file_id == self.root_id

@@ -731,11 +731,8 @@ class GitHub(Forge):
             state=state[status],
         )
         for pull in pulls:
-            if (
-                (status == "closed"
-                and pull["merged"])
-                or (status == "merged"
-                and not pull["merged"])
+            if (status == "closed" and pull["merged"]) or (
+                status == "merged" and not pull["merged"]
             ):
                 continue
             if pull["head"]["ref"] != source_branch_name:

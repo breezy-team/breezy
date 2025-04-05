@@ -145,7 +145,9 @@ class CommitHandler(processor.CommitHandler):
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid: dict[
             inventory.FileId,
-            tuple[Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry],
+            tuple[
+                Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
+            ],
         ] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             old_path = "" if self.parents else None
@@ -616,7 +618,9 @@ class CommitHandler(processor.CommitHandler):
         that would become empty, goes here.
         """
         delta: list[
-            tuple[Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry]
+            tuple[
+                Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
+            ]
         ] = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = self._dirs_that_might_become_empty

@@ -1011,9 +1011,7 @@ class CHKInventoryRepository(PackRepository):
                 parent_id_basename_key = (b"", b"")
             else:
                 utf8_entry_name = entry.name.encode("utf-8")
-                parent_id_basename_key = (
-                    entry.parent_id, utf8_entry_name
-                )
+                parent_id_basename_key = (entry.parent_id, utf8_entry_name)
             new_value = entry_to_bytes(entry)
             # Populate Caches?
             # new_inv._path_to_fileid_cache[new_path] = file_id

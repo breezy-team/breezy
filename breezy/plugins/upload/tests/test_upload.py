@@ -757,9 +757,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
             return False
         from ....tests import stub_sftp
 
-        if transport_server is stub_sftp.SFTPHomeDirServer:
-            return True
-        return False
+        return transport_server is stub_sftp.SFTPHomeDirServer
 
     def make_remote_branch_without_working_tree(self):
         """Creates a branch without working tree to upload from.

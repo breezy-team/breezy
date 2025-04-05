@@ -33,11 +33,7 @@ def _parse_leaf_lines(data, key_length, ref_list_length):
             ref_lists = []
             for ref_string in references.split(b"\t"):
                 ref_list = tuple(
-                    [
-                        tuple(ref.split(b"\0"))
-                        for ref in ref_string.split(b"\r")
-                        if ref
-                    ]
+                    [tuple(ref.split(b"\0")) for ref in ref_string.split(b"\r") if ref]
                 )
                 ref_lists.append(ref_list)
             ref_lists = tuple(ref_lists)

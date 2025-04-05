@@ -870,7 +870,7 @@ traceback._some_str = _clever_some_str  # type: ignore
 # deprecated - use self.knownFailure(), or self.expectFailure.
 KnownFailure = testtools.testcase._ExpectedFailure
 
-expectedFailure = unittest.case.expectedFailure
+expectedFailure = unittest.case.expectedFailure  # noqa: N816
 
 
 class UnavailableFeature(Exception):
@@ -2344,8 +2344,7 @@ class TestCase(testtools.TestCase):
             # We use buffer_now=True to avoid holding the file open beyond
             # the life of this function, which might interfere with e.g.
             # cleaning tempdirs on Windows.
-            detail_content = content.content_from_file(
-               log_file_path, buffer_now=True)
+            detail_content = content.content_from_file(log_file_path, buffer_now=True)
             self.addDetail("start_brz_subprocess-log-%d" % (count,), detail_content)
 
     def _popen(self, *args, **kwargs):
