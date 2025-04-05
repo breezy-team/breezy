@@ -23,32 +23,29 @@ from . import static_tuple
 def _parse_leaf_lines(data, key_length, ref_list_length):
     lines = data.split(b"\n")
     nodes = []
-    as_st = static_tuple.StaticTuple.from_sequence
-    stuple = static_tuple.StaticTuple
     for line in lines[1:]:
         if line == b"":
             return nodes
         elements = line.split(b"\0", key_length)
         # keys are tuples
-        key = as_st(elements[:key_length]).intern()
+        key = tuple(elements[:key_length])
         line = elements[-1]
         references, value = line.rsplit(b"\0", 1)
         if ref_list_length:
             ref_lists = []
             for ref_string in references.split(b"\t"):
-                ref_list = as_st(
+                ref_list = tuple(
                     [
-                        as_st(ref.split(b"\0")).intern()
+                        tuple(ref.split(b"\0"))
                         for ref in ref_string.split(b"\r")
                         if ref
                     ]
                 )
                 ref_lists.append(ref_list)
-            ref_lists = as_st(ref_lists)
-            node_value = stuple(value, ref_lists)
+            ref_lists = tuple(ref_lists)
+            node_value = (value, ref_lists)
         else:
-            node_value = stuple(value, stuple())
-        # No need for StaticTuple here as it is put into a dict
+            node_value = (value, ())
         nodes.append((key, node_value))
     return nodes
 

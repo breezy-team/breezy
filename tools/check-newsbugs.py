@@ -41,12 +41,12 @@ if len(args) == 1:
 
 def report_notmarked(bug, task, section):
     print()
-    print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id,))
+    print(f"Bug {bug.id} was mentioned in NEWS but is not marked fix released:")
     print("Launchpad title: {}".format(bug.title))
     print("NEWS summary: ")
     print(section)
     if "--launchpad" in options or "-l" in options:
-        print("  bug %d" % bug.id)
+        print(f"  bug {bug.id}")
         print("  affects {}".format(task.bug_target_name))
         print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
