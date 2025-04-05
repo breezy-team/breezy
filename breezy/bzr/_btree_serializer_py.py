@@ -17,8 +17,6 @@
 
 """B+Tree index parsing."""
 
-from . import static_tuple
-
 
 def _parse_leaf_lines(data, key_length, ref_list_length):
     lines = data.split(b"\n")
