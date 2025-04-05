@@ -37,7 +37,7 @@ class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
             self._module = _readdir_pyx
             self.reader = _readdir_pyx.UTF8DirReader
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
 
@@ -1591,7 +1591,7 @@ class TestFailedToLoadExtension(tests.TestCase):
     def _try_loading(self):
         try:
             import breezy._fictional_extension_py  # noqa: F401
-        except ImportError as e:
+        except ModuleNotFoundError as e:
             osutils.failed_to_load_extension(e)
             return True
 

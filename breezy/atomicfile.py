@@ -41,7 +41,7 @@ class AtomicFile:
     place or abort() to cancel.
     """
 
-    __slots__ = ["tmpfilename", "realfilename", "_fd"]
+    __slots__ = ["_fd", "realfilename", "tmpfilename"]
 
     def __init__(self, filename, mode="wb", new_mode=None):
         global _hostname

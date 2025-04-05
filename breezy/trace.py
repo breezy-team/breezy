@@ -301,7 +301,7 @@ def _dump_memory_usage(err_file):
 
             scanner.dump_gc_objects(dump_file)
             err_file.write(f"Memory dumped to {name}\n")
-        except ImportError:
+        except ModuleNotFoundError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
         except BaseException:
@@ -352,9 +352,7 @@ def report_exception(exc_info, err_file):
         else:
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, ImportError) and str(exc_object).startswith(
-        "No module named "
-    ):
+    elif isinstance(exc_object, ModuleNotFoundError):
         report_user_error(
             exc_info,
             err_file,

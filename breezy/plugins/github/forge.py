@@ -19,7 +19,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -732,10 +732,10 @@ class GitHub(Forge):
         )
         for pull in pulls:
             if (
-                status == "closed"
-                and pull["merged"]
-                or status == "merged"
-                and not pull["merged"]
+                (status == "closed"
+                and pull["merged"])
+                or (status == "merged"
+                and not pull["merged"])
             ):
                 continue
             if pull["head"]["ref"] != source_branch_name:
@@ -940,7 +940,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if title is None:
             title = determine_title(description)
         target_repo = self.gh._get_repo(self.target_owner, self.target_repo_name)
-        assignees: Optional[List[Dict[str, Any]]] = []
+        assignees: Optional[list[dict[str, Any]]] = []
         if reviewers:
             assignees = []
             for reviewer in reviewers:
@@ -951,7 +951,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 assignees.append(user["login"])
         else:
             assignees = None
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
         if delete_source_after_merge is not None:
             kwargs["delete_branch_on_merge"] = delete_source_after_merge
         try:

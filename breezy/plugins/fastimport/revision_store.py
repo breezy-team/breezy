@@ -415,7 +415,6 @@ class RevisionStore:
             builder._new_revision_id, rev, builder.revision_tree().root_inventory
         )
         if self._graph is not None:
-            # TODO: Use StaticTuple and .intern() for these things
             self._graph.add_node(builder._new_revision_id, rev.parent_ids)
 
         if signature is not None:

@@ -266,14 +266,14 @@ class Weave(VersionedFile):
     """
 
     __slots__ = [
-        "_weave",
+        "_allow_reserved",
+        "_matcher",
+        "_name_map",
+        "_names",
         "_parents",
         "_sha1s",
-        "_names",
-        "_name_map",
+        "_weave",
         "_weave_name",
-        "_matcher",
-        "_allow_reserved",
     ]
 
     def __init__(

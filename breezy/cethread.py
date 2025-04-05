@@ -16,7 +16,7 @@
 
 import sys
 import threading
-from typing import Callable, List, Optional, Type, Union
+from typing import Callable, Optional, Union
 
 
 class CatchingExceptionThread(threading.Thread):
@@ -101,7 +101,7 @@ class CatchingExceptionThread(threading.Thread):
     def set_ignored_exceptions(
         self,
         ignored: Union[
-            Callable[[Exception], bool], None, List[Type[Exception]], Type[Exception]
+            Callable[[Exception], bool], None, list[type[Exception]], type[Exception]
         ],
     ):
         """Declare which exceptions will be ignored.

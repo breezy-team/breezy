@@ -2,8 +2,8 @@ use bazaar::versionedfile::{ContentFactory, Key};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
-#[pyclass(subclass, unsendable)]
-struct AbstractContentFactory(Box<dyn ContentFactory>);
+#[pyclass(subclass)]
+struct AbstractContentFactory(Box<dyn ContentFactory + Send + Sync>);
 
 pyo3::import_exception!(breezy.bzr.versionedfile, UnavailableRepresentation);
 

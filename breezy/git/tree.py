@@ -24,7 +24,7 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
-from typing import List, Set, Tuple, Union
+from typing import Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -60,7 +60,7 @@ from .mapping import (
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
-    __slots__ = ["file_id", "name", "parent_id", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id"]
 
     def __init__(self, file_id, name, parent_id, git_sha1=None):
         self.file_id = file_id
@@ -94,7 +94,7 @@ class GitTreeDirectory(_mod_tree.TreeDirectory):
 
 
 class GitTreeFile(_mod_tree.TreeFile):
-    __slots__ = ["file_id", "name", "parent_id", "text_size", "executable", "git_sha1"]
+    __slots__ = ["executable", "file_id", "git_sha1", "name", "parent_id", "text_size"]
 
     def __init__(
         self, file_id, name, parent_id, text_size=None, git_sha1=None, executable=None
@@ -144,7 +144,7 @@ class GitTreeFile(_mod_tree.TreeFile):
 
 
 class GitTreeSymlink(_mod_tree.TreeLink):
-    __slots__ = ["file_id", "name", "parent_id", "symlink_target", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id", "symlink_target"]
 
     def __init__(self, file_id, name, parent_id, symlink_target=None, git_sha1=None):
         self.file_id = file_id
@@ -192,7 +192,7 @@ class GitTreeSymlink(_mod_tree.TreeLink):
 
 
 class GitTreeSubmodule(_mod_tree.TreeReference):
-    __slots__ = ["file_id", "name", "parent_id", "reference_revision", "git_sha1"]
+    __slots__ = ["file_id", "git_sha1", "name", "parent_id", "reference_revision"]
 
     def __init__(
         self, file_id, name, parent_id, reference_revision=None, git_sha1=None
@@ -1571,7 +1571,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _add_missing_parent_ids(
         self, path: str, dir_ids
-    ) -> List[Tuple[str, GitTreeDirectory]]:
+    ) -> list[tuple[str, GitTreeDirectory]]:
         if path in dir_ids:
             return []
         parent = posixpath.dirname(path).strip("/")
@@ -1846,7 +1846,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
 def snapshot_workingtree(
     target: MutableGitIndexTree, want_unversioned: bool = False
-) -> Tuple[ObjectID, Set[bytes]]:
+) -> tuple[ObjectID, set[bytes]]:
     """Snapshot a working tree into a tree object."""
     extras = set()
     blobs = {}

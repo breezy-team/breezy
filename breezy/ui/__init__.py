@@ -49,7 +49,7 @@ breezy.ui.text.TextUIFactory
 
 import contextlib
 import warnings
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..progress import ProgressTask
@@ -185,8 +185,8 @@ class UIFactory:
     }
 
     def __init__(self) -> None:
-        self._task_stack: List[ProgressTask] = []
-        self.suppressed_warnings: Set[str] = set()
+        self._task_stack: list[ProgressTask] = []
+        self.suppressed_warnings: set[str] = set()
         self._quiet = False
 
     def __enter__(self):

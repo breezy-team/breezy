@@ -65,7 +65,7 @@ def delta_application_scenarios():
             format = getter()
             if callable(format):
                 format = format()
-        except ImportError:
+        except ModuleNotFoundError:
             pass  # Format with unmet dependency
         repo_fmt = format._matchingcontroldir.repository_format
         if not repo_fmt.supports_full_versioned_files:

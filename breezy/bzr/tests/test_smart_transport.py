@@ -27,7 +27,7 @@ import sys
 import threading
 import time
 from io import BytesIO
-from typing import Optional, Type
+from typing import Optional
 
 from testtools.matchers import DocTestMatches
 
@@ -405,8 +405,9 @@ class SmartClientMediumTests(tests.TestCase):
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
         ssh_params = medium.SSHParams("127.0.0.1", unopened_port, None, None)
-        medium.SmartSSHClientMedium("base", ssh_params, "not a vendor")
+        client_medium = medium.SmartSSHClientMedium("base", ssh_params, "not a vendor")
         sock.close()
+        del client_medium
 
     def test_ssh_client_connects_on_first_use(self):
         # The only thing that initiates a connection from the medium is giving
@@ -604,8 +605,9 @@ class SmartClientMediumTests(tests.TestCase):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(("127.0.0.1", 0))
         unopened_port = sock.getsockname()[1]
-        medium.SmartTCPClientMedium("127.0.0.1", unopened_port, "base")
+        client_medium = medium.SmartTCPClientMedium("127.0.0.1", unopened_port, "base")
         sock.close()
+        del client_medium
 
     def test_tcp_client_connects_on_first_use(self):
         # The only thing that initiates a connection from the medium is giving
@@ -1798,8 +1800,9 @@ class SmartServerCommandTests(tests.TestCaseWithTransport):
 
         cmd = _mod_request.GetBundleRequest(self.get_transport(), "/")
         response = cmd.execute(b".", rev_id)
-        serializer.read_bundle(BytesIO(response.body))
+        bundle = serializer.read_bundle(BytesIO(response.body))
         self.assertEqual((), response.args)
+        del bundle
 
 
 class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
@@ -1960,9 +1963,9 @@ class TestSmartProtocol(tests.TestCase):
     """
 
     request_encoder: object
-    response_decoder: Type[protocol._StatefulDecoder]
-    server_protocol_class: Type[protocol.SmartProtocolBase]
-    client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
+    response_decoder: type[protocol._StatefulDecoder]
+    server_protocol_class: type[protocol.SmartProtocolBase]
+    client_protocol_class: Optional[type[protocol.SmartProtocolBase]] = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """:returns: a Request"""

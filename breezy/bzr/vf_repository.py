@@ -41,7 +41,6 @@ from breezy.bzr import (
     generate_ids,
     inventory_delta,
     inventorytree,
-    static_tuple,
     versionedfile,
     vf_search,
     )
@@ -1506,7 +1505,6 @@ class VersionedFileRepository(Repository):
 
         # file ids that changed
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
-        count = 0
         num_file_ids = len(file_ids)
         for count, (file_id, altered_versions) in enumerate(file_ids.items()):
             if pb is not None:
@@ -1683,8 +1681,7 @@ class VersionedFileRepository(Repository):
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
-        st = static_tuple.StaticTuple
-        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        revision_keys = [(r_id, ) for r_id in revision_ids]
         with self.lock_read():
             known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
             return graph.GraphThunkIdsToKeys(known_graph)

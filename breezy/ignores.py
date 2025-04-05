@@ -18,8 +18,9 @@
 
 import contextlib
 import os
+from collections.abc import Iterable
 from io import BytesIO
-from typing import BinaryIO, Iterable, Set, List
+from typing import BinaryIO
 
 from . import bedding, trace
 
@@ -40,7 +41,7 @@ USER_DEFAULTS = [
 ]
 
 
-def parse_ignore_file(f: BinaryIO) -> Set[str]:
+def parse_ignore_file(f: BinaryIO) -> set[str]:
     """Parse an ignore file.
 
     Continue in the case of utf8 decoding errors, and emit a warning when
@@ -116,7 +117,7 @@ def _set_user_ignores(patterns: Iterable[str]) -> None:
             f.write(pattern.encode("utf8") + b"\n")
 
 
-def add_unique_user_ignores(new_ignores: Set[str]):
+def add_unique_user_ignores(new_ignores: set[str]):
     """Add entries to the user's ignore list if not present.
 
     :param new_ignores: A list of ignore patterns
@@ -125,7 +126,7 @@ def add_unique_user_ignores(new_ignores: Set[str]):
     from .globbing import normalize_pattern
 
     ignored = get_user_ignores()
-    to_add: List[str] = []
+    to_add: list[str] = []
     for ignore in new_ignores:
         ignore = normalize_pattern(ignore)
         if ignore not in ignored:
@@ -142,7 +143,7 @@ def add_unique_user_ignores(new_ignores: Set[str]):
     return to_add
 
 
-_runtime_ignores: Set[str] = set()
+_runtime_ignores: set[str] = set()
 
 
 def add_runtime_ignores(ignores):

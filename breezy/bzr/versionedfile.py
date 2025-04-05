@@ -21,7 +21,7 @@ import itertools
 import os
 from copy import copy
 from io import BytesIO
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -51,7 +51,7 @@ record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
 fulltext_network_to_record = _versionedfile_rs.fulltext_network_to_record
 
 
-adapter_registry = Registry[Tuple[str, str], Any, None]()
+adapter_registry = Registry[tuple[str, str], Any, None]()
 adapter_registry.register_lazy(
     ("knit-annotated-delta-gz", "knit-delta-gz"),
     "breezy.bzr.knit",
@@ -121,7 +121,7 @@ class ContentFactory:
         self.sha1: Optional[bytes] = None
         self.size: Optional[int] = None
         self.storage_kind: Optional[str] = None
-        self.key: Optional[Tuple[bytes, ...]] = None
+        self.key: Optional[tuple[bytes, ...]] = None
         self.parents = None
 
     def map_key(self, cb):
@@ -998,7 +998,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [(c in self._safe) and chr(c) or (f"%{c:02x}") for c in bytearray(prefix)]
+        r = [((c in self._safe) and chr(c)) or (f"%{c:02x}") for c in bytearray(prefix)]
         return "".join(r).encode("ascii")
 
     def _unescape(self, basename):

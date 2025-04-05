@@ -41,7 +41,7 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from .errors import BzrError, InternalBzrError
 
@@ -83,7 +83,7 @@ class ScopeReplacer:
     needed.
     """
 
-    __slots__ = ("_scope", "_factory", "_name", "_real_obj")
+    __slots__ = ("_factory", "_name", "_real_obj", "_scope")
 
     # If you to do x = y, setting this to False will disallow access to
     # members from the second variable (i.e. x). This should normally
@@ -268,10 +268,10 @@ class ImportProcessor:
     #       For now, it should be supporting a superset of python import
     #       syntax which is all we really care about.
 
-    __slots__ = ["imports", "_lazy_import_class"]
+    __slots__ = ["_lazy_import_class", "imports"]
 
     def __init__(self, lazy_import_class=None) -> None:
-        self.imports: Dict[str, Any] = {}
+        self.imports: dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer
         else:

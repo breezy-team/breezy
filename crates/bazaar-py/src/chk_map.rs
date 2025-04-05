@@ -1,18 +1,19 @@
+use bazaar::chk_map::Key;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
 
 #[pyfunction]
 fn _search_key_16(py: Python, key: Vec<Vec<u8>>) -> Py<PyBytes> {
-    let key = key.iter().map(|v| v.as_slice()).collect::<Vec<&[u8]>>();
-    let ret = bazaar::chk_map::search_key_16(key.as_slice());
+    let key: Key = key.into();
+    let ret = bazaar::chk_map::search_key_16(&key);
     PyBytes::new(py, &ret).into_py(py)
 }
 
 #[pyfunction]
 fn _search_key_255(py: Python, key: Vec<Vec<u8>>) -> Py<PyBytes> {
-    let key = key.iter().map(|v| v.as_slice()).collect::<Vec<&[u8]>>();
-    let ret = bazaar::chk_map::search_key_255(key.as_slice());
+    let key: Key = key.into();
+    let ret = bazaar::chk_map::search_key_255(&key);
     PyBytes::new(py, &ret).into_py(py)
 }
 

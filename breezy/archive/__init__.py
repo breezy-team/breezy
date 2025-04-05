@@ -16,7 +16,8 @@
 
 """Export trees to tarballs, zipfiles, etc."""
 
-from typing import Iterator, cast
+from collections.abc import Iterator
+from typing import cast
 
 from .. import errors, registry
 

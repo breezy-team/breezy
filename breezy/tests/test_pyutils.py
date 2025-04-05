@@ -49,7 +49,7 @@ class TestGetNamedObject(tests.TestCase):
         self.assertIs(tests.TestCase, get_named_object("breezy.tests", "TestCase"))
 
     def test_import_error(self):
-        self.assertRaises(ImportError, get_named_object, "NO_SUCH_MODULE")
+        self.assertRaises(ModuleNotFoundError, get_named_object, "NO_SUCH_MODULE")
 
     def test_attribute_error(self):
         self.assertRaises(AttributeError, get_named_object, "sys", "NO_SUCH_ATTR")

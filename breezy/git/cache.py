@@ -555,8 +555,8 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = get_cache_dir()
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
-        except ImportError as err:
-            raise ImportError(
+        except ModuleNotFoundError as err:
+            raise ModuleNotFoundError(
                 "Unable to open existing bzr-git cache because 'tdb' is not installed."
             ) from err
 

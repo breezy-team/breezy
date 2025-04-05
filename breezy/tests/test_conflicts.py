@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import Any, Callable, Dict, List, Tuple, Type
+from typing import Any, Callable
 
 from .. import conflicts, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
@@ -231,7 +231,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     # Set by daughter classes
-    _conflict_type: Type[conflicts.Conflict]
+    _conflict_type: type[conflicts.Conflict]
     _assert_conflict: Callable[[Any, Any, Any], Any]
 
     # Set by load_tests
@@ -239,8 +239,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    scenarios: List[
-        Tuple[Dict[str, Any], Tuple[str, Dict[str, Any]], Tuple[str, Dict[str, Any]]]
+    scenarios: list[
+        tuple[dict[str, Any], tuple[str, dict[str, Any]], tuple[str, dict[str, Any]]]
     ] = []
     """The scenario list for the conflict type defined by the class.
 

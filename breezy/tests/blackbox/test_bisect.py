@@ -23,7 +23,7 @@ import stat
 import sys
 
 from ...controldir import ControlDir
-from .. import expectedFailure, TestCaseWithTransport, TestSkipped
+from .. import TestCaseWithTransport, TestSkipped, expectedFailure
 
 
 class BisectTestCase(TestCaseWithTransport):

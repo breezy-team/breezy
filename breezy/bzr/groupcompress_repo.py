@@ -38,7 +38,6 @@ from .pack_repo import (
     ResumedPack,
     _DirectPackAccess,
 )
-from .static_tuple import StaticTuple
 
 
 class GCPack(NewPack):
@@ -1009,16 +1008,16 @@ class CHKInventoryRepository(PackRepository):
                 )
             if new_path == "":
                 new_inv.root_id = file_id
-                parent_id_basename_key = StaticTuple(b"", b"").intern()
+                parent_id_basename_key = (b"", b"")
             else:
                 utf8_entry_name = entry.name.encode("utf-8")
-                parent_id_basename_key = StaticTuple(
+                parent_id_basename_key = (
                     entry.parent_id, utf8_entry_name
-                ).intern()
+                )
             new_value = entry_to_bytes(entry)
             # Populate Caches?
             # new_inv._path_to_fileid_cache[new_path] = file_id
-            key = StaticTuple(file_id).intern()
+            key = (file_id,)
             id_to_entry_dict[key] = new_value
             parent_id_basename_dict[parent_id_basename_key] = file_id
 

@@ -22,7 +22,21 @@ from .. import errors, osutils, transport
 from ..commands import Command, display_command
 from ..option import Option
 from ..workingtree import WorkingTree
-from . import btree_index, static_tuple
+from . import btree_index
+
+
+def as_tuples(obj):
+    """Ensure that the object and any referenced objects are plain tuples.
+
+    :param obj: a list, tuple or StaticTuple
+    :return: a plain tuple instance, with all children also being tuples.
+    """
+    result = []
+    for item in obj:
+        if isinstance(item, (tuple, list)):
+            item = as_tuples(item)
+        result.append(item)
+    return tuple(result)
 
 
 class cmd_dump_btree(Command):
@@ -108,7 +122,7 @@ class cmd_dump_btree(Command):
             except IndexError:
                 refs_as_tuples = None
             else:
-                refs_as_tuples = static_tuple.as_tuples(refs)
+                refs_as_tuples = as_tuples(refs)
             if refs_as_tuples is not None:
                 refs_as_tuples = tuple(
                     tuple(tuple(r.decode("utf-8") for r in t1) for t1 in t2)

@@ -5,8 +5,8 @@ Talk to us
 ----------
 
 If you want to fix or improve something in Breezy, we want to help you.
-You can ask at any time for help, on the list, on irc, or through a merge
-proposal on Launchpad.
+You can ask at any time for help, on the list, on irc, or through a pull
+request on GitHub.
 
 * `Bazaar mailing list <https://lists.ubuntu.com/mailman/listinfo/bazaar>`_
 
@@ -32,39 +32,28 @@ in ``#breezy`` or on the mailing list.
 Making a branch
 ---------------
 
-First, get a local copy of Bazaar::
+First, get a local copy of Breezy::
 
    $ cd $HOME
-   $ brz init-shared-repo brz
+   $ bzr branch https://github.com/breezy-team/breezy.git brz
    $ cd brz
-   $ brz branch lp:brz brz.dev
 
 Now make your own branch; we recommend you include the bug number and also
 a brief description::
 
-   $ brz branch brz.dev 123456-status-speed
+   $ brz switch -b brz.dev 123456-status-speed
 
 and go ahead and commit in there.  Normally you should fix only one bug or
 closely-related cluster of bugs per branch, to make reviews and merges
 flow more smoothly.
 
-You probably want this configuration in ``~/.config/breezy/locations.conf``::
-
-    [/home/USER/brz]
-    push_location = lp:~LAUNCHPAD_USER/brz/{branchname}
-    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/brz/{branchname}
-
-with your local and Launchpad usernames inserted.
-
-
-
 Publishing your changes
 -----------------------
 
 After you've locally committed your changes, the configuration above
-should be enough that you can push them to Launchpad with a simple ::
+should be enough that you can push them to GitHub with a simple ::
 
-    $ brz push
+    $ brz publish
 
 
 Writing tests
@@ -105,7 +94,7 @@ Proposing a merge
 
 
 Then propose a merge into Breezy; for Breezy 3.0 and later you can use the ``brz
-propose-merge`` command.  In the comment for your merge proposal please
+propose`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 
@@ -114,9 +103,6 @@ explain what you're trying to do and why.  For `example
 
 If you make additional changes to your branch you don't need to resubmit;
 they'll automatically show up in the merge proposal.
-
-* `Launchpad Code Review Help <http://help.launchpad.net/Code/Review>`_.
-
 
 ..
    vim: ft=rst tw=74 ai

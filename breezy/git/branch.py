@@ -21,7 +21,7 @@ import contextlib
 from collections import defaultdict
 from functools import partial
 from io import BytesIO
-from typing import Dict, Optional, Set, Tuple
+from typing import Optional
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -112,7 +112,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
         overwrite: bool = False,
         ignore_master: bool = False,
         selector: Optional[TagSelector] = None,
-    ) -> Tuple[TagUpdates, Set[TagConflict]]:
+    ) -> tuple[TagUpdates, set[TagConflict]]:
         if self.source.branch.repository.has_same_location(
             self.target.branch.repository
         ):
@@ -449,7 +449,7 @@ class GitBranch(ForeignBranch):
         self._user_transport = controldir.user_transport.clone(".")
         self._control_transport = controldir.control_transport.clone(".")
         self._tag_refs = None
-        params: Dict[str, str] = {}
+        params: dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:

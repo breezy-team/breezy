@@ -18,10 +18,7 @@
 
 from dulwich.refs import LOCAL_BRANCH_PREFIX, LOCAL_TAG_PREFIX
 
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
+from dulwich.refs import PEELED_TAG_SUFFIX
 
 from dulwich.repo import RefsContainer
 

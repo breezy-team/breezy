@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Optional
+from typing import Optional
 
 from breezy._bzr_rs import revision_serializer_v8  # noqa: F401
 
@@ -60,7 +60,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__: List[str] = []
+    __slots__: list[str] = []
 
     root_id: Optional[bytes] = None
     support_altered_by_hack = True

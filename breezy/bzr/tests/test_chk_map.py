@@ -27,9 +27,6 @@ from ..chk_map import (
     _search_key_255,
     common_prefix_pair,
 )
-from ..static_tuple import StaticTuple
-
-stuple = StaticTuple
 
 
 class TestNode(tests.TestCase):
@@ -936,13 +933,13 @@ class TestMap(TestCaseWithStore):
         # 'ab' and 'ac' nodes
         chkmap.map((b"aad",), b"v")
         self.assertIsInstance(chkmap._root_node._items[b"aa"], InternalNode)
-        self.assertIsInstance(chkmap._root_node._items[b"ab"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"ac"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"ab"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"ac"], tuple)
         # Unmapping 'acd' can notice that 'aa' is an InternalNode and not have
         # to map in 'ab'
         chkmap.unmap((b"acd",))
         self.assertIsInstance(chkmap._root_node._items[b"aa"], InternalNode)
-        self.assertIsInstance(chkmap._root_node._items[b"ab"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"ab"], tuple)
 
     def test_unmap_without_fitting_doesnt_page_in(self):
         store = self.get_chk_bytes()
@@ -967,8 +964,8 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aaf",), b"v")
         # At this point, the previous nodes should not be paged in, but the
         # newly added nodes would be
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aac"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aad"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aae"], LeafNode)
@@ -976,8 +973,8 @@ class TestMap(TestCaseWithStore):
         # Now unmapping one of the new nodes will use only the already-paged-in
         # nodes to determine that we don't need to do more.
         chkmap.unmap((b"aaf",))
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aac"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aad"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aae"], LeafNode)
@@ -1006,9 +1003,9 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aad",), b"v")
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aac"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aac"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aad"], LeafNode)
         # Unmapping the new node will check the existing nodes to see if they
         # would fit.
@@ -1048,9 +1045,9 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aad",), b"v")
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aac"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aac"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aad"], LeafNode)
         # Now clear the page cache, and only include 2 of the children in the
         # cache
@@ -1065,7 +1062,7 @@ class TestMap(TestCaseWithStore):
         # Unmapping the new node will check the nodes from the page cache
         # first, and not have to read in 'aaa'
         chkmap.unmap((b"aad",))
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aab"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aac"], LeafNode)
 
@@ -1085,9 +1082,9 @@ class TestMap(TestCaseWithStore):
         chkmap.map((b"aaf",), b"val")
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aac"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aac"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aad"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aae"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aaf"], LeafNode)
@@ -1095,9 +1092,9 @@ class TestMap(TestCaseWithStore):
         # Unmapping a new node will see the other nodes that are already in
         # memory, and not need to page in anything else
         chkmap.unmap((b"aad",))
-        self.assertIsInstance(chkmap._root_node._items[b"aaa"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aab"], StaticTuple)
-        self.assertIsInstance(chkmap._root_node._items[b"aac"], StaticTuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aaa"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aab"], tuple)
+        self.assertIsInstance(chkmap._root_node._items[b"aac"], tuple)
         self.assertIsInstance(chkmap._root_node._items[b"aae"], LeafNode)
         self.assertIsInstance(chkmap._root_node._items[b"aaf"], LeafNode)
 
@@ -1153,8 +1150,8 @@ class TestMap(TestCaseWithStore):
             maximum_size=10,
         )
         list(target.iter_changes(basis))
-        self.assertIsInstance(target._root_node, StaticTuple)
-        self.assertIsInstance(basis._root_node, StaticTuple)
+        self.assertIsInstance(target._root_node, tuple)
+        self.assertIsInstance(basis._root_node, tuple)
 
     def test_iter_changes_ab_ab_changed_values_shown(self):
         basis = self._get_map(
@@ -1298,13 +1295,13 @@ class TestMap(TestCaseWithStore):
     def test_iteritems_keys_prefixed_by_2_width_nodes_hashed(self):
         search_key_func = chk_map.search_key_registry.get(b"hash-16-way")
         self.assertEqual(
-            b"E8B7BE43\x00E8B7BE43", search_key_func(StaticTuple(b"a", b"a"))
+            b"E8B7BE43\x00E8B7BE43", search_key_func((b"a", b"a"))
         )
         self.assertEqual(
-            b"E8B7BE43\x0071BEEFF9", search_key_func(StaticTuple(b"a", b"b"))
+            b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b"))
         )
         self.assertEqual(
-            b"71BEEFF9\x0000000000", search_key_func(StaticTuple(b"b", b""))
+            b"71BEEFF9\x0000000000", search_key_func((b"b", b""))
         )
         chkmap = self._get_map(
             {
@@ -2102,7 +2099,7 @@ class TestInternalNode(TestCaseWithStore):
         leaf1 = LeafNode(search_key_func=search_key_func)
         leaf1.map(
             None,
-            StaticTuple(
+            (
                 b"foo bar",
             ),
             b"quux",
@@ -2110,7 +2107,7 @@ class TestInternalNode(TestCaseWithStore):
         leaf2 = LeafNode(search_key_func=search_key_func)
         leaf2.map(
             None,
-            StaticTuple(
+            (
                 b"strange",
             ),
             b"beast",
@@ -2118,7 +2115,7 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqual(
             b"\xbeF\x014",
             search_key_func(
-                StaticTuple(
+                (
                     b"foo bar",
                 )
             ),
@@ -2126,7 +2123,7 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqual(
             b"\x85\xfa\xf7K",
             search_key_func(
-                StaticTuple(
+                (
                     b"strange",
                 )
             ),
@@ -2142,10 +2139,10 @@ class TestInternalNode(TestCaseWithStore):
                 node.iteritems(
                     None,
                     [
-                        StaticTuple(
+                        (
                             b"strange",
                         ),
-                        StaticTuple(
+                        (
                             b"weird",
                         ),
                     ],
@@ -2168,7 +2165,7 @@ class TestInternalNode(TestCaseWithStore):
                 [
                     value
                     for value in node._items.values()
-                    if isinstance(value, StaticTuple)
+                    if isinstance(value, tuple)
                 ]
             ),
         )
@@ -2218,7 +2215,7 @@ class TestInternalNode(TestCaseWithStore):
                 [
                     value
                     for value in node._items.values()
-                    if isinstance(value, StaticTuple)
+                    if isinstance(value, tuple)
                 ]
             ),
         )
@@ -2272,13 +2269,13 @@ class TestInternalNode(TestCaseWithStore):
         node._key_width = 2
         node._node_width = 4
         self.assertEqual(
-            b"E8B7BE43\x0071BEEFF9", search_key_func(StaticTuple(b"a", b"b"))
+            b"E8B7BE43\x0071BEEFF9", search_key_func((b"a", b"b"))
         )
-        self.assertEqual(b"E8B7", node._search_prefix_filter(StaticTuple(b"a", b"b")))
+        self.assertEqual(b"E8B7", node._search_prefix_filter((b"a", b"b")))
         self.assertEqual(
             b"E8B7",
             node._search_prefix_filter(
-                StaticTuple(
+                (
                     b"a",
                 )
             ),
@@ -3172,15 +3169,15 @@ class TestSearchKeys(tests.TestCase):
     def test_simple_16(self):
         self.assertSearchKey16(
             b"8C736521",
-            stuple(
+            (
                 b"foo",
             ),
         )
-        self.assertSearchKey16(b"8C736521\x008C736521", stuple(b"foo", b"foo"))
-        self.assertSearchKey16(b"8C736521\x0076FF8CAA", stuple(b"foo", b"bar"))
+        self.assertSearchKey16(b"8C736521\x008C736521", (b"foo", b"foo"))
+        self.assertSearchKey16(b"8C736521\x0076FF8CAA", (b"foo", b"bar"))
         self.assertSearchKey16(
             b"ED82CD11",
-            stuple(
+            (
                 b"abcd",
             ),
         )
@@ -3188,15 +3185,15 @@ class TestSearchKeys(tests.TestCase):
     def test_simple_255(self):
         self.assertSearchKey255(
             b"\x8cse!",
-            stuple(
+            (
                 b"foo",
             ),
         )
-        self.assertSearchKey255(b"\x8cse!\x00\x8cse!", stuple(b"foo", b"foo"))
-        self.assertSearchKey255(b"\x8cse!\x00v\xff\x8c\xaa", stuple(b"foo", b"bar"))
+        self.assertSearchKey255(b"\x8cse!\x00\x8cse!", (b"foo", b"foo"))
+        self.assertSearchKey255(b"\x8cse!\x00v\xff\x8c\xaa", (b"foo", b"bar"))
         # The standard mapping for these would include '\n', so it should be
         # mapped to '_'
-        self.assertSearchKey255(b"\xfdm\x93_\x00P_\x1bL", stuple(b"<", b"V"))
+        self.assertSearchKey255(b"\xfdm\x93_\x00P_\x1bL", (b"<", b"V"))
 
     def test_255_does_not_include_newline(self):
         # When mapping via _search_key_255, we should never have the '\n'
@@ -3204,7 +3201,7 @@ class TestSearchKeys(tests.TestCase):
         chars_used = set()
         for char_in in range(256):
             search_key = _search_key_255(
-                stuple(
+                (
                     bytes([char_in]),
                 )
             )

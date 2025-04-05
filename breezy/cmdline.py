@@ -21,7 +21,7 @@ configuring_bazaar.txt.
 """
 
 import re
-from typing import List, Optional, Tuple
+from typing import Optional
 
 _whitespace_match = re.compile("\\s", re.UNICODE).match
 
@@ -29,7 +29,7 @@ _whitespace_match = re.compile("\\s", re.UNICODE).match
 class _PushbackSequence:
     def __init__(self, orig) -> None:
         self._iter = iter(orig)
-        self._pushback_buffer: List[str] = []
+        self._pushback_buffer: list[str] = []
 
     def __next__(self):
         if len(self._pushback_buffer) > 0:
@@ -148,9 +148,9 @@ class Splitter:
 
     next = __next__
 
-    def _get_token(self) -> Tuple[bool, Optional[str]]:
+    def _get_token(self) -> tuple[bool, Optional[str]]:
         self.quoted = False
-        self.token: List[str] = []
+        self.token: list[str] = []
         state = _Whitespace()
         for next_char in self.seq:
             state = state.process(next_char, self)

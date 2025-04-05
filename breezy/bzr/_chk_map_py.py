@@ -16,8 +16,6 @@
 
 """Python implementation of _search_key functions, etc."""
 
-from .static_tuple import StaticTuple
-
 _LeafNode = None
 _InternalNode = None
 _unknown = None
@@ -64,7 +62,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
         value_lines = lines[pos : pos + num_value_lines]
         pos += num_value_lines
         value = b"\n".join(value_lines)
-        items[StaticTuple.from_sequence(elements[:-1])] = value
+        items[tuple(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError(
             "item count (%d) mismatch for key %s, bytes %r" % (length, key, bytes)
@@ -116,7 +114,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     for line in lines[5:]:
         line = common_prefix + line
         prefix, flat_key = line.rsplit(b"\x00", 1)
-        items[prefix] = StaticTuple(
+        items[prefix] = (
             flat_key,
         )
     if len(items) == 0:

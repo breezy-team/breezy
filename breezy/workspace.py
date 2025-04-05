@@ -24,7 +24,7 @@ import errno
 import os
 import shutil
 from contextlib import ExitStack
-from typing import List, Optional
+from typing import Optional
 
 from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
@@ -65,7 +65,7 @@ def reset_tree(
     if basis_tree is None:
         basis_tree = local_tree.branch.basis_tree()
     revert(local_tree, basis_tree, [subpath] if subpath else None)
-    deletables: List[str] = []
+    deletables: list[str] = []
     # TODO(jelmer): Use basis tree
     for p in local_tree.extras():
         if not is_inside(subpath, p):
@@ -217,8 +217,8 @@ class Workspace:
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> Optional[List[str]]:
-        changed: Optional[List[str]]
+    def _stage(self) -> Optional[list[str]]:
+        changed: Optional[list[str]]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

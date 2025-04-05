@@ -16,7 +16,7 @@
 
 import os
 
-from .. import errors, ignores, osutils, shelf, tests, transform, workingtree
+from .. import errors, ignores, osutils, shelf, tests, workingtree
 from ..bzr import pack
 from . import expectedFailure, features
 

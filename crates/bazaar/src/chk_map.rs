@@ -80,6 +80,12 @@ pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct Key(Vec<Vec<u8>>);
 
+impl From<Vec<Vec<u8>>> for Key {
+    fn from(v: Vec<Vec<u8>>) -> Self {
+        Key(v)
+    }
+}
+
 impl Key {
     pub fn serialize(&self) -> SerializedKey {
         let mut result = vec![];

@@ -21,7 +21,7 @@ import os
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Optional
 
 from .. import (
     annotate,
@@ -93,13 +93,13 @@ class TreeTransformBase(TreeTransform):
         """
         super().__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
-        self._observed_sha1s: Dict[str, Tuple[bytes, Any]] = {}
+        self._observed_sha1s: dict[str, tuple[bytes, Any]] = {}
         # Mapping of trans_id -> new file_id
-        self._new_id: Dict[str, bytes] = {}
+        self._new_id: dict[str, bytes] = {}
         # Mapping of old file-id -> trans_id
-        self._non_present_ids: Dict[bytes, str] = {}
+        self._non_present_ids: dict[bytes, str] = {}
         # Mapping of new file_id -> trans_id
-        self._r_new_id: Dict[bytes, str] = {}
+        self._r_new_id: dict[bytes, str] = {}
         # The trans_id that will be used as the tree root
         if tree.is_versioned(""):
             self._new_root = self.trans_id_tree_path("")
@@ -1186,15 +1186,15 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbodir = limbodir
         self._deletiondir = None
         # A mapping of transform ids to their limbo filename
-        self._limbo_files: Dict[str, str] = {}
-        self._possibly_stale_limbo_files: Set[str] = set()
+        self._limbo_files: dict[str, str] = {}
+        self._possibly_stale_limbo_files: set[str] = set()
         # A mapping of transform ids to a set of the transform ids of children
         # that their limbo directory has
-        self._limbo_children: Dict[str, Set[str]] = {}
+        self._limbo_children: dict[str, set[str]] = {}
         # Map transform ids to maps of child filename to child transform id
-        self._limbo_children_names: Dict[str, Dict[str, str]] = {}
+        self._limbo_children_names: dict[str, dict[str, str]] = {}
         # List of transform ids that need to be renamed from limbo into place
-        self._needs_rename: Set[str] = set()
+        self._needs_rename: set[str] = set()
         self._creation_mtime: Optional[float] = None
         self._create_symlinks: bool = osutils.supports_symlinks(self._limbodir)
 
@@ -1489,9 +1489,9 @@ class InventoryTreeTransform(DiskTreeTransform):
             raise
 
         # Cache of realpath results, to speed up canonical_path
-        self._realpaths: Dict[str, str] = {}
+        self._realpaths: dict[str, str] = {}
         # Cache of relpath results, to speed up canonical_path
-        self._relpaths: Dict[str, str] = {}
+        self._relpaths: dict[str, str] = {}
         DiskTreeTransform.__init__(self, tree, limbodir, pb, tree.case_sensitive)
         self._deletiondir: str = deletiondir
 

@@ -104,7 +104,7 @@ def _check_win32_locale():
 
         try:
             import ctypes
-        except ImportError:
+        except ModuleNotFoundError:
             # use only user's default locale
             lang = locale.getdefaultlocale()[0]
         else:

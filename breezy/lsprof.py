@@ -11,11 +11,11 @@ import pickle
 import sys
 import threading
 from _lsprof import Profiler, profiler_entry
-from typing import Dict, TextIO
+from typing import TextIO
 
 from . import errors
 
-__all__ = ["profile", "Stats"]
+__all__ = ["Stats", "profile"]
 
 
 def profile(f, *args, **kwds):
@@ -307,7 +307,7 @@ class _CallTreeFilter:
         out_file.write("%d %d\n" % (lineno, totaltime))
 
 
-_fn2mod: Dict[str, object] = {}
+_fn2mod: dict[str, object] = {}
 
 
 def label(code, calltree=False):

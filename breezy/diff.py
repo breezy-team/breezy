@@ -19,7 +19,7 @@ import difflib
 import os
 import re
 import sys
-from typing import List, Optional, Type, Union
+from typing import Optional, Union
 
 from .lazy_import import lazy_import
 
@@ -850,7 +850,7 @@ class DiffText(DiffPath):
 class DiffFromTool(DiffPath):
     def __init__(
         self,
-        command_template: Union[str, List[str]],
+        command_template: Union[str, list[str]],
         old_tree: Tree,
         new_tree: Tree,
         to_file,
@@ -864,22 +864,22 @@ class DiffFromTool(DiffPath):
 
     @classmethod
     def from_string(
-        klass,
-        command_template: Union[str, List[str]],
+        cls,
+        command_template: Union[str, list[str]],
         old_tree: Tree,
         new_tree: Tree,
         to_file,
         path_encoding: str = "utf-8",
     ):
-        return klass(command_template, old_tree, new_tree, to_file, path_encoding)
+        return cls(command_template, old_tree, new_tree, to_file, path_encoding)
 
     @classmethod
-    def make_from_diff_tree(klass, command_string, external_diff_options=None):
+    def make_from_diff_tree(cls, command_string, external_diff_options=None):
         def from_diff_tree(diff_tree):
             full_command_string = [command_string]
             if external_diff_options is not None:
                 full_command_string.extend(external_diff_options.split())
-            return klass.from_string(
+            return cls.from_string(
                 full_command_string,
                 diff_tree.old_tree,
                 diff_tree.new_tree,
@@ -1260,5 +1260,5 @@ class DiffTree:
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry[str, Type[DiffTree], None]()
+format_registry = Registry[str, type[DiffTree], None]()
 format_registry.register("default", DiffTree)

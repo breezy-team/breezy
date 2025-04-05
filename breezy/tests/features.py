@@ -182,7 +182,7 @@ class ModuleAvailableFeature(Feature):
                     warnings.simplefilter("ignore", warning_category)
                 try:
                     self._module = importlib.import_module(self.module_name)
-                except ImportError:
+                except ModuleNotFoundError:
                     return False
                 return True
         else:

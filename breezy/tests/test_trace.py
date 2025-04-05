@@ -155,7 +155,7 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError:
+        except ModuleNotFoundError:
             msg = _format_exception()
         else:
             self.fail(f"somehow succeeded in importing {ImaginaryModule!r}")

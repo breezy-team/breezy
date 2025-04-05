@@ -17,7 +17,6 @@
 """Tests for win32utils."""
 
 import os
-from typing import List
 
 from .. import osutils, tests, win32utils
 from ..win32utils import get_app_path, glob_expand
@@ -28,7 +27,7 @@ Win32RegistryFeature = features.ModuleAvailableFeature("_winreg")
 
 
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
-    _test_needs_features: List[features.Feature] = []
+    _test_needs_features: list[features.Feature] = []
 
     def test_empty_tree(self):
         self.build_tree([])

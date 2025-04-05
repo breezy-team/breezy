@@ -19,7 +19,6 @@
 That is, tests for reconcile and check.
 """
 
-from typing import List
 
 from breezy import osutils
 from breezy.bzr.tests.per_repository_vf import (
@@ -707,7 +706,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         else:
             count = 1
         return (
-            "%d inconsistent parents" % count,
+            f"{count} inconsistent parents",
             r"\* a-file-id version current has parents "
             r"\(modified-something-else\) but should have \(basis\)",
         )
@@ -810,7 +809,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
         else:
             count = 2
         return (
-            "%d inconsistent parents" % count,
+            f"{count} inconsistent parents",
             r"\* a-file-id version broken-revision-1-2 has parents "
             r"\(parent-2, parent-1\) but should have "
             r"\(parent-1, parent-2\)",
@@ -936,7 +935,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo,
         revision_id: RevisionID,
         inv: Inventory,
-        parent_ids: List[RevisionID],
+        parent_ids: list[RevisionID],
     ) -> None:
         """Add a revision with a given inventory and parents to a repository.
 
