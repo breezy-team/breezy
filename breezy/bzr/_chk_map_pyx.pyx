@@ -25,20 +25,13 @@ from cpython.dict cimport PyDict_SetItem
 from cpython.int cimport PyInt_AsUnsignedLongMask
 from cpython.object cimport PyObject
 from cpython.ref cimport Py_INCREF
-from cpython.tuple cimport PyTuple_CheckExact, PyTuple_GET_SIZE
+from cpython.tuple cimport PyTuple_CheckExact, PyTuple_GET_SIZE, PyTuple_New, PyTuple_SET_ITEM
 from libc.stdio cimport sprintf
 from libc.stdlib cimport strtol
 from libc.string cimport memchr, memcmp, memcpy
 
 # cimport all of the definitions we will need to access
-from ._static_tuple_c cimport (StaticTuple, StaticTuple_CheckExact,
-                               StaticTuple_GET_SIZE, StaticTuple_Intern,
-                               StaticTuple_New, StaticTuple_SET_ITEM,
-                               import_static_tuple_c)
 from ._str_helpers cimport _my_memrchr, safe_interned_string_from_size
-
-# Set up the StaticTuple C_API functionality
-import_static_tuple_c()
 
 cdef object crc32
 from zlib import crc32
@@ -163,7 +156,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     cdef char *line_start
     cdef char *c_entry
     cdef char *entry_start
-    cdef StaticTuple entry_bits
+    cdef tuple entry_bits
 
     if _LeafNode is None:
         _import_globals()
@@ -231,14 +224,14 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
             if next_line == NULL:
                 raise ValueError('missing trailing newline')
             cur = next_line + 1
-        entry_bits = StaticTuple_New(width)
+        entry_bits = PyTuple_New(width)
         for i from 0 <= i < num_prefix_bits:
             # TODO: Use PyList_GetItem, or turn prefix_bits into a
-            #       tuple/StaticTuple
+            #       tuple
             entry = prefix_bits[i]
             # SET_ITEM 'steals' a reference
             Py_INCREF(entry)
-            StaticTuple_SET_ITEM(entry_bits, i, entry)
+            PyTuple_SET_ITEM(entry_bits, i, entry)
         value = PyBytes_FromStringAndSize(value_start, next_line - value_start)
         # The next entry bit needs the 'tail' from the prefix, and first part
         # of the line
@@ -256,7 +249,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
             memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
         Py_INCREF(entry)
         i = num_prefix_bits
-        StaticTuple_SET_ITEM(entry_bits, i, entry)
+        PyTuple_SET_ITEM(entry_bits, i, entry)
         while next_null != last_null: # We have remaining bits
             i = i + 1
             if i > width:
@@ -269,12 +262,11 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
             entry = PyBytes_FromStringAndSize(
                 entry_start, next_null - entry_start)
             Py_INCREF(entry)
-            StaticTuple_SET_ITEM(entry_bits, i, entry)
-        if StaticTuple_GET_SIZE(entry_bits) != width:
+            PyTuple_SET_ITEM(entry_bits, i, entry)
+        if PyTuple_GET_SIZE(entry_bits) != width:
             raise AssertionError(
                 'Incorrect number of elements (%d vs %d)'
                 % (len(entry_bits)+1, width + 1))
-        entry_bits = StaticTuple_Intern(entry_bits)
         PyDict_SetItem(items, entry_bits, value)
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
@@ -314,8 +306,8 @@ def _deserialise_internal_node(data, key, search_key_func=None):
         _import_globals()
     result = _InternalNode(search_key_func=search_key_func)
 
-    if not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a StaticTuple' % (key,))
+    if not PyTuple_CheckExact(key):
+        raise TypeError('key %r is not a tuple' % (key,))
     if not PyBytes_CheckExact(data):
         raise TypeError('expected bytes not %s' % (type(data),))
 
@@ -357,7 +349,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
         flat_key = PyBytes_FromStringAndSize(
             next_null + 1, next_line - next_null - 1)
-        flat_key = StaticTuple(flat_key).intern()
+        flat_key = (flat_key, )
         PyDict_SetItem(items, item_prefix, flat_key)
         cur = next_line + 1
     assert len(items) > 0
@@ -376,7 +368,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
 
 def _bytes_to_text_key(data):
     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
-    cdef StaticTuple key
+    cdef tuple key
     cdef char *byte_str
     cdef char *cur_end
     cdef char *file_id_str
@@ -418,9 +410,9 @@ def _bytes_to_text_key(data):
         cur_end = byte_end
     revision = safe_interned_string_from_size(revision_str,
         cur_end - revision_str)
-    key = StaticTuple_New(2)
+    key = PyTuple_New(2)
     Py_INCREF(file_id)
-    StaticTuple_SET_ITEM(key, 0, file_id)
+    PyTuple_SET_ITEM(key, 0, file_id)
     Py_INCREF(revision)
-    StaticTuple_SET_ITEM(key, 1, revision)
-    return StaticTuple_Intern(key)
+    PyTuple_SET_ITEM(key, 1, revision)
+    return key

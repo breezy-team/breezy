@@ -231,7 +231,7 @@ import zlib
 from stat import S_IEXEC
 
 from .. import cache_utf8, config, debug, errors, lock, osutils, trace, urlutils
-from . import inventory, static_tuple
+from . import inventory
 from .inventorytree import InventoryTreeChange
 
 # This is the Windows equivalent of ENOTDIR
@@ -342,7 +342,7 @@ class DirState:
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = b"x" * 32
-    NULL_PARENT_DETAILS = static_tuple.StaticTuple(b"a", b"", 0, False, b"")
+    NULL_PARENT_DETAILS = (b"a", b"", 0, False, b"")
 
     HEADER_FORMAT_2 = b"#bazaar dirstate flat format 2\n"
     HEADER_FORMAT_3 = b"#bazaar dirstate flat format 3\n"
@@ -1712,10 +1712,9 @@ class DirState:
         adds.sort(key=lambda x: x[1])
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
-        st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
             dirname, basename = osutils.split(new_path)
-            entry_key = st(dirname, basename, file_id)
+            entry_key = (dirname, basename, file_id)
             block_index, present = self._find_block_index_from_key(entry_key)
             if not present:
                 # The block where we want to put the file is not present.
@@ -1829,8 +1828,8 @@ class DirState:
                         active_path = active_dir + b"/" + active_name
                     else:
                         active_path = active_name
-                    active_entry[1][1] = st(b"r", new_path, 0, False, b"")
-                    entry[1][0] = st(b"r", active_path, 0, False, b"")
+                    active_entry[1][1] = (b"r", new_path, 0, False, b"")
+                    entry[1][0] = (b"r", active_path, 0, False, b"")
             elif active_kind == b"r":
                 raise NotImplementedError()
 
@@ -2376,9 +2375,7 @@ class DirState:
             executable = False
         else:
             raise Exception("can't pack {}".format(inv_entry))
-        return static_tuple.StaticTuple(
-            minikind, fingerprint, size, executable, tree_data
-        )
+        return (minikind, fingerprint, size, executable, tree_data)
 
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
@@ -2453,11 +2450,9 @@ class DirState:
         # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
         # cause quadratic failure.
         file_id = entry_key[2]
-        entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
+        entry_key = tuple(entry_key)
         if file_id not in id_index:
-            id_index[file_id] = static_tuple.StaticTuple(
-                entry_key,
-            )
+            id_index[file_id] = (entry_key,)
         else:
             entry_keys = id_index[file_id]
             if entry_key not in entry_keys:
@@ -2472,7 +2467,7 @@ class DirState:
         file_id = entry_key[2]
         entry_keys = list(id_index[file_id])
         entry_keys.remove(entry_key)
-        id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
+        id_index[file_id] = tuple(entry_keys)
 
     def _get_output_lines(self, lines):
         """Format lines for final output.
@@ -2784,7 +2779,6 @@ class DirState:
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
         # how many trees do we end up with
         parent_count = len(parent_trees)
-        st = static_tuple.StaticTuple
 
         # one: the current tree
         for entry in self._iter_entries():
@@ -2829,7 +2823,7 @@ class DirState:
                     dirname = last_dirname
                 else:
                     last_dirname = dirname
-                new_entry_key = st(dirname, basename, file_id)
+                new_entry_key = (dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
                 entry_keys = id_index.get(file_id, ())
@@ -2842,8 +2836,12 @@ class DirState:
                         # other trees, so put absent pointers there
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
-                        by_path[entry_key][tree_index] = st(
-                            b"r", path_utf8, 0, False, b""
+                        by_path[entry_key][tree_index] = (
+                            b"r",
+                            path_utf8,
+                            0,
+                            False,
+                            b"",
                         )
                 # by path consistency: Insert into an existing path record
                 # (trivial), or add a new one with relocation pointers for the
@@ -2875,7 +2873,7 @@ class DirState:
                             else:
                                 # we have the right key, make a pointer to it.
                                 real_path = (b"/".join(a_key[0:2])).strip(b"/")
-                                new_details.append(st(b"r", real_path, 0, False, b""))
+                                new_details.append((b"r", real_path, 0, False, b""))
                     new_details.append(self._inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
@@ -2899,19 +2897,18 @@ class DirState:
         """
         # When sorting, we usually have 10x more entries than directories. (69k
         # total entries, 4k directories). So cache the results of splitting.
-        # Saving time and objects. Also, use StaticTuple to avoid putting all
-        # of these object into python's garbage collector.
+        # Saving time and objects.
         split_dirs = {}
 
-        def _key(entry, _split_dirs=split_dirs, _st=static_tuple.StaticTuple):
+        def _key(entry, _split_dirs=split_dirs):
             # sort by: directory parts, file name, file id
             dirpath, fname, file_id = entry[0]
             try:
                 split = _split_dirs[dirpath]
             except KeyError:
-                split = _st.from_sequence(dirpath.split(b"/"))
+                split = tuple(dirpath.split(b"/"))
                 _split_dirs[dirpath] = split
-            return _st(split, fname, file_id)
+            return (split, fname, file_id)
 
         return sorted(entry_list, key=_key)
 

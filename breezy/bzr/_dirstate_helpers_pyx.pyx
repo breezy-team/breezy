@@ -35,6 +35,8 @@ from ..osutils import (is_inside, is_inside_any, parent_directories, pathjoin,
 from .dirstate import DirState, DirstateCorrupt
 from .inventorytree import InventoryTreeChange
 
+from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM
+
 
 # This is the Windows equivalent of ENOTDIR
 # It is defined in pywin32.winerror, but we don't want a strong dependency for
@@ -123,11 +125,7 @@ cdef extern from "string.h":
     void *memchr(void *s, int c, size_t len)
     int memcmp(void *b1, void *b2, size_t len)
 
-from ._static_tuple_c cimport (StaticTuple, StaticTuple_New,
-                               StaticTuple_SET_ITEM, import_static_tuple_c)
 from ._str_helpers cimport _my_memrchr, safe_string_from_size
-
-import_static_tuple_c()
 
 
 def _py_memrchr(s, c):
@@ -595,8 +593,8 @@ cdef class Reader:
         :param new_block: This is to let the caller know that it needs to
             create a new directory block to store the next entry.
         """
-        cdef StaticTuple path_name_file_id_key
-        cdef StaticTuple tmp
+        cdef tuple path_name_file_id_key
+        cdef tuple tmp
         cdef char *entry_size_cstr
         cdef unsigned long int entry_size
         cdef char* executable_cstr
@@ -637,18 +635,12 @@ cdef class Reader:
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
         cur_dirname = <object>p_current_dirname[0]
-        # Use StaticTuple_New to pre-allocate, rather than creating a regular
-        # tuple and passing it to the StaticTuple constructor.
-        # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
-        #                          self.get_next_str(),
-        #                          self.get_next_str(),
-        #                         )
-        tmp = StaticTuple_New(3)
-        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        tmp = PyTuple_New(3)
+        Py_INCREF(cur_dirname); PyTuple_SET_ITEM(tmp, 0, cur_dirname)
         cur_basename = self.get_next_str()
         cur_file_id = self.get_next_str()
-        Py_INCREF(cur_basename); StaticTuple_SET_ITEM(tmp, 1, cur_basename)
-        Py_INCREF(cur_file_id); StaticTuple_SET_ITEM(tmp, 2, cur_file_id)
+        Py_INCREF(cur_basename); PyTuple_SET_ITEM(tmp, 1, cur_basename)
+        Py_INCREF(cur_file_id); PyTuple_SET_ITEM(tmp, 2, cur_file_id)
         path_name_file_id_key = tmp
 
         # Parse all of the per-tree information. current has the information in
@@ -673,20 +665,7 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == b'y')
             info = self.get_next_str()
-            # TODO: If we want to use StaticTuple_New here we need to be pretty
-            #       careful. We are relying on a bit of Pyrex
-            #       automatic-conversion from 'int' to PyInt, and that doesn't
-            #       play well with the StaticTuple_SET_ITEM macro.
-            #       Timing doesn't (yet) show a worthwile improvement in speed
-            #       versus complexity and maintainability.
-            # tmp = StaticTuple_New(5)
-            # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
-            # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
-            # Py_INCREF(entry_size); StaticTuple_SET_ITEM(tmp, 2, entry_size)
-            # Py_INCREF(is_executable); StaticTuple_SET_ITEM(tmp, 3, is_executable)
-            # Py_INCREF(info); StaticTuple_SET_ITEM(tmp, 4, info)
-            # PyList_Append(trees, tmp)
-            PyList_Append(trees, StaticTuple(
+            PyList_Append(trees, (
                 minikind,     # minikind
                 fingerprint,  # fingerprint
                 entry_size,   # size

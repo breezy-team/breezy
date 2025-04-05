@@ -42,7 +42,6 @@ from breezy import (
 )
 from .. import debug, errors
 from .. import transport as _mod_transport
-from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = b"key_elements="
@@ -156,7 +155,7 @@ class GraphIndexBuilder:
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
-        if type(key) not in (tuple, StaticTuple):
+        if type(key) not in (tuple,):
             raise BadIndexKey(key)
         if self._key_length != len(key):
             raise BadIndexKey(key)
@@ -221,9 +220,9 @@ class GraphIndexBuilder:
             return
         key_dict = self._nodes_by_key
         if self.reference_lists:
-            key_value = StaticTuple(key, value, node_refs)
+            key_value = (key, value, node_refs)
         else:
-            key_value = StaticTuple(key, value)
+            key_value = (key, value)
         for subkey in key[:-1]:
             key_dict = key_dict.setdefault(subkey, {})
         key_dict[key[-1]] = key_value
@@ -246,7 +245,6 @@ class GraphIndexBuilder:
               This may contain duplicates if the same key is referenced in
               multiple lists.
         """
-        as_st = StaticTuple.from_sequence
         self._check_key(key)
         if _newline_null_re.search(value) is not None:
             raise BadIndexValue(value)
@@ -261,9 +259,9 @@ class GraphIndexBuilder:
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
-            reference_list = as_st([as_st(ref).intern() for ref in reference_list])
+            reference_list = tuple([tuple(ref) for ref in reference_list])
             node_refs.append(reference_list)
-        return as_st(node_refs), absent_references
+        return tuple(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
         r"""Add a node to the index.

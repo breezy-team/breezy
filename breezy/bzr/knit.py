@@ -72,7 +72,6 @@ from breezy import (
     )
 from breezy.bzr import (
     pack,
-    static_tuple,
     tuned_gzip,
     )
 
@@ -3016,6 +3015,20 @@ class _KndxIndex:
         return key[:-1], key[-1]
 
 
+def as_tuples(obj):
+    """Ensure that the object and any referenced objects are plain tuples.
+
+    :param obj: a list, tuple or StaticTuple
+    :return: a plain tuple instance, with all children also being tuples.
+    """
+    result = []
+    for item in obj:
+        if isinstance(item, (tuple, list)):
+            item = as_tuples(item)
+        result.append(item)
+    return tuple(result)
+
+
 class _KnitGraphIndex:
     """A KnitVersionedFiles index layered on GraphIndex."""
 
@@ -3130,10 +3143,10 @@ class _KnitGraphIndex:
             for _index, key, value, node_refs in present_nodes:
                 parents = node_refs[:1]
                 # Sometimes these are passed as a list rather than a tuple
-                passed = static_tuple.as_tuples(keys[key])
+                passed = as_tuples(keys[key])
                 passed_parents = passed[1][:1]
                 if value[0:1] != keys[key][0][0:1] or parents != passed_parents:
-                    node_refs = static_tuple.as_tuples(node_refs)
+                    node_refs = as_tuples(node_refs)
                     raise KnitCorrupt(
                         self,
                         "inconsistent details in add_records: {} {}".format(

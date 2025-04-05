@@ -10,6 +10,12 @@ brz 3.3.11
 
 :3.3.11: UNRELEASED
 
+* Drop static tuple. This is breaking Python
+  3.13 support, Python has made improvements to tuples
+  that should reduce the need for this. We're
+  also moving performance-critical code to rust
+  in the future. (Jelmer Vernooĳ)
+
 brz 3.3.10
 ##########
 

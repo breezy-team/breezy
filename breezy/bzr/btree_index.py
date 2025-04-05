@@ -33,7 +33,6 @@ import zlib
 
 from .. import chunk_writer, debug, fifo_cache, lru_cache, osutils, trace, transport
 from . import index as _mod_index
-from . import static_tuple
 from .index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
@@ -160,13 +159,13 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \\0 or \\n.
         """
-        # Ensure that 'key' is a StaticTuple
-        key = static_tuple.StaticTuple.from_sequence(key).intern()
+        # Ensure that 'key' is a tuple.
+        key = tuple(key)
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise _mod_index.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
+        self._nodes[key] = (node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
         if len(self._nodes) < self._spill_at:
@@ -636,13 +635,10 @@ class _InternalNode:
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
-        as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
             if line == b"":
                 break
-            # GZ 2017-05-24: Used to intern() each chunk of line as well, need
-            # to recheck performance and perhaps adapt StaticTuple to adjust.
-            nodes.append(as_st(line.split(b"\0")).intern())
+            nodes.append(tuple(line.split(b"\0")))
         return nodes
 
 
