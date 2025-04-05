@@ -8,7 +8,7 @@ Breezy Release Notes
 brz 3.3.11
 ##########
 
-:3.3.11: UNRELEASED
+:3.3.11: 2025-04-06
 
 * Drop static tuple. This is breaking Python
   3.13 support, Python has made improvements to tuples
