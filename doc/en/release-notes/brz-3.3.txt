@@ -19,6 +19,9 @@ brz 3.3.11
 * Fix timezone handling, avoid looking up
   timezone. (#2103478, Jelmer Vernooĳ)
 
+* Drop unused ``simple_set`` extension.
+  (Jelmer Vernooĳ)
+
 brz 3.3.10
 ##########
 

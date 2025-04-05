@@ -46,7 +46,6 @@ def load_tests(loader, basic_tests, pattern):
         "test__dirstate_helpers",
         "test__groupcompress",
         "test__rio",
-        "test__simple_set",
         "test_btree_index",
         "test_bundle",
         "test_bzrdir",
