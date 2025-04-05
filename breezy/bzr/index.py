@@ -155,7 +155,7 @@ class GraphIndexBuilder:
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
-        if type(key) not in (tuple, ):
+        if type(key) not in (tuple,):
             raise BadIndexKey(key)
         if self._key_length != len(key):
             raise BadIndexKey(key)

@@ -28,11 +28,11 @@
 ROOT_ID = b"TREE_ROOT"
 
 from collections import deque
-from typing import Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Optional, Union
 
 from .. import errors, lazy_regex, osutils, trace
 from . import chk_map
-
 
 FileId = bytes
 

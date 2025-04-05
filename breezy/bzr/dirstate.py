@@ -2375,9 +2375,7 @@ class DirState:
             executable = False
         else:
             raise Exception("can't pack {}".format(inv_entry))
-        return (
-            minikind, fingerprint, size, executable, tree_data
-        )
+        return (minikind, fingerprint, size, executable, tree_data)
 
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
@@ -2454,9 +2452,7 @@ class DirState:
         file_id = entry_key[2]
         entry_key = tuple(entry_key)
         if file_id not in id_index:
-            id_index[file_id] = (
-                entry_key,
-            )
+            id_index[file_id] = (entry_key,)
         else:
             entry_keys = id_index[file_id]
             if entry_key not in entry_keys:
@@ -2841,7 +2837,11 @@ class DirState:
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
                         by_path[entry_key][tree_index] = (
-                            b"r", path_utf8, 0, False, b""
+                            b"r",
+                            path_utf8,
+                            0,
+                            False,
+                            b"",
                         )
                 # by path consistency: Insert into an existing path record
                 # (trivial), or add a new one with relocation pointers for the

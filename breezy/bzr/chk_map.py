@@ -38,7 +38,7 @@ Densely packed upper nodes.
 
 import heapq
 import threading
-from collections.abc import Callable, Iterator, Generator
+from collections.abc import Callable, Generator, Iterator
 from typing import Callable, Optional, Union
 
 from .. import errors, lru_cache, osutils, registry, trace
@@ -613,9 +613,7 @@ class CHKMap:
         elif isinstance(node, Node):
             return node._key
         else:
-            raise AssertionError(
-                "Invalid node type: {!r}".format(type(node))
-            )
+            raise AssertionError("Invalid node type: {!r}".format(type(node)))
 
     def unmap(self, key: Key, check_remap=True) -> None:
         """Remove key from the map."""
@@ -1014,7 +1012,9 @@ class LeafNode(Node):
                 raise AssertionError("{!r} must be known".format(self._search_prefix))
             return self._search_prefix, [(b"", self)]
 
-    _serialise_key = b"\x00".join
+    @staticmethod
+    def _serialise_key(key: Key) -> SerialisedKey:
+        return b"\x00".join(key)
 
     def serialise(self, store):
         """Serialise the LeafNode to store.
@@ -1135,7 +1135,7 @@ class InternalNode(Node):
         else:
             self._search_key_func = search_key_func
 
-    def add_node(self, prefix, node: "Node") -> "Node":
+    def add_node(self, prefix, node: "Node") -> None:
         """Add a child node with prefix prefix, and node node.
 
         :param prefix: The search key prefix for node.
@@ -1144,9 +1144,7 @@ class InternalNode(Node):
         if self._search_prefix is None:
             raise AssertionError("_search_prefix should not be None")
         if not isinstance(node, (tuple, Node)):
-            raise AssertionError(
-                "Invalid node type: {!r}".format(type(node))
-            )
+            raise AssertionError("Invalid node type: {!r}".format(type(node)))
         if not prefix.startswith(self._search_prefix):
             raise AssertionError(
                 "prefixes mismatch: {} must start with {}".format(
@@ -1187,13 +1185,17 @@ class InternalNode(Node):
         key = tuple(key)
         return _deserialise_internal_node(bytes, key, search_key_func=search_key_func)
 
-    def iteritems(self, store, key_filter: Optional[list[Key]] = None) -> Generator[tuple[Key, bytes]]:
+    def iteritems(
+        self, store, key_filter: Optional[list[Key]] = None
+    ) -> Generator[tuple[Key, bytes]]:
         for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
             yield from node.iteritems(store, key_filter=node_filter)
 
     def _iter_nodes(
-            self, store, key_filter: Optional[KeyFilter] =None,
-            batch_size: Optional[int] = None
+        self,
+        store,
+        key_filter: Optional[KeyFilter] = None,
+        batch_size: Optional[int] = None,
     ) -> Generator[tuple[Node, Optional[list[Key]]]]:
         """Iterate over node objects which match key_filter.
 
@@ -1221,9 +1223,7 @@ class InternalNode(Node):
                 elif isinstance(node, Node):
                     yield node, None
                 else:
-                    raise AssertionError(
-                        "Invalid node type: {!r}".format(type(node))
-                    )
+                    raise AssertionError("Invalid node type: {!r}".format(type(node)))
         elif len(key_filter) == 1:
             # Technically, this path could also be handled by the first check
             # in 'self._node_width' in length_filters. However, we can handle
@@ -1263,9 +1263,7 @@ class InternalNode(Node):
                     yield node, [key]
                     return
                 else:
-                    raise AssertionError(
-                        "Invalid node type: {!r}".format(type(node))
-                    )
+                    raise AssertionError("Invalid node type: {!r}".format(type(node)))
         if not shortcut:
             # First, convert all keys into a list of search prefixes
             # Aggregate common prefixes, and track the keys they come from
@@ -1564,6 +1562,7 @@ class InternalNode(Node):
         else:
             raise KeyError(key)
         self._len -= 1
+        unmapped: Optional[Node]
         unmapped = child.unmap(store, key)
         self._key = None
         search_key = self._search_key(key)
@@ -1584,7 +1583,7 @@ class InternalNode(Node):
         else:
             return self
 
-    def _check_remap(self, store) -> "LeafNode":
+    def _check_remap(self, store) -> "Node":
         """Check if all keys contained by children fit in a single LeafNode.
 
         :param store: A store to use for reading more nodes

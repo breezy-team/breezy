@@ -1658,7 +1658,7 @@ class VersionedFileRepository(Repository):
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
-        revision_keys = [(r_id, ) for r_id in revision_ids]
+        revision_keys = [(r_id,) for r_id in revision_ids]
         with self.lock_read():
             known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
             return graph.GraphThunkIdsToKeys(known_graph)

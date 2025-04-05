@@ -347,7 +347,7 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
-        common_classes = ("tuple", )
+        common_classes = ("tuple",)
         class_re = re.compile(
             r"^(cdef\s+)?(public\s+)?" r"(api\s+)?class (\w+).*:", re.MULTILINE
         )

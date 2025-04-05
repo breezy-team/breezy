@@ -26,7 +26,7 @@ class cmd_chk_used_by(Command):
     takes_options = ["directory"]
 
     def run(self, key_list, directory="."):
-        key_list = [(k, ) for k in key_list]
+        key_list = [(k,) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)
         bd, relpath = controldir.ControlDir.open_containing(directory)

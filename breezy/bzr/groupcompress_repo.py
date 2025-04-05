@@ -999,7 +999,7 @@ class CHKInventoryRepository(PackRepository):
             new_value = entry_to_bytes(entry)
             # Populate Caches?
             # new_inv._path_to_fileid_cache[new_path] = file_id
-            key = (file_id, )
+            key = (file_id,)
             id_to_entry_dict[key] = new_value
             parent_id_basename_dict[parent_id_basename_key] = file_id
 
