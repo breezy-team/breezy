@@ -14,7 +14,13 @@ brz 3.3.11
   3.13 support, Python has made improvements to tuples
   that should reduce the need for this. We're
   also moving performance-critical code to rust
-  in the future. (Jelmer Vernooĳ)
+  in the future. (#2102194, Jelmer Vernooĳ)
+
+* Fix timezone handling, avoid looking up
+  timezone. (#2103478, Jelmer Vernooĳ)
+
+* Drop unused ``simple_set`` extension.
+  (Jelmer Vernooĳ)
 
 brz 3.3.10
 ##########

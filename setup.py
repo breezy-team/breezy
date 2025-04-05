@@ -168,7 +168,6 @@ def add_cython_extension(module_name, libraries=None, extra_source=None):
     )
 
 
-add_cython_extension("breezy.bzr._simple_set_pyx")
 add_cython_extension("breezy._annotator_pyx")
 add_cython_extension("breezy._chunks_to_lines_pyx")
 add_cython_extension(
