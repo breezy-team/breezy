@@ -38,8 +38,8 @@ all: extensions
 
 extensions:
 	@echo "building extension modules."
-	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
-	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
+	PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 $(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
+	PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 $(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
 check:: docs check-nodocs
 

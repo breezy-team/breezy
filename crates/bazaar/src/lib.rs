@@ -1,5 +1,5 @@
 #[cfg(feature = "pyo3")]
-use pyo3::{prelude::*, types::PyBytes, ToPyObject};
+use pyo3::{prelude::*, types::PyBytes};
 use std::fmt::{Debug, Error, Formatter};
 
 pub const DEFAULT_CHUNK_SIZE: usize = 4096;

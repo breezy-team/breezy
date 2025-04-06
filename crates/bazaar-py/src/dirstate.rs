@@ -148,7 +148,7 @@ fn bisect_dirblock(
     fn split_object(obj: &Bound<PyAny>) -> PyResult<Vec<PathBuf>> {
         if let Ok(py_str) = obj.extract::<Bound<PyString>>() {
             Ok(py_str
-                .to_str()?
+                .to_string()
                 .split('/')
                 .map(PathBuf::from)
                 .collect::<Vec<_>>())

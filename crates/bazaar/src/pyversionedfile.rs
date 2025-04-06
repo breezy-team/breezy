@@ -244,8 +244,8 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         #[pymethods]
         impl PyContentFactory {
             #[getter]
-            fn sha1(&self, py: Python) -> PyObject {
-                self.0.sha1().to_object(py)
+            fn sha1<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
+                Ok(self.0.sha1().map(|o| PyBytes::new(py, &o)))
             }
 
             #[getter]
