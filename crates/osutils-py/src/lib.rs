@@ -403,7 +403,7 @@ fn rand_chars(len: usize) -> PyResult<String> {
 #[pyclass]
 struct PyIterableFile {
     inner: breezy_osutils::iterablefile::IterableFile<
-        Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send>,
+        Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + Sync>,
     >,
     closed: bool,
 }
@@ -492,7 +492,7 @@ impl PyIterableFile {
 fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
     Python::with_gil(|py| {
         let py_iter = py_iterable.call_method0(py, "__iter__")?;
-        let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(
+        let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + Sync> = Box::new(
             std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
                 Python::with_gil(|py| {
                     match py_iter.extract::<Bound<PyIterator>>(py).unwrap().next() {

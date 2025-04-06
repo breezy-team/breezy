@@ -69,21 +69,15 @@ impl FromPyObject<'_> for PyNode {
     }
 }
 
-impl IntoPy<PyObject> for PyNode {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.to_object(py)
-    }
-}
+impl<'py> IntoPyObject<'py> for PyNode {
+    type Target = PyAny;
 
-impl IntoPy<PyObject> for &PyNode {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.to_object(py)
-    }
-}
+    type Output = Bound<'py, Self::Target>;
 
-impl ToPyObject for PyNode {
-    fn to_object(&self, py: Python) -> PyObject {
-        self.0.to_object(py)
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0.clone_ref(py).into_bound(py))
     }
 }
 
@@ -171,7 +165,7 @@ fn collapse_linear_regions(parent_map: ParentMap<PyNode>) -> PyResult<ParentMap<
 
 #[pyclass]
 struct PyParentsProvider {
-    provider: Box<dyn breezy_graph::ParentsProvider<PyNode> + Send>,
+    provider: Box<dyn breezy_graph::ParentsProvider<PyNode> + Send + Sync>,
 }
 
 #[pymethods]

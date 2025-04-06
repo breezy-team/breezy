@@ -96,9 +96,15 @@ impl ToString for Ordering {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::IntoPy<pyo3::PyObject> for Ordering {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
-        self.to_string().into_py(py)
+impl<'py> pyo3::IntoPyObject<'py> for Ordering {
+    type Target = pyo3::types::PyString;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.to_string().into_pyobject(py)?)
     }
 }
 
@@ -122,9 +128,16 @@ impl pyo3::FromPyObject<'_> for Ordering {
 pub struct VersionId(Vec<u8>);
 
 #[cfg(feature = "pyo3")]
-impl pyo3::ToPyObject for VersionId {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        PyBytes::new_bound(py, &self.0).to_object(py)
+impl<'py> pyo3::IntoPyObject<'py> for &VersionId {
+    type Target = pyo3::types::PyBytes;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
+        let bytes = PyBytes::new(py, &self.0);
+        Ok(bytes.into_pyobject(py)?)
     }
 }
 

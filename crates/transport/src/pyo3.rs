@@ -73,9 +73,15 @@ impl Lock for PyLock {
     }
 }
 
-impl IntoPy<PyObject> for PyTransport {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.to_object(py)
+impl<'py> IntoPyObject<'py> for PyTransport {
+    type Target = PyAny;
+
+    type Output = Bound<'py, Self::Target>;
+
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> std::result::Result<Self::Output, Self::Error> {
+        Ok(self.0.bind(py).clone())
     }
 }
 

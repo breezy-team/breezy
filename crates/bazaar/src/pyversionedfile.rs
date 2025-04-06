@@ -145,7 +145,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         Python::with_gil(|py| {
             let m = py.import_bound("breezy.bzr.versionedfile").unwrap();
             let c = m.getattr("VersionedFile").unwrap();
-            c.call_method1("check_not_reserved_id", (version_id.to_object(py),))
+            c.call_method1("check_not_reserved_id", (version_id,))
                 .unwrap()
                 .extract()
                 .unwrap()
@@ -156,7 +156,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
             py_versioned_file
-                .call_method1("has_version", (version_id.to_object(py),))
+                .call_method1("has_version", (version_id,))
                 .unwrap()
                 .extract()
                 .unwrap()
@@ -181,10 +181,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     ) -> Box<dyn Iterator<Item = PyContentFactory>> {
         Box::new(Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
-            let version_ids = version_ids
-                .iter()
-                .map(|k| k.to_object(py))
-                .collect::<Vec<_>>();
+            let version_ids = version_ids.iter().collect::<Vec<_>>();
             let py_record_stream = py_versioned_file
                 .call_method1(
                     "get_record_stream",
@@ -210,8 +207,8 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
                 Some(parent_texts) => {
                     let py_parent_texts = parent_texts
                         .into_iter()
-                        .map(|(k, v)| (k.to_object(py), v.to_object(py)))
-                        .collect::<Vec<_>>();
+                        .map(|(k, v)| Ok((k.into_pyobject(py)?, v)))
+                        .collect::<Result<Vec<_>, PyErr>>()?;
                     Some(py_parent_texts)
                 }
                 None => None,
@@ -219,7 +216,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
             let py_result = py_versioned_file.call_method1(
                 "add_lines",
                 (
-                    version_id.to_object(py),
+                    version_id,
                     py_parent_texts,
                     py_lines,
                     nostore_sha,
