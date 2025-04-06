@@ -45,15 +45,6 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
-// TODO: Does not actually work? Upstream has been messing around again.
-fn ensure_sane_fs_enc() {
-    let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
-    unsafe {
-        pyo3::ffi::Py_FileSystemDefaultEncoding = new_enc;
-        pyo3::ffi::Py_HasFileSystemDefaultEncoding = 1;
-    }
-}
-
 fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
     let sys = PyModule::import(py, "sys")?;
 
@@ -108,8 +99,6 @@ fn main() {
         update_path(py)?;
 
         check_version(py)?;
-
-        ensure_sane_fs_enc();
 
         let args: Vec<String> = std::env::args().collect();
 
