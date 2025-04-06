@@ -14,7 +14,7 @@ fn get_cache_dir() -> PyResult<PathBuf> {
 }
 
 #[pymodule]
-pub fn _git_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+pub fn _git_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bzr_url_to_git_url))?;
     m.add_wrapped(wrap_pyfunction!(get_cache_dir))?;
     Ok(())

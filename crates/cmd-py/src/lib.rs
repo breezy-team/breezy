@@ -196,10 +196,10 @@ struct BreezyTraceHandler(
 );
 
 fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
-    let io = py.import("io")?;
+    let io = py.import_bound("io")?;
     let sio = io.call_method0("StringIO")?;
 
-    let tb = py.import("traceback")?;
+    let tb = py.import_bound("traceback")?;
     tb.call_method1(
         "print_exception",
         (
@@ -207,7 +207,7 @@ fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
             ei.get_item(1)?,
             ei.get_item(2)?,
             py.None(),
-            sio,
+            &sio,
         ),
     )?;
 
@@ -219,11 +219,15 @@ fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
 }
 
 fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResult<()> {
-    let traceback = py.import("traceback")?;
+    let traceback = py.import_bound("traceback")?;
     let tb = traceback
         .call_method1(
             "format_exception",
-            (err.get_type(py), err.value(py), err.traceback(py)),
+            (
+                err.get_type_bound(py),
+                err.value_bound(py),
+                err.traceback_bound(py),
+            ),
         )?
         .extract::<Vec<String>>()?;
     log.log(
@@ -276,10 +280,10 @@ impl BreezyTraceHandler {
             let msg = pyr.getattr(py, "msg")?;
             let args = pyr.getattr(py, "args")?;
 
-            PyString::new(py, "Logging record unformattable: {} % {}")
+            PyString::new_bound(py, "Logging record unformattable: {} % {}")
                 .call_method1(
                     "format",
-                    (msg.as_ref(py).repr().ok(), args.as_ref(py).repr().ok()),
+                    (msg.bind(py).repr().ok(), args.bind(py).repr().ok()),
                 )?
                 .to_string()
         } else {
@@ -318,8 +322,8 @@ impl BreezyTraceHandler {
             });
         }
 
-        let mut path = String::new();
-        if let Ok(p) = pyr.as_ref(py).getattr("pathname") {
+        let path;
+        if let Ok(p) = pyr.bind(py).getattr("pathname") {
             path = p.extract::<String>()?;
             r = r.file(Some(&path));
         }
@@ -328,14 +332,14 @@ impl BreezyTraceHandler {
             r = r.line(Some(func.extract::<u32>(py)?));
         }
 
-        let mut module = String::new();
-        if let Ok(m) = pyr.as_ref(py).getattr("module") {
+        let module;
+        if let Ok(m) = pyr.bind(py).getattr("module") {
             module = m.extract::<String>()?;
             r = r.module_path(Some(&module));
         }
 
-        let mut name = String::new();
-        if let Ok(n) = pyr.as_ref(py).getattr("name") {
+        let name;
+        if let Ok(n) = pyr.bind(py).getattr("name") {
             name = n.extract::<String>()?;
             r = r.target(&name);
         }
@@ -464,7 +468,7 @@ struct LockHeldInfo(breezy::lockdir::LockHeldInfo);
 impl LockHeldInfo {
     #[classmethod]
     fn for_this_process(
-        _cls: &PyType,
+        _cls: &Bound<PyType>,
         extra_holder_info: Option<std::collections::HashMap<String, String>>,
     ) -> Self {
         let mut extra_holder_info = extra_holder_info.unwrap_or_default();
@@ -544,7 +548,11 @@ impl LockHeldInfo {
     }
 
     #[classmethod]
-    fn from_info_file_bytes(_cls: &PyType, py: Python, info_file_bytes: &[u8]) -> PyResult<Self> {
+    fn from_info_file_bytes(
+        _cls: &Bound<PyType>,
+        py: Python,
+        info_file_bytes: &[u8],
+    ) -> PyResult<Self> {
         Ok(Self(
             breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
                 let fb = PyBytes::new_bound(py, info_file_bytes).to_object(py);

@@ -24,7 +24,7 @@ struct PyChunkIterator {
 impl PyChunkIterator {
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         match self.input.next() {
-            Some(Ok(item)) => Ok(Some(PyBytes::new(py, &item).to_object(py))),
+            Some(Ok(item)) => Ok(Some(PyBytes::new_bound(py, &item).to_object(py))),
             Some(Err(e)) => Err(e.into()),
             None => Ok(None),
         }
@@ -105,7 +105,7 @@ fn content_filter_to_fn(
     })
 }
 
-fn extract_fs_time(obj: &PyAny) -> Result<i64, PyErr> {
+fn extract_fs_time(obj: &Bound<PyAny>) -> Result<i64, PyErr> {
     if let Ok(val) = obj.extract::<i64>() {
         Ok(val)
     } else if let Ok(val) = obj.extract::<f64>() {
@@ -148,18 +148,18 @@ impl HashCache {
         self.hashcache.scan();
     }
 
-    fn get_sha1(
+    fn get_sha1<'a>(
         &mut self,
-        py: Python,
+        py: Python<'a>,
         path: &str,
-        stat_value: Option<&PyAny>,
-    ) -> PyResult<PyObject> {
+        stat_value: Option<Bound<PyAny>>,
+    ) -> PyResult<Bound<'a, PyAny>> {
         let sha1;
         if let Some(stat_value) = stat_value {
             let fp = bazaar::hashcache::Fingerprint {
                 size: stat_value.getattr("st_size")?.extract()?,
-                mtime: extract_fs_time(stat_value.getattr("st_mtime")?)?,
-                ctime: extract_fs_time(stat_value.getattr("st_ctime")?)?,
+                mtime: extract_fs_time(&stat_value.getattr("st_mtime")?)?,
+                ctime: extract_fs_time(&stat_value.getattr("st_ctime")?)?,
                 ino: stat_value.getattr("st_ino")?.extract()?,
                 dev: stat_value.getattr("st_dev")?.extract()?,
                 mode: stat_value.getattr("st_mode")?.extract()?,
@@ -172,10 +172,10 @@ impl HashCache {
             if let Some(s) = ret {
                 sha1 = s;
             } else {
-                return Ok(py.None());
+                return Ok(py.None().into_bound(py));
             }
         }
-        Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
+        Ok(PyBytes::new_bound(py, sha1.as_bytes()).into_any())
     }
 
     fn write(&mut self) -> PyResult<()> {
@@ -215,7 +215,7 @@ impl HashCache {
     }
 }
 
-pub(crate) fn hashcache(m: &PyModule) -> PyResult<()> {
+pub(crate) fn hashcache(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<HashCache>()?;
     Ok(())
 }

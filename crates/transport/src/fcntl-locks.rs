@@ -84,7 +84,7 @@ impl WriteLock {
                         l_len: 0,
                         l_pid: 0,
                     };
-                    fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
+                    let _ = fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
                 }
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
@@ -104,7 +104,7 @@ impl Lock for WriteLock {
             l_len: 0,
             l_pid: 0,
         };
-        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
+        let _ = fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
         Ok(())
     }
 }
@@ -202,7 +202,7 @@ impl Lock for ReadLock {
             l_len: 0,
             l_pid: 0,
         };
-        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
+        let _ = fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
 
         Ok(())
     }

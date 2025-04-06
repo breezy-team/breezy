@@ -183,7 +183,7 @@ pub fn rand_chars(num: usize) -> String {
     let mut rng = rand::rng();
     let mut s = String::new();
     for _ in 0..num {
-        let raw_byte = rng.gen_range(0..256);
+        let raw_byte = rng.random_range(0..256);
         s.push(ALNUM.chars().nth(raw_byte % 36).unwrap());
     }
     s

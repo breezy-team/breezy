@@ -84,7 +84,7 @@ pub fn parse_patch_date(date_str: &str) -> Result<(i64, i64), ParsePatchDateErro
         .map_err(|_| ParsePatchDateError::InvalidDate(date_str.to_string()))?
         - chrono::Duration::seconds(offset);
 
-    Ok((dt.timestamp(), offset))
+    Ok((dt.and_utc().timestamp(), offset))
 }
 
 #[cfg(test)]

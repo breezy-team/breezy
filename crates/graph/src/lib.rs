@@ -202,7 +202,8 @@ impl<K: Hash + Clone + PartialEq + Eq> IntoIterator for ParentMap<K> {
 #[cfg(feature = "pyo3")]
 impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ParentMap<K> {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        let dict = pyo3::types::PyDict::new(py);
+        use pyo3::prelude::*;
+        let dict = pyo3::types::PyDict::new_bound(py);
         for (k, v) in self.iter() {
             dict.set_item(k, v.to_object(py)).unwrap();
         }
@@ -215,7 +216,8 @@ impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::Into
     for ParentMap<K>
 {
     fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
-        let dict = pyo3::types::PyDict::new(py);
+        use pyo3::prelude::*;
+        let dict = pyo3::types::PyDict::new_bound(py);
         for (k, v) in self.into_iter() {
             dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
         }
@@ -306,7 +308,8 @@ impl<K: Hash + Clone + Eq> std::ops::Index<&K> for ChildMap<K> {
 #[cfg(feature = "pyo3")]
 impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ChildMap<K> {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        let dict = pyo3::types::PyDict::new(py);
+        use pyo3::prelude::*;
+        let dict = pyo3::types::PyDict::new_bound(py);
         for (k, v) in self.iter() {
             dict.set_item(k, v.to_object(py)).unwrap();
         }
@@ -319,7 +322,8 @@ impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::Into
     for ChildMap<K>
 {
     fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
-        let dict = pyo3::types::PyDict::new(py);
+        use pyo3::prelude::*;
+        let dict = pyo3::types::PyDict::new_bound(py);
         for (k, v) in self.into_iter() {
             dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
         }
@@ -562,7 +566,7 @@ impl From<usize> for RevnoVec {
 #[cfg(feature = "pyo3")]
 impl pyo3::ToPyObject for RevnoVec {
     fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        pyo3::types::PyTuple::new(py, self.0.iter()).to_object(py)
+        pyo3::types::PyTuple::new_bound(py, self.0.iter()).to_object(py)
     }
 }
 

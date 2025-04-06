@@ -16,7 +16,7 @@ impl From<std::io::Error> for LockError {
     }
 }
 
-struct BogusLock {}
+pub struct BogusLock;
 
 impl Lock for BogusLock {
     fn unlock(&mut self) -> std::result::Result<(), LockError> {

@@ -49,26 +49,27 @@ impl PyChunksToLinesIterator {
     }
 
     fn __next__(&mut self) -> PyResult<Option<Py<PyAny>>> {
-        Python::with_gil(move |py| loop {
+        Python::with_gil(|py| loop {
             if let Some(mut chunk) = self.tail.take() {
                 if let Some(newline) = memchr::memchr(b'\n', &chunk) {
                     if newline == chunk.len() - 1 {
                         assert!(!chunk.is_empty());
-                        return Ok(Some(PyBytes::new(py, chunk.as_slice()).to_object(py)));
+                        return Ok(Some(PyBytes::new_bound(py, chunk.as_slice()).to_object(py)));
                     } else {
                         assert!(!chunk.is_empty());
                         self.tail = Some(chunk[newline + 1..].to_vec());
-                        let bytes = PyBytes::new(py, &chunk[..=newline]);
+                        let bytes = PyBytes::new_bound(py, &chunk[..=newline]);
                         return Ok(Some(bytes.to_object(py)));
                     }
                 } else {
-                    if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+                    let chunk_iter = self.chunk_iter.clone_ref(py);
+                    if let Some(next_chunk) = chunk_iter.downcast::<PyIterator>(py)?.next() {
                         let next_chunk = next_chunk?;
                         let next_chunk = next_chunk.extract::<&[u8]>()?;
                         chunk.extend_from_slice(next_chunk);
                     } else {
                         assert!(!chunk.is_empty());
-                        return Ok(Some(PyBytes::new(py, &chunk).to_object(py)));
+                        return Ok(Some(PyBytes::new_bound(py, &chunk).to_object(py)));
                     }
                     if !chunk.is_empty() {
                         self.tail = Some(chunk);
@@ -94,7 +95,7 @@ impl PyChunksToLinesIterator {
     }
 }
 
-fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
+fn extract_path(object: &Bound<PyAny>) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
         Ok(PathBuf::from(OsString::from_vec(path)))
     } else if let Ok(path) = object.extract::<PathBuf>() {
@@ -106,7 +107,7 @@ fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
 
 #[pyfunction]
 fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
-    let ret = PyList::empty(py);
+    let ret = PyList::empty_bound(py);
     let chunk_iter = chunks.call_method0(py, "__iter__");
     if chunk_iter.is_err() {
         return Err(PyTypeError::new_err("chunks must be iterable"));
@@ -119,9 +120,9 @@ fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
 
 #[pyfunction]
 fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
-    let ret = PyList::empty(py);
+    let ret = PyList::empty_bound(py);
     if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
-        chunks = PyList::new(py, [chunk]).into_py(py);
+        chunks = PyList::new_bound(py, [chunk]).into_py(py);
     }
 
     let chunk_iter = chunks.call_method0(py, "__iter__");
@@ -142,25 +143,25 @@ fn chunks_to_lines_iter(py: Python, chunk_iter: PyObject) -> PyResult<PyObject> 
 
 /// Calculate the SHA1 of a file by reading the full text
 #[pyfunction]
-fn sha_file_by_name(py: Python, object: &PyAny) -> PyResult<PyObject> {
+fn sha_file_by_name(py: Python, object: &Bound<PyAny>) -> PyResult<PyObject> {
     let pathbuf = extract_path(object)?;
     let digest = breezy_osutils::sha::sha_file_by_name(pathbuf.as_path()).map_err(PyErr::from)?;
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new_bound(py, digest.as_bytes()).into_py(py))
 }
 
 #[pyfunction]
 fn sha_string(py: Python, string: &[u8]) -> PyResult<PyObject> {
     let digest = breezy_osutils::sha::sha_string(string);
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new_bound(py, digest.as_bytes()).into_py(py))
 }
 
 /// Return the sha-1 of concatenation of strings
 #[pyfunction]
-fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
+fn sha_strings<'a>(py: Python<'a>, strings: &'a Bound<'a, PyAny>) -> PyResult<Bound<'a, PyBytes>> {
     let iter = strings.iter()?;
     let digest =
-        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<&[u8]>().unwrap()));
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()));
+    Ok(PyBytes::new_bound(py, digest.as_bytes()))
 }
 
 /// Calculate the hexdigest of an open file.
@@ -170,7 +171,7 @@ fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
 fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
     let mut file = PyBinaryFile::from(file);
     let digest = breezy_osutils::sha::sha_file(&mut file).map_err(PyErr::from)?;
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new_bound(py, digest.as_bytes()).into_py(py))
 }
 
 /// Calculate the size and hexdigest of an open file.
@@ -181,11 +182,11 @@ fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
 fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
     let mut file = PyBinaryFile::from(file);
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
-    Ok((size, PyBytes::new(py, digest.as_bytes()).into_py(py)))
+    Ok((size, PyBytes::new_bound(py, digest.as_bytes()).into_py(py)))
 }
 
 #[pyfunction]
-fn normalized_filename(filename: &PyAny, policy: Option<&str>) -> PyResult<(PathBuf, bool)> {
+fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResult<(PathBuf, bool)> {
     if policy.is_none() {
         if breezy_osutils::path::normalizes_filenames() {
             _accessible_normalized_filename(filename)
@@ -204,7 +205,7 @@ fn normalized_filename(filename: &PyAny, policy: Option<&str>) -> PyResult<(Path
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _inaccessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(PathBuf, bool)> {
     let filename = extract_path(filename)?;
     if let Some(filename) =
         breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
@@ -216,7 +217,7 @@ fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, boo
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _accessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(PathBuf, bool)> {
     let filename = extract_path(filename)?;
     if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path())
     {
@@ -232,7 +233,7 @@ fn normalizes_filenames() -> bool {
 }
 
 #[pyfunction]
-fn is_inside(path: &PyAny, parent: &PyAny) -> PyResult<bool> {
+fn is_inside(path: &Bound<PyAny>, parent: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     let parent = extract_path(parent)?;
     Ok(breezy_osutils::path::is_inside(
@@ -242,11 +243,11 @@ fn is_inside(path: &PyAny, parent: &PyAny) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn is_inside_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> {
+fn is_inside_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     let mut c_dir_list: Vec<PathBuf> = Vec::new();
     for dir in dir_list.iter()? {
-        c_dir_list.push(extract_path(dir?)?);
+        c_dir_list.push(extract_path(&dir?)?);
     }
     Ok(breezy_osutils::path::is_inside_any(
         &c_dir_list
@@ -258,11 +259,11 @@ fn is_inside_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn is_inside_or_parent_of_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> {
+fn is_inside_or_parent_of_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     let mut c_dir_list: Vec<PathBuf> = Vec::new();
     for dir in dir_list.iter()? {
-        c_dir_list.push(extract_path(dir?)?);
+        c_dir_list.push(extract_path(&dir?)?);
     }
     Ok(breezy_osutils::path::is_inside_or_parent_of_any(
         &c_dir_list
@@ -274,10 +275,10 @@ fn is_inside_or_parent_of_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> 
 }
 
 #[pyfunction]
-pub fn minimum_path_selection(paths: &PyAny) -> PyResult<HashSet<String>> {
+pub fn minimum_path_selection(paths: &Bound<PyAny>) -> PyResult<HashSet<String>> {
     let mut path_set: HashSet<PathBuf> = HashSet::new();
     for path in paths.iter()? {
-        path_set.insert(extract_path(path?)?);
+        path_set.insert(extract_path(&path?)?);
     }
     let paths = breezy_osutils::path::minimum_path_selection(
         path_set
@@ -296,7 +297,7 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
     // Note that we're not calling out to breezy_osutils::set_or_unset_env here, because it doesn't
     // change the environment in Python.
     Python::with_gil(|py| {
-        let os = py.import("os")?;
+        let os = py.import_bound("os")?;
         let environ = os.getattr("environ")?;
         let old = environ.call_method1("get", (key, py.None()))?;
         if let Some(value) = value {
@@ -314,14 +315,14 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
-fn parent_directories(py: Python, path: &PyAny) -> PyResult<PyObject> {
+fn parent_directories(py: Python, path: &Bound<PyAny>) -> PyResult<PyObject> {
     let path = extract_path(path)?;
     let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
     Ok(parents.into_py(py))
 }
 
 #[pyfunction]
-fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult<PathBuf> {
+fn available_backup_name(py: Python, path: &Bound<PyAny>, exists: PyObject) -> PyResult<PathBuf> {
     let path = extract_path(path)?;
     let exists = |p: &Path| -> PyResult<bool> {
         let ret = exists.call1(py, (p,))?;
@@ -337,13 +338,13 @@ fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
 }
 
 #[pyfunction]
-fn legal_path(path: &PyAny) -> PyResult<bool> {
+fn legal_path(path: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     Ok(breezy_osutils::path::legal_path(path.as_path()))
 }
 
 #[pyfunction]
-fn check_legal_path(path: &PyAny) -> PyResult<()> {
+fn check_legal_path(path: &Bound<PyAny>) -> PyResult<()> {
     let path = extract_path(path)?;
     if !breezy_osutils::path::legal_path(path.as_path()) {
         Err(IllegalPath::new_err((path,)))
@@ -353,7 +354,7 @@ fn check_legal_path(path: &PyAny) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
+fn local_time_offset(t: Option<&Bound<PyAny>>) -> PyResult<i64> {
     if let Some(t) = t {
         let t = t.extract::<f64>()?;
         Ok(breezy_osutils::time::local_time_offset(Some(t as i64)))
@@ -414,9 +415,9 @@ impl PyIterableFile {
     fn __exit__(
         &mut self,
         _py: Python,
-        _exc_type: &PyAny,
-        _exc_value: &PyAny,
-        _traceback: &PyAny,
+        _exc_type: &Bound<PyAny>,
+        _exc_value: &Bound<PyAny>,
+        _traceback: &Bound<PyAny>,
     ) -> PyResult<bool> {
         self.check_closed(_py)?;
         Ok(false)
@@ -444,7 +445,7 @@ impl PyIterableFile {
             return Err(PyErr::fetch(py));
         }
         buf.truncate(read?);
-        Ok(PyBytes::new(py, &buf).to_object(py))
+        Ok(PyBytes::new_bound(py, &buf).to_object(py))
     }
 
     fn close(&mut self, _py: Python) -> PyResult<()> {
@@ -454,7 +455,7 @@ impl PyIterableFile {
 
     fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
         self.check_closed(py)?;
-        let lines = PyList::empty(py);
+        let lines = PyList::empty_bound(py);
         while let Some(line) = self.readline(py, None)? {
             lines.append(line)?;
         }
@@ -481,7 +482,7 @@ impl PyIterableFile {
             return Ok(None);
         }
         buf.truncate(read);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py)))
+        Ok(Some(PyBytes::new_bound(py, &buf).to_object(py)))
     }
 }
 
@@ -530,7 +531,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
-fn check_text_path(path: &PyAny) -> PyResult<()> {
+fn check_text_path(path: &Bound<PyAny>) -> PyResult<()> {
     let path = extract_path(path)?;
     if !breezy_osutils::textfile::check_text_path(path.as_path())? {
         Err(BinaryFile::new_err(()))
@@ -540,7 +541,7 @@ fn check_text_path(path: &PyAny) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<()> {
+fn check_text_lines(py: Python, lines: &Bound<PyAny>) -> PyResult<()> {
     let mut py_iter = lines.iter()?;
     let line_iter = std::iter::from_fn(|| {
         let line = py_iter.next();
@@ -769,9 +770,9 @@ fn supports_executable(path: PathBuf) -> Option<bool> {
 fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let it: Vec<breezy_osutils::mounts::MountEntry> =
         breezy_osutils::mounts::read_mtab(path).collect();
-    let list = PyList::empty(py);
+    let list = PyList::empty_bound(py);
     for entry in it {
-        let tuple = PyTuple::new(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)]);
+        let tuple = PyTuple::new_bound(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)]);
         list.append(tuple)?;
     }
     Ok(list.as_ref().iter()?.to_object(py))
@@ -946,7 +947,7 @@ impl FileIterator {
         let result = self.input_file.call_method1(py, "read", (self.read_size,));
         match result {
             Ok(buf) if buf.is_none(py) => Ok(None),
-            Ok(buf) if buf.as_ref(py).len()? == 0 => Ok(None),
+            Ok(buf) if buf.bind(py).len()? == 0 => Ok(None),
             Ok(buf) => Ok(Some(buf)),
             Err(e) => Err(e),
         }
@@ -1044,7 +1045,7 @@ fn colorstring(
     let fgcolor = fgcolor.map(string_to_color).transpose()?;
     let bgcolor = bgcolor.map(string_to_color).transpose()?;
 
-    Ok(PyBytes::new(
+    Ok(PyBytes::new_bound(
         py,
         &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
     )
@@ -1064,7 +1065,7 @@ fn extract_osstring(py: Python, obj: PyObject) -> PyResult<OsString> {
     } else {
         Err(PyTypeError::new_err(format!(
             "Expected str, or bytes, got {}",
-            obj.as_ref(py).get_type().name()?
+            obj.bind(py).get_type().name()?
         )))
     }
 }
@@ -1092,7 +1093,7 @@ fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
 
 #[pyfunction(signature = (*args))]
 fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
-    let return_bytes = args[0].as_ref(py).is_instance_of::<PyBytes>();
+    let return_bytes = args[0].bind(py).is_instance_of::<PyBytes>();
     let parts = args
         .into_iter()
         .map(|p| extract_osstring(py, p))
@@ -1108,7 +1109,7 @@ fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
 
     if return_bytes {
         use std::os::unix::ffi::OsStrExt;
-        Ok(PyBytes::new(py, ret.as_path().as_os_str().as_bytes()).into_py(py))
+        Ok(PyBytes::new_bound(py, ret.as_path().as_os_str().as_bytes()).into_py(py))
     } else {
         Ok(ret.into_py(py))
     }
@@ -1162,7 +1163,7 @@ fn isdir(path: PathBuf) -> PyResult<bool> {
 }
 
 #[pymodule]
-fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines_iter))?;
     m.add_wrapped(wrap_pyfunction!(sha_file_by_name))?;
@@ -1214,17 +1215,17 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_fs_type))?;
     m.add_wrapped(wrap_pyfunction!(copy_tree))?;
     m.add_wrapped(wrap_pyfunction!(abspath))?;
-    let win32m = PyModule::new(py, "win32")?;
+    let win32m = PyModule::new_bound(py, "win32")?;
     win32m.add_wrapped(wrap_pyfunction!(win32_abspath))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_normpath))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_fix_separators))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_fixdrive))?;
     win32m.add_wrapped(wrap_pyfunction!(win32_getcwd))?;
-    m.add_submodule(win32m)?;
-    let posixm = PyModule::new(py, "posix")?;
+    m.add_submodule(&win32m)?;
+    let posixm = PyModule::new_bound(py, "posix")?;
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
     posixm.add_wrapped(wrap_pyfunction!(posix_normpath))?;
-    m.add_submodule(posixm)?;
+    m.add_submodule(&posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
     #[cfg(unix)]
@@ -1251,7 +1252,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     )?;
     m.add(
         "UnsupportedTimezoneFormat",
-        py.get_type::<UnsupportedTimezoneFormat>(),
+        py.get_type_bound::<UnsupportedTimezoneFormat>(),
     )?;
     m.add_wrapped(wrap_pyfunction!(get_home_dir))?;
     m.add_wrapped(wrap_pyfunction!(colorstring))?;

@@ -40,7 +40,7 @@ impl ZLibEstimator {
 }
 
 #[pymodule]
-fn zlib_util(_py: Python, m: &PyModule) -> PyResult<()> {
+fn zlib_util(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<ZLibEstimator>()?;
 
     Ok(())

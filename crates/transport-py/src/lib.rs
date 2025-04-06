@@ -133,9 +133,9 @@ impl PyWriteStream {
 
     fn __exit__(
         &self,
-        _exc_type: Option<&PyType>,
-        _exc_val: Option<&PyAny>,
-        _exc_tb: Option<&PyAny>,
+        _exc_type: Option<&Bound<PyType>>,
+        _exc_val: Option<&Bound<PyAny>>,
+        _exc_tb: Option<&Bound<PyAny>>,
     ) -> PyResult<bool> {
         Ok(false)
     }
@@ -144,7 +144,7 @@ impl PyWriteStream {
         py.allow_threads(|| self.0.flush()).map_err(|e| e.into())
     }
 
-    fn writelines(&mut self, py: Python, lines: &PyList) -> PyResult<()> {
+    fn writelines(&mut self, py: Python, lines: &Bound<PyList>) -> PyResult<()> {
         for line in lines.iter() {
             self.write(py, line.extract::<&[u8]>().unwrap())?;
         }
@@ -181,12 +181,12 @@ impl PyBufReadStream {
             let ret = py
                 .allow_threads(|| self.f.read(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new_bound(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.f.read_to_end(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new(py, &buf).to_object(py))
+            Ok(PyBytes::new_bound(py, &buf).to_object(py))
         }
     }
 
@@ -217,7 +217,7 @@ impl PyBufReadStream {
             .allow_threads(|| self.f.read_until(b'\n', &mut buf))
             .map_err(|e| self.map_io_err_to_py_err(e))?;
         buf.truncate(ret);
-        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new_bound(py, &buf).to_object(py).to_object(py))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
@@ -233,7 +233,9 @@ impl PyBufReadStream {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+        Ok(Some(
+            PyBytes::new_bound(py, &buf).to_object(py).to_object(py),
+        ))
     }
 
     fn close(&mut self) -> PyResult<()> {
@@ -246,15 +248,15 @@ impl PyBufReadStream {
 
     fn __exit__(
         &self,
-        _exc_type: Option<&PyType>,
-        _exc_val: Option<&PyAny>,
-        _exc_tb: Option<&PyAny>,
+        _exc_type: Option<&Bound<PyType>>,
+        _exc_val: Option<&Bound<PyAny>>,
+        _exc_tb: Option<&Bound<PyAny>>,
     ) -> PyResult<bool> {
         Ok(false)
     }
 
     fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty(py);
+        let ret = PyList::empty_bound(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
@@ -283,7 +285,7 @@ impl Transport {
         Ok(format!("{:?}", self.0))
     }
 
-    fn get_bytes(slf: &PyCell<Self>, py: Python, path: &str) -> PyResult<PyObject> {
+    fn get_bytes(slf: &Bound<Self>, py: Python, path: &str) -> PyResult<PyObject> {
         let t = &slf.borrow().0;
         let ret = py
             .allow_threads(|| t.get_bytes(path))
@@ -297,7 +299,7 @@ impl Transport {
                 e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
             })?;
 
-        Ok(PyBytes::new(py, &ret).to_object(py).to_object(py))
+        Ok(PyBytes::new_bound(py, &ret).to_object(py).to_object(py))
     }
 
     #[getter]
@@ -316,7 +318,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
-    fn mkdir(slf: &PyCell<Self>, py: Python, path: &str, mode: Option<PyObject>) -> PyResult<()> {
+    fn mkdir(slf: &Bound<Self>, py: Python, path: &str, mode: Option<PyObject>) -> PyResult<()> {
         let mode = mode.map(perms_from_py_object);
         let t = &slf.borrow().0;
         py.allow_threads(|| t.mkdir(path, mode))
@@ -349,7 +351,7 @@ impl Transport {
         Ok(PyBufReadStream::new(ret, Path::new(path)).into_py(py))
     }
 
-    fn get_smart_medium(slf: &PyCell<Self>, py: Python) -> PyResult<PyObject> {
+    fn get_smart_medium(slf: &Bound<Self>, py: Python) -> PyResult<PyObject> {
         slf.borrow()
             .0
             .get_smart_medium()
@@ -388,7 +390,7 @@ impl Transport {
     }
 
     fn put_bytes(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         path: &str,
         data: &[u8],
@@ -402,7 +404,7 @@ impl Transport {
     }
 
     fn put_bytes_non_atomic(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         path: &str,
         data: &[u8],
@@ -426,7 +428,7 @@ impl Transport {
     }
 
     fn put_file(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         path: &str,
         file: PyObject,
@@ -447,7 +449,7 @@ impl Transport {
     }
 
     fn put_file_non_atomic(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         path: &str,
         file: PyObject,
@@ -542,16 +544,16 @@ impl Transport {
         py.allow_threads(|| self.0.is_readonly())
     }
 
-    fn _readv(
-        slf: &PyCell<Self>,
-        py: Python,
+    fn _readv<'a>(
+        slf: &Bound<'a, Self>,
+        py: Python<'a>,
         path: &str,
         offsets: Vec<(usize, usize)>,
         max_readv_combine: Option<usize>,
         bytes_to_read_before_seek: Option<usize>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Bound<'a, PyAny>> {
         if offsets.is_empty() {
-            return Ok(PyList::empty(py).into_py(py));
+            return Ok(PyList::empty_bound(py).into_any());
         }
         let t = &slf.borrow().0;
         let ret = py.allow_threads(|| t.get(path)).map_err(|e| match e {
@@ -572,8 +574,8 @@ impl Transport {
             bytes_to_read_before_seek,
             Some(path),
         )?;
-        let list = PyList::new(py, &buffered);
-        Ok(PyIterator::from_object(list)?.into_py(py))
+        let list = PyList::new_bound(py, &buffered);
+        Ok(PyIterator::from_bound_object(&list)?.into_any())
     }
 
     fn readv(
@@ -596,11 +598,11 @@ impl Transport {
             })
             .map(|r| {
                 r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
-                    .map(|(o, r)| (o, PyBytes::new(py, &r).into_py(py)))
+                    .map(|(o, r)| (o, PyBytes::new_bound(py, &r).into_py(py)))
             })
             .collect::<PyResult<Vec<(u64, PyObject)>>>()?;
-        let list = PyList::new(py, &buffered);
-        Ok(PyIterator::from_object(list)?.to_object(py))
+        let list = PyList::new_bound(py, &buffered);
+        Ok(PyIterator::from_bound_object(&list)?.to_object(py))
     }
 
     fn listable(&self, py: Python) -> bool {
@@ -653,7 +655,7 @@ impl Transport {
     }
 
     fn open_write_stream(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         path: &str,
         mode: Option<PyObject>,
@@ -714,14 +716,14 @@ impl Transport {
         mode: Option<PyObject>,
     ) -> PyResult<usize> {
         let relpaths = relpaths
-            .as_ref(py)
+            .bind(py)
             .iter()?
             .map(|o| o?.extract::<String>())
             .collect::<PyResult<Vec<_>>>()?;
 
         let relpaths_ref = relpaths.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
-        if let Ok(t) = to_transport.clone_ref(py).downcast::<PyCell<Transport>>(py) {
+        if let Ok(t) = to_transport.clone_ref(py).downcast_bound::<Transport>(py) {
             let t = &t.borrow().0;
             py.allow_threads(|| {
                 self.0.copy_to(
@@ -799,18 +801,18 @@ impl LocalTransport {
 
         let init = PyClassInitializer::from(Transport(inner));
         let init = init.add_subclass(Self {});
-        Ok(PyCell::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?.to_object(py))
     }
 }
 
 #[pyfunction]
 fn get_test_permutations(py: Python) -> PyResult<PyObject> {
-    let test_server_module = py.import("breezy.tests.test_server")?.to_object(py);
+    let test_server_module = py.import_bound("breezy.tests.test_server")?.to_object(py);
     let local_url_server = test_server_module.getattr(py, "LocalURLServer")?;
     let local_transport = py
-        .import("breezy.transport.local")?
+        .import_bound("breezy.transport.local")?
         .getattr("LocalTransport")?;
-    let ret = PyList::empty(py);
+    let ret = PyList::empty_bound(py);
     ret.append((local_transport, local_url_server))?;
     Ok(ret.to_object(py))
 }
@@ -861,7 +863,7 @@ fn seek_and_read(
 
     std::iter::from_fn(move || py.allow_threads(|| data.next()))
         .map(|e| {
-            e.map(|(offset, data)| (offset, PyBytes::new(py, data.as_slice()).into()))
+            e.map(|(offset, data)| (offset, PyBytes::new_bound(py, data.as_slice()).into()))
                 .map_err(|(e, offset, length, actual)| match e.kind() {
                     std::io::ErrorKind::UnexpectedEof => ShortReadvError::new_err((
                         path.map(|p| p.to_string()),
@@ -909,12 +911,12 @@ impl PyFile {
             let ret = py
                 .allow_threads(|| self.0.read(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new_bound(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.0.read_to_end(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new(py, &buf).to_object(py))
+            Ok(PyBytes::new_bound(py, &buf).to_object(py))
         }
     }
 
@@ -927,7 +929,7 @@ impl PyFile {
         let mut buf = vec![];
         let ret = py.allow_threads(|| self.0.read_until(b'\n', &mut buf))?;
         buf.truncate(ret);
-        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new_bound(py, &buf).to_object(py).to_object(py))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
@@ -943,11 +945,13 @@ impl PyFile {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+        Ok(Some(
+            PyBytes::new_bound(py, &buf).to_object(py).to_object(py),
+        ))
     }
 
     fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty(py);
+        let ret = PyList::empty_bound(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
@@ -975,9 +979,9 @@ impl PyFile {
 
     fn __exit__(
         &self,
-        _exc_type: Option<&PyType>,
-        _exc_val: Option<&PyAny>,
-        _exc_tb: Option<&PyAny>,
+        _exc_type: Option<&Bound<PyType>>,
+        _exc_val: Option<&Bound<PyAny>>,
+        _exc_tb: Option<&Bound<PyAny>>,
     ) -> PyResult<bool> {
         Ok(false)
     }
@@ -986,7 +990,7 @@ impl PyFile {
         self.0.get_mut().flush().map_err(|e| e.into())
     }
 
-    fn writelines(&mut self, py: Python, lines: &PyList) -> PyResult<()> {
+    fn writelines(&mut self, py: Python, lines: &Bound<PyList>) -> PyResult<()> {
         for line in lines.iter() {
             self.write(py, line.extract::<&[u8]>()?)?;
         }
@@ -1039,7 +1043,7 @@ impl ReadLock {
         )))
     }
 
-    fn temporary_write_lock(slf: &PyCell<Self>, py: Python) -> PyResult<(bool, PyObject)> {
+    fn temporary_write_lock(slf: &Bound<Self>, py: Python) -> PyResult<(bool, PyObject)> {
         let mut m = slf.borrow_mut();
         if let Some(read_lock) = m.0.take() {
             match read_lock.temporary_write_lock() {
@@ -1117,11 +1121,11 @@ impl WriteLock {
 mod sftp;
 
 #[pymodule]
-fn _transport_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _transport_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Transport>()?;
-    let localm = PyModule::new(py, "local")?;
+    let localm = PyModule::new_bound(py, "local")?;
     localm.add_class::<LocalTransport>()?;
-    m.add_submodule(localm)?;
+    m.add_submodule(&localm)?;
     m.add_class::<ReadLock>()?;
     m.add_class::<WriteLock>()?;
     m.add_class::<TemporaryWriteLock>()?;
@@ -1130,9 +1134,9 @@ fn _transport_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;
     m.add_wrapped(wrap_pyfunction!(sort_expand_and_combine))?;
 
-    let sftpm = PyModule::new(py, "sftp")?;
-    sftp::_sftp_rs(py, sftpm)?;
-    m.add_submodule(sftpm)?;
+    let sftpm = PyModule::new_bound(py, "sftp")?;
+    sftp::_sftp_rs(py, &sftpm)?;
+    m.add_submodule(&sftpm)?;
     m.add_class::<ReadLock>()?;
     m.add_class::<WriteLock>()?;
     m.add_class::<TemporaryWriteLock>()?;
