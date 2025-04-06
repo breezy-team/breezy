@@ -180,7 +180,7 @@ pub fn set_or_unset_env(
 const ALNUM: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 pub fn rand_chars(num: usize) -> String {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut s = String::new();
     for _ in 0..num {
         let raw_byte = rng.gen_range(0..256);
