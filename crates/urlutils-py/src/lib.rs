@@ -73,7 +73,7 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
 }
 
 #[pyfunction(signature = (url, *args))]
-fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
+fn joinpath(url: &str, args: &Bound<PyTuple>) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
         if let Ok(arg) = arg.extract::<String>() {
@@ -89,7 +89,7 @@ fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
 }
 
 #[pyfunction(signature = (url, *args))]
-fn join(url: &str, args: &PyTuple) -> PyResult<String> {
+fn join(url: &str, args: &Bound<PyTuple>) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
         if let Ok(arg) = arg.extract::<String>() {
@@ -161,7 +161,7 @@ fn posix_local_path_to_url(path: &str) -> PyResult<String> {
 }
 
 #[pyfunction(signature = (url, *args))]
-fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
+fn join_segment_parameters_raw(url: &str, args: &Bound<PyTuple>) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
         if let Ok(arg) = arg.extract::<String>() {
@@ -229,7 +229,7 @@ fn file_relpath(base: &str, path: &str) -> PyResult<String> {
 }
 
 #[pymodule]
-fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _urlutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_url, m)?)?;
     m.add_function(wrap_pyfunction!(split, m)?)?;
     m.add_function(wrap_pyfunction!(_find_scheme_and_separator, m)?)?;
@@ -252,15 +252,15 @@ fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(unescape, m)?)?;
     m.add_function(wrap_pyfunction!(derive_to_location, m)?)?;
     m.add_function(wrap_pyfunction!(file_relpath, m)?)?;
-    let win32m = PyModule::new(py, "win32")?;
-    win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, win32m)?)?;
-    win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, win32m)?)?;
-    win32m.add_function(wrap_pyfunction!(win32_extract_drive_letter, win32m)?)?;
-    win32m.add_function(wrap_pyfunction!(win32_strip_local_trailing_slash, win32m)?)?;
-    m.add_submodule(win32m)?;
-    let posixm = PyModule::new(py, "posix")?;
-    posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, posixm)?)?;
-    posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, posixm)?)?;
-    m.add_submodule(posixm)?;
+    let win32m = PyModule::new_bound(py, "win32")?;
+    win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, &win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, &win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_extract_drive_letter, &win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_strip_local_trailing_slash, &win32m)?)?;
+    m.add_submodule(&win32m)?;
+    let posixm = PyModule::new_bound(py, "posix")?;
+    posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, &posixm)?)?;
+    posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, &posixm)?)?;
+    m.add_submodule(&posixm)?;
     Ok(())
 }

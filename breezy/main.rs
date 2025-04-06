@@ -102,7 +102,7 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 fn main() {
     pyo3::prepare_freethreaded_python();
 
-    fn main(py: Python) -> PyResult<&PyAny> {
+    fn main(py: Python) -> PyResult<Bound<PyAny>> {
         posix_setup(py)?;
 
         update_path(py)?;
@@ -121,7 +121,7 @@ fn main() {
         let sys = PyModule::import_bound(py, "sys")?;
         sys.setattr("argv", PyList::new_bound(py, args))?;
 
-        let main = PyModule::import(py, "breezy.__main__")?;
+        let main = PyModule::import_bound(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())
     }
 
@@ -131,7 +131,7 @@ fn main() {
             Ok(_) => 0,
             Err(e) if e.is_instance_of::<PySystemExit>(py) => {
                 eprintln!("brz: {}", e);
-                e.value(py)
+                e.value_bound(py)
                     .getattr("code")
                     .unwrap()
                     .extract::<i32>()

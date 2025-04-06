@@ -758,10 +758,10 @@ pub fn derive_to_location(from_location: &str) -> String {
     }
 }
 
-#[cfg(win32)]
+#[cfg(target_os = "win32")]
 pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///C:".len();
 
-#[cfg(not(win32))]
+#[cfg(not(target_os = "win32"))]
 pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///".len();
 
 /// Compute just the relative sub-portion of a url

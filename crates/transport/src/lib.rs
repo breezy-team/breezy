@@ -506,7 +506,7 @@ pub mod readv;
 #[path = "fcntl-locks.rs"]
 pub mod filelock;
 
-#[cfg(win32)]
+#[cfg(target_os = "win32")]
 #[path = "win32-locks.rs"]
 pub mod filelock;
 

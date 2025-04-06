@@ -16,7 +16,7 @@ impl Graph {
         parents: &[RevisionId],
     ) -> HashSet<RevisionId> {
         Python::with_gil(|py| {
-            let parents = PyTuple::new(py, parents);
+            let parents = PyTuple::new_bound(py, parents);
             let result = self
                 .0
                 .call_method1(py, "find_unique_ancestors", (old_tip, parents))

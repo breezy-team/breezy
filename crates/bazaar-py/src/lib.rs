@@ -24,7 +24,7 @@ import_exception!(breezy.errors, ReservedId);
 /// process adds 1 to a serial number we append to that unique value.
 #[pyfunction]
 fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
-    PyBytes::new(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice()).into_py(py)
+    PyBytes::new_bound(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice()).into_py(py)
 }
 
 /// Return new file id for the basename 'name'.
@@ -246,7 +246,7 @@ impl Revision {
     #[getter]
     fn get_inventory_sha1(&self, py: Python) -> PyObject {
         if let Some(sha1) = &self.0.inventory_sha1 {
-            PyBytes::new(py, sha1).into_py(py)
+            PyBytes::new_bound(py, sha1).into_py(py)
         } else {
             py.None()
         }
@@ -375,7 +375,7 @@ impl RevisionSerializer {
     }
 
     fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
+        Ok(PyBytes::new_bound(
             py,
             py.allow_threads(|| self.0.write_revision_to_string(&revision.0))
                 .map_err(serializer_err_to_py_err)?
@@ -388,7 +388,10 @@ impl RevisionSerializer {
         self.0
             .write_revision_to_lines(&revision.0)
             .map(|s| -> PyResult<PyObject> {
-                Ok(PyBytes::new(py, s.map_err(serializer_err_to_py_err)?.as_slice()).into_py(py))
+                Ok(
+                    PyBytes::new_bound(py, s.map_err(serializer_err_to_py_err)?.as_slice())
+                        .into_py(py),
+                )
             })
             .collect::<PyResult<Vec<PyObject>>>()
     }
@@ -441,7 +444,7 @@ fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
 }
 
 #[pyfunction]
-fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyBytes> {
+fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<Bound<PyBytes>> {
     let ret = if let Ok(text) = unicode_or_utf8_str.extract::<String>(py) {
         bazaar::xml_serializer::encode_and_escape_string(&text)
     } else if let Ok(bytes) = unicode_or_utf8_str.extract::<Vec<u8>>(py) {
@@ -450,25 +453,25 @@ fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<&PyB
         return Err(PyTypeError::new_err("expected str or bytes"));
     };
 
-    Ok(PyBytes::new(py, ret.as_bytes()))
+    Ok(PyBytes::new_bound(py, ret.as_bytes()))
 }
 
 mod hashcache;
 mod rio;
 
 #[pymodule]
-fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn _bzr_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
     m.add_wrapped(wrap_pyfunction!(gen_file_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_root_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_revision_id))?;
-    let m_globbing = PyModule::new(py, "globbing")?;
+    let m_globbing = PyModule::new_bound(py, "globbing")?;
     m_globbing.add_wrapped(wrap_pyfunction!(normalize_pattern))?;
     m_globbing.add_class::<Replacer>()?;
-    m.add_submodule(m_globbing)?;
+    m.add_submodule(&m_globbing)?;
     m.add_class::<Revision>()?;
     let inventorym = inventory::_inventory_rs(py)?;
-    m.add_submodule(inventorym)?;
+    m.add_submodule(&inventorym)?;
     m.add_class::<RevisionSerializer>()?;
     m.add_class::<BEncodeRevisionSerializerv1>()?;
     m.add_class::<XMLRevisionSerializer5>()?;
@@ -494,27 +497,27 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(escape_invalid_chars))?;
     m.add_wrapped(wrap_pyfunction!(encode_and_escape))?;
 
-    let riom = PyModule::new(py, "rio")?;
-    rio::rio(riom)?;
-    m.add_submodule(riom)?;
+    let riom = PyModule::new_bound(py, "rio")?;
+    rio::rio(&riom)?;
+    m.add_submodule(&riom)?;
 
-    let hashcachem = PyModule::new(py, "hashcache")?;
-    hashcache::hashcache(hashcachem)?;
-    m.add_submodule(hashcachem)?;
+    let hashcachem = PyModule::new_bound(py, "hashcache")?;
+    hashcache::hashcache(&hashcachem)?;
+    m.add_submodule(&hashcachem)?;
 
     let dirstatem = dirstate::_dirstate_rs(py)?;
-    m.add_submodule(dirstatem)?;
+    m.add_submodule(&dirstatem)?;
 
     let groupcompressm = groupcompress::_groupcompress_rs(py)?;
-    m.add_submodule(groupcompressm)?;
+    m.add_submodule(&groupcompressm)?;
 
     let chk_mapm = chk_map::_chk_map_rs(py)?;
-    m.add_submodule(chk_mapm)?;
+    m.add_submodule(&chk_mapm)?;
 
     let smartm = smart::_smart_rs(py)?;
-    m.add_submodule(smartm)?;
+    m.add_submodule(&smartm)?;
 
     let versionedfilem = versionedfile::_versionedfile_rs(py)?;
-    m.add_submodule(versionedfilem)?;
+    m.add_submodule(&versionedfilem)?;
     Ok(())
 }

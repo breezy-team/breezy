@@ -4,8 +4,11 @@ const DEFAULT_DATE_FORMAT: &str = "%a %Y-%m-%d %H:%M:%S";
 
 pub fn local_time_offset(t: Option<i64>) -> i64 {
     let timestamp = t.unwrap_or_else(|| Utc::now().timestamp());
-    let local_time: DateTime<Local> = Utc.timestamp(timestamp, 0).with_timezone(&Local);
-    let utc_time: DateTime<Utc> = Utc.timestamp(timestamp, 0);
+    let local_time: DateTime<Local> = Utc
+        .timestamp_opt(timestamp, 0)
+        .unwrap()
+        .with_timezone(&Local);
+    let utc_time: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
 
     let local_naive_datetime = local_time.naive_utc();
     let utc_naive_datetime = utc_time.naive_utc();
@@ -156,7 +159,7 @@ pub fn format_date_with_offset_in_original_timezone(t: i64, offset: i64) -> Stri
     let offset_hours = offset / 3600;
     let offset_minutes = (offset % 3600) / 60;
 
-    let dt = Utc.timestamp(t + offset, 0);
+    let dt = Utc.timestamp_opt(t + offset, 0).unwrap();
     let date_str = dt.format(DEFAULT_DATE_FORMAT).to_string();
     let offset_str = format!(" {:+03}{:02}", offset_hours, offset_minutes);
 
@@ -284,7 +287,7 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
 }
 
 pub fn compact_date(when: u64) -> String {
-    let system_time = Utc.timestamp(when as i64, 0);
+    let system_time = Utc.timestamp_opt(when as i64, 0).unwrap();
     let date_time: DateTime<Utc> = system_time;
     date_time.format("%Y%m%d%H%M%S").to_string()
 }

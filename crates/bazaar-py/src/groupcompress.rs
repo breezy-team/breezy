@@ -8,9 +8,9 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 
 #[pyfunction]
-fn encode_base128_int(py: Python, value: u128) -> PyResult<&PyBytes> {
+fn encode_base128_int(py: Python, value: u128) -> PyResult<Bound<PyBytes>> {
     let ret = bazaar::groupcompress::delta::encode_base128_int(value);
-    Ok(PyBytes::new(py, &ret))
+    Ok(PyBytes::new_bound(py, &ret))
 }
 
 #[pyfunction]
@@ -19,10 +19,10 @@ fn decode_base128_int(value: Vec<u8>) -> PyResult<(u128, usize)> {
 }
 
 #[pyfunction]
-fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<&PyBytes> {
+fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<Bound<PyBytes>> {
     bazaar::groupcompress::delta::apply_delta(&basis, &delta)
         .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
-        .map(|x| PyBytes::new(py, &x))
+        .map(|x| PyBytes::new_bound(py, &x))
 }
 
 #[pyfunction]
@@ -47,34 +47,40 @@ fn apply_delta_to_source(
 ) -> PyResult<PyObject> {
     bazaar::groupcompress::delta::apply_delta_to_source(source, delta_start, delta_end)
         .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
-        .map(|x| PyBytes::new(py, &x).to_object(py))
+        .map(|x| PyBytes::new_bound(py, &x).to_object(py))
 }
 
 #[pyfunction]
 fn encode_copy_instruction(py: Python, offset: usize, length: usize) -> PyResult<PyObject> {
     let ret = bazaar::groupcompress::delta::encode_copy_instruction(offset, length);
-    Ok(PyBytes::new(py, &ret).to_object(py))
+    Ok(PyBytes::new_bound(py, &ret).to_object(py))
 }
 
 #[pyfunction]
-fn make_line_delta(py: Python, source_bytes: &[u8], target_bytes: &[u8]) -> Py<PyBytes> {
-    PyBytes::new(
+fn make_line_delta<'a>(
+    py: Python<'a>,
+    source_bytes: &'a [u8],
+    target_bytes: &'a [u8],
+) -> Bound<'a, PyBytes> {
+    PyBytes::new_bound(
         py,
         bazaar::groupcompress::line_delta::make_delta(source_bytes, target_bytes)
             .flat_map(|x| x.into_owned())
             .collect::<Vec<_>>()
             .as_slice(),
     )
-    .into_py(py)
 }
 
 #[pyfunction]
-fn make_rabin_delta(py: Python, source_bytes: &[u8], target_bytes: &[u8]) -> Py<PyBytes> {
-    PyBytes::new(
+fn make_rabin_delta<'a>(
+    py: Python<'a>,
+    source_bytes: &'a [u8],
+    target_bytes: &'a [u8],
+) -> Bound<'a, PyBytes> {
+    PyBytes::new_bound(
         py,
         bazaar::groupcompress::rabin_delta::make_delta(source_bytes, target_bytes).as_slice(),
     )
-    .into_py(py)
 }
 
 #[pyclass]
@@ -93,17 +99,17 @@ impl LinesDeltaIndex {
         self.0
             .lines()
             .iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+            .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
             .collect()
     }
 
     fn make_delta<'a>(
         &'a self,
-        py: Python,
+        py: Python<'a>,
         source: Vec<Vec<Vec<u8>>>,
         bytes_length: usize,
         soft: Option<bool>,
-    ) -> (Vec<Py<PyBytes>>, Vec<bool>) {
+    ) -> (Vec<Bound<'a, PyBytes>>, Vec<bool>) {
         let source: Vec<Cow<[u8]>> = source
             .iter()
             .map(|x| Cow::Owned(x.iter().flatten().copied().collect::<Vec<_>>()))
@@ -112,7 +118,7 @@ impl LinesDeltaIndex {
         (
             delta
                 .into_iter()
-                .map(|x| PyBytes::new(py, x.as_ref()).into_py(py))
+                .map(|x| PyBytes::new_bound(py, x.as_ref()))
                 .collect(),
             index,
         )
@@ -146,13 +152,13 @@ impl GroupCompressBlock {
     #[getter]
     fn _z_content(&mut self, py: Python) -> PyResult<PyObject> {
         let ret = self.0.z_content();
-        Ok(PyBytes::new(py, &ret).to_object(py))
+        Ok(PyBytes::new_bound(py, &ret).to_object(py))
     }
 
     #[getter]
     fn _content(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         let ret = self.0.content();
-        Ok(ret.map(|x| PyBytes::new(py, x).to_object(py)))
+        Ok(ret.map(|x| PyBytes::new_bound(py, x).to_object(py)))
     }
 
     #[getter]
@@ -161,7 +167,7 @@ impl GroupCompressBlock {
     }
 
     #[classmethod]
-    fn from_bytes(_type: &pyo3::types::PyType, data: &[u8]) -> PyResult<Self> {
+    fn from_bytes(_type: &pyo3::Bound<pyo3::types::PyType>, data: &[u8]) -> PyResult<Self> {
         let ret = bazaar::groupcompress::block::GroupCompressBlock::from_bytes(data);
         if ret.is_err() {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -184,7 +190,7 @@ impl GroupCompressBlock {
             .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
         Ok(chunks
             .into_iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+            .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
             .collect())
     }
 
@@ -202,7 +208,7 @@ impl GroupCompressBlock {
 
         let chunks = chunks
             .into_iter()
-            .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+            .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
             .collect();
 
         (size, chunks)
@@ -210,7 +216,7 @@ impl GroupCompressBlock {
 
     fn to_bytes(&mut self, py: Python) -> PyResult<PyObject> {
         let ret = self.0.to_bytes();
-        Ok(PyBytes::new(py, &ret).to_object(py))
+        Ok(PyBytes::new_bound(py, &ret).to_object(py))
     }
 
     fn _ensure_content(&mut self, size: Option<usize>) -> PyResult<()> {
@@ -228,24 +234,24 @@ impl GroupCompressBlock {
             .into_iter()
             .map(|x| match x {
                 bazaar::groupcompress::block::DumpInfo::Fulltext(text) => (
-                    PyBytes::new(py, b"f"),
-                    text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
+                    PyBytes::new_bound(py, b"f"),
+                    text.map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py)),
                 )
                     .to_object(py),
                 bazaar::groupcompress::block::DumpInfo::Delta(decomp_len, info) => (
-                    PyBytes::new(py, b"d"),
+                    PyBytes::new_bound(py, b"d"),
                     decomp_len,
                     info.into_iter()
                         .map(|x| match x {
                             bazaar::groupcompress::block::DeltaInfo::Copy(offset, len, text) => (
                                 offset,
                                 len,
-                                text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
+                                text.map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py)),
                             )
                                 .into_py(py),
                             bazaar::groupcompress::block::DeltaInfo::Insert(len, data) => (
                                 len,
-                                data.map(|x| PyBytes::new(py, x.as_slice()).to_object(py)),
+                                data.map(|x| PyBytes::new_bound(py, x.as_slice()).to_object(py)),
                             )
                                 .to_object(py),
                         })
@@ -267,6 +273,8 @@ struct TraditionalGroupCompressor(
 #[pymethods]
 impl TraditionalGroupCompressor {
     #[new]
+    #[allow(unused_variables)]
+    #[pyo3(signature = (settings = None))]
     fn new(settings: Option<PyObject>) -> Self {
         Self(Some(
             bazaar::groupcompress::compressor::TraditionalGroupCompressor::new(),
@@ -278,7 +286,7 @@ impl TraditionalGroupCompressor {
         if let Some(c) = self.0.as_ref() {
             Ok(c.chunks()
                 .iter()
-                .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
                 .collect())
         } else {
             Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
@@ -309,9 +317,9 @@ impl TraditionalGroupCompressor {
                 .map_err(|e| PyValueError::new_err(format!("Error during extract: {:?}", e)))?;
             Ok((
                 data.iter()
-                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
                     .collect(),
-                PyBytes::new(py, hash.as_bytes()).to_object(py),
+                PyBytes::new_bound(py, hash.as_bytes()).to_object(py),
             ))
         } else {
             Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
@@ -324,7 +332,7 @@ impl TraditionalGroupCompressor {
             Ok((
                 chunks
                     .into_iter()
-                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
                     .collect(),
                 endpoint,
             ))
@@ -339,7 +347,7 @@ impl TraditionalGroupCompressor {
             Ok((
                 chunks
                     .into_iter()
-                    .map(|x| PyBytes::new(py, x.as_ref()).to_object(py))
+                    .map(|x| PyBytes::new_bound(py, x.as_ref()).to_object(py))
                     .collect(),
                 endpoint,
             ))
@@ -371,7 +379,7 @@ impl TraditionalGroupCompressor {
             .map_err(|e| PyValueError::new_err(format!("Error during compress: {:?}", e)))
             .map(|(hash, size, chunks, kind)| {
                 (
-                    PyBytes::new(py, hash.as_ref()).to_object(py),
+                    PyBytes::new_bound(py, hash.as_ref()).to_object(py),
                     size,
                     chunks,
                     kind,
@@ -392,8 +400,8 @@ fn rabin_hash(data: Vec<u8>) -> PyResult<u32> {
     .into())
 }
 
-pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
-    let m = PyModule::new(py, "groupcompress")?;
+pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<Bound<PyModule>> {
+    let m = PyModule::new_bound(py, "groupcompress")?;
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
     m.add_wrapped(wrap_pyfunction!(decode_base128_int))?;
     m.add_wrapped(wrap_pyfunction!(apply_delta))?;
@@ -407,7 +415,7 @@ pub(crate) fn _groupcompress_rs(py: Python) -> PyResult<&PyModule> {
     m.add_class::<TraditionalGroupCompressor>()?;
     m.add(
         "NULL_SHA1",
-        pyo3::types::PyBytes::new(py, &bazaar::groupcompress::NULL_SHA1),
+        pyo3::types::PyBytes::new_bound(py, &bazaar::groupcompress::NULL_SHA1),
     )?;
     Ok(m)
 }

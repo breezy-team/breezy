@@ -16,7 +16,7 @@ struct PyNode(PyObject);
 impl std::fmt::Debug for PyNode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Python::with_gil(|py| {
-            let repr = self.0.as_ref(py).repr();
+            let repr = self.0.bind(py).repr();
             if PyErr::occurred(py) {
                 return Err(std::fmt::Error);
             }
@@ -32,7 +32,7 @@ impl std::fmt::Debug for PyNode {
 impl std::fmt::Display for PyNode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Python::with_gil(|py| {
-            let repr = self.0.as_ref(py).repr();
+            let repr = self.0.bind(py).repr();
             if PyErr::occurred(py) {
                 return Err(std::fmt::Error);
             }
@@ -63,6 +63,12 @@ impl From<PyObject> for PyNode {
     }
 }
 
+impl<'a> From<Bound<'a, PyAny>> for PyNode {
+    fn from(obj: Bound<'a, PyAny>) -> PyNode {
+        PyNode(obj.to_object(obj.py()))
+    }
+}
+
 impl FromPyObject<'_> for PyNode {
     fn extract(obj: &PyAny) -> PyResult<Self> {
         Ok(PyNode(obj.to_object(obj.py())))
@@ -89,7 +95,7 @@ impl ToPyObject for PyNode {
 
 impl Hash for PyNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        Python::with_gil(|py| match self.0.as_ref(py).hash() {
+        Python::with_gil(|py| match self.0.bind(py).hash() {
             Err(err) => err.restore(py),
             Ok(hash) => state.write_isize(hash),
         });
@@ -98,7 +104,7 @@ impl Hash for PyNode {
 
 impl PartialEq for PyNode {
     fn eq(&self, other: &PyNode) -> bool {
-        Python::with_gil(|py| match self.0.as_ref(py).eq(other.0.as_ref(py)) {
+        Python::with_gil(|py| match self.0.bind(py).eq(other.0.bind(py)) {
             Err(err) => {
                 err.restore(py);
                 false
@@ -118,7 +124,7 @@ impl PartialOrd for PyNode {
 
 impl Ord for PyNode {
     fn cmp(&self, other: &PyNode) -> std::cmp::Ordering {
-        Python::with_gil(|py| match self.0.as_ref(py).lt(other.0.as_ref(py)) {
+        Python::with_gil(|py| match self.0.bind(py).lt(other.0.bind(py)) {
             Err(err) => {
                 err.restore(py);
                 std::cmp::Ordering::Equal
@@ -127,7 +133,7 @@ impl Ord for PyNode {
                 if b {
                     std::cmp::Ordering::Less
                 } else {
-                    match self.0.as_ref(py).gt(other.0.as_ref(py)) {
+                    match self.0.bind(py).gt(other.0.bind(py)) {
                         Err(err) => {
                             err.restore(py);
                             std::cmp::Ordering::Equal
@@ -178,7 +184,7 @@ struct PyParentsProvider {
 impl PyParentsProvider {
     fn get_parent_map(&mut self, py: Python, keys: PyObject) -> PyResult<ParentMap<PyNode>> {
         let mut hash_key: HashSet<PyNode> = HashSet::new();
-        for key in keys.as_ref(py).iter()? {
+        for key in keys.bind(py).iter()? {
             hash_key.insert(key?.into());
         }
         Ok(self
@@ -204,13 +210,13 @@ struct TopoSorter {
 impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
+        let iter = if graph.bind(py).is_instance_of::<PyDict>() {
             graph
-                .downcast::<PyDict>(py)?
+                .downcast_bound::<PyDict>(py)?
                 .call_method0("items")?
                 .iter()?
         } else {
-            graph.as_ref(py).iter()?
+            graph.bind(py).iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
@@ -248,7 +254,7 @@ impl TopoSorter {
 }
 
 fn revno_vec_to_py(py: Python, revno: RevnoVec) -> PyObject {
-    PyTuple::new(py, revno.into_iter().map(|v| v.into_py(py))).to_object(py)
+    PyTuple::new_bound(py, revno.into_iter().map(|v| v.into_py(py))).to_object(py)
 }
 
 #[pyclass]
@@ -276,13 +282,13 @@ impl MergeSorter {
         mainline_revisions: Option<PyObject>,
         generate_revno: Option<bool>,
     ) -> PyResult<MergeSorter> {
-        let iter = if graph.as_ref(py).is_instance_of::<PyDict>() {
+        let iter = if graph.bind(py).is_instance_of::<PyDict>() {
             graph
-                .downcast::<PyDict>(py)?
+                .downcast_bound::<PyDict>(py)?
                 .call_method0("items")?
                 .iter()?
         } else {
-            graph.as_ref(py).iter()?
+            graph.bind(py).iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
@@ -291,7 +297,7 @@ impl MergeSorter {
 
         let mainline_revisions = if let Some(mainline_revisions) = mainline_revisions {
             let mainline_revisions = mainline_revisions
-                .as_ref(py)
+                .bind(py)
                 .iter()?
                 .map(|k| k?.extract::<PyObject>())
                 .collect::<PyResult<Vec<PyObject>>>()?;
@@ -347,7 +353,7 @@ impl MergeSorter {
     }
 
     fn sorted(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty(py);
+        let ret = PyList::empty_bound(py);
         loop {
             let item = self.__next__(py)?;
             if let Some(item) = item {
@@ -393,7 +399,7 @@ fn merge_sort(
 }
 
 #[pymodule]
-fn _graph_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _graph_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(invert_parent_map))?;
     m.add_wrapped(wrap_pyfunction!(collapse_linear_regions))?;
     m.add_wrapped(wrap_pyfunction!(DictParentsProvider))?;

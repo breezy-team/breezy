@@ -281,7 +281,7 @@ impl InventoryEntry {
                 }
             }
         }
-        let ret = PyDict::new(py);
+        let ret = PyDict::new_bound(py);
         for (revision, entry) in candidates.iter() {
             ret.set_item(revision.to_object(py), entry)?;
         }
@@ -334,7 +334,7 @@ impl InventoryFile {
         match &s.0 {
             Entry::File { text_sha1, .. } => text_sha1
                 .as_ref()
-                .map(|text_sha1| PyBytes::new(py, text_sha1.as_ref()).into()),
+                .map(|text_sha1| PyBytes::new_bound(py, text_sha1.as_ref()).into()),
             _ => panic!("Not a file"),
         }
     }
@@ -354,7 +354,7 @@ impl InventoryFile {
         match &s.0 {
             Entry::File { text_id, .. } => text_id
                 .as_ref()
-                .map(|text_id| PyBytes::new(py, text_id).into()),
+                .map(|text_id| PyBytes::new_bound(py, text_id).into()),
             _ => panic!("Not a file"),
         }
     }
@@ -368,7 +368,7 @@ impl InventoryFile {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(PyCell::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?.to_object(py))
     }
 
     fn __repr__(slf: PyRef<Self>, py: Python) -> PyResult<String> {
@@ -384,19 +384,19 @@ impl InventoryFile {
                 ..
             } => format!(
                 "InventoryFile({}, {}, parent_id={}, sha1={}, len={}, revision={})",
-                file_id.to_object(py).as_ref(py).repr()?,
-                name.to_object(py).as_ref(py).repr()?,
-                parent_id.to_object(py).as_ref(py).repr()?,
+                file_id.to_object(py).bind(py).repr()?,
+                name.to_object(py).bind(py).repr()?,
+                parent_id.to_object(py).bind(py).repr()?,
                 text_sha1
                     .as_ref()
-                    .map(|s| PyBytes::new(py, s.as_slice()).repr())
-                    .unwrap_or_else(|| Ok(PyString::new(py, "None")))?,
-                text_size.to_object(py).as_ref(py).repr()?,
+                    .map(|s| PyBytes::new_bound(py, s.as_slice()).repr())
+                    .unwrap_or_else(|| Ok(PyString::new_bound(py, "None")))?,
+                text_size.to_object(py).bind(py).repr()?,
                 revision
                     .as_ref()
                     .map(|r| r.to_object(py))
                     .to_object(py)
-                    .as_ref(py)
+                    .bind(py)
                     .repr()?,
             ),
             _ => panic!("Not a file"),
@@ -404,7 +404,7 @@ impl InventoryFile {
     }
 
     fn check(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         checker: PyObject,
         rev_id: RevisionId,
@@ -434,8 +434,8 @@ impl InventoryFile {
                     file_id.to_object(py),
                     revision.as_ref().map(|p| p.to_object(py)),
                 ),
-                PyBytes::new(py, b"text").to_object(py),
-                PyBytes::new(py, text_sha1.as_ref().unwrap()).to_object(py),
+                PyBytes::new_bound(py, b"text").to_object(py),
+                PyBytes::new_bound(py, text_sha1.as_ref().unwrap()).to_object(py),
             ),
         )?;
 
@@ -484,7 +484,7 @@ impl InventoryDirectory {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(PyCell::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?.to_object(py))
     }
 
     #[getter]
@@ -508,24 +508,24 @@ impl InventoryDirectory {
                 ..
             } => format!(
                 "InventoryDirectory({}, {}, parent_id={}, revision={})",
-                file_id.to_object(py).as_ref(py).repr()?,
-                name.to_object(py).as_ref(py).repr()?,
-                parent_id.to_object(py).as_ref(py).repr()?,
-                revision.to_object(py).as_ref(py).repr()?,
+                file_id.to_object(py).bind(py).repr()?,
+                name.to_object(py).bind(py).repr()?,
+                parent_id.to_object(py).bind(py).repr()?,
+                revision.to_object(py).bind(py).repr()?,
             ),
             Entry::Root {
                 file_id, revision, ..
             } => format!(
                 "InventoryDirectory({}, \"\", parent_id=None, revision={})",
-                file_id.to_object(py).as_ref(py).repr()?,
-                revision.to_object(py).as_ref(py).repr()?,
+                file_id.to_object(py).bind(py).repr()?,
+                revision.to_object(py).bind(py).repr()?,
             ),
             _ => panic!("Not a directory"),
         })
     }
 
     fn check(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         checker: PyObject,
         rev_id: RevisionId,
@@ -552,8 +552,8 @@ impl InventoryDirectory {
                     spr.0.file_id().to_object(py),
                     spr.0.revision().to_object(py),
                 ),
-                PyBytes::new(py, b"text").to_object(py),
-                PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
+                PyBytes::new_bound(py, b"text").to_object(py),
+                PyBytes::new_bound(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
             ),
         )?;
 
@@ -602,7 +602,7 @@ impl TreeReference {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(PyCell::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?.to_object(py))
     }
 }
 
@@ -645,7 +645,7 @@ impl InventoryLink {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(PyCell::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?.to_object(py))
     }
 
     #[getter]
@@ -659,7 +659,7 @@ impl InventoryLink {
     }
 
     fn check(
-        slf: &PyCell<Self>,
+        slf: &Bound<Self>,
         py: Python,
         checker: PyObject,
         rev_id: RevisionId,
@@ -694,8 +694,8 @@ impl InventoryLink {
                     spr.0.file_id().to_object(py),
                     spr.0.revision().to_object(py),
                 ),
-                PyBytes::new(py, b"text").to_object(py),
-                PyBytes::new(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
+                PyBytes::new_bound(py, b"text").to_object(py),
+                PyBytes::new_bound(py, b"da39a3ee5e6b4b0d3255bfef95601890afd80709").to_object(py),
             ),
         )?;
         Ok(())
@@ -708,19 +708,19 @@ fn entry_to_py(py: Python, e: Entry) -> PyResult<PyObject> {
     match kind {
         Kind::File => {
             let init = init.add_subclass(InventoryFile());
-            Ok(PyCell::new(py, init)?.to_object(py))
+            Ok(Bound::new(py, init)?.to_object(py))
         }
         Kind::Directory => {
             let init = init.add_subclass(InventoryDirectory());
-            Ok(PyCell::new(py, init)?.to_object(py))
+            Ok(Bound::new(py, init)?.to_object(py))
         }
         Kind::TreeReference => {
             let init = init.add_subclass(TreeReference());
-            Ok(PyCell::new(py, init)?.to_object(py))
+            Ok(Bound::new(py, init)?.to_object(py))
         }
         Kind::Symlink => {
             let init = init.add_subclass(InventoryLink());
-            Ok(PyCell::new(py, init)?.to_object(py))
+            Ok(Bound::new(py, init)?.to_object(py))
         }
     }
 }
@@ -1326,7 +1326,7 @@ impl Inventory {
 
     fn _make_delta(&self, py: Python, old: &Inventory) -> PyResult<PyObject> {
         let inventory_delta = self.0.make_delta(&old.0);
-        Ok(PyCell::new(py, InventoryDelta(inventory_delta))?.to_object(py))
+        Ok(Bound::new(py, InventoryDelta(inventory_delta))?.to_object(py))
     }
 
     fn remove_recursive_id(&mut self, py: Python, file_id: FileId) -> PyResult<Vec<PyObject>> {
@@ -1377,7 +1377,7 @@ impl Inventory {
     ) -> PyResult<PyObject> {
         let recursive = recursive.unwrap_or(true);
 
-        Ok(PyCell::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive)?)?.to_object(py))
+        Ok(Bound::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive)?)?.to_object(py))
     }
 
     fn iter_entries_by_dir(
@@ -1386,7 +1386,7 @@ impl Inventory {
         from_dir: Option<FileId>,
         specific_file_ids: Option<HashSet<FileId>>,
     ) -> PyResult<PyObject> {
-        Ok(PyCell::new(
+        Ok(Bound::new(
             py,
             IterEntriesByDirIterator::new(py, slf, from_dir, specific_file_ids)?,
         )?
@@ -1696,7 +1696,7 @@ fn parse_inventory_delta(
     let parent = parent.to_object(py);
     let version = version.to_object(py);
 
-    let result = PyCell::new(py, InventoryDelta(result))?.to_object(py);
+    let result = Bound::new(py, InventoryDelta(result))?.to_object(py);
 
     Ok((parent, version, versioned_root, tree_references, result))
 }
@@ -1716,7 +1716,7 @@ fn parse_inventory_entry(
 
 #[pyfunction]
 fn serialize_inventory_entry(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
-    Ok(PyBytes::new(
+    Ok(PyBytes::new_bound(
         py,
         bazaar::inventory_delta::serialize_inventory_entry(&entry.0)
             .map_err(|e| match e {
@@ -1749,13 +1749,13 @@ fn serialize_inventory_delta(
         InventoryDeltaSerializeError::UnsupportedKind(m) => PyKeyError::new_err((m,)),
     })?
     .into_iter()
-    .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+    .map(|x| PyBytes::new_bound(py, x.as_slice()).to_object(py))
     .collect())
 }
 
 #[pyfunction]
 fn chk_inventory_entry_to_bytes(py: Python, entry: &InventoryEntry) -> PyResult<PyObject> {
-    Ok(PyBytes::new(
+    Ok(PyBytes::new_bound(
         py,
         bazaar::chk_inventory::chk_inventory_entry_to_bytes(&entry.0).as_slice(),
     )
@@ -1779,14 +1779,14 @@ fn chk_inventory_bytes_to_utf8name_key(
         bazaar::chk_inventory::chk_inventory_bytes_to_utf8_name_key(data);
 
     Ok((
-        PyBytes::new(py, name).to_object(py),
+        PyBytes::new_bound(py, name).to_object(py),
         file_id.to_object(py),
         revision_id.to_object(py),
     ))
 }
 
-pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
-    let m = PyModule::new(py, "inventory")?;
+pub fn _inventory_rs(py: Python) -> PyResult<Bound<PyModule>> {
+    let m = PyModule::new_bound(py, "inventory")?;
 
     m.add_class::<InventoryEntry>()?;
     m.add_class::<InventoryFile>()?;
@@ -1803,10 +1803,13 @@ pub fn _inventory_rs(py: Python) -> PyResult<&PyModule> {
     m.add_wrapped(wrap_pyfunction!(parse_inventory_entry))?;
     m.add_wrapped(wrap_pyfunction!(serialize_inventory_delta))?;
     m.add_wrapped(wrap_pyfunction!(serialize_inventory_entry))?;
-    m.add("InventoryDeltaError", py.get_type::<InventoryDeltaError>())?;
+    m.add(
+        "InventoryDeltaError",
+        py.get_type_bound::<InventoryDeltaError>(),
+    )?;
     m.add(
         "IncompatibleInventoryDelta",
-        py.get_type::<IncompatibleInventoryDelta>(),
+        py.get_type_bound::<IncompatibleInventoryDelta>(),
     )?;
     m.add_wrapped(wrap_pyfunction!(chk_inventory_entry_to_bytes))?;
     m.add_wrapped(wrap_pyfunction!(chk_inventory_bytes_to_entry))?;
