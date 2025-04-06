@@ -63,7 +63,7 @@ def report_bug(exc_info, stderr):
         if report_bug_to_apport(exc_info, stderr):
             # wrote a file; if None then report the old way
             return
-    except ImportError as e:
+    except ModuleNotFoundError as e:
         trace.mutter(f"couldn't find apport bug-reporting library: {e}")
     except Exception as e:
         # this should only happen if apport is installed but it didn't

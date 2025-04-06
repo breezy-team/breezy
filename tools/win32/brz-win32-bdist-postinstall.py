@@ -44,7 +44,7 @@ if "-install" in sys.argv[1:]:
     # try to detect version number automatically
     try:
         import breezy
-    except ImportError:
+    except ModuleNotFoundError:
         ver = ""
     else:
         ver = breezy.__version__

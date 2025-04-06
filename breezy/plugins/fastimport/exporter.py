@@ -107,9 +107,7 @@ def check_ref_format(refname):
         return False
     if b"@{" in refname:
         return False
-    if b"\\" in refname:
-        return False
-    return True
+    return b"\\" not in refname
 
 
 def sanitize_ref_name_for_git(refname):
@@ -305,9 +303,9 @@ class BzrFastExporter:
     def report_progress(self, commit_count, details=""):
         if commit_count and commit_count % self.progress_every == 0:
             if self._commit_total:
-                counts = "%d/%d" % (commit_count, self._commit_total)
+                counts = f"{commit_count}/{self._commit_total}"
             else:
-                counts = "%d" % (commit_count,)
+                counts = str(commit_count)
             minutes = (time.time() - self._start_time) / 60
             rate = commit_count * 1.0 / minutes
             if rate > 10:

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List
-
 from breezy import branch, urlutils
 from breezy.tests import script
 
@@ -24,14 +22,14 @@ class TestRememberMixin:
     """--remember and --no-remember set locations or not."""
 
     # the command to run (expecting additional arguments from the tests
-    command: List[str] = []
+    command: list[str] = []
     # the dir where the command should be run (it should contain a branch for
     # which the tested locations are/will be set)
     working_dir: str
     # argument list for the first command invocation
-    first_use_args: List[str] = []
+    first_use_args: list[str] = []
     # argument list for the next command invocation
-    next_uses_args: List[str] = []
+    next_uses_args: list[str] = []
 
     def do_command(self, *args):
         # We always expect the same result here and care only about the

@@ -19,8 +19,6 @@
 
 __docformat__ = "google"
 
-from typing import Dict, List, Tuple
-
 from . import errors
 from ._bzr_rs import (  # noqa: F401
     CURRENT_REVISION,
@@ -66,7 +64,7 @@ def iter_ancestors(
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
-        new_ancestors: List[bytes] = []
+        new_ancestors: list[bytes] = []
         for ancestor in ancestors:
             if not only_present:
                 yield ancestor, distance
@@ -86,13 +84,13 @@ def iter_ancestors(
 
 def find_present_ancestors(
     revision_id: RevisionID, revision_source
-) -> Dict[RevisionID, Tuple[int, int]]:
+) -> dict[RevisionID, tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
     """
-    found_ancestors: Dict[RevisionID, Tuple[int, int]] = {}
+    found_ancestors: dict[RevisionID, tuple[int, int]] = {}
     anc_iter = enumerate(
         iter_ancestors(revision_id, revision_source, only_present=True)
     )

@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ... import controldir
-from ...bzr import static_tuple
 from ...commands import Command
 
 
@@ -27,7 +26,7 @@ class cmd_chk_used_by(Command):
     takes_options = ["directory"]
 
     def run(self, key_list, directory="."):
-        key_list = [static_tuple.StaticTuple(k) for k in key_list]
+        key_list = [(k,) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)
         bd, relpath = controldir.ControlDir.open_containing(directory)

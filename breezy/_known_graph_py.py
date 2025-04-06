@@ -24,7 +24,7 @@ from . import errors, revision
 class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
-    __slots__ = ("key", "parent_keys", "child_keys", "gdfo")
+    __slots__ = ("child_keys", "gdfo", "key", "parent_keys")
 
     def __init__(self, key, parent_keys):
         self.key = key
@@ -46,7 +46,7 @@ class _KnownGraphNode:
 class _MergeSortNode:
     """Information about a specific node in the merge graph."""
 
-    __slots__ = ("key", "merge_depth", "revno", "end_of_merge")
+    __slots__ = ("end_of_merge", "key", "merge_depth", "revno")
 
     def __init__(self, key, merge_depth, revno, end_of_merge):
         self.key = key

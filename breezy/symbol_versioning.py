@@ -20,11 +20,11 @@ The methods here allow for api symbol versioning.
 """
 
 __all__ = [
+    "DEPRECATED_PARAMETER",
     "deprecated_function",
     "deprecated_in",
     "deprecated_list",
     "deprecated_method",
-    "DEPRECATED_PARAMETER",
     "deprecated_passed",
     "set_warning_method",
     "warn",

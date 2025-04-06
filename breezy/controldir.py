@@ -24,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Type, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from .lazy_import import lazy_import
 
@@ -140,11 +140,11 @@ class ControlDir(ControlComponent):
         """
         return True
 
-    def list_branches(self) -> List["Branch"]:
+    def list_branches(self) -> list["Branch"]:
         """Return a sequence of all branches local to this control directory."""
         return list(self.get_branches().values())
 
-    def branch_names(self) -> List[str]:
+    def branch_names(self) -> list[str]:
         """List all branch names in this control directory.
 
         Returns: List of branch names
@@ -156,7 +156,7 @@ class ControlDir(ControlComponent):
         else:
             return [""]
 
-    def get_branches(self) -> Dict[str, "Branch"]:
+    def get_branches(self) -> dict[str, "Branch"]:
         """Get all branches in this control directory, as a dictionary.
 
         Returns: Dictionary mapping branch names to instances.
@@ -1194,7 +1194,7 @@ class ControlDirFormat:
     _default_format: Optional["ControlDirFormat"] = None
     """The default format used for new control directories."""
 
-    _probers: List[Type["Prober"]] = []
+    _probers: list[type["Prober"]] = []
     """The registered format probers, e.g. BzrProber.
 
     This is a list of Prober-derived classes.
@@ -1271,12 +1271,12 @@ class ControlDirFormat:
         return self.repository_format.rich_root_data == target_format.rich_root_data
 
     @classmethod
-    def register_prober(klass, prober: Type["Prober"]):
+    def register_prober(klass, prober: type["Prober"]):
         """Register a prober that can look for a control dir."""
         klass._probers.append(prober)
 
     @classmethod
-    def unregister_prober(klass, prober: Type["Prober"]):
+    def unregister_prober(klass, prober: type["Prober"]):
         """Unregister a prober."""
         klass._probers.remove(prober)
 
@@ -1285,7 +1285,7 @@ class ControlDirFormat:
         return self.get_format_description().rstrip()
 
     @classmethod
-    def all_probers(klass) -> List[Type["Prober"]]:
+    def all_probers(klass) -> list[type["Prober"]]:
         return klass._probers
 
     @classmethod
@@ -1300,7 +1300,7 @@ class ControlDirFormat:
     def find_format(
         klass,
         transport: _mod_transport.Transport,
-        probers: Optional[List[Type["Prober"]]] = None,
+        probers: Optional[list[type["Prober"]]] = None,
     ) -> "ControlDirFormat":
         """Return the format present at transport."""
         if probers is None:
@@ -1452,7 +1452,7 @@ class Prober:
         raise NotImplementedError(self.probe_transport)
 
     @classmethod
-    def known_formats(klass) -> Set["ControlDirFormat"]:
+    def known_formats(klass) -> set["ControlDirFormat"]:
         """Return the control dir formats known by this prober.
 
         Multiple probers can return the same formats, so this should

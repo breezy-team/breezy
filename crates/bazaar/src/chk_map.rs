@@ -30,25 +30,27 @@ fn crc32(bit: &[u8]) -> u32 {
     hasher.finalize()
 }
 
-pub type SearchKeyFn = fn(&Key) -> Vec<u8>;
+pub type SerialisedKey = Vec<u8>;
+
+pub type SearchKeyFn = fn(&Key) -> SerializedKey;
 
 /// Map the key tuple into a search string that just uses the key bytes.
 pub fn search_key_plain(key: &[&[u8]]) -> Vec<u8> {
     key.join(&b'\x00')
 }
 
-pub fn search_key_16(key: &[&[u8]]) -> Vec<u8> {
+pub fn search_key_16(key: &Key) -> SerializedKey {
     let mut result = String::new();
-    for bit in key {
+    for bit in key.iter() {
         write!(&mut result, "{:08X}\x00", crc32(bit)).unwrap();
     }
     result.pop();
     result.as_bytes().to_vec()
 }
 
-pub fn search_key_255(key: &[&[u8]]) -> Vec<u8> {
+pub fn search_key_255(key: &Key) -> SerializedKey {
     let mut result = vec![];
-    for bit in key {
+    for bit in key.iter() {
         let crc = crc32(bit);
         let crc_bytes = crc.to_be_bytes();
         result.extend(crc_bytes);
@@ -78,6 +80,12 @@ pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct Key(Vec<Vec<u8>>);
 
+impl From<Vec<Vec<u8>>> for Key {
+    fn from(v: Vec<Vec<u8>>) -> Self {
+        Key(v)
+    }
+}
+
 impl Key {
     pub fn serialize(&self) -> SerializedKey {
         let mut result = vec![];
@@ -92,6 +100,10 @@ impl Key {
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &[u8]> {
+        self.0.iter().map(|v| v.as_slice())
     }
 }
 

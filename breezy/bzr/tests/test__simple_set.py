@@ -16,6 +16,8 @@
 
 """Tests for the StaticTupleInterned type."""
 
+# ruff: noqa: C409
+
 import sys
 
 from breezy import tests
@@ -23,7 +25,7 @@ from breezy.tests import features
 
 try:
     from .. import _simple_set_pyx  # type: ignore
-except ImportError:
+except ModuleNotFoundError:
     _simple_set_pyx = None
 
 
@@ -217,7 +219,7 @@ class TestSimpleSet(tests.TestCase):
         # We use this clumsy notation, because otherwise the refcounts are off.
         # I'm guessing the python compiler sees it is a static tuple, and adds
         # it to the function variables, or somesuch
-        k1 = tuple(["foo"])  # noqa: C409
+        k1 = tuple(["foo"])
         self.assertRefcount(1, k1)
         self.assertIs(k1, obj.add(k1))
         self.assertFillState(1, 1, 0x3FF, obj)
@@ -227,7 +229,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertIs(k1, ktest)
         del ktest
         self.assertRefcount(2, k1)
-        k2 = tuple(["foo"])  # noqa: C409
+        k2 = tuple(["foo"])
         self.assertRefcount(1, k2)
         self.assertIsNot(k1, k2)
         # doesn't add anything, so the counters shouldn't be adjusted
@@ -243,7 +245,7 @@ class TestSimpleSet(tests.TestCase):
         obj.discard(k1)
         self.assertFillState(0, 1, 0x3FF, obj)
         self.assertRefcount(1, k1)
-        k3 = tuple(["bar"])  # noqa: C409
+        k3 = tuple(["bar"])
         self.assertRefcount(1, k3)
         self.assertIs(k3, obj.add(k3))
         self.assertFillState(1, 2, 0x3FF, obj)
@@ -256,9 +258,9 @@ class TestSimpleSet(tests.TestCase):
 
     def test_discard(self):
         obj = self.module.SimpleSet()
-        k1 = tuple(["foo"])  # noqa: C409
-        k2 = tuple(["foo"])  # noqa: C409
-        k3 = tuple(["bar"])  # noqa: C409
+        k1 = tuple(["foo"])
+        k2 = tuple(["foo"])
+        k3 = tuple(["bar"])
         self.assertRefcount(1, k1)
         self.assertRefcount(1, k2)
         self.assertRefcount(1, k3)

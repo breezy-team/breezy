@@ -3706,6 +3706,11 @@ msgstr ""
 msgid "Git Smart server upload pack command. (inetd mode only)"
 msgstr ""
 
+# help of 'protocol=http' option of 'serve' command
+#: breezy/builtins.py:6230
+msgid "Loggerhead, a web-based code viewer and server. (default port: 8080)"
+msgstr ""
+
 # help of 'protocol=bzr' option of 'serve' command
 #: breezy/builtins.py:6240
 msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
@@ -4804,7 +4809,7 @@ msgstr ""
 msgid ""
 "--include and --exclude options can be used to search only (or exclude\n"
 "from search) files with base name matches the specified Unix style GLOB\n"
-"pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\\n"
+"pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\\\\n"
 "to quote wildcard or backslash character literally. Note that the glob\n"
 "pattern is not a regular expression."
 msgstr ""
@@ -4919,12 +4924,12 @@ msgstr ""
 msgid "{0}: {1} ({2} multiparent)\n"
 msgstr ""
 
-#: breezy/bzr/bundle/commands.py:83
+#: breezy/bzr/bundle/commands.py:97
 #, python-format
 msgid "unique files: %d\n"
 msgstr ""
 
-#: breezy/bzr/bundle/commands.py:92
+#: breezy/bzr/bundle/commands.py:106
 msgid "Revisions\n"
 msgstr ""
 
@@ -4954,8 +4959,8 @@ msgstr[1] ""
 #: breezy/bzr/bzrdir.py:554
 #, python-brace-format
 msgid ""
-"making backup of {0}\n"
-"  to {1}"
+"making backup of %s\n"
+"  to %s"
 msgstr ""
 
 #: breezy/bzr/bzrdir.py:578
@@ -5542,7 +5547,7 @@ msgstr ""
 #: breezy/commit.py:499
 msgid ""
 "Conflicting tags in bound branch:\n"
-"{}"
+"%s"
 msgstr ""
 
 #: breezy/commit.py:741
@@ -5616,7 +5621,7 @@ msgstr ""
 
 #: breezy/config.py:2957
 msgid ""
-"Option {} in section {} of {} was changed from {} to {}. The {} value will "
+"Option %s in section %s of %s was changed from %s to %s. The %s value will "
 "be saved."
 msgstr ""
 
@@ -8091,7 +8096,7 @@ msgstr ""
 msgid "Using saved location: %s\n"
 msgstr ""
 
-#: breezy/plugins/stats/cmds.py:230
+#: breezy/plugins/stats/cmds.py:229
 msgid "Generate statistics for LOCATION."
 msgstr ""
 
@@ -8373,7 +8378,7 @@ msgstr ""
 msgid "repository converted"
 msgstr ""
 
-#: breezy/revisionspec.py:882
+#: breezy/revisionspec.py:888
 #, python-brace-format
 msgid "Using {0} {1}"
 msgstr ""

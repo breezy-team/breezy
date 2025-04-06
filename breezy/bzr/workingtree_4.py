@@ -24,7 +24,6 @@ WorkingTree.open(dir).
 
 import os
 from io import BytesIO
-from typing import Dict
 
 from ..lazy_import import lazy_import
 
@@ -334,7 +333,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         utf8_decode = cache_utf8._utf8_decode
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies: Dict[bytes, InventoryEntry] = {b"": inv.root}
+        parent_ies: dict[bytes, InventoryEntry] = {b"": inv.root}
         for block in state._dirblocks[1:]:  # skip the root
             dirname = block[0]
             try:
@@ -2463,7 +2462,7 @@ class InterDirStateTree(InterInventoryTree):
         if not isinstance(source, (revisiontree.RevisionTree, DirStateRevisionTree)):
             return False
         # the source revid must be in the target dirstate
-        if not (
+        if not (  # noqa: SIM103
             source._revision_id == _mod_revision.NULL_REVISION
             or source._revision_id in target.get_parent_ids()
         ):

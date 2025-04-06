@@ -287,7 +287,7 @@ class NewText:
 class ParentText:
     """A reference to text present in a parent text."""
 
-    __slots__ = ["parent", "parent_pos", "child_pos", "num_lines"]
+    __slots__ = ["child_pos", "num_lines", "parent", "parent_pos"]
 
     def __init__(self, parent, parent_pos, child_pos, num_lines):
         self.parent = parent

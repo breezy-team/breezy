@@ -17,8 +17,6 @@
 
 """This module provides an IdentityMap."""
 
-from typing import Dict
-
 from . import errors
 
 
@@ -43,8 +41,8 @@ class IdentityMap:
 
     def __init__(self) -> None:
         super().__init__()
-        self._map: Dict[object, object] = {}
-        self._reverse_map: Dict[object, object] = {}
+        self._map: dict[object, object] = {}
+        self._reverse_map: dict[object, object] = {}
 
     def remove_object(self, an_object: object):
         """Remove object from map."""

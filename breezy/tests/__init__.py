@@ -46,10 +46,9 @@ import threading
 import time
 import traceback
 import unittest
-from unittest import SkipTest as TestSkipped
 import warnings
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable, Set
+from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools
@@ -294,7 +293,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.stream.write(self.sep2)
         self.stream.write(
             "%s %d test%s in %.3fs\n\n"
-            % (actionTaken, run, run != 1 and "s" or "", timeTaken)
+            % (actionTaken, run, (run != 1 and "s") or "", timeTaken)
         )
         if not self.wasSuccessful():
             self.stream.write("FAILED (")
@@ -318,7 +317,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         if self.skip_count > 0:
             skipped = self.skip_count
             self.stream.write(
-                "%d test%s skipped\n" % (skipped, skipped != 1 and "s" or "")
+                "%d test%s skipped\n" % (skipped, (skipped != 1 and "s") or "")
             )
         if self.unsupported:
             for feature, count in sorted(self.unsupported.items()):
@@ -871,7 +870,7 @@ traceback._some_str = _clever_some_str  # type: ignore
 # deprecated - use self.knownFailure(), or self.expectFailure.
 KnownFailure = testtools.testcase._ExpectedFailure
 
-expectedFailure = unittest.case.expectedFailure
+expectedFailure = unittest.case.expectedFailure  # noqa: N816
 
 
 class UnavailableFeature(Exception):
@@ -1484,7 +1483,7 @@ class TestCase(testtools.TestCase):
     def assertRaises(self, excClass, callableObj, *args, **kwargs):  # noqa: N803
         """Assert that a callable raises a particular exception.
 
-        :param excClass: As for the except statement, this may be either an
+        :param exc_class: As for the except statement, this may be either an
             exception class, or a tuple of classes.
         :param callableObj: A callable, will be passed ``*args`` and
             ``**kwargs``.
@@ -2216,8 +2215,8 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get("env_changes", None)
-        working_dir = kwargs.get("working_dir", None)
+        env_changes = kwargs.get("env_changes")
+        working_dir = kwargs.get("working_dir")
         allow_plugins = kwargs.get("allow_plugins", False)
         if len(args) == 1:
             if isinstance(args[0], list):
@@ -2345,8 +2344,7 @@ class TestCase(testtools.TestCase):
             # We use buffer_now=True to avoid holding the file open beyond
             # the life of this function, which might interfere with e.g.
             # cleaning tempdirs on Windows.
-            detail_content = content.content_from_file(
-               log_file_path, buffer_now=True)
+            detail_content = content.content_from_file(log_file_path, buffer_now=True)
             self.addDetail("start_brz_subprocess-log-%d" % (count,), detail_content)
 
     def _popen(self, *args, **kwargs):
@@ -3836,7 +3834,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags: Set[str] = set()
+selftest_debug_flags: set[str] = set()
 
 
 def selftest(

@@ -20,10 +20,9 @@
 import re
 import sys
 import time
-from typing import Dict, List, Tuple
 
-_parent_stack: List[Tuple[int, str]] = []
-_total_stack: Dict[Tuple[int, str], List[Tuple[int, str]]] = {}
+_parent_stack: list[tuple[int, str]] = []
+_total_stack: dict[tuple[int, str], list[tuple[int, str]]] = {}
 _info = {}
 _cur_id = 0
 _timer = time.time

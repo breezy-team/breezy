@@ -44,7 +44,7 @@ def _supports_progress(f):
     # typically never set, so the case None is treated as a smart terminal,
     # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
     # isatty methods that return true.
-    if os.environ.get("TERM") == "dumb":
+    if os.environ.get("TERM") == "dumb":  # noqa: SIM103
         # e.g. emacs compile window
         return False
     return True

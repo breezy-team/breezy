@@ -19,7 +19,6 @@ import errno
 import os
 import sys
 import time
-from typing import List
 
 from .lazy_import import lazy_import
 
@@ -349,7 +348,7 @@ def failed_to_load_extension(exception):
 
     >>> try:
     >>>     import breezy._fictional_extension_pyx
-    >>> except ImportError, e:
+    >>> except ModuleNotFoundError as e:
     >>>     breezy.osutils.failed_to_load_extension(e)
     >>>     import breezy._fictional_extension_py
     """
@@ -760,7 +759,7 @@ def _walkdirs_utf8(top, prefix="", fs_enc=None):
                 from ._readdir_pyx import UTF8DirReader
 
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError as e:
+            except ModuleNotFoundError as e:
                 failed_to_load_extension(e)
                 pass
 
@@ -842,7 +841,7 @@ def get_diff_header_encoding():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+_end_of_stream_errors: list[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ["WSAECONNRESET", "WSAECONNABORTED"]:
     with contextlib.suppress(AttributeError):
         _end_of_stream_errors.append(getattr(errno, _eno))
@@ -988,7 +987,7 @@ def set_fd_cloexec(fd):
 
         old = fcntl.fcntl(fd, fcntl.F_GETFD)
         fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
-    except (ImportError, AttributeError):
+    except (ModuleNotFoundError, AttributeError):
         # Either the fcntl module or specific constants are not present
         pass
 

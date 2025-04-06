@@ -66,7 +66,7 @@ class SFTPLock:
     deprecated storage formats.
     """
 
-    __slots__ = ["path", "lock_path", "lock_file", "transport"]
+    __slots__ = ["lock_file", "lock_path", "path", "transport"]
 
     def __init__(self, path, transport):
         self.lock_file = None

@@ -22,6 +22,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Operating System :: POSIX",
     "Programming Language :: Python",
+    "Programming Language :: Rust",
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
@@ -41,9 +42,10 @@ dynamic = ["version", "scripts"]
 [project.urls]
 Homepage = "https://www.breezy-vcs.org/"
 Download = "https://launchpad.net/brz/+download"
+Repository = "https://github.com/breezy-team/breezy"
 
 [project.optional-dependencies]
-fastimport = ["fastimport"]
+fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=0.21.6"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
@@ -123,8 +125,6 @@ ignore = [
     "ANN001",
     "ANN002",
     "ANN003",  # missing-type-arg
-    "ANN101",  # missing-type-self
-    "ANN102",  # missing-type-self
     "ANN201",
     "ANN202",
     "ANN204",
@@ -176,7 +176,8 @@ ignore = [
     # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
     # have a keys() method but no __iter__
     "SIM118", # Use `key in dict` instead of `key in dict.keys()`
-    "UP032", #  Use f-string instead of `format` call; f-strings break gettext
+    "UP031",  # Use format-specifier instead of `str.format` call
+    "UP032",  # Use f-string instead of `format` call; f-strings break gettext
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]

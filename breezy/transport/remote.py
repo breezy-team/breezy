@@ -20,7 +20,7 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from breezy.bzr.smart.
 """
 
-__all__ = ["RemoteTransport", "RemoteTCPTransport", "RemoteSSHTransport"]
+__all__ = ["RemoteSSHTransport", "RemoteTCPTransport", "RemoteTransport"]
 
 from io import BytesIO
 

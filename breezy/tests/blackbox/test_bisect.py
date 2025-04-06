@@ -23,7 +23,7 @@ import stat
 import sys
 
 from ...controldir import ControlDir
-from .. import expectedFailure, TestCaseWithTransport, TestSkipped
+from .. import TestCaseWithTransport, TestSkipped, expectedFailure
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -240,8 +240,7 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(["bisect", "run", "./test_script"])
         self.assertRevno(4)
 
-
-    # bisect does not drill down into merge commits: 
+    # bisect does not drill down into merge commits:
     # https://bugs.launchpad.net/bzr-bisect/+bug/539937
     @expectedFailure
     def testRunScriptMergePoint(self):
@@ -256,7 +255,6 @@ class BisectTestCase(TestCaseWithTransport):
         self.run_bzr(["bisect", "no", "-r", "1"])
         self.run_bzr(["bisect", "run", "./test_script"])
         self.assertRevno(2)
-
 
     # bisect does not drill down into merge commits:
     # https://bugs.launchpad.net/bzr-bisect/+bug/539937

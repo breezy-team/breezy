@@ -16,15 +16,12 @@
 
 """Classes to provide name-to-object registry-like support."""
 
+from collections.abc import Iterator
 from typing import (
     Any,
     Callable,
-    Dict,
     Generic,
-    Iterator,
-    List,
     Optional,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -67,7 +64,7 @@ class _LazyObjectGetter(_ObjectGetter[T]):
     When requested, load and return it.
     """
 
-    __slots__ = ["_module_name", "_member_name", "_imported"]
+    __slots__ = ["_imported", "_member_name", "_module_name"]
 
     def __init__(self, module_name, member_name):
         self._module_name = module_name
@@ -127,19 +124,19 @@ class Registry(Generic[K, V, I]):
     def __init__(self) -> None:
         """Create a new Registry."""
         self._default_key = None
-        self._dict: Dict[K, _ObjectGetter[V]] = {}
-        self._aliases: Dict[K, K] = {}
-        self._help_dict: Dict[
+        self._dict: dict[K, _ObjectGetter[V]] = {}
+        self._aliases: dict[K, K] = {}
+        self._help_dict: dict[
             K, Union[Callable[[Registry[K, V, I], Optional[K]], str], str]
         ] = {}
-        self._info_dict: Dict[K, Any] = {}
+        self._info_dict: dict[K, Any] = {}
 
-    def aliases(self) -> Dict[K, K]:
+    def aliases(self) -> dict[K, K]:
         """Return a set of the format names which are aliases."""
         return dict(self._aliases.items())
 
-    def alias_map(self) -> Dict[K, List[K]]:
-        ret: Dict[K, List[K]] = {}
+    def alias_map(self) -> dict[K, list[K]]:
+        ret: dict[K, list[K]] = {}
         for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
         return ret
@@ -295,7 +292,7 @@ class Registry(Generic[K, V, I]):
         """Get a list of registered entries."""
         return sorted(self._dict)
 
-    def iteritems(self) -> Iterator[Tuple[K, V]]:
+    def iteritems(self) -> Iterator[tuple[K, V]]:
         for key in self._dict:
             yield key, self._dict[key].get_obj()
 

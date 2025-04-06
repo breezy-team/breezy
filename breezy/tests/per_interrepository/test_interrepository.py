@@ -185,8 +185,9 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # In this test we fetch 'tip' which should not fetch 'ghost'
         has_ghost = self.make_repository("has_ghost")
         missing_ghost = self.make_repository("missing_ghost")
-        if [True, True] != [
-            repo._format.supports_ghosts for repo in (has_ghost, missing_ghost)
+        if [repo._format.supports_ghosts for repo in (has_ghost, missing_ghost)] != [
+            True,
+            True,
         ]:
             raise TestNotApplicable("Need ghost support.")
 

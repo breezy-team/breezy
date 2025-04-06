@@ -16,7 +16,7 @@
 
 """Helper functions for proposing merges."""
 
-from typing import Optional, Type
+from typing import Optional
 
 from . import errors, hooks, registry, urlutils
 
@@ -506,7 +506,7 @@ def get_forge_by_hostname(hostname: str):
     raise UnsupportedForge(hostname)
 
 
-def iter_forge_instances(forge: Optional[Type[Forge]] = None):
+def iter_forge_instances(forge: Optional[type[Forge]] = None):
     """Iterate over all known forge instances.
 
     :return: Iterator over Forge instances
@@ -553,4 +553,4 @@ def create_project(url: str, *, summary=None) -> None:
         raise UnsupportedForge(url)
 
 
-forges = registry.Registry[str, Type[Forge], None]()
+forges = registry.Registry[str, type[Forge], None]()

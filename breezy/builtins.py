@@ -4613,6 +4613,7 @@ class cmd_selftest(Command):
             brz --no-plugins selftest -v
     """
 
+    @staticmethod
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
@@ -4743,7 +4744,7 @@ class cmd_selftest(Command):
 
         try:
             from . import tests
-        except ImportError as exc:
+        except ModuleNotFoundError as exc:
             raise errors.CommandError(
                 "tests not available. Install the "
                 "breezy tests to run the breezy testsuite."
@@ -4776,7 +4777,7 @@ class cmd_selftest(Command):
         if subunit2:
             try:
                 from .tests import SubUnitBzrRunnerv2
-            except ImportError as exc:
+            except ModuleNotFoundError as exc:
                 raise errors.CommandError(
                     gettext(
                         "subunit not available. subunit "

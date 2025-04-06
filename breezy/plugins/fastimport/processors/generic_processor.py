@@ -524,9 +524,9 @@ class GenericProcessor(processor.ImportProcessor):
     def report_progress(self, details=""):
         if self._revision_count % self.progress_every == 0:
             if self.total_commits is not None:
-                counts = "%d/%d" % (self._revision_count, self.total_commits)
+                counts = f"{self._revision_count}/{self.total_commits}"
             else:
-                counts = "%d" % (self._revision_count,)
+                counts = f"{self._revision_count}"
             minutes = (time.time() - self._start_time) / 60
             revisions_added = self._revision_count - self.skip_total
             rate = revisions_added * 1.0 / minutes

@@ -1105,7 +1105,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         self.overrideAttr(dirstate, "is_inside", is_inside_raises)
         try:
             from .. import _dirstate_helpers_pyx
-        except ImportError:
+        except ModuleNotFoundError:
             pass
         else:
             self.overrideAttr(_dirstate_helpers_pyx, "is_inside", is_inside_raises)

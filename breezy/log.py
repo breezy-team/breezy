@@ -52,7 +52,7 @@ import itertools
 import re
 import sys
 from io import BytesIO
-from typing import Callable, Dict, List
+from typing import Callable
 from warnings import warn
 
 from .lazy_import import lazy_import
@@ -2096,7 +2096,7 @@ def author_list_committer(rev):
 
 
 author_list_registry = registry.Registry[
-    str, Callable[[_mod_revision.Revision], List[str]], None
+    str, Callable[[_mod_revision.Revision], list[str]], None
 ]()
 
 author_list_registry.register("all", author_list_all, "All authors")
@@ -2348,7 +2348,7 @@ def _get_kind_for_file(tree, path):
 
 
 properties_handler_registry = registry.Registry[
-    str, Callable[[Dict[str, str]], Dict[str, str]], None
+    str, Callable[[dict[str, str]], dict[str, str]], None
 ]()
 
 # Use the properties handlers to print out bug information if available

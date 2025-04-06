@@ -31,7 +31,7 @@ import errno
 import sys
 from io import BytesIO
 from stat import S_ISDIR
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, TypeVar
 
 from .. import (
     _transport_rs,  # type: ignore
@@ -46,7 +46,7 @@ from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
-_file_streams: Dict[str, Any] = {}
+_file_streams: dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
@@ -183,7 +183,7 @@ def unregister_transport(scheme, factory):
 class _CoalescedOffset:
     """A data container for keeping track of coalesced offsets."""
 
-    __slots__ = ["start", "length", "ranges"]
+    __slots__ = ["length", "ranges", "start"]
 
     def __init__(self, start, length, ranges):
         self.start = start

@@ -239,7 +239,7 @@ from .. import (
     trace,
     urlutils,
 )
-from . import inventory, static_tuple
+from . import inventory
 from .inventorytree import InventoryTreeChange
 
 # This is the Windows equivalent of ENOTDIR
@@ -335,7 +335,7 @@ class DirState:
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = b"x" * 32
-    NULL_PARENT_DETAILS = static_tuple.StaticTuple(b"a", b"", 0, False, b"")
+    NULL_PARENT_DETAILS = (b"a", b"", 0, False, b"")
 
     HEADER_FORMAT_2 = b"#bazaar dirstate flat format 2\n"
     HEADER_FORMAT_3 = b"#bazaar dirstate flat format 3\n"
@@ -1653,10 +1653,9 @@ class DirState:
         adds.sort(key=lambda x: x[1])
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
-        st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
             dirname, basename = osutils.split(new_path)
-            entry_key = st(dirname, basename, file_id)
+            entry_key = (dirname, basename, file_id)
             block_index, present = self._find_block_index_from_key(entry_key)
             if not present:
                 # The block where we want to put the file is not present.
@@ -1771,8 +1770,8 @@ class DirState:
                         active_path = active_dir + b"/" + active_name
                     else:
                         active_path = active_name
-                    active_entry[1][1] = st(b"r", new_path, 0, False, b"")
-                    entry[1][0] = st(b"r", active_path, 0, False, b"")
+                    active_entry[1][1] = (b"r", new_path, 0, False, b"")
+                    entry[1][0] = (b"r", active_path, 0, False, b"")
             elif active_kind == b"r":
                 raise NotImplementedError()
 
@@ -2580,7 +2579,7 @@ class DirState:
         if entry[0][2] == new_id:
             # Nothing to change.
             return
-        if new_id.__class__ != bytes:
+        if not isinstance(new_id, bytes):
             raise AssertionError(f"must be a utf8 file_id not {type(new_id)}")
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
@@ -2638,7 +2637,6 @@ class DirState:
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
         # how many trees do we end up with
         parent_count = len(parent_trees)
-        st = static_tuple.StaticTuple
 
         # one: the current tree
         for entry in self._iter_entries():
@@ -2683,7 +2681,7 @@ class DirState:
                     dirname = last_dirname
                 else:
                     last_dirname = dirname
-                new_entry_key = st(dirname, basename, file_id)
+                new_entry_key = (dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
                 entry_keys = id_index.get(file_id)
@@ -2696,8 +2694,12 @@ class DirState:
                         # other trees, so put absent pointers there
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
-                        by_path[entry_key][tree_index] = st(
-                            b"r", path_utf8, 0, False, b""
+                        by_path[entry_key][tree_index] = (
+                            b"r",
+                            path_utf8,
+                            0,
+                            False,
+                            b"",
                         )
                 # by path consistency: Insert into an existing path record
                 # (trivial), or add a new one with relocation pointers for the
@@ -2727,7 +2729,7 @@ class DirState:
                             else:
                                 # we have the right key, make a pointer to it.
                                 real_path = (b"/".join(a_key[0:2])).strip(b"/")
-                                new_details.append(st(b"r", real_path, 0, False, b""))
+                                new_details.append((b"r", real_path, 0, False, b""))
                     new_details.append(_inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
@@ -2752,19 +2754,18 @@ class DirState:
         """
         # When sorting, we usually have 10x more entries than directories. (69k
         # total entries, 4k directories). So cache the results of splitting.
-        # Saving time and objects. Also, use StaticTuple to avoid putting all
-        # of these object into python's garbage collector.
+        # Saving time and objects.
         split_dirs = {}
 
-        def _key(entry, _split_dirs=split_dirs, _st=static_tuple.StaticTuple):
+        def _key(entry, _split_dirs=split_dirs):
             # sort by: directory parts, file name, file id
             dirpath, fname, file_id = entry[0]
             try:
                 split = _split_dirs[dirpath]
             except KeyError:
-                split = _st.from_sequence(dirpath.split(b"/"))
+                split = tuple(dirpath.split(b"/"))
                 _split_dirs[dirpath] = split
-            return _st(split, fname, file_id)
+            return (split, fname, file_id)
 
         return sorted(entry_list, key=_key)
 
@@ -3552,24 +3553,24 @@ def py_update_entry(
 
 class ProcessEntryPython:
     __slots__ = [
-        "old_dirname_to_file_id",
-        "new_dirname_to_file_id",
+        "include_unchanged",
         "last_source_parent",
         "last_target_parent",
-        "include_unchanged",
+        "new_dirname_to_file_id",
+        "old_dirname_to_file_id",
         "partial",
-        "use_filesystem_for_exec",
-        "utf8_decode",
-        "searched_specific_files",
+        "search_specific_file_parents",
         "search_specific_files",
         "searched_exact_paths",
-        "search_specific_file_parents",
+        "searched_specific_files",
         "seen_ids",
-        "state",
         "source_index",
+        "state",
         "target_index",
-        "want_unversioned",
         "tree",
+        "use_filesystem_for_exec",
+        "utf8_decode",
+        "want_unversioned",
     ]
 
     def __init__(
@@ -4452,7 +4453,7 @@ try:
     from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry  # noqa: N813
     from ._dirstate_helpers_pyx import _read_dirblocks
     from ._dirstate_helpers_pyx import update_entry as update_entry
-except ImportError as e:
+except ModuleNotFoundError as e:
     osutils.failed_to_load_extension(e)
     from ._dirstate_helpers_py import _read_dirblocks
 

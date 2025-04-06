@@ -21,7 +21,7 @@ from . import FastimportFeature
 
 try:
     from fastimport import commands
-except ImportError:
+except ModuleNotFoundError:
     commands = object()  # type: ignore
 
 

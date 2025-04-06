@@ -182,7 +182,7 @@ class ModuleAvailableFeature(Feature):
                     warnings.simplefilter("ignore", warning_category)
                 try:
                     self._module = importlib.import_module(self.module_name)
-                except ImportError:
+                except ModuleNotFoundError:
                     return False
                 return True
         else:
@@ -260,9 +260,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8"):
-            return True
-        return False
+        return sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8")
 
 
 UTF8Filesystem = _UTF8Filesystem()

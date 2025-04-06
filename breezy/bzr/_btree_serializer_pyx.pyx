@@ -35,17 +35,10 @@ from cpython.tuple cimport (PyTuple_CheckExact, PyTuple_GET_ITEM,
 from libc.stdlib cimport strtoul, strtoull
 from libc.string cimport memchr, memcmp, memcpy, strncmp
 
-from ._static_tuple_c cimport (StaticTuple, StaticTuple_CheckExact,
-                               StaticTuple_GET_ITEM, StaticTuple_GET_SIZE,
-                               StaticTuple_Intern, StaticTuple_New,
-                               StaticTuple_SET_ITEM, import_static_tuple_c)
 from ._str_helpers cimport (_my_memrchr, safe_interned_string_from_size,
                             safe_string_from_size)
 
 import sys
-
-# This sets up the StaticTuple C_API functionality
-import_static_tuple_c()
 
 
 cdef class BTreeLeafParser:
@@ -96,9 +89,9 @@ cdef class BTreeLeafParser:
         """
         cdef char *temp_ptr
         cdef int loop_counter
-        cdef StaticTuple key
+        cdef tuple key
 
-        key = StaticTuple_New(self.key_length)
+        key = PyTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
             temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
@@ -124,8 +117,7 @@ cdef class BTreeLeafParser:
             # advance our pointer
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
-            StaticTuple_SET_ITEM(key, loop_counter, key_element)
-        key = StaticTuple_Intern(key)
+            PyTuple_SET_ITEM(key, loop_counter, key_element)
         return key
 
     cdef int process_line(self) except -1:
@@ -189,7 +181,7 @@ cdef class BTreeLeafParser:
             last = temp_ptr
 
         if self.ref_list_length:
-            ref_lists = StaticTuple_New(self.ref_list_length)
+            ref_lists = PyTuple_New(self.ref_list_length)
             loop_counter = 0
             while loop_counter < self.ref_list_length:
                 ref_list = []
@@ -223,18 +215,18 @@ cdef class BTreeLeafParser:
                         temp_ptr = ref_ptr
 
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
+                ref_list = tuple(ref_list)
                 Py_INCREF(ref_list)
-                StaticTuple_SET_ITEM(ref_lists, loop_counter - 1, ref_list)
+                PyTuple_SET_ITEM(ref_lists, loop_counter - 1, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
-            node_value = StaticTuple(value, ref_lists)
+            node_value = (value, ref_lists)
         else:
             if last != self._start:
                 # unexpected reference data present
                 raise AssertionError("unexpected reference data present")
-            node_value = StaticTuple(value, StaticTuple())
-        PyList_Append(self.keys, StaticTuple(key, node_value))
+            node_value = (value, ())
+        PyList_Append(self.keys, (key, node_value))
         return 0
 
     def parse(self):
@@ -353,12 +345,10 @@ cdef int _key_to_sha1(key, char *sha1): # cannot_raise
     cdef char *c_val
     cdef PyObject *p_val
 
-    if StaticTuple_CheckExact(key) and StaticTuple_GET_SIZE(key) == 1:
-        p_val = <PyObject *>StaticTuple_GET_ITEM(key, 0)
-    elif PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1:
-        p_val = PyTuple_GET_ITEM(key, 0)
+    if PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1:
+        p_val = <PyObject *>PyTuple_GET_ITEM(key, 0)
     else:
-        # Not a tuple or a StaticTuple
+        # Not a tuple or a PyTuple
         return 0
     if (PyBytes_CheckExact(<object>p_val)
             and PyBytes_GET_SIZE(<object>p_val) == 45):
@@ -383,18 +373,18 @@ def _py_key_to_sha1(key):
     return None
 
 
-cdef StaticTuple _sha1_to_key(char *sha1):
+cdef tuple _sha1_to_key(char *sha1):
     """Compute a ('sha1:abcd',) key for a given sha1."""
-    cdef StaticTuple key
+    cdef tuple key
     cdef object hexxed
     cdef char *c_buf
     hexxed = PyBytes_FromStringAndSize(NULL, 45)
     c_buf = PyBytes_AS_STRING(hexxed)
     memcpy(c_buf, b'sha1:', 5)
     _hexlify_sha1(sha1, c_buf+5)
-    key = StaticTuple_New(1)
+    key = PyTuple_New(1)
     Py_INCREF(hexxed)
-    StaticTuple_SET_ITEM(key, 0, hexxed)
+    PyTuple_SET_ITEM(key, 0, hexxed)
     # This is a bit expensive. To parse 120 keys takes 48us, to return them all
     # can be done in 66.6us (so 18.6us to build them all).
     # Adding simple hash() here brings it to 76.6us (so computing the hash
@@ -404,7 +394,6 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     # a win. Since they would have been read from elsewhere anyway.
     # We *could* hang the PyObject form off of the gc_chk_sha1_record for ones
     # that we have deserialized. Something to think about, at least.
-    key = StaticTuple_Intern(key)
     return key
 
 
@@ -487,35 +476,35 @@ cdef class GCCHKSHA1LeafNode:
                 return _sha1_to_key(self.records[self.num_records-1].sha1)
             return None
 
-    cdef StaticTuple _record_to_value_and_refs(self,
+    cdef tuple _record_to_value_and_refs(self,
                                                gc_chk_sha1_record *record):
         """Extract the refs and value part of this record."""
-        cdef StaticTuple value_and_refs
-        cdef StaticTuple empty
-        value_and_refs = StaticTuple_New(2)
+        cdef tuple value_and_refs
+        cdef tuple empty
+        value_and_refs = PyTuple_New(2)
         value = _format_record(record)
         Py_INCREF(value)
-        StaticTuple_SET_ITEM(value_and_refs, 0, value)
+        PyTuple_SET_ITEM(value_and_refs, 0, value)
         # Always empty refs
-        empty = StaticTuple_New(0)
+        empty = PyTuple_New(0)
         Py_INCREF(empty)
-        StaticTuple_SET_ITEM(value_and_refs, 1, empty)
+        PyTuple_SET_ITEM(value_and_refs, 1, empty)
         return value_and_refs
 
-    cdef StaticTuple _record_to_item(self, gc_chk_sha1_record *record):
+    cdef tuple _record_to_item(self, gc_chk_sha1_record *record):
         """Turn a given record back into a fully fledged item.
         """
-        cdef StaticTuple item
-        cdef StaticTuple key
-        cdef StaticTuple value_and_refs
+        cdef tuple item
+        cdef tuple key
+        cdef tuple value_and_refs
         cdef object value
         key = _sha1_to_key(record.sha1)
-        item = StaticTuple_New(2)
+        item = PyTuple_New(2)
         Py_INCREF(key)
-        StaticTuple_SET_ITEM(item, 0, key)
+        PyTuple_SET_ITEM(item, 0, key)
         value_and_refs = self._record_to_value_and_refs(record)
         Py_INCREF(value_and_refs)
-        StaticTuple_SET_ITEM(item, 1, value_and_refs)
+        PyTuple_SET_ITEM(item, 1, value_and_refs)
         return item
 
     cdef gc_chk_sha1_record* _lookup_record(self, char *sha1) except? NULL:
@@ -783,8 +772,8 @@ def _flatten_node(node, reference_lists):
     cdef int i
     cdef Py_ssize_t ref_bit_len
 
-    if not PyTuple_CheckExact(node) and not StaticTuple_CheckExact(node):
-        raise TypeError('We expected a tuple() or StaticTuple() for node not: %s'
+    if not PyTuple_CheckExact(node):
+        raise TypeError('We expected a tuple() for node not: %s'
             % type(node))
     node_len = len(node)
     have_reference_lists = reference_lists
@@ -836,8 +825,7 @@ def _flatten_node(node, reference_lists):
                     # references
                     refs_len = refs_len + (next_len - 1)
                     for reference in ref_list:
-                        if (not PyTuple_CheckExact(reference)
-                            and not StaticTuple_CheckExact(reference)):
+                        if not PyTuple_CheckExact(reference):
                             raise TypeError(
                                 'We expect references to be tuples not: %r'
                                 % type(reference))

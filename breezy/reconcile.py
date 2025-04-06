@@ -17,8 +17,8 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 __all__ = [
-    "reconcile",
     "Reconciler",
+    "reconcile",
 ]
 
 

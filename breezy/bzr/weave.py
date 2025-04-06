@@ -266,14 +266,14 @@ class Weave(VersionedFile):
     """
 
     __slots__ = [
-        "_weave",
+        "_allow_reserved",
+        "_matcher",
+        "_name_map",
+        "_names",
         "_parents",
         "_sha1s",
-        "_names",
-        "_name_map",
+        "_weave",
         "_weave_name",
-        "_matcher",
-        "_allow_reserved",
     ]
 
     def __init__(
@@ -652,7 +652,7 @@ class Weave(VersionedFile):
         dset = set()
 
         for lineno, l in enumerate(self._weave):
-            if l.__class__ == tuple:
+            if isinstance(l, tuple):
                 c, v = l
                 if c == b"{":
                     istack.append(self._names[v])
@@ -766,7 +766,7 @@ class Weave(VersionedFile):
         # its fast enough to consider profiling big datasets we can review.
 
         for lineno, l in enumerate(self._weave):
-            if l.__class__ == tuple:
+            if isinstance(l, tuple):
                 c, v = l
                 isactive = None
                 if c == b"{":

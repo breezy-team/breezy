@@ -16,23 +16,16 @@
 
 """InterRepository operations."""
 
+import contextlib
 import itertools
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional
 
 from dulwich.errors import NotCommitError
 from dulwich.object_store import ObjectStoreGraphWalker
 from dulwich.objects import ObjectID
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
-from dulwich.refs import SYMREF
-
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:  # dulwich < 0.21.3
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
-
-import contextlib
-
+from dulwich.refs import PEELED_TAG_SUFFIX, SYMREF
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
@@ -56,9 +49,9 @@ from .remote import RemoteGitError, RemoteGitRepository
 from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
 from .unpeel_map import UnpeelMap
 
-EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]
-EitherRefDict = Dict[bytes, EitherId]
-RevidMap = Dict[RevisionID, Tuple[ObjectID, RevisionID]]
+EitherId = tuple[Optional[RevisionID], Optional[ObjectID]]
+EitherRefDict = dict[bytes, EitherId]
+RevidMap = dict[RevisionID, tuple[ObjectID, RevisionID]]
 
 
 class InterToGitRepository(InterRepository):
@@ -81,10 +74,10 @@ class InterToGitRepository(InterRepository):
 
     def fetch_refs(
         self,
-        update_refs: Callable[[Dict[bytes, ObjectID]], Dict[bytes, ObjectID]],
+        update_refs: Callable[[dict[bytes, ObjectID]], dict[bytes, ObjectID]],
         lossy: bool,
         overwrite: bool = False,
-    ) -> Tuple[RevidMap, Dict[bytes, ObjectID]]:
+    ) -> tuple[RevidMap, dict[bytes, ObjectID]]:
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -346,7 +339,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             raise NoPushSupport(self.source, self.target, self.mapping)
 
         unpeel_map = UnpeelMap.from_repository(self.source)
-        revidmap: Dict[bytes, bytes] = {}
+        revidmap: dict[bytes, bytes] = {}
 
         def git_update_refs(old_refs):
             ret = {}
@@ -667,7 +660,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
     def fetch_refs(
         self, update_refs, lossy: bool = False, overwrite: bool = False
-    ) -> Tuple[RevidMap, EitherRefDict, EitherRefDict]:
+    ) -> tuple[RevidMap, EitherRefDict, EitherRefDict]:
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self._get_target_either_refs()

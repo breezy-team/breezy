@@ -9,7 +9,7 @@ import os
 import pywintypes  # from pywin32 (http://pywin32.sf.net)
 import win32api  # from pywin32 (http://pywin32.sf.net)
 
-__all__ = ["get_file_version", "FileNotFound", "VersionNotAvailable"]
+__all__ = ["FileNotFound", "VersionNotAvailable", "get_file_version"]
 __docformat__ = "restructuredtext"
 
 

@@ -17,7 +17,6 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
-from typing import List
 import zlib
 
 from breezy import debug
@@ -57,6 +56,20 @@ rabin_hash = _groupcompress_rs.rabin_hash
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
 BATCH_SIZE = 2**16
+
+
+def as_tuples(obj):
+    """Ensure that the object and any referenced objects are plain tuples.
+
+    :param obj: a list, tuple or StaticTuple
+    :return: a plain tuple instance, with all children also being tuples.
+    """
+    result = []
+    for item in obj:
+        if isinstance(item, (tuple, list)):
+            item = as_tuples(item)
+        result.append(item)
+    return tuple(result)
 
 
 def sort_gc_optimal(parent_map):
@@ -850,7 +863,7 @@ class PyrexGroupCompressor:
       left side.
     """
 
-    chunks: List[bytes]
+    chunks: list[bytes]
 
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
@@ -1885,12 +1898,11 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 key = record.key
             self._unadded_refs[key] = record.parents
             yield found_sha1, chunks_len
-            as_st = static_tuple.StaticTuple.from_sequence
             if record.parents is not None:
-                parents = as_st([as_st(p) for p in record.parents])
+                parents = tuple([tuple(p) for p in record.parents])
             else:
                 parents = None
-            refs = static_tuple.StaticTuple(parents)
+            refs = (parents,)
             keys_to_add.append((key, b"%d %d" % (start_point, end_point), refs))
         if len(keys_to_add):
             flush(self._compressor.flush())
@@ -1955,11 +1967,11 @@ class _GCBuildDetails:
     """
 
     __slots__ = (
-        "_index",
-        "_group_start",
-        "_group_end",
         "_basis_end",
         "_delta_end",
+        "_group_end",
+        "_group_start",
+        "_index",
         "_parents",
     )
 
@@ -1991,7 +2003,7 @@ class _GCBuildDetails:
 
     @property
     def record_details(self):
-        return static_tuple.StaticTuple(self.method, None)
+        return (self.method, None)
 
     def __getitem__(self, offset):
         """Compatibility thunk to act like a tuple."""
@@ -2091,8 +2103,8 @@ class _GCGraphIndex:
             present_nodes = self._get_entries(keys)
             for _index, key, value, node_refs in present_nodes:
                 # Sometimes these are passed as a list rather than a tuple
-                node_refs = static_tuple.as_tuples(node_refs)
-                passed = static_tuple.as_tuples(keys[key])
+                node_refs = as_tuples(node_refs)
+                passed = as_tuples(keys[key])
                 if node_refs != passed[1]:
                     details = f"{key} {value, node_refs} {passed}"
                     if self._inconsistency_fatal:
@@ -2245,7 +2257,7 @@ class _GCGraphIndex:
         stop = self._int_cache.setdefault(stop, stop)
         basis_end = int(bits[2])
         delta_end = int(bits[3])
-        # We can't use StaticTuple here, because node[0] is a BTreeGraphIndex
+        # We can't use tuple here, because node[0] is a BTreeGraphIndex
         # instance...
         return (node[0], start, stop, basis_end, delta_end)
 
@@ -2285,6 +2297,6 @@ try:
     from ._groupcompress_pyx import DeltaIndex
 
     GroupCompressor = PyrexGroupCompressor  # type: ignore
-except ImportError as e:
+except ModuleNotFoundError as e:
     osutils.failed_to_load_extension(e)
     GroupCompressor = PythonGroupCompressor  # type: ignore

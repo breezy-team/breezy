@@ -17,7 +17,7 @@
 
 import os
 import re
-from typing import Iterator, List
+from collections.abc import Iterator
 
 from .errors import BzrError
 
@@ -154,7 +154,7 @@ class Hunk:
         self.mod_pos = mod_pos
         self.mod_range = mod_range
         self.tail = tail
-        self.lines: List[bytes] = []
+        self.lines: list[bytes] = []
 
     def get_header(self):
         tail_str = b"" if self.tail is None else b" " + self.tail
@@ -263,7 +263,7 @@ class Patch(BinaryPatch):
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
         self.newts = newts
-        self.hunks: List[Hunk] = []
+        self.hunks: list[Hunk] = []
 
     def as_bytes(self):
         ret = self.get_header()
@@ -357,8 +357,8 @@ def iter_file_patch(
     # allow_dirty or restrict those to only being before the patch is found
     # (as allow_dirty does).
     regex = re.compile(binary_files_re)
-    saved_lines: List[bytes] = []
-    dirty_head: List[bytes] = []
+    saved_lines: list[bytes] = []
+    dirty_head: list[bytes] = []
     orig_range = 0
     beginning = True
 
