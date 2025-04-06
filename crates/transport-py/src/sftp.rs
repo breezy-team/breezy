@@ -122,7 +122,7 @@ impl SFTPFile {
     fn pread(&mut self, py: Python, offset: u64, length: u32) -> PyResult<PyObject> {
         py.allow_threads(|| self.sftp.pread(&self.file, offset, length))
             .map_err(|e| sftp_error_to_py_err(e, None))
-            .map(|b| PyBytes::new_bound(py, &b).into())
+            .map(|b| PyBytes::new(py, &b).into())
     }
 
     fn close(&mut self, py: Python) -> PyResult<()> {
@@ -180,8 +180,8 @@ impl SFTPFile {
             fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
                 if let Some((offset, length)) = self.offsets.pop_front() {
                     match py.allow_threads(|| self.sftp.pread(&self.file, offset, length)) {
-                        Ok(data) => Ok(Some(PyBytes::new_bound(py, &data).into())),
-                        Err(sftp::Error::Eof(_, _)) => Ok(Some(PyBytes::new_bound(py, &[]).into())),
+                        Ok(data) => Ok(Some(PyBytes::new(py, &data).into())),
+                        Err(sftp::Error::Eof(_, _)) => Ok(Some(PyBytes::new(py, &[]).into())),
                         Err(e) => Err(sftp_error_to_py_err(e, None)),
                     }
                 } else {
@@ -204,7 +204,7 @@ impl SFTPFile {
         } else {
             let length = self.stat(py, None)?.0.size.unwrap();
             if length == 0 {
-                return Ok(PyBytes::new_bound(py, &[]).into_py(py));
+                return Ok(PyBytes::new(py, &[]).into_py(py));
             }
             py.allow_threads(|| {
                 self.sftp
@@ -214,9 +214,9 @@ impl SFTPFile {
         match ret {
             Ok(data) => {
                 self.offset += data.len() as u64;
-                Ok(PyBytes::new_bound(py, data.as_slice()).into_py(py))
+                Ok(PyBytes::new(py, data.as_slice()).into_py(py))
             }
-            Err(sftp::Error::Eof(_, _)) => Ok(PyBytes::new_bound(py, &[]).into_py(py)),
+            Err(sftp::Error::Eof(_, _)) => Ok(PyBytes::new(py, &[]).into_py(py)),
             Err(e) => Err(sftp_error_to_py_err(e, None)),
         }
     }
@@ -535,6 +535,6 @@ pub fn _sftp_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("SFTP_FLAG_TRUNC", sftp::SFTP_FLAG_TRUNC)?;
     m.add("SFTP_FLAG_EXCL", sftp::SFTP_FLAG_EXCL)?;
 
-    m.add("SFTPError", py.get_type_bound::<SFTPError>())?;
+    m.add("SFTPError", py.get_type::<SFTPError>())?;
     Ok(())
 }

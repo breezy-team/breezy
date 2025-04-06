@@ -9,7 +9,7 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
-    let breezy = PyModule::import_bound(py, "breezy").map_err(|e| {
+    let breezy = PyModule::import(py, "breezy").map_err(|e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
              Please check the directory containing breezy is on your PYTHONPATH.\n"
@@ -38,7 +38,7 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
 }
 
 fn setup_locale(py: Python<'_>) -> PyResult<()> {
-    let locale = PyModule::import_bound(py, "locale")?;
+    let locale = PyModule::import(py, "locale")?;
     locale
         .getattr("setlocale")?
         .call1((locale.getattr("LC_ALL")?, ""))?;
@@ -55,7 +55,7 @@ fn ensure_sane_fs_enc() {
 }
 
 fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
-    let sys = PyModule::import_bound(py, "sys")?;
+    let sys = PyModule::import(py, "sys")?;
 
     let path_obj = sys.getattr("path")?;
 
@@ -82,7 +82,7 @@ fn update_path(py: Python<'_>) -> PyResult<()> {
 }
 
 fn posix_setup(py: Python<'_>) -> PyResult<()> {
-    let os = PyModule::import_bound(py, "os")?;
+    let os = PyModule::import(py, "os")?;
 
     if os.getattr("name")?.to_string() == "posix" {
         if let Err(e) = setup_locale(py) {
@@ -114,14 +114,14 @@ fn main() {
         let args: Vec<String> = std::env::args().collect();
 
         if args.contains(&String::from("--profile-imports")) {
-            let profile_imports = PyModule::import_bound(py, "profile_imports")?;
+            let profile_imports = PyModule::import(py, "profile_imports")?;
             profile_imports.getattr("install")?.call1(())?;
         }
 
-        let sys = PyModule::import_bound(py, "sys")?;
-        sys.setattr("argv", PyList::new_bound(py, args))?;
+        let sys = PyModule::import(py, "sys")?;
+        sys.setattr("argv", PyList::new(py, args)?)?;
 
-        let main = PyModule::import_bound(py, "breezy.__main__")?;
+        let main = PyModule::import(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())
     }
 
@@ -131,7 +131,7 @@ fn main() {
             Ok(_) => 0,
             Err(e) if e.is_instance_of::<PySystemExit>(py) => {
                 eprintln!("brz: {}", e);
-                e.value_bound(py)
+                e.value(py)
                     .getattr("code")
                     .unwrap()
                     .extract::<i32>()

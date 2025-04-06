@@ -164,7 +164,7 @@ fn bisect_dirblock(
     }
 
     let hi = hi.unwrap_or(dirblocks.len());
-    let cache = cache.unwrap_or_else(|| PyDict::new_bound(py));
+    let cache = cache.unwrap_or_else(|| PyDict::new(py));
 
     let dirname_split = match cache.get_item(&dirname)? {
         Some(item) => item.extract::<Vec<PathBuf>>()?,
@@ -269,7 +269,7 @@ impl SHA1Provider {
             .provider
             .sha1(&path)
             .map_err(PyErr::new::<pyo3::exceptions::PyOSError, _>)?;
-        Ok(PyBytes::new_bound(py, sha1.as_bytes()).to_object(py))
+        Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
     }
 
     fn stat_and_sha1(&mut self, py: Python, path: &Bound<PyAny>) -> PyResult<(PyObject, PyObject)> {
@@ -278,7 +278,7 @@ impl SHA1Provider {
         let pmd = StatResult { metadata: md };
         Ok((
             pmd.into_py(py),
-            PyBytes::new_bound(py, sha1.as_bytes()).to_object(py),
+            PyBytes::new(py, sha1.as_bytes()).to_object(py),
         ))
     }
 }
@@ -309,7 +309,7 @@ fn pack_stat<'a>(stat_result: &'a Bound<'a, PyAny>) -> PyResult<Bound<'a, PyByte
     let ino = stat_result.getattr("st_ino")?.extract::<u64>()?;
     let mode = stat_result.getattr("st_mode")?.extract::<u32>()?;
     let s = bazaar::dirstate::pack_stat(size, mtime, ctime, dev, ino, mode);
-    Ok(PyBytes::new_bound(stat_result.py(), s.as_bytes()))
+    Ok(PyBytes::new(stat_result.py(), s.as_bytes()))
 }
 
 #[pyfunction]
@@ -324,7 +324,7 @@ fn get_ghosts_line(py: Python, ghost_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
         .map(|x| x.as_slice())
         .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_ghosts_line(ghost_ids.as_slice());
-    Ok(PyBytes::new_bound(py, bs.as_slice()).to_object(py))
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
 
 #[pyfunction]
@@ -334,7 +334,7 @@ fn get_parents_line(py: Python, parent_ids: Vec<Vec<u8>>) -> PyResult<PyObject> 
         .map(|x| x.as_slice())
         .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_parents_line(parent_ids.as_slice());
-    Ok(PyBytes::new_bound(py, bs.as_slice()).to_object(py))
+    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
 }
 
 #[pyclass]
@@ -357,35 +357,40 @@ impl IdIndex {
         Ok(())
     }
 
-    fn get(&self, py: Python, file_id: FileId) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
+    fn get<'a>(
+        &self,
+        py: Python<'a>,
+        file_id: FileId,
+    ) -> PyResult<Vec<(PyObject, PyObject, Bound<'a, PyBytes>)>> {
         let ret = self.0.get(&file_id);
-        Ok(ret
-            .iter()
+        ret.iter()
             .map(|(a, b, c)| {
-                (
-                    PyBytes::new_bound(py, a).to_object(py),
-                    PyBytes::new_bound(py, b).to_object(py),
-                    c.to_object(py),
-                )
+                Ok((
+                    PyBytes::new(py, a).to_object(py),
+                    PyBytes::new(py, b).to_object(py),
+                    c.into_pyobject(py)?,
+                ))
             })
-            .collect())
+            .collect::<PyResult<Vec<_>>>()
     }
 
-    fn iter_all(&self, py: Python) -> PyResult<Vec<(PyObject, PyObject, PyObject)>> {
+    fn iter_all<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Vec<(PyObject, PyObject, Bound<'py, PyBytes>)>> {
         let ret = self.0.iter_all();
-        Ok(ret
-            .map(|(a, b, c)| {
-                (
-                    PyBytes::new_bound(py, a).to_object(py),
-                    PyBytes::new_bound(py, b).to_object(py),
-                    c.to_object(py),
-                )
-            })
-            .collect())
+        ret.map(|(a, b, c)| {
+            Ok((
+                PyBytes::new(py, a).to_object(py),
+                PyBytes::new(py, b).to_object(py),
+                c.into_pyobject(py)?,
+            ))
+        })
+        .collect::<PyResult<Vec<_>>>()
     }
 
-    fn file_ids(&self, py: Python) -> Vec<PyObject> {
-        self.0.file_ids().map(|x| x.to_object(py)).collect()
+    fn file_ids<'a>(&self, py: Python<'a>) -> PyResult<Vec<Bound<'a, PyBytes>>> {
+        self.0.file_ids().map(|x| x.into_pyobject(py)).collect()
     }
 }
 
@@ -397,11 +402,11 @@ fn inv_entry_to_details(
     let ret = bazaar::dirstate::inv_entry_to_details(&e.0);
 
     (
-        PyBytes::new_bound(py, &[ret.0]).to_object(py),
-        PyBytes::new_bound(py, ret.1.as_slice()).to_object(py),
+        PyBytes::new(py, &[ret.0]).to_object(py),
+        PyBytes::new(py, ret.1.as_slice()).to_object(py),
         ret.2,
         ret.3,
-        PyBytes::new_bound(py, ret.4.as_slice()).to_object(py),
+        PyBytes::new(py, ret.4.as_slice()).to_object(py),
     )
 }
 
@@ -410,13 +415,13 @@ fn get_output_lines(py: Python, lines: Vec<Vec<u8>>) -> Vec<PyObject> {
     let lines = lines.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
     bazaar::dirstate::get_output_lines(lines)
         .into_iter()
-        .map(|x| PyBytes::new_bound(py, x.as_slice()).to_object(py))
+        .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
         .collect()
 }
 
 /// Helpers for the dirstate module.
 pub fn _dirstate_rs(py: Python) -> PyResult<Bound<PyModule>> {
-    let m = PyModule::new_bound(py, "dirstate")?;
+    let m = PyModule::new(py, "dirstate")?;
     m.add_wrapped(wrap_pyfunction!(lt_by_dirs))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;

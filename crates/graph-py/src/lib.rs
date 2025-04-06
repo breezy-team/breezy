@@ -218,7 +218,7 @@ impl TopoSorter {
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         match self.sorter.next() {
             None => Ok(None),
-            Some(Ok(node)) => Ok(Some(node.into_py(py))),
+            Some(Ok(node)) => Ok(Some(node.into_pyobject(py)?.into_py(py))),
             Some(Err(breezy_graph::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
             Some(Err(e)) => panic!("Unexpected error: {:?}", e),
         }
@@ -242,7 +242,9 @@ impl TopoSorter {
 }
 
 fn revno_vec_to_py(py: Python, revno: RevnoVec) -> PyObject {
-    PyTuple::new_bound(py, revno.into_iter().map(|v| v.into_py(py))).to_object(py)
+    PyTuple::new(py, revno.into_iter().map(|v| v.into_py(py)))
+        .unwrap()
+        .to_object(py)
 }
 
 #[pyclass]
@@ -314,13 +316,19 @@ impl MergeSorter {
         match self.sorter.next() {
             None => Ok(None),
             Some(Ok((sequence_number, node, merge_depth, None, end_of_merge))) => Ok(Some(
-                (sequence_number, node.into_py(py), merge_depth, end_of_merge).into_py(py),
+                (
+                    sequence_number,
+                    node.into_pyobject(py)?.into_py(py),
+                    merge_depth,
+                    end_of_merge,
+                )
+                    .into_py(py),
             )),
 
             Some(Ok((sequence_number, node, merge_depth, Some(revno), end_of_merge))) => Ok(Some(
                 (
                     sequence_number,
-                    node.into_py(py),
+                    node.into_pyobject(py)?.into_py(py),
                     merge_depth,
                     revno_vec_to_py(py, revno),
                     end_of_merge,
@@ -341,7 +349,7 @@ impl MergeSorter {
     }
 
     fn sorted(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         loop {
             let item = self.__next__(py)?;
             if let Some(item) = item {

@@ -44,7 +44,7 @@ impl From<pyo3::PyErr> for Error {
         pyo3::Python::with_gil(|py| {
             if e.is_instance_of::<RevisionNotPresent>(py) {
                 Error::VersionNotPresent(
-                    e.value_bound(py)
+                    e.value(py)
                         .getattr("args")
                         .unwrap()
                         .get_item(0)
@@ -54,7 +54,7 @@ impl From<pyo3::PyErr> for Error {
                 )
             } else if e.is_instance_of::<ExistingContent>(py) {
                 Error::ExistingContent(
-                    e.value_bound(py)
+                    e.value(py)
                         .getattr("args")
                         .unwrap()
                         .get_item(0)
@@ -202,30 +202,6 @@ impl std::fmt::Display for Key {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::ToPyObject for Key {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        match self {
-            Key::Fixed(ref v) => {
-                let t = PyTuple::new_bound(
-                    py,
-                    v.iter()
-                        .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice())),
-                );
-                t.to_object(py)
-            }
-            Key::ContentAddressed(ref v) => {
-                let mut entries = v
-                    .iter()
-                    .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice()).to_object(py))
-                    .collect::<Vec<_>>();
-                entries.push(py.None());
-                PyTuple::new_bound(py, entries).to_object(py)
-            }
-        }
-    }
-}
-
-#[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Key {
     fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
@@ -265,24 +241,30 @@ impl pyo3::FromPyObject<'_> for Key {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::IntoPy<pyo3::PyObject> for Key {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+impl<'py> pyo3::IntoPyObject<'py> for Key {
+    type Target = pyo3::types::PyTuple;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
             Key::Fixed(v) => {
-                let t = PyTuple::new_bound(
+                let t = PyTuple::new(
                     py,
                     v.into_iter()
-                        .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice())),
+                        .map(|v| pyo3::types::PyBytes::new(py, v.as_slice())),
                 );
-                t.into_py(py)
+                t
             }
             Key::ContentAddressed(v) => {
                 let mut entries = v
                     .into_iter()
-                    .map(|v| pyo3::types::PyBytes::new_bound(py, v.as_slice()).into_py(py))
+                    .map(|v| pyo3::types::PyBytes::new(py, v.as_slice()).into_any())
                     .collect::<Vec<_>>();
-                entries.push(py.None());
-                PyTuple::new_bound(py, entries).into_py(py)
+                entries.push(py.None().into_bound(py).into_any());
+                PyTuple::new(py, entries)
             }
         }
     }

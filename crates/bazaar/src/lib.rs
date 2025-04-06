@@ -84,6 +84,19 @@ impl FromPyObject<'_> for FileId {
 }
 
 #[cfg(feature = "pyo3")]
+impl<'py> IntoPyObject<'py> for &FileId {
+    type Target = pyo3::types::PyBytes;
+
+    type Output = Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(PyBytes::new(py, &self.0))
+    }
+}
+
+#[cfg(feature = "pyo3")]
 impl<'py> IntoPyObject<'py> for FileId {
     type Target = pyo3::types::PyBytes;
 
@@ -92,7 +105,7 @@ impl<'py> IntoPyObject<'py> for FileId {
     type Error = pyo3::PyErr;
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        Ok(PyBytes::new_bound(py, &self.0))
+        (&self).into_pyobject(py)
     }
 }
 
@@ -152,6 +165,20 @@ impl FromPyObject<'_> for RevisionId {
 }
 
 #[cfg(feature = "pyo3")]
+impl<'py> IntoPyObject<'py> for &RevisionId {
+    type Target = pyo3::types::PyBytes;
+
+    type Output = Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        let obj = PyBytes::new(py, &self.0);
+        Ok(obj)
+    }
+}
+
+#[cfg(feature = "pyo3")]
 impl<'py> IntoPyObject<'py> for RevisionId {
     type Target = pyo3::types::PyBytes;
 
@@ -160,8 +187,7 @@ impl<'py> IntoPyObject<'py> for RevisionId {
     type Error = pyo3::PyErr;
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        let obj = PyBytes::new_bound(py, &self.0);
-        Ok(obj)
+        (&self).into_pyobject(py)
     }
 }
 

@@ -196,10 +196,10 @@ struct BreezyTraceHandler(
 );
 
 fn format_exception(py: Python, ei: &Bound<PyTuple>) -> PyResult<String> {
-    let io = py.import_bound("io")?;
+    let io = py.import("io")?;
     let sio = io.call_method0("StringIO")?;
 
-    let tb = py.import_bound("traceback")?;
+    let tb = py.import("traceback")?;
     tb.call_method1(
         "print_exception",
         (
@@ -219,15 +219,11 @@ fn format_exception(py: Python, ei: &Bound<PyTuple>) -> PyResult<String> {
 }
 
 fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResult<()> {
-    let traceback = py.import_bound("traceback")?;
+    let traceback = py.import("traceback")?;
     let tb = traceback
         .call_method1(
             "format_exception",
-            (
-                err.get_type_bound(py),
-                err.value_bound(py),
-                err.traceback_bound(py),
-            ),
+            (err.get_type(py), err.value(py), err.traceback_bound(py)),
         )?
         .extract::<Vec<String>>()?;
     log.log(
@@ -280,7 +276,7 @@ impl BreezyTraceHandler {
             let msg = pyr.getattr(py, "msg")?;
             let args = pyr.getattr(py, "args")?;
 
-            PyString::new_bound(py, "Logging record unformattable: {} % {}")
+            PyString::new(py, "Logging record unformattable: {} % {}")
                 .call_method1(
                     "format",
                     (msg.bind(py).repr().ok(), args.bind(py).repr().ok()),
@@ -490,9 +486,7 @@ impl LockHeldInfo {
 
     #[getter]
     fn nonce(&self, py: Python) -> Option<PyObject> {
-        self.0
-            .nonce()
-            .map(|x| PyBytes::new_bound(py, x).to_object(py))
+        self.0.nonce().map(|x| PyBytes::new(py, x).to_object(py))
     }
 
     #[getter]
@@ -526,7 +520,7 @@ impl LockHeldInfo {
     }
 
     fn to_bytes(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, self.0.to_bytes().as_slice()).to_object(py)
+        PyBytes::new(py, self.0.to_bytes().as_slice()).to_object(py)
     }
 
     fn __str__(&self) -> String {
@@ -555,7 +549,7 @@ impl LockHeldInfo {
     ) -> PyResult<Self> {
         Ok(Self(
             breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
-                let fb = PyBytes::new_bound(py, info_file_bytes).to_object(py);
+                let fb = PyBytes::new(py, info_file_bytes).to_object(py);
 
                 match e {
                     breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb)),
@@ -594,7 +588,7 @@ fn remove_tags(
 
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    let i18n = PyModule::new_bound(_py, "i18n")?;
+    let i18n = PyModule::new(_py, "i18n")?;
     i18n.add_function(wrap_pyfunction_bound!(i18n_install, &i18n)?)?;
     i18n.add_function(wrap_pyfunction_bound!(i18n_install_plugin, &i18n)?)?;
     i18n.add_function(wrap_pyfunction_bound!(i18n_gettext, &i18n)?)?;
@@ -641,11 +635,11 @@ fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction_bound!(format_see_also, m)?)?;
     m.add_class::<LockHeldInfo>()?;
 
-    let helpm = PyModule::new_bound(_py, "help")?;
+    let helpm = PyModule::new(_py, "help")?;
     help::help_topics(&helpm)?;
     m.add_submodule(&helpm)?;
 
-    let uncommitm = PyModule::new_bound(_py, "uncommit")?;
+    let uncommitm = PyModule::new(_py, "uncommit")?;
     uncommitm.add_function(wrap_pyfunction_bound!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 

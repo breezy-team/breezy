@@ -253,13 +253,13 @@ fn _urlutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(unescape, m)?)?;
     m.add_function(wrap_pyfunction!(derive_to_location, m)?)?;
     m.add_function(wrap_pyfunction!(file_relpath, m)?)?;
-    let win32m = PyModule::new_bound(py, "win32")?;
+    let win32m = PyModule::new(py, "win32")?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_extract_drive_letter, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_strip_local_trailing_slash, &win32m)?)?;
     m.add_submodule(&win32m)?;
-    let posixm = PyModule::new_bound(py, "posix")?;
+    let posixm = PyModule::new(py, "posix")?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, &posixm)?)?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, &posixm)?)?;
     m.add_submodule(&posixm)?;

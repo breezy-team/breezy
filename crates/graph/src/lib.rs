@@ -208,7 +208,7 @@ impl<'py, K: pyo3::IntoPyObject<'py, Error = pyo3::PyErr> + Hash + Clone + Parti
 
     fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
+        let dict = pyo3::types::PyDict::new(py);
         for (k, v) in self.into_iter() {
             dict.set_item(k, v)?;
         }
@@ -309,7 +309,7 @@ impl<'py, K: pyo3::IntoPyObject<'py> + Hash + Clone + PartialEq + Eq> pyo3::Into
 
     fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
+        let dict = pyo3::types::PyDict::new(py);
         for (k, v) in self.into_iter() {
             dict.set_item(k, v)?;
         }
@@ -558,7 +558,7 @@ impl<'py> pyo3::IntoPyObject<'py> for RevnoVec {
     type Error = pyo3::PyErr;
 
     fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
-        Ok(pyo3::types::PyTuple::new_bound(py, self.0.iter()))
+        pyo3::types::PyTuple::new(py, self.0.iter())
     }
 }
 

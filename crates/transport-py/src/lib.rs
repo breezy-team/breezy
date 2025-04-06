@@ -181,12 +181,12 @@ impl PyBufReadStream {
             let ret = py
                 .allow_threads(|| self.f.read(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new_bound(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.f.read_to_end(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new_bound(py, &buf).to_object(py))
+            Ok(PyBytes::new(py, &buf).to_object(py))
         }
     }
 
@@ -217,7 +217,7 @@ impl PyBufReadStream {
             .allow_threads(|| self.f.read_until(b'\n', &mut buf))
             .map_err(|e| self.map_io_err_to_py_err(e))?;
         buf.truncate(ret);
-        Ok(PyBytes::new_bound(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
@@ -233,9 +233,7 @@ impl PyBufReadStream {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(
-            PyBytes::new_bound(py, &buf).to_object(py).to_object(py),
-        ))
+        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
     }
 
     fn close(&mut self) -> PyResult<()> {
@@ -256,7 +254,7 @@ impl PyBufReadStream {
     }
 
     fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
@@ -299,7 +297,7 @@ impl Transport {
                 e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
             })?;
 
-        Ok(PyBytes::new_bound(py, &ret).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &ret).to_object(py).to_object(py))
     }
 
     #[getter]
@@ -544,6 +542,7 @@ impl Transport {
         py.allow_threads(|| self.0.is_readonly())
     }
 
+    #[pyo3(signature = (path, offsets, max_readv_combine=None, bytes_to_read_before_seek=None))]
     fn _readv<'a>(
         slf: &Bound<'a, Self>,
         py: Python<'a>,
@@ -553,7 +552,7 @@ impl Transport {
         bytes_to_read_before_seek: Option<usize>,
     ) -> PyResult<Bound<'a, PyAny>> {
         if offsets.is_empty() {
-            return Ok(PyList::empty_bound(py).into_any());
+            return Ok(PyList::empty(py).into_any());
         }
         let t = &slf.borrow().0;
         let ret = py.allow_threads(|| t.get(path)).map_err(|e| match e {
@@ -574,10 +573,11 @@ impl Transport {
             bytes_to_read_before_seek,
             Some(path),
         )?;
-        let list = PyList::new_bound(py, &buffered);
-        Ok(PyIterator::from_bound_object(&list)?.into_any())
+        let list = PyList::new(py, &buffered)?;
+        Ok(PyIterator::from_object(&list.into_any())?.into_any())
     }
 
+    #[pyo3(signature = (path, offsets, adjust_for_latency=None, upper_limit=None))]
     fn readv(
         &self,
         py: Python,
@@ -598,11 +598,11 @@ impl Transport {
             })
             .map(|r| {
                 r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
-                    .map(|(o, r)| (o, PyBytes::new_bound(py, &r).into_py(py)))
+                    .map(|(o, r)| (o, PyBytes::new(py, &r).into_py(py)))
             })
             .collect::<PyResult<Vec<(u64, PyObject)>>>()?;
-        let list = PyList::new_bound(py, &buffered);
-        Ok(PyIterator::from_bound_object(&list)?.to_object(py))
+        let list = PyList::new(py, &buffered)?;
+        Ok(PyIterator::from_object(&list.into_any())?.to_object(py))
     }
 
     fn listable(&self, py: Python) -> bool {
@@ -618,6 +618,7 @@ impl Transport {
         })
     }
 
+    #[pyo3(signature = (path, bytes, mode=None))]
     fn append_bytes(
         &self,
         py: Python,
@@ -630,6 +631,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
+    #[pyo3(signature = (path, file, mode=None))]
     fn append_file(
         &self,
         py: Python,
@@ -807,12 +809,12 @@ impl LocalTransport {
 
 #[pyfunction]
 fn get_test_permutations(py: Python) -> PyResult<PyObject> {
-    let test_server_module = py.import_bound("breezy.tests.test_server")?.to_object(py);
+    let test_server_module = py.import("breezy.tests.test_server")?.to_object(py);
     let local_url_server = test_server_module.getattr(py, "LocalURLServer")?;
     let local_transport = py
-        .import_bound("breezy.transport.local")?
+        .import("breezy.transport.local")?
         .getattr("LocalTransport")?;
-    let ret = PyList::empty_bound(py);
+    let ret = PyList::empty(py);
     ret.append((local_transport, local_url_server))?;
     Ok(ret.to_object(py))
 }
@@ -863,7 +865,7 @@ fn seek_and_read(
 
     std::iter::from_fn(move || py.allow_threads(|| data.next()))
         .map(|e| {
-            e.map(|(offset, data)| (offset, PyBytes::new_bound(py, data.as_slice()).into()))
+            e.map(|(offset, data)| (offset, PyBytes::new(py, data.as_slice()).into()))
                 .map_err(|(e, offset, length, actual)| match e.kind() {
                     std::io::ErrorKind::UnexpectedEof => ShortReadvError::new_err((
                         path.map(|p| p.to_string()),
@@ -911,12 +913,12 @@ impl PyFile {
             let ret = py
                 .allow_threads(|| self.0.read(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new_bound(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.0.read_to_end(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new_bound(py, &buf).to_object(py))
+            Ok(PyBytes::new(py, &buf).to_object(py))
         }
     }
 
@@ -929,7 +931,7 @@ impl PyFile {
         let mut buf = vec![];
         let ret = py.allow_threads(|| self.0.read_until(b'\n', &mut buf))?;
         buf.truncate(ret);
-        Ok(PyBytes::new_bound(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
@@ -945,13 +947,11 @@ impl PyFile {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(
-            PyBytes::new_bound(py, &buf).to_object(py).to_object(py),
-        ))
+        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
     }
 
     fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
@@ -1123,7 +1123,7 @@ mod sftp;
 #[pymodule]
 fn _transport_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Transport>()?;
-    let localm = PyModule::new_bound(py, "local")?;
+    let localm = PyModule::new(py, "local")?;
     localm.add_class::<LocalTransport>()?;
     m.add_submodule(&localm)?;
     m.add_class::<ReadLock>()?;
@@ -1134,7 +1134,7 @@ fn _transport_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;
     m.add_wrapped(wrap_pyfunction!(sort_expand_and_combine))?;
 
-    let sftpm = PyModule::new_bound(py, "sftp")?;
+    let sftpm = PyModule::new(py, "sftp")?;
     sftp::_sftp_rs(py, &sftpm)?;
     m.add_submodule(&sftpm)?;
     m.add_class::<ReadLock>()?;

@@ -67,9 +67,7 @@ impl Stanza {
     fn get(&self, tag: &str, py: Python) -> PyResult<Option<PyObject>> {
         if let Some(value) = self.stanza.get(tag) {
             match value {
-                bazaar::rio::StanzaValue::String(v) => {
-                    Ok(Some(PyString::new_bound(py, v).into_py(py)))
-                }
+                bazaar::rio::StanzaValue::String(v) => Ok(Some(PyString::new(py, v).into_py(py))),
                 bazaar::rio::StanzaValue::Stanza(v) => {
                     Ok(Some(Stanza { stanza: *v.clone() }.into_py(py)))
                 }
@@ -89,7 +87,7 @@ impl Stanza {
     }
 
     fn to_bytes<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyBytes>> {
-        let ret: Bound<PyBytes> = PyBytes::new_bound(py, self.stanza.to_bytes().as_slice());
+        let ret: Bound<PyBytes> = PyBytes::new(py, self.stanza.to_bytes().as_slice());
         Ok(ret)
     }
 
@@ -98,9 +96,9 @@ impl Stanza {
     }
 
     fn to_lines(&self, py: Python) -> PyResult<Py<PyList>> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         for line in self.stanza.to_lines() {
-            ret.append(PyBytes::new_bound(py, line.as_bytes()))?;
+            ret.append(PyBytes::new(py, line.as_bytes()))?;
         }
         Ok(ret.into())
     }
@@ -152,7 +150,7 @@ impl Stanza {
 
     // TODO: This is a hack to get around the fact that PyO3 doesn't support returning an iterator.
     fn iter_pairs<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyIterator>> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         for (tag, value) in self.stanza.iter_pairs() {
             match value {
                 bazaar::rio::StanzaValue::String(v) => {
@@ -164,11 +162,11 @@ impl Stanza {
                 }
             }
         }
-        Ok(PyIterator::from_bound_object(&ret)?)
+        Ok(PyIterator::from_object(&ret)?)
     }
 
     fn as_dict(&self, py: Python) -> PyResult<Py<PyDict>> {
-        let ret = PyDict::new_bound(py);
+        let ret = PyDict::new(py);
         for (tag, value) in self.stanza.iter_pairs() {
             match value {
                 bazaar::rio::StanzaValue::String(v) => ret.set_item(tag, v.to_string())?,
@@ -182,7 +180,7 @@ impl Stanza {
     }
 
     fn get_all(&self, tag: &str, py: Python) -> PyResult<Py<PyList>> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         for value in self.stanza.get_all(tag) {
             match value {
                 bazaar::rio::StanzaValue::String(v) => ret.append(v.to_string())?,
@@ -286,7 +284,7 @@ fn read_stanza(file: &Bound<PyAny>) -> PyResult<Option<Stanza>> {
 fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
     Python::with_gil(|py| {
         let reader = PyBinaryFile::from(file);
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
 
         let mut reader = BufReader::new(reader);
 
@@ -320,7 +318,7 @@ impl RioReader {
     }
 
     fn __iter__<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyIterator>> {
-        let ret = PyList::empty_bound(py);
+        let ret = PyList::empty(py);
         for stanza in self.reader.iter() {
             let stanza = stanza.map_err(|e| match e {
                 bazaar::rio::Error::Io(e) => {
@@ -335,7 +333,7 @@ impl RioReader {
                 .into_py(py),
             )?;
         }
-        Ok(PyIterator::from_bound_object(&ret)?)
+        Ok(PyIterator::from_object(&ret)?)
     }
 }
 
@@ -345,7 +343,7 @@ fn rio_iter<'a>(
     stanzas: &'a Bound<'a, PyAny>,
     header: Option<Vec<u8>>,
 ) -> PyResult<Bound<'a, PyIterator>> {
-    let ret = PyList::empty_bound(py);
+    let ret = PyList::empty(py);
     let pyiter = stanzas.iter()?;
     let mut stanzas = Vec::new();
     for stanza in pyiter {
@@ -354,9 +352,9 @@ fn rio_iter<'a>(
     }
     for line in bazaar::rio::rio_iter(stanzas.into_iter(), header) {
         let line = line.as_slice();
-        ret.append(PyBytes::new_bound(py, line))?;
+        ret.append(PyBytes::new(py, line))?;
     }
-    Ok(PyIterator::from_bound_object(&ret)?)
+    Ok(PyIterator::from_object(&ret)?)
 }
 
 pub(crate) fn rio(m: &Bound<PyModule>) -> PyResult<()> {
