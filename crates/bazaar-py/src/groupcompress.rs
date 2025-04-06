@@ -39,6 +39,7 @@ fn decode_copy_instruction(data: Vec<u8>, cmd: u8, pos: usize) -> PyResult<(usiz
 }
 
 #[pyfunction]
+#[pyo3(signature = (source, delta_start, delta_end))]
 fn apply_delta_to_source(
     py: Python,
     source: &[u8],

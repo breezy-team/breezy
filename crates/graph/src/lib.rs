@@ -91,7 +91,8 @@ impl<'a, K: pyo3::FromPyObject<'a> + Clone + PartialEq + Eq> pyo3::FromPyObject<
 where
     K: 'a,
 {
-    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(obj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         if obj.is_none() {
             Ok(Parents::Ghost)
         } else {
@@ -231,7 +232,8 @@ impl<'a, K: pyo3::FromPyObject<'a> + Hash + Clone + PartialEq + Eq + 'a> pyo3::F
 where
     K: 'a,
 {
-    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(obj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let dict = obj.downcast::<pyo3::types::PyDict>()?;
         let mut result = ParentMap::new();
         for (k, v) in dict.iter() {
@@ -572,7 +574,8 @@ impl pyo3::ToPyObject for RevnoVec {
 
 #[cfg(feature = "pyo3")]
 impl<'source> pyo3::FromPyObject<'source> for RevnoVec {
-    fn extract(ob: &'source pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<'source, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let tuple = ob.downcast::<pyo3::types::PyTuple>()?;
         let mut ret = RevnoVec::new();
         for r in tuple.iter() {

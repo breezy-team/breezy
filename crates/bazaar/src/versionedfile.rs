@@ -104,7 +104,8 @@ impl pyo3::IntoPy<pyo3::PyObject> for Ordering {
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Ordering {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let s = ob.extract::<String>()?;
         match s.as_str() {
             "unordered" => Ok(Ordering::Unordered),
@@ -129,7 +130,8 @@ impl pyo3::ToPyObject for VersionId {
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for VersionId {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let bytes = ob.extract::<Vec<u8>>()?;
         Ok(VersionId(bytes))
     }
@@ -212,13 +214,14 @@ impl pyo3::ToPyObject for Key {
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Key {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         // Look at the type name, stripping out the module name.
         match ob
             .get_type()
             .name()
             .unwrap()
-            .as_ref()
+            .to_string()
             .split('.')
             .last()
             .unwrap()
@@ -233,10 +236,13 @@ impl pyo3::FromPyObject<'_> for Key {
         }
         let mut v = Vec::with_capacity(ob.len()?);
         for i in 0..ob.len()? - 1 {
-            let b = ob.get_item(i)?.extract::<&PyBytes>()?;
+            let b = ob.get_item(i)?.extract::<Bound<PyBytes>>()?;
             v.push(b.as_bytes().to_vec());
         }
-        if let Some(b) = ob.get_item(ob.len()? - 1)?.extract::<Option<&PyBytes>>()? {
+        if let Some(b) = ob
+            .get_item(ob.len()? - 1)?
+            .extract::<Option<Bound<PyBytes>>>()?
+        {
             v.push(b.as_bytes().to_vec());
             Ok(Key::Fixed(v))
         } else {

@@ -169,12 +169,12 @@ impl Revision {
     ) -> PyResult<Self> {
         let mut cproperties: HashMap<String, Vec<u8>> = HashMap::new();
         for (k, v) in properties.unwrap_or(HashMap::new()) {
-            if let Ok(s) = v.extract::<&PyBytes>(py) {
+            if let Ok(s) = v.extract::<Bound<PyBytes>>(py) {
                 cproperties.insert(k, s.as_bytes().to_vec());
-            } else if let Ok(s) = v.extract::<&PyString>(py) {
+            } else if let Ok(s) = v.extract::<Bound<PyString>>(py) {
                 let s = s
                     .call_method1("encode", ("utf-8", "surrogateescape"))?
-                    .extract::<&PyBytes>()?;
+                    .extract::<Bound<PyBytes>>()?;
                 cproperties.insert(k, s.as_bytes().to_vec());
             } else {
                 return Err(PyTypeError::new_err(
@@ -254,7 +254,7 @@ impl Revision {
 
     #[setter]
     fn set_inventory_sha1(&mut self, py: Python, value: PyObject) -> PyResult<()> {
-        if let Ok(value) = value.extract::<&PyBytes>(py) {
+        if let Ok(value) = value.extract::<Bound<PyBytes>>(py) {
             self.0.inventory_sha1 = Some(value.as_bytes().to_vec());
             Ok(())
         } else if value.is_none(py) {

@@ -177,7 +177,7 @@ impl Transport for PyTransport {
     fn get_bytes(&self, path: &str) -> Result<Vec<u8>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get_bytes", (path,))?;
-            let bytes = obj.extract::<&PyBytes>(py)?;
+            let bytes = obj.extract::<Bound<PyBytes>>(py)?;
             Ok(bytes.as_bytes().to_vec())
         })
     }

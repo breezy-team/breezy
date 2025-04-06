@@ -63,7 +63,7 @@ impl PyChunksToLinesIterator {
                     }
                 } else {
                     let chunk_iter = self.chunk_iter.clone_ref(py);
-                    if let Some(next_chunk) = chunk_iter.downcast::<PyIterator>(py)?.next() {
+                    if let Some(next_chunk) = chunk_iter.extract::<Bound<PyIterator>>(py)?.next() {
                         let next_chunk = next_chunk?;
                         let next_chunk = next_chunk.extract::<&[u8]>()?;
                         chunk.extend_from_slice(next_chunk);
@@ -75,7 +75,9 @@ impl PyChunksToLinesIterator {
                         self.tail = Some(chunk);
                     }
                 }
-            } else if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+            } else if let Some(next_chunk) =
+                self.chunk_iter.extract::<Bound<PyIterator>>(py)?.next()
+            {
                 let next_chunk_py = next_chunk?;
                 let next_chunk = next_chunk_py.extract::<&[u8]>()?;
                 if let Some(newline) = memchr::memchr(b'\n', next_chunk) {
@@ -119,20 +121,20 @@ fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
 }
 
 #[pyfunction]
-fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
+fn split_lines<'a>(py: Python<'a>, mut chunks: Bound<'a, PyAny>) -> PyResult<Bound<'a, PyAny>> {
     let ret = PyList::empty_bound(py);
-    if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
-        chunks = PyList::new_bound(py, [chunk]).into_py(py);
+    if let Ok(chunk) = chunks.extract::<Bound<PyBytes>>() {
+        chunks = PyList::new_bound(py, [chunk]).into_any();
     }
 
-    let chunk_iter = chunks.call_method0(py, "__iter__");
+    let chunk_iter = chunks.call_method0("__iter__");
     if chunk_iter.is_err() {
         return Err(PyTypeError::new_err("chunks must be iterable"));
     }
-    let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
+    let iter = PyChunksToLinesIterator::new(chunk_iter?.into_py(py))?;
     let iter = iter.into_py(py);
     ret.call_method1("extend", (iter,))?;
-    Ok(ret.into_py(py))
+    Ok(ret.into_any())
 }
 
 #[pyfunction]
@@ -492,8 +494,8 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
         let py_iter = py_iterable.call_method0(py, "__iter__")?;
         let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(
             std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
-                Python::with_gil(
-                    |py| match py_iter.downcast::<PyIterator>(py).unwrap().next() {
+                Python::with_gil(|py| {
+                    match py_iter.extract::<Bound<PyIterator>>(py).unwrap().next() {
                         None => None,
                         Some(Err(err)) => {
                             PyErr::restore(err.clone_ref(py), py);
@@ -515,8 +517,8 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
                             }
                             Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec())),
                         },
-                    },
-                )
+                    }
+                })
             }),
         );
 

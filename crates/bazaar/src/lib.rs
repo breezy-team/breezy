@@ -77,7 +77,7 @@ impl FileId {
 
 #[cfg(feature = "pyo3")]
 impl FromPyObject<'_> for FileId {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         let s: Vec<u8> = ob.extract()?;
         Ok(FileId::from(s))
     }
@@ -140,7 +140,7 @@ impl From<RevisionId> for Vec<u8> {
 
 #[cfg(feature = "pyo3")]
 impl FromPyObject<'_> for RevisionId {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         let s: Vec<u8> = ob.extract()?;
         if !is_valid(&s) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(

@@ -145,14 +145,14 @@ fn bisect_dirblock(
     hi: Option<usize>,
     cache: Option<Bound<PyDict>>,
 ) -> PyResult<usize> {
-    fn split_object(py: Python, obj: &Bound<PyAny>) -> PyResult<Vec<PathBuf>> {
-        if let Ok(py_str) = obj.extract::<&PyString>() {
+    fn split_object(obj: &Bound<PyAny>) -> PyResult<Vec<PathBuf>> {
+        if let Ok(py_str) = obj.extract::<Bound<PyString>>() {
             Ok(py_str
                 .to_str()?
                 .split('/')
                 .map(PathBuf::from)
                 .collect::<Vec<_>>())
-        } else if let Ok(py_bytes) = obj.extract::<&PyBytes>() {
+        } else if let Ok(py_bytes) = obj.extract::<Bound<PyBytes>>() {
             Ok(py_bytes
                 .as_bytes()
                 .split(|&byte| byte == b'/')
@@ -169,7 +169,7 @@ fn bisect_dirblock(
     let dirname_split = match cache.get_item(&dirname)? {
         Some(item) => item.extract::<Vec<PathBuf>>()?,
         None => {
-            let split = split_object(py, dirname)?;
+            let split = split_object(dirname)?;
             cache.set_item(dirname.clone(), split.clone())?;
             split
         }
@@ -186,7 +186,7 @@ fn bisect_dirblock(
         let cur_split = match cache.get_item(&cur)? {
             Some(item) => item.extract::<Vec<PathBuf>>()?,
             None => {
-                let split = split_object(py, &cur)?;
+                let split = split_object(&cur)?;
                 cache.set_item(cur, split.clone())?;
                 split
             }

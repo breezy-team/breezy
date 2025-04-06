@@ -244,7 +244,8 @@ impl pyo3::ToPyObject for Kind {
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Kind {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let s: String = ob.extract()?;
         match s.as_str() {
             "file" => Ok(Kind::File),

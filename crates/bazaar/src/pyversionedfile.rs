@@ -12,7 +12,7 @@ impl ToPyObject for PyContentFactory {
 }
 
 impl FromPyObject<'_> for PyContentFactory {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
         Python::with_gil(|py| Ok(PyContentFactory(ob.to_object(py))))
     }
 }

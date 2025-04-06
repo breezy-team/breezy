@@ -195,7 +195,7 @@ struct BreezyTraceHandler(
     Box<std::sync::Arc<breezy::trace::BreezyTraceLogger<Box<dyn Write + Send>>>>,
 );
 
-fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
+fn format_exception(py: Python, ei: &Bound<PyTuple>) -> PyResult<String> {
     let io = py.import_bound("io")?;
     let sio = io.call_method0("StringIO")?;
 
@@ -291,11 +291,11 @@ impl BreezyTraceHandler {
         };
 
         if let Ok(exc_info) = pyr.getattr(py, "exc_info") {
-            if let Ok(exc_info) = exc_info.extract::<&PyTuple>(py) {
+            if let Ok(exc_info) = exc_info.extract::<Bound<PyTuple>>(py) {
                 if !formatted.ends_with('\n') {
                     formatted.push('\n');
                 }
-                formatted += format_exception(py, exc_info)?.as_str();
+                formatted += format_exception(py, &exc_info)?.as_str();
             }
         }
 

@@ -16,6 +16,7 @@ fn is_url(url: &str) -> bool {
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn split(url: &str, exclude_trailing_slash: Option<bool>) -> (String, String) {
     breezy_urlutils::split(url, exclude_trailing_slash.unwrap_or(true))
 }

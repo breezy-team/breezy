@@ -47,13 +47,7 @@ impl std::fmt::Display for PyNode {
 
 impl Clone for PyNode {
     fn clone(&self) -> PyNode {
-        PyNode(self.0.clone())
-    }
-}
-
-impl From<&PyAny> for PyNode {
-    fn from(obj: &PyAny) -> PyNode {
-        PyNode(obj.to_object(obj.py()))
+        Python::with_gil(|py| PyNode(self.0.clone_ref(py)))
     }
 }
 
@@ -70,7 +64,7 @@ impl<'a> From<Bound<'a, PyAny>> for PyNode {
 }
 
 impl FromPyObject<'_> for PyNode {
-    fn extract(obj: &PyAny) -> PyResult<Self> {
+    fn extract_bound(obj: &Bound<PyAny>) -> PyResult<Self> {
         Ok(PyNode(obj.to_object(obj.py())))
     }
 }
