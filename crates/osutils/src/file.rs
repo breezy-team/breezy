@@ -125,8 +125,8 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dest: Q) -> std::io:
     }
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
-pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dest: Q) -> io::Result<()> {
+#[cfg(any(target_os = "windows"))]
+pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dest: Q) -> std::io::Result<()> {
     std::fs::copy(src.as_ref(), dest.as_ref())?;
 }
 
