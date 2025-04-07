@@ -175,18 +175,18 @@ impl PyBufReadStream {
 
 #[pymethods]
 impl PyBufReadStream {
-    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+    fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
             let ret = py
                 .allow_threads(|| self.f.read(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new(py, &buf[..ret]))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.f.read_to_end(&mut buf))
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
-            Ok(PyBytes::new(py, &buf).to_object(py))
+            Ok(PyBytes::new(py, &buf))
         }
     }
 
@@ -211,20 +211,20 @@ impl PyBufReadStream {
             .map_err(|e| self.map_io_err_to_py_err(e))
     }
 
-    fn readline(&mut self, py: Python) -> PyResult<PyObject> {
+    fn readline<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyBytes>> {
         let mut buf = vec![];
         let ret = py
             .allow_threads(|| self.f.read_until(b'\n', &mut buf))
             .map_err(|e| self.map_io_err_to_py_err(e))?;
         buf.truncate(ret);
-        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &buf))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
         slf.into()
     }
 
-    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn __next__<'a>(&mut self, py: Python<'a>) -> PyResult<Option<Bound<'a, PyBytes>>> {
         let mut buf = vec![];
         let ret = py
             .allow_threads(|| self.f.read_until(b'\n', &mut buf))
@@ -233,7 +233,7 @@ impl PyBufReadStream {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+        Ok(Some(PyBytes::new(py, &buf)))
     }
 
     fn close(&mut self) -> PyResult<()> {
@@ -253,12 +253,12 @@ impl PyBufReadStream {
         Ok(false)
     }
 
-    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+    fn readlines<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         let ret = PyList::empty(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
-        Ok(ret.to_object(py))
+        Ok(ret)
     }
 }
 
@@ -283,7 +283,11 @@ impl Transport {
         Ok(format!("{:?}", self.0))
     }
 
-    fn get_bytes(slf: &Bound<Self>, py: Python, path: &str) -> PyResult<PyObject> {
+    fn get_bytes<'a>(
+        slf: Bound<'a, Self>,
+        py: Python<'a>,
+        path: &'a str,
+    ) -> PyResult<Bound<'a, PyBytes>> {
         let t = &slf.borrow().0;
         let ret = py
             .allow_threads(|| t.get_bytes(path))
@@ -297,7 +301,7 @@ impl Transport {
                 e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
             })?;
 
-        Ok(PyBytes::new(py, &ret).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &ret))
     }
 
     #[getter]
@@ -335,7 +339,11 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn get(slf: PyRef<Self>, py: Python, path: &str) -> PyResult<PyObject> {
+    fn get<'a>(
+        slf: PyRef<'a, Self>,
+        py: Python<'a>,
+        path: &'a str,
+    ) -> PyResult<Bound<'a, PyBufReadStream>> {
         let t = &slf.0;
         let ret = py.allow_threads(|| t.get(path)).map_err(|e| match e {
             Error::IsADirectoryError(_) => {
@@ -346,7 +354,7 @@ impl Transport {
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;
-        Ok(PyBufReadStream::new(ret, Path::new(path)).into_py(py))
+        Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))
     }
 
     fn get_smart_medium(slf: &Bound<Self>, py: Python) -> PyResult<PyObject> {
@@ -358,17 +366,19 @@ impl Transport {
         Ok(py.None())
     }
 
-    fn stat(&self, py: Python, path: &str) -> PyResult<PyObject> {
+    fn stat<'a>(&self, py: Python<'a>, path: &str) -> PyResult<Bound<'a, PyStat>> {
         let t = &self.0;
         let stat = py
             .allow_threads(|| t.stat(path))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
-        Ok(PyStat {
-            st_size: stat.size,
-            st_mode: stat.mode,
-            st_mtime: stat.mtime,
-        }
-        .into_py(py))
+        Bound::new(
+            py,
+            PyStat {
+                st_size: stat.size,
+                st_mode: stat.mode,
+                st_mtime: stat.mtime,
+            },
+        )
     }
 
     fn relpath(&self, path: Option<&str>) -> PyResult<String> {
@@ -564,10 +574,10 @@ impl Transport {
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;
-        let f = PyBufReadStream::new(ret, Path::new(path)).into_py(py);
+        let f = Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))?;
         let buffered = seek_and_read(
             py,
-            f,
+            f.into_any(),
             offsets,
             max_readv_combine,
             bytes_to_read_before_seek,
@@ -578,14 +588,14 @@ impl Transport {
     }
 
     #[pyo3(signature = (path, offsets, adjust_for_latency=None, upper_limit=None))]
-    fn readv(
+    fn readv<'a>(
         &self,
-        py: Python,
+        py: Python<'a>,
         path: &str,
         offsets: Vec<(u64, usize)>,
         adjust_for_latency: Option<bool>,
         upper_limit: Option<u64>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Bound<'a, PyIterator>> {
         let t = &self.0;
         let buffered = py
             .allow_threads(|| {
@@ -598,11 +608,11 @@ impl Transport {
             })
             .map(|r| {
                 r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
-                    .map(|(o, r)| (o, PyBytes::new(py, &r).into_py(py)))
+                    .map(|(o, r)| (o, PyBytes::new(py, &r)))
             })
-            .collect::<PyResult<Vec<(u64, PyObject)>>>()?;
+            .collect::<PyResult<Vec<(u64, Bound<PyBytes>)>>>()?;
         let list = PyList::new(py, &buffered)?;
-        Ok(PyIterator::from_object(&list.into_any())?.to_object(py))
+        Ok(PyIterator::from_object(&list)?)
     }
 
     fn listable(&self, py: Python) -> bool {
@@ -665,7 +675,7 @@ impl Transport {
         let t = &slf.borrow().0;
         py.allow_threads(|| t.open_write_stream(path, mode.map(perms_from_py_object)))
             .map_err(|e| Transport::map_to_py_err(slf.borrow(), py, e, Some(path)))
-            .map(|w| PyWriteStream(w))
+            .map(PyWriteStream)
     }
 
     fn delete_tree(&self, py: Python, path: &str) -> PyResult<()> {
@@ -719,7 +729,7 @@ impl Transport {
     ) -> PyResult<usize> {
         let relpaths = relpaths
             .bind(py)
-            .iter()?
+            .try_iter()?
             .map(|o| o?.extract::<String>())
             .collect::<PyResult<Vec<_>>>()?;
 
@@ -791,7 +801,11 @@ impl LocalTransport {
         ))
     }
 
-    fn clone(slf: PyRef<Self>, py: Python, offset: Option<PyObject>) -> PyResult<PyObject> {
+    fn clone<'a>(
+        slf: PyRef<'a, Self>,
+        py: Python<'a>,
+        offset: Option<PyObject>,
+    ) -> PyResult<Bound<'a, LocalTransport>> {
         let super_ = slf.as_ref();
         let inner = if let Some(offset) = offset {
             let offset = offset.extract::<String>(py)?;
@@ -803,20 +817,20 @@ impl LocalTransport {
 
         let init = PyClassInitializer::from(Transport(inner));
         let init = init.add_subclass(Self {});
-        Ok(Bound::new(py, init)?.to_object(py))
+        Ok(Bound::new(py, init)?)
     }
 }
 
 #[pyfunction]
-fn get_test_permutations(py: Python) -> PyResult<PyObject> {
-    let test_server_module = py.import("breezy.tests.test_server")?.to_object(py);
-    let local_url_server = test_server_module.getattr(py, "LocalURLServer")?;
+fn get_test_permutations(py: Python) -> PyResult<Bound<PyList>> {
+    let test_server_module = py.import("breezy.tests.test_server")?;
+    let local_url_server = test_server_module.getattr("LocalURLServer")?;
     let local_transport = py
         .import("breezy.transport.local")?
         .getattr("LocalTransport")?;
     let ret = PyList::empty(py);
     ret.append((local_transport, local_url_server))?;
-    Ok(ret.to_object(py))
+    Ok(ret)
 }
 
 #[pyfunction]
@@ -845,7 +859,7 @@ const DEFAULT_BYTES_TO_READ_BEFORE_SEEK: usize = 0;
 #[pyfunction]
 fn seek_and_read(
     py: Python,
-    file: PyObject,
+    file: Bound<PyAny>,
     offsets: Vec<(usize, usize)>,
     max_readv_combine: Option<usize>,
     bytes_to_read_before_seek: Option<usize>,
@@ -907,18 +921,18 @@ impl PyFile {
         true
     }
 
-    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+    fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
             let ret = py
                 .allow_threads(|| self.0.read(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+            Ok(PyBytes::new(py, &buf[..ret]))
         } else {
             let mut buf = Vec::new();
             py.allow_threads(|| self.0.read_to_end(&mut buf))
                 .map_err(|e| -> PyErr { e.into() })?;
-            Ok(PyBytes::new(py, &buf).to_object(py))
+            Ok(PyBytes::new(py, &buf))
         }
     }
 
@@ -927,18 +941,18 @@ impl PyFile {
             .map_err(|e| e.into())
     }
 
-    fn readline(&mut self, py: Python) -> PyResult<PyObject> {
+    fn readline<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyBytes>> {
         let mut buf = vec![];
         let ret = py.allow_threads(|| self.0.read_until(b'\n', &mut buf))?;
         buf.truncate(ret);
-        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+        Ok(PyBytes::new(py, &buf))
     }
 
     fn __iter__(slf: PyRef<Self>) -> Py<Self> {
         slf.into()
     }
 
-    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn __next__<'a>(&mut self, py: Python<'a>) -> PyResult<Option<Bound<'a, PyBytes>>> {
         let mut buf = vec![];
         let ret = py
             .allow_threads(|| self.0.read_until(b'\n', &mut buf))
@@ -947,15 +961,15 @@ impl PyFile {
             return Ok(None);
         }
         buf.truncate(ret);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+        Ok(Some(PyBytes::new(py, &buf)))
     }
 
-    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+    fn readlines<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         let ret = PyList::empty(py);
         while let Some(line) = self.__next__(py)? {
             ret.append(line)?;
         }
-        Ok(ret.to_object(py))
+        Ok(ret)
     }
 
     fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
@@ -1043,14 +1057,20 @@ impl ReadLock {
         )))
     }
 
-    fn temporary_write_lock(slf: &Bound<Self>, py: Python) -> PyResult<(bool, PyObject)> {
+    fn temporary_write_lock<'a>(
+        slf: Bound<'a, Self>,
+        py: Python<'a>,
+    ) -> PyResult<(bool, Bound<'a, PyAny>)> {
         let mut m = slf.borrow_mut();
         if let Some(read_lock) = m.0.take() {
             match read_lock.temporary_write_lock() {
-                Ok(twl) => Ok((true, TemporaryWriteLock(Some(twl)).into_py(py))),
+                Ok(twl) => Ok((
+                    true,
+                    Bound::new(py, TemporaryWriteLock(Some(twl)))?.into_any(),
+                )),
                 Err((rl, LockError::Contention(_))) => {
                     m.0 = Some(rl);
-                    Ok((false, slf.to_object(slf.py())))
+                    Ok((false, slf.into_any()))
                 }
                 Err((_rl, LockError::Failed(p, w))) => Err(LockFailed::new_err((p, w))),
                 Err((_rl, LockError::IoError(e))) => Err(e.into()),

@@ -59,7 +59,7 @@ impl From<PyObject> for PyNode {
 
 impl<'a> From<Bound<'a, PyAny>> for PyNode {
     fn from(obj: Bound<'a, PyAny>) -> PyNode {
-        PyNode(obj.to_object(obj.py()))
+        PyNode(obj.unbind())
     }
 }
 
@@ -172,7 +172,7 @@ struct PyParentsProvider {
 impl PyParentsProvider {
     fn get_parent_map(&mut self, py: Python, keys: PyObject) -> PyResult<ParentMap<PyNode>> {
         let mut hash_key: HashSet<PyNode> = HashSet::new();
-        for key in keys.bind(py).iter()? {
+        for key in keys.bind(py).try_iter()? {
             hash_key.insert(key?.into());
         }
         Ok(self
@@ -182,11 +182,14 @@ impl PyParentsProvider {
 }
 
 #[pyfunction]
-fn DictParentsProvider(py: Python, parent_map: ParentMap<PyNode>) -> PyResult<PyObject> {
+fn DictParentsProvider<'py>(
+    py: Python<'py>,
+    parent_map: ParentMap<PyNode>,
+) -> PyResult<Bound<'py, PyParentsProvider>> {
     let provider = PyParentsProvider {
         provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map)),
     };
-    Ok(provider.into_py(py))
+    Bound::new(py, provider)
 }
 
 #[pyclass]
@@ -202,9 +205,9 @@ impl TopoSorter {
             graph
                 .downcast_bound::<PyDict>(py)?
                 .call_method0("items")?
-                .iter()?
+                .try_iter()?
         } else {
-            graph.bind(py).iter()?
+            graph.bind(py).try_iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
@@ -218,7 +221,7 @@ impl TopoSorter {
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         match self.sorter.next() {
             None => Ok(None),
-            Some(Ok(node)) => Ok(Some(node.into_pyobject(py)?.into_py(py))),
+            Some(Ok(node)) => Ok(Some(node.into_pyobject(py)?.unbind())),
             Some(Err(breezy_graph::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
             Some(Err(e)) => panic!("Unexpected error: {:?}", e),
         }
@@ -242,9 +245,10 @@ impl TopoSorter {
 }
 
 fn revno_vec_to_py(py: Python, revno: RevnoVec) -> PyObject {
-    PyTuple::new(py, revno.into_iter().map(|v| v.into_py(py)))
+    PyTuple::new(py, revno.into_iter().map(|v| v.into_pyobject(py).unwrap()))
         .unwrap()
-        .to_object(py)
+        .into_any()
+        .unbind()
 }
 
 #[pyclass]
@@ -276,9 +280,9 @@ impl MergeSorter {
             graph
                 .downcast_bound::<PyDict>(py)?
                 .call_method0("items")?
-                .iter()?
+                .try_iter()?
         } else {
-            graph.bind(py).iter()?
+            graph.bind(py).try_iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
@@ -288,7 +292,7 @@ impl MergeSorter {
         let mainline_revisions = if let Some(mainline_revisions) = mainline_revisions {
             let mainline_revisions = mainline_revisions
                 .bind(py)
-                .iter()?
+                .try_iter()?
                 .map(|k| k?.extract::<PyObject>())
                 .collect::<PyResult<Vec<PyObject>>>()?;
             Some(mainline_revisions.into_iter().map(PyNode::from).collect())
@@ -348,7 +352,7 @@ impl MergeSorter {
         slf
     }
 
-    fn sorted(&mut self, py: Python) -> PyResult<PyObject> {
+    fn sorted<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         let ret = PyList::empty(py);
         loop {
             let item = self.__next__(py)?;
@@ -358,7 +362,7 @@ impl MergeSorter {
                 break;
             }
         }
-        Ok(ret.to_object(py))
+        Ok(ret)
     }
 }
 
@@ -389,7 +393,7 @@ fn merge_sort(
     branch_tip: Option<PyObject>,
     mainline_revisions: Option<PyObject>,
     generate_revno: Option<bool>,
-) -> PyResult<PyObject> {
+) -> PyResult<Bound<PyList>> {
     let mut sorter = MergeSorter::new(py, graph, branch_tip, mainline_revisions, generate_revno)?;
     sorter.sorted(py)
 }

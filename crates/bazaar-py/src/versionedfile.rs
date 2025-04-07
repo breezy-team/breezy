@@ -131,18 +131,18 @@ impl AbsentContentFactory {
 }
 
 #[pyfunction]
-fn fulltext_network_to_record(
-    py: Python,
-    _kind: &str,
-    bytes: &[u8],
+fn fulltext_network_to_record<'a>(
+    py: Python<'a>,
+    _kind: &'a str,
+    bytes: &'a [u8],
     line_end: usize,
-) -> Vec<PyObject> {
+) -> Vec<Bound<'a, FulltextContentFactory>> {
     let record = bazaar::versionedfile::fulltext_network_to_record(bytes, line_end);
 
     let sub = PyClassInitializer::from(AbstractContentFactory(Box::new(record)))
         .add_subclass(FulltextContentFactory);
 
-    vec![Py::new(py, sub).unwrap().to_object(py)]
+    vec![Bound::new(py, sub).unwrap()]
 }
 
 pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<Bound<PyModule>> {

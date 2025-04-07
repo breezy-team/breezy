@@ -140,7 +140,7 @@ impl Iterator for PyRecordStreamIter {
         Python::with_gil(|py| {
             let py_record_stream_iter = self.0.bind(py);
             let py_content_factory = py_record_stream_iter.call_method0("next").unwrap();
-            let content_factory = PyContentFactory(py_content_factory.to_object(py));
+            let content_factory = PyContentFactory(py_content_factory.unbind());
             Some(content_factory)
         })
     }
@@ -194,7 +194,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
                     (version_ids, ordering, include_delta_closure),
                 )
                 .unwrap();
-            Box::new(PyRecordStreamIter(py_record_stream.to_object(py)))
+            Box::new(PyRecordStreamIter(py_record_stream.unbind()))
         }))
     }
 

@@ -43,17 +43,14 @@ impl Stanza {
         Ok(obj)
     }
 
-    fn __richcmp__(&self, other: &Bound<PyAny>, op: CompareOp) -> PyResult<PyObject> {
+    fn __richcmp__(&self, other: &Bound<PyAny>, op: CompareOp) -> PyResult<bool> {
         match op {
             CompareOp::Eq => {
                 let other_stanza = other.extract::<Stanza>();
                 if other_stanza.is_err() {
-                    Ok(false.into_py(other.py()))
+                    Ok(false)
                 } else {
-                    Ok(self
-                        .stanza
-                        .eq(&other_stanza.unwrap().stanza)
-                        .into_py(other.py()))
+                    Ok(self.stanza.eq(&other_stanza.unwrap().stanza))
                 }
             }
             _ => Err(PyErr::new::<PyNotImplementedError, _>("Not implemented")),
@@ -64,13 +61,13 @@ impl Stanza {
         Ok(format!("{:?}", self.stanza))
     }
 
-    fn get(&self, tag: &str, py: Python) -> PyResult<Option<PyObject>> {
+    fn get<'py>(&self, tag: &str, py: Python<'py>) -> PyResult<Option<Bound<'py, PyAny>>> {
         if let Some(value) = self.stanza.get(tag) {
             match value {
-                bazaar::rio::StanzaValue::String(v) => Ok(Some(PyString::new(py, v).into_py(py))),
-                bazaar::rio::StanzaValue::Stanza(v) => {
-                    Ok(Some(Stanza { stanza: *v.clone() }.into_py(py)))
-                }
+                bazaar::rio::StanzaValue::String(v) => Ok(Some(PyString::new(py, v).into_any())),
+                bazaar::rio::StanzaValue::Stanza(v) => Ok(Some(
+                    Bound::new(py, Stanza { stanza: *v.clone() })?.into_any(),
+                )),
             }
         } else {
             Ok(None)
@@ -158,11 +155,11 @@ impl Stanza {
                 }
                 bazaar::rio::StanzaValue::Stanza(v) => {
                     let sub: Stanza = Stanza { stanza: *v.clone() };
-                    ret.append((tag.to_string(), sub.into_py(py)))?;
+                    ret.append((tag.to_string(), sub))?;
                 }
             }
         }
-        Ok(PyIterator::from_object(&ret)?)
+        PyIterator::from_object(&ret)
     }
 
     fn as_dict(&self, py: Python) -> PyResult<Py<PyDict>> {
@@ -172,7 +169,7 @@ impl Stanza {
                 bazaar::rio::StanzaValue::String(v) => ret.set_item(tag, v.to_string())?,
                 bazaar::rio::StanzaValue::Stanza(v) => {
                     let sub: Stanza = Stanza { stanza: *v.clone() };
-                    ret.set_item(tag, sub.into_py(py))?;
+                    ret.set_item(tag, sub)?;
                 }
             }
         }
@@ -242,7 +239,7 @@ fn read_stanza_file(file: PyObject) -> PyResult<Option<Stanza>> {
 
 #[pyfunction]
 fn read_stanza(file: &Bound<PyAny>) -> PyResult<Option<Stanza>> {
-    let mut py_iter = file.iter()?;
+    let mut py_iter = file.try_iter()?;
     let mut pyerr: Option<PyErr> = None;
     let line_iter = std::iter::from_fn(|| -> Option<Result<Vec<u8>, bazaar::rio::Error>> {
         let line = py_iter.next()?;
@@ -295,7 +292,7 @@ fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
             _ => PyErr::new::<PyValueError, _>("Error reading stanza file: ".to_string()),
         })?;
         for stanza in stanzas {
-            ret.append((Stanza { stanza }).into_py(py))?;
+            ret.append(Stanza { stanza })?;
         }
         Ok(ret.into())
     })
@@ -326,12 +323,9 @@ impl RioReader {
                 }
                 _ => PyErr::new::<PyValueError, _>("Error reading stanza file: ".to_string()),
             })?;
-            ret.append(
-                (Stanza {
-                    stanza: stanza.unwrap(),
-                })
-                .into_py(py),
-            )?;
+            ret.append(Stanza {
+                stanza: stanza.unwrap(),
+            })?;
         }
         Ok(PyIterator::from_object(&ret)?)
     }
@@ -344,7 +338,7 @@ fn rio_iter<'a>(
     header: Option<Vec<u8>>,
 ) -> PyResult<Bound<'a, PyIterator>> {
     let ret = PyList::empty(py);
-    let pyiter = stanzas.iter()?;
+    let pyiter = stanzas.try_iter()?;
     let mut stanzas = Vec::new();
     for stanza in pyiter {
         let stanza = stanza?;

@@ -263,23 +263,24 @@ struct SHA1Provider {
 
 #[pymethods]
 impl SHA1Provider {
-    fn sha1(&mut self, py: Python, path: &Bound<PyAny>) -> PyResult<PyObject> {
+    fn sha1<'a>(&mut self, py: Python<'a>, path: &Bound<PyAny>) -> PyResult<Bound<'a, PyBytes>> {
         let path = extract_path(path)?;
         let sha1 = self
             .provider
             .sha1(&path)
             .map_err(PyErr::new::<pyo3::exceptions::PyOSError, _>)?;
-        Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
+        Ok(PyBytes::new(py, sha1.as_bytes()))
     }
 
-    fn stat_and_sha1(&mut self, py: Python, path: &Bound<PyAny>) -> PyResult<(PyObject, PyObject)> {
+    fn stat_and_sha1<'a>(
+        &mut self,
+        py: Python<'a>,
+        path: &Bound<PyAny>,
+    ) -> PyResult<(PyObject, Bound<'a, PyBytes>)> {
         let path = extract_path(path)?;
         let (md, sha1) = self.provider.stat_and_sha1(&path)?;
         let pmd = StatResult { metadata: md };
-        Ok((
-            pmd.into_py(py),
-            PyBytes::new(py, sha1.as_bytes()).to_object(py),
-        ))
+        Ok((pmd.into_py(py), PyBytes::new(py, sha1.as_bytes())))
     }
 }
 
@@ -318,23 +319,23 @@ fn fields_per_entry(num_present_parents: usize) -> usize {
 }
 
 #[pyfunction]
-fn get_ghosts_line(py: Python, ghost_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
+fn get_ghosts_line(py: Python, ghost_ids: Vec<Vec<u8>>) -> PyResult<Bound<PyBytes>> {
     let ghost_ids = ghost_ids
         .iter()
         .map(|x| x.as_slice())
         .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_ghosts_line(ghost_ids.as_slice());
-    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+    Ok(PyBytes::new(py, bs.as_slice()))
 }
 
 #[pyfunction]
-fn get_parents_line(py: Python, parent_ids: Vec<Vec<u8>>) -> PyResult<PyObject> {
+fn get_parents_line(py: Python, parent_ids: Vec<Vec<u8>>) -> PyResult<Bound<PyBytes>> {
     let parent_ids = parent_ids
         .iter()
         .map(|x| x.as_slice())
         .collect::<Vec<&[u8]>>();
     let bs = bazaar::dirstate::get_parents_line(parent_ids.as_slice());
-    Ok(PyBytes::new(py, bs.as_slice()).to_object(py))
+    Ok(PyBytes::new(py, bs.as_slice()))
 }
 
 #[pyclass]
@@ -361,13 +362,13 @@ impl IdIndex {
         &self,
         py: Python<'a>,
         file_id: FileId,
-    ) -> PyResult<Vec<(PyObject, PyObject, Bound<'a, PyBytes>)>> {
+    ) -> PyResult<Vec<(Bound<'a, PyBytes>, Bound<'a, PyBytes>, Bound<'a, PyBytes>)>> {
         let ret = self.0.get(&file_id);
         ret.iter()
             .map(|(a, b, c)| {
                 Ok((
-                    PyBytes::new(py, a).to_object(py),
-                    PyBytes::new(py, b).to_object(py),
+                    PyBytes::new(py, a),
+                    PyBytes::new(py, b),
                     c.into_pyobject(py)?,
                 ))
             })
@@ -377,12 +378,18 @@ impl IdIndex {
     fn iter_all<'py>(
         &self,
         py: Python<'py>,
-    ) -> PyResult<Vec<(PyObject, PyObject, Bound<'py, PyBytes>)>> {
+    ) -> PyResult<
+        Vec<(
+            Bound<'py, PyBytes>,
+            Bound<'py, PyBytes>,
+            Bound<'py, PyBytes>,
+        )>,
+    > {
         let ret = self.0.iter_all();
         ret.map(|(a, b, c)| {
             Ok((
-                PyBytes::new(py, a).to_object(py),
-                PyBytes::new(py, b).to_object(py),
+                PyBytes::new(py, a),
+                PyBytes::new(py, b),
                 c.into_pyobject(py)?,
             ))
         })
@@ -395,27 +402,33 @@ impl IdIndex {
 }
 
 #[pyfunction]
-fn inv_entry_to_details(
-    py: Python,
-    e: &crate::inventory::InventoryEntry,
-) -> (PyObject, PyObject, u64, bool, PyObject) {
+fn inv_entry_to_details<'a>(
+    py: Python<'a>,
+    e: &'a crate::inventory::InventoryEntry,
+) -> (
+    Bound<'a, PyBytes>,
+    Bound<'a, PyBytes>,
+    u64,
+    bool,
+    Bound<'a, PyBytes>,
+) {
     let ret = bazaar::dirstate::inv_entry_to_details(&e.0);
 
     (
-        PyBytes::new(py, &[ret.0]).to_object(py),
-        PyBytes::new(py, ret.1.as_slice()).to_object(py),
+        PyBytes::new(py, &[ret.0]),
+        PyBytes::new(py, ret.1.as_slice()),
         ret.2,
         ret.3,
-        PyBytes::new(py, ret.4.as_slice()).to_object(py),
+        PyBytes::new(py, ret.4.as_slice()),
     )
 }
 
 #[pyfunction]
-fn get_output_lines(py: Python, lines: Vec<Vec<u8>>) -> Vec<PyObject> {
+fn get_output_lines<'py>(py: Python<'py>, lines: Vec<Vec<u8>>) -> Vec<Bound<'py, PyBytes>> {
     let lines = lines.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
     bazaar::dirstate::get_output_lines(lines)
         .into_iter()
-        .map(|x| PyBytes::new(py, x.as_slice()).to_object(py))
+        .map(|x| PyBytes::new(py, x.as_slice()))
         .collect()
 }
 

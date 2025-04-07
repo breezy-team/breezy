@@ -163,7 +163,11 @@ impl SFTPFile {
         Ok(self.offset)
     }
 
-    fn readv(&mut self, py: Python, offsets: Vec<(u64, u32)>) -> PyResult<PyObject> {
+    fn readv<'a>(
+        &mut self,
+        py: Python<'a>,
+        offsets: Vec<(u64, u32)>,
+    ) -> PyResult<Bound<'a, PyAny>> {
         #[pyclass]
         struct ReadvIter {
             offsets: VecDeque<(u64, u32)>,
@@ -190,21 +194,24 @@ impl SFTPFile {
             }
         }
 
-        Ok(ReadvIter {
-            offsets: VecDeque::from(offsets),
-            sftp: Arc::clone(&self.sftp),
-            file: self.file.clone(),
-        }
-        .into_py(py))
+        Ok(Bound::new(
+            py,
+            ReadvIter {
+                offsets: VecDeque::from(offsets),
+                sftp: Arc::clone(&self.sftp),
+                file: self.file.clone(),
+            },
+        )?
+        .into_any())
     }
 
-    fn read(&mut self, py: Python, length: Option<u32>) -> PyResult<PyObject> {
+    fn read<'a>(&mut self, py: Python<'a>, length: Option<u32>) -> PyResult<Bound<'a, PyBytes>> {
         let ret = if let Some(length) = length {
             py.allow_threads(|| self.sftp.pread(&self.file, self.offset, length))
         } else {
             let length = self.stat(py, None)?.0.size.unwrap();
             if length == 0 {
-                return Ok(PyBytes::new(py, &[]).into_py(py));
+                return Ok(PyBytes::new(py, &[]));
             }
             py.allow_threads(|| {
                 self.sftp
@@ -214,9 +221,9 @@ impl SFTPFile {
         match ret {
             Ok(data) => {
                 self.offset += data.len() as u64;
-                Ok(PyBytes::new(py, data.as_slice()).into_py(py))
+                Ok(PyBytes::new(py, data.as_slice()))
             }
-            Err(sftp::Error::Eof(_, _)) => Ok(PyBytes::new(py, &[]).into_py(py)),
+            Err(sftp::Error::Eof(_, _)) => Ok(PyBytes::new(py, &[])),
             Err(e) => Err(sftp_error_to_py_err(e, None)),
         }
     }

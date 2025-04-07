@@ -26,7 +26,7 @@ fn _bytes_to_text_key(py: Python, key: Vec<u8>) -> PyResult<(Bound<PyBytes>, Bou
         ));
     }
     let ret = ret.unwrap();
-    Ok((PyBytes::new(py, ret.0), PyBytes::new_bound(py, ret.1)))
+    Ok((PyBytes::new(py, ret.0), PyBytes::new(py, ret.1)))
 }
 
 #[pyfunction]

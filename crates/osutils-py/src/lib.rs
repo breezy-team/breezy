@@ -48,18 +48,18 @@ impl PyChunksToLinesIterator {
         slf.into()
     }
 
-    fn __next__(&mut self) -> PyResult<Option<Py<PyAny>>> {
-        Python::with_gil(|py| loop {
+    fn __next__<'a>(&mut self, py: Python<'a>) -> PyResult<Option<Bound<'a, PyBytes>>> {
+        loop {
             if let Some(mut chunk) = self.tail.take() {
                 if let Some(newline) = memchr::memchr(b'\n', &chunk) {
                     if newline == chunk.len() - 1 {
                         assert!(!chunk.is_empty());
-                        return Ok(Some(PyBytes::new(py, chunk.as_slice()).to_object(py)));
+                        return Ok(Some(PyBytes::new(py, chunk.as_slice())));
                     } else {
                         assert!(!chunk.is_empty());
                         self.tail = Some(chunk[newline + 1..].to_vec());
                         let bytes = PyBytes::new(py, &chunk[..=newline]);
-                        return Ok(Some(bytes.to_object(py)));
+                        return Ok(Some(bytes));
                     }
                 } else {
                     let chunk_iter = self.chunk_iter.clone_ref(py);
@@ -69,7 +69,7 @@ impl PyChunksToLinesIterator {
                         chunk.extend_from_slice(next_chunk);
                     } else {
                         assert!(!chunk.is_empty());
-                        return Ok(Some(PyBytes::new(py, &chunk).to_object(py)));
+                        return Ok(Some(PyBytes::new(py, &chunk)));
                     }
                     if !chunk.is_empty() {
                         self.tail = Some(chunk);
@@ -82,8 +82,8 @@ impl PyChunksToLinesIterator {
                 let next_chunk = next_chunk_py.extract::<&[u8]>()?;
                 if let Some(newline) = memchr::memchr(b'\n', next_chunk) {
                     if newline == next_chunk.len() - 1 {
-                        let line = next_chunk_py.downcast::<PyBytes>()?;
-                        return Ok(Some(line.to_object(py)));
+                        let line = next_chunk_py.extract::<Bound<PyBytes>>()?;
+                        return Ok(Some(line));
                     }
                 }
 
@@ -93,7 +93,7 @@ impl PyChunksToLinesIterator {
             } else {
                 return Ok(None);
             }
-        })
+        }
     }
 }
 
@@ -108,20 +108,19 @@ fn extract_path(object: &Bound<PyAny>) -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
-fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
+fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<Bound<PyList>> {
     let ret = PyList::empty(py);
     let chunk_iter = chunks.call_method0(py, "__iter__");
     if chunk_iter.is_err() {
         return Err(PyTypeError::new_err("chunks must be iterable"));
     }
     let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
-    let iter = iter.into_py(py);
     ret.call_method1("extend", (iter,))?;
-    Ok(ret.into_py(py))
+    Ok(ret)
 }
 
 #[pyfunction]
-fn split_lines<'a>(py: Python<'a>, mut chunks: Bound<'a, PyAny>) -> PyResult<Bound<'a, PyAny>> {
+fn split_lines<'a>(py: Python<'a>, mut chunks: Bound<'a, PyAny>) -> PyResult<Bound<'a, PyList>> {
     let ret = PyList::empty(py);
     if let Ok(chunk) = chunks.extract::<Bound<PyBytes>>() {
         chunks = PyList::new(py, [chunk])?.into_any();
@@ -131,36 +130,41 @@ fn split_lines<'a>(py: Python<'a>, mut chunks: Bound<'a, PyAny>) -> PyResult<Bou
     if chunk_iter.is_err() {
         return Err(PyTypeError::new_err("chunks must be iterable"));
     }
-    let iter = PyChunksToLinesIterator::new(chunk_iter?.into_py(py))?;
-    let iter = iter.into_py(py);
+    let iter = PyChunksToLinesIterator::new(chunk_iter.unwrap().unbind())?;
     ret.call_method1("extend", (iter,))?;
-    Ok(ret.into_any())
+    Ok(ret)
 }
 
 #[pyfunction]
-fn chunks_to_lines_iter(py: Python, chunk_iter: PyObject) -> PyResult<PyObject> {
+fn chunks_to_lines_iter(
+    py: Python,
+    chunk_iter: PyObject,
+) -> PyResult<Bound<PyChunksToLinesIterator>> {
     let iter = PyChunksToLinesIterator::new(chunk_iter)?;
-    Ok(iter.into_py(py))
+    Bound::new(py, iter)
 }
 
 /// Calculate the SHA1 of a file by reading the full text
 #[pyfunction]
-fn sha_file_by_name(py: Python, object: &Bound<PyAny>) -> PyResult<PyObject> {
+fn sha_file_by_name<'a>(
+    py: Python<'a>,
+    object: &'a Bound<'a, PyAny>,
+) -> PyResult<Bound<'a, PyBytes>> {
     let pathbuf = extract_path(object)?;
     let digest = breezy_osutils::sha::sha_file_by_name(pathbuf.as_path()).map_err(PyErr::from)?;
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new(py, digest.as_bytes()))
 }
 
 #[pyfunction]
-fn sha_string(py: Python, string: &[u8]) -> PyResult<PyObject> {
+fn sha_string<'a>(py: Python<'a>, string: &'a [u8]) -> PyResult<Bound<'a, PyBytes>> {
     let digest = breezy_osutils::sha::sha_string(string);
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new(py, digest.as_bytes()))
 }
 
 /// Return the sha-1 of concatenation of strings
 #[pyfunction]
 fn sha_strings<'a>(py: Python<'a>, strings: &'a Bound<'a, PyAny>) -> PyResult<Bound<'a, PyBytes>> {
-    let iter = strings.iter()?;
+    let iter = strings.try_iter()?;
     let digest =
         breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()));
     Ok(PyBytes::new(py, digest.as_bytes()))
@@ -170,10 +174,10 @@ fn sha_strings<'a>(py: Python<'a>, strings: &'a Bound<'a, PyAny>) -> PyResult<Bo
 ///
 /// The file cursor should be already at the start.
 #[pyfunction]
-fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
+fn sha_file(py: Python, file: PyObject) -> PyResult<Bound<PyBytes>> {
     let mut file = PyBinaryFile::from(file);
     let digest = breezy_osutils::sha::sha_file(&mut file).map_err(PyErr::from)?;
-    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
+    Ok(PyBytes::new(py, digest.as_bytes()))
 }
 
 /// Calculate the size and hexdigest of an open file.
@@ -181,10 +185,10 @@ fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
 /// The file cursor should be already at the start and
 /// the caller is responsible for closing the file afterwards.
 #[pyfunction]
-fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
+fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, Bound<PyBytes>)> {
     let mut file = PyBinaryFile::from(file);
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
-    Ok((size, PyBytes::new(py, digest.as_bytes()).into_py(py)))
+    Ok((size, PyBytes::new(py, digest.as_bytes())))
 }
 
 #[pyfunction]
@@ -248,7 +252,7 @@ fn is_inside(path: &Bound<PyAny>, parent: &Bound<PyAny>) -> PyResult<bool> {
 fn is_inside_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     let mut c_dir_list: Vec<PathBuf> = Vec::new();
-    for dir in dir_list.iter()? {
+    for dir in dir_list.try_iter()? {
         c_dir_list.push(extract_path(&dir?)?);
     }
     Ok(breezy_osutils::path::is_inside_any(
@@ -264,7 +268,7 @@ fn is_inside_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> PyResult<bool>
 fn is_inside_or_parent_of_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> PyResult<bool> {
     let path = extract_path(path)?;
     let mut c_dir_list: Vec<PathBuf> = Vec::new();
-    for dir in dir_list.iter()? {
+    for dir in dir_list.try_iter()? {
         c_dir_list.push(extract_path(&dir?)?);
     }
     Ok(breezy_osutils::path::is_inside_or_parent_of_any(
@@ -279,7 +283,7 @@ fn is_inside_or_parent_of_any(dir_list: &Bound<PyAny>, path: &Bound<PyAny>) -> P
 #[pyfunction]
 pub fn minimum_path_selection(paths: &Bound<PyAny>) -> PyResult<HashSet<String>> {
     let mut path_set: HashSet<PathBuf> = HashSet::new();
-    for path in paths.iter()? {
+    for path in paths.try_iter()? {
         path_set.insert(extract_path(&path?)?);
     }
     let paths = breezy_osutils::path::minimum_path_selection(
@@ -295,32 +299,34 @@ pub fn minimum_path_selection(paths: &Bound<PyAny>) -> PyResult<HashSet<String>>
 }
 
 #[pyfunction]
-fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
+fn set_or_unset_env<'a>(
+    py: Python<'a>,
+    key: &'a str,
+    value: Option<&'a str>,
+) -> PyResult<Bound<'a, PyAny>> {
     // Note that we're not calling out to breezy_osutils::set_or_unset_env here, because it doesn't
     // change the environment in Python.
-    Python::with_gil(|py| {
-        let os = py.import("os")?;
-        let environ = os.getattr("environ")?;
-        let old = environ.call_method1("get", (key, py.None()))?;
-        if let Some(value) = value {
-            environ.set_item(key, value)?;
-            std::env::set_var(key, value);
-        } else {
-            if old.is_none() {
-                return Ok(py.None());
-            }
-            environ.del_item(key)?;
-            std::env::remove_var(key);
+    let os = py.import("os")?;
+    let environ = os.getattr("environ")?;
+    let old = environ.call_method1("get", (key, py.None()))?;
+    if let Some(value) = value {
+        environ.set_item(key, value)?;
+        std::env::set_var(key, value);
+    } else {
+        if old.is_none() {
+            return Ok(py.None().into_bound(py));
         }
-        Ok(old.into_py(py))
-    })
+        environ.del_item(key)?;
+        std::env::remove_var(key);
+    }
+    Ok(old)
 }
 
 #[pyfunction]
-fn parent_directories(py: Python, path: &Bound<PyAny>) -> PyResult<PyObject> {
+fn parent_directories<'a>(path: &'a Bound<'a, PyAny>) -> PyResult<Vec<PathBuf>> {
     let path = extract_path(path)?;
     let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
-    Ok(parents.into_py(py))
+    Ok(parents.iter().map(|p| p.to_path_buf()).collect())
 }
 
 #[pyfunction]
@@ -433,7 +439,7 @@ impl PyIterableFile {
         }
     }
 
-    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+    fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         self.check_closed(py)?;
         let mut buf = Vec::new();
         let read = if let Some(size) = size {
@@ -447,7 +453,7 @@ impl PyIterableFile {
             return Err(PyErr::fetch(py));
         }
         buf.truncate(read?);
-        Ok(PyBytes::new(py, &buf).to_object(py))
+        Ok(PyBytes::new(py, &buf))
     }
 
     fn close(&mut self, _py: Python) -> PyResult<()> {
@@ -455,24 +461,28 @@ impl PyIterableFile {
         Ok(())
     }
 
-    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+    fn readlines<'a>(&mut self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         self.check_closed(py)?;
         let lines = PyList::empty(py);
         while let Some(line) = self.readline(py, None)? {
             lines.append(line)?;
         }
-        Ok(lines.to_object(py))
+        Ok(lines)
     }
 
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
 
-    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn __next__<'a>(&mut self, py: Python<'a>) -> PyResult<Option<Bound<'a, PyBytes>>> {
         self.readline(py, None)
     }
 
-    fn readline(&mut self, py: Python, _size_hint: Option<usize>) -> PyResult<Option<PyObject>> {
+    fn readline<'a>(
+        &mut self,
+        py: Python<'a>,
+        _size_hint: Option<usize>,
+    ) -> PyResult<Option<Bound<'a, PyBytes>>> {
         self.check_closed(py)?;
         let mut buf = Vec::new();
         let read = self.inner.read_until(b'\n', &mut buf);
@@ -484,52 +494,49 @@ impl PyIterableFile {
             return Ok(None);
         }
         buf.truncate(read);
-        Ok(Some(PyBytes::new(py, &buf).to_object(py)))
+        Ok(Some(PyBytes::new(py, &buf)))
     }
 }
 
 #[pyfunction]
-fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let py_iter = py_iterable.call_method0(py, "__iter__")?;
-        let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + Sync> = Box::new(
-            std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
-                Python::with_gil(|py| {
-                    match py_iter.extract::<Bound<PyIterator>>(py).unwrap().next() {
-                        None => None,
-                        Some(Err(err)) => {
-                            PyErr::restore(err.clone_ref(py), py);
+fn IterableFile(py: Python, py_iterable: PyObject) -> PyResult<Bound<PyIterableFile>> {
+    let py_iter = py_iterable.call_method0(py, "__iter__")?;
+    let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send + Sync> = Box::new(
+        std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
+            Python::with_gil(
+                |py| match py_iter.extract::<Bound<PyIterator>>(py).unwrap().next() {
+                    None => None,
+                    Some(Err(err)) => {
+                        PyErr::restore(err.clone_ref(py), py);
+                        Some(Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            err.to_string(),
+                        )))
+                    }
+                    Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
+                        Err(err) => {
+                            PyErr::restore(PyTypeError::new_err("unable to convert to bytes"), py);
                             Some(Err(std::io::Error::new(
                                 std::io::ErrorKind::Other,
                                 err.to_string(),
                             )))
                         }
-                        Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
-                            Err(err) => {
-                                PyErr::restore(
-                                    PyTypeError::new_err("unable to convert to bytes"),
-                                    py,
-                                );
-                                Some(Err(std::io::Error::new(
-                                    std::io::ErrorKind::Other,
-                                    err.to_string(),
-                                )))
-                            }
-                            Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec())),
-                        },
-                    }
-                })
-            }),
-        );
+                        Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec())),
+                    },
+                },
+            )
+        }),
+    );
 
-        let f = breezy_osutils::iterablefile::IterableFile::new(line_iter);
+    let f = breezy_osutils::iterablefile::IterableFile::new(line_iter);
 
-        Ok(PyIterableFile {
+    Bound::new(
+        py,
+        PyIterableFile {
             inner: f,
             closed: false,
-        }
-        .into_py(py))
-    })
+        },
+    )
 }
 
 #[pyfunction]
@@ -544,7 +551,7 @@ fn check_text_path(path: &Bound<PyAny>) -> PyResult<()> {
 
 #[pyfunction]
 fn check_text_lines(py: Python, lines: &Bound<PyAny>) -> PyResult<()> {
-    let mut py_iter = lines.iter()?;
+    let mut py_iter = lines.try_iter()?;
     let line_iter = std::iter::from_fn(|| {
         let line = py_iter.next();
         match line {
@@ -769,15 +776,15 @@ fn supports_executable(path: PathBuf) -> Option<bool> {
 /// Returns:
 ///   Tuples with mountpoints (as bytestrings) and filesystem names
 #[pyfunction]
-fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
+fn read_mtab(py: Python, path: PathBuf) -> PyResult<Bound<PyIterator>> {
     let it: Vec<breezy_osutils::mounts::MountEntry> =
         breezy_osutils::mounts::read_mtab(path).collect();
     let list = PyList::empty(py);
     for entry in it {
-        let tuple = PyTuple::new(py, &[entry.path.into_py(py), entry.fs_type.into_py(py)])?;
+        let tuple = PyTuple::new(py, &[entry.path.to_str().unwrap(), entry.fs_type.as_str()])?;
         list.append(tuple)?;
     }
-    Ok(list.as_ref().iter()?.to_object(py))
+    Ok(list.as_ref().try_iter()?)
 }
 
 #[pyfunction]
@@ -957,9 +964,13 @@ impl FileIterator {
 }
 
 #[pyfunction]
-fn file_iterator(py: Python, input_file: PyObject, read_size: Option<usize>) -> PyResult<PyObject> {
+fn file_iterator(
+    py: Python,
+    input_file: PyObject,
+    read_size: Option<usize>,
+) -> PyResult<Bound<FileIterator>> {
     let iterator = FileIterator::new(input_file, read_size);
-    Ok(iterator.into_py(py))
+    Bound::new(py, iterator)
 }
 
 /// Returns the terminal size as (width, height).
@@ -1038,20 +1049,19 @@ fn color_exists(name: &str) -> bool {
 }
 
 #[pyfunction]
-fn colorstring(
-    py: Python,
-    text: &[u8],
-    fgcolor: Option<&str>,
-    bgcolor: Option<&str>,
-) -> PyResult<PyObject> {
+fn colorstring<'a>(
+    py: Python<'a>,
+    text: &'a [u8],
+    fgcolor: Option<&'a str>,
+    bgcolor: Option<&'a str>,
+) -> PyResult<Bound<'a, PyBytes>> {
     let fgcolor = fgcolor.map(string_to_color).transpose()?;
     let bgcolor = bgcolor.map(string_to_color).transpose()?;
 
     Ok(PyBytes::new(
         py,
         &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
-    )
-    .into_py(py))
+    ))
 }
 
 #[pyfunction]
@@ -1111,7 +1121,9 @@ fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
 
     if return_bytes {
         use std::os::unix::ffi::OsStrExt;
-        Ok(PyBytes::new(py, ret.as_path().as_os_str().as_bytes()).into_py(py))
+        Ok(PyBytes::new(py, ret.as_path().as_os_str().as_bytes())
+            .into_any()
+            .unbind())
     } else {
         Ok(ret.into_py(py))
     }

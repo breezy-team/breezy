@@ -128,7 +128,7 @@ fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
         r.read_to_end(&mut buffer)?;
         let io = py.import("io")?;
         let bytesio = io.getattr("BytesIO")?;
-        Ok(bytesio.call1((buffer,))?.to_object(py))
+        Ok(bytesio.call1((buffer,))?.unbind())
     })
 }
 

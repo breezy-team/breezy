@@ -109,20 +109,20 @@ pub trait AsLocation {
 
 impl AsLocation for &url::Url {
     fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| {
-            pyo3::types::PyString::new(py, self.to_string().as_str()).to_object(py)
-        })
+        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_string().as_str()).unbind())
+            .into_any()
     }
 }
 
 impl AsLocation for &str {
     fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| pyo3::types::PyString::new(py, self).to_object(py))
+        Python::with_gil(|py| pyo3::types::PyString::new(py, self).unbind()).into_any()
     }
 }
 
 impl AsLocation for &std::path::Path {
     fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_str().unwrap()).to_object(py))
+        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_str().unwrap()).unbind())
+            .into_any()
     }
 }

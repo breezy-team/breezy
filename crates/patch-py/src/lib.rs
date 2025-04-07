@@ -131,34 +131,40 @@ fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
 }
 
 #[pyfunction]
-fn get_patch_names(
-    py: Python,
-    patch_contents: Bound<PyIterator>,
-) -> PyResult<((PyObject, Option<PyObject>), (PyObject, Option<PyObject>))> {
+fn get_patch_names<'a>(
+    py: Python<'a>,
+    patch_contents: Bound<'a, PyIterator>,
+) -> PyResult<(
+    (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
+    (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
+)> {
     let names = breezy_patch::parse::get_patch_names(
         patch_contents.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     )
     .map_err(parse_err_to_py_err)?;
 
     let py_orig = (
-        PyBytes::new(py, &names.0 .0).to_object(py),
-        names.0 .1.map(|x| PyBytes::new(py, &x).to_object(py)),
+        PyBytes::new(py, &names.0 .0),
+        names.0 .1.map(|x| PyBytes::new(py, &x)),
     );
     let py_mod = (
-        PyBytes::new(py, &names.1 .0).to_object(py),
-        names.1 .1.map(|x| PyBytes::new(py, &x).to_object(py)),
+        PyBytes::new(py, &names.1 .0),
+        names.1 .1.map(|x| PyBytes::new(py, &x)),
     );
     Ok((py_orig, py_mod))
 }
 
 #[pyfunction]
-fn iter_lines_handle_nl(py: Python, iter_lines: PyObject) -> PyResult<PyObject> {
-    let py_iter = iter_lines.bind(py).iter()?;
+fn iter_lines_handle_nl<'a>(
+    py: Python<'a>,
+    iter_lines: Bound<'a, PyAny>,
+) -> PyResult<Bound<'a, PyIterator>> {
+    let py_iter = iter_lines.try_iter()?;
     let lines = breezy_patch::parse::iter_lines_handle_nl(
         py_iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     );
     let pl = lines.map(|x| PyBytes::new(py, &x)).collect::<Vec<_>>();
-    Ok(PyList::new(py, &pl)?.as_ref().iter()?.to_object(py))
+    PyList::new(py, &pl)?.as_ref().try_iter()
 }
 
 #[pyfunction]

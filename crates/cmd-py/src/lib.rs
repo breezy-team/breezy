@@ -223,7 +223,7 @@ fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResul
     let tb = traceback
         .call_method1(
             "format_exception",
-            (err.get_type(py), err.value(py), err.traceback_bound(py)),
+            (err.get_type(py), err.value(py), err.traceback(py)),
         )?
         .extract::<Vec<String>>()?;
     log.log(
@@ -485,8 +485,8 @@ impl LockHeldInfo {
     }
 
     #[getter]
-    fn nonce(&self, py: Python) -> Option<PyObject> {
-        self.0.nonce().map(|x| PyBytes::new(py, x).to_object(py))
+    fn nonce<'a>(&self, py: Python<'a>) -> Option<Bound<'a, PyBytes>> {
+        self.0.nonce().map(|x| PyBytes::new(py, x))
     }
 
     #[getter]
@@ -519,8 +519,8 @@ impl LockHeldInfo {
         self.0.hostname = hostname;
     }
 
-    fn to_bytes(&self, py: Python) -> PyObject {
-        PyBytes::new(py, self.0.to_bytes().as_slice()).to_object(py)
+    fn to_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new(py, self.0.to_bytes().as_slice())
     }
 
     fn __str__(&self) -> String {
@@ -549,10 +549,12 @@ impl LockHeldInfo {
     ) -> PyResult<Self> {
         Ok(Self(
             breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
-                let fb = PyBytes::new(py, info_file_bytes).to_object(py);
+                let fb = PyBytes::new(py, info_file_bytes);
 
                 match e {
-                    breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb)),
+                    breezy::lockdir::Error::LockCorrupt(s) => {
+                        LockCorrupt::new_err((s, fb.unbind()))
+                    }
                 }
             })?,
         ))
@@ -589,50 +591,50 @@ fn remove_tags(
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let i18n = PyModule::new(_py, "i18n")?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_plugin, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_gettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_ngettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_disable_i18n, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_dgettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_gettext_per_paragraph, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_zzz, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_zzz_for_doc, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_zzz, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_plugin, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_ngettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_dgettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext_per_paragraph, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz_for_doc, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_zzz, &i18n)?)?;
     m.add_submodule(&i18n)?;
-    m.add_function(wrap_pyfunction_bound!(ensure_config_dir_exists, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(bazaar_config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(_config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(locations_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(authentication_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(user_ignore_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(crash_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(cache_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_default_mail_domain, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(default_email, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(auto_user_id, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(initialize_brz_log_filename, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(rollover_trace_maybe, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(open_or_create_log_file, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(open_brz_log, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(set_brz_log_filename, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
+    m.add_function(wrap_pyfunction!(config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(bazaar_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(locations_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(authentication_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(crash_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(cache_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
+    m.add_function(wrap_pyfunction!(default_email, m)?)?;
+    m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
+    m.add_function(wrap_pyfunction!(initialize_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(rollover_trace_maybe, m)?)?;
+    m.add_function(wrap_pyfunction!(open_or_create_log_file, m)?)?;
+    m.add_function(wrap_pyfunction!(open_brz_log, m)?)?;
+    m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
-    m.add_function(wrap_pyfunction_bound!(set_debug_flag, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(unset_debug_flag, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(clear_debug_flags, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_debug_flags, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(debug_flag_enabled, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(str_tdelta, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(debug_memory_proc, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(rcp_location_to_url, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(parse_cvs_location, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(cvs_to_url, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(parse_rcp_location, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(help_as_plain_text, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(format_see_also, m)?)?;
+    m.add_function(wrap_pyfunction!(set_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(unset_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(get_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_flag_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
+    m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cvs_location, m)?)?;
+    m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
+    m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
+    m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
     m.add_class::<LockHeldInfo>()?;
 
     let helpm = PyModule::new(_py, "help")?;
@@ -640,7 +642,7 @@ fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_submodule(&helpm)?;
 
     let uncommitm = PyModule::new(_py, "uncommit")?;
-    uncommitm.add_function(wrap_pyfunction_bound!(remove_tags, &uncommitm)?)?;
+    uncommitm.add_function(wrap_pyfunction!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 
     m.add_class::<TreeBuilder>()?;

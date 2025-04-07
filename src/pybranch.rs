@@ -32,7 +32,7 @@ impl Branch for PyBranch {
         Python::with_gil(|py| {
             let py_branch = self.0.bind(py);
             let py_tags = py_branch.getattr("tags").unwrap();
-            let tags = crate::pytags::PyTags(py_tags.into_py(py));
+            let tags = crate::pytags::PyTags(py_tags.unbind());
             Box::new(tags)
         })
     }

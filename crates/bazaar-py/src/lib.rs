@@ -394,13 +394,20 @@ impl RevisionSerializer {
         ))
     }
 
-    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<PyObject>> {
+    fn write_revision_to_lines<'a>(
+        &self,
+        py: Python<'a>,
+        revision: &Revision,
+    ) -> PyResult<Vec<Bound<'a, PyBytes>>> {
         self.0
             .write_revision_to_lines(&revision.0)
-            .map(|s| -> PyResult<PyObject> {
-                Ok(PyBytes::new(py, s.map_err(serializer_err_to_py_err)?.as_slice()).into_py(py))
+            .map(|s| -> PyResult<Bound<PyBytes>> {
+                Ok(PyBytes::new(
+                    py,
+                    s.map_err(serializer_err_to_py_err)?.as_slice(),
+                ))
             })
-            .collect::<PyResult<Vec<PyObject>>>()
+            .collect::<PyResult<Vec<Bound<PyBytes>>>>()
     }
 
     fn read_revision_from_string(&self, py: Python, string: &[u8]) -> PyResult<Revision> {
@@ -422,13 +429,13 @@ fn is_reserved_revision_id(revision_id: RevisionId) -> bool {
 }
 
 #[pyfunction(name = "check_not_reserved_id")]
-fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
-    if revision_id.is_none(py) {
+fn check_not_reserved_id(_py: Python, revision_id: Bound<PyBytes>) -> PyResult<()> {
+    if revision_id.is_none() {
         return Ok(());
     }
-    if let Ok(revision_id) = revision_id.extract::<RevisionId>(py) {
+    if let Ok(revision_id) = revision_id.extract::<RevisionId>() {
         if revision_id.is_reserved() {
-            Err(ReservedId::new_err((revision_id.as_bytes().into_py(py),)))
+            Err(ReservedId::new_err((revision_id,)))
         } else {
             Ok(())
         }

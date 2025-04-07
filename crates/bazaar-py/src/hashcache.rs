@@ -22,9 +22,9 @@ struct PyChunkIterator {
 
 #[pymethods]
 impl PyChunkIterator {
-    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn __next__<'py>(&mut self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
         match self.input.next() {
-            Some(Ok(item)) => Ok(Some(PyBytes::new(py, &item).to_object(py))),
+            Some(Ok(item)) => Ok(Some(PyBytes::new(py, &item))),
             Some(Err(e)) => Err(e.into()),
             None => Ok(None),
         }
@@ -96,12 +96,8 @@ fn content_filter_to_fn(
 ) -> Box<dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send + Sync> {
     Box::new(move |path, ctime| {
         Python::with_gil(|py| {
-            let content_filter_provider = content_filter_provider.to_object(py);
             Box::new(PyContentFilter {
-                content_filter: content_filter_provider
-                    .call1(py, (path, ctime))
-                    .unwrap()
-                    .to_object(py),
+                content_filter: content_filter_provider.call1(py, (path, ctime)).unwrap(),
             })
         })
     })
