@@ -11,6 +11,7 @@ use std::io::BufReader;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::convert::TryInto;
 use tempfile::NamedTempFile;
 
 /// TODO: Up-front, stat all files in order and remove those which are deleted or
@@ -203,7 +204,7 @@ impl HashCache {
         } else {
             self.miss_count += 1;
 
-            match SFlag::from_bits_truncate(file_fp.mode) {
+            match SFlag::from_bits_truncate(file_fp.mode as nix::libc::mode_t) {
                 SFlag::S_IFREG => {
                     let filters: Box<dyn ContentFilter> =
                         if let Some(filter_provider) = self.filter_provider.as_ref() {

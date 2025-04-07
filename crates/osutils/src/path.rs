@@ -187,7 +187,7 @@ pub fn inaccessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> 
 /// So return the normalized path, and a flag indicating if the file
 /// can be accessed by that path.
 #[cfg(target_os = "macos")]
-pub fn normalized_filename(path: &Path) -> (PathBuf, bool) {
+pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
     accessible_normalized_filename(path)
 }
 

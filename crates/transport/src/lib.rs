@@ -103,11 +103,11 @@ impl From<Metadata> for Stat {
 
 impl Stat {
     pub fn is_dir(&self) -> bool {
-        self.mode & nix::libc::S_IFMT == nix::libc::S_IFDIR
+        (self.mode as nix::libc::mode_t) & nix::libc::S_IFMT == nix::libc::S_IFDIR
     }
 
     pub fn is_file(&self) -> bool {
-        self.mode & nix::libc::S_IFMT == nix::libc::S_IFREG
+        (self.mode as nix::libc::mode_t) & nix::libc::S_IFMT == nix::libc::S_IFREG
     }
 }
 
