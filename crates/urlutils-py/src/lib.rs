@@ -147,12 +147,12 @@ fn normalize_url(url: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn local_path_to_url(path: &str) -> PyResult<String> {
-    breezy_urlutils::local_path_to_url(path).map_err(|e| e.into())
+fn local_path_to_url(path: PathBuf) -> PyResult<String> {
+    breezy_urlutils::local_path_to_url(path.as_path()).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "local_path_to_url")]
-fn win32_local_path_to_url(path: &str) -> PyResult<String> {
+fn win32_local_path_to_url(path: PathBuf) -> PyResult<String> {
     breezy_urlutils::win32::local_path_to_url(path).map_err(|e| e.into())
 }
 
