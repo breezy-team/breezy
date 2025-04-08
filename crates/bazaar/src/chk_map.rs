@@ -35,8 +35,8 @@ pub type SerialisedKey = Vec<u8>;
 pub type SearchKeyFn = fn(&Key) -> SerializedKey;
 
 /// Map the key tuple into a search string that just uses the key bytes.
-pub fn search_key_plain(key: &[&[u8]]) -> Vec<u8> {
-    key.join(&b'\x00')
+pub fn search_key_plain(key: &Key) -> SerializedKey {
+    key.0.join(&b'\x00')
 }
 
 pub fn search_key_16(key: &Key) -> SerializedKey {
