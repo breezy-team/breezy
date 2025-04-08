@@ -4,18 +4,18 @@ use std::io::Error;
 use std::io::Read;
 use std::path::Path;
 
-pub type ContentFilterProvider = dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send;
+pub type ContentFilterProvider = dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send + Sync;
 
 pub trait ContentFilter {
     fn reader(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>;
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>;
 
     fn writer(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>;
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>;
 
     fn sha1_file(&self, path: &Path) -> Result<String, std::io::Error> {
         let mut file = File::open(path)?;
@@ -82,8 +82,8 @@ impl std::default::Default for ContentFilterStack {
 impl ContentFilter for ContentFilterStack {
     fn reader(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
         self.filters
             .iter()
             .fold(input, |input, filter| filter.reader(input))
@@ -91,8 +91,8 @@ impl ContentFilter for ContentFilterStack {
 
     fn writer(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
         self.filters
             .iter()
             .fold(input, |input, filter| filter.writer(input))

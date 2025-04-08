@@ -6,6 +6,7 @@ struct DynamicHelpTopic(std::sync::Arc<breezy::help::DynamicHelpTopic>);
 
 #[pymethods]
 impl DynamicHelpTopic {
+    #[pyo3(signature = (additional_see_also = None, plain = None))]
     fn get_help_text(
         &self,
         additional_see_also: Option<Vec<String>>,
@@ -52,6 +53,7 @@ impl StaticHelpTopic {
         self.0.name.to_string()
     }
 
+    #[pyo3(signature = (additional_see_also = None, plain = None))]
     fn get_help_text(
         &self,
         additional_see_also: Option<Vec<String>>,
@@ -75,6 +77,7 @@ impl HelpTopicRegistry {
         Self
     }
 
+    #[pyo3(signature = (name, contents, summary, section = None))]
     fn register(
         &mut self,
         py: Python,
@@ -115,6 +118,7 @@ impl HelpTopicRegistry {
         Ok(())
     }
 
+    #[pyo3(signature = (name, module, path, summary, section = None))]
     fn register_lazy(
         &mut self,
         py: Python,
@@ -124,45 +128,46 @@ impl HelpTopicRegistry {
         summary: &str,
         section: Option<&str>,
     ) -> PyResult<()> {
-        let mut o = py.import_bound(module)?.to_object(py);
+        let mut o = py.import(module)?.into_any();
 
         for attr in path.split('.') {
-            o = o.getattr(py, attr)?;
+            o = o.getattr(attr)?;
         }
 
-        self.register(py, name, o.into_py(py), summary, section)
+        self.register(py, name, o.unbind(), summary, section)
     }
 
-    fn get(&self, py: Python, name: &str) -> Option<PyObject> {
+    #[pyo3(signature = (name))]
+    fn get<'a>(&self, py: Python<'a>, name: &str) -> PyResult<Option<Bound<'a, PyAny>>> {
         if let Some(topic) = breezy::help::get_dynamic_topic(name) {
-            Some(DynamicHelpTopic(topic).into_py(py))
+            Ok(Some(Bound::new(py, DynamicHelpTopic(topic))?.into_any()))
         } else {
-            breezy::help::get_static_topic(name).map(|topic| StaticHelpTopic(topic).into_py(py))
+            breezy::help::get_static_topic(name)
+                .map(|topic| Ok(Bound::new(py, StaticHelpTopic(topic))?.into_any()))
+                .transpose()
         }
     }
 
-    fn get_summary(&self, py: Python, name: &str) -> Option<String> {
+    #[pyo3(signature = (name, ))]
+    fn get_summary(&self, py: Python, name: &str) -> PyResult<Option<String>> {
         let topic = self.get(py, name)?;
-        Some(
-            topic
-                .getattr(py, "summary")
-                .unwrap()
-                .extract::<String>(py)
-                .unwrap(),
-        )
+
+        topic
+            .map(|topic| topic.getattr("summary")?.extract::<String>())
+            .transpose()
     }
 
-    fn get_detail(&self, py: Python, name: &str) -> Option<String> {
+    #[pyo3(signature = (name, ))]
+    fn get_detail(&self, py: Python, name: &str) -> PyResult<Option<String>> {
         let topic = self.get(py, name)?;
-        Some(
-            topic
-                .getattr(py, "get_contents")
-                .unwrap()
-                .call0(py)
-                .unwrap()
-                .extract::<String>(py)
-                .unwrap(),
-        )
+        topic
+            .map(|topic| {
+                topic
+                    .getattr("get_contents")?
+                    .call0()?
+                    .extract::<String>()
+            })
+            .transpose()
     }
 
     fn __contains__(&self, name: &str) -> bool {

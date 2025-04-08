@@ -345,17 +345,6 @@ pub mod win32 {
         fixdrive(&fix_separators(&path))
     }
 
-    #[cfg(test)]
-    mod test {
-        #[test]
-        fn test_abspath() {
-            assert_eq!(
-                super::abspath(std::path::Path::new("C:/foo/bar")).unwrap(),
-                std::path::Path::new("C:/foo/bar")
-            );
-        }
-    }
-
     pub fn getcwd() -> std::io::Result<PathBuf> {
         Ok(fixdrive(
             fix_separators(std::env::current_dir()?.as_path()).as_path(),
@@ -368,6 +357,17 @@ pub mod win32 {
             p.push(s);
         }
         fix_separators(&p)
+    }
+
+    #[cfg(test)]
+    mod test {
+        #[test]
+        fn test_abspath() {
+            assert_eq!(
+                super::abspath(std::path::Path::new("C:/foo/bar")).unwrap(),
+                std::path::Path::new("C:/foo/bar")
+            );
+        }
     }
 }
 

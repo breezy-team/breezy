@@ -11,7 +11,7 @@ pyo3::import_exception!(breezy.bzr.versionedfile, UnavailableRepresentation);
 impl AbstractContentFactory {
     #[getter]
     fn sha1(&self, py: Python) -> Option<PyObject> {
-        self.0.sha1().map(|x| PyBytes::new_bound(py, &x).into())
+        self.0.sha1().map(|x| PyBytes::new(py, &x).into())
     }
 
     #[getter]
@@ -41,17 +41,17 @@ impl AbstractContentFactory {
             ));
         }
         match storage_kind {
-            "fulltext" => Ok(PyBytes::new_bound(py, self.0.to_fulltext().as_ref()).into()),
+            "fulltext" => Ok(PyBytes::new(py, self.0.to_fulltext().as_ref()).into()),
             "lines" => Ok(self
                 .0
                 .to_lines()
-                .map(|b| PyBytes::new_bound(py, b.as_ref()))
+                .map(|b| PyBytes::new(py, b.as_ref()))
                 .collect::<Vec<_>>()
                 .to_object(py)),
             "chunked" => Ok(self
                 .0
                 .to_chunks()
-                .map(|b| PyBytes::new_bound(py, b.as_ref()))
+                .map(|b| PyBytes::new(py, b.as_ref()))
                 .collect::<Vec<_>>()
                 .to_object(py)),
             _ => Err(UnavailableRepresentation::new_err(format!(
@@ -114,7 +114,7 @@ pub fn record_to_fulltext_bytes(py: Python, record: PyObject) -> PyResult<PyObje
 
     bazaar::versionedfile::record_to_fulltext_bytes(record, &mut s)?;
 
-    Ok(PyBytes::new_bound(py, &s).into())
+    Ok(PyBytes::new(py, &s).into())
 }
 
 #[pyclass(extends=AbstractContentFactory)]
@@ -131,22 +131,22 @@ impl AbsentContentFactory {
 }
 
 #[pyfunction]
-fn fulltext_network_to_record(
-    py: Python,
-    _kind: &str,
-    bytes: &[u8],
+fn fulltext_network_to_record<'a>(
+    py: Python<'a>,
+    _kind: &'a str,
+    bytes: &'a [u8],
     line_end: usize,
-) -> Vec<PyObject> {
+) -> Vec<Bound<'a, FulltextContentFactory>> {
     let record = bazaar::versionedfile::fulltext_network_to_record(bytes, line_end);
 
     let sub = PyClassInitializer::from(AbstractContentFactory(Box::new(record)))
         .add_subclass(FulltextContentFactory);
 
-    vec![Py::new(py, sub).unwrap().to_object(py)]
+    vec![Bound::new(py, sub).unwrap()]
 }
 
 pub(crate) fn _versionedfile_rs(py: Python) -> PyResult<Bound<PyModule>> {
-    let m = PyModule::new_bound(py, "versionedfile")?;
+    let m = PyModule::new(py, "versionedfile")?;
     m.add_class::<AbstractContentFactory>()?;
     m.add_class::<FulltextContentFactory>()?;
     m.add_class::<ChunkedContentFactory>()?;

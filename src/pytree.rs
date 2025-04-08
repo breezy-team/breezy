@@ -16,7 +16,7 @@ import_exception!(breezy.errors, NotVersionedError);
 
 fn map_py_err_to_err(py: Python<'_>, py_err: PyErr) -> Error {
     if py_err.is_instance_of::<NotVersionedError>(py) {
-        Error::NotVersioned(py_err.value_bound(py).getattr("path").unwrap().to_string())
+        Error::NotVersioned(py_err.value(py).getattr("path").unwrap().to_string())
     } else {
         Error::Other(py_err.to_string())
     }
@@ -100,7 +100,7 @@ impl MutableTree for PyTree {
     ) -> std::result::Result<(), Error> {
         Python::with_gil(|py| {
             let pytree = self.0.bind(py);
-            let data = PyBytes::new_bound(py, data);
+            let data = PyBytes::new(py, data);
             pytree
                 .call_method1("put_file_bytes_non_atomic", (path, data))
                 .map_err(|e| map_py_err_to_err(py, e))

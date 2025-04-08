@@ -22,6 +22,7 @@ create_exception!(
 import_exception!(breezy.errors, BinaryFile);
 
 #[pyfunction]
+#[pyo3(signature = (patch_contents, filename, output_filename = None, reverse = None))]
 fn patch(
     patch_contents: Vec<Vec<u8>>,
     filename: PathBuf,
@@ -55,6 +56,8 @@ fn diff3(
 }
 
 #[pyfunction]
+#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, target_file = None, out = None, _patch_cmd = None))]
+#[allow(clippy::too_many_arguments)]
 fn run_patch(
     directory: PathBuf,
     patches: Vec<Vec<u8>>,
@@ -113,15 +116,19 @@ fn iter_patched_from_hunks(
     )
     .map_err(invoke_err_to_py_err)?;
 
-    let pl = vec![PyBytes::new_bound(py, &patched_lines)];
-    Ok(PyList::new_bound(py, &pl).into())
+    let pl = vec![PyBytes::new(py, &patched_lines)];
+    Ok(PyList::new(py, &pl)?.into())
 }
 
 fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
     match err {
         breezy_patch::parse::Error::BinaryFiles(path1, path2) => BinaryFiles::new_err((
-            PathBuf::from(OsString::from_vec(path1)),
-            PathBuf::from(OsString::from_vec(path2)),
+            PathBuf::from(OsString::from_vec(path1))
+                .to_string_lossy()
+                .to_string(),
+            PathBuf::from(OsString::from_vec(path2))
+                .to_string_lossy()
+                .to_string(),
         )),
         breezy_patch::parse::Error::PatchSyntax(err, _line) => PatchSyntax::new_err(err),
         breezy_patch::parse::Error::MalformedPatchHeader(err, _line) => {
@@ -131,36 +138,40 @@ fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
 }
 
 #[pyfunction]
-fn get_patch_names(
-    py: Python,
-    patch_contents: Bound<PyIterator>,
-) -> PyResult<((PyObject, Option<PyObject>), (PyObject, Option<PyObject>))> {
+fn get_patch_names<'a>(
+    py: Python<'a>,
+    patch_contents: Bound<'a, PyIterator>,
+) -> PyResult<(
+    (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
+    (Bound<'a, PyBytes>, Option<Bound<'a, PyBytes>>),
+)> {
     let names = breezy_patch::parse::get_patch_names(
         patch_contents.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     )
     .map_err(parse_err_to_py_err)?;
 
     let py_orig = (
-        PyBytes::new_bound(py, &names.0 .0).to_object(py),
-        names.0 .1.map(|x| PyBytes::new_bound(py, &x).to_object(py)),
+        PyBytes::new(py, &names.0 .0),
+        names.0 .1.map(|x| PyBytes::new(py, &x)),
     );
     let py_mod = (
-        PyBytes::new_bound(py, &names.1 .0).to_object(py),
-        names.1 .1.map(|x| PyBytes::new_bound(py, &x).to_object(py)),
+        PyBytes::new(py, &names.1 .0),
+        names.1 .1.map(|x| PyBytes::new(py, &x)),
     );
     Ok((py_orig, py_mod))
 }
 
 #[pyfunction]
-fn iter_lines_handle_nl(py: Python, iter_lines: PyObject) -> PyResult<PyObject> {
-    let py_iter = iter_lines.bind(py).iter()?;
+fn iter_lines_handle_nl<'a>(
+    py: Python<'a>,
+    iter_lines: Bound<'a, PyAny>,
+) -> PyResult<Bound<'a, PyIterator>> {
+    let py_iter = iter_lines.try_iter()?;
     let lines = breezy_patch::parse::iter_lines_handle_nl(
         py_iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     );
-    let pl = lines
-        .map(|x| PyBytes::new_bound(py, &x))
-        .collect::<Vec<_>>();
-    Ok(PyList::new_bound(py, &pl).as_ref().iter()?.to_object(py))
+    let pl = lines.map(|x| PyBytes::new(py, &x)).collect::<Vec<_>>();
+    PyList::new(py, &pl)?.as_ref().try_iter()
 }
 
 #[pyfunction]
@@ -190,6 +201,7 @@ fn parse_patch_date(date: &str) -> PyResult<(i64, i64)> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (secs, offset = None))]
 fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> PyResult<String> {
     let secs = if let Ok(secs) = secs.extract::<i64>(py) {
         secs
@@ -225,13 +237,13 @@ fn _patch_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(difference_index))?;
     m.add_wrapped(wrap_pyfunction!(parse_patch_date))?;
     m.add_wrapped(wrap_pyfunction!(format_patch_date))?;
-    m.add("PatchInvokeError", py.get_type_bound::<PatchInvokeError>())?;
-    m.add("PatchFailed", py.get_type_bound::<PatchFailed>())?;
-    m.add("PatchSyntax", py.get_type_bound::<PatchSyntax>())?;
+    m.add("PatchInvokeError", py.get_type::<PatchInvokeError>())?;
+    m.add("PatchFailed", py.get_type::<PatchFailed>())?;
+    m.add("PatchSyntax", py.get_type::<PatchSyntax>())?;
     m.add(
         "MalformedPatchHeader",
-        py.get_type_bound::<MalformedPatchHeader>(),
+        py.get_type::<MalformedPatchHeader>(),
     )?;
-    m.add("BinaryFiles", py.get_type_bound::<BinaryFiles>())?;
+    m.add("BinaryFiles", py.get_type::<BinaryFiles>())?;
     Ok(())
 }

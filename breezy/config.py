@@ -732,7 +732,7 @@ class IniBasedConfig(Config):
         elif self.file_name is None:
             raise AssertionError("We have no content to create the config")
         else:
-            co_input = self.file_name
+            co_input = str(self.file_name)
         try:
             self._parser = ConfigObj(co_input, encoding="utf-8")
         except configobj.ConfigObjError as e:

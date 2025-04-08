@@ -1,7 +1,10 @@
 use once_cell::sync::Lazy;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::RwLock;
 
-static mut BACKEND: Lazy<Box<dyn TranslateBackend>> = Lazy::new(|| Box::new(NoopTranslateBackend));
+static BACKEND: Lazy<RwLock<Arc<dyn TranslateBackend + Sync + Send>>> =
+    Lazy::new(|| RwLock::new(Arc::new(NoopTranslateBackend)));
 
 pub trait TranslateBackend {
     fn name(&self) -> &'static str;
@@ -35,13 +38,12 @@ impl TranslateBackend for NoopTranslateBackend {
 }
 
 pub fn disable() {
-    unsafe {
-        BACKEND = Lazy::new(|| Box::new(NoopTranslateBackend));
-    }
+    let mut lock = BACKEND.write().unwrap();
+    *lock = Arc::new(NoopTranslateBackend);
 }
 
 pub fn install(lang: Option<&str>, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
-    if unsafe { BACKEND.name() } == "gettext" {
+    if BACKEND.read().unwrap().name() == "gettext" {
         return Ok(());
     }
     gettextrs::textdomain("brz")?;
@@ -53,9 +55,8 @@ pub fn install(lang: Option<&str>, locale_base: Option<&Path>) -> Result<(), std
         gettextrs::bindtextdomain("brz", locale_base.join("locale"))?;
     }
     gettextrs::bind_textdomain_codeset("brz", "UTF-8")?;
-    unsafe {
-        BACKEND = Lazy::new(|| Box::new(GettextTranslateBackend));
-    }
+    let mut lock = BACKEND.write().unwrap();
+    *lock = Arc::new(GettextTranslateBackend);
     Ok(())
 }
 
@@ -80,15 +81,18 @@ impl TranslateBackend for GettextTranslateBackend {
 }
 
 pub fn gettext(msgid: &str) -> String {
-    unsafe { BACKEND.gettext(msgid) }
+    let lock = BACKEND.read().unwrap();
+    lock.gettext(msgid)
 }
 
 pub fn ngettext(msgid: &str, msgid_plural: &str, n: u32) -> String {
-    unsafe { BACKEND.ngettext(msgid, msgid_plural, n) }
+    let lock = BACKEND.read().unwrap();
+    lock.ngettext(msgid, msgid_plural, n)
 }
 
 pub fn dgettext(textdomain: &str, msgid: &str) -> String {
-    unsafe { BACKEND.dgettext(textdomain, msgid) }
+    let lock = BACKEND.read().unwrap();
+    lock.dgettext(textdomain, msgid)
 }
 
 pub fn install_plugin(textdomain: &str, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
@@ -114,7 +118,7 @@ struct ZzzTranslateBackend;
 
 impl ZzzTranslateBackend {
     fn zzz(&self, msgid: &str) -> String {
-        vec!["zzå{{", msgid, "}}"].concat()
+        ["zzå{{", msgid, "}}"].concat()
     }
 }
 
@@ -141,9 +145,8 @@ impl TranslateBackend for ZzzTranslateBackend {
 }
 
 pub fn install_zzz() {
-    unsafe {
-        BACKEND = Lazy::new(|| Box::new(ZzzTranslateBackend));
-    }
+    let mut lock = BACKEND.write().unwrap();
+    *lock = Arc::new(ZzzTranslateBackend);
 }
 
 struct ZzzTranslateForDocBackend;
@@ -155,11 +158,11 @@ impl ZzzTranslateForDocBackend {
         let indent_pat = Regex::new(r"^\s+").unwrap();
 
         if let Some(m) = section_pat.find(msgid) {
-            vec![&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
+            [&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
         } else if let Some(m) = indent_pat.find(msgid) {
-            vec![&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
+            [&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
         } else {
-            return vec!["zz{{", msgid, "}}"].concat();
+            return ["zz{{", msgid, "}}"].concat();
         }
     }
 }
@@ -191,7 +194,6 @@ impl TranslateBackend for ZzzTranslateForDocBackend {
 }
 
 pub fn install_zzz_for_doc() {
-    unsafe {
-        BACKEND = Lazy::new(|| Box::new(ZzzTranslateForDocBackend));
-    }
+    let mut lock = BACKEND.write().unwrap();
+    *lock = Arc::new(ZzzTranslateForDocBackend);
 }

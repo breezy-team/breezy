@@ -16,6 +16,7 @@ fn is_url(url: &str) -> bool {
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn split(url: &str, exclude_trailing_slash: Option<bool>) -> (String, String) {
     breezy_urlutils::split(url, exclude_trailing_slash.unwrap_or(true))
 }
@@ -31,11 +32,13 @@ fn strip_trailing_slash(url: &str) -> &str {
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn dirname(url: &str, exclude_trailing_slash: Option<bool>) -> String {
     breezy_urlutils::dirname(url, exclude_trailing_slash.unwrap_or(true))
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn basename(url: &str, exclude_trailing_slash: Option<bool>) -> String {
     breezy_urlutils::basename(url, exclude_trailing_slash.unwrap_or(true))
 }
@@ -130,6 +133,7 @@ fn combine_paths(base_path: &str, relpath: &str) -> String {
 }
 
 #[pyfunction]
+#[pyo3(signature = (text, safe = None))]
 fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
     if let Ok(text) = text.extract::<String>(py) {
         Ok(breezy_urlutils::escape(text.as_bytes(), safe))
@@ -146,12 +150,12 @@ fn normalize_url(url: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn local_path_to_url(path: &str) -> PyResult<String> {
-    breezy_urlutils::local_path_to_url(path).map_err(|e| e.into())
+fn local_path_to_url(path: PathBuf) -> PyResult<String> {
+    breezy_urlutils::local_path_to_url(path.as_path()).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "local_path_to_url")]
-fn win32_local_path_to_url(path: &str) -> PyResult<String> {
+fn win32_local_path_to_url(path: PathBuf) -> PyResult<String> {
     breezy_urlutils::win32::local_path_to_url(path).map_err(|e| e.into())
 }
 
@@ -187,13 +191,24 @@ fn join_segment_parameters(url: &str, parameters: HashMap<String, String>) -> Py
 }
 
 #[pyfunction]
-fn local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn local_path_from_url(url: &str) -> PyResult<String> {
+    let path = breezy_urlutils::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 #[pyfunction(name = "local_path_from_url")]
-fn win32_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn win32_local_path_from_url(url: &str) -> PyResult<String> {
+    let path =
+        breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 /// On win32 the drive letter needs to be added to the url base.
@@ -209,8 +224,14 @@ fn win32_strip_local_trailing_slash(url: &str) -> String {
 }
 
 #[pyfunction(name = "local_path_from_url")]
-fn posix_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn posix_local_path_from_url(url: &str) -> PyResult<String> {
+    let path =
+        breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 #[pyfunction]
@@ -252,13 +273,13 @@ fn _urlutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(unescape, m)?)?;
     m.add_function(wrap_pyfunction!(derive_to_location, m)?)?;
     m.add_function(wrap_pyfunction!(file_relpath, m)?)?;
-    let win32m = PyModule::new_bound(py, "win32")?;
+    let win32m = PyModule::new(py, "win32")?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_extract_drive_letter, &win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_strip_local_trailing_slash, &win32m)?)?;
     m.add_submodule(&win32m)?;
-    let posixm = PyModule::new_bound(py, "posix")?;
+    let posixm = PyModule::new(py, "posix")?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, &posixm)?)?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, &posixm)?)?;
     m.add_submodule(&posixm)?;

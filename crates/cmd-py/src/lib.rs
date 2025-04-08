@@ -29,6 +29,7 @@ fn i18n_dgettext(domain: &str, msgid: &str) -> PyResult<String> {
 }
 
 #[pyfunction(name = "install")]
+#[pyo3(signature = (lang = None, locale_base = None))]
 fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
     breezy::i18n::install(lang, locale_base)?;
@@ -48,6 +49,7 @@ fn i18n_install_zzz_for_doc() -> PyResult<()> {
 }
 
 #[pyfunction(name = "install_plugin")]
+#[pyo3(signature = (name, locale_base = None))]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
     breezy::i18n::install_plugin(name, locale_base)?;
@@ -75,57 +77,98 @@ fn i18n_zzz(msgid: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (path = None))]
 fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
     breezy::bedding::ensure_config_dir_exists(path.as_deref())?;
     Ok(())
 }
 
 #[pyfunction]
-fn config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_dir()?)
+fn config_dir() -> PyResult<String> {
+    let path = breezy::bedding::config_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))
 }
 
 #[pyfunction]
-fn _config_dir() -> PyResult<(PathBuf, String)> {
-    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p, k.to_string()))?)
+fn _config_dir() -> PyResult<(String, String)> {
+    let (path, kind) = breezy::bedding::_config_dir()?;
+
+    let path = path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))?;
+
+    Ok((path, kind.to_string()))
 }
 
 #[pyfunction]
-fn bazaar_config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::bazaar_config_dir()?)
+fn bazaar_config_dir() -> PyResult<String> {
+    let path = breezy::bedding::bazaar_config_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid bazaar config directory"))
 }
 
 #[pyfunction]
-fn config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_path()?)
+fn config_path() -> PyResult<String> {
+    let path = breezy::bedding::config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config path"))
 }
 
 #[pyfunction]
-fn locations_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::locations_config_path()?)
+fn locations_config_path() -> PyResult<String> {
+    let path = breezy::bedding::locations_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid locations config path"))
 }
 
 #[pyfunction]
-fn authentication_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::authentication_config_path()?)
+fn authentication_config_path() -> PyResult<String> {
+    let path = breezy::bedding::authentication_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid authentication config path"))
 }
 
 #[pyfunction]
-fn user_ignore_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::user_ignore_config_path()?)
+fn user_ignore_config_path() -> PyResult<String> {
+    let path = breezy::bedding::user_ignore_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid user ignore config path"))
 }
 
 #[pyfunction]
-fn crash_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::crash_dir())
+fn crash_dir() -> PyResult<String> {
+    let path = breezy::bedding::crash_dir();
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid crash directory"))
 }
 
 #[pyfunction]
-fn cache_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::cache_dir()?)
+fn cache_dir() -> PyResult<String> {
+    let path = breezy::bedding::cache_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid cache directory"))
 }
 
 #[pyfunction]
+#[pyo3(signature = (mailname_file = None))]
 fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> Option<String> {
     breezy::bedding::get_default_mail_domain(mailname_file.as_deref())
 }
@@ -144,8 +187,12 @@ fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
 }
 
 #[pyfunction]
-fn initialize_brz_log_filename() -> PyResult<PathBuf> {
-    Ok(breezy::trace::initialize_brz_log_filename()?)
+fn initialize_brz_log_filename() -> PyResult<String> {
+    let path = breezy::trace::initialize_brz_log_filename()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid log filename"))
 }
 
 #[pyfunction]
@@ -186,8 +233,15 @@ fn set_brz_log_filename(path: Option<PathBuf>) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn get_brz_log_filename() -> PyResult<Option<PathBuf>> {
-    Ok(breezy::trace::get_brz_log_filename())
+fn get_brz_log_filename() -> PyResult<Option<String>> {
+    let path = breezy::trace::get_brz_log_filename();
+
+    path.map(|s| {
+        s.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| PyValueError::new_err("Invalid log filename"))
+    })
+    .transpose()
 }
 
 #[pyclass]
@@ -195,11 +249,11 @@ struct BreezyTraceHandler(
     Box<std::sync::Arc<breezy::trace::BreezyTraceLogger<Box<dyn Write + Send>>>>,
 );
 
-fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
-    let io = py.import_bound("io")?;
+fn format_exception(py: Python, ei: &Bound<PyTuple>) -> PyResult<String> {
+    let io = py.import("io")?;
     let sio = io.call_method0("StringIO")?;
 
-    let tb = py.import_bound("traceback")?;
+    let tb = py.import("traceback")?;
     tb.call_method1(
         "print_exception",
         (
@@ -219,15 +273,11 @@ fn format_exception(py: Python, ei: &PyTuple) -> PyResult<String> {
 }
 
 fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResult<()> {
-    let traceback = py.import_bound("traceback")?;
+    let traceback = py.import("traceback")?;
     let tb = traceback
         .call_method1(
             "format_exception",
-            (
-                err.get_type_bound(py),
-                err.value_bound(py),
-                err.traceback_bound(py),
-            ),
+            (err.get_type(py), err.value(py), err.traceback(py)),
         )?
         .extract::<Vec<String>>()?;
     log.log(
@@ -280,7 +330,7 @@ impl BreezyTraceHandler {
             let msg = pyr.getattr(py, "msg")?;
             let args = pyr.getattr(py, "args")?;
 
-            PyString::new_bound(py, "Logging record unformattable: {} % {}")
+            PyString::new(py, "Logging record unformattable: {} % {}")
                 .call_method1(
                     "format",
                     (msg.bind(py).repr().ok(), args.bind(py).repr().ok()),
@@ -291,11 +341,11 @@ impl BreezyTraceHandler {
         };
 
         if let Ok(exc_info) = pyr.getattr(py, "exc_info") {
-            if let Ok(exc_info) = exc_info.extract::<&PyTuple>(py) {
+            if let Ok(exc_info) = exc_info.extract::<Bound<PyTuple>>(py) {
                 if !formatted.ends_with('\n') {
                     formatted.push('\n');
                 }
-                formatted += format_exception(py, exc_info)?.as_str();
+                formatted += format_exception(py, &exc_info)?.as_str();
             }
         }
 
@@ -389,6 +439,7 @@ fn debug_memory_proc(message: &str, short: bool) {
 }
 
 #[pyfunction]
+#[pyo3(signature = (location, scheme = None))]
 fn rcp_location_to_url(location: &str, scheme: Option<&str>) -> PyResult<String> {
     let scheme = scheme.unwrap_or("ssh");
     breezy::location::rcp_location_to_url(location, scheme)
@@ -421,6 +472,7 @@ fn help_as_plain_text(text: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (see_also = None))]
 fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
     let see_also = see_also
         .as_ref()
@@ -467,6 +519,7 @@ struct LockHeldInfo(breezy::lockdir::LockHeldInfo);
 #[pymethods]
 impl LockHeldInfo {
     #[classmethod]
+    #[pyo3(signature = (extra_holder_info = None))]
     fn for_this_process(
         _cls: &Bound<PyType>,
         extra_holder_info: Option<std::collections::HashMap<String, String>>,
@@ -489,10 +542,8 @@ impl LockHeldInfo {
     }
 
     #[getter]
-    fn nonce(&self, py: Python) -> Option<PyObject> {
-        self.0
-            .nonce()
-            .map(|x| PyBytes::new_bound(py, x).to_object(py))
+    fn nonce<'a>(&self, py: Python<'a>) -> Option<Bound<'a, PyBytes>> {
+        self.0.nonce().map(|x| PyBytes::new(py, x))
     }
 
     #[getter]
@@ -525,8 +576,8 @@ impl LockHeldInfo {
         self.0.hostname = hostname;
     }
 
-    fn to_bytes(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, self.0.to_bytes().as_slice()).to_object(py)
+    fn to_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new(py, self.0.to_bytes().as_slice())
     }
 
     fn __str__(&self) -> String {
@@ -555,10 +606,12 @@ impl LockHeldInfo {
     ) -> PyResult<Self> {
         Ok(Self(
             breezy::lockdir::LockHeldInfo::from_info_file_bytes(info_file_bytes).map_err(|e| {
-                let fb = PyBytes::new_bound(py, info_file_bytes).to_object(py);
+                let fb = PyBytes::new(py, info_file_bytes);
 
                 match e {
-                    breezy::lockdir::Error::LockCorrupt(s) => LockCorrupt::new_err((s, fb)),
+                    breezy::lockdir::Error::LockCorrupt(s) => {
+                        LockCorrupt::new_err((s, fb.unbind()))
+                    }
                 }
             })?,
         ))
@@ -594,59 +647,59 @@ fn remove_tags(
 
 #[pymodule]
 fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    let i18n = PyModule::new_bound(_py, "i18n")?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_plugin, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_gettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_ngettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_disable_i18n, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_dgettext, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_gettext_per_paragraph, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_zzz, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_install_zzz_for_doc, &i18n)?)?;
-    i18n.add_function(wrap_pyfunction_bound!(i18n_zzz, &i18n)?)?;
+    let i18n = PyModule::new(_py, "i18n")?;
+    i18n.add_function(wrap_pyfunction!(i18n_install, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_plugin, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_ngettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_disable_i18n, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_dgettext, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_gettext_per_paragraph, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_install_zzz_for_doc, &i18n)?)?;
+    i18n.add_function(wrap_pyfunction!(i18n_zzz, &i18n)?)?;
     m.add_submodule(&i18n)?;
-    m.add_function(wrap_pyfunction_bound!(ensure_config_dir_exists, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(bazaar_config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(_config_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(locations_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(authentication_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(user_ignore_config_path, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(crash_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(cache_dir, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_default_mail_domain, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(default_email, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(auto_user_id, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(initialize_brz_log_filename, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(rollover_trace_maybe, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(open_or_create_log_file, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(open_brz_log, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(set_brz_log_filename, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(ensure_config_dir_exists, m)?)?;
+    m.add_function(wrap_pyfunction!(config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(bazaar_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(_config_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(locations_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(authentication_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(user_ignore_config_path, m)?)?;
+    m.add_function(wrap_pyfunction!(crash_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(cache_dir, m)?)?;
+    m.add_function(wrap_pyfunction!(get_default_mail_domain, m)?)?;
+    m.add_function(wrap_pyfunction!(default_email, m)?)?;
+    m.add_function(wrap_pyfunction!(auto_user_id, m)?)?;
+    m.add_function(wrap_pyfunction!(initialize_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(rollover_trace_maybe, m)?)?;
+    m.add_function(wrap_pyfunction!(open_or_create_log_file, m)?)?;
+    m.add_function(wrap_pyfunction!(open_brz_log, m)?)?;
+    m.add_function(wrap_pyfunction!(set_brz_log_filename, m)?)?;
+    m.add_function(wrap_pyfunction!(get_brz_log_filename, m)?)?;
     m.add_class::<BreezyTraceHandler>()?;
-    m.add_function(wrap_pyfunction_bound!(set_debug_flag, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(unset_debug_flag, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(clear_debug_flags, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(get_debug_flags, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(debug_flag_enabled, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(str_tdelta, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(debug_memory_proc, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(rcp_location_to_url, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(parse_cvs_location, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(cvs_to_url, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(parse_rcp_location, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(help_as_plain_text, m)?)?;
-    m.add_function(wrap_pyfunction_bound!(format_see_also, m)?)?;
+    m.add_function(wrap_pyfunction!(set_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(unset_debug_flag, m)?)?;
+    m.add_function(wrap_pyfunction!(clear_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(get_debug_flags, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_flag_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(str_tdelta, m)?)?;
+    m.add_function(wrap_pyfunction!(debug_memory_proc, m)?)?;
+    m.add_function(wrap_pyfunction!(rcp_location_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cvs_location, m)?)?;
+    m.add_function(wrap_pyfunction!(cvs_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_rcp_location, m)?)?;
+    m.add_function(wrap_pyfunction!(help_as_plain_text, m)?)?;
+    m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
     m.add_class::<LockHeldInfo>()?;
 
-    let helpm = PyModule::new_bound(_py, "help")?;
+    let helpm = PyModule::new(_py, "help")?;
     help::help_topics(&helpm)?;
     m.add_submodule(&helpm)?;
 
-    let uncommitm = PyModule::new_bound(_py, "uncommit")?;
-    uncommitm.add_function(wrap_pyfunction_bound!(remove_tags, &uncommitm)?)?;
+    let uncommitm = PyModule::new(_py, "uncommit")?;
+    uncommitm.add_function(wrap_pyfunction!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 
     m.add_class::<TreeBuilder>()?;

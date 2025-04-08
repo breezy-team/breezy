@@ -221,8 +221,8 @@ pub fn serialize_inventory_delta(
 ) -> Result<Vec<Vec<u8>>, InventoryDeltaSerializeError> {
     let mut lines = vec![
         format!("format: {}\n", FORMAT_1).into_bytes(),
-        vec![&b"parent: "[..], old_name.as_bytes(), &b"\n"[..]].concat(),
-        vec![&b"version: "[..], new_name.as_bytes(), &b"\n"[..]].concat(),
+        [&b"parent: "[..], old_name.as_bytes(), &b"\n"[..]].concat(),
+        [&b"version: "[..], new_name.as_bytes(), &b"\n"[..]].concat(),
         format!("versioned_root: {}\n", serialize_bool(versioned_root)).into_bytes(),
         format!("tree_references: {}\n", serialize_bool(tree_references)).into_bytes(),
     ];
@@ -337,14 +337,12 @@ fn delta_entry_to_line(
         }
         content = serialize_inventory_entry(new_entry)?;
     }
-    let entries = vec![
-        oldpath_utf8.as_bytes(),
+    let entries = [oldpath_utf8.as_bytes(),
         newpath_utf8.as_bytes(),
         delta_item.file_id.as_bytes(),
         parent_id,
         last_modified.as_bytes(),
-        content.as_slice(),
-    ];
+        content.as_slice()];
     let mut line = entries.join(&b"\x00"[..]);
     line.push(b'\n');
     Ok(line)
@@ -548,7 +546,7 @@ pub fn parse_inventory_delta(
         .map(|x| x.strip_suffix(b"\n").unwrap())
         .collect::<Vec<_>>();
 
-    if lines.is_empty() || lines[0] != vec![&b"format: "[..], FORMAT_1.as_bytes()].concat() {
+    if lines.is_empty() || lines[0] != [&b"format: "[..], FORMAT_1.as_bytes()].concat() {
         return Err(InventoryDeltaParseError::Invalid(format!(
             "unknown format: {}",
             String::from_utf8_lossy(&lines[0][8..])

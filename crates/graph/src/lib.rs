@@ -65,23 +65,19 @@ impl<K: Clone + PartialEq + Eq> Parents<K> {
 }
 
 #[cfg(feature = "pyo3")]
-impl<K: pyo3::ToPyObject + Clone + PartialEq + Eq> pyo3::ToPyObject for Parents<K> {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        match self {
-            Parents::Ghost => py.None(),
-            Parents::Known(v) => v.to_object(py),
-        }
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl<K: pyo3::IntoPy<pyo3::PyObject> + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
+impl<'py, K: pyo3::IntoPyObject<'py> + Clone + PartialEq + Eq> pyo3::IntoPyObject<'py>
     for Parents<K>
 {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+    type Target = pyo3::types::PyAny;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
-            Parents::Ghost => py.None(),
-            Parents::Known(v) => v.into_py(py),
+            Parents::Ghost => Ok(py.None().into_pyobject(py)?),
+            Parents::Known(v) => Ok(v.into_pyobject(py)?.into_any()),
         }
     }
 }
@@ -91,7 +87,8 @@ impl<'a, K: pyo3::FromPyObject<'a> + Clone + PartialEq + Eq> pyo3::FromPyObject<
 where
     K: 'a,
 {
-    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(obj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         if obj.is_none() {
             Ok(Parents::Ghost)
         } else {
@@ -200,28 +197,22 @@ impl<K: Hash + Clone + PartialEq + Eq> IntoIterator for ParentMap<K> {
 }
 
 #[cfg(feature = "pyo3")]
-impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ParentMap<K> {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
-        for (k, v) in self.iter() {
-            dict.set_item(k, v.to_object(py)).unwrap();
-        }
-        dict.to_object(py)
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
-    for ParentMap<K>
+impl<'py, K: pyo3::IntoPyObject<'py, Error = pyo3::PyErr> + Hash + Clone + PartialEq + Eq>
+    pyo3::IntoPyObject<'py> for ParentMap<K>
 {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+    type Target = pyo3::types::PyDict;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
+        let dict = pyo3::types::PyDict::new(py);
         for (k, v) in self.into_iter() {
-            dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
+            dict.set_item(k, v)?;
         }
-        dict.into_py(py)
+        Ok(dict)
     }
 }
 
@@ -231,7 +222,8 @@ impl<'a, K: pyo3::FromPyObject<'a> + Hash + Clone + PartialEq + Eq + 'a> pyo3::F
 where
     K: 'a,
 {
-    fn extract(obj: &'a pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(obj: &pyo3::Bound<'a, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let dict = obj.downcast::<pyo3::types::PyDict>()?;
         let mut result = ParentMap::new();
         for (k, v) in dict.iter() {
@@ -246,6 +238,12 @@ where
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChildMap<K: PartialEq + Eq + Hash>(HashMap<K, Vec<K>>);
 
+impl<K: Clone + Hash + PartialEq + Eq> Default for ChildMap<K> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
     pub fn new() -> Self {
         ChildMap(HashMap::new())
@@ -253,7 +251,7 @@ impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
 
     #[inline]
     pub fn insert(&mut self, k: K) {
-        self.0.entry(k).or_insert_with(Vec::new);
+        self.0.entry(k).or_default();
     }
 
     #[inline]
@@ -263,7 +261,7 @@ impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
 
     #[inline]
     pub fn add(&mut self, k: K, v: K) {
-        self.0.entry(k).or_insert_with(Vec::new).push(v);
+        self.0.entry(k).or_default().push(v);
     }
 
     #[inline]
@@ -306,28 +304,22 @@ impl<K: Hash + Clone + Eq> std::ops::Index<&K> for ChildMap<K> {
 }
 
 #[cfg(feature = "pyo3")]
-impl<K: pyo3::ToPyObject + Hash + Clone + PartialEq + Eq> pyo3::ToPyObject for ChildMap<K> {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
-        for (k, v) in self.iter() {
-            dict.set_item(k, v.to_object(py)).unwrap();
-        }
-        dict.to_object(py)
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl<K: pyo3::IntoPy<pyo3::PyObject> + Hash + Clone + PartialEq + Eq> pyo3::IntoPy<pyo3::PyObject>
+impl<'py, K: pyo3::IntoPyObject<'py> + Hash + Clone + PartialEq + Eq> pyo3::IntoPyObject<'py>
     for ChildMap<K>
 {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
+    type Target = pyo3::types::PyDict;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         use pyo3::prelude::*;
-        let dict = pyo3::types::PyDict::new_bound(py);
+        let dict = pyo3::types::PyDict::new(py);
         for (k, v) in self.into_iter() {
-            dict.set_item(k.into_py(py), v.into_py(py)).unwrap();
+            dict.set_item(k, v)?;
         }
-        dict.into_py(py)
+        Ok(dict)
     }
 }
 
@@ -564,29 +556,28 @@ impl From<usize> for RevnoVec {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::ToPyObject for RevnoVec {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
-        pyo3::types::PyTuple::new_bound(py, self.0.iter()).to_object(py)
+impl<'py> pyo3::IntoPyObject<'py> for RevnoVec {
+    type Target = pyo3::types::PyTuple;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
+        pyo3::types::PyTuple::new(py, self.0.iter())
     }
 }
 
 #[cfg(feature = "pyo3")]
 impl<'source> pyo3::FromPyObject<'source> for RevnoVec {
-    fn extract(ob: &'source pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<'source, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let tuple = ob.downcast::<pyo3::types::PyTuple>()?;
         let mut ret = RevnoVec::new();
         for r in tuple.iter() {
             ret.0.push(r.extract()?);
         }
         Ok(ret)
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl pyo3::IntoPy<pyo3::PyObject> for RevnoVec {
-    fn into_py(self, py: pyo3::Python) -> pyo3::PyObject {
-        use pyo3::ToPyObject;
-        self.to_object(py)
     }
 }
 

@@ -191,12 +191,18 @@ pub struct IndexEntry<'a> {
     pub data: &'a [u8],
 }
 
-impl<'a> IndexEntry<'a> {
+impl IndexEntry<'_> {
     pub fn add(&self, offset: usize) -> Self {
         Self {
             offset: self.offset + offset,
             data: &self.data[offset..],
         }
+    }
+}
+
+impl Default for DeltaIndex<'_> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -269,7 +275,7 @@ impl<'a> DeltaIndex<'a> {
                         let val = rabin_hash(data[i..i + RABIN_WINDOW].try_into().unwrap());
                         self.entries
                             .entry(val.into())
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(IndexEntry::<'a> {
                                 offset: self.last_offset + pos,
                                 data: &data[i..],
@@ -312,7 +318,7 @@ impl<'a> DeltaIndex<'a> {
                 prev_val = Some(val);
                 self.entries
                     .entry(val.into())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(IndexEntry::<'a> {
                         offset: self.last_offset + i,
                         data: &src[i..],

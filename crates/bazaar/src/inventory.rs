@@ -1144,7 +1144,7 @@ impl MutableInventory {
     /// Unlike iter_entries(), just the entries are returned (not (path, ie))
     /// and the order of entries is undefined.
     pub fn iter_just_entries(&self) -> impl Iterator<Item = &Entry> + '_ {
-        return self.by_id.values();
+        self.by_id.values()
     }
 
     pub fn get_child(&self, parent_id: &FileId, filename: &str) -> Option<&Entry> {

@@ -17,14 +17,14 @@ pub struct PyContentFilter {
 
 #[pyclass]
 struct PyChunkIterator {
-    input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+    input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
 }
 
 #[pymethods]
 impl PyChunkIterator {
-    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+    fn __next__<'py>(&mut self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
         match self.input.next() {
-            Some(Ok(item)) => Ok(Some(PyBytes::new_bound(py, &item).to_object(py))),
+            Some(Ok(item)) => Ok(Some(PyBytes::new(py, &item))),
             Some(Err(e)) => Err(e.into()),
             None => Ok(None),
         }
@@ -35,16 +35,18 @@ fn map_py_err_to_io_err(e: PyErr) -> Error {
     Error::new(std::io::ErrorKind::Other, e.to_string())
 }
 
-fn map_py_err_to_iter_io_err(e: PyErr) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+fn map_py_err_to_iter_io_err(
+    e: PyErr,
+) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
     Box::new(std::iter::once(Err(map_py_err_to_io_err(e))))
 }
 
 impl PyContentFilter {
     fn _impl(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
         worker: &str,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
         Python::with_gil(|py| {
             let worker = self.content_filter.getattr(py, worker);
             let py_input = PyChunkIterator { input };
@@ -76,30 +78,26 @@ impl PyContentFilter {
 impl ContentFilter for PyContentFilter {
     fn reader(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
         self._impl(input, "reader")
     }
 
     fn writer(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
         self._impl(input, "worker")
     }
 }
 
 fn content_filter_to_fn(
     content_filter_provider: PyObject,
-) -> Box<dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send> {
+) -> Box<dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send + Sync> {
     Box::new(move |path, ctime| {
         Python::with_gil(|py| {
-            let content_filter_provider = content_filter_provider.to_object(py);
             Box::new(PyContentFilter {
-                content_filter: content_filter_provider
-                    .call1(py, (path, ctime))
-                    .unwrap()
-                    .to_object(py),
+                content_filter: content_filter_provider.call1(py, (path, ctime)).unwrap(),
             })
         })
     })
@@ -120,6 +118,12 @@ fn extract_fs_time(obj: &Bound<PyAny>) -> Result<i64, PyErr> {
 #[pymethods]
 impl HashCache {
     #[new]
+    #[pyo3(signature = (
+        root,
+        cache_file_name,
+        mode = None,
+        content_filter_provider = None
+    ))]
     fn new(
         root: &str,
         cache_file_name: &str,
@@ -148,6 +152,7 @@ impl HashCache {
         self.hashcache.scan();
     }
 
+    #[pyo3(signature = (path, stat_value = None))]
     fn get_sha1<'a>(
         &mut self,
         py: Python<'a>,
@@ -175,7 +180,7 @@ impl HashCache {
                 return Ok(py.None().into_bound(py));
             }
         }
-        Ok(PyBytes::new_bound(py, sha1.as_bytes()).into_any())
+        Ok(PyBytes::new(py, sha1.as_bytes()).into_any())
     }
 
     fn write(&mut self) -> PyResult<()> {

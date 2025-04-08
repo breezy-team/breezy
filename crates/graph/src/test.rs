@@ -80,7 +80,7 @@ fn test_tsort_partial() {
 
 #[test]
 fn test_tsort_unincluded_parent() {
-    let graph = vec![(0, vec![1]), (1, vec![2])].iter().cloned().collect();
+    let graph = [(0, vec![1]), (1, vec![2])].iter().cloned().collect();
     assert_sort_and_iterate(&graph, &[1, 0]);
 }
 

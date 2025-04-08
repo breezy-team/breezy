@@ -23,22 +23,23 @@ import_exception!(breezy.errors, ReservedId);
 /// give a highly probably globally unique number. Then each call in the same
 /// process adds 1 to a serial number we append to that unique value.
 #[pyfunction]
-fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
-    PyBytes::new_bound(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice()).into_py(py)
+#[pyo3(signature = (suffix = None))]
+fn _next_id_suffix<'py>(py: Python<'py>, suffix: Option<&str>) -> Bound<'py, PyBytes> {
+    PyBytes::new(py, bazaar::gen_ids::next_id_suffix(suffix).as_slice())
 }
 
 /// Return new file id for the basename 'name'.
 ///
 /// The uniqueness is supplied from _next_id_suffix.
 #[pyfunction]
-fn gen_file_id(py: Python, name: &str) -> PyObject {
-    bazaar::FileId::generate(name).to_object(py)
+fn gen_file_id(name: &str) -> bazaar::FileId {
+    bazaar::FileId::generate(name)
 }
 
 /// Return a new tree-root file id.
 #[pyfunction]
-fn gen_root_id(py: Python) -> PyObject {
-    bazaar::FileId::generate_root_id().to_object(py)
+fn gen_root_id() -> bazaar::FileId {
+    bazaar::FileId::generate_root_id()
 }
 
 /// Return new revision-id.
@@ -50,7 +51,12 @@ fn gen_root_id(py: Python) -> PyObject {
 ///      Otherwise we flatten the real name, and use that.
 /// Returns: A new revision id.
 #[pyfunction]
-fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> PyResult<PyObject> {
+#[pyo3(signature = (username, timestamp = None))]
+fn gen_revision_id(
+    py: Python,
+    username: &str,
+    timestamp: Option<PyObject>,
+) -> PyResult<bazaar::RevisionId> {
     let timestamp = match timestamp {
         Some(timestamp) => {
             if let Ok(timestamp) = timestamp.extract::<f64>(py) {
@@ -65,7 +71,7 @@ fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> P
         }
         None => None,
     };
-    Ok(bazaar::RevisionId::generate(username, timestamp).to_object(py))
+    Ok(bazaar::RevisionId::generate(username, timestamp))
 }
 
 #[pyfunction]
@@ -81,6 +87,7 @@ struct Replacer {
 #[pymethods]
 impl Replacer {
     #[new]
+    #[pyo3(signature = (source = None))]
     fn new(source: Option<&Self>) -> Self {
         Self {
             replacer: bazaar::globbing::Replacer::new(source.map(|p| &p.replacer)),
@@ -168,13 +175,13 @@ impl Revision {
         timezone: Option<i32>,
     ) -> PyResult<Self> {
         let mut cproperties: HashMap<String, Vec<u8>> = HashMap::new();
-        for (k, v) in properties.unwrap_or(HashMap::new()) {
-            if let Ok(s) = v.extract::<&PyBytes>(py) {
+        for (k, v) in properties.unwrap_or_default() {
+            if let Ok(s) = v.extract::<Bound<PyBytes>>(py) {
                 cproperties.insert(k, s.as_bytes().to_vec());
-            } else if let Ok(s) = v.extract::<&PyString>(py) {
+            } else if let Ok(s) = v.extract::<Bound<PyString>>(py) {
                 let s = s
                     .call_method1("encode", ("utf-8", "surrogateescape"))?
-                    .extract::<&PyBytes>()?;
+                    .extract::<Bound<PyBytes>>()?;
                 cproperties.insert(k, s.as_bytes().to_vec());
             } else {
                 return Err(PyTypeError::new_err(
@@ -215,13 +222,13 @@ impl Revision {
     }
 
     #[getter]
-    fn revision_id(&self, py: Python) -> PyObject {
-        self.0.revision_id.to_object(py)
+    fn revision_id(&self) -> &bazaar::RevisionId {
+        &self.0.revision_id
     }
 
     #[getter]
-    fn parent_ids(&self, py: Python) -> PyObject {
-        self.0.parent_ids.to_object(py)
+    fn parent_ids(&self) -> &Vec<RevisionId> {
+        &self.0.parent_ids
     }
 
     #[getter]
@@ -244,17 +251,17 @@ impl Revision {
     }
 
     #[getter]
-    fn get_inventory_sha1(&self, py: Python) -> PyObject {
+    fn get_inventory_sha1<'py>(&self, py: Python<'py>) -> Bound<'py, PyAny> {
         if let Some(sha1) = &self.0.inventory_sha1 {
-            PyBytes::new_bound(py, sha1).into_py(py)
+            PyBytes::new(py, sha1).into_any()
         } else {
-            py.None()
+            py.None().into_bound(py)
         }
     }
 
     #[setter]
     fn set_inventory_sha1(&mut self, py: Python, value: PyObject) -> PyResult<()> {
-        if let Ok(value) = value.extract::<&PyBytes>(py) {
+        if let Ok(value) = value.extract::<Bound<PyBytes>>(py) {
             self.0.inventory_sha1 = Some(value.as_bytes().to_vec());
             Ok(())
         } else if value.is_none(py) {
@@ -374,26 +381,33 @@ impl RevisionSerializer {
         })
     }
 
-    fn write_revision_to_string(&self, py: Python, revision: &Revision) -> PyResult<PyObject> {
-        Ok(PyBytes::new_bound(
+    fn write_revision_to_string<'py>(
+        &self,
+        py: Python<'py>,
+        revision: &Revision,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        Ok(PyBytes::new(
             py,
             py.allow_threads(|| self.0.write_revision_to_string(&revision.0))
                 .map_err(serializer_err_to_py_err)?
                 .as_slice(),
-        )
-        .into_py(py))
+        ))
     }
 
-    fn write_revision_to_lines(&self, py: Python, revision: &Revision) -> PyResult<Vec<PyObject>> {
+    fn write_revision_to_lines<'a>(
+        &self,
+        py: Python<'a>,
+        revision: &Revision,
+    ) -> PyResult<Vec<Bound<'a, PyBytes>>> {
         self.0
             .write_revision_to_lines(&revision.0)
-            .map(|s| -> PyResult<PyObject> {
-                Ok(
-                    PyBytes::new_bound(py, s.map_err(serializer_err_to_py_err)?.as_slice())
-                        .into_py(py),
-                )
+            .map(|s| -> PyResult<Bound<PyBytes>> {
+                Ok(PyBytes::new(
+                    py,
+                    s.map_err(serializer_err_to_py_err)?.as_slice(),
+                ))
             })
-            .collect::<PyResult<Vec<PyObject>>>()
+            .collect::<PyResult<Vec<Bound<PyBytes>>>>()
     }
 
     fn read_revision_from_string(&self, py: Python, string: &[u8]) -> PyResult<Revision> {
@@ -415,13 +429,13 @@ fn is_reserved_revision_id(revision_id: RevisionId) -> bool {
 }
 
 #[pyfunction(name = "check_not_reserved_id")]
-fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
-    if revision_id.is_none(py) {
+fn check_not_reserved_id(_py: Python, revision_id: Bound<PyBytes>) -> PyResult<()> {
+    if revision_id.is_none() {
         return Ok(());
     }
-    if let Ok(revision_id) = revision_id.extract::<RevisionId>(py) {
+    if let Ok(revision_id) = revision_id.extract::<RevisionId>() {
         if revision_id.is_reserved() {
-            Err(ReservedId::new_err((revision_id.as_bytes().into_py(py),)))
+            Err(ReservedId::new_err((revision_id,)))
         } else {
             Ok(())
         }
@@ -432,6 +446,7 @@ fn check_not_reserved_id(py: Python, revision_id: PyObject) -> PyResult<()> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (message = None))]
 fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
     if let Some(message) = message {
         (
@@ -453,7 +468,7 @@ fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<Boun
         return Err(PyTypeError::new_err("expected str or bytes"));
     };
 
-    Ok(PyBytes::new_bound(py, ret.as_bytes()))
+    Ok(PyBytes::new(py, ret.as_bytes()))
 }
 
 mod hashcache;
@@ -465,7 +480,7 @@ fn _bzr_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(gen_file_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_root_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_revision_id))?;
-    let m_globbing = PyModule::new_bound(py, "globbing")?;
+    let m_globbing = PyModule::new(py, "globbing")?;
     m_globbing.add_wrapped(wrap_pyfunction!(normalize_pattern))?;
     m_globbing.add_class::<Replacer>()?;
     m.add_submodule(&m_globbing)?;
@@ -497,11 +512,11 @@ fn _bzr_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(escape_invalid_chars))?;
     m.add_wrapped(wrap_pyfunction!(encode_and_escape))?;
 
-    let riom = PyModule::new_bound(py, "rio")?;
+    let riom = PyModule::new(py, "rio")?;
     rio::rio(&riom)?;
     m.add_submodule(&riom)?;
 
-    let hashcachem = PyModule::new_bound(py, "hashcache")?;
+    let hashcachem = PyModule::new(py, "hashcache")?;
     hashcache::hashcache(&hashcachem)?;
     m.add_submodule(&hashcachem)?;
 

@@ -5,15 +5,21 @@ use std::borrow::Cow;
 
 pub struct PyContentFactory(PyObject);
 
-impl ToPyObject for PyContentFactory {
-    fn to_object(&self, py: Python) -> PyObject {
-        self.0.to_object(py)
+impl<'py> IntoPyObject<'py> for PyContentFactory {
+    type Target = PyAny;
+
+    type Output = Bound<'py, PyAny>;
+
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0.clone_ref(py).into_bound(py))
     }
 }
 
 impl FromPyObject<'_> for PyContentFactory {
-    fn extract(ob: &PyAny) -> PyResult<Self> {
-        Python::with_gil(|py| Ok(PyContentFactory(ob.to_object(py))))
+    fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
+        Python::with_gil(|py| Ok(PyContentFactory(ob.into_pyobject(py)?.to_object(py))))
     }
 }
 
@@ -134,7 +140,7 @@ impl Iterator for PyRecordStreamIter {
         Python::with_gil(|py| {
             let py_record_stream_iter = self.0.bind(py);
             let py_content_factory = py_record_stream_iter.call_method0("next").unwrap();
-            let content_factory = PyContentFactory(py_content_factory.to_object(py));
+            let content_factory = PyContentFactory(py_content_factory.unbind());
             Some(content_factory)
         })
     }
@@ -143,9 +149,9 @@ impl Iterator for PyRecordStreamIter {
 impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     fn check_not_reserved_id(version_id: &VersionId) -> bool {
         Python::with_gil(|py| {
-            let m = py.import_bound("breezy.bzr.versionedfile").unwrap();
+            let m = py.import("breezy.bzr.versionedfile").unwrap();
             let c = m.getattr("VersionedFile").unwrap();
-            c.call_method1("check_not_reserved_id", (version_id.to_object(py),))
+            c.call_method1("check_not_reserved_id", (version_id,))
                 .unwrap()
                 .extract()
                 .unwrap()
@@ -156,7 +162,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
             py_versioned_file
-                .call_method1("has_version", (version_id.to_object(py),))
+                .call_method1("has_version", (version_id,))
                 .unwrap()
                 .extract()
                 .unwrap()
@@ -181,17 +187,14 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     ) -> Box<dyn Iterator<Item = PyContentFactory>> {
         Box::new(Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
-            let version_ids = version_ids
-                .iter()
-                .map(|k| k.to_object(py))
-                .collect::<Vec<_>>();
+            let version_ids = version_ids.iter().collect::<Vec<_>>();
             let py_record_stream = py_versioned_file
                 .call_method1(
                     "get_record_stream",
                     (version_ids, ordering, include_delta_closure),
                 )
                 .unwrap();
-            Box::new(PyRecordStreamIter(py_record_stream.to_object(py)))
+            Box::new(PyRecordStreamIter(py_record_stream.unbind()))
         }))
     }
 
@@ -205,13 +208,13 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     ) -> Result<(Vec<u8>, usize, PyObject), Error> {
         Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
-            let py_lines = lines.map(|l| PyBytes::new_bound(py, l)).collect::<Vec<_>>();
+            let py_lines = lines.map(|l| PyBytes::new(py, l)).collect::<Vec<_>>();
             let py_parent_texts = match parent_texts {
                 Some(parent_texts) => {
                     let py_parent_texts = parent_texts
                         .into_iter()
-                        .map(|(k, v)| (k.to_object(py), v.to_object(py)))
-                        .collect::<Vec<_>>();
+                        .map(|(k, v)| Ok((k.into_pyobject(py)?, v)))
+                        .collect::<Result<Vec<_>, PyErr>>()?;
                     Some(py_parent_texts)
                 }
                 None => None,
@@ -219,7 +222,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
             let py_result = py_versioned_file.call_method1(
                 "add_lines",
                 (
-                    version_id.to_object(py),
+                    version_id,
                     py_parent_texts,
                     py_lines,
                     nostore_sha,
@@ -241,23 +244,20 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         #[pymethods]
         impl PyContentFactory {
             #[getter]
-            fn sha1(&self, py: Python) -> PyObject {
-                self.0.sha1().to_object(py)
+            fn sha1<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
+                Ok(self.0.sha1().map(|o| PyBytes::new(py, &o)))
             }
 
             #[getter]
-            fn key(&self, py: Python) -> PyObject {
-                self.0.key().to_object(py)
+            fn key<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, pyo3::types::PyTuple>> {
+                self.0.key().into_pyobject(py)
             }
         }
 
         Python::with_gil(|py| {
             let py_versioned_file = self.0.bind(py);
             let stream = stream.collect::<Vec<_>>();
-            let py_stream = stream
-                .into_iter()
-                .map(|c| PyContentFactory(c))
-                .collect::<Vec<_>>();
+            let py_stream = stream.into_iter().map(PyContentFactory).collect::<Vec<_>>();
             py_versioned_file.call_method1("insert_record_stream", (py_stream,))?;
             Ok(())
         })

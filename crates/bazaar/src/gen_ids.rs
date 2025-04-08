@@ -117,12 +117,10 @@ pub fn gen_revision_id(username: &str, timestamp: Option<u64>) -> Vec<u8> {
             .unwrap()
             .as_secs()
     });
-    vec![
-        user_or_email,
+    [user_or_email,
         breezy_osutils::time::compact_date(timestamp)
             .as_bytes()
             .to_vec(),
-        unique_chunk,
-    ]
+        unique_chunk]
     .join(&b'-')
 }

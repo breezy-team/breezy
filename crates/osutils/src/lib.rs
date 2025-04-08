@@ -231,20 +231,28 @@ impl Kind {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::ToPyObject for Kind {
-    fn to_object(&self, py: pyo3::Python) -> pyo3::PyObject {
+impl<'py> pyo3::IntoPyObject<'py> for Kind {
+    type Target = pyo3::types::PyString;
+
+    type Output = pyo3::Bound<'py, Self::Target>;
+
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
-            Kind::File => "file".to_object(py),
-            Kind::Directory => "directory".to_object(py),
-            Kind::Symlink => "symlink".to_object(py),
-            Kind::TreeReference => "tree-reference".to_object(py),
+            Kind::File => "file",
+            Kind::Directory => "directory",
+            Kind::Symlink => "symlink",
+            Kind::TreeReference => "tree-reference",
         }
+        .into_pyobject(py)
     }
 }
 
 #[cfg(feature = "pyo3")]
 impl pyo3::FromPyObject<'_> for Kind {
-    fn extract(ob: &pyo3::PyAny) -> pyo3::PyResult<Self> {
+    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        use pyo3::prelude::*;
         let s: String = ob.extract()?;
         match s.as_str() {
             "file" => Ok(Kind::File),

@@ -41,15 +41,9 @@ impl From<PyObject> for PyTransport {
 fn map_py_err_to_lock_err(e: PyErr) -> LockError {
     Python::with_gil(|py| {
         if e.is_instance_of::<LockContention>(py) {
-            LockError::Contention(
-                e.value_bound(py)
-                    .getattr("lock")
-                    .unwrap()
-                    .extract()
-                    .unwrap(),
-            )
+            LockError::Contention(e.value(py).getattr("lock").unwrap().extract().unwrap())
         } else if e.is_instance_of::<LockFailed>(py) {
-            let v = e.value_bound(py);
+            let v = e.value(py);
             LockError::Failed(
                 v.getattr("lock").unwrap().extract().unwrap(),
                 v.getattr("why").unwrap().extract().unwrap(),
@@ -73,9 +67,15 @@ impl Lock for PyLock {
     }
 }
 
-impl IntoPy<PyObject> for PyTransport {
-    fn into_py(self, py: Python) -> PyObject {
-        self.0.to_object(py)
+impl<'py> IntoPyObject<'py> for PyTransport {
+    type Target = PyAny;
+
+    type Output = Bound<'py, Self::Target>;
+
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> std::result::Result<Self::Output, Self::Error> {
+        Ok(self.0.bind(py).clone())
     }
 }
 
@@ -83,7 +83,7 @@ impl From<PyErr> for Error {
     fn from(e: PyErr) -> Self {
         Python::with_gil(|py| {
             let arg = |_i| -> Option<String> {
-                let args = e.value_bound(py).getattr("args").unwrap();
+                let args = e.value(py).getattr("args").unwrap();
                 match args.get_item(0) {
                     Ok(a) if a.is_none() => None,
                     Ok(a) => Some(a.extract::<String>().unwrap()),
@@ -105,7 +105,7 @@ impl From<PyErr> for Error {
             } else if e.is_instance_of::<PathNotChild>(py) {
                 Error::PathNotChild
             } else if e.is_instance_of::<ShortReadvError>(py) {
-                let value = e.value_bound(py);
+                let value = e.value(py);
                 Error::ShortReadvError(
                     value.getattr("path").unwrap().extract::<String>().unwrap(),
                     value.getattr("offset").unwrap().extract::<u64>().unwrap(),
@@ -126,9 +126,9 @@ fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
     Python::with_gil(|py| {
         let mut buffer = Vec::new();
         r.read_to_end(&mut buffer)?;
-        let io = py.import_bound("io")?;
+        let io = py.import("io")?;
         let bytesio = io.getattr("BytesIO")?;
-        Ok(bytesio.call1((buffer,))?.to_object(py))
+        Ok(bytesio.call1((buffer,))?.unbind())
     })
 }
 
@@ -177,7 +177,7 @@ impl Transport for PyTransport {
     fn get_bytes(&self, path: &str) -> Result<Vec<u8>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get_bytes", (path,))?;
-            let bytes = obj.extract::<&PyBytes>(py)?;
+            let bytes = obj.extract::<Bound<PyBytes>>(py)?;
             Ok(bytes.as_bytes().to_vec())
         })
     }

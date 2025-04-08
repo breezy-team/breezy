@@ -199,7 +199,7 @@ def unescape_for_display(url, encoding):
     if url.startswith("file://"):
         try:
             path = local_path_from_url(url)
-            path.encode(encoding)
+            str(path).encode(encoding)
             return path
         except UnicodeError:
             return url

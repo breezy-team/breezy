@@ -1,11 +1,11 @@
 use std::io::{self, BufRead, Read, Seek, SeekFrom};
 
-pub struct IterableFile<I: Iterator<Item = io::Result<Vec<u8>>> + Send> {
+pub struct IterableFile<I: Iterator<Item = io::Result<Vec<u8>>> + Send + Sync> {
     iter: I,
     buffer: Vec<u8>,
 }
 
-impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> IterableFile<I> {
+impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send + Sync> IterableFile<I> {
     pub fn new(iter: I) -> Self {
         IterableFile {
             iter,
@@ -14,7 +14,7 @@ impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> IterableFile<I> {
     }
 }
 
-impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> Read for IterableFile<I> {
+impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send + Sync> Read for IterableFile<I> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.fill_buf()?.read(buf)?;
         self.consume(n);
@@ -22,7 +22,7 @@ impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> Read for IterableFile<I> {
     }
 }
 
-impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> BufRead for IterableFile<I> {
+impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send + Sync> BufRead for IterableFile<I> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         while self.buffer.is_empty() {
             if let Some(bytes) = self.iter.next() {
@@ -39,7 +39,7 @@ impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> BufRead for IterableFile<I>
     }
 }
 
-impl<I: Iterator<Item = io::Result<Vec<u8>>> + Seek + Send> Seek for IterableFile<I> {
+impl<I: Iterator<Item = io::Result<Vec<u8>>> + Seek + Send + Sync> Seek for IterableFile<I> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         match pos {
             SeekFrom::Start(n) => {
