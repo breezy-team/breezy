@@ -75,8 +75,64 @@ fn test_sort_mounts() {
     );
 }
 
+#[cfg(target_os = "linux")]
 fn load_mounts() -> Vec<MountEntry> {
     let mut mounts: Vec<MountEntry> = read_mtab("/proc/mounts").collect();
+    sort_mounts(&mut mounts);
+    mounts
+}
+
+#[cfg(target_os = "macos")]
+fn parse_mount_line(line: &str) -> Option<MountEntry> {
+    if line.is_empty() {
+        return None;
+    }
+    if line.starts_with("#") {
+        return None;
+    }
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 3 {
+        return None;
+    }
+    let path = PathBuf::from(parts[2]);
+    let fs_type = parts[0].to_string();
+    let options = parts[3..].join(" ");
+    Some(MountEntry {
+        path,
+        fs_type,
+        options,
+    })
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn test_parse_mount_line() {
+    let line = "devfs on /dev (devfs, local, nobrowse)";
+    let mount_entry = parse_mount_line(line).unwrap();
+    assert_eq!(mount_entry.path, PathBuf::from("/dev"));
+    assert_eq!(mount_entry.fs_type, "devfs");
+    assert_eq!(mount_entry.options, "local, nobrowse");
+}
+
+#[cfg(target_os = "macos")]
+fn load_mounts() -> Vec<MountEntry> {
+    // macOS does not have a /proc/mounts equivalent, so we use the output of
+    // `mount` command
+    //
+    // TODO: find a more robust and efficient way to get mount information
+    let output = std::process::Command::new("mount")
+        .output()
+        .expect("Failed to execute mount command");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let mut mounts = Vec::new();
+    for line in stdout.lines() {
+        if let Some(mount_entry) = parse_mount_line(line) {
+            mounts.push(mount_entry);
+        }
+    }
+
     sort_mounts(&mut mounts);
     mounts
 }
