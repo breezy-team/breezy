@@ -118,7 +118,7 @@ struct ZzzTranslateBackend;
 
 impl ZzzTranslateBackend {
     fn zzz(&self, msgid: &str) -> String {
-        vec!["zzå{{", msgid, "}}"].concat()
+        ["zzå{{", msgid, "}}"].concat()
     }
 }
 
@@ -158,11 +158,11 @@ impl ZzzTranslateForDocBackend {
         let indent_pat = Regex::new(r"^\s+").unwrap();
 
         if let Some(m) = section_pat.find(msgid) {
-            vec![&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
+            [&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
         } else if let Some(m) = indent_pat.find(msgid) {
-            vec![&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
+            [&msgid[m.start()..m.end()], "zz{{", &msgid[m.end()..], "}}"].concat()
         } else {
-            return vec!["zz{{", msgid, "}}"].concat();
+            return ["zz{{", msgid, "}}"].concat();
         }
     }
 }

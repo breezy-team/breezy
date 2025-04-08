@@ -238,6 +238,12 @@ where
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChildMap<K: PartialEq + Eq + Hash>(HashMap<K, Vec<K>>);
 
+impl<K: Clone + Hash + PartialEq + Eq> Default for ChildMap<K> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
     pub fn new() -> Self {
         ChildMap(HashMap::new())
@@ -245,7 +251,7 @@ impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
 
     #[inline]
     pub fn insert(&mut self, k: K) {
-        self.0.entry(k).or_insert_with(Vec::new);
+        self.0.entry(k).or_default();
     }
 
     #[inline]
@@ -255,7 +261,7 @@ impl<K: Clone + Hash + PartialEq + Eq> ChildMap<K> {
 
     #[inline]
     pub fn add(&mut self, k: K, v: K) {
-        self.0.entry(k).or_insert_with(Vec::new).push(v);
+        self.0.entry(k).or_default().push(v);
     }
 
     #[inline]

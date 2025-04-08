@@ -629,7 +629,7 @@ impl Transport {
             })
             .collect::<PyResult<Vec<(u64, Bound<PyBytes>)>>>()?;
         let list = PyList::new(py, &buffered)?;
-        Ok(PyIterator::from_object(&list)?)
+        PyIterator::from_object(&list)
     }
 
     fn listable(&self, py: Python) -> bool {
@@ -837,7 +837,7 @@ impl LocalTransport {
 
         let init = PyClassInitializer::from(Transport(inner));
         let init = init.add_subclass(Self {});
-        Ok(Bound::new(py, init)?)
+        Bound::new(py, init)
     }
 }
 

@@ -813,10 +813,10 @@ fn read_mtab(py: Python, path: PathBuf) -> PyResult<Bound<PyIterator>> {
         breezy_osutils::mounts::read_mtab(path).collect();
     let list = PyList::empty(py);
     for entry in it {
-        let tuple = PyTuple::new(py, &[entry.path.to_str().unwrap(), entry.fs_type.as_str()])?;
+        let tuple = PyTuple::new(py, [entry.path.to_str().unwrap(), entry.fs_type.as_str()])?;
         list.append(tuple)?;
     }
-    Ok(list.as_ref().try_iter()?)
+    list.as_ref().try_iter()
 }
 
 #[pyfunction]

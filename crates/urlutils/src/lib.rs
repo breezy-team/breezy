@@ -750,7 +750,7 @@ pub fn derive_to_location(from_location: &str) -> String {
     let from_location = strip_segment_parameters(from_location);
     if let Some(separator_index) = from_location.rfind('/') {
         let basename = &from_location[separator_index + 1..];
-        return basename.trim_end_matches("/\\").to_string();
+        basename.trim_end_matches("/\\").to_string()
     } else if let Some(separator_index) = from_location.find(':') {
         return from_location[separator_index + 1..].to_string();
     } else {

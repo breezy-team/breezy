@@ -182,10 +182,10 @@ impl PyParentsProvider {
 }
 
 #[pyfunction]
-fn DictParentsProvider<'py>(
-    py: Python<'py>,
+fn DictParentsProvider(
+    py: Python<'_>,
     parent_map: ParentMap<PyNode>,
-) -> PyResult<Bound<'py, PyParentsProvider>> {
+) -> PyResult<Bound<'_, PyParentsProvider>> {
     let provider = PyParentsProvider {
         provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map)),
     };

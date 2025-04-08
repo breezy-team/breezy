@@ -95,7 +95,7 @@ pub struct RioReaderIter<'a, R: BufRead> {
     reader: &'a mut RioReader<R>,
 }
 
-impl<'a, R: BufRead> Iterator for RioReaderIter<'a, R> {
+impl<R: BufRead> Iterator for RioReaderIter<'_, R> {
     type Item = Result<Option<Stanza>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -283,7 +283,7 @@ where
     let mut accum_value: Option<Vec<String>> = None;
 
     for bline in lines {
-        let mut line = bline.map_err(Error::from)?;
+        let mut line = bline?;
         trim_newline(&mut line);
         if line.is_empty() {
             break; // end of stanza

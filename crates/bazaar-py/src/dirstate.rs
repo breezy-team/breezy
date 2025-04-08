@@ -167,7 +167,7 @@ fn bisect_dirblock(
     let hi = hi.unwrap_or(dirblocks.len());
     let cache = cache.unwrap_or_else(|| PyDict::new(py));
 
-    let dirname_split = match cache.get_item(&dirname)? {
+    let dirname_split = match cache.get_item(dirname)? {
         Some(item) => item.extract::<Vec<PathBuf>>()?,
         None => {
             let split = split_object(dirname)?;
@@ -425,7 +425,7 @@ fn inv_entry_to_details<'a>(
 }
 
 #[pyfunction]
-fn get_output_lines<'py>(py: Python<'py>, lines: Vec<Vec<u8>>) -> Vec<Bound<'py, PyBytes>> {
+fn get_output_lines(py: Python<'_>, lines: Vec<Vec<u8>>) -> Vec<Bound<'_, PyBytes>> {
     let lines = lines.iter().map(|x| x.as_slice()).collect::<Vec<&[u8]>>();
     bazaar::dirstate::get_output_lines(lines)
         .into_iter()

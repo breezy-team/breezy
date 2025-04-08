@@ -373,7 +373,7 @@ impl InventoryFile {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(Bound::new(py, init)?)
+        Bound::new(py, init)
     }
 
     fn __repr__(slf: PyRef<Self>, py: Python) -> PyResult<String> {
@@ -486,7 +486,7 @@ impl InventoryDirectory {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(Bound::new(py, init)?)
+        Bound::new(py, init)
     }
 
     #[getter]
@@ -604,7 +604,7 @@ impl TreeReference {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(Bound::new(py, init)?)
+        Bound::new(py, init)
     }
 }
 
@@ -648,7 +648,7 @@ impl InventoryLink {
         let s = slf.into_super();
         let init = PyClassInitializer::from(InventoryEntry(s.0.clone()));
         let init = init.add_subclass(Self());
-        Ok(Bound::new(py, init)?)
+        Bound::new(py, init)
     }
 
     #[getter]
@@ -1120,7 +1120,7 @@ impl Inventory {
                 reference_revision,
             )
             .map_err(|e| inventory_err_to_py_err(e, py))?;
-        Ok(self.get_entry(py, file_id)?)
+        self.get_entry(py, file_id)
     }
 
     #[getter]
@@ -1340,7 +1340,7 @@ impl Inventory {
         old: &Inventory,
     ) -> PyResult<Bound<'py, InventoryDelta>> {
         let inventory_delta = self.0.make_delta(&old.0);
-        Ok(Bound::new(py, InventoryDelta(inventory_delta))?)
+        Bound::new(py, InventoryDelta(inventory_delta))
     }
 
     fn remove_recursive_id<'a>(
@@ -1376,10 +1376,10 @@ impl Inventory {
         if children.is_none() {
             return Err(NoSuchId::new_err((py.None(), file_id)));
         }
-        Ok(children
+        children
             .unwrap()
             .map(|(_n, e)| Ok(entry_to_py(py, e.clone())?.into_any()))
-            .collect::<PyResult<Vec<_>>>()?)
+            .collect::<PyResult<Vec<_>>>()
     }
 
     fn iter_all_ids<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
@@ -1399,10 +1399,10 @@ impl Inventory {
     ) -> PyResult<Bound<IterEntriesIterator>> {
         let recursive = recursive.unwrap_or(true);
 
-        Ok(Bound::new(
+        Bound::new(
             py,
             IterEntriesIterator::new(py, slf, from_dir, recursive)?,
-        )?)
+        )
     }
 
     #[pyo3(signature = (from_dir=None, specific_file_ids=None))]
@@ -1412,10 +1412,10 @@ impl Inventory {
         from_dir: Option<FileId>,
         specific_file_ids: Option<HashSet<FileId>>,
     ) -> PyResult<Bound<IterEntriesByDirIterator>> {
-        Ok(Bound::new(
+        Bound::new(
             py,
             IterEntriesByDirIterator::new(py, slf, from_dir, specific_file_ids)?,
-        )?)
+        )
     }
 
     fn change_root_id(&mut self, new_root_id: FileId) -> PyResult<()> {
@@ -1614,8 +1614,8 @@ struct IterEntriesIterator {
 }
 
 impl IterEntriesIterator {
-    fn new<'py>(
-        py: Python<'py>,
+    fn new(
+        py: Python<'_>,
         inv: Py<Inventory>,
         mut from_dir: Option<FileId>,
         recursive: bool,

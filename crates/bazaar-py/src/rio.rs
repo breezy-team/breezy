@@ -327,7 +327,7 @@ impl RioReader {
                 stanza: stanza.unwrap(),
             })?;
         }
-        Ok(PyIterator::from_object(&ret)?)
+        PyIterator::from_object(&ret)
     }
 }
 
@@ -349,7 +349,7 @@ fn rio_iter<'a>(
         let line = line.as_slice();
         ret.append(PyBytes::new(py, line))?;
     }
-    Ok(PyIterator::from_object(&ret)?)
+    PyIterator::from_object(&ret)
 }
 
 pub(crate) fn rio(m: &Bound<PyModule>) -> PyResult<()> {

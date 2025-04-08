@@ -156,7 +156,7 @@ impl GroupCompressor for TraditionalGroupCompressor {
             ];
             index_lines.clear();
             index_lines.extend(vec![false, false]);
-            index_lines.extend(vec![true].repeat(new_lines.len()));
+            index_lines.extend([true].repeat(new_lines.len()));
             out_lines.extend(new_lines);
             ("fulltext", out_lines)
         } else {

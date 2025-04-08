@@ -294,7 +294,7 @@ impl TraditionalGroupCompressor {
                 .map(|x| PyBytes::new(py, x.as_ref()))
                 .collect())
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -303,7 +303,7 @@ impl TraditionalGroupCompressor {
         if let Some(c) = self.0.as_ref() {
             Ok(c.endpoint())
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -311,7 +311,7 @@ impl TraditionalGroupCompressor {
         if let Some(c) = self.0.as_ref() {
             Ok(c.ratio())
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -329,7 +329,7 @@ impl TraditionalGroupCompressor {
                 PyBytes::new(py, hash.as_bytes()),
             ))
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -344,7 +344,7 @@ impl TraditionalGroupCompressor {
                 endpoint,
             ))
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -362,7 +362,7 @@ impl TraditionalGroupCompressor {
                 endpoint,
             ))
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 
@@ -390,7 +390,7 @@ impl TraditionalGroupCompressor {
             .map_err(|e| PyValueError::new_err(format!("Error during compress: {:?}", e)))
             .map(|(hash, size, chunks, kind)| (PyBytes::new(py, hash.as_ref()), size, chunks, kind))
         } else {
-            Err(PyRuntimeError::new_err("Compressor is already finalized")).unwrap()
+            Err(PyRuntimeError::new_err("Compressor is already finalized"))
         }
     }
 }

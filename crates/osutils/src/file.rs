@@ -254,7 +254,7 @@ pub fn ensure_empty_directory_exists(path: &Path) -> std::io::Result<()> {
 }
 
 pub fn lexists(path: &Path) -> std::io::Result<bool> {
-    symlink_metadata(path).map(|_| true).or_else(|_e| Ok(false))
+    symlink_metadata(path).map(|_| true).or(Ok(false))
 }
 
 pub fn compare_files<T: Read, U: Read>(mut a: T, mut b: U) -> std::io::Result<bool> {

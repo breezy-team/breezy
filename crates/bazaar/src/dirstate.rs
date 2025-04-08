@@ -348,7 +348,7 @@ impl IdIndex {
         let entry_keys = self
             .id_index
             .entry(file_id.clone())
-            .or_insert_with(Vec::new);
+            .or_default();
         entry_keys.push((entry_key.0.to_vec(), entry_key.1.to_vec(), file_id.clone()));
     }
 

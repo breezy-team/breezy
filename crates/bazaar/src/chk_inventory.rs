@@ -99,7 +99,7 @@ pub fn chk_inventory_entry_to_bytes(entry: &Entry) -> Vec<u8> {
         ),
     };
 
-    let header = vec![header, b": ", entry.file_id().as_bytes()].concat();
+    let header = [header, b": ", entry.file_id().as_bytes()].concat();
 
     lines.insert(0, header.as_slice());
 

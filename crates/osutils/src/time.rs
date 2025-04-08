@@ -113,48 +113,6 @@ pub fn format_delta(delta: i64) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    /// Assert osutils.format_delta formats as expected.
-    fn assert_formatted_delta(expected: &str, seconds: i64) {
-        let actual = super::format_delta(seconds);
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_format_delta() {
-        assert_formatted_delta("0 seconds ago", 0);
-        assert_formatted_delta("1 second ago", 1);
-        assert_formatted_delta("10 seconds ago", 10);
-        assert_formatted_delta("59 seconds ago", 59);
-        assert_formatted_delta("89 seconds ago", 89);
-        assert_formatted_delta("1 minute, 30 seconds ago", 90);
-        assert_formatted_delta("3 minutes, 0 seconds ago", 180);
-        assert_formatted_delta("3 minutes, 1 second ago", 181);
-        assert_formatted_delta("10 minutes, 15 seconds ago", 615);
-        assert_formatted_delta("30 minutes, 59 seconds ago", 1859);
-        assert_formatted_delta("31 minutes, 0 seconds ago", 1860);
-        assert_formatted_delta("60 minutes, 0 seconds ago", 3600);
-        assert_formatted_delta("89 minutes, 59 seconds ago", 5399);
-        assert_formatted_delta("1 hour, 30 minutes ago", 5400);
-        assert_formatted_delta("2 hours, 30 minutes ago", 9017);
-        assert_formatted_delta("10 hours, 0 minutes ago", 36000);
-        assert_formatted_delta("24 hours, 0 minutes ago", 86400);
-        assert_formatted_delta("35 hours, 59 minutes ago", 129599);
-        assert_formatted_delta("36 hours, 0 minutes ago", 129600);
-        assert_formatted_delta("36 hours, 0 minutes ago", 129601);
-        assert_formatted_delta("36 hours, 1 minute ago", 129660);
-        assert_formatted_delta("36 hours, 1 minute ago", 129661);
-        assert_formatted_delta("84 hours, 10 minutes ago", 303002);
-
-        // We handle when time steps the wrong direction because computers
-        // don"t have synchronized clocks.
-        assert_formatted_delta("84 hours, 10 minutes in the future", -303002);
-        assert_formatted_delta("1 second in the future", -1);
-        assert_formatted_delta("2 seconds in the future", -2);
-    }
-}
-
 pub fn format_date_with_offset_in_original_timezone(t: i64, offset: i64) -> String {
     let offset_hours = offset / 3600;
     let offset_minutes = (offset % 3600) / 60;
@@ -290,4 +248,46 @@ pub fn compact_date(when: u64) -> String {
     let system_time = Utc.timestamp_opt(when as i64, 0).unwrap();
     let date_time: DateTime<Utc> = system_time;
     date_time.format("%Y%m%d%H%M%S").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    /// Assert osutils.format_delta formats as expected.
+    fn assert_formatted_delta(expected: &str, seconds: i64) {
+        let actual = super::format_delta(seconds);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_format_delta() {
+        assert_formatted_delta("0 seconds ago", 0);
+        assert_formatted_delta("1 second ago", 1);
+        assert_formatted_delta("10 seconds ago", 10);
+        assert_formatted_delta("59 seconds ago", 59);
+        assert_formatted_delta("89 seconds ago", 89);
+        assert_formatted_delta("1 minute, 30 seconds ago", 90);
+        assert_formatted_delta("3 minutes, 0 seconds ago", 180);
+        assert_formatted_delta("3 minutes, 1 second ago", 181);
+        assert_formatted_delta("10 minutes, 15 seconds ago", 615);
+        assert_formatted_delta("30 minutes, 59 seconds ago", 1859);
+        assert_formatted_delta("31 minutes, 0 seconds ago", 1860);
+        assert_formatted_delta("60 minutes, 0 seconds ago", 3600);
+        assert_formatted_delta("89 minutes, 59 seconds ago", 5399);
+        assert_formatted_delta("1 hour, 30 minutes ago", 5400);
+        assert_formatted_delta("2 hours, 30 minutes ago", 9017);
+        assert_formatted_delta("10 hours, 0 minutes ago", 36000);
+        assert_formatted_delta("24 hours, 0 minutes ago", 86400);
+        assert_formatted_delta("35 hours, 59 minutes ago", 129599);
+        assert_formatted_delta("36 hours, 0 minutes ago", 129600);
+        assert_formatted_delta("36 hours, 0 minutes ago", 129601);
+        assert_formatted_delta("36 hours, 1 minute ago", 129660);
+        assert_formatted_delta("36 hours, 1 minute ago", 129661);
+        assert_formatted_delta("84 hours, 10 minutes ago", 303002);
+
+        // We handle when time steps the wrong direction because computers
+        // don"t have synchronized clocks.
+        assert_formatted_delta("84 hours, 10 minutes in the future", -303002);
+        assert_formatted_delta("1 second in the future", -1);
+        assert_formatted_delta("2 seconds in the future", -2);
+    }
 }

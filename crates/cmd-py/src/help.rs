@@ -153,7 +153,7 @@ impl HelpTopicRegistry {
         let topic = self.get(py, name)?;
 
         topic
-            .map(|topic| Ok(topic.getattr("summary")?.extract::<String>()?))
+            .map(|topic| topic.getattr("summary")?.extract::<String>())
             .transpose()
     }
 
@@ -162,10 +162,10 @@ impl HelpTopicRegistry {
         let topic = self.get(py, name)?;
         topic
             .map(|topic| {
-                Ok(topic
+                topic
                     .getattr("get_contents")?
                     .call0()?
-                    .extract::<String>()?)
+                    .extract::<String>()
             })
             .transpose()
     }

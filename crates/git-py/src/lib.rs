@@ -1,5 +1,4 @@
 use pyo3::prelude::*;
-use std::path::PathBuf;
 
 #[pyfunction]
 fn bzr_url_to_git_url(location: &str) -> PyResult<(String, Option<String>, Option<String>)> {

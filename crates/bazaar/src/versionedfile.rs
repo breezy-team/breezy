@@ -212,7 +212,7 @@ impl pyo3::FromPyObject<'_> for Key {
             .unwrap()
             .to_string()
             .split('.')
-            .last()
+            .next_back()
             .unwrap()
         {
             "tuple" | "StaticTuple" => {}

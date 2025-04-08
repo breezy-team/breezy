@@ -104,7 +104,7 @@ pub fn open_brz_log() -> Option<File> {
     if brz_log_file
         .metadata()
         .ok()
-        .map_or(false, |md| md.len() == 0)
+        .is_some_and(|md| md.len() == 0)
     {
         if let Err(e) = writeln!(
             brz_log_file,

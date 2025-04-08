@@ -150,7 +150,7 @@ impl LinesDeltaIndex {
             }
             matches
                 .entry(line.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(start_idx + idx);
         }
     }
