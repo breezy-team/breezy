@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.9, "3.10", "3.11", '3.12']
+        python-version: [3.9, "3.10", "3.11", '3.12', '3.13']
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
@@ -42,13 +42,8 @@ jobs:
           python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
       - name: Install dependencies (linux/pip)
         run: |
-          sudo apt install libgpgme-dev libgpg-error-dev
-          mkdir -p "$HOME/.local/bin"
-          cp .github/gpgme-config "$HOME/.local/bin/gpgme-config"
-          cp .github/gpg-error-config "$HOME/.local/bin/gpg-error-config"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
           pip install pyinotify
-          pip install ".[workspace,pgp]"
+          pip install ".[workspace]"
         if: "matrix.os == 'ubuntu-latest'"
       - name: Build docs
         run: |

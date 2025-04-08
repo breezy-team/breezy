@@ -80,7 +80,7 @@ fn default_perms() -> Permissions {
     let mask = umask(Mode::empty());
     umask(mask);
     let mode = 0o666 & !mask.bits();
-    Permissions::from_mode(mode)
+    Permissions::from_mode(mode as u32)
 }
 
 #[pyclass]

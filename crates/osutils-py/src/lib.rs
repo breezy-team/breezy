@@ -16,6 +16,7 @@ use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use termion::color::Color;
+use std::convert::TryInto;
 
 create_exception!(
     breezy_osutils,
@@ -724,7 +725,7 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
 #[pyfunction]
 #[cfg(unix)]
 fn get_umask() -> PyResult<u32> {
-    Ok(breezy_osutils::get_umask().bits())
+    Ok(breezy_osutils::get_umask().bits() as u32)
 }
 
 #[pyfunction]
@@ -879,7 +880,7 @@ fn win32_abspath(path: PathBuf) -> PyResult<String> {
 #[pyfunction]
 fn kind_from_mode(mode: u32) -> &'static str {
     use nix::sys::stat::SFlag;
-    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode))
+    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode.try_into().unwrap()))
 }
 
 #[pyfunction]
