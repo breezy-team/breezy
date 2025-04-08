@@ -269,6 +269,7 @@ fn branch_tip_is_null(py: Python, branch_tip: PyObject) -> bool {
 #[pymethods]
 impl MergeSorter {
     #[new]
+    #[pyo3(signature = (graph, branch_tip=None, mainline_revisions=None, generate_revno=false))]
     fn new(
         py: Python,
         graph: PyObject,
@@ -387,6 +388,7 @@ impl MergeSorter {
 ///
 /// Node identifiers can be any hashable object, and are typically strings.
 #[pyfunction]
+#[pyo3(signature = (graph, branch_tip=None, mainline_revisions=None, generate_revno=false))]
 fn merge_sort(
     py: Python,
     graph: PyObject,

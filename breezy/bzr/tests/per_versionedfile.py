@@ -617,7 +617,7 @@ class VersionedFileTestMixIn:
         f.add_lines(b"r3", [], [b"a\n", b"b\n"])
         f.add_lines(b"m", [b"r0", b"r1", b"r2", b"r3"], [b"a\n", b"b\n"])
         self.assertEqual({b"m": (b"r0", b"r1", b"r2", b"r3")}, f.get_parent_map([b"m"]))
-        self.assertEqual({}, f.get_parent_map(b"y"))
+        self.assertEqual({}, f.get_parent_map([b"y"]))
         self.assertEqual(
             {b"r0": (), b"r1": (b"r0",)}, f.get_parent_map([b"r0", b"y", b"r1"])
         )

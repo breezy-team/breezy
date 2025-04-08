@@ -4,6 +4,7 @@ use std::io::Read;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::RwLock;
 
 use std::fs::{metadata, rename};
 
@@ -63,14 +64,17 @@ pub fn open_or_create_log_file<P: AsRef<Path>>(filename: P) -> std::io::Result<F
     }
 }
 
-static mut BRZ_LOG_FILENAME: Option<PathBuf> = None;
+static BRZ_LOG_FILENAME: once_cell::sync::Lazy<RwLock<Option<PathBuf>>> =
+    once_cell::sync::Lazy::new(|| RwLock::new(None));
 
 pub fn get_brz_log_filename() -> Option<PathBuf> {
-    unsafe { BRZ_LOG_FILENAME.clone() }
+    let guard = BRZ_LOG_FILENAME.read().unwrap();
+    guard.clone()
 }
 
 pub fn set_brz_log_filename(filename: Option<&Path>) {
-    unsafe { BRZ_LOG_FILENAME = filename.map(|p| p.to_path_buf()) };
+    let mut guard = BRZ_LOG_FILENAME.write().unwrap();
+    *guard = filename.map(|p| p.to_path_buf());
 }
 
 /// Open the brz.log trace file.
@@ -81,7 +85,7 @@ pub fn set_brz_log_filename(filename: Option<&Path>) {
 /// This sets the global `_brz_log_filename`.
 pub fn open_brz_log() -> Option<File> {
     let filename = initialize_brz_log_filename().ok()?;
-    unsafe { BRZ_LOG_FILENAME = Some(filename.clone()) };
+    set_brz_log_filename(Some(filename.as_path()));
     rollover_trace_maybe(&filename).ok();
 
     let mut brz_log_file = match open_or_create_log_file(&filename) {

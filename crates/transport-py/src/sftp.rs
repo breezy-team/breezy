@@ -105,6 +105,7 @@ impl SFTPFile {
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
+    #[pyo3(signature = (flags = None))]
     fn stat(&mut self, py: Python, flags: Option<u32>) -> PyResult<SFTPAttributes> {
         py.allow_threads(|| self.sftp.fstat(&self.file, flags).map(SFTPAttributes))
             .map_err(|e| sftp_error_to_py_err(e, None))
@@ -205,6 +206,7 @@ impl SFTPFile {
         .into_any())
     }
 
+    #[pyo3(signature = (length = None))]
     fn read<'a>(&mut self, py: Python<'a>, length: Option<u32>) -> PyResult<Bound<'a, PyBytes>> {
         let ret = if let Some(length) = length {
             py.allow_threads(|| self.sftp.pread(&self.file, self.offset, length))
@@ -287,6 +289,7 @@ impl SFTPClient {
         })
     }
 
+    #[pyo3(signature = (path, mode = None))]
     fn mkdir(&mut self, py: Python, path: &str, mode: Option<u32>) -> PyResult<()> {
         let path = self._adjust_cwd(path);
         let mut attr = sftp::Attributes::new();
@@ -300,6 +303,7 @@ impl SFTPClient {
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
+    #[pyo3(signature = (path, flags = None))]
     fn lstat(&mut self, py: Python, path: &str, flags: Option<u32>) -> PyResult<SFTPAttributes> {
         let path = self._adjust_cwd(path);
         py.allow_threads(|| self.sftp.lstat(path.as_str(), flags))
@@ -307,6 +311,7 @@ impl SFTPClient {
             .map(SFTPAttributes)
     }
 
+    #[pyo3(signature = (path, flags = None))]
     fn stat(&mut self, py: Python, path: &str, flags: Option<u32>) -> PyResult<SFTPAttributes> {
         let path = self._adjust_cwd(path);
         py.allow_threads(|| self.sftp.stat(path.as_str(), flags))
@@ -336,6 +341,7 @@ impl SFTPClient {
             .map_err(|e| sftp_error_to_py_err(e, Some(newpath.as_str())))
     }
 
+    #[pyo3(signature = (path, control_byte = None, compose_path = None))]
     fn realpath(
         &mut self,
         py: Python,
@@ -363,6 +369,7 @@ impl SFTPClient {
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
+    #[pyo3(signature = (oldpath, newpath, flags = None))]
     fn rename(
         &mut self,
         py: Python,
@@ -410,6 +417,7 @@ impl SFTPClient {
         })
     }
 
+    #[pyo3(signature = (path, mode = None, create_mode = None))]
     fn file(
         &mut self,
         py: Python,

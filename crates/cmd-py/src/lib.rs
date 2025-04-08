@@ -29,6 +29,7 @@ fn i18n_dgettext(domain: &str, msgid: &str) -> PyResult<String> {
 }
 
 #[pyfunction(name = "install")]
+#[pyo3(signature = (lang = None, locale_base = None))]
 fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
     breezy::i18n::install(lang, locale_base)?;
@@ -48,6 +49,7 @@ fn i18n_install_zzz_for_doc() -> PyResult<()> {
 }
 
 #[pyfunction(name = "install_plugin")]
+#[pyo3(signature = (name, locale_base = None))]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
     let locale_base = locale_base.as_deref();
     breezy::i18n::install_plugin(name, locale_base)?;
@@ -75,57 +77,98 @@ fn i18n_zzz(msgid: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (path = None))]
 fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
     breezy::bedding::ensure_config_dir_exists(path.as_deref())?;
     Ok(())
 }
 
 #[pyfunction]
-fn config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_dir()?)
+fn config_dir() -> PyResult<String> {
+    let path = breezy::bedding::config_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))
 }
 
 #[pyfunction]
-fn _config_dir() -> PyResult<(PathBuf, String)> {
-    Ok(breezy::bedding::_config_dir().map(|(p, k)| (p, k.to_string()))?)
+fn _config_dir() -> PyResult<(String, String)> {
+    let (path, kind) = breezy::bedding::_config_dir()?;
+
+    let path = path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))?;
+
+    Ok((path, kind.to_string()))
 }
 
 #[pyfunction]
-fn bazaar_config_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::bazaar_config_dir()?)
+fn bazaar_config_dir() -> PyResult<String> {
+    let path = breezy::bedding::bazaar_config_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid bazaar config directory"))
 }
 
 #[pyfunction]
-fn config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::config_path()?)
+fn config_path() -> PyResult<String> {
+    let path = breezy::bedding::config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid config path"))
 }
 
 #[pyfunction]
-fn locations_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::locations_config_path()?)
+fn locations_config_path() -> PyResult<String> {
+    let path = breezy::bedding::locations_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid locations config path"))
 }
 
 #[pyfunction]
-fn authentication_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::authentication_config_path()?)
+fn authentication_config_path() -> PyResult<String> {
+    let path = breezy::bedding::authentication_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid authentication config path"))
 }
 
 #[pyfunction]
-fn user_ignore_config_path() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::user_ignore_config_path()?)
+fn user_ignore_config_path() -> PyResult<String> {
+    let path = breezy::bedding::user_ignore_config_path()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid user ignore config path"))
 }
 
 #[pyfunction]
-fn crash_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::crash_dir())
+fn crash_dir() -> PyResult<String> {
+    let path = breezy::bedding::crash_dir();
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid crash directory"))
 }
 
 #[pyfunction]
-fn cache_dir() -> PyResult<PathBuf> {
-    Ok(breezy::bedding::cache_dir()?)
+fn cache_dir() -> PyResult<String> {
+    let path = breezy::bedding::cache_dir()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid cache directory"))
 }
 
 #[pyfunction]
+#[pyo3(signature = (mailname_file = None))]
 fn get_default_mail_domain(mailname_file: Option<PathBuf>) -> Option<String> {
     breezy::bedding::get_default_mail_domain(mailname_file.as_deref())
 }
@@ -144,8 +187,12 @@ fn auto_user_id() -> PyResult<(Option<String>, Option<String>)> {
 }
 
 #[pyfunction]
-fn initialize_brz_log_filename() -> PyResult<PathBuf> {
-    Ok(breezy::trace::initialize_brz_log_filename()?)
+fn initialize_brz_log_filename() -> PyResult<String> {
+    let path = breezy::trace::initialize_brz_log_filename()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Invalid log filename"))
 }
 
 #[pyfunction]
@@ -186,8 +233,15 @@ fn set_brz_log_filename(path: Option<PathBuf>) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn get_brz_log_filename() -> PyResult<Option<PathBuf>> {
-    Ok(breezy::trace::get_brz_log_filename())
+fn get_brz_log_filename() -> PyResult<Option<String>> {
+    let path = breezy::trace::get_brz_log_filename();
+
+    path.map(|s| {
+        s.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| PyValueError::new_err("Invalid log filename"))
+    })
+    .transpose()
 }
 
 #[pyclass]
@@ -385,6 +439,7 @@ fn debug_memory_proc(message: &str, short: bool) {
 }
 
 #[pyfunction]
+#[pyo3(signature = (location, scheme = None))]
 fn rcp_location_to_url(location: &str, scheme: Option<&str>) -> PyResult<String> {
     let scheme = scheme.unwrap_or("ssh");
     breezy::location::rcp_location_to_url(location, scheme)
@@ -417,6 +472,7 @@ fn help_as_plain_text(text: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (see_also = None))]
 fn format_see_also(see_also: Option<Vec<String>>) -> PyResult<String> {
     let see_also = see_also
         .as_ref()
@@ -463,6 +519,7 @@ struct LockHeldInfo(breezy::lockdir::LockHeldInfo);
 #[pymethods]
 impl LockHeldInfo {
     #[classmethod]
+    #[pyo3(signature = (extra_holder_info = None))]
     fn for_this_process(
         _cls: &Bound<PyType>,
         extra_holder_info: Option<std::collections::HashMap<String, String>>,

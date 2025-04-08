@@ -9,8 +9,12 @@ fn bzr_url_to_git_url(location: &str) -> PyResult<(String, Option<String>, Optio
 }
 
 #[pyfunction]
-fn get_cache_dir() -> PyResult<PathBuf> {
-    breezy_git::get_cache_dir().map_err(|e| -> PyErr { e.into() })
+fn get_cache_dir() -> PyResult<String> {
+    let path = breezy_git::get_cache_dir().map_err(|e| -> PyErr { e.into() })?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyValueError, _>(("Invalid path",)))
 }
 
 #[pymodule]

@@ -6,6 +6,7 @@ struct DynamicHelpTopic(std::sync::Arc<breezy::help::DynamicHelpTopic>);
 
 #[pymethods]
 impl DynamicHelpTopic {
+    #[pyo3(signature = (additional_see_also = None, plain = None))]
     fn get_help_text(
         &self,
         additional_see_also: Option<Vec<String>>,
@@ -52,6 +53,7 @@ impl StaticHelpTopic {
         self.0.name.to_string()
     }
 
+    #[pyo3(signature = (additional_see_also = None, plain = None))]
     fn get_help_text(
         &self,
         additional_see_also: Option<Vec<String>>,
@@ -75,6 +77,7 @@ impl HelpTopicRegistry {
         Self
     }
 
+    #[pyo3(signature = (name, contents, summary, section = None))]
     fn register(
         &mut self,
         py: Python,
@@ -115,6 +118,7 @@ impl HelpTopicRegistry {
         Ok(())
     }
 
+    #[pyo3(signature = (name, module, path, summary, section = None))]
     fn register_lazy(
         &mut self,
         py: Python,
@@ -133,6 +137,7 @@ impl HelpTopicRegistry {
         self.register(py, name, o.unbind(), summary, section)
     }
 
+    #[pyo3(signature = (name))]
     fn get<'a>(&self, py: Python<'a>, name: &str) -> PyResult<Option<Bound<'a, PyAny>>> {
         if let Some(topic) = breezy::help::get_dynamic_topic(name) {
             Ok(Some(Bound::new(py, DynamicHelpTopic(topic))?.into_any()))
@@ -143,6 +148,7 @@ impl HelpTopicRegistry {
         }
     }
 
+    #[pyo3(signature = (name, ))]
     fn get_summary(&self, py: Python, name: &str) -> PyResult<Option<String>> {
         let topic = self.get(py, name)?;
 
@@ -151,6 +157,7 @@ impl HelpTopicRegistry {
             .transpose()
     }
 
+    #[pyo3(signature = (name, ))]
     fn get_detail(&self, py: Python, name: &str) -> PyResult<Option<String>> {
         let topic = self.get(py, name)?;
         topic

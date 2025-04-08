@@ -483,7 +483,7 @@ def safe_unicode(unicode_or_utf8_string):
     Otherwise it is decoded from utf-8. If decoding fails, the exception is
     wrapped in a BzrBadParameterNotUnicode exception.
     """
-    if isinstance(unicode_or_utf8_string, str):
+    if isinstance(unicode_or_utf8_string, (str, os.PathLike)):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode("utf8")

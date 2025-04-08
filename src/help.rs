@@ -1,6 +1,7 @@
 use regex::Regex;
 use std::borrow::Cow;
 use std::convert::TryFrom;
+use std::sync::RwLock;
 
 pub enum HelpContents {
     Text(&'static str),
@@ -928,13 +929,16 @@ pub fn get_static_topic(name: &str) -> Option<&'static HelpTopic> {
 }
 
 pub fn get_dynamic_topic(name: &str) -> Option<std::sync::Arc<DynamicHelpTopic>> {
-    unsafe { DYNAMIC_TOPICS.get(name) }.map(std::sync::Arc::clone)
+    let lock = DYNAMIC_TOPICS.read().unwrap();
+    if let Some(topic) = lock.get(name) {
+        return Some(std::sync::Arc::clone(topic));
+    }
+    None
 }
 
 pub fn register_topic(topic: DynamicHelpTopic) {
-    unsafe {
-        DYNAMIC_TOPICS.insert(topic.name.to_string(), std::sync::Arc::new(topic));
-    }
+    let mut lock = DYNAMIC_TOPICS.write().unwrap();
+    lock.insert(topic.name.to_string(), std::sync::Arc::new(topic));
 }
 
 pub fn iter_static_topics() -> impl Iterator<Item = &'static HelpTopic> {
@@ -942,9 +946,13 @@ pub fn iter_static_topics() -> impl Iterator<Item = &'static HelpTopic> {
 }
 
 pub fn iter_dynamic_topics() -> impl Iterator<Item = std::sync::Arc<DynamicHelpTopic>> {
-    unsafe { DYNAMIC_TOPICS.iter().map(|(_, v)| std::sync::Arc::clone(v)) }
+    let lock = DYNAMIC_TOPICS.read().unwrap();
+    lock.iter()
+        .map(|(_, topic)| std::sync::Arc::clone(topic))
+        .collect::<Vec<_>>()
+        .into_iter()
 }
 
-static mut DYNAMIC_TOPICS: once_cell::sync::Lazy<
-    std::collections::HashMap<String, std::sync::Arc<DynamicHelpTopic>>,
-> = once_cell::sync::Lazy::new(std::collections::HashMap::new);
+static DYNAMIC_TOPICS: once_cell::sync::Lazy<
+    RwLock<std::collections::HashMap<String, std::sync::Arc<DynamicHelpTopic>>>,
+> = once_cell::sync::Lazy::new(|| RwLock::new(std::collections::HashMap::new()));

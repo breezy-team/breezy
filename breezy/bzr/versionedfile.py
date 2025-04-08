@@ -338,7 +338,8 @@ class VersionedFile:
 
     @staticmethod
     def check_not_reserved_id(version_id):
-        revision.check_not_reserved_id(version_id)
+        if version_id is not None:
+            revision.check_not_reserved_id(version_id)
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
@@ -1195,7 +1196,8 @@ class VersionedFiles:
 
     @staticmethod
     def check_not_reserved_id(version_id):
-        revision.check_not_reserved_id(version_id)
+        if version_id is not None:
+            revision.check_not_reserved_id(version_id)
 
     def clear_cache(self):
         """Clear whatever caches this VersionedFile holds.

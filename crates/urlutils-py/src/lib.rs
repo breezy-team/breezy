@@ -32,11 +32,13 @@ fn strip_trailing_slash(url: &str) -> &str {
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn dirname(url: &str, exclude_trailing_slash: Option<bool>) -> String {
     breezy_urlutils::dirname(url, exclude_trailing_slash.unwrap_or(true))
 }
 
 #[pyfunction]
+#[pyo3(signature = (url, exclude_trailing_slash = true))]
 fn basename(url: &str, exclude_trailing_slash: Option<bool>) -> String {
     breezy_urlutils::basename(url, exclude_trailing_slash.unwrap_or(true))
 }
@@ -131,6 +133,7 @@ fn combine_paths(base_path: &str, relpath: &str) -> String {
 }
 
 #[pyfunction]
+#[pyo3(signature = (text, safe = None))]
 fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
     if let Ok(text) = text.extract::<String>(py) {
         Ok(breezy_urlutils::escape(text.as_bytes(), safe))
@@ -188,13 +191,24 @@ fn join_segment_parameters(url: &str, parameters: HashMap<String, String>) -> Py
 }
 
 #[pyfunction]
-fn local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn local_path_from_url(url: &str) -> PyResult<String> {
+    let path = breezy_urlutils::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 #[pyfunction(name = "local_path_from_url")]
-fn win32_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn win32_local_path_from_url(url: &str) -> PyResult<String> {
+    let path =
+        breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 /// On win32 the drive letter needs to be added to the url base.
@@ -210,8 +224,14 @@ fn win32_strip_local_trailing_slash(url: &str) -> String {
 }
 
 #[pyfunction(name = "local_path_from_url")]
-fn posix_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
+fn posix_local_path_from_url(url: &str) -> PyResult<String> {
+    let path =
+        breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)?;
+
+    match path.to_str() {
+        Some(path) => Ok(path.to_string()),
+        None => Err(PyValueError::new_err("Path is not valid UTF-8")),
+    }
 }
 
 #[pyfunction]

@@ -115,6 +115,7 @@ impl PyWriteStream {
             .map_err(|e| e.into())
     }
 
+    #[pyo3(signature = (want_fdatasync=None))]
     fn close(&mut self, py: Python, want_fdatasync: Option<bool>) -> PyResult<()> {
         if want_fdatasync.unwrap_or(false) {
             self.fdatasync(py)?;
@@ -175,6 +176,7 @@ impl PyBufReadStream {
 
 #[pymethods]
 impl PyBufReadStream {
+    #[pyo3(signature = (size=None))]
     fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
@@ -194,6 +196,7 @@ impl PyBufReadStream {
         true
     }
 
+    #[pyo3(signature = (offset, whence=None))]
     fn seek(&mut self, py: Python, offset: i64, whence: Option<i8>) -> PyResult<u64> {
         let seekfrom = match whence.unwrap_or(0) {
             0 => std::io::SeekFrom::Start(offset as u64),
@@ -320,6 +323,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
+    #[pyo3(signature = (path, mode=None))]
     fn mkdir(slf: &Bound<Self>, py: Python, path: &str, mode: Option<PyObject>) -> PyResult<()> {
         let mode = mode.map(perms_from_py_object);
         let t = &slf.borrow().0;
@@ -328,15 +332,21 @@ impl Transport {
         Ok(())
     }
 
+    #[pyo3(signature = (mode=None))]
     fn ensure_base(&self, py: Python, mode: Option<PyObject>) -> PyResult<bool> {
         let mode = mode.map(perms_from_py_object);
         py.allow_threads(|| self.0.ensure_base(mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
-    fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
-        py.allow_threads(|| self.0.local_abspath(path))
-            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
+    fn local_abspath(&self, py: Python, path: &str) -> PyResult<String> {
+        let path = py
+            .allow_threads(|| self.0.local_abspath(path))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
+
+        path.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| PyValueError::new_err(format!("Invalid path: {}", path.display())))
     }
 
     fn get<'a>(
@@ -381,6 +391,7 @@ impl Transport {
         )
     }
 
+    #[pyo3(signature = (path=None))]
     fn relpath(&self, path: Option<&str>) -> PyResult<String> {
         let path = path.unwrap_or(".");
         let url = Url::parse(path).map_err(|_| PyValueError::new_err((path.to_string(),)))?;
@@ -397,6 +408,7 @@ impl Transport {
             .to_string())
     }
 
+    #[pyo3(signature = (path, data, mode=None))]
     fn put_bytes(
         slf: &Bound<Self>,
         py: Python,
@@ -411,6 +423,7 @@ impl Transport {
         Ok(())
     }
 
+    #[pyo3(signature = (path, data, mode=None, create_parent_dir=None, dir_mode=None))]
     fn put_bytes_non_atomic(
         slf: &Bound<Self>,
         py: Python,
@@ -435,6 +448,7 @@ impl Transport {
         Ok(())
     }
 
+    #[pyo3(signature = (path, file, mode=None))]
     fn put_file(
         slf: &Bound<Self>,
         py: Python,
@@ -456,6 +470,7 @@ impl Transport {
         Ok(ret)
     }
 
+    #[pyo3(signature = (path, file, mode=None, create_parent_dir=None, dir_mode=None))]
     fn put_file_non_atomic(
         slf: &Bound<Self>,
         py: Python,
@@ -503,6 +518,7 @@ impl Transport {
         Ok(())
     }
 
+    #[pyo3(signature = (name, value=None))]
     fn set_segment_parameter(
         &mut self,
         py: Python,
@@ -521,6 +537,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
+    #[pyo3(signature = (mode=None))]
     fn create_prefix(&self, py: Python, mode: Option<PyObject>) -> PyResult<()> {
         let t = &self.0;
 
@@ -666,6 +683,7 @@ impl Transport {
             .map(|v| v.to_object(py))
     }
 
+    #[pyo3(signature = (path, mode=None))]
     fn open_write_stream(
         slf: &Bound<Self>,
         py: Python,
@@ -720,6 +738,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
+    #[pyo3(signature = (relpaths, to_transport, mode=None))]
     fn copy_to(
         &self,
         py: Python,
@@ -801,6 +820,7 @@ impl LocalTransport {
         ))
     }
 
+    #[pyo3(signature = (offset=None))]
     fn clone<'a>(
         slf: PyRef<'a, Self>,
         py: Python<'a>,
@@ -834,6 +854,7 @@ fn get_test_permutations(py: Python) -> PyResult<Bound<PyList>> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (offsets, limit=None, fudge_factor=None, max_size=None))]
 fn coalesce_offsets(
     offsets: Vec<(usize, usize)>,
     mut limit: Option<usize>,
@@ -857,6 +878,7 @@ const DEFAULT_MAX_READV_COMBINE: usize = 50;
 const DEFAULT_BYTES_TO_READ_BEFORE_SEEK: usize = 0;
 
 #[pyfunction]
+#[pyo3(signature = (file, offsets, max_readv_combine=None, bytes_to_read_before_seek=None, path=None))]
 fn seek_and_read(
     py: Python,
     file: Bound<PyAny>,
@@ -894,6 +916,7 @@ fn seek_and_read(
 }
 
 #[pyfunction]
+#[pyo3(signature = (offsets, upper_limit=None, recommended_page_size=None))]
 fn sort_expand_and_combine(
     offsets: Vec<(u64, usize)>,
     upper_limit: Option<u64>,
@@ -921,6 +944,7 @@ impl PyFile {
         true
     }
 
+    #[pyo3(signature = (size=None))]
     fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
@@ -972,6 +996,7 @@ impl PyFile {
         Ok(ret)
     }
 
+    #[pyo3(signature = (offset, whence=None))]
     fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
         let seekfrom = match whence.unwrap_or(0) {
             0 => std::io::SeekFrom::Start(offset as u64),
@@ -1011,6 +1036,7 @@ impl PyFile {
         Ok(())
     }
 
+    #[pyo3(signature = (size=None))]
     fn truncate(&mut self, py: Python, size: Option<u64>) -> PyResult<()> {
         let size = size.map_or_else(|| py.allow_threads(|| self.tell()), Ok)?;
         py.allow_threads(|| self.0.get_mut().set_len(size))
@@ -1050,6 +1076,7 @@ impl ReadLock {
     }
 
     #[new]
+    #[pyo3(signature = (filename, strict_locks=None))]
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(Some(
             breezy_transport::filelock::ReadLock::new(&filename, strict_locks.unwrap_or(false))
@@ -1125,6 +1152,7 @@ impl WriteLock {
     }
 
     #[new]
+    #[pyo3(signature = (filename, strict_locks=None))]
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(
             breezy_transport::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))

@@ -175,7 +175,7 @@ impl Revision {
         timezone: Option<i32>,
     ) -> PyResult<Self> {
         let mut cproperties: HashMap<String, Vec<u8>> = HashMap::new();
-        for (k, v) in properties.unwrap_or(HashMap::new()) {
+        for (k, v) in properties.unwrap_or_default() {
             if let Ok(s) = v.extract::<Bound<PyBytes>>(py) {
                 cproperties.insert(k, s.as_bytes().to_vec());
             } else if let Ok(s) = v.extract::<Bound<PyString>>(py) {

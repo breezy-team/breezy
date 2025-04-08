@@ -192,7 +192,8 @@ fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, Bound<PyBytes>)
 }
 
 #[pyfunction]
-fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResult<(PathBuf, bool)> {
+#[pyo3(signature = (filename, policy=None))]
+fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResult<(String, bool)> {
     if policy.is_none() {
         if breezy_osutils::path::normalizes_filenames() {
             _accessible_normalized_filename(filename)
@@ -211,26 +212,38 @@ fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResul
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(PathBuf, bool)> {
+fn _inaccessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(String, bool)> {
     let filename = extract_path(filename)?;
-    if let Some(filename) =
+    let (path, accessible) = if let Some(filename) =
         breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
     {
-        Ok(filename)
+        filename
     } else {
-        Ok((filename, true))
-    }
+        (filename, true)
+    };
+
+    path.to_str()
+        .map(|s| (s.to_string(), accessible))
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(PathBuf, bool)> {
+fn _accessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(String, bool)> {
     let filename = extract_path(filename)?;
-    if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path())
+    let (path, accessible): (PathBuf, bool) = if let Some(filename) =
+        breezy_osutils::path::accessible_normalized_filename(filename.as_path())
     {
-        Ok(filename)
+        filename
     } else {
-        Ok((filename, false))
-    }
+        (filename, false)
+    };
+
+    Ok((
+        path.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))?,
+        accessible,
+    ))
 }
 
 #[pyfunction]
@@ -323,21 +336,32 @@ fn set_or_unset_env<'a>(
 }
 
 #[pyfunction]
-fn parent_directories<'a>(path: &'a Bound<'a, PyAny>) -> PyResult<Vec<PathBuf>> {
+fn parent_directories<'a>(path: &'a Bound<'a, PyAny>) -> PyResult<Vec<String>> {
     let path = extract_path(path)?;
     let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
-    Ok(parents.iter().map(|p| p.to_path_buf()).collect())
+    parents
+        .iter()
+        .map(|p| {
+            p.to_str()
+                .map(|s| s.to_string())
+                .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+        })
+        .collect::<Result<Vec<String>, PyErr>>()
 }
 
 #[pyfunction]
-fn available_backup_name(py: Python, path: &Bound<PyAny>, exists: PyObject) -> PyResult<PathBuf> {
+fn available_backup_name(py: Python, path: &Bound<PyAny>, exists: PyObject) -> PyResult<String> {
     let path = extract_path(path)?;
     let exists = |p: &Path| -> PyResult<bool> {
-        let ret = exists.call1(py, (p,))?;
+        let ret = exists.call1(py, (p.to_str().unwrap(),))?;
         ret.extract::<bool>(py)
     };
 
-    breezy_osutils::path::available_backup_name(path.as_path(), &exists)
+    let path = breezy_osutils::path::available_backup_name(path.as_path(), &exists)?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
@@ -362,6 +386,7 @@ fn check_legal_path(path: &Bound<PyAny>) -> PyResult<()> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (t=None))]
 fn local_time_offset(t: Option<&Bound<PyAny>>) -> PyResult<i64> {
     if let Some(t) = t {
         let t = t.extract::<f64>()?;
@@ -372,6 +397,7 @@ fn local_time_offset(t: Option<&Bound<PyAny>>) -> PyResult<i64> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (t, offset=None, timezone=None, date_format=None, show_offset=None))]
 fn format_local_date(
     py: Python,
     t: PyObject,
@@ -439,6 +465,7 @@ impl PyIterableFile {
         }
     }
 
+    #[pyo3(signature = (size=None))]
     fn read<'a>(&mut self, py: Python<'a>, size: Option<usize>) -> PyResult<Bound<'a, PyBytes>> {
         self.check_closed(py)?;
         let mut buf = Vec::new();
@@ -478,6 +505,7 @@ impl PyIterableFile {
         self.readline(py, None)
     }
 
+    #[pyo3(signature = (_size_hint=None))]
     fn readline<'a>(
         &mut self,
         py: Python<'a>,
@@ -576,6 +604,7 @@ fn check_text_lines(py: Python, lines: &Bound<PyAny>) -> PyResult<()> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (date, offset=None))]
 fn format_date_with_offset_in_original_timezone(
     py: Python,
     date: PyObject,
@@ -603,6 +632,7 @@ fn format_date_with_offset_in_original_timezone(
 }
 
 #[pyfunction]
+#[pyo3(signature = (t, offset=None, timezone=None, date_fmt=None, show_offset=None))]
 fn format_date(
     py: Python,
     t: PyObject,
@@ -644,6 +674,7 @@ fn format_date(
 }
 
 #[pyfunction]
+#[pyo3(signature = (t, offset=None))]
 fn format_highres_date(py: Python, t: PyObject, offset: Option<PyObject>) -> PyResult<String> {
     let t = if let Ok(t) = t.extract::<f64>(py) {
         t
@@ -730,6 +761,7 @@ fn quotefn(filename: &str) -> String {
 /// If src is None, the containing directory is used as source. If chown
 /// fails, the error is ignored and a warning is printed.
 #[pyfunction]
+#[pyo3(signature = (dst, src=None))]
 fn copy_ownership_from_path(dst: PathBuf, src: Option<PathBuf>) -> PyResult<()> {
     Ok(breezy_osutils::file::copy_ownership_from_path(
         dst,
@@ -798,18 +830,30 @@ fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::abspath(path.as_path()).map_err(|e| e.into())
+fn abspath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::abspath(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(name = "abspath")]
-fn posix_abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::posix::abspath(path.as_path()).map_err(|e| e.into())
+fn posix_abspath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::posix::abspath(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(name = "abspath")]
-fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
-    breezy_osutils::path::win32::abspath(path.as_path()).map_err(|e| e.into())
+fn win32_abspath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::win32::abspath(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[cfg(unix)]
@@ -830,11 +874,13 @@ fn get_host_name() -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (use_cache=None))]
 fn local_concurrency(use_cache: Option<bool>) -> usize {
     breezy_osutils::local_concurrency(use_cache.unwrap_or(true))
 }
 
 #[pyfunction]
+#[pyo3(signature = (from_file, to_file, read_size=None))]
 fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> PyResult<u64> {
     let mut from_file = PyBinaryFile::from(from_file);
     let mut to_file = PyBinaryFile::from(to_file);
@@ -858,21 +904,33 @@ fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn relpath(path: PathBuf, start: PathBuf) -> PyResult<PathBuf> {
-    match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
+fn relpath(path: PathBuf, start: PathBuf) -> PyResult<String> {
+    let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => Err(PathNotChild::new_err((start, path))),
         Some(p) => Ok(p),
-    }
+    }?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(name = "normpath")]
-fn posix_normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::posix::normpath(path.as_path()))
+fn posix_normpath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::posix::normpath(path.as_path());
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(name = "normpath")]
-fn win32_normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::win32::normpath(path.as_path()))
+fn win32_normpath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::win32::normpath(path.as_path());
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
@@ -881,26 +939,43 @@ fn contains_linebreaks(text: &str) -> bool {
 }
 
 #[pyfunction]
-fn normpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::normpath(path.as_path()))
+fn normpath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::normpath(path.as_path());
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
-fn realpath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::realpath(path.as_path())?)
+fn realpath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::realpath(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
-fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::normalizepath(path.as_path())?)
+fn normalizepath(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::normalizepath(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
-fn dereference_path(path: PathBuf) -> std::io::Result<PathBuf> {
-    breezy_osutils::path::dereference_path(path.as_path())
+fn dereference_path(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::dereference_path(path.as_path())?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]
+#[pyo3(signature = (data, file, segment_size=None))]
 fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
     let mut file = PyBinaryFile::from(file);
     Ok(breezy_osutils::pump_string_file(
@@ -912,8 +987,12 @@ fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) ->
 
 /// Return path with directory separators changed to forward slashes
 #[pyfunction(name = "fix_separators")]
-fn win32_fix_separators(path: PathBuf) -> PathBuf {
-    breezy_osutils::path::win32::fix_separators(path.as_path())
+fn win32_fix_separators(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::win32::fix_separators(path.as_path());
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 /// Force drive letters to be consistent.
@@ -923,13 +1002,21 @@ fn win32_fix_separators(path: PathBuf) -> PathBuf {
 /// so we force it to uppercase running python.exe under cmd.exe return capital C:\\ running win32
 /// python inside a cygwin shell returns lowercase c:\\
 #[pyfunction(name = "fixdrive")]
-fn win32_fixdrive(path: PathBuf) -> PathBuf {
-    breezy_osutils::path::win32::fixdrive(path.as_path())
+fn win32_fixdrive(path: PathBuf) -> PyResult<String> {
+    let path = breezy_osutils::path::win32::fixdrive(path.as_path());
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(name = "getcwd")]
-fn win32_getcwd() -> PyResult<PathBuf> {
-    Ok(breezy_osutils::path::win32::getcwd()?)
+fn win32_getcwd() -> PyResult<String> {
+    let path = breezy_osutils::path::win32::getcwd()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyclass]
@@ -941,6 +1028,7 @@ struct FileIterator {
 #[pymethods]
 impl FileIterator {
     #[new]
+    #[pyo3(signature = (input_file, read_size=None))]
     fn new(input_file: PyObject, read_size: Option<usize>) -> Self {
         FileIterator {
             input_file,
@@ -964,6 +1052,7 @@ impl FileIterator {
 }
 
 #[pyfunction]
+#[pyo3(signature = (input_file, read_size=None))]
 fn file_iterator(
     py: Python,
     input_file: PyObject,
@@ -1009,8 +1098,15 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn get_home_dir() -> PyResult<Option<PathBuf>> {
-    Ok(breezy_osutils::get_home_dir())
+fn get_home_dir() -> PyResult<Option<String>> {
+    let path = breezy_osutils::get_home_dir();
+
+    path.map(|s| {
+        s.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    })
+    .transpose()
 }
 
 #[pyfunction]
@@ -1049,6 +1145,7 @@ fn color_exists(name: &str) -> bool {
 }
 
 #[pyfunction]
+#[pyo3(signature = (text, fgcolor=None, bgcolor=None))]
 fn colorstring<'a>(
     py: Python<'a>,
     text: &'a [u8],
@@ -1074,21 +1171,23 @@ fn extract_osstring(py: Python, obj: PyObject) -> PyResult<OsString> {
         Ok(s)
     } else if let Ok(s) = obj.extract::<Vec<u8>>(py) {
         Ok(OsString::from_vec(s))
+    } else if let Ok(s) = obj.extract::<PathBuf>(py) {
+        Ok(s.into_os_string())
     } else {
         Err(PyTypeError::new_err(format!(
-            "Expected str, or bytes, got {}",
+            "Expected str, PathLike, or bytes, got {}",
             obj.bind(py).get_type().name()?
         )))
     }
 }
 
 #[pyfunction]
-fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
+fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<String> {
     let parts = parts
         .into_iter()
         .map(|p| extract_osstring(py, p))
         .collect::<PyResult<Vec<_>>>()?;
-    match breezy_osutils::path::joinpath(
+    let path = match breezy_osutils::path::joinpath(
         parts
             .iter()
             .map(|p| p.as_os_str())
@@ -1100,7 +1199,11 @@ fn joinpath(py: Python, parts: Vec<PyObject>) -> PyResult<PathBuf> {
             "Invalid path segment: {}",
             e.0
         ))),
-    }
+    }?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction(signature = (*args))]
@@ -1162,8 +1265,12 @@ fn compare_files(a: PyObject, b: PyObject) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn readlink(path: PathBuf) -> PyResult<PathBuf> {
-    path.read_link().map_err(|e| e.into())
+fn readlink(path: PathBuf) -> PyResult<String> {
+    let path = path.read_link()?;
+
+    path.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
 #[pyfunction]

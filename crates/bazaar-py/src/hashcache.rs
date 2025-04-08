@@ -118,6 +118,12 @@ fn extract_fs_time(obj: &Bound<PyAny>) -> Result<i64, PyErr> {
 #[pymethods]
 impl HashCache {
     #[new]
+    #[pyo3(signature = (
+        root,
+        cache_file_name,
+        mode = None,
+        content_filter_provider = None
+    ))]
     fn new(
         root: &str,
         cache_file_name: &str,
@@ -146,6 +152,7 @@ impl HashCache {
         self.hashcache.scan();
     }
 
+    #[pyo3(signature = (path, stat_value = None))]
     fn get_sha1<'a>(
         &mut self,
         py: Python<'a>,

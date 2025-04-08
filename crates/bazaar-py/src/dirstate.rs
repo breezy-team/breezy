@@ -137,6 +137,7 @@ fn lt_path_by_dirblock(path1: &Bound<PyAny>, path2: &Bound<PyAny>) -> PyResult<b
 }
 
 #[pyfunction]
+#[pyo3(signature = (dirblocks, dirname, lo=None, hi=None, cache=None))]
 fn bisect_dirblock(
     py: Python,
     dirblocks: &Bound<PyList>,

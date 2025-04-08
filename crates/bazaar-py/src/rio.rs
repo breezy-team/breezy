@@ -332,6 +332,7 @@ impl RioReader {
 }
 
 #[pyfunction]
+#[pyo3(signature = (stanzas, header = None))]
 fn rio_iter<'a>(
     py: Python<'a>,
     stanzas: &'a Bound<'a, PyAny>,

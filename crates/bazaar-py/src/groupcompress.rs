@@ -104,6 +104,7 @@ impl LinesDeltaIndex {
             .collect()
     }
 
+    #[pyo3(signature = (source, bytes_length, soft = None))]
     fn make_delta<'a>(
         &'a self,
         py: Python<'a>,
@@ -200,6 +201,7 @@ impl GroupCompressBlock {
         Ok(())
     }
 
+    #[pyo3(signature = (kind = None))]
     fn to_chunks<'a>(
         &mut self,
         py: Python<'a>,
@@ -220,11 +222,13 @@ impl GroupCompressBlock {
         Ok(PyBytes::new(py, &ret))
     }
 
+    #[pyo3(signature = (size = None))]
     fn _ensure_content(&mut self, size: Option<usize>) -> PyResult<()> {
         self.0.ensure_content(size);
         Ok(())
     }
 
+    #[pyo3(signature = (include_text = None))]
     fn _dump(&mut self, py: Python, include_text: Option<bool>) -> PyResult<PyObject> {
         let ret = self
             .0
@@ -362,6 +366,7 @@ impl TraditionalGroupCompressor {
         }
     }
 
+    #[pyo3(signature = (key, chunks, length, expected_sha = None, nostore_sha = None, soft = None))]
     fn compress<'a>(
         &mut self,
         py: Python<'a>,

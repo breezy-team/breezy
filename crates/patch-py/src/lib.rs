@@ -22,6 +22,7 @@ create_exception!(
 import_exception!(breezy.errors, BinaryFile);
 
 #[pyfunction]
+#[pyo3(signature = (patch_contents, filename, output_filename = None, reverse = None))]
 fn patch(
     patch_contents: Vec<Vec<u8>>,
     filename: PathBuf,
@@ -55,6 +56,8 @@ fn diff3(
 }
 
 #[pyfunction]
+#[pyo3(signature = (directory, patches, strip = None, reverse = None, dry_run = None, quiet = None, target_file = None, out = None, _patch_cmd = None))]
+#[allow(clippy::too_many_arguments)]
 fn run_patch(
     directory: PathBuf,
     patches: Vec<Vec<u8>>,
@@ -120,8 +123,12 @@ fn iter_patched_from_hunks(
 fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
     match err {
         breezy_patch::parse::Error::BinaryFiles(path1, path2) => BinaryFiles::new_err((
-            PathBuf::from(OsString::from_vec(path1)),
-            PathBuf::from(OsString::from_vec(path2)),
+            PathBuf::from(OsString::from_vec(path1))
+                .to_string_lossy()
+                .to_string(),
+            PathBuf::from(OsString::from_vec(path2))
+                .to_string_lossy()
+                .to_string(),
         )),
         breezy_patch::parse::Error::PatchSyntax(err, _line) => PatchSyntax::new_err(err),
         breezy_patch::parse::Error::MalformedPatchHeader(err, _line) => {
@@ -194,6 +201,7 @@ fn parse_patch_date(date: &str) -> PyResult<(i64, i64)> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (secs, offset = None))]
 fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> PyResult<String> {
     let secs = if let Ok(secs) = secs.extract::<i64>(py) {
         secs

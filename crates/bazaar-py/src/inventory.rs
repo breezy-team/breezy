@@ -774,6 +774,7 @@ fn entry_from_py(py: Python, obj: PyObject) -> PyResult<Entry> {
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 #[pyo3(signature = (kind, name, parent_id=None, revision=None, file_id=None, text_sha1=None, text_size=None, executable=None, text_id=None, symlink_target=None, reference_revision=None))]
 fn make_entry<'a>(
     py: Python<'a>,
@@ -821,9 +822,16 @@ fn is_valid_name(name: &str) -> bool {
 }
 
 #[pyfunction]
-fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<std::path::PathBuf> {
-    bazaar::inventory::ensure_normalized_name(name.as_path())
-        .map_err(|_e| InvalidNormalization::new_err(name))
+fn ensure_normalized_name(name: std::path::PathBuf) -> PyResult<String> {
+    let path = bazaar::inventory::ensure_normalized_name(name.as_path())
+        .map_err(|_e| InvalidNormalization::new_err(name.clone()))?;
+
+    path.to_str().map(|s| s.to_string()).ok_or_else(|| {
+        PyValueError::new_err(format!(
+            "Invalid normalization for path: {}",
+            name.display()
+        ))
+    })
 }
 
 fn delta_err_to_py_err(py: Python, e: InventoryDeltaInconsistency) -> PyErr {
@@ -878,6 +886,8 @@ struct InventoryDelta(bazaar::inventory_delta::InventoryDelta);
 #[pymethods]
 impl InventoryDelta {
     #[new]
+    #[allow(clippy::type_complexity)]
+    #[pyo3(signature = (delta=None))]
     fn new(
         _py: Python,
         delta: Option<
@@ -1237,6 +1247,7 @@ impl Inventory {
         }
     }
 
+    #[pyo3(signature = (delta))]
     fn apply_delta(
         &mut self,
         py: Python,
@@ -1260,6 +1271,7 @@ impl Inventory {
             .map_err(|e| delta_err_to_py_err(py, e))
     }
 
+    #[pyo3(signature = (delta, new_revision_id))]
     fn create_by_apply_delta(
         &self,
         py: Python,
@@ -1378,6 +1390,7 @@ impl Inventory {
             .call_method0("__iter__")
     }
 
+    #[pyo3(signature = (from_dir=None, recursive=true))]
     fn iter_entries(
         slf: Py<Inventory>,
         py: Python,
@@ -1392,6 +1405,7 @@ impl Inventory {
         )?)
     }
 
+    #[pyo3(signature = (from_dir=None, specific_file_ids=None))]
     fn iter_entries_by_dir(
         slf: Py<Inventory>,
         py: Python,
@@ -1414,6 +1428,7 @@ impl Inventory {
     }
 
     #[pyo3(signature = (kind, name, parent_id=None, file_id=None, revision=None, text_sha1=None, text_size=None, text_id=None, executable=None, symlink_target=None, reference_revision=None))]
+    #[allow(clippy::too_many_arguments)]
     fn make_entry<'a>(
         &self,
         py: Python<'a>,
@@ -1679,6 +1694,7 @@ impl IterEntriesIterator {
 }
 
 #[pyfunction]
+#[pyo3(signature = (lines, allow_versioned_root=None, allow_tree_references=None))]
 fn parse_inventory_delta(
     py: Python,
     lines: Vec<Vec<u8>>,
