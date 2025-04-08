@@ -4,7 +4,7 @@ use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
+use pyo3::types::{PyBytes, PyIterator, PyList, PyString, PyTuple};
 use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
 use pyo3_filelike::PyBinaryFile;
@@ -107,6 +107,22 @@ fn extract_path(object: &Bound<PyAny>) -> PyResult<PathBuf> {
     }
 }
 
+#[cfg(unix)]
+fn path_to_pystring<'a>(py: Python<'a>, path: &'_ Path) -> PyResult<Bound<'a, PyString>> {
+    use std::os::unix::ffi::OsStrExt;
+    // Get the raw bytes of the OsStr (Unix-specific)
+    let raw_bytes = path.as_os_str().as_bytes();
+
+    let py_bytes = PyBytes::new(py, raw_bytes);
+
+    let py_str = py_bytes.call_method1("decode", ("utf-8", "surrogateescape"))?;
+
+    let unicodedata = py.import("unicodedata")?;
+    let normalized = unicodedata.call_method1("normalize", ("NFC", py_str))?;
+
+    Ok(normalized.downcast_into_exact::<PyString>()?)
+}
+
 #[pyfunction]
 fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<Bound<PyList>> {
     let ret = PyList::empty(py);
@@ -193,17 +209,21 @@ fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, Bound<PyBytes>)
 
 #[pyfunction]
 #[pyo3(signature = (filename, policy=None))]
-fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResult<(String, bool)> {
+fn normalized_filename<'a>(
+    py: Python<'a>,
+    filename: &'a Bound<'a, PyAny>,
+    policy: Option<&'a str>,
+) -> PyResult<(Bound<'a, PyString>, bool)> {
     if policy.is_none() {
         if breezy_osutils::path::normalizes_filenames() {
-            _accessible_normalized_filename(filename)
+            _accessible_normalized_filename(py, filename)
         } else {
-            _inaccessible_normalized_filename(filename)
+            _inaccessible_normalized_filename(py, filename)
         }
     } else if policy == Some("accessible") {
-        _accessible_normalized_filename(filename)
+        _accessible_normalized_filename(py, filename)
     } else if policy == Some("inaccessible") {
-        _inaccessible_normalized_filename(filename)
+        _inaccessible_normalized_filename(py, filename)
     } else {
         Err(PyValueError::new_err(
             "policy must be 'accessible', 'inaccessible' or None",
@@ -212,7 +232,10 @@ fn normalized_filename(filename: &Bound<PyAny>, policy: Option<&str>) -> PyResul
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(String, bool)> {
+fn _inaccessible_normalized_filename<'a>(
+    py: Python<'a>,
+    filename: &'a Bound<'a, PyAny>,
+) -> PyResult<(Bound<'a, PyString>, bool)> {
     let filename = extract_path(filename)?;
     let (path, accessible) = if let Some(filename) =
         breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
@@ -222,13 +245,14 @@ fn _inaccessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(Strin
         (filename, true)
     };
 
-    path.to_str()
-        .map(|s| (s.to_string(), accessible))
-        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    Ok((path_to_pystring(py, path.as_path())?, accessible))
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(String, bool)> {
+fn _accessible_normalized_filename<'a>(
+    py: Python<'a>,
+    filename: &'a Bound<'a, PyAny>,
+) -> PyResult<(Bound<'a, PyString>, bool)> {
     let filename = extract_path(filename)?;
     let (path, accessible): (PathBuf, bool) = if let Some(filename) =
         breezy_osutils::path::accessible_normalized_filename(filename.as_path())
@@ -238,12 +262,7 @@ fn _accessible_normalized_filename(filename: &Bound<PyAny>) -> PyResult<(String,
         (filename, false)
     };
 
-    Ok((
-        path.to_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))?,
-        accessible,
-    ))
+    Ok((path_to_pystring(py, path.as_path())?, accessible))
 }
 
 #[pyfunction]
