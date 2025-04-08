@@ -11,7 +11,6 @@ use std::io::BufReader;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::convert::TryInto;
 use tempfile::NamedTempFile;
 
 /// TODO: Up-front, stat all files in order and remove those which are deleted or

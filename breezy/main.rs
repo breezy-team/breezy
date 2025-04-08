@@ -9,7 +9,7 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
-    let breezy = PyModule::import(py, "breezy").inspect_err(|e| {
+    let breezy = PyModule::import(py, "breezy").inspect_err(|_e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
              Please check the directory containing breezy is on your PYTHONPATH.\n"

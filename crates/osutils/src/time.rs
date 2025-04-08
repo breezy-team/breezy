@@ -156,7 +156,7 @@ pub fn format_date(
             )
         }
         Timezone::Local => {
-            let local = Local.timestamp(t, 0);
+            let local = Local.timestamp_opt(t, 0).unwrap();
             let offset = local.offset().local_minus_utc();
             let offset_str = if show_offset {
                 let sign = if offset >= 0 { '+' } else { '-' };
