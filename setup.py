@@ -181,7 +181,6 @@ if sys.platform == "win32":
 else:
     add_cython_extension("breezy.bzr._dirstate_helpers_pyx")
     add_cython_extension("breezy._readdir_pyx")
-add_cython_extension("breezy.bzr._chk_map_pyx")
 add_cython_extension("breezy.bzr._btree_serializer_pyx")
 
 
