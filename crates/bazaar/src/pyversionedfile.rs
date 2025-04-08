@@ -19,7 +19,7 @@ impl<'py> IntoPyObject<'py> for PyContentFactory {
 
 impl FromPyObject<'_> for PyContentFactory {
     fn extract_bound(ob: &Bound<PyAny>) -> PyResult<Self> {
-        Python::with_gil(|py| Ok(PyContentFactory(ob.into_pyobject(py)?.unbind())))
+        Python::with_gil(|py| Ok(PyContentFactory(ob.into_pyobject(py)?.to_object(py))))
     }
 }
 
