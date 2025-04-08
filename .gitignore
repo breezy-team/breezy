@@ -18,3 +18,4 @@ build/
 *.swp
 *.swo
 *.swn
+.mypy_cache/

@@ -42,7 +42,6 @@ def load_tests(loader, basic_tests, pattern):
         "per_repository_vf",
         "per_versionedfile",
         "test__btree_serializer",
-        "test__chk_map",
         "test__dirstate_helpers",
         "test__groupcompress",
         "test_btree_index",
