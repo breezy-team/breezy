@@ -60,9 +60,6 @@ breezy/bzr/_dirstate_helpers_pyx.c
 breezy/bzr/_groupcompress_pyx.c
 breezy/bzr/_knit_load_data_pyx.c
 breezy/_readdir_pyx.c
-breezy/bzr/_simple_set_pyx.c
-breezy/bzr/_simple_set_pyx.h
-breezy/bzr/_simple_set_pyx_api.h
 # built extension modules
 breezy/_*.dll
 breezy/_*.so
