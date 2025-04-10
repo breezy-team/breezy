@@ -21,8 +21,10 @@
 use crc32fast::Hasher;
 
 use std::fmt::Write;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::iter::zip;
+use std::io::Write as _;
 
 fn crc32(bit: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -30,16 +32,25 @@ fn crc32(bit: &[u8]) -> u32 {
     hasher.finalize()
 }
 
+/// Serialized version of a key
 pub type SerialisedKey = Vec<u8>;
 
-pub type SearchKeyFn = fn(&Key) -> SerializedKey;
+pub type SearchKeyFn = fn(&Key) -> SerialisedKey;
+
+/// List of keys to include
+pub type KeyFilter = Vec<Key>;
+
+pub enum SearchPrefix {
+    Unknown,
+    Known(Vec<u8>),
+}
 
 /// Map the key tuple into a search string that just uses the key bytes.
-pub fn search_key_plain(key: &Key) -> SerializedKey {
+pub fn search_key_plain(key: &Key) -> SerialisedKey {
     key.0.join(&b'\x00')
 }
 
-pub fn search_key_16(key: &Key) -> SerializedKey {
+pub fn search_key_16(key: &Key) -> SerialisedKey {
     let mut result = String::new();
     for bit in key.iter() {
         write!(&mut result, "{:08X}\x00", crc32(bit)).unwrap();
@@ -48,7 +59,7 @@ pub fn search_key_16(key: &Key) -> SerializedKey {
     result.as_bytes().to_vec()
 }
 
-pub fn search_key_255(key: &Key) -> SerializedKey {
+pub fn search_key_255(key: &Key) -> SerialisedKey {
     let mut result = vec![];
     for bit in key.iter() {
         let crc = crc32(bit);
@@ -62,6 +73,13 @@ pub fn search_key_255(key: &Key) -> SerializedKey {
         .map(|b| if *b == 0x0A { b'_' } else { *b })
         .collect()
 }
+
+/// If a ChildNode falls below this many bytes, we check for a remap
+pub const INTERESTING_NEW_SIZE: usize = 50;
+
+/// If a ChildNode shrinks by more than this amount, we check for a remap
+pub const INTERESTING_SHRINKAGE_LIMIT: usize = 20;
+
 
 pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
     let sections: Vec<&[u8]> = data.split(|&byte| byte == b'\n').collect();
@@ -87,7 +105,7 @@ impl From<Vec<Vec<u8>>> for Key {
 }
 
 impl Key {
-    pub fn serialize(&self) -> SerializedKey {
+    pub fn serialize(&self) -> SerialisedKey {
         let mut result = vec![];
         for bit in self.0.iter() {
             result.extend(bit);
@@ -104,6 +122,12 @@ impl Key {
 
     pub fn iter(&self) -> impl Iterator<Item = &[u8]> {
         self.0.iter().map(|v| v.as_slice())
+    }
+}
+
+impl From<(&[u8], )> for Key {
+    fn from(v: (&[u8], )) -> Self {
+        Key(vec![v.0.to_vec()])
     }
 }
 
@@ -128,8 +152,6 @@ impl std::fmt::Display for Key {
         Ok(())
     }
 }
-
-pub type SerializedKey = Vec<u8>;
 
 pub type Value = Vec<u8>;
 
@@ -196,27 +218,148 @@ pub fn common_prefix_many<'a>(mut keys: impl Iterator<Item = &'a [u8]> + 'a) -> 
     Some(cp)
 }
 
+/// Reference to the child of a node
+///
+/// Can either be just a key (if the node is unresolved) or a node
+enum NodeChild {
+    /// A child node that is a tuple of key and value.
+    Tuple(Key),
+
+    /// A child node that is another node.
+    Node(Node),
+}
+
+impl NodeChild {
+    fn is_node(&self) -> bool {
+        matches!(self, NodeChild::Node(_))
+    }
+
+    fn is_tuple(&self) -> bool {
+        matches!(self, NodeChild::Tuple(_))
+    }
+
+    fn as_node(&self) -> Option<&Node> {
+        if let NodeChild::Node(ref node) = self {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    fn into_node(self) -> Option<Node> {
+        if let NodeChild::Node(node) = self {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    fn key(&self) -> Option<&Key> {
+        match self {
+            NodeChild::Tuple(ref key) => Some(key),
+            NodeChild::Node(n) => n.key()
+        }
+    }
+}
+
+#[cfg(test)]
 #[test]
-fn test_common_prefix_many() {
-    assert_eq!(
-        common_prefix_many(vec![&b"abc"[..], &b"abc"[..]].into_iter()),
-        Some(&b"abc"[..])
-    );
-    assert_eq!(
-        common_prefix_many(vec![&b"abc"[..], &b"abcd"[..]].into_iter()),
-        Some(&b"abc"[..])
-    );
-    assert_eq!(
-        common_prefix_many(vec![&b"abc"[..], &b"ab"[..]].into_iter()),
-        Some(&b"ab"[..])
-    );
-    assert_eq!(
-        common_prefix_many(vec![&b"abc"[..], &b"bbd"[..]].into_iter()),
-        Some(&b""[..])
-    );
-    assert_eq!(
-        common_prefix_many(vec![&b"abcd"[..], &b"abc"[..], &b"abc"[..]].into_iter()),
-        Some(&b"abc"[..])
-    );
-    assert_eq!(common_prefix_many(vec![].into_iter()), None);
+fn test_node_child() {
+    let key = Key(vec![b"test".to_vec()]);
+    let node_child = NodeChild::Tuple(key.clone());
+    assert!(node_child.is_tuple());
+    assert!(!node_child.is_node());
+    assert_eq!(node_child.key(), Some(&key));
+
+    let node = Node::leaf(None);
+    let node_child = NodeChild::Node(node);
+    assert!(!node_child.is_tuple());
+    assert!(node_child.is_node());
+    assert_eq!(node_child.key(), None);
+}
+
+/// A CHK Map Node
+enum Node {
+    /// A node containing actual key:value pairs.
+    Leaf {
+        /// total size of the serialized key:value data, before adding the header bytes, and without
+        /// prefix compression.
+        raw_size: usize,
+        /// All of the keys in this leaf node share this common prefix
+        common_serialised_prefix: Option<SerialisedKey>,
+        /// A dict of key->value items. The key is in tuple form.
+        items: HashMap<SerialisedKey, Value>,
+        key: Option<Key>,
+        key_width: usize,
+        len: usize,
+        maximum_size: usize,
+        search_key_func: SearchKeyFn,
+        search_prefix: Option<SerialisedKey>,
+    },
+
+    /// A node that contains references to other nodes.
+    ///
+    /// An InternalNode is responsible for mapping search key prefixes to child nodes.
+    Internal {
+        /// serialised_key => node dictionary. node may be a tuple, LeafNode or InternalNode.
+        items: HashMap<SerialisedKey, Node>,
+        key: Option<Key>,
+        key_width: usize,
+        len: usize,
+        maximum_size: usize,
+        node_width: usize,
+        raw_size: usize,
+        search_key_func: SearchKeyFn,
+        search_prefix: Option<SerialisedKey>,
+    }
+}
+
+impl Node {
+    /// Create a new leaf node
+    pub fn leaf(search_key_func: Option<SearchKeyFn>) -> Self {
+        Node::Leaf {
+            raw_size: 0,
+            common_serialised_prefix: None,
+            items: HashMap::new(),
+            key: None,
+            key_width: 1,
+            len: 0,
+            maximum_size: 0,
+            search_key_func: search_key_func.unwrap_or(search_key_plain),
+            search_prefix: None,
+        }
+    }
+
+    /// Create a new internal node
+    pub fn internal(search_prefix: Option<SerialisedKey>, search_key_func: Option<SearchKeyFn>) -> Self {
+        Node::Internal {
+            items: HashMap::new(),
+            key: None,
+            key_width: 1,
+            len: 0,
+            maximum_size: 0,
+            node_width: 0,
+            raw_size: 0,
+            search_key_func: search_key_func.unwrap_or(search_key_plain),
+            search_prefix
+        }
+    }
+
+    pub fn key(&self) -> Option<&Key> {
+        match self {
+            Node::Leaf { key, .. } => key.as_ref(),
+            Node::Internal { key, .. } => key.as_ref(),
+        }
+    }
+}
+
+/// Get the size of a key:value pair
+// TODO: Just serialize?
+fn key_value_len(key: &Key, value: &Value) -> usize {
+    key.serialize().len()
+        + 1
+        + value.iter().filter(|&&f| f == b'\n').count().to_string().len()
+        + 1
+        + value.len()
+        + 1
 }
