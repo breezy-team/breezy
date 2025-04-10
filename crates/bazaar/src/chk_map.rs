@@ -35,6 +35,7 @@ fn crc32(bit: &[u8]) -> u32 {
 /// Serialized version of a key
 pub type SerialisedKey = Vec<u8>;
 
+/// Function to map a key into a search string
 pub type SearchKeyFn = fn(&Key) -> SerialisedKey;
 
 /// List of keys to include
@@ -362,4 +363,46 @@ fn key_value_len(key: &Key, value: &Value) -> usize {
         + 1
         + value.len()
         + 1
+}
+
+#[cfg(test)]
+#[test]
+fn test_key_value_len() {
+    let key = Key(vec![b"test".to_vec()]);
+    let value = b"test\x00value\n\n".to_vec();
+    assert_eq!(key_value_len(&key, &value), 20);
+}
+
+/// Check to see if the search keys for all entries are the same.
+///
+/// When using a hash as the search_key it is possible for non-identical
+/// keys to collide. If that happens enough, we may try overflow a
+/// LeafNode, but as all are collisions, we must not split.
+fn are_search_keys_identical<'a>(keys: impl Iterator<Item = &'a Key>, search_key_func: SearchKeyFn) -> bool {
+    let mut common_search_key = None;
+    for key in keys {
+        let search_key = search_key_func(key);
+        if common_search_key.is_none() {
+            common_search_key = Some(search_key);
+        } else if Some(search_key) != common_search_key {
+            return false;
+        }
+    }
+    return true
+}
+
+#[cfg(test)]
+#[test]
+fn test_are_search_keys_identical() {
+    let keys = vec![
+        Key(vec![b"test".to_vec()]),
+        Key(vec![b"test".to_vec()]),
+    ];
+    assert!(are_search_keys_identical(keys.iter(), search_key_plain));
+
+    let keys = vec![
+        Key(vec![b"test".to_vec()]),
+        Key(vec![b"test2".to_vec()]),
+    ];
+    assert!(!are_search_keys_identical(keys.iter(), search_key_plain));
 }
