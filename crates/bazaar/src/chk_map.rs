@@ -41,6 +41,7 @@ pub type SearchKeyFn = fn(&Key) -> SerialisedKey;
 /// List of keys to include
 pub type KeyFilter = Vec<Key>;
 
+#[derive(Debug, Clone)]
 pub enum SearchPrefix {
     /// not calculated yet
     Unknown,
@@ -49,6 +50,46 @@ pub enum SearchPrefix {
     None,
 
     Known(Vec<u8>),
+}
+
+impl std::fmt::Display for SearchPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SearchPrefix::Unknown => write!(f, "unknown"),
+            SearchPrefix::None => write!(f, "none"),
+            SearchPrefix::Known(ref prefix) => write!(f, "{}", String::from_utf8_lossy(prefix)),
+        }
+    }
+}
+
+impl SearchPrefix {
+    pub fn is_known(&self) -> bool {
+        matches!(self, SearchPrefix::Known(_))
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self, SearchPrefix::None)
+    }
+
+    pub fn is_some(&self) -> bool {
+        matches!(self, SearchPrefix::Known(_) | SearchPrefix::None)
+    }
+
+    pub fn unwrap(self) -> Vec<u8> {
+        match self {
+            SearchPrefix::Known(prefix) => prefix,
+            SearchPrefix::None => vec![],
+            SearchPrefix::Unknown => panic!("Search prefix is unknown"),
+        }
+    }
+
+    pub fn as_ref(&self) -> Option<&[u8]> {
+        match self {
+            SearchPrefix::Known(ref prefix) => Some(prefix),
+            SearchPrefix::None => None,
+            SearchPrefix::Unknown => None,
+        }
+    }
 }
 
 /// Map the key tuple into a search string that just uses the key bytes.
@@ -103,7 +144,7 @@ pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
     Ok((file_id, sections[3]))
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct Key(Vec<Vec<u8>>);
 
 impl From<Vec<Vec<u8>>> for Key {
@@ -279,12 +320,33 @@ pub fn common_prefix_many<'a>(mut keys: impl Iterator<Item = &'a [u8]> + 'a) -> 
 /// Reference to the child of a node
 ///
 /// Can either be just a key (if the node is unresolved) or a node
+#[derive(Debug, Clone)]
 enum NodeChild {
     /// A child node that is a tuple of key and value.
     Tuple(Key),
 
     /// A child node that is another node.
     Node(Node),
+}
+
+impl PartialEq for NodeChild {
+    fn eq(&self, other: &Self) -> bool {
+        self.key() == other.key()
+    }
+}
+
+impl Eq for NodeChild {}
+
+impl PartialOrd for NodeChild {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.key().partial_cmp(&other.key())
+    }
+}
+
+impl Ord for NodeChild {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.key().cmp(&other.key())
+    }
 }
 
 impl NodeChild {
@@ -337,6 +399,7 @@ fn test_node_child() {
 }
 
 /// A CHK Map Node
+#[derive(Debug, Clone)]
 enum Node {
     /// A node containing actual key:value pairs.
     Leaf {
@@ -652,6 +715,93 @@ impl Node {
         }
     }
 
+    /// Serialise the LeafNode to store.
+    ///
+    /// Arguments:
+    /// * `store`: The store to serialise to.
+    ///
+    /// Returns: An iterable of the keys inserted by this operation.
+    pub fn serialise(&mut self, store: &dyn Store) -> Box<dyn Iterator<Item = Result<Key, Error>>> {
+        match self {
+            Node::Leaf { items, ref mut key, key_width, maximum_size, search_key_func, search_prefix, common_serialised_prefix, len, .. } => {
+                let mut data = vec![];
+                write!(&mut data, "chkleaf:\n");
+                write!(&mut data, "{}\n", maximum_size);
+                write!(&mut data, "{}\n", key_width);
+                write!(&mut data, "{}\n", len);
+                let prefix_len = if common_serialised_prefix.is_none() {
+                    write!(&mut data, "\n");
+                    assert!(items.is_empty(), "If common_serialised_prefix is None we should have no items");
+                    0
+                } else {
+                    data.extend_from_slice(common_serialised_prefix.as_ref().unwrap());
+                    data.extend(&b"\n"[..]);
+                    common_serialised_prefix.as_ref().unwrap().len()
+                };
+                let mut sorted_items = items.iter().collect::<Vec<_>>();
+                sorted_items.sort();
+                for (key, value) in sorted_items {
+                    // Always add a final newline
+                    let value_data = [value.as_slice(), b"\n"].concat();
+                    data.write_all(&key.serialize()[prefix_len..]).unwrap();
+                    data.write_all(b"\x00").unwrap();
+                    write!(&mut data, "{}\n", value_data.len()).unwrap();
+                    data.write_all(&value_data).unwrap();
+                }
+                let sha1 = store.add_lines(data.split_inclusive(|&byte| byte == b'\n').map(|line| line.to_vec()).collect()).unwrap();
+                *key = Some(Key(vec![[b"sha1:".to_vec(), sha1].concat()]));
+                // TODO: cache self.key = data
+
+                Box::new(vec![Ok(key.clone().unwrap())].into_iter())
+            }
+            Node::Internal { ref mut key, items, key_width, maximum_size, search_key_func, search_prefix, len, .. } => {
+                let mut ret = Vec::new();
+                for node in items.values_mut() {
+                    match node {
+                        NodeChild::Tuple(key) => {
+                            // Never deserialised.
+                            continue;
+                        }
+                        NodeChild::Node(node) => {
+                            if node.key().is_some() {
+                                // Never altered
+                                continue;
+                            }
+                            for key in node.serialise(store) {
+                                ret.push(key);
+                            }
+                        }
+                    }
+                }
+                let mut data = vec![];
+                write!(&mut data, "chknode:\n");
+                write!(&mut data, "{}\n", maximum_size);
+                write!(&mut data, "{}\n", key_width);
+                write!(&mut data, "{}\n", len);
+                assert!(search_prefix.is_some(), "search prefix should not be None");
+                data.extend_from_slice(&search_prefix.as_ref().unwrap());
+                data.push(b'\n');
+                let prefix_len = search_prefix.as_ref().unwrap().len();
+                let mut sorted_items = items.iter().collect::<Vec<_>>();
+                sorted_items.sort();
+                for (prefix, node) in sorted_items {
+                    let key = node.key().unwrap();
+                    let serialised = [prefix.as_slice(), &b"\x00"[..], &key.serialize(), &b"\n"[..]].concat();
+                    assert!(serialised.starts_with(search_prefix.as_ref().unwrap()), "prefixes mismatch: {:?} must start with {:?}", serialised, search_prefix);
+                    data.extend_from_slice(&serialised[prefix_len..]);
+                }
+                let sha1 = store.add_lines(data.split_inclusive(|&byte| byte == b'\n').map(|line| line.to_vec()).collect()).unwrap();
+                *key = Some(Key(vec![[b"sha1:".to_vec(), sha1].concat()]));
+                ret.push(Ok(key.clone().unwrap()));
+                Box::new(ret.into_iter())
+            }
+        }
+    }
+
+
+
+
+
     /// Check if this node is a leaf node
     pub fn is_leaf(&self) -> bool {
         matches!(self, Node::Leaf { .. })
@@ -795,4 +945,16 @@ fn test_are_search_keys_identical() {
 
     let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test2".to_vec()])];
     assert!(!are_search_keys_identical(keys.iter(), search_key_plain));
+}
+
+pub trait Store {
+    /// Add lines to the store.
+    ///
+    /// # Arguments
+    /// * `lines`: The lines to add to the store.
+    ///
+    /// Returns: The SHA1
+    fn add_lines(&self, lines: Vec<Vec<u8>>) -> Result<Vec<u8>, Error>;
+
+    fn get_record_stream(&self, keys: &[Key]) -> dyn Iterator<Item = (Key, Vec<u8>)>;
 }
