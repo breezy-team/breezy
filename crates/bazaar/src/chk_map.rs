@@ -20,11 +20,11 @@
 
 use crc32fast::Hasher;
 
-use std::fmt::Write;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write;
 use std::hash::Hash;
+use std::io::{BufRead, Write as _};
 use std::iter::zip;
-use std::io::Write as _;
 
 fn crc32(bit: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -42,7 +42,12 @@ pub type SearchKeyFn = fn(&Key) -> SerialisedKey;
 pub type KeyFilter = Vec<Key>;
 
 pub enum SearchPrefix {
+    /// not calculated yet
     Unknown,
+
+    /// no keys
+    None,
+
     Known(Vec<u8>),
 }
 
@@ -75,12 +80,14 @@ pub fn search_key_255(key: &Key) -> SerialisedKey {
         .collect()
 }
 
+/// Default search key function
+pub const DEFAULT_SEARCH_KEY_FUNC: SearchKeyFn = search_key_plain;
+
 /// If a ChildNode falls below this many bytes, we check for a remap
 pub const INTERESTING_NEW_SIZE: usize = 50;
 
 /// If a ChildNode shrinks by more than this amount, we check for a remap
 pub const INTERESTING_SHRINKAGE_LIMIT: usize = 20;
-
 
 pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
     let sections: Vec<&[u8]> = data.split(|&byte| byte == b'\n').collect();
@@ -101,7 +108,25 @@ pub struct Key(Vec<Vec<u8>>);
 
 impl From<Vec<Vec<u8>>> for Key {
     fn from(v: Vec<Vec<u8>>) -> Self {
+        assert!(!v.is_empty(), "Key cannot be empty");
+        assert!(
+            v.iter().all(|v| !v.is_empty()),
+            "Key cannot contain empty elements: {:?}",
+            v
+        );
         Key(v)
+    }
+}
+
+impl From<Vec<&[u8]>> for Key {
+    fn from(v: Vec<&[u8]>) -> Self {
+        assert!(!v.is_empty(), "Key cannot be empty");
+        assert!(
+            v.iter().all(|v| !v.is_empty()),
+            "Key cannot contain empty elements: {:?}",
+            v
+        );
+        Key(v.into_iter().map(|x| x.to_vec()).collect())
     }
 }
 
@@ -116,6 +141,30 @@ impl Key {
         result
     }
 
+    /// Deserialize a key from a byte array
+    ///
+    /// # Arguments
+    /// * `data` - A byte array containing the serialized key
+    ///
+    /// # Returns
+    /// A Result containing the deserialized key or an error message
+    pub fn deserialize(data: &[u8]) -> Self {
+        let mut result = vec![];
+        let mut current = vec![];
+        for &byte in data {
+            if byte == 0x00 {
+                result.push(current);
+                current = vec![];
+            } else {
+                current.push(byte);
+            }
+        }
+        if !current.is_empty() {
+            result.push(current);
+        }
+        Key(result)
+    }
+
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.0.len()
@@ -126,8 +175,8 @@ impl Key {
     }
 }
 
-impl From<(&[u8], )> for Key {
-    fn from(v: (&[u8], )) -> Self {
+impl From<(&[u8],)> for Key {
+    fn from(v: (&[u8],)) -> Self {
         Key(vec![v.0.to_vec()])
     }
 }
@@ -156,9 +205,17 @@ impl std::fmt::Display for Key {
 
 pub type Value = Vec<u8>;
 
+#[derive(Debug)]
 pub enum Error {
     InconsistentDeltaDelta(Vec<(Option<Key>, Option<Key>, Value)>, String),
     DeserializeError(String),
+    IoError(std::io::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IoError(e)
+    }
 }
 
 impl From<std::num::ParseIntError> for Error {
@@ -258,7 +315,7 @@ impl NodeChild {
     fn key(&self) -> Option<&Key> {
         match self {
             NodeChild::Tuple(ref key) => Some(key),
-            NodeChild::Node(n) => n.key()
+            NodeChild::Node(n) => n.key(),
         }
     }
 }
@@ -287,15 +344,19 @@ enum Node {
         /// prefix compression.
         raw_size: usize,
         /// All of the keys in this leaf node share this common prefix
-        common_serialised_prefix: Option<SerialisedKey>,
+        common_serialised_prefix: Option<Vec<u8>>,
         /// A dict of key->value items. The key is in tuple form.
-        items: HashMap<SerialisedKey, Value>,
+        items: HashMap<Key, Value>,
         key: Option<Key>,
         key_width: usize,
+        /// The number of items in this node.
         len: usize,
+        /// The maximum size of the node, including the header bytes.
         maximum_size: usize,
+        /// Create a search key from the key
         search_key_func: SearchKeyFn,
-        search_prefix: Option<SerialisedKey>,
+        /// A bytestring of the longest search key prefix that is unique within this node.
+        search_prefix: SearchPrefix,
     },
 
     /// A node that contains references to other nodes.
@@ -303,16 +364,16 @@ enum Node {
     /// An InternalNode is responsible for mapping search key prefixes to child nodes.
     Internal {
         /// serialised_key => node dictionary. node may be a tuple, LeafNode or InternalNode.
-        items: HashMap<SerialisedKey, Node>,
+        items: HashMap<SerialisedKey, NodeChild>,
         key: Option<Key>,
         key_width: usize,
         len: usize,
         maximum_size: usize,
         node_width: usize,
-        raw_size: usize,
         search_key_func: SearchKeyFn,
-        search_prefix: Option<SerialisedKey>,
-    }
+        /// A bytestring of the longest search key prefix that is unique within this node.
+        search_prefix: SearchPrefix,
+    },
 }
 
 impl Node {
@@ -326,13 +387,13 @@ impl Node {
             key_width: 1,
             len: 0,
             maximum_size: 0,
-            search_key_func: search_key_func.unwrap_or(search_key_plain),
-            search_prefix: None,
+            search_key_func: search_key_func.unwrap_or(DEFAULT_SEARCH_KEY_FUNC),
+            search_prefix: SearchPrefix::None,
         }
     }
 
     /// Create a new internal node
-    pub fn internal(search_prefix: Option<SerialisedKey>, search_key_func: Option<SearchKeyFn>) -> Self {
+    pub fn internal(search_prefix: SearchPrefix, search_key_func: Option<SearchKeyFn>) -> Self {
         Node::Internal {
             items: HashMap::new(),
             key: None,
@@ -340,17 +401,344 @@ impl Node {
             len: 0,
             maximum_size: 0,
             node_width: 0,
-            raw_size: 0,
-            search_key_func: search_key_func.unwrap_or(search_key_plain),
-            search_prefix
+            search_key_func: search_key_func.unwrap_or(DEFAULT_SEARCH_KEY_FUNC),
+            search_prefix,
         }
     }
 
+    pub fn keys(&self) -> Box<dyn Iterator<Item = Key> + '_> {
+        match self {
+            Node::Leaf { items, .. } => Box::new(items.keys().cloned()),
+            Node::Internal { items, .. } => Box::new(items.keys().map(|k| Key::deserialize(k))),
+        }
+    }
+
+    /// Answer the current serialised size of this node.
+    ///
+    /// This differs from self.raw_size in that it includes the bytes used for
+    /// the header.
+    pub fn current_size(&self) -> usize {
+        match self {
+            Node::Leaf {
+                raw_size,
+                maximum_size,
+                key_width,
+                len,
+                common_serialised_prefix,
+                ..
+            } => {
+                let (prefix_len, bytes_for_items) =
+                    if let Some(common_serialised_prefix) = common_serialised_prefix {
+                        // We will store a single string with the common prefix
+                        // And then that common prefix will not be stored in any of the
+                        // entry lines
+                        let prefix_len = common_serialised_prefix.len();
+                        (prefix_len, raw_size - (prefix_len * len))
+                    } else {
+                        (0, 0)
+                    };
+                b"chkleaf:\n".len()
+                    + maximum_size.to_string().len()
+                    + 1
+                    + key_width.to_string().len()
+                    + 1
+                    + len.to_string().len()
+                    + 1
+                    + prefix_len
+                    + 1
+                    + bytes_for_items
+            }
+            Node::Internal { .. } => {
+                /*raw_size
+                    + len.to_string().len()
+                    + key_width.to_string().len()
+                    + maximum_size.to_string().len()
+                */
+                unimplemented!()
+            }
+        }
+    }
+
+    /// Get the key
     pub fn key(&self) -> Option<&Key> {
         match self {
             Node::Leaf { key, .. } => key.as_ref(),
             Node::Internal { key, .. } => key.as_ref(),
         }
+    }
+
+    fn deserialize_leaf<R: BufRead>(
+        mut data: countio::Counter<R>,
+        key: Key,
+        search_key_func: Option<SearchKeyFn>,
+    ) -> Result<Self, Error> {
+        let mut items = HashMap::new();
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        assert_eq!(line.pop(), Some('\n'));
+        let maximum_size = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse maximum size: {}", e)))?;
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        assert_eq!(line.pop(), Some('\n'));
+        let width = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse width: {}", e)))?;
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        assert_eq!(line.pop(), Some('\n'));
+        let length = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse length: {}", e)))?;
+        let mut prefix = Vec::new();
+        data.read_until(b'\n', &mut prefix)
+            .map_err(|e| Error::DeserializeError(format!("Failed to read prefix: {}", e)))?;
+        assert_eq!(prefix.pop(), Some(b'\n'));
+        loop {
+            let mut line = Vec::new();
+            if data.read_until(b'\n', &mut line)? == 0 {
+                break;
+            }
+            assert_eq!(line.pop(), Some(b'\n'));
+            let line = [prefix.as_slice(), line.as_slice()].concat();
+            let mut elements = line.split(|&c| c == b'\x00').collect::<Vec<_>>();
+            let num_value_lines =
+                String::from_utf8_lossy(elements.pop().unwrap()).parse::<usize>()?;
+            let key = Key::from(elements);
+            let mut value = Vec::new();
+            for _i in 0..num_value_lines {
+                data.read_until(b'\n', &mut value)?;
+            }
+            assert_eq!(value.pop(), Some(b'\n'));
+            items.insert(key, value);
+        }
+        assert_eq!(
+            items.len(),
+            length,
+            "item count ({}) mismatch for key {:?}",
+            length,
+            key
+        );
+        let (search_prefix, common_serialised_prefix) = if items.is_empty() {
+            (SearchPrefix::None, None)
+        } else {
+            (SearchPrefix::Unknown, Some(prefix.clone()))
+        };
+
+        let result = Node::Leaf {
+            search_key_func: search_key_func.unwrap_or(DEFAULT_SEARCH_KEY_FUNC),
+            len: length,
+            maximum_size,
+            key: Some(key),
+            key_width: width,
+            raw_size: items
+                .iter()
+                .map(|(k, v)| key_value_len(k, v) + prefix.len())
+                .sum(),
+            items,
+            search_prefix,
+            common_serialised_prefix,
+        };
+        assert_eq!(
+            data.reader_bytes(),
+            result.current_size(),
+            "current_size computed incorrectly"
+        );
+        Ok(result)
+    }
+
+    fn deserialize_internal<R: BufRead>(
+        mut data: countio::Counter<R>,
+        key: Key,
+        search_key_func: Option<SearchKeyFn>,
+    ) -> Result<Self, Error> {
+        // Splitlines can split on '\r' so don't use it, remove the extra ''
+        // from the result of split('\n') because we should have a trailing
+        // newline
+        let mut items = HashMap::new();
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        if line.pop() != Some('\n') {
+            return Err(Error::DeserializeError(format!(
+                "EOL reading maximum size: {}",
+                line
+            )));
+        }
+        let maximum_size = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse maximum size: {}", e)))?;
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        if line.pop() != Some('\n') {
+            return Err(Error::DeserializeError(format!(
+                "EOL reading width: {}",
+                line
+            )));
+        }
+        let width = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse width: {}", e)))?;
+        let mut line = String::new();
+        data.read_line(&mut line)?;
+        if line.pop() != Some('\n') {
+            return Err(Error::DeserializeError(format!(
+                "EOL reading length: {}",
+                line
+            )));
+        }
+        let length = line
+            .parse::<usize>()
+            .map_err(|e| Error::DeserializeError(format!("Failed to parse length: {}", e)))?;
+        let mut common_prefix = Vec::new();
+        data.read_until(b'\n', &mut common_prefix)?;
+        if common_prefix.pop() != Some(b'\n') {
+            return Err(Error::DeserializeError(format!(
+                "EOL reading common prefix: {}",
+                String::from_utf8_lossy(common_prefix.as_slice())
+            )));
+        }
+
+        loop {
+            let mut line = Vec::new();
+            if data.read_until(b'\n', &mut line)? == 0 {
+                break;
+            }
+            assert_eq!(line.pop(), Some(b'\n'));
+            let line = [common_prefix.as_slice(), line.as_slice()].concat();
+            let (prefix, flat_key) = line.rsplit_once(|&c| c == b'\x00').unwrap();
+            items.insert(
+                prefix.to_vec(),
+                NodeChild::Tuple(Key::deserialize(flat_key)),
+            );
+        }
+        assert!(!items.is_empty(), "We didn't find any item for {}", &key);
+        Ok(Node::Internal {
+            items,
+            len: length,
+            maximum_size,
+            key: Some(key),
+            key_width: width,
+            node_width: common_prefix.len(),
+            search_prefix: SearchPrefix::Known(common_prefix),
+            search_key_func: search_key_func.unwrap_or(DEFAULT_SEARCH_KEY_FUNC),
+        })
+    }
+
+    /// Get the maximum size of this node
+    fn maximum_size(&self) -> usize {
+        match self {
+            Node::Leaf { maximum_size, .. } => *maximum_size,
+            Node::Internal { maximum_size, .. } => *maximum_size,
+        }
+    }
+
+    /// Deserialise a node from a stream
+    pub fn deserialise<R: BufRead>(
+        data: R,
+        key: Key,
+        search_key_func: Option<SearchKeyFn>,
+    ) -> Result<Self, Error> {
+        let mut data = countio::Counter::new(data);
+        let mut header = Vec::new();
+        data.read_until(b'\n', &mut header)?;
+        match header.as_slice() {
+            b"chkleaf:\n" => Self::deserialize_leaf(data, key, search_key_func),
+            b"chknode:\n" => Self::deserialize_internal(data, key, search_key_func),
+            _ => Err(Error::DeserializeError(format!(
+                "Invalid header: {}",
+                String::from_utf8_lossy(header.as_slice())
+            ))),
+        }
+    }
+
+    /// Check if this node is a leaf node
+    pub fn is_leaf(&self) -> bool {
+        matches!(self, Node::Leaf { .. })
+    }
+
+    /// Check if this node is an internal node
+    pub fn is_internal(&self) -> bool {
+        matches!(self, Node::Internal { .. })
+    }
+
+    /// Return the number of items in this node
+    pub fn len(&self) -> usize {
+        match self {
+            Node::Internal { len, .. } => *len,
+            Node::Leaf { len, .. } => *len,
+        }
+    }
+
+    /// Check if this node is empty
+    fn is_empty(&self) -> bool {
+        match self {
+            Node::Internal { len, .. } => *len == 0,
+            Node::Leaf { len, .. } => *len == 0,
+        }
+    }
+
+    /// Get the width of the node
+    fn key_width(&self) -> usize {
+        match self {
+            Node::Internal { key_width, .. } => *key_width,
+            Node::Leaf { key_width, .. } => *key_width,
+        }
+    }
+}
+
+#[cfg(test)]
+mod node_tests {
+    use super::*;
+    use std::io::BufReader;
+    use std::io::Read;
+    #[test]
+    fn test_leaf_deserialize() {
+        let data = BufReader::new(
+            &b"chkleaf:
+100
+10
+2
+
+test\x002
+valueline1
+valueling2
+test2\x001
+valueline1
+"[..],
+        );
+        let node = Node::deserialise(data, Key::from((&b"test"[..],)), None).unwrap();
+        assert!(node.is_leaf());
+        assert_eq!(node.len(), 2);
+        assert_eq!(
+            node.keys().collect::<HashSet<_>>(),
+            maplit::hashset! {Key::from((&b"test"[..], )), Key::from((&b"test2"[..], ))}
+        );
+        assert_eq!(node.maximum_size(), 100);
+        assert_eq!(node.key_width(), 10);
+    }
+
+    #[test]
+    fn test_internal_deserialize() {
+        let data = BufReader::new(
+            &b"chknode:
+100
+10
+2
+
+test\x00value
+test2\x00value2
+"[..],
+        );
+        let node = Node::deserialise(data, Key::from((&b"test"[..],)), None).unwrap();
+        assert!(node.is_internal());
+        assert_eq!(node.len(), 2);
+        assert_eq!(
+            node.keys().collect::<HashSet<_>>(),
+            maplit::hashset! {Key::from((&b"test"[..], )), Key::from((&b"test2"[..], ))}
+        );
+        assert_eq!(node.maximum_size(), 100);
+        assert_eq!(node.key_width(), 10);
     }
 }
 
@@ -359,7 +747,12 @@ impl Node {
 fn key_value_len(key: &Key, value: &Value) -> usize {
     key.serialize().len()
         + 1
-        + value.iter().filter(|&&f| f == b'\n').count().to_string().len()
+        + value
+            .iter()
+            .filter(|&&f| f == b'\n')
+            .count()
+            .to_string()
+            .len()
         + 1
         + value.len()
         + 1
@@ -378,7 +771,10 @@ fn test_key_value_len() {
 /// When using a hash as the search_key it is possible for non-identical
 /// keys to collide. If that happens enough, we may try overflow a
 /// LeafNode, but as all are collisions, we must not split.
-fn are_search_keys_identical<'a>(keys: impl Iterator<Item = &'a Key>, search_key_func: SearchKeyFn) -> bool {
+fn are_search_keys_identical<'a>(
+    keys: impl Iterator<Item = &'a Key>,
+    search_key_func: SearchKeyFn,
+) -> bool {
     let mut common_search_key = None;
     for key in keys {
         let search_key = search_key_func(key);
@@ -388,21 +784,15 @@ fn are_search_keys_identical<'a>(keys: impl Iterator<Item = &'a Key>, search_key
             return false;
         }
     }
-    return true
+    return true;
 }
 
 #[cfg(test)]
 #[test]
 fn test_are_search_keys_identical() {
-    let keys = vec![
-        Key(vec![b"test".to_vec()]),
-        Key(vec![b"test".to_vec()]),
-    ];
+    let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test".to_vec()])];
     assert!(are_search_keys_identical(keys.iter(), search_key_plain));
 
-    let keys = vec![
-        Key(vec![b"test".to_vec()]),
-        Key(vec![b"test2".to_vec()]),
-    ];
+    let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test2".to_vec()])];
     assert!(!are_search_keys_identical(keys.iter(), search_key_plain));
 }
