@@ -399,7 +399,7 @@ fn test_node_child() {
 }
 
 /// A CHK Map Node
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum Node {
     /// A node containing actual key:value pairs.
     Leaf {
@@ -439,6 +439,67 @@ enum Node {
     },
 }
 
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Node::Leaf {
+                key,
+                items,
+                len,
+                raw_size,
+                maximum_size,
+                search_prefix,
+                key_width,
+                ..
+            } => {
+                let mut items = items.iter().collect::<Vec<_>>();
+                items.sort_by(|a, b| a.0.cmp(b.0));
+                let items_str = items
+                    .iter()
+                    .map(|(k, v)| format!("{:?}:{:?}", k, v))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let mut items_str = format!("[{}]", items_str);
+                if items_str.len() > 20 {
+                    items_str = format!("{}...]", &items_str[..16]);
+                }
+
+                write!(
+                    f,
+                    "leaf(key:{:?} len:{} size:{} max:{} prefix:{:?} keywidth:{} items:{})",
+                    key, len, raw_size, maximum_size, search_prefix, key_width, items_str
+                )
+            }
+            Node::Internal {
+                key,
+                items,
+                len,
+                maximum_size,
+                search_prefix,
+                ..
+            } => {
+                let mut items = items.iter().collect::<Vec<_>>();
+                items.sort_by(|a, b| a.0.cmp(b.0));
+                let items_str = items
+                    .iter()
+                    .map(|(k, v)| format!("{:?}:{:?}", k, v))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let mut items_str = format!("[{}]", items_str);
+                if items_str.len() > 20 {
+                    items_str = format!("{}...]", &items_str[..16]);
+                }
+
+                write!(
+                    f,
+                    "internal(key:{:?} len:{} max:{} prefix:{:?} items:{})",
+                    key, len, maximum_size, search_prefix, items_str
+                )
+            }
+        }
+    }
+}
+
 impl Node {
     /// Create a new leaf node
     pub fn leaf(search_key_func: Option<SearchKeyFn>) -> Self {
@@ -473,6 +534,24 @@ impl Node {
         match self {
             Node::Leaf { items, .. } => Box::new(items.keys().cloned()),
             Node::Internal { items, .. } => Box::new(items.keys().map(|k| Key::deserialize(k))),
+        }
+    }
+
+    /// Return the serialised key for key in this node.
+    fn search_key(self, key: &Key) -> SerialisedKey {
+        match self {
+            Node::Leaf {
+                search_key_func, ..
+            } => search_key_func(key),
+            Node::Internal {
+                search_key_func,
+                node_width,
+                ..
+            } => {
+                // search keys are fixed width. All will be self.node_width wide, so we
+                // pad as necessary.
+                ([search_key_func(key), b"\x00".repeat(node_width)].concat())[..node_width].to_vec()
+            }
         }
     }
 
@@ -723,7 +802,17 @@ impl Node {
     /// Returns: An iterable of the keys inserted by this operation.
     pub fn serialise(&mut self, store: &dyn Store) -> Box<dyn Iterator<Item = Result<Key, Error>>> {
         match self {
-            Node::Leaf { items, ref mut key, key_width, maximum_size, search_key_func, search_prefix, common_serialised_prefix, len, .. } => {
+            Node::Leaf {
+                items,
+                ref mut key,
+                key_width,
+                maximum_size,
+                search_key_func,
+                search_prefix,
+                common_serialised_prefix,
+                len,
+                ..
+            } => {
                 let mut data = vec![];
                 write!(&mut data, "chkleaf:\n");
                 write!(&mut data, "{}\n", maximum_size);
@@ -731,7 +820,10 @@ impl Node {
                 write!(&mut data, "{}\n", len);
                 let prefix_len = if common_serialised_prefix.is_none() {
                     write!(&mut data, "\n");
-                    assert!(items.is_empty(), "If common_serialised_prefix is None we should have no items");
+                    assert!(
+                        items.is_empty(),
+                        "If common_serialised_prefix is None we should have no items"
+                    );
                     0
                 } else {
                     data.extend_from_slice(common_serialised_prefix.as_ref().unwrap());
@@ -748,13 +840,28 @@ impl Node {
                     write!(&mut data, "{}\n", value_data.len()).unwrap();
                     data.write_all(&value_data).unwrap();
                 }
-                let sha1 = store.add_lines(data.split_inclusive(|&byte| byte == b'\n').map(|line| line.to_vec()).collect()).unwrap();
+                let sha1 = store
+                    .add_lines(
+                        data.split_inclusive(|&byte| byte == b'\n')
+                            .map(|line| line.to_vec())
+                            .collect(),
+                    )
+                    .unwrap();
                 *key = Some(Key(vec![[b"sha1:".to_vec(), sha1].concat()]));
                 // TODO: cache self.key = data
 
                 Box::new(vec![Ok(key.clone().unwrap())].into_iter())
             }
-            Node::Internal { ref mut key, items, key_width, maximum_size, search_key_func, search_prefix, len, .. } => {
+            Node::Internal {
+                ref mut key,
+                items,
+                key_width,
+                maximum_size,
+                search_key_func,
+                search_prefix,
+                len,
+                ..
+            } => {
                 let mut ret = Vec::new();
                 for node in items.values_mut() {
                     match node {
@@ -786,21 +893,34 @@ impl Node {
                 sorted_items.sort();
                 for (prefix, node) in sorted_items {
                     let key = node.key().unwrap();
-                    let serialised = [prefix.as_slice(), &b"\x00"[..], &key.serialize(), &b"\n"[..]].concat();
-                    assert!(serialised.starts_with(search_prefix.as_ref().unwrap()), "prefixes mismatch: {:?} must start with {:?}", serialised, search_prefix);
+                    let serialised = [
+                        prefix.as_slice(),
+                        &b"\x00"[..],
+                        &key.serialize(),
+                        &b"\n"[..],
+                    ]
+                    .concat();
+                    assert!(
+                        serialised.starts_with(search_prefix.as_ref().unwrap()),
+                        "prefixes mismatch: {:?} must start with {:?}",
+                        serialised,
+                        search_prefix
+                    );
                     data.extend_from_slice(&serialised[prefix_len..]);
                 }
-                let sha1 = store.add_lines(data.split_inclusive(|&byte| byte == b'\n').map(|line| line.to_vec()).collect()).unwrap();
+                let sha1 = store
+                    .add_lines(
+                        data.split_inclusive(|&byte| byte == b'\n')
+                            .map(|line| line.to_vec())
+                            .collect(),
+                    )
+                    .unwrap();
                 *key = Some(Key(vec![[b"sha1:".to_vec(), sha1].concat()]));
                 ret.push(Ok(key.clone().unwrap()));
                 Box::new(ret.into_iter())
             }
         }
     }
-
-
-
-
 
     /// Check if this node is a leaf node
     pub fn is_leaf(&self) -> bool {
