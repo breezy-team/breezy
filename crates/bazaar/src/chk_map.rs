@@ -367,6 +367,18 @@ enum NodeChild {
     Node(Node),
 }
 
+impl From<Key> for NodeChild {
+    fn from(key: Key) -> Self {
+        NodeChild::Tuple(key)
+    }
+}
+
+impl From<Node> for NodeChild {
+    fn from(node: Node) -> Self {
+        NodeChild::Node(node)
+    }
+}
+
 impl PartialEq for NodeChild {
     fn eq(&self, other: &Self) -> bool {
         self.key() == other.key()
@@ -568,6 +580,30 @@ impl Node {
         }
     }
 
+    /// Return the key for this node.
+    pub fn key(&self) -> Option<&Key> {
+        match self {
+            Node::Leaf { key, .. } => key.as_ref(),
+            Node::Internal { key, .. } => key.as_ref(),
+        }
+    }
+
+    /// Return the number of items in this node.
+    pub fn len(&self) -> usize {
+        match self {
+            Node::Leaf { len, .. } => *len,
+            Node::Internal { len, .. } => *len,
+        }
+    }
+
+    /// What is the upper limit for adding references to a node.
+    pub fn maximum_size(&self) -> usize {
+        match self {
+            Node::Leaf { maximum_size, .. } => *maximum_size,
+            Node::Internal { maximum_size, .. } => *maximum_size,
+        }
+    }
+
     /// Set the size threshold for nodes.
     ///
     /// # Arguments
@@ -647,14 +683,6 @@ impl Node {
                 */
                 unimplemented!()
             }
-        }
-    }
-
-    /// Get the key
-    pub fn key(&self) -> Option<&Key> {
-        match self {
-            Node::Leaf { key, .. } => key.as_ref(),
-            Node::Internal { key, .. } => key.as_ref(),
         }
     }
 
@@ -843,14 +871,6 @@ impl Node {
         }
     }
 
-    /// Get the maximum size of this node
-    fn maximum_size(&self) -> usize {
-        match self {
-            Node::Leaf { maximum_size, .. } => *maximum_size,
-            Node::Internal { maximum_size, .. } => *maximum_size,
-        }
-    }
-
     /// Deserialise a node from a stream
     pub fn deserialise<R: BufRead>(
         data: R,
@@ -883,8 +903,6 @@ impl Node {
                 ref mut key,
                 key_width,
                 maximum_size,
-                search_key_func,
-                search_prefix,
                 common_serialised_prefix,
                 len,
                 ..
@@ -956,10 +974,10 @@ impl Node {
                     }
                 }
                 let mut data = vec![];
-                write!(&mut data, "chknode:\n");
-                write!(&mut data, "{}\n", maximum_size);
-                write!(&mut data, "{}\n", key_width);
-                write!(&mut data, "{}\n", len);
+                write!(&mut data, "chknode:\n").unwrap();
+                write!(&mut data, "{}\n", maximum_size).unwrap();
+                write!(&mut data, "{}\n", key_width).unwrap();
+                write!(&mut data, "{}\n", len).unwrap();
                 assert!(search_prefix.is_some(), "search prefix should not be None");
                 data.extend_from_slice(&search_prefix.as_ref().unwrap());
                 data.push(b'\n');
@@ -997,6 +1015,27 @@ impl Node {
         }
     }
 
+    /// Add a child node with prefix prefix, and node node.
+    ///
+    /// # Arguments
+    /// * `prefix`: The search key prefix for node.
+    /// * `node`: The node being added.
+    pub fn add_node(&mut self, prefix: &SerialisedKey, node: Node) -> Result<(), Error> {
+        // Ensure self is an internal node
+        let Node::Internal { ref mut key, items,  ref mut node_width, search_prefix, ref mut len, .. } = self else { panic!("Node::add_node called on non-internal node") };
+        let search_prefix = search_prefix.as_ref().unwrap();
+        assert!(prefix.starts_with(search_prefix), "prefixes mismatch: {:?} must start with {:?}", prefix, search_prefix);
+        assert_eq!(prefix.len(), search_prefix.len() + 1, "prefix wrong length: len({:?}) is not {}", prefix, search_prefix.len() + 1);
+        *len += node.len();
+        if items.is_empty() {
+            *node_width = prefix.len();
+        }
+        assert_eq!(*node_width, search_prefix.len() + 1, "node width mismatch: {} is not {}", *node_width, search_prefix.len() + 1);
+        items.insert(prefix.clone(), node.into());
+        *key = None;
+        Ok(())
+    }
+
     /// Check if this node is a leaf node
     pub fn is_leaf(&self) -> bool {
         matches!(self, Node::Leaf { .. })
@@ -1005,14 +1044,6 @@ impl Node {
     /// Check if this node is an internal node
     pub fn is_internal(&self) -> bool {
         matches!(self, Node::Internal { .. })
-    }
-
-    /// Return the number of items in this node
-    pub fn len(&self) -> usize {
-        match self {
-            Node::Internal { len, .. } => *len,
-            Node::Leaf { len, .. } => *len,
-        }
     }
 
     /// Check if this node is empty
