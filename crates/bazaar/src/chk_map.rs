@@ -52,6 +52,19 @@ pub enum SearchPrefix {
     Known(Vec<u8>),
 }
 
+impl From<Option<Vec<u8>>> for SearchPrefix {
+    fn from(prefix: Option<Vec<u8>>) -> Self {
+        match prefix {
+            Some(prefix) => if prefix.is_empty() {
+                SearchPrefix::None
+            } else {
+                SearchPrefix::Known(prefix)
+            },
+            None => SearchPrefix::None,
+        }
+    }
+}
+
 impl std::fmt::Display for SearchPrefix {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -317,6 +330,31 @@ pub fn common_prefix_many<'a>(mut keys: impl Iterator<Item = &'a [u8]> + 'a) -> 
     Some(cp)
 }
 
+#[test]
+fn test_common_prefix_many() {
+    assert_eq!(
+        common_prefix_many(vec![&b"abc"[..], &b"abc"[..]].into_iter()),
+        Some(&b"abc"[..])
+    );
+    assert_eq!(
+        common_prefix_many(vec![&b"abc"[..], &b"abcd"[..]].into_iter()),
+        Some(&b"abc"[..])
+    );
+    assert_eq!(
+        common_prefix_many(vec![&b"abc"[..], &b"ab"[..]].into_iter()),
+        Some(&b"ab"[..])
+    );
+    assert_eq!(
+        common_prefix_many(vec![&b"abc"[..], &b"bbd"[..]].into_iter()),
+        Some(&b""[..])
+    );
+    assert_eq!(
+        common_prefix_many(vec![&b"abcd"[..], &b"abc"[..], &b"abc"[..]].into_iter()),
+        Some(&b"abc"[..])
+    );
+    assert_eq!(common_prefix_many(vec![].into_iter()), None);
+}
+
 /// Reference to the child of a node
 ///
 /// Can either be just a key (if the node is unresolved) or a node
@@ -527,6 +565,17 @@ impl Node {
             node_width: 0,
             search_key_func: search_key_func.unwrap_or(DEFAULT_SEARCH_KEY_FUNC),
             search_prefix,
+        }
+    }
+
+    /// Set the size threshold for nodes.
+    ///
+    /// # Arguments
+    /// * `new_size`: The size at which no data is added to a node. 0 for unlimited.
+    pub fn set_maximum_size(&mut self, new_size: usize) {
+        match self {
+            Node::Leaf { maximum_size, .. } => *maximum_size = new_size,
+            Node::Internal { maximum_size, .. } => *maximum_size = new_size,
         }
     }
 
@@ -767,6 +816,33 @@ impl Node {
         })
     }
 
+    /// Return the unique key prefix for this node.
+    ///
+    /// Returns: A bytestring of the longest search key prefix that is unique within this node.
+    fn compute_search_prefix(&mut self) -> &SearchPrefix {
+        match self {
+            Node::Internal {
+                items,
+                ref mut search_prefix,
+                ..
+            } => {
+                let keys = items.keys().map(|x| x.as_slice());
+                *search_prefix = common_prefix_many(keys).map(|x| x.to_vec()).into();
+                search_prefix
+            }
+            Node::Leaf {
+                items,
+                ref mut search_prefix,
+                search_key_func,
+                ..
+            } => {
+                let search_keys = items.keys().map(|key| search_key_func(key)).collect::<Vec<_>>();
+                *search_prefix = common_prefix_many(search_keys.iter().map(|x| x.as_slice())).map(|x| x.to_vec()).into();
+                search_prefix
+            }
+        }
+    }
+
     /// Get the maximum size of this node
     fn maximum_size(&self) -> usize {
         match self {
@@ -814,12 +890,12 @@ impl Node {
                 ..
             } => {
                 let mut data = vec![];
-                write!(&mut data, "chkleaf:\n");
-                write!(&mut data, "{}\n", maximum_size);
-                write!(&mut data, "{}\n", key_width);
-                write!(&mut data, "{}\n", len);
+                write!(&mut data, "chkleaf:\n").unwrap();
+                write!(&mut data, "{}\n", maximum_size).unwrap();
+                write!(&mut data, "{}\n", key_width).unwrap();
+                write!(&mut data, "{}\n", len).unwrap();
                 let prefix_len = if common_serialised_prefix.is_none() {
-                    write!(&mut data, "\n");
+                    write!(&mut data, "\n").unwrap();
                     assert!(
                         items.is_empty(),
                         "If common_serialised_prefix is None we should have no items"
@@ -857,7 +933,6 @@ impl Node {
                 items,
                 key_width,
                 maximum_size,
-                search_key_func,
                 search_prefix,
                 len,
                 ..
@@ -865,7 +940,7 @@ impl Node {
                 let mut ret = Vec::new();
                 for node in items.values_mut() {
                     match node {
-                        NodeChild::Tuple(key) => {
+                        NodeChild::Tuple(_key) => {
                             // Never deserialised.
                             continue;
                         }
