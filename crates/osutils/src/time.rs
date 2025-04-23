@@ -133,7 +133,7 @@ pub fn format_date(
 ) -> String {
     let (dt, offset_str) = match timezone {
         Timezone::Utc => (
-            DateTime::from_utc(NaiveDateTime::from_timestamp(t, 0), Utc),
+            DateTime::from_timestamp(t, 0).expect("timestamp should be valid"),
             if show_offset {
                 " +0000".to_owned()
             } else {
@@ -151,7 +151,7 @@ pub fn format_date(
                 "".to_owned()
             };
             (
-                DateTime::from_utc(NaiveDateTime::from_timestamp(t + offset, 0), Utc),
+                DateTime::from_timestamp(t + offset, 0).expect("timestamp should be valid"),
                 offset_str,
             )
         }
@@ -219,9 +219,9 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
     let fract_seconds_str = &date[dot_loc.unwrap()..dot_loc.unwrap() + offset_loc.unwrap()];
     let offset_str = &date[dot_loc.unwrap() + 1 + offset_loc.unwrap()..];
 
-    let base_time = Utc
-        .datetime_from_str(base_time_str, "%Y-%m-%d %H:%M:%S")
-        .map_err(|e| format!("Failed to parse datetime string ({}): {}", base_time_str, e))?;
+    let base_time = NaiveDateTime::parse_from_str(base_time_str, "%Y-%m-%d %H:%M:%S")
+        .map_err(|e| format!("Failed to parse datetime string ({}): {}", base_time_str, e))?
+        .and_utc();
 
     let fract_seconds = fract_seconds_str.parse::<f64>().map_err(|e| {
         format!(

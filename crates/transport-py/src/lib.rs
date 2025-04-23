@@ -267,8 +267,8 @@ impl PyBufReadStream {
 
 impl Transport {
     fn map_to_py_err(slf: PyRef<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
-        let obj = slf.to_object(py);
-        map_transport_err_to_py_err(e, Some(obj), p)
+        let obj = slf.into_pyobject(py).unwrap();
+        map_transport_err_to_py_err(e, Some(obj.into()), p)
     }
 }
 
@@ -302,7 +302,7 @@ impl Transport {
                     NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
                 }
                 e => {
-                    let obj = slf.to_object(py);
+                    let obj = slf.unbind().into_any();
                     map_transport_err_to_py_err(e, Some(obj), Some(path))
                 },
             })?;
@@ -369,7 +369,7 @@ impl Transport {
                 NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
             }
             e => {
-                let obj = slf.to_object(py);
+                let obj = slf.into_pyobject(py).unwrap().unbind().into_any();
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
             },
         })?;
@@ -696,7 +696,7 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn iter_files_recursive(&self, py: Python) -> PyResult<PyObject> {
+    fn iter_files_recursive<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         self.0
             .iter_files_recursive()
             .map(|r| {
@@ -704,7 +704,7 @@ impl Transport {
                     .map(|o| o.to_string())
             })
             .collect::<PyResult<Vec<_>>>()
-            .map(|v| PyList::new(py, &v).to_object(py))
+            .and_then(move |v| PyList::new(py, &v))
     }
 
     #[pyo3(signature = (path, mode=None))]

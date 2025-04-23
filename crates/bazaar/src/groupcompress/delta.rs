@@ -353,7 +353,9 @@ pub fn read_instruction<R: Read>(mut reader: R) -> Result<Instruction<Vec<u8>>, 
 pub fn decode_instruction(data: &[u8], pos: usize) -> Result<(Instruction<&[u8]>, usize), String> {
     let cmd = data[pos];
     if cmd & 0x80 != 0 {
-        let (offset, length, newpos) = decode_copy_instruction(data, cmd, pos + 1)?;
+        let mut c = std::io::Cursor::new(&data[pos + 1..]);
+        let (offset, length) = read_copy_instruction(&mut c, cmd).map_err(|e| e.to_string())?;
+        let newpos = pos + 1 + c.position() as usize;
         Ok((Instruction::Copy { offset, length }, newpos))
     } else {
         let length = cmd as usize;

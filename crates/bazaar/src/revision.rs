@@ -1,5 +1,5 @@
 use crate::RevisionId;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime};
 use std::collections::HashMap;
 
 pub fn validate_properties(properties: &HashMap<String, Vec<u8>>) -> bool {
@@ -47,7 +47,9 @@ impl Revision {
     }
 
     pub fn datetime(&self) -> NaiveDateTime {
-        NaiveDateTime::from_timestamp_opt(self.timestamp as i64, 0).unwrap()
+        DateTime::from_timestamp(self.timestamp as i64, 0)
+            .expect("timestamp should be valid")
+            .naive_utc()
     }
 
     pub fn timezone(&self) -> Option<chrono::FixedOffset> {

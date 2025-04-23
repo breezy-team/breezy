@@ -1,5 +1,5 @@
 use crate::groupcompress::block::{read_item, GroupCompressItem};
-use crate::groupcompress::delta::{apply_delta, encode_base128_int};
+use crate::groupcompress::delta::{apply_delta, write_base128_int};
 use crate::groupcompress::NULL_SHA1;
 use crate::versionedfile::{Error, Key};
 use std::borrow::Cow;
@@ -152,7 +152,11 @@ impl GroupCompressor for TraditionalGroupCompressor {
             // The delta is longer than the fulltext, insert a fulltext
             let mut out_lines = vec![
                 Cow::Borrowed(&b"f"[..]),
-                Cow::Owned(encode_base128_int(input_len as u128)),
+                {
+                    let mut data = Vec::new();
+                    write_base128_int(&mut data, input_len as u128).unwrap();
+                    Cow::Owned(data)
+                },
             ];
             index_lines.clear();
             index_lines.extend(vec![false, false]);
@@ -163,7 +167,11 @@ impl GroupCompressor for TraditionalGroupCompressor {
             // this is a worthy delta, output it
             out_lines[0] = Cow::Borrowed(&b"d"[..]);
             // Update the delta_length to include those two encoded integers
-            out_lines[1] = Cow::Owned(encode_base128_int(delta_length));
+            {
+                let mut data = Vec::new();
+                write_base128_int(&mut data, delta_length).unwrap();
+                out_lines[1] = Cow::Owned(data);
+            }
             ("delta", out_lines)
         };
         // Before insertion
