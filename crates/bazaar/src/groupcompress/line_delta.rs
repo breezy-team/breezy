@@ -1,4 +1,4 @@
-use crate::groupcompress::delta::{encode_base128_int, encode_copy_instruction};
+use crate::groupcompress::delta::{write_base128_int, encode_copy_instruction};
 use std::borrow::Cow;
 pub struct OutputHandler<'a> {
     out_lines: Vec<Cow<'a, [u8]>>,
@@ -336,7 +336,11 @@ impl LinesDeltaIndex {
             // reserved for content type, content length
             Cow::Owned(vec![]),
             Cow::Owned(vec![]),
-            Cow::Owned(encode_base128_int(bytes_length as u128)),
+            {
+                let mut data = Vec::new();
+                write_base128_int(&mut data, bytes_length as u128).unwrap();
+                Cow::Owned(data)
+            },
         ];
         let index_lines = vec![false, false, false];
 

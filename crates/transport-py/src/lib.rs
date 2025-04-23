@@ -1,5 +1,5 @@
 use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
-use breezy_transport::{Error, ReadStream, Transport as _, UrlFragment, WriteStream};
+use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
 use log::debug;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
@@ -32,7 +32,7 @@ import_exception!(breezy.errors, NotADirectory);
 import_exception!(breezy.urlutils, InvalidURL);
 
 #[pyclass(subclass)]
-struct Transport(Box<dyn breezy_transport::Transport>);
+struct Transport(Box<dyn TransportTrait>);
 
 fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFragment>) -> PyErr {
     let pick_path = |n: Option<String>| {
@@ -267,8 +267,8 @@ impl PyBufReadStream {
 
 impl Transport {
     fn map_to_py_err(slf: PyRef<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
-        let obj = slf.into_py(py);
-        map_transport_err_to_py_err(e, Some(obj), p)
+        let obj = slf.into_pyobject(py).unwrap();
+        map_transport_err_to_py_err(e, Some(obj.into()), p)
     }
 }
 
@@ -301,7 +301,10 @@ impl Transport {
                 Error::NotADirectoryError(_) => {
                     NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
                 }
-                e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+                e => {
+                    let obj = slf.unbind().into_any();
+                    map_transport_err_to_py_err(e, Some(obj), Some(path))
+                },
             })?;
 
         Ok(PyBytes::new(py, &ret))
@@ -328,7 +331,10 @@ impl Transport {
         let mode = mode.map(perms_from_py_object);
         let t = &slf.borrow().0;
         py.allow_threads(|| t.mkdir(path, mode))
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+            .map_err(|e| {
+                let obj = slf.to_object(py);
+                map_transport_err_to_py_err(e, Some(obj), Some(path))
+            })?;
         Ok(())
     }
 
@@ -362,7 +368,10 @@ impl Transport {
             Error::NotADirectoryError(_) => {
                 NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
             }
-            e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+            e => {
+                let obj = slf.into_pyobject(py).unwrap().unbind().into_any();
+                map_transport_err_to_py_err(e, Some(obj), Some(path))
+            },
         })?;
         Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))
     }
@@ -419,7 +428,10 @@ impl Transport {
         let mode = mode.map(perms_from_py_object).unwrap_or_else(default_perms);
         let t = &slf.borrow().0;
         py.allow_threads(|| t.put_bytes(path, data, Some(mode)))
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+            .map_err(|e| {
+                let obj = slf.to_object(py);
+                map_transport_err_to_py_err(e, Some(obj), Some(path))
+            })?;
         Ok(())
     }
 
@@ -444,7 +456,10 @@ impl Transport {
                 dir_mode.map(perms_from_py_object),
             )
         })
-        .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+        .map_err(|e| {
+            let obj = slf.to_object(py);
+            map_transport_err_to_py_err(e, Some(obj.into_py(py)), Some(path))
+        })?;
         Ok(())
     }
 
@@ -466,7 +481,10 @@ impl Transport {
                     Some(mode.map(perms_from_py_object).unwrap_or_else(default_perms)),
                 )
             })
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+            .map_err(|e| {
+                let obj = slf.to_object(py);
+                map_transport_err_to_py_err(e, Some(obj), Some(path))
+            })?;
         Ok(ret)
     }
 
@@ -491,7 +509,10 @@ impl Transport {
                 dir_mode.map(perms_from_py_object),
             )
         })
-        .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+        .map_err(|e| {
+            let obj = slf.to_object(py);
+            map_transport_err_to_py_err(e, Some(obj.into_py(py)), Some(path))
+        })?;
         Ok(())
     }
 
@@ -589,7 +610,10 @@ impl Transport {
             Error::NotADirectoryError(_) => {
                 ReadError::new_err((path.to_string(), "Not a directory".to_string()))
             }
-            e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+            e => {
+                let obj = slf.to_object(py);
+                map_transport_err_to_py_err(e, Some(obj), Some(path))
+            },
         })?;
         let f = Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))?;
         let buffered = seek_and_read(
@@ -672,15 +696,15 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn iter_files_recursive(&self, py: Python) -> PyResult<PyObject> {
+    fn iter_files_recursive<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyList>> {
         self.0
             .iter_files_recursive()
             .map(|r| {
                 r.map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
-                    .map(|o| o.to_object(py))
+                    .map(|o| o.to_string())
             })
             .collect::<PyResult<Vec<_>>>()
-            .map(|v| v.to_object(py))
+            .and_then(move |v| PyList::new(py, &v))
     }
 
     #[pyo3(signature = (path, mode=None))]
@@ -930,11 +954,11 @@ fn sort_expand_and_combine(
 }
 
 #[pyclass]
-struct PyFile(BufReader<Box<std::fs::File>>, PathBuf);
+struct PyFile(BufReader<Box<std::fs::File>>);
 
 impl PyFile {
-    fn new(f: Box<std::fs::File>, path: &Path) -> Self {
-        Self(BufReader::new(f), path.to_path_buf())
+    fn new(f: Box<std::fs::File>, _path: &Path) -> Self {
+        Self(BufReader::new(f))
     }
 }
 
