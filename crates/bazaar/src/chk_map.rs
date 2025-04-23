@@ -446,21 +446,6 @@ impl NodeChild {
     }
 }
 
-#[cfg(test)]
-#[test]
-fn test_node_child() {
-    let key = Key(vec![b"test".to_vec()]);
-    let node_child = NodeChild::Tuple(key.clone());
-    assert!(node_child.is_tuple());
-    assert!(!node_child.is_node());
-    assert_eq!(node_child.key(), Some(&key));
-
-    let node = Node::leaf(None);
-    let node_child = NodeChild::Node(node);
-    assert!(!node_child.is_tuple());
-    assert!(node_child.is_node());
-    assert_eq!(node_child.key(), None);
-}
 
 /// A CHK Map Node
 #[derive(Clone)]
@@ -1240,10 +1225,41 @@ impl Node {
 }
 
 #[cfg(test)]
-mod node_tests {
+mod tests {
     use super::*;
     use std::io::BufReader;
     use std::io::Read;
+    
+    #[test]
+    fn test_node_child() {
+        let key = Key(vec![b"test".to_vec()]);
+        let node_child = NodeChild::Tuple(key.clone());
+        assert!(node_child.is_tuple());
+        assert!(!node_child.is_node());
+        assert_eq!(node_child.key(), Some(&key));
+
+        let node = Node::leaf(None);
+        let node_child = NodeChild::Node(node);
+        assert!(!node_child.is_tuple());
+        assert!(node_child.is_node());
+        assert_eq!(node_child.key(), None);
+    }
+    
+    #[test]
+    fn test_key_value_len() {
+        let key = Key(vec![b"test".to_vec()]);
+        let value = b"test\x00value\n\n".to_vec();
+        assert_eq!(key_value_len(&key, &value), 20);
+    }
+    
+    #[test]
+    fn test_are_search_keys_identical() {
+        let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test".to_vec()])];
+        assert!(are_search_keys_identical(keys.iter(), search_key_plain));
+
+        let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test2".to_vec()])];
+        assert!(!are_search_keys_identical(keys.iter(), search_key_plain));
+    }
     #[test]
     fn test_leaf_deserialize() {
         let data = BufReader::new(
@@ -1310,13 +1326,6 @@ fn key_value_len(key: &Key, value: &Value) -> usize {
         + 1
 }
 
-#[cfg(test)]
-#[test]
-fn test_key_value_len() {
-    let key = Key(vec![b"test".to_vec()]);
-    let value = b"test\x00value\n\n".to_vec();
-    assert_eq!(key_value_len(&key, &value), 20);
-}
 
 /// Check to see if the search keys for all entries are the same.
 ///
@@ -1339,15 +1348,6 @@ fn are_search_keys_identical<'a>(
     return true;
 }
 
-#[cfg(test)]
-#[test]
-fn test_are_search_keys_identical() {
-    let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test".to_vec()])];
-    assert!(are_search_keys_identical(keys.iter(), search_key_plain));
-
-    let keys = vec![Key(vec![b"test".to_vec()]), Key(vec![b"test2".to_vec()])];
-    assert!(!are_search_keys_identical(keys.iter(), search_key_plain));
-}
 
 pub trait Store {
     /// Add lines to the store.
