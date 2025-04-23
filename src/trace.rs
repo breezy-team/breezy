@@ -101,11 +101,7 @@ pub fn open_brz_log() -> Option<File> {
     };
 
     // Write a header to the log file if it is empty.
-    if brz_log_file
-        .metadata()
-        .ok()
-        .is_some_and(|md| md.len() == 0)
-    {
+    if brz_log_file.metadata().ok().is_some_and(|md| md.len() == 0) {
         if let Err(e) = writeln!(
             brz_log_file,
             "this is a debug log for diagnosing/reporting problems in brz"

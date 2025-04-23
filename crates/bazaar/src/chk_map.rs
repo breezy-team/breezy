@@ -65,6 +65,16 @@ impl From<Option<Vec<u8>>> for SearchPrefix {
     }
 }
 
+impl From<Vec<u8>> for SearchPrefix {
+    fn from(prefix: Vec<u8>) -> Self {
+        if prefix.is_empty() {
+            SearchPrefix::None
+        } else {
+            SearchPrefix::Known(prefix)
+        }
+    }
+}
+
 impl std::fmt::Display for SearchPrefix {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -78,6 +88,10 @@ impl std::fmt::Display for SearchPrefix {
 impl SearchPrefix {
     pub fn is_known(&self) -> bool {
         matches!(self, SearchPrefix::Known(_))
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, SearchPrefix::Unknown)
     }
 
     pub fn is_none(&self) -> bool {
@@ -580,6 +594,68 @@ impl Node {
         }
     }
 
+    /// Map a key to a value.
+    ///
+    /// This assumes either the key does not already exist, or you have already
+    /// removed its size and length from self.
+    ///
+    /// Returns: True if adding this node should cause us to split.
+    fn map_no_split(&self, key: &Key, value: Value) -> bool {
+        let Node::Leaf {
+            items,
+            key_width,
+            maximum_size,
+            ref mut len,
+            ref mut raw_size,
+            search_key_func,
+            search_prefix,
+            ref mut common_serialised_prefix,
+            ..
+        } = self else { panic!("map_no_split called on non-leaf node") };
+        items.insert(key.clone(), value);
+        *raw_size += key_value_len(key, &value);
+        *len += 1;
+        let serialised_key = key.serialize();
+        *common_serialised_prefix = if common_serialised_prefix.is_none() {
+             Some(serialised_key)
+        } else {
+            Some(common_prefix_pair(
+                common_serialised_prefix.as_ref().unwrap(), &serialised_key
+            ).to_vec())
+        };
+        let search_key = self.search_key(key);
+        if search_prefix.is_unknown() {
+            self.compute_search_prefix();
+        }
+        *search_prefix = if search_prefix.is_none() {
+            search_key.into()
+        } else {
+            common_prefix_pair(search_prefix.as_ref().unwrap(), search_key.as_slice()).to_vec().into()
+        };
+        if *len > 1
+            && *maximum_size > 0
+            && self.current_size() > *maximum_size {
+            // Check to see if all of the search_keys for this node are
+            // identical. We allow the node to grow under that circumstance
+            // (we could track this as common state, but it is infrequent)
+            if &search_key.into() != search_prefix
+                || !are_search_keys_identical(items.keys(), *search_key_func) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Determine the common prefix for serialised keys in this node.
+    ///
+    /// Returns: A bytestring of the longest serialised key prefix that is unique within this node.
+    fn compute_serialised_prefix(&mut self) -> &Option<SerialisedKey> {
+        let Node::Leaf { items, ref mut common_serialised_prefix, .. } = self else { panic!("compute_serialised_prefix called on non-leaf node") };
+        let serialised_keys = items.keys().map(|key| key.serialize()).collect::<Vec<_>>();
+        *common_serialised_prefix = common_prefix_many(serialised_keys.iter().map(|x| x.as_slice())).map(|x| x.to_vec());
+        common_serialised_prefix
+    }
+
     /// Return the key for this node.
     pub fn key(&self) -> Option<&Key> {
         match self {
@@ -601,6 +677,23 @@ impl Node {
         match self {
             Node::Leaf { maximum_size, .. } => *maximum_size,
             Node::Internal { maximum_size, .. } => *maximum_size,
+        }
+    }
+
+    /// Return the references to other CHK's held by this node.
+    pub fn refs(&self) -> Vec<Key> {
+        match self {
+            Node::Leaf { .. } => {
+                Vec::new()
+            }
+            Node::Internal { items, key, .. } => {
+                assert!(key.is_some(), "unserialised nodes have no refs.");
+                let mut refs = Vec::new();
+                for value in items.values() {
+                    refs.push(value.key().unwrap().clone());
+                }
+                refs
+            }
         }
     }
 
