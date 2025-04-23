@@ -41,7 +41,7 @@ pub type SearchKeyFn = fn(&Key) -> SerialisedKey;
 /// List of keys to include
 pub type KeyFilter = Vec<Key>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchPrefix {
     /// not calculated yet
     Unknown,
@@ -373,7 +373,7 @@ fn test_common_prefix_many() {
 ///
 /// Can either be just a key (if the node is unresolved) or a node
 #[derive(Debug, Clone)]
-enum NodeChild {
+pub enum NodeChild {
     /// A child node that is a tuple of key and value.
     Tuple(Key),
 
@@ -464,7 +464,7 @@ fn test_node_child() {
 
 /// A CHK Map Node
 #[derive(Clone)]
-enum Node {
+pub enum Node {
     /// A node containing actual key:value pairs.
     Leaf {
         /// total size of the serialized key:value data, before adding the header bytes, and without
@@ -600,56 +600,139 @@ impl Node {
     /// removed its size and length from self.
     ///
     /// Returns: True if adding this node should cause us to split.
-    fn map_no_split(&self, key: &Key, value: Value) -> bool {
-        let Node::Leaf {
-            items,
-            key_width,
-            maximum_size,
-            ref mut len,
-            ref mut raw_size,
-            search_key_func,
-            search_prefix,
-            ref mut common_serialised_prefix,
-            ..
-        } = self else { panic!("map_no_split called on non-leaf node") };
-        items.insert(key.clone(), value);
-        *raw_size += key_value_len(key, &value);
-        *len += 1;
-        let serialised_key = key.serialize();
-        *common_serialised_prefix = if common_serialised_prefix.is_none() {
-             Some(serialised_key)
+    pub fn map_no_split(&mut self, key: &Key, value: Value) -> bool {
+        if let Node::Leaf { .. } = self {
+            // First, extract all the information we need
+            let search_key_func = match self {
+                Node::Leaf { search_key_func, .. } => *search_key_func,
+                _ => unreachable!(),
+            };
+            
+            // Calculate search key and serialized key
+            let search_key = search_key_func(key);
+            let serialised_key = key.serialize();
+            
+            // Get existing prefix to update it
+            let new_common_prefix = match self {
+                Node::Leaf { common_serialised_prefix, .. } => {
+                    if common_serialised_prefix.is_none() {
+                        Some(serialised_key.clone())
+                    } else {
+                        Some(common_prefix_pair(
+                            common_serialised_prefix.as_ref().unwrap(),
+                            &serialised_key
+                        ).to_vec())
+                    }
+                },
+                _ => unreachable!(),
+            };
+            
+            // Calculate how adding this entry affects the size
+            let additional_size = key_value_len(key, &value);
+            
+            // Update internal state
+            match self {
+                Node::Leaf { 
+                    items, 
+                    raw_size, 
+                    len, 
+                    common_serialised_prefix,
+                    search_prefix,
+                    .. 
+                } => {
+                    // Update the common serialized prefix
+                    *common_serialised_prefix = new_common_prefix;
+                    
+                    // Insert the key and value
+                    items.insert(key.clone(), value);
+                    *raw_size += additional_size;
+                    *len += 1;
+                    
+                    // Update the search prefix
+                    if search_prefix.is_unknown() {
+                        *search_prefix = SearchPrefix::Known(search_key.clone());
+                    } else if search_prefix.is_none() {
+                        *search_prefix = SearchPrefix::Known(search_key.clone());
+                    } else if let SearchPrefix::Known(ref prefix) = search_prefix {
+                        let new_prefix = common_prefix_pair(prefix, &search_key).to_vec();
+                        *search_prefix = SearchPrefix::Known(new_prefix);
+                    }
+                },
+                _ => unreachable!(),
+            };
+            
+            // Calculate current size without using self methods
+            let current_size = match self {
+                Node::Leaf {
+                    raw_size,
+                    common_serialised_prefix,
+                    key_width,
+                    len,
+                    maximum_size,
+                    ..
+                } => {
+                    let prefix_len = common_serialised_prefix.as_ref().map_or(0, |p| p.len());
+                    let bytes_for_items = if prefix_len > 0 {
+                        *raw_size - (prefix_len * *len)
+                    } else {
+                        0
+                    };
+                    
+                    b"chkleaf:\n".len()
+                        + maximum_size.to_string().len()
+                        + 1
+                        + key_width.to_string().len()
+                        + 1
+                        + len.to_string().len()
+                        + 1
+                        + prefix_len
+                        + 1
+                        + bytes_for_items
+                },
+                _ => unreachable!(),
+            };
+            
+            // Check if we need to split
+            let should_split = match self {
+                Node::Leaf {
+                    items,
+                    maximum_size,
+                    len,
+                    search_prefix,
+                    ..
+                } => {
+                    if *len > 1 && *maximum_size > 0 && current_size > *maximum_size {
+                        // See if we have a collision and should allow a larger node
+                        // First, check if the search prefix matches the search key
+                        let prefix_matches = match search_prefix {
+                            SearchPrefix::Known(p) => p == &search_key,
+                            _ => false,
+                        };
+                        
+                        // Then check if all items have identical search keys
+                        let keys_clone: Vec<Key> = items.keys().cloned().collect();
+                        let all_keys_match = keys_clone.iter().all(|k| {
+                            search_key_func(k) == search_key
+                        });
+                        
+                        !prefix_matches || !all_keys_match
+                    } else {
+                        false
+                    }
+                },
+                _ => unreachable!(),
+            };
+            
+            return should_split;
         } else {
-            Some(common_prefix_pair(
-                common_serialised_prefix.as_ref().unwrap(), &serialised_key
-            ).to_vec())
-        };
-        let search_key = self.search_key(key);
-        if search_prefix.is_unknown() {
-            self.compute_search_prefix();
+            panic!("map_no_split called on non-leaf node");
         }
-        *search_prefix = if search_prefix.is_none() {
-            search_key.into()
-        } else {
-            common_prefix_pair(search_prefix.as_ref().unwrap(), search_key.as_slice()).to_vec().into()
-        };
-        if *len > 1
-            && *maximum_size > 0
-            && self.current_size() > *maximum_size {
-            // Check to see if all of the search_keys for this node are
-            // identical. We allow the node to grow under that circumstance
-            // (we could track this as common state, but it is infrequent)
-            if &search_key.into() != search_prefix
-                || !are_search_keys_identical(items.keys(), *search_key_func) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /// Determine the common prefix for serialised keys in this node.
     ///
     /// Returns: A bytestring of the longest serialised key prefix that is unique within this node.
-    fn compute_serialised_prefix(&mut self) -> &Option<SerialisedKey> {
+    pub fn compute_serialised_prefix(&mut self) -> &Option<SerialisedKey> {
         let Node::Leaf { items, ref mut common_serialised_prefix, .. } = self else { panic!("compute_serialised_prefix called on non-leaf node") };
         let serialised_keys = items.keys().map(|key| key.serialize()).collect::<Vec<_>>();
         *common_serialised_prefix = common_prefix_many(serialised_keys.iter().map(|x| x.as_slice())).map(|x| x.to_vec());
@@ -716,7 +799,7 @@ impl Node {
     }
 
     /// Return the serialised key for key in this node.
-    fn search_key(self, key: &Key) -> SerialisedKey {
+    pub fn search_key(&self, key: &Key) -> SerialisedKey {
         match self {
             Node::Leaf {
                 search_key_func, ..
@@ -728,7 +811,7 @@ impl Node {
             } => {
                 // search keys are fixed width. All will be self.node_width wide, so we
                 // pad as necessary.
-                ([search_key_func(key), b"\x00".repeat(node_width)].concat())[..node_width].to_vec()
+                ([search_key_func(key), b"\x00".repeat(*node_width)].concat())[..*node_width].to_vec()
             }
         }
     }
@@ -940,7 +1023,7 @@ impl Node {
     /// Return the unique key prefix for this node.
     ///
     /// Returns: A bytestring of the longest search key prefix that is unique within this node.
-    fn compute_search_prefix(&mut self) -> &SearchPrefix {
+    pub fn compute_search_prefix(&mut self) -> &SearchPrefix {
         match self {
             Node::Internal {
                 items,
@@ -1275,5 +1358,6 @@ pub trait Store {
     /// Returns: The SHA1
     fn add_lines(&self, lines: Vec<Vec<u8>>) -> Result<Vec<u8>, Error>;
 
-    fn get_record_stream(&self, keys: &[Key]) -> dyn Iterator<Item = (Key, Vec<u8>)>;
+    /// Get a record stream for the given keys
+    fn get_record_stream<'a>(&'a self, keys: &'a [Key]) -> Box<dyn Iterator<Item = (Key, Vec<u8>)> + 'a>;
 }
