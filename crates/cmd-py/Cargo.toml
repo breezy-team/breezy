@@ -8,11 +8,11 @@ crate-type = ["cdylib"]
 
 [features]
 default = ["i18n"]
-i18n = ["gettext-rs", "breezy/i18n"]
+i18n = ["gettext", "breezy/i18n"]
 
 [dependencies]
 pyo3 = { workspace = true, features = ["extension-module"]}
 pyo3-filelike = { workspace = true }
 breezy = { path = "../..", features = ["pyo3"], default-features = false }
-gettext-rs = { workspace = true, optional = true }
+gettext = { workspace = true, optional = true }
 log = { workspace = true, features=["std"]}

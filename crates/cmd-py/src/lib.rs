@@ -4,7 +4,7 @@ use breezy::pytree::PyTree;
 use breezy::RevisionId;
 
 use log::Log;
-use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyEOFError, PyIOError, PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
@@ -18,6 +18,15 @@ import_exception!(breezy.errors, LockCorrupt);
 import_exception!(breezy.errors, NoSuchTag);
 import_exception!(breezy.errors, TagAlreadyExists);
 
+fn map_gettext_error(err: gettext::Error) -> PyErr {
+    let err_msg = err.to_string();
+    match err {
+        gettext::Error::Eof => PyErr::new::<PyEOFError, _>(err_msg),
+        gettext::Error::Io(_) => PyErr::new::<PyIOError, _>(err_msg),
+        _ => PyErr::new::<PyRuntimeError, _>(err_msg),
+    }
+}
+
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
     breezy::i18n::disable();
@@ -29,10 +38,8 @@ fn i18n_dgettext(domain: &str, msgid: &str) -> PyResult<String> {
 }
 
 #[pyfunction(name = "install")]
-#[pyo3(signature = (lang = None, locale_base = None))]
-fn i18n_install(lang: Option<&str>, locale_base: Option<PathBuf>) -> PyResult<()> {
-    let locale_base = locale_base.as_deref();
-    breezy::i18n::install(lang, locale_base)?;
+fn i18n_install(lang: &str, locale_base: PathBuf) -> PyResult<()> {
+    breezy::i18n::install(lang, locale_base).map_err(map_gettext_error)?;
     Ok(())
 }
 
@@ -51,8 +58,7 @@ fn i18n_install_zzz_for_doc() -> PyResult<()> {
 #[pyfunction(name = "install_plugin")]
 #[pyo3(signature = (name, locale_base = None))]
 fn i18n_install_plugin(name: &str, locale_base: Option<PathBuf>) -> PyResult<()> {
-    let locale_base = locale_base.as_deref();
-    breezy::i18n::install_plugin(name, locale_base)?;
+    breezy::i18n::install_plugin(name, locale_base).map_err(map_gettext_error)?;
     Ok(())
 }
 
