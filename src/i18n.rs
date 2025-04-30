@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::io;
 use std::fs::File;
 use std::path::{Path,PathBuf};
 use std::sync::Arc;
@@ -18,8 +19,37 @@ pub trait TranslateBackend {
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String;
 }
 
+fn open_mo<P: AsRef<Path>>(
+    textdomain: &str,
+    lang: &str,
+    locale_base: P,
+) -> Result<File, io::Error> {
+    let mopath = locale_base.as_ref().join(lang).join("LC_MESSAGES")
+        .join(format!("{}.mo", textdomain));
+    if mopath.is_file() {
+        File::open(mopath)
+    } else {
+        let msg = format!(concat!("Cannot find compiled message catalog",
+            " for domain \"{}\", language \"{}\" in {}"),
+            textdomain, lang, locale_base.as_ref().display());
+        Err(io::Error::new(io::ErrorKind::NotFound, msg))
+    }
+}
+
+fn parse<P: AsRef<Path>>(
+    textdomain: &str,
+    lang: &str,
+    locale_base: P,
+) -> Result<Catalog, gettext::Error> {
+    let mofile = open_mo(textdomain, lang, locale_base);
+    match mofile {
+        Ok(file) => ParseOptions::new().force_encoding(UTF_8).parse(file),
+        Err(err) => Err(gettext::Error::from(err)),
+    }
+}
+
 struct Domains {
-    dir: PathBuf,
+    locale_base: PathBuf,
     lang: String,
     catalogs: HashMap<String, Catalog>,
 }
@@ -27,7 +57,7 @@ struct Domains {
 impl Domains {
     fn new() -> Self {
         Domains{
-            dir: PathBuf::new(),
+            locale_base: PathBuf::new(),
             lang: String::from("en"),
             catalogs: HashMap::new(),
         }
@@ -35,8 +65,7 @@ impl Domains {
 
     fn init<P: AsRef<Path>>(&mut self, lang: &str, locale_base: P) {
         self.lang = String::from(lang);
-        self.dir = PathBuf::from(
-            GettextTranslateBackend::locale_dir(lang, locale_base));
+        self.locale_base = PathBuf::from(locale_base.as_ref());
         self.catalogs.clear();
     }
 
@@ -49,13 +78,11 @@ impl Domains {
         textdomain: &str,
         locale_base: Option<P>,
     ) -> Result<(), gettext::Error> {
-        let buf: PathBuf;
-        let mut locale_dir = &self.dir;
+        let mut base = self.locale_base.to_path_buf();
         if let Some(locale_base) = locale_base {
-            buf = GettextTranslateBackend::locale_dir(&self.lang, locale_base);
-            locale_dir = &buf;
-        }
-        let catalog = GettextTranslateBackend::parse(textdomain, locale_dir)?;
+            base = PathBuf::from(locale_base.as_ref());
+        };
+        let catalog = parse(textdomain, &self.lang, &base)?;
         self.catalogs.insert(String::from(textdomain), catalog);
         Ok(())
     }
@@ -103,8 +130,7 @@ pub fn install<P: AsRef<Path>>(lang: &str, locale_base: P) -> Result<(), gettext
     if BACKEND.read().unwrap().name() == "gettext" {
         return Ok(());
     }
-    let catalog = GettextTranslateBackend::parse("brz",
-        GettextTranslateBackend::locale_dir(lang, &locale_base))?;
+    let catalog = parse("brz", lang, &locale_base)?;
     let backend = GettextTranslateBackend::new(catalog);
     let mut lock = BACKEND.write().unwrap();
     let mut dlock = DOMAINS.write().unwrap();
@@ -121,17 +147,6 @@ impl GettextTranslateBackend {
 
     fn new(catalog: Catalog) -> Self {
         GettextTranslateBackend{catalog}
-    }
-
-    fn locale_dir<P: AsRef<Path>>(lang: &str, locale_base: P) -> PathBuf {
-        locale_base.as_ref().join(lang).join("LC_MESSAGES")
-    }
-
-    fn parse<P: AsRef<Path>>(textdomain: &str, locale_dir: P) -> Result<Catalog, gettext::Error> {
-        let mopath = locale_dir.as_ref().join(format!("{}.mo", textdomain));
-        let mofile = File::open(mopath)?;
-        let catalog = ParseOptions::new().force_encoding(UTF_8).parse(mofile)?;
-        Ok(catalog)
     }
 }
 
@@ -155,8 +170,13 @@ impl TranslateBackend for GettextTranslateBackend {
             Some(found) => found,
             None => {
                 wlock = DOMAINS.write().unwrap();
-                let _ = wlock.load(textdomain, None::<PathBuf>);
-                wlock.catalog(textdomain).unwrap()
+                match wlock.load(textdomain, None::<PathBuf>) {
+                    Ok(_) => match wlock.catalog(textdomain) {
+                        Some(ctlg) => ctlg,
+                        None => return String::from(msgid),
+                    },
+                    Err(_) => return String::from(msgid),
+                }
             }
         };
         String::from(catalog.gettext(msgid))
