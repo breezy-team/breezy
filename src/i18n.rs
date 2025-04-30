@@ -19,20 +19,50 @@ pub trait TranslateBackend {
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String;
 }
 
+fn find_mo<P: AsRef<Path>>(
+    textdomain: &str,
+    lang: &str,
+    locale_base: P,
+) -> Option<PathBuf> {
+    let mut locale = lang;
+    let base = locale_base.as_ref();
+    let tail: PathBuf = Path::new("LC_MESSAGES").join(format!("{}.mo", textdomain));
+    let mut mopath = base.join(locale).join(&tail);
+    let mut found = mopath.is_file();
+    if !found && locale.contains(".") {
+        if let Some((l1, _)) = locale.rsplit_once(".") {
+            locale = l1;
+            mopath = base.join(locale).join(&tail);
+            found = mopath.is_file();
+            if !found && locale.contains("_") {
+                if let Some((l2, _)) = locale.rsplit_once("_") {
+                    locale = l2;
+                    mopath = base.join(locale).join(&tail);
+                    found = mopath.is_file();
+                };
+            };
+        };
+    };
+    if found {
+        Some(mopath)
+    } else {
+        None
+    }
+}
+
 fn open_mo<P: AsRef<Path>>(
     textdomain: &str,
     lang: &str,
     locale_base: P,
 ) -> Result<File, io::Error> {
-    let mopath = locale_base.as_ref().join(lang).join("LC_MESSAGES")
-        .join(format!("{}.mo", textdomain));
-    if mopath.is_file() {
-        File::open(mopath)
-    } else {
-        let msg = format!(concat!("Cannot find compiled message catalog",
-            " for domain \"{}\", language \"{}\" in {}"),
-            textdomain, lang, locale_base.as_ref().display());
-        Err(io::Error::new(io::ErrorKind::NotFound, msg))
+    match find_mo(textdomain, lang, &locale_base) {
+        Some(mopath) => File::open(mopath),
+        None => {
+            let msg = format!(concat!("Cannot find compiled message catalog",
+                " for domain \"{}\", language \"{}\" in {}"),
+                textdomain, lang, &locale_base.as_ref().display());
+            Err(io::Error::new(io::ErrorKind::NotFound, msg))
+        }
     }
 }
 
