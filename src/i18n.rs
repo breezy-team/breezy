@@ -34,13 +34,13 @@ fn find_mo<P: AsRef<Path>>(
             locale = l1;
             mopath = base.join(locale).join(&tail);
             found = mopath.is_file();
-            if !found && locale.contains("_") {
-                if let Some((l2, _)) = locale.rsplit_once("_") {
-                    locale = l2;
-                    mopath = base.join(locale).join(&tail);
-                    found = mopath.is_file();
-                };
-            };
+        };
+    };
+    if !found && locale.contains("_") {
+        if let Some((l2, _)) = locale.rsplit_once("_") {
+            locale = l2;
+            mopath = base.join(locale).join(&tail);
+            found = mopath.is_file();
         };
     };
     if found {
