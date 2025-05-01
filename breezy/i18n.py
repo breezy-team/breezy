@@ -80,7 +80,7 @@ def install(lang=None):
         lang = _get_current_locale()
     if lang == "C":
         # Nothing to be done for C locale
-        _i18n_rs.i18n_disable_i18n()
+        _i18n_rs.disable_i18n()
     else:
         try:
             _i18n_rs.install(lang, _get_locale_dir())
