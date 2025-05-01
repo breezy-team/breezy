@@ -78,7 +78,7 @@ def install(lang=None):
         return
     if lang is None:
         lang = _get_current_locale()
-    if lang == "C":
+    if (lang == "C") or lang.startswith("C."):
         # Nothing to be done for C locale
         _i18n_rs.disable_i18n()
     else:
