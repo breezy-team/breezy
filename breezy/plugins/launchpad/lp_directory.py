@@ -90,18 +90,14 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
         path, subpath = split(path)
         subpaths.insert(0, subpath)
     if lp_branch:
-        urls = [
-            join(lp_branch.composePublicURL(scheme="bzr+ssh"), *subpaths)
-        ]
+        urls = [join(lp_branch.composePublicURL(scheme="bzr+ssh"), *subpaths)]
         # Private Launchpad bzr branches do not have a public HTTP URL.
         # Calling .composePublicURL() on them causes the Launchpad API
         # to error out and return a 500 error status code as reported
         # https://bugs.launchpad.net/brz/+bug/2039396. So do not try to
         # construct one.
         if not lp_branch.private:
-            urls.append(
-                join(lp_branch.composePublicURL(scheme="http"), *subpaths)
-            )
+            urls.append(join(lp_branch.composePublicURL(scheme="http"), *subpaths))
         return {"urls": urls}
     elif git_repo:
         return {
