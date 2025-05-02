@@ -1055,11 +1055,11 @@ class Branch(ControlComponent):
         location = config.get(name)
         if location == "":
             location = None
-        return cast(Optional[str], location)
+        return cast("Optional[str]", location)
 
     def get_child_submit_format(self) -> Optional[str]:
         """Return the preferred format of submissions to this branch."""
-        return cast(Optional[str], self.get_config_stack().get("child_submit_format"))
+        return cast("Optional[str]", self.get_config_stack().get("child_submit_format"))
 
     def get_submit_branch(self) -> Optional[str]:
         """Return the submit location of the branch.
@@ -1068,7 +1068,7 @@ class Branch(ControlComponent):
         pattern is that the user can override it by specifying a
         location.
         """
-        return cast(Optional[str], self.get_config_stack().get("submit_branch"))
+        return cast("Optional[str]", self.get_config_stack().get("submit_branch"))
 
     def set_submit_branch(self, location: str) -> None:
         """Return the submit location of the branch.
@@ -1097,7 +1097,7 @@ class Branch(ControlComponent):
 
     def get_push_location(self) -> Optional[str]:
         """Return None or the location to push this branch to."""
-        return cast(str, self.get_config_stack().get("push_location"))
+        return cast("str", self.get_config_stack().get("push_location"))
 
     def set_push_location(self, location: str) -> None:
         """Set a new push location for this branch."""
@@ -2199,7 +2199,7 @@ class InterBranch(InterObject[Branch]):
 
     @classmethod
     def get(self, source: Branch, target: Branch) -> "InterBranch":
-        return cast(InterBranch, super().get(source, target))
+        return cast("InterBranch", super().get(source, target))
 
 
 def _fix_overwrite_type(overwrite):

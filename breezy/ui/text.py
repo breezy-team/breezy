@@ -471,7 +471,7 @@ class TextProgressView:
             ):
                 debug.set_trace()
             self._fraction = completion_fraction
-            markers = int(round(float(cols) * completion_fraction)) - 1
+            markers = round(float(cols) * completion_fraction) - 1
             bar_str = "[" + ("#" * markers + spin_str).ljust(cols) + "] "
             return bar_str
         elif (self._last_task is None) or self._last_task.show_spinner:
