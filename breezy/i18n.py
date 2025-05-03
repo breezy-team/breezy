@@ -84,7 +84,7 @@ def install(lang=None):
     else:
         try:
             _i18n_rs.install(lang, _get_locale_dir())
-        except Exception as err:
+        except OSError as err:
             # We don't have translation files for "en" or "en_US" locales
             if not lang.startswith("en"):
                 # Missing translation is not a fatal error, just report it
