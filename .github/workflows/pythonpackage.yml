@@ -52,6 +52,12 @@ jobs:
         run: |
           make extensions PYTHON=python
         if: "matrix.python-version != 'pypy3'"
+      - name: Run ruff
+        run: |
+          python -m pip install ruff
+          ruff check .
+          ruff format --check .
+        if: "matrix.python-version != 'pypy3'"
       - name: Test suite run (Linux)
         run: |
           ./brz selftest
