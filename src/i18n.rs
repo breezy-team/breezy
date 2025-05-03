@@ -1,13 +1,13 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::io;
 use std::fs::File;
-use std::path::{Path,PathBuf};
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::{RwLock,RwLockWriteGuard};
+use std::sync::{RwLock, RwLockWriteGuard};
 
 use encoding::all::UTF_8;
-use gettext::{Catalog,ParseOptions};
+use gettext::{Catalog, ParseOptions};
 
 static BACKEND: Lazy<RwLock<Arc<dyn TranslateBackend + Sync + Send>>> =
     Lazy::new(|| RwLock::new(Arc::new(NoopTranslateBackend)));
@@ -19,11 +19,7 @@ pub trait TranslateBackend {
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String;
 }
 
-fn find_mo<P: AsRef<Path>>(
-    textdomain: &str,
-    lang: &str,
-    locale_base: P,
-) -> Option<PathBuf> {
+fn find_mo<P: AsRef<Path>>(textdomain: &str, lang: &str, locale_base: P) -> Option<PathBuf> {
     let mut locale = lang;
     let base = locale_base.as_ref();
     let tail: PathBuf = Path::new("LC_MESSAGES").join(format!("{}.mo", textdomain));
@@ -58,9 +54,15 @@ fn open_mo<P: AsRef<Path>>(
     match find_mo(textdomain, lang, &locale_base) {
         Some(mopath) => File::open(mopath),
         None => {
-            let msg = format!(concat!("Cannot find compiled message catalog",
-                " for domain \"{}\", language \"{}\" in {}"),
-                textdomain, lang, &locale_base.as_ref().display());
+            let msg = format!(
+                concat!(
+                    "Cannot find compiled message catalog",
+                    " for domain \"{}\", language \"{}\" in {}"
+                ),
+                textdomain,
+                lang,
+                &locale_base.as_ref().display()
+            );
             Err(io::Error::new(io::ErrorKind::NotFound, msg))
         }
     }
@@ -86,7 +88,7 @@ struct Domains {
 
 impl Domains {
     fn new() -> Self {
-        Domains{
+        Domains {
             locale_base: PathBuf::new(),
             lang: String::from("en"),
             catalogs: HashMap::new(),
@@ -122,8 +124,7 @@ impl Domains {
     }
 }
 
-static DOMAINS: Lazy<RwLock<Domains>> =
-    Lazy::new(|| RwLock::new(Domains::new()));
+static DOMAINS: Lazy<RwLock<Domains>> = Lazy::new(|| RwLock::new(Domains::new()));
 
 pub struct NoopTranslateBackend;
 
@@ -174,9 +175,8 @@ pub struct GettextTranslateBackend {
 }
 
 impl GettextTranslateBackend {
-
     fn new(catalog: Catalog) -> Self {
-        GettextTranslateBackend{catalog}
+        GettextTranslateBackend { catalog }
     }
 }
 
@@ -230,7 +230,7 @@ pub fn dgettext(textdomain: &str, msgid: &str) -> String {
 
 pub fn install_plugin<P: AsRef<Path>>(
     textdomain: &str,
-    locale_base: Option<P>
+    locale_base: Option<P>,
 ) -> Result<(), gettext::Error> {
     if BACKEND.read().unwrap().name() == "gettext" {
         let mut wlock = DOMAINS.write().unwrap();

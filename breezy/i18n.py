@@ -89,7 +89,8 @@ def install(lang=None):
             if not lang.startswith("en"):
                 # Missing translation is not a fatal error, just report it
                 sys.stderr.write(
-                    f"Cannot install translation for locale \"{lang}\": {err}\n")
+                    f'Cannot install translation for locale "{lang}": {err}\n'
+                )
     _installed = True
 
 
