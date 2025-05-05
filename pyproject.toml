@@ -12,13 +12,12 @@ name = "breezy"
 maintainers = [{name = "Breezy Developers", email = "team@breezy-vcs.org"}]
 description = "Friendly distributed version control system"
 readme = "README.rst"
-license = {text = "GNU GPL v2"}
+license = "GPL-2.0-or-later"
 classifiers = [
     "Development Status :: 6 - Mature",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: GNU General Public License (GPL)",
     "Operating System :: OS Independent",
     "Operating System :: POSIX",
     "Programming Language :: Python",
