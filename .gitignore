@@ -19,3 +19,4 @@ build/
 *.swo
 *.swn
 .mypy_cache/
+breezy/locale/

@@ -29,12 +29,12 @@ path = "src/main.rs"
 
 [features]
 default = ["i18n", "pyo3"]
-i18n = ["dep:gettext-rs"]
+i18n = ["dep:gettext"]
 pyo3 = []
 
 [dependencies]
 pyo3 = { workspace = true, features = ["abi3"] }
-gettext-rs = { workspace = true, optional = true }
+gettext = { workspace = true, optional = true }
 log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
@@ -49,6 +49,7 @@ once_cell = "1"
 textwrap = ">=0.13"
 serde_yaml = "0.9"
 serde = { version = "1", features = ["derive"]}
+encoding = "0.2.33"
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["fs"] }
@@ -61,4 +62,4 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 url = "2"
 log = "0.4"
 whoami = { version = "1", default-features = false }
-gettext-rs = { version = "0.7" }
+gettext = { version = "0.4.0" }
