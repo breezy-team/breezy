@@ -1399,10 +1399,7 @@ impl Inventory {
     ) -> PyResult<Bound<IterEntriesIterator>> {
         let recursive = recursive.unwrap_or(true);
 
-        Bound::new(
-            py,
-            IterEntriesIterator::new(py, slf, from_dir, recursive)?,
-        )
+        Bound::new(py, IterEntriesIterator::new(py, slf, from_dir, recursive)?)
     }
 
     #[pyo3(signature = (from_dir=None, specific_file_ids=None))]

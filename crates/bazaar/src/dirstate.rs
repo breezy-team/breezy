@@ -345,10 +345,7 @@ impl IdIndex {
         // the 'contains' check is O(N), since N is nicely bounded it shouldn't ever
         // cause quadratic failure.
         let file_id = entry_key.2;
-        let entry_keys = self
-            .id_index
-            .entry(file_id.clone())
-            .or_default();
+        let entry_keys = self.id_index.entry(file_id.clone()).or_default();
         entry_keys.push((entry_key.0.to_vec(), entry_key.1.to_vec(), file_id.clone()));
     }
 

@@ -8,6 +8,15 @@ use std::sync::RwLock;
 
 use std::fs::{metadata, rename};
 
+/// Initializes the path for the Breezy log file.
+///
+/// This function determines the location of the log file based on the `BRZ_LOG`
+/// environment variable or the default cache directory.
+///
+/// # Returns
+///
+/// Returns a `PathBuf` pointing to the log file location, or an `io::Error` if
+/// the cache directory cannot be determined.
 pub fn initialize_brz_log_filename() -> Result<PathBuf, std::io::Error> {
     let brz_log = std::env::var("BRZ_LOG").ok();
     if let Some(brz_log) = brz_log {
@@ -18,6 +27,19 @@ pub fn initialize_brz_log_filename() -> Result<PathBuf, std::io::Error> {
     }
 }
 
+/// Rolls over the trace log file if it exceeds the maximum size.
+///
+/// If the log file is larger than `MAX_LOG_SIZE` (4MB), it is renamed to
+/// have a `.old` extension and a new log file is started.
+///
+/// # Arguments
+///
+/// * `trace_fname` - The path to the trace log file.
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the rollover was successful, or an `io::Error` if
+/// there was a problem accessing or renaming the file.
 pub fn rollover_trace_maybe(trace_fname: &Path) -> io::Result<()> {
     /// Roll over the trace log file if it exceeds a certain size.
 
@@ -67,11 +89,22 @@ pub fn open_or_create_log_file<P: AsRef<Path>>(filename: P) -> std::io::Result<F
 static BRZ_LOG_FILENAME: once_cell::sync::Lazy<RwLock<Option<PathBuf>>> =
     once_cell::sync::Lazy::new(|| RwLock::new(None));
 
+/// Gets the current Breezy log filename.
+///
+/// # Returns
+///
+/// Returns an `Option<PathBuf>` containing the current log file path,
+/// or `None` if no log file is set.
 pub fn get_brz_log_filename() -> Option<PathBuf> {
     let guard = BRZ_LOG_FILENAME.read().unwrap();
     guard.clone()
 }
 
+/// Sets the Breezy log filename.
+///
+/// # Arguments
+///
+/// * `filename` - The new path for the log file, or `None` to clear the current path.
 pub fn set_brz_log_filename(filename: Option<&Path>) {
     let mut guard = BRZ_LOG_FILENAME.write().unwrap();
     *guard = filename.map(|p| p.to_path_buf());
@@ -101,11 +134,7 @@ pub fn open_brz_log() -> Option<File> {
     };
 
     // Write a header to the log file if it is empty.
-    if brz_log_file
-        .metadata()
-        .ok()
-        .is_some_and(|md| md.len() == 0)
-    {
+    if brz_log_file.metadata().ok().is_some_and(|md| md.len() == 0) {
         if let Err(e) = writeln!(
             brz_log_file,
             "this is a debug log for diagnosing/reporting problems in brz"
@@ -129,6 +158,11 @@ pub fn open_brz_log() -> Option<File> {
     Some(brz_log_file)
 }
 
+/// A logger implementation that writes trace messages to a file.
+///
+/// This struct provides a logging implementation that writes messages to a file
+/// with timestamps and process information. It can be configured to use either
+/// a short or detailed format.
 pub struct BreezyTraceLogger<F> {
     file: Mutex<F>,
     start_time: chrono::DateTime<chrono::Local>,
@@ -136,6 +170,12 @@ pub struct BreezyTraceLogger<F> {
 }
 
 impl<F: Write> BreezyTraceLogger<F> {
+    /// Creates a new `BreezyTraceLogger` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `file` - The file to write log messages to.
+    /// * `short` - If true, use a shorter log format without timestamps.
     pub fn new(mut file: F, short: bool) -> Self {
         let start_time = chrono::Local::now();
         if !short {
@@ -156,6 +196,11 @@ impl<F: Write> BreezyTraceLogger<F> {
         }
     }
 
+    /// Writes a message to the log file with a timestamp.
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - The message to log.
     pub fn mutter(&self, msg: &str) {
         let elapsed = chrono::Local::now().signed_duration_since(self.start_time);
 
@@ -271,6 +316,15 @@ impl log::Log for BreezyStderrLogger {
 
 const SHORT_FIELDS: [&str; 3] = ["VmPeak", "VmSize", "VmRSS"];
 
+/// Logs memory usage information for debugging purposes.
+///
+/// This function writes memory usage information to the log file, which can be
+/// helpful for diagnosing memory-related issues.
+///
+/// # Arguments
+///
+/// * `message` - A descriptive message to include with the memory information.
+/// * `short` - If true, use a shorter log format.
 #[cfg(unix)]
 pub fn debug_memory_proc(message: &str, short: bool) {
     if let Ok(mut status_file) = File::open(format!("/proc/{}/status", std::process::id())) {

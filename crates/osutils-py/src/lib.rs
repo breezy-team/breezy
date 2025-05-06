@@ -9,6 +9,7 @@ use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
 use pyo3_filelike::PyBinaryFile;
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::ffi::OsString;
 use std::fs::Permissions;
 use std::io::{BufRead, Read};
@@ -16,7 +17,6 @@ use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use termion::color::Color;
-use std::convert::TryInto;
 
 create_exception!(
     breezy_osutils,
