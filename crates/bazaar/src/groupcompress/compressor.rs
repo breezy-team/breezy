@@ -150,14 +150,11 @@ impl GroupCompressor for TraditionalGroupCompressor {
         let delta_length = out_lines.iter().map(|l| l.len() as u128).sum();
         let (r#type, out_lines) = if delta_length > max_delta_size {
             // The delta is longer than the fulltext, insert a fulltext
-            let mut out_lines = vec![
-                Cow::Borrowed(&b"f"[..]),
-                {
-                    let mut data = Vec::new();
-                    write_base128_int(&mut data, input_len as u128).unwrap();
-                    Cow::Owned(data)
-                },
-            ];
+            let mut out_lines = vec![Cow::Borrowed(&b"f"[..]), {
+                let mut data = Vec::new();
+                write_base128_int(&mut data, input_len as u128).unwrap();
+                Cow::Owned(data)
+            }];
             index_lines.clear();
             index_lines.extend(vec![false, false]);
             index_lines.extend([true].repeat(new_lines.len()));

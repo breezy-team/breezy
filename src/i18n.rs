@@ -6,13 +6,19 @@ use std::sync::RwLock;
 static BACKEND: Lazy<RwLock<Arc<dyn TranslateBackend + Sync + Send>>> =
     Lazy::new(|| RwLock::new(Arc::new(NoopTranslateBackend)));
 
+/// Trait for translation backends.
 pub trait TranslateBackend {
+    /// Returns the name of the backend.
     fn name(&self) -> &'static str;
+    /// Translates a message id.
     fn gettext(&self, msgid: &str) -> String;
+    /// Translates a message id with pluralization.
     fn ngettext(&self, msgid: &str, msgid_plural: &str, n: u32) -> String;
+    /// Translates a message id for a specific textdomain.
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String;
 }
 
+/// No-op translation backend.
 pub struct NoopTranslateBackend;
 
 impl TranslateBackend for NoopTranslateBackend {
@@ -37,11 +43,17 @@ impl TranslateBackend for NoopTranslateBackend {
     }
 }
 
+/// Disables translation and uses the no-op backend.
 pub fn disable() {
     let mut lock = BACKEND.write().unwrap();
     *lock = Arc::new(NoopTranslateBackend);
 }
 
+/// Installs the gettext translation backend.
+///
+/// # Arguments
+/// * `lang` - Optional language code.
+/// * `locale_base` - Optional base path for locale files.
 pub fn install(lang: Option<&str>, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
     if BACKEND.read().unwrap().name() == "gettext" {
         return Ok(());
@@ -60,6 +72,7 @@ pub fn install(lang: Option<&str>, locale_base: Option<&Path>) -> Result<(), std
     Ok(())
 }
 
+/// Gettext translation backend.
 pub struct GettextTranslateBackend;
 
 impl TranslateBackend for GettextTranslateBackend {
@@ -80,21 +93,29 @@ impl TranslateBackend for GettextTranslateBackend {
     }
 }
 
+/// Translates a message id using the current backend.
 pub fn gettext(msgid: &str) -> String {
     let lock = BACKEND.read().unwrap();
     lock.gettext(msgid)
 }
 
+/// Translates a message id with pluralization using the current backend.
 pub fn ngettext(msgid: &str, msgid_plural: &str, n: u32) -> String {
     let lock = BACKEND.read().unwrap();
     lock.ngettext(msgid, msgid_plural, n)
 }
 
+/// Translates a message id for a specific textdomain using the current backend.
 pub fn dgettext(textdomain: &str, msgid: &str) -> String {
     let lock = BACKEND.read().unwrap();
     lock.dgettext(textdomain, msgid)
 }
 
+/// Installs a translation plugin for a specific textdomain.
+///
+/// # Arguments
+/// * `textdomain` - The textdomain to install.
+/// * `locale_base` - Optional base path for locale files.
 pub fn install_plugin(textdomain: &str, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
     if let Some(locale_base) = locale_base {
         gettextrs::bindtextdomain(textdomain, locale_base.join("locale"))?;
@@ -103,6 +124,7 @@ pub fn install_plugin(textdomain: &str, locale_base: Option<&Path>) -> Result<()
     Ok(())
 }
 
+/// Translates each paragraph in the given text separately.
 pub fn gettext_per_paragraph(text: &str) -> String {
     let mut result = String::new();
     for paragraph in text.split("\n\n") {
@@ -144,9 +166,15 @@ impl TranslateBackend for ZzzTranslateBackend {
     }
 }
 
+/// Installs the Zzz translation backend (for testing).
 pub fn install_zzz() {
     let mut lock = BACKEND.write().unwrap();
     *lock = Arc::new(ZzzTranslateBackend);
+}
+
+/// Translates a message id using the Zzz backend (for testing).
+pub fn zzz(msgid: &str) -> String {
+    ZzzTranslateBackend {}.zzz(msgid)
 }
 
 struct ZzzTranslateForDocBackend;
@@ -165,10 +193,6 @@ impl ZzzTranslateForDocBackend {
             return ["zz{{", msgid, "}}"].concat();
         }
     }
-}
-
-pub fn zzz(msgid: &str) -> String {
-    ZzzTranslateBackend {}.zzz(msgid)
 }
 
 impl TranslateBackend for ZzzTranslateForDocBackend {
@@ -193,6 +217,7 @@ impl TranslateBackend for ZzzTranslateForDocBackend {
     }
 }
 
+/// Installs the Zzz-for-doc translation backend (for documentation testing).
 pub fn install_zzz_for_doc() {
     let mut lock = BACKEND.write().unwrap();
     *lock = Arc::new(ZzzTranslateForDocBackend);

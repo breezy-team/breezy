@@ -161,12 +161,7 @@ impl HelpTopicRegistry {
     fn get_detail(&self, py: Python, name: &str) -> PyResult<Option<String>> {
         let topic = self.get(py, name)?;
         topic
-            .map(|topic| {
-                topic
-                    .getattr("get_contents")?
-                    .call0()?
-                    .extract::<String>()
-            })
+            .map(|topic| topic.getattr("get_contents")?.call0()?.extract::<String>())
             .transpose()
     }
 

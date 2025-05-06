@@ -304,7 +304,7 @@ impl Transport {
                 e => {
                     let obj = slf.unbind().into_any();
                     map_transport_err_to_py_err(e, Some(obj), Some(path))
-                },
+                }
             })?;
 
         Ok(PyBytes::new(py, &ret))
@@ -330,11 +330,10 @@ impl Transport {
     fn mkdir(slf: &Bound<Self>, py: Python, path: &str, mode: Option<PyObject>) -> PyResult<()> {
         let mode = mode.map(perms_from_py_object);
         let t = &slf.borrow().0;
-        py.allow_threads(|| t.mkdir(path, mode))
-            .map_err(|e| {
-                let obj = slf.to_object(py);
-                map_transport_err_to_py_err(e, Some(obj), Some(path))
-            })?;
+        py.allow_threads(|| t.mkdir(path, mode)).map_err(|e| {
+            let obj = slf.to_object(py);
+            map_transport_err_to_py_err(e, Some(obj), Some(path))
+        })?;
         Ok(())
     }
 
@@ -371,7 +370,7 @@ impl Transport {
             e => {
                 let obj = slf.into_pyobject(py).unwrap().unbind().into_any();
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
-            },
+            }
         })?;
         Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))
     }
@@ -613,7 +612,7 @@ impl Transport {
             e => {
                 let obj = slf.to_object(py);
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
-            },
+            }
         })?;
         let f = Bound::new(py, PyBufReadStream::new(ret, Path::new(path)))?;
         let buffered = seek_and_read(

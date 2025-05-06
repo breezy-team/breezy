@@ -2,9 +2,19 @@ use crate::branch::Branch;
 use bazaar::RevisionId;
 use pyo3::prelude::*;
 
+/// A wrapper around a Python branch object.
+///
+/// This struct provides a Rust interface to Python branch objects, implementing
+/// the `Branch` trait. It allows Rust code to interact with Python branch
+/// implementations.
 pub struct PyBranch(PyObject);
 
 impl PyBranch {
+    /// Creates a new `PyBranch` wrapper around a Python branch object.
+    ///
+    /// # Arguments
+    ///
+    /// * `o` - The Python branch object to wrap.
     pub fn new(o: PyObject) -> Self {
         PyBranch(o)
     }
