@@ -51,10 +51,8 @@ BRANCH-INFO
 # performance history data file
 ./.perf_history
 # Pyrex
-breezy/_annotator_pyx.c
 breezy/_bencode_pyx.c
 breezy/bzr/_btree_serializer_pyx.c
-breezy/bzr/_chk_map_pyx.c
 breezy/_chunks_to_lines_pyx.c
 breezy/bzr/_dirstate_helpers_pyx.c
 breezy/bzr/_groupcompress_pyx.c
