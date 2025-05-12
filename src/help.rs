@@ -3,9 +3,16 @@ use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::sync::RwLock;
 
+/// Represents the contents of a help topic.
+///
+/// This enum provides different ways to store and retrieve help content,
+/// allowing for both static text and dynamic content generation.
 pub enum HelpContents {
+    /// Static help text that is known at compile time.
     Text(&'static str),
+    /// A function that generates help text dynamically.
     Callback(fn(&str) -> String),
+    /// A closure that generates help text dynamically.
     Closure(Box<dyn Fn(&str) -> String + Send + Sync>),
 }
 
@@ -19,12 +26,21 @@ macro_rules! help_topic_file {
     };
 }
 
+/// Represents different sections in the help system.
+///
+/// Help topics are organized into sections to make it easier for users to find
+/// relevant information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Section {
+    /// Help topics related to specific commands.
     Command,
+    /// Help topics explaining concepts and terminology.
     Concept,
+    /// Help topics that are not shown in the main help index.
     Hidden,
+    /// Help topics that list other topics or options.
     List,
+    /// Help topics related to plugins.
     Plugin,
 }
 
@@ -43,17 +59,33 @@ impl TryFrom<&str> for Section {
     }
 }
 
+/// A help topic that is known at compile time.
+///
+/// This struct represents a help topic with static content that is defined
+/// when the program is compiled.
 pub struct HelpTopic {
+    /// The name of the help topic, used to reference it in commands.
     pub name: &'static str,
+    /// The contents of the help topic.
     pub contents: HelpContents,
+    /// A brief summary of what the help topic covers.
     pub summary: &'static str,
+    /// The section this help topic belongs to.
     pub section: Section,
 }
 
+/// A help topic that can be created and modified at runtime.
+///
+/// This struct represents a help topic with content that can be dynamically
+/// generated or modified while the program is running.
 pub struct DynamicHelpTopic {
+    /// The name of the help topic, used to reference it in commands.
     pub name: String,
+    /// The contents of the help topic.
     pub contents: HelpContents,
+    /// A brief summary of what the help topic covers.
     pub summary: String,
+    /// The section this help topic belongs to.
     pub section: Section,
 }
 
@@ -68,6 +100,14 @@ impl HelpContents {
 }
 
 impl HelpTopic {
+    /// Creates a new help topic with the given properties.
+    ///
+    /// # Arguments
+    ///
+    /// * `section` - The section this help topic belongs to.
+    /// * `name` - The name of the help topic.
+    /// * `summary` - A brief summary of what the help topic covers.
+    /// * `contents` - The contents of the help topic.
     pub const fn new(
         section: Section,
         name: &'static str,
@@ -81,18 +121,28 @@ impl HelpTopic {
             section,
         }
     }
+
+    /// Returns the contents of this help topic.
+    ///
+    /// The contents are returned as a `Cow<str>` to avoid unnecessary
+    /// allocations when the content is static.
     pub fn get_contents(&self) -> std::borrow::Cow<'_, str> {
         self.contents.get_contents(self.name)
     }
 
+    /// Returns the summary of this help topic.
+    ///
+    /// The summary is a brief description of what the help topic covers.
     pub fn get_summary(&self) -> String {
         self.summary.to_string()
     }
 
+    /// Returns the section this help topic belongs to.
     pub fn get_section(&self) -> Section {
         self.section
     }
 
+    /// Returns the name of this help topic.
     pub fn get_name(&self) -> String {
         self.name.to_string()
     }
@@ -122,6 +172,16 @@ impl HelpTopic {
     }
 }
 
+/// Formats a list of related help topics into a "See also" section.
+///
+/// # Arguments
+///
+/// * `additional_see_also` - A slice of help topic names to reference.
+///
+/// # Returns
+///
+/// A formatted string containing the "See also" section, or an empty string
+/// if no topics are provided.
 pub fn format_see_also(additional_see_also: &[&str]) -> String {
     let mut text = String::new();
     if !additional_see_also.is_empty() {
@@ -166,17 +226,24 @@ pub fn help_as_plain_text(text: &str) -> String {
 }
 
 impl DynamicHelpTopic {
+    /// Returns the contents of this help topic.
+    ///
+    /// The contents are returned as a `Cow<str>` to avoid unnecessary
+    /// allocations when the content is static.
     pub fn get_contents(&self) -> std::borrow::Cow<'_, str> {
         self.contents.get_contents(self.name.as_str())
     }
 
-    /// Return a string with the help for this topic.
+    /// Returns a string with the help text for this topic.
     ///
-    /// Args:
-    ///   additional_see_also: Additional help topics to be
-    ///   cross-referenced.
-    /// plain: if False, raw help (reStructuredText) is
-    ///   returned instead of plain text.
+    /// # Arguments
+    ///
+    /// * `additional_see_also` - Additional help topics to be cross-referenced.
+    /// * `plain` - If `true`, raw help (reStructuredText) is returned instead of plain text.
+    ///
+    /// # Returns
+    ///
+    /// A string containing the formatted help text.
     pub fn get_help_text(&self, additional_see_also: Option<&[&str]>, plain: bool) -> String {
         let mut text = String::new();
         text.push_str(self.get_contents().as_ref());
@@ -818,6 +885,11 @@ inventory::submit! {
     )
 }
 
+/// A list of known environment variables and their descriptions.
+///
+/// This constant contains a list of tuples where each tuple consists of:
+/// - The name of the environment variable
+/// - A description of what the environment variable controls
 pub const KNOWN_ENV_VARIABLES: &[(&str, &str)] = &[
     (
         "BRZPATH",
@@ -924,10 +996,28 @@ inventory::submit! {
         )
 }
 
+/// Retrieves a static help topic by name.
+///
+/// # Arguments
+///
+/// * `name` - The name of the help topic to retrieve.
+///
+/// # Returns
+///
+/// A reference to the help topic if found, or `None` if no topic with the given name exists.
 pub fn get_static_topic(name: &str) -> Option<&'static HelpTopic> {
     iter_static_topics().find(|t| t.name == name)
 }
 
+/// Retrieves a dynamic help topic by name.
+///
+/// # Arguments
+///
+/// * `name` - The name of the help topic to retrieve.
+///
+/// # Returns
+///
+/// An `Arc` containing the help topic if found, or `None` if no topic with the given name exists.
 pub fn get_dynamic_topic(name: &str) -> Option<std::sync::Arc<DynamicHelpTopic>> {
     let lock = DYNAMIC_TOPICS.read().unwrap();
     if let Some(topic) = lock.get(name) {
@@ -936,15 +1026,30 @@ pub fn get_dynamic_topic(name: &str) -> Option<std::sync::Arc<DynamicHelpTopic>>
     None
 }
 
+/// Registers a new dynamic help topic.
+///
+/// # Arguments
+///
+/// * `topic` - The help topic to register.
 pub fn register_topic(topic: DynamicHelpTopic) {
     let mut lock = DYNAMIC_TOPICS.write().unwrap();
     lock.insert(topic.name.to_string(), std::sync::Arc::new(topic));
 }
 
+/// Returns an iterator over all static help topics.
+///
+/// # Returns
+///
+/// An iterator that yields references to all registered static help topics.
 pub fn iter_static_topics() -> impl Iterator<Item = &'static HelpTopic> {
     inventory::iter::<HelpTopic>()
 }
 
+/// Returns an iterator over all dynamic help topics.
+///
+/// # Returns
+///
+/// An iterator that yields `Arc`s containing all registered dynamic help topics.
 pub fn iter_dynamic_topics() -> impl Iterator<Item = std::sync::Arc<DynamicHelpTopic>> {
     let lock = DYNAMIC_TOPICS.read().unwrap();
     lock.iter()

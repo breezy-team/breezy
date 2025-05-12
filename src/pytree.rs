@@ -4,9 +4,19 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
+/// A wrapper around a Python tree object.
+///
+/// This struct provides a Rust interface to Python tree objects, implementing
+/// the various tree traits (`Tree`, `MutableTree`, `WorkingTree`, `RevisionTree`).
+/// It allows Rust code to interact with Python tree implementations.
 pub struct PyTree(PyObject);
 
 impl PyTree {
+    /// Creates a new `PyTree` wrapper around a Python tree object.
+    ///
+    /// # Arguments
+    ///
+    /// * `obj` - The Python tree object to wrap.
     pub fn new(obj: PyObject) -> Self {
         PyTree(obj)
     }

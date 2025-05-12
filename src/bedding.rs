@@ -37,6 +37,7 @@ pub fn ensure_config_dir_exists(path: Option<&Path>) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Returns the per-user configuration directory for Bazaar.
 pub fn bazaar_config_dir() -> std::io::Result<PathBuf> {
     // Return per-user configuration directory as a String
 
@@ -96,8 +97,11 @@ pub fn bazaar_config_dir() -> std::io::Result<PathBuf> {
     }
 }
 
+/// The kind of configuration directory.
 pub enum ConfigDirKind {
+    /// The Breezy configuration directory.
     Breezy,
+    /// The Bazaar configuration directory.
     Bazaar,
 }
 
@@ -162,6 +166,7 @@ pub fn config_dir() -> std::io::Result<PathBuf> {
     Ok(_config_dir()?.0)
 }
 
+/// Returns the path to the configuration file (breezy.conf or bazaar.conf).
 pub fn config_path() -> std::io::Result<PathBuf> {
     let (path, kind) = _config_dir()?;
     Ok(match kind {
@@ -185,6 +190,7 @@ pub fn user_ignore_config_path() -> std::io::Result<PathBuf> {
     Ok(config_dir()?.join("ignore"))
 }
 
+/// Returns the directory name to store crash files.
 pub fn crash_dir() -> PathBuf {
     // Return the directory name to store crash files.
     // This doesn't implicitly create it.
@@ -209,6 +215,7 @@ pub fn crash_dir() -> PathBuf {
     }
 }
 
+/// Returns the per-user cache directory.
 pub fn cache_dir() -> std::io::Result<PathBuf> {
     let mut base: Option<PathBuf>;
 
@@ -248,6 +255,7 @@ pub fn cache_dir() -> std::io::Result<PathBuf> {
     Ok(cache_dir)
 }
 
+/// Returns the default email address, if available.
 pub fn default_email() -> Option<String> {
     let brz_email = env::var("BRZ_EMAIL");
     if let Ok(email) = brz_email {

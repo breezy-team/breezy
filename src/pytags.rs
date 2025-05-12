@@ -4,6 +4,11 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+/// A wrapper around a Python tags object.
+///
+/// This struct provides a Rust interface to Python tags objects, implementing
+/// the `Tags` trait. It allows Rust code to interact with Python tag management
+/// implementations.
 pub struct PyTags(pub(crate) PyObject);
 
 import_exception!(breezy.errors, NoSuchTag);

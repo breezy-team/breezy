@@ -337,12 +337,14 @@ fn delta_entry_to_line(
         }
         content = serialize_inventory_entry(new_entry)?;
     }
-    let entries = [oldpath_utf8.as_bytes(),
+    let entries = [
+        oldpath_utf8.as_bytes(),
         newpath_utf8.as_bytes(),
         delta_item.file_id.as_bytes(),
         parent_id,
         last_modified.as_bytes(),
-        content.as_slice()];
+        content.as_slice(),
+    ];
     let mut line = entries.join(&b"\x00"[..]);
     line.push(b'\n');
     Ok(line)

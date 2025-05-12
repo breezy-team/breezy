@@ -12,6 +12,9 @@ pub struct TreeBuilder<T: MutableTree> {
 }
 
 impl<T: MutableTree> TreeBuilder<T> {
+    /// Creates a new empty `TreeBuilder`.
+    ///
+    /// The builder starts with no tree and no root directory.
     pub fn new() -> TreeBuilder<T> {
         TreeBuilder {
             tree: None,
@@ -19,6 +22,18 @@ impl<T: MutableTree> TreeBuilder<T> {
         }
     }
 
+    /// Starts building a new tree.
+    ///
+    /// This method locks the tree for writing and prepares it for building.
+    /// It must be called before any other operations on the tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `tree` - The tree to start building with.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder already has a tree.
     pub fn start_tree(&mut self, mut tree: T) {
         if self.tree.is_some() {
             panic!("TreeBuilder already has a tree");
@@ -28,6 +43,18 @@ impl<T: MutableTree> TreeBuilder<T> {
         self.root_done = false;
     }
 
+    /// Finishes building the tree and returns it.
+    ///
+    /// This method unlocks the tree and returns it, allowing it to be used
+    /// normally again.
+    ///
+    /// # Returns
+    ///
+    /// The completed tree.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the builder does not have a tree.
     pub fn finish_tree(&mut self) -> T {
         let mut tree = if let Some(tree) = self.tree.take() {
             tree

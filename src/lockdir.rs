@@ -10,25 +10,40 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
+/// Information about a process holding a lock.
+///
+/// This struct contains metadata about the process that has acquired a lock,
+/// including identification information and timing data.
 #[derive(PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct LockHeldInfo {
+    /// The process ID of the lock holder.
     pub pid: Option<u32>,
+    /// The username of the lock holder.
     pub user: Option<String>,
+    /// A unique identifier for this lock instance.
     pub nonce: Option<String>,
+    /// The hostname of the machine holding the lock.
     pub hostname: Option<String>,
+    /// The time when the lock was acquired.
     pub start_time: Option<SystemTime>,
 
+    /// Additional information about the lock holder.
     #[serde(flatten)]
     pub extra_holder_info: HashMap<String, String>,
 }
 
+/// Errors that can occur when working with locks.
 pub enum Error {
+    /// The lock file is corrupted or cannot be parsed.
     LockCorrupt(String),
 }
 
 type Nonce = [u8];
 
 impl LockHeldInfo {
+    /// Returns the nonce associated with this lock, if any.
+    ///
+    /// The nonce is a unique identifier for this lock instance.
     pub fn nonce(&self) -> Option<&Nonce> {
         self.nonce.as_ref().map(|p| p.as_bytes())
     }
@@ -70,6 +85,10 @@ impl LockHeldInfo {
     }
 
     /// Return a new LockHeldInfo for a lock taken by this process.
+    ///
+    /// # Arguments
+    ///
+    /// * `extra_holder_info` - Additional information to store with the lock.
     pub fn for_this_process(extra_holder_info: HashMap<String, String>) -> Self {
         let start_time = std::time::SystemTime::now();
         Self {
@@ -82,11 +101,22 @@ impl LockHeldInfo {
         }
     }
 
+    /// Serializes the lock information to bytes.
+    ///
+    /// The bytes are in YAML format and can be written to a lock file.
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_yaml::to_string(&self).unwrap().into_bytes()
     }
 
     /// Construct from the contents of the held file.
+    ///
+    /// # Arguments
+    ///
+    /// * `info_file_bytes` - The raw bytes from the lock file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Error` if the lock file is corrupted or cannot be parsed.
     pub fn from_info_file_bytes(info_file_bytes: &[u8]) -> Result<Self, Error> {
         let ret: serde_yaml::Value = match serde_yaml::from_slice(info_file_bytes) {
             Ok(v) => v,
@@ -109,7 +139,7 @@ impl LockHeldInfo {
         }
     }
 
-    /// True if this process seems to be the current lock holder."""
+    /// True if this process seems to be the current lock holder.
     pub fn is_locked_by_this_process(&self) -> bool {
         self.hostname == Some(breezy_osutils::get_host_name().unwrap())
             && self.pid == Some(std::process::id())

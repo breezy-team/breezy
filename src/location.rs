@@ -4,9 +4,26 @@ use url::Url;
 
 use regex::Regex;
 
+/// An error that can occur when parsing or converting locations.
 #[derive(Debug)]
 pub struct Error(String);
 
+/// Parses an RCP-style location string into its components.
+///
+/// # Arguments
+///
+/// * `location` - The RCP-style location string to parse (e.g., "user@host:path").
+///
+/// # Returns
+///
+/// A tuple containing:
+/// - The hostname
+/// - An optional username
+/// - The path
+///
+/// # Errors
+///
+/// Returns an `Error` if the location string is not in the correct format.
 pub fn parse_rcp_location(location: &str) -> Result<(String, Option<String>, String), Error> {
     let re = Regex::new(r"^(?P<user>[^@:/]+@)?(?P<host>[^/:]{2,}):(?P<path>.*)$").unwrap();
     if let Some(captures) = re.captures(location) {
@@ -27,6 +44,20 @@ pub fn parse_rcp_location(location: &str) -> Result<(String, Option<String>, Str
     }
 }
 
+/// Converts an RCP-style location to a URL.
+///
+/// # Arguments
+///
+/// * `location` - The RCP-style location string to convert.
+/// * `scheme` - The URL scheme to use (e.g., "ssh", "http").
+///
+/// # Returns
+///
+/// A URL representing the location.
+///
+/// # Errors
+///
+/// Returns an `Error` if the location string cannot be parsed or converted to a URL.
 pub fn rcp_location_to_url(location: &str, scheme: &str) -> Result<url::Url, Error> {
     let (host, user, path) = parse_rcp_location(location)?;
     let quoted_user = if let Some(user) = user {
@@ -44,6 +75,23 @@ pub fn rcp_location_to_url(location: &str, scheme: &str) -> Result<url::Url, Err
     .map_err(|e| Error(format!("Invalid URL: {}", e)))
 }
 
+/// Parses a CVS-style location string into its components.
+///
+/// # Arguments
+///
+/// * `location` - The CVS-style location string to parse (e.g., ":pserver:user@host:/path").
+///
+/// # Returns
+///
+/// A tuple containing:
+/// - The scheme (e.g., "pserver", "ssh")
+/// - The hostname
+/// - An optional username
+/// - The path
+///
+/// # Errors
+///
+/// Returns an `Error` if the location string is not in the correct format.
 pub fn parse_cvs_location(
     location: &str,
 ) -> Result<(String, String, Option<String>, String), Error> {
@@ -84,6 +132,19 @@ pub fn parse_cvs_location(
     Ok((scheme.to_string(), hostname, username, path))
 }
 
+/// Converts a CVS-style location to a URL.
+///
+/// # Arguments
+///
+/// * `location` - The CVS-style location string to convert.
+///
+/// # Returns
+///
+/// A URL representing the location.
+///
+/// # Errors
+///
+/// Returns an `Error` if the location string cannot be parsed or converted to a URL.
 pub fn cvs_to_url(location: &str) -> Result<Url, Error> {
     let (scheme, host, user, path) = parse_cvs_location(location)?;
     let quoted_user = if let Some(user) = user {
@@ -103,7 +164,9 @@ pub fn cvs_to_url(location: &str) -> Result<Url, Error> {
     Ok(url)
 }
 
+/// A trait for converting types to Python location objects.
 pub trait AsLocation {
+    /// Converts the implementing type to a Python location object.
     fn as_location(&self) -> PyObject;
 }
 
