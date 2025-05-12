@@ -22,3 +22,4 @@ doc/developers/_build/
 .*.swp
 doc/developers/Makefile
 doc/developers/make.bat
+.mypy_cache
