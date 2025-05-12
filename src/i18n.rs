@@ -1,7 +1,13 @@
 use once_cell::sync::Lazy;
-use std::path::Path;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::RwLock;
+use std::sync::{RwLock, RwLockWriteGuard};
+
+use encoding::all::UTF_8;
+use gettext::{Catalog, ParseOptions};
 
 static BACKEND: Lazy<RwLock<Arc<dyn TranslateBackend + Sync + Send>>> =
     Lazy::new(|| RwLock::new(Arc::new(NoopTranslateBackend)));
@@ -17,6 +23,113 @@ pub trait TranslateBackend {
     /// Translates a message id for a specific textdomain.
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String;
 }
+
+fn find_mo<P: AsRef<Path>>(textdomain: &str, lang: &str, locale_base: P) -> Option<PathBuf> {
+    let mut locale = lang;
+    let base = locale_base.as_ref();
+    let tail: PathBuf = Path::new("LC_MESSAGES").join(format!("{}.mo", textdomain));
+    let mut mopath = base.join(locale).join(&tail);
+    let mut found = mopath.is_file();
+    if !found && locale.contains(".") {
+        if let Some((l1, _)) = locale.rsplit_once(".") {
+            locale = l1;
+            mopath = base.join(locale).join(&tail);
+            found = mopath.is_file();
+        };
+    };
+    if !found && locale.contains("_") {
+        if let Some((l2, _)) = locale.rsplit_once("_") {
+            locale = l2;
+            mopath = base.join(locale).join(&tail);
+            found = mopath.is_file();
+        };
+    };
+    if found {
+        Some(mopath)
+    } else {
+        None
+    }
+}
+
+fn open_mo<P: AsRef<Path>>(
+    textdomain: &str,
+    lang: &str,
+    locale_base: P,
+) -> Result<File, io::Error> {
+    match find_mo(textdomain, lang, &locale_base) {
+        Some(mopath) => File::open(mopath),
+        None => {
+            let msg = format!(
+                concat!(
+                    "Cannot find compiled message catalog",
+                    " for domain \"{}\", language \"{}\" in {}"
+                ),
+                textdomain,
+                lang,
+                &locale_base.as_ref().display()
+            );
+            Err(io::Error::new(io::ErrorKind::NotFound, msg))
+        }
+    }
+}
+
+fn parse<P: AsRef<Path>>(
+    textdomain: &str,
+    lang: &str,
+    locale_base: P,
+) -> Result<Catalog, gettext::Error> {
+    let mofile = open_mo(textdomain, lang, locale_base);
+    match mofile {
+        Ok(file) => ParseOptions::new().force_encoding(UTF_8).parse(file),
+        Err(err) => Err(gettext::Error::from(err)),
+    }
+}
+
+struct Domains {
+    locale_base: PathBuf,
+    lang: String,
+    catalogs: HashMap<String, Catalog>,
+}
+
+impl Domains {
+    fn new() -> Self {
+        Domains {
+            locale_base: PathBuf::new(),
+            lang: String::from("en"),
+            catalogs: HashMap::new(),
+        }
+    }
+
+    fn init<P: AsRef<Path>>(&mut self, lang: &str, locale_base: P) {
+        self.lang = String::from(lang);
+        self.locale_base = PathBuf::from(locale_base.as_ref());
+        self.catalogs.clear();
+    }
+
+    fn catalog(&self, textdomain: &str) -> Option<&Catalog> {
+        self.catalogs.get(&String::from(textdomain))
+    }
+
+    fn load<P: AsRef<Path>>(
+        &mut self,
+        textdomain: &str,
+        locale_base: Option<P>,
+    ) -> Result<(), gettext::Error> {
+        let mut base = self.locale_base.to_path_buf();
+        if let Some(locale_base) = locale_base {
+            base = PathBuf::from(locale_base.as_ref());
+        };
+        let catalog = parse(textdomain, &self.lang, &base)?;
+        self.catalogs.insert(String::from(textdomain), catalog);
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.catalogs.clear();
+    }
+}
+
+static DOMAINS: Lazy<RwLock<Domains>> = Lazy::new(|| RwLock::new(Domains::new()));
 
 /// No-op translation backend.
 pub struct NoopTranslateBackend;
@@ -46,7 +159,9 @@ impl TranslateBackend for NoopTranslateBackend {
 /// Disables translation and uses the no-op backend.
 pub fn disable() {
     let mut lock = BACKEND.write().unwrap();
+    let mut domains = DOMAINS.write().unwrap();
     *lock = Arc::new(NoopTranslateBackend);
+    domains.clear();
 }
 
 /// Installs the gettext translation backend.
@@ -54,26 +169,29 @@ pub fn disable() {
 /// # Arguments
 /// * `lang` - Optional language code.
 /// * `locale_base` - Optional base path for locale files.
-pub fn install(lang: Option<&str>, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
+pub fn install<P: AsRef<Path>>(lang: &str, locale_base: P) -> Result<(), gettext::Error> {
     if BACKEND.read().unwrap().name() == "gettext" {
         return Ok(());
     }
-    gettextrs::textdomain("brz")?;
-
-    if let Some(lang) = lang {
-        gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, lang);
-    }
-    if let Some(locale_base) = locale_base {
-        gettextrs::bindtextdomain("brz", locale_base.join("locale"))?;
-    }
-    gettextrs::bind_textdomain_codeset("brz", "UTF-8")?;
+    let catalog = parse("brz", lang, &locale_base)?;
+    let backend = GettextTranslateBackend::new(catalog);
     let mut lock = BACKEND.write().unwrap();
-    *lock = Arc::new(GettextTranslateBackend);
+    let mut dlock = DOMAINS.write().unwrap();
+    *lock = Arc::new(backend);
+    dlock.init(lang, &locale_base);
     Ok(())
 }
 
 /// Gettext translation backend.
-pub struct GettextTranslateBackend;
+pub struct GettextTranslateBackend {
+    catalog: Catalog,
+}
+
+impl GettextTranslateBackend {
+    fn new(catalog: Catalog) -> Self {
+        GettextTranslateBackend { catalog }
+    }
+}
 
 impl TranslateBackend for GettextTranslateBackend {
     fn name(&self) -> &'static str {
@@ -81,15 +199,30 @@ impl TranslateBackend for GettextTranslateBackend {
     }
 
     fn gettext(&self, msgid: &str) -> String {
-        gettextrs::gettext(msgid)
+        String::from(self.catalog.gettext(msgid))
     }
 
     fn ngettext(&self, msgid: &str, msgid_plural: &str, n: u32) -> String {
-        gettextrs::ngettext(msgid, msgid_plural, n)
+        String::from(self.catalog.ngettext(msgid, msgid_plural, n.into()))
     }
 
     fn dgettext(&self, textdomain: &str, msgid: &str) -> String {
-        gettextrs::dgettext(textdomain, msgid)
+        let rlock = DOMAINS.read().unwrap();
+        let mut wlock: RwLockWriteGuard<'_, Domains>;
+        let catalog = match rlock.catalog(textdomain) {
+            Some(found) => found,
+            None => {
+                wlock = DOMAINS.write().unwrap();
+                match wlock.load(textdomain, None::<PathBuf>) {
+                    Ok(_) => match wlock.catalog(textdomain) {
+                        Some(ctlg) => ctlg,
+                        None => return String::from(msgid),
+                    },
+                    Err(_) => return String::from(msgid),
+                }
+            }
+        };
+        String::from(catalog.gettext(msgid))
     }
 }
 
@@ -116,11 +249,14 @@ pub fn dgettext(textdomain: &str, msgid: &str) -> String {
 /// # Arguments
 /// * `textdomain` - The textdomain to install.
 /// * `locale_base` - Optional base path for locale files.
-pub fn install_plugin(textdomain: &str, locale_base: Option<&Path>) -> Result<(), std::io::Error> {
-    if let Some(locale_base) = locale_base {
-        gettextrs::bindtextdomain(textdomain, locale_base.join("locale"))?;
-    }
-    gettextrs::bind_textdomain_codeset(textdomain, "UTF-8")?;
+pub fn install_plugin<P: AsRef<Path>>(
+    textdomain: &str,
+    locale_base: Option<P>,
+) -> Result<(), gettext::Error> {
+    if BACKEND.read().unwrap().name() == "gettext" {
+        let mut wlock = DOMAINS.write().unwrap();
+        wlock.load(textdomain, locale_base)?;
+    };
     Ok(())
 }
 

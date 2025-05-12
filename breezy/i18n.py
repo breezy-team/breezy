@@ -78,7 +78,19 @@ def install(lang=None):
         return
     if lang is None:
         lang = _get_current_locale()
-    _i18n_rs.install(lang, _get_locale_dir())
+    if (lang == "C") or lang.startswith("C."):
+        # Nothing to be done for C locale
+        _i18n_rs.disable_i18n()
+    else:
+        try:
+            _i18n_rs.install(lang, _get_locale_dir())
+        except OSError as err:
+            # We don't have translation files for "en" or "en_US" locales
+            if not lang.startswith("en"):
+                # Missing translation is not a fatal error, just report it
+                sys.stderr.write(
+                    f'Cannot install translation for locale "{lang}": {err}\n'
+                )
     _installed = True
 
 

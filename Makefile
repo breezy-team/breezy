@@ -28,6 +28,9 @@ PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 BRZ_PLUGIN_PATH=-site:-user
 
+MSGFMT?=msgfmt
+MSGMERGE?=msgmerge
+
 # Shorter replacement for $(sort $(wildcard <arg>)) as $(call sw,<arg>)
 sw = $(sort $(wildcard $(1)))
 
@@ -274,6 +277,8 @@ clean-win32: clean-docs
 .PHONY: update-pot po/brz.pot
 update-pot: po/brz.pot
 
+LOCALES = $(basename $(notdir $(wildcard po/*.po)))
+
 TRANSLATABLE_PYFILES:=$(shell find breezy -name '*.py' \
 		| grep -v 'breezy/tests/' \
 		| grep -v 'breezy/doc' \
@@ -288,6 +293,18 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 	  --from-code UTF-8 --join --sort-by-file --add-comments=i18n: \
 	  -d bzr -p po -o brz.pot
 
+makemessages: po/brz.pot
+	for locale in $(LOCALES); do \
+		echo -n "Updating po/$$locale.po ... "; \
+		$(MSGMERGE) -U po/$$locale.po po/brz.pot; \
+	done
+
+compilemessages:
+	for locale in $(LOCALES); do \
+		modir=breezy/locale/$$locale/LC_MESSAGES; \
+		(test -d $$modir || mkdir -p $$modir) \
+		&& $(MSGFMT) -o $$modir/brz.mo po/$$locale.po; \
+	done
 
 ### Packaging Targets ###
 
