@@ -171,7 +171,6 @@ def add_cython_extension(module_name, libraries=None, extra_source=None):
     )
 
 
-add_cython_extension("breezy._annotator_pyx")
 add_cython_extension(
     "breezy.bzr._groupcompress_pyx", extra_source=["breezy/bzr/diff-delta.c"]
 )
