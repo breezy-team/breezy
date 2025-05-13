@@ -5,6 +5,19 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.13
+##########
+
+:3.3.13: UNRELEASED
+
+brz 3.3.12
+##########
+
+:3.3.12: 2025-05-13
+
+* Drop use of ``PyInt_AsUnsignedLongMask``, which is deprecated in
+  modern Python. (Jelmer Vernooĳ)
+
 brz 3.3.11
 ##########
 
