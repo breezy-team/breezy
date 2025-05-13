@@ -20,9 +20,9 @@ import codecs
 from io import BytesIO, StringIO
 
 from .. import annotate, errors, revision, tests
-from .ui_testing import StringIOWithEncoding
-from ..bzr import knit
 from ..annotate import Annotator
+from ..bzr import knit
+from .ui_testing import StringIOWithEncoding
 
 
 def annotation(text):
