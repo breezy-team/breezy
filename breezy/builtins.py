@@ -4563,6 +4563,26 @@ class cmd_alias(Command):
         c.set_alias(alias_name, alias_command)
 
 
+def get_transport_type(typestring):
+    """Parse and return a transport specifier."""
+    if typestring == "sftp":
+        from .tests import stub_sftp
+
+        return stub_sftp.SFTPAbsoluteServer
+    elif typestring == "memory":
+        from breezy.transport import memory
+
+        from .tests import test_server
+
+        return memory.MemoryServer
+    elif typestring == "fakenfs":
+        from .tests import test_server
+
+        return test_server.FakeNFSServer
+    msg = f"No known transport type {typestring}. Supported types are: sftp\n"
+    raise errors.CommandError(msg)
+
+
 class cmd_selftest(Command):
     __doc__ = """Run internal test suite.
 
@@ -4612,26 +4632,6 @@ class cmd_selftest(Command):
 
             brz --no-plugins selftest -v
     """
-
-    @staticmethod
-    def get_transport_type(typestring):
-        """Parse and return a transport specifier."""
-        if typestring == "sftp":
-            from .tests import stub_sftp
-
-            return stub_sftp.SFTPAbsoluteServer
-        elif typestring == "memory":
-            from breezy.transport import memory
-
-            from .tests import test_server
-
-            return memory.MemoryServer
-        elif typestring == "fakenfs":
-            from .tests import test_server
-
-            return test_server.FakeNFSServer
-        msg = f"No known transport type {typestring}. Supported types are: sftp\n"
-        raise errors.CommandError(msg)
 
     hidden = True
     takes_args = ["testspecs*"]
