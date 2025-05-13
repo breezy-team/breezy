@@ -1320,9 +1320,9 @@ class VersionedFiles:
         return generator.compute_diffs()
 
     def get_annotator(self):
-        from ..annotate import Annotator
+        from .annotate import VersionedFileAnnotator
 
-        return Annotator(self)
+        return VersionedFileAnnotator(self)
 
     missing_keys = index._missing_keys_from_parent_map
 

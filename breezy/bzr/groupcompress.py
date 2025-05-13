@@ -1355,9 +1355,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         return ann.annotate_flat(key)
 
     def get_annotator(self):
-        from ..annotate import Annotator
+        from .annotate import VersionedFileAnnotator
 
-        return Annotator(self)
+        return VersionedFileAnnotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""

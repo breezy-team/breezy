@@ -44,6 +44,7 @@ def load_tests(loader, basic_tests, pattern):
         "test__btree_serializer",
         "test__dirstate_helpers",
         "test__groupcompress",
+        "test_annotate",
         "test_btree_index",
         "test_bundle",
         "test_bzrdir",

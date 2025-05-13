@@ -766,10 +766,10 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         """
         with self.lock_read():
             # Now we have the parents of this content
-            from ..annotate import Annotator
+            from ..bzr.annotate import VersionedFileAnnotator
             from .annotate import AnnotateProvider
 
-            annotator = Annotator(
+            annotator = VersionedFileAnnotator(
                 AnnotateProvider(self._repository._file_change_scanner)
             )
             this_key = (path, self.get_file_revision(path))
