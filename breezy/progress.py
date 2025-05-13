@@ -188,14 +188,8 @@ class DummyProgress:
     def update(self, msg=None, current=None, total=None):
         pass
 
-    def child_update(self, message, current, total):
-        pass
-
     def clear(self):
         pass
-
-    def child_progress(self, **kwargs):
-        return DummyProgress(**kwargs)
 
 
 str_tdelta = _cmd_rs.str_tdelta
