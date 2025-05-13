@@ -78,7 +78,7 @@ from breezy.i18n import gettext
 )
 import contextlib
 
-from .. import annotate, debug, errors, osutils, trace
+from .. import debug, errors, osutils, trace
 from .. import transport as _mod_transport
 from ..bzr.versionedfile import (
     AbsentContentFactory,
@@ -95,6 +95,7 @@ from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
 from ..osutils import contains_whitespace, sha_string, sha_strings
 from ..transport import NoSuchFile
 from . import index as _mod_index
+from .annotate import VersionedFileAnnotator
 
 # TODO: Split out code specific to this format into an associated object.
 
@@ -3449,11 +3450,11 @@ def annotate_knit(knit, revision_id):
     return iter(annotator.annotate_flat(revision_id))
 
 
-class _KnitAnnotator(annotate.Annotator):
+class _KnitAnnotator(VersionedFileAnnotator):
     """Build up the annotations for a text."""
 
     def __init__(self, vf):
-        annotate.Annotator.__init__(self, vf)
+        VersionedFileAnnotator.__init__(self, vf)
 
         # TODO: handle Nodes which cannot be extracted
         # self._ghosts = set()
@@ -3545,7 +3546,7 @@ class _KnitAnnotator(annotate.Annotator):
         # if True or len(self._vf._immediate_fallback_vfs) > 0:
         if len(self._vf._immediate_fallback_vfs) > 0:
             # If we have fallbacks, go to the generic path
-            yield from annotate.Annotator._get_needed_texts(self, key, pb=pb)
+            yield from VersionedFileAnnotator._get_needed_texts(self, key, pb=pb)
             return
         while True:
             try:
@@ -3629,7 +3630,7 @@ class _KnitAnnotator(annotate.Annotator):
             blocks = self._matching_blocks.pop(block_key)
             parent_annotations = self._annotations_cache[parent_key]
             return parent_annotations, blocks
-        return annotate.Annotator._get_parent_annotations_and_matches(
+        return VersionedFileAnnotator._get_parent_annotations_and_matches(
             self, key, text, parent_key
         )
 
