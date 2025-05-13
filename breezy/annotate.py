@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""File annotate based on weave storage."""
+"""File annotate based on VersionedFiles."""
 
 # TODO: Choice of more or less verbose formats:
 #
@@ -27,16 +27,20 @@
 
 import sys
 import time
+from typing import TextIO
 
 from . import config, errors, osutils, ui
 from . import graph as _mod_graph
 from .repository import _strip_NULL_ghosts
-from .revision import CURRENT_REVISION, Revision
+from .revision import CURRENT_REVISION, Revision, RevisionID
+from .tree import Tree
+from .workingtree import WorkingTree
 
 
 def annotate_file_tree(
-    tree, path, to_file, verbose=False, full=False, show_ids=False, branch=None
-):
+        tree: Tree, path: str, to_file: TextIO, verbose: bool = False, full: bool = False,
+        show_ids: bool = False, branch=None
+    ) -> None:
     """Annotate path in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -51,6 +55,8 @@ def annotate_file_tree(
     :param branch: Branch to use for revision revno lookups
     """
     if branch is None:
+        if not isinstance(tree, WorkingTree):
+            raise AssertionError("branch must be given for non-working trees")
         branch = tree.branch
     if to_file is None:
         to_file = sys.stdout
@@ -85,7 +91,7 @@ def annotate_file_tree(
     _print_annotations(annotation, verbose, to_file, full, encoding)
 
 
-def _print_annotations(annotation, verbose, to_file, full, encoding):
+def _print_annotations(annotation, verbose: bool, to_file: TextIO, full, encoding: str) -> None:
     """Print annotations to to_file.
 
     :param to_file: The file to output the annotation to.
@@ -126,7 +132,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
         prevanno = anno
 
 
-def _show_id_annotations(annotations, to_file, full, encoding):
+def _show_id_annotations(annotations, to_file: TextIO, full: bool, encoding: str) -> None:
     if not annotations:
         return
     last_rev_id = None
@@ -137,10 +143,9 @@ def _show_id_annotations(annotations, to_file, full, encoding):
             "%*s | %s" % (max_origin_len, this.decode("utf-8"), text.decode(encoding))
         )
         last_rev_id = origin
-    return
 
 
-def _expand_annotations(annotations, branch, current_rev=None):
+def _expand_annotations(annotations, branch, current_rev: Revision | None = None):
     """Expand a file's annotations into command line UI ready tuples.
 
     Each tuple includes detailed information, such as the author name, and date
@@ -184,7 +189,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
         # in bulk over HPSS.
         revision_id_to_revno = branch.get_revision_id_to_revno_map()
     last_origin = None
-    revisions = {}
+    revisions: dict[RevisionID, Revision] = {}
     if CURRENT_REVISION in revision_ids:
         revision_id_to_revno[CURRENT_REVISION] = ("%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
