@@ -27,7 +27,7 @@
 
 import sys
 import time
-from typing import TextIO
+from typing import Optional, TextIO
 
 from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
@@ -153,7 +153,7 @@ def _show_id_annotations(
         last_rev_id = origin
 
 
-def _expand_annotations(annotations, branch, current_rev: Revision | None = None):
+def _expand_annotations(annotations, branch, current_rev: Optional[Revision] = None):
     """Expand a file's annotations into command line UI ready tuples.
 
     Each tuple includes detailed information, such as the author name, and date
