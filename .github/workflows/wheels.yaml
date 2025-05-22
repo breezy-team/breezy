@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.merged-identifiers.outputs.merged-identifiers }}
+      fail-fast: ${{ steps.fail-fast.outputs.fail-fast }}
 
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +51,14 @@ jobs:
         id: merged-identifiers
         run: |
           echo merged-identifiers=$(echo -n '${{ steps.json-identifiers.outputs.linux }} ${{ steps.json-identifiers.outputs.macos }} ${{ steps.json-identifiers.outputs.windows }}' | jq -c -s 'add') >> $GITHUB_OUTPUT
+      - name: Determine whether to fail fast
+        id: fail-fast
+        run: |
+          if [[ "$GITHUB_REF" = "refs/tags/brz-"* ]]; then
+            echo "fail-fast=false" >> $GITHUB_OUTPUT
+          else
+            echo "fail-fast=true" >> $GITHUB_OUTPUT
+          fi
 
   build-wheels:
     runs-on: ${{ matrix.os }}
@@ -57,7 +66,8 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJSON(needs.define-matrix.outputs.matrix ) }}
-      fail-fast: true
+      # fail fast for any refs that don't start with refs/tags/brz-
+      fail-fast: ${{ fromJSON(needs.define-matrix.outputs.fail-fast) }}
 
     steps:
       - uses: actions/checkout@v4
