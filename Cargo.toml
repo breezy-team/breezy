@@ -16,7 +16,7 @@ include = [
 ]
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "bzrformats/bazaar-py", "bzrformats/bazaar"]
 
 [workspace.package]
 version = "3.4.0"
@@ -38,7 +38,7 @@ gettext = { workspace = true, optional = true }
 log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
-bazaar = { path = "crates/bazaar" }
+bazaar = { path = "bzrformats/bazaar" }
 breezy-graph = { path = "crates/graph" }
 percent-encoding = "2"
 url = { workspace = true }

@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+build/
+*~
+*.swp
+*.swo
+*.swn
+.mypy_cache/
+.pytest_cache/
+dist/
+*.egg-info/
+bzrformats/_version.py

@@ -23,8 +23,8 @@ import breezy.errors as errors
 import breezy.gpg
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
+from bzrformats.inventory import ROOT_ID, Inventory, InventoryDirectory
 
-from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree

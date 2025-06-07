@@ -21,16 +21,22 @@ import os
 import pprint
 from io import BytesIO
 
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+)
+from bzrformats.xml5 import inventory_serializer_v5
+
 from ... import cache_utf8, osutils
 from ...errors import BzrError, NoSuchId, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
 from ...tree import InterTree
-from ..inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import inventory_serializer_v5
 from . import apply_bundle
 
 

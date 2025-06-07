@@ -45,7 +45,7 @@ from breezy import (
     ui,
     urlutils,
     )
-from breezy.bzr import (
+from bzrformats import (
     versionedfile,
     weave,
     )
@@ -331,7 +331,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree("text-store")
 
     def _convert_working_inv(self):
-        from .xml4 import inventory_serializer_v4
+        from bzrformats.xml4 import inventory_serializer_v4
 
         inv = inventory_serializer_v4.read_inventory(
             self.branch._transport.get("inventory")
@@ -420,7 +420,7 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
-        from .xml4 import inventory_serializer_v4
+        from bzrformats.xml4 import inventory_serializer_v4
 
         with self.branch.repository.inventory_store.get(rev_id) as f:
             inv = inventory_serializer_v4.read_inventory(f)

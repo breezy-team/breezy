@@ -18,11 +18,11 @@
 import sys
 
 from breezy import errors, osutils, repository
-from breezy.bzr import inventory, versionedfile
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
+from bzrformats import inventory, versionedfile
+from bzrformats.inventory_delta import InventoryDelta
 
-from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.vf_search import SearchResult
 from ...errors import NoSuchRevision
 from ...repository import WriteGroup

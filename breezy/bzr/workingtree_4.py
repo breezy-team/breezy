@@ -41,13 +41,27 @@ from breezy import (
     views,
     )
 from breezy.bzr import (
-    generate_ids,
     transform as bzr_transform,
     )
+from bzrformats import generate_ids
 """,
 )
 
 import contextlib
+
+from bzrformats import dirstate
+from bzrformats.inventory import (
+    ROOT_ID,
+    DuplicateFileId,
+    Inventory,
+    InventoryDirectory,
+    InventoryEntry,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+    _make_delta,
+)
+from bzrformats.inventory_delta import InventoryDelta
 
 from .. import cache_utf8, debug, errors, osutils, trace
 from .. import revision as _mod_revision
@@ -59,19 +73,6 @@ from ..transport import NoSuchFile, get_transport_from_path
 from ..transport.local import file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
-from . import dirstate
-from .inventory import (
-    ROOT_ID,
-    DuplicateFileId,
-    Inventory,
-    InventoryDirectory,
-    InventoryEntry,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    _make_delta,
-)
-from .inventory_delta import InventoryDelta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -2320,10 +2321,12 @@ class InterDirStateTree(InterInventoryTree):
 
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
-        from .tests.test__dirstate_helpers import compiled_dirstate_helpers_feature
+        from bzrformats.tests.test__dirstate_helpers import (
+            compiled_dirstate_helpers_feature,
+        )
 
         test_case.requireFeature(compiled_dirstate_helpers_feature)
-        from ._dirstate_helpers_pyx import ProcessEntryC
+        from bzrformats._dirstate_helpers_pyx import ProcessEntryC
 
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = ProcessEntryC

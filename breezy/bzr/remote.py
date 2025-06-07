@@ -23,6 +23,11 @@ from typing import Callable, Optional
 
 import fastbencode as bencode
 
+from bzrformats import inventory_delta
+from bzrformats.inventory import Inventory
+from bzrformats.inventory_delta import InventoryDelta
+from bzrformats.serializer import revision_format_registry
+
 from .. import (
     branch,
     controldir,
@@ -51,14 +56,11 @@ from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from . import inventory_delta, vf_repository, vf_search
 from . import testament as _mod_testament
+from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
-from .inventory import Inventory
-from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
-from .serializer import revision_format_registry
 from .smart import client, vfs
 from .smart import repository as smart_repo
 from .smart.client import _SmartClient

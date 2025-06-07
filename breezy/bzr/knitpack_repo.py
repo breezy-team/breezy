@@ -30,10 +30,10 @@ from breezy import (
     tsort,
     ui,
     )
-from breezy.bzr import (
+from bzrformats import (
     pack,
     )
-from breezy.bzr.knit import (
+from bzrformats.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
@@ -41,13 +41,14 @@ from breezy.bzr.knit import (
 """,
 )
 
-from ..bzr import btree_index
-from ..bzr.index import (
+from bzrformats import btree_index
+from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
 )
+
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
 from .pack_repo import (
@@ -173,13 +174,13 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         return inventory_serializer_v5
 
@@ -223,13 +224,13 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
+        from bzrformats.xml7 import inventory_serializer_v7
 
         return inventory_serializer_v7
 
@@ -273,13 +274,13 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
+        from bzrformats.xml6 import inventory_serializer_v6
 
         return inventory_serializer_v6
 
@@ -321,13 +322,13 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         return inventory_serializer_v5
 
@@ -367,13 +368,13 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
+        from bzrformats.xml6 import inventory_serializer_v6
 
         return inventory_serializer_v6
 
@@ -417,13 +418,13 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
+        from bzrformats.xml7 import inventory_serializer_v7
 
         return inventory_serializer_v7
 
@@ -467,13 +468,13 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         return inventory_serializer_v5
 
@@ -512,13 +513,13 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
+        from bzrformats.xml6 import inventory_serializer_v6
 
         return inventory_serializer_v6
 
@@ -560,13 +561,13 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     @property
     def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return revision_serializer_v5
 
     @property
     def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
+        from bzrformats.xml7 import inventory_serializer_v7
 
         return inventory_serializer_v7
 

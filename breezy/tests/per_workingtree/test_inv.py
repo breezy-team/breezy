@@ -19,8 +19,8 @@
 import os
 
 from breezy import tests
-from breezy.bzr import inventory
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrformats import inventory
 
 
 class TestRevert(TestCaseWithWorkingTree):

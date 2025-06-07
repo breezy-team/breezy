@@ -30,11 +30,12 @@ from breezy import (
 """,
 )
 
+from bzrformats import rio
+
 from .. import errors, osutils
 from .. import transport as _mod_transport
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
-from . import rio
 
 CONFLICT_SUFFIXES = (".THIS", ".BASE", ".OTHER")
 

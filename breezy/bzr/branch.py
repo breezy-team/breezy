@@ -33,6 +33,8 @@ from breezy import (
 
 import contextlib
 
+from bzrformats import rio
+
 from .. import errors, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -47,7 +49,7 @@ from ..controldir import ControlDir
 from ..decorators import only_raises
 from ..lock import LogicalLockResult, _RelockDebugMixin
 from ..trace import mutter
-from . import bzrdir, lockable_files, rio
+from . import bzrdir, lockable_files
 from .repository import MetaDirRepository
 
 if TYPE_CHECKING:

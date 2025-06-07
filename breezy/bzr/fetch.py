@@ -272,7 +272,7 @@ def _new_root_data_stream(
         root_keys_to_create.
       graph: a graph to use instead of repo.get_graph().
     """
-    from .versionedfile import ChunkedContentFactory
+    from bzrformats.versionedfile import ChunkedContentFactory
 
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key

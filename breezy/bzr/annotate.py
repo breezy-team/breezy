@@ -24,7 +24,7 @@ from .. import graph as _mod_graph
 from ..annotate import Annotator
 
 if TYPE_CHECKING:
-    from .versionedfile import VersionedFiles
+    from bzrformats.versionedfile import VersionedFiles
 
 
 class VersionedFileAnnotator(Annotator):

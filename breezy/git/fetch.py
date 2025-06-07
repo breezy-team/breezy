@@ -22,17 +22,18 @@ import stat
 from dulwich.object_store import tree_lookup_path
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
 
-from .. import debug, osutils, trace
-from ..bzr.inventory import (
+from bzrformats.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     TreeReference,
 )
-from ..bzr.inventory_delta import InventoryDelta
+from bzrformats.inventory_delta import InventoryDelta
+from bzrformats.versionedfile import ChunkedContentFactory
+
+from .. import debug, osutils, trace
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
-from ..bzr.versionedfile import ChunkedContentFactory
 from ..errors import BzrError
 from ..revision import NULL_REVISION
 from ..transport import NoSuchFile

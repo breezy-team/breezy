@@ -38,18 +38,28 @@ from breezy import (
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,
-    generate_ids,
-    inventory_delta,
     inventorytree,
-    versionedfile,
     vf_search,
     )
+from bzrformats import generate_ids
+from bzrformats import versionedfile
+from bzrformats import inventory_delta
 from breezy.bzr.bundle import serializer
 
 from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """,
 )
+
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+    _make_delta,
+)
+from bzrformats.inventory_delta import InventoryDelta
 
 from .. import debug, errors, osutils
 from ..decorators import only_raises
@@ -62,15 +72,6 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import (
-    Inventory,
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    _make_delta,
-)
-from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -2043,7 +2044,7 @@ class StreamSource:
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
-        from .recordcounter import RecordCounter
+        from bzrformats.recordcounter import RecordCounter
 
         self._record_counter = RecordCounter()
 

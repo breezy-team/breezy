@@ -20,8 +20,9 @@ import contextlib
 
 from dulwich.object_store import tree_lookup_path
 
+from bzrformats.versionedfile import UnavailableRepresentation
+
 from .. import osutils
-from ..bzr.versionedfile import UnavailableRepresentation
 from ..errors import NoSuchRevision
 from ..graph import Graph
 from ..revision import NULL_REVISION

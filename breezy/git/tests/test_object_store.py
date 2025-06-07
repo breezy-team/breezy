@@ -22,8 +22,9 @@ import stat
 
 from dulwich.objects import Blob, Tree
 
+from bzrformats.inventory import InventoryDirectory, InventoryFile
+
 from ...branchbuilder import BranchBuilder
-from ...bzr.inventory import InventoryDirectory, InventoryFile
 from ...errors import NoSuchRevision
 from ...graph import DictParentsProvider, Graph
 from ...tests import TestCase, TestCaseWithTransport

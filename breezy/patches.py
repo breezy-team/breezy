@@ -483,7 +483,7 @@ def apply_patches(tt, patches, prefix=1):
     def strip_prefix(p):
         return "/".join(p.split("/")[1:])
 
-    from .bzr.generate_ids import gen_file_id
+    from bzrformats.generate_ids import gen_file_id
 
     # TODO(jelmer): Extract and set mode
     for patch in patches:
