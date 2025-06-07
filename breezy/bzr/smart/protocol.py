@@ -27,9 +27,9 @@ from io import BytesIO
 from fastbencode import bdecode_as_tuple, bencode
 
 import breezy
+from bzrformats._bzr_rs import smart as _smart_rs
 
 from ... import debug, errors, osutils
-from ..._bzr_rs import smart as _smart_rs
 from ...trace import log_exception_quietly, mutter
 from . import message, request
 

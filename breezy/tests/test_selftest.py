@@ -653,7 +653,7 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_home_dir, os.environ["HOME"])
 
     def test_assertEqualStat_equal(self):
-        from ..bzr.tests.test_dirstate import _FakeStat
+        from bzrformats.tests.test_dirstate import _FakeStat
 
         self.build_tree(["foo"])
         real = os.lstat("foo")

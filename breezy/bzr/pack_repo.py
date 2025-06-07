@@ -28,28 +28,27 @@ import time
 
 from breezy import (
     config,
-    graph,
     transactions,
     ui,
     )
-from breezy.bzr import (
-    pack,
-    )
-from breezy.bzr.index import (
+from bzrformats.index import (
     CombinedGraphIndex,
     )
 """,
 )
+from bzrformats import btree_index
+from bzrformats import index as _mod_index
+from bzrformats import pack as _mod_pack
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
+
 from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
-from ..bzr import btree_index, lockable_files
-from ..bzr import index as _mod_index
+from ..bzr import lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
-from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -140,9 +139,9 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
             lossy=lossy,
             owns_transaction=owns_transaction,
         )
-        self._file_graph = graph.Graph(
-            repository._pack_collection.text_index.combined_index
-        )
+        from ..graph import Graph
+
+        self._file_graph = Graph(repository._pack_collection.text_index.combined_index)
 
     def _heads(self, file_id, revision_ids):
         keys = [(file_id, revision_id) for revision_id in revision_ids]
@@ -544,7 +543,7 @@ class NewPack(Pack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = pack.ContainerWriter(self._write_data)
+        self._writer = _mod_pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = "open"
@@ -1900,12 +1899,14 @@ class PackRepository(MetaDirVersionedFileRepository):
         self._revision_serializer = _revision_serializer
         self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
+        from ..graph import CachingParentsProvider
+
         if self._format.supports_external_lookups:
-            self._unstacked_provider = graph.CachingParentsProvider(
+            self._unstacked_provider = CachingParentsProvider(
                 self._make_parents_provider_unstacked()
             )
         else:
-            self._unstacked_provider = graph.CachingParentsProvider(self)
+            self._unstacked_provider = CachingParentsProvider(self)
         self._unstacked_provider.disable_cache()
 
     def _all_revision_ids(self):
@@ -1920,7 +1921,9 @@ class PackRepository(MetaDirVersionedFileRepository):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self._unstacked_provider
-        return graph.StackedParentsProvider(
+        from ..graph import StackedParentsProvider
+
+        return StackedParentsProvider(
             _LazyListJoin([self._unstacked_provider], self._fallback_repositories)
         )
 
@@ -2275,7 +2278,7 @@ class _DirectPackAccess:
                     index, reload_occurred=True, exc_info=sys.exc_info()
                 ) from e
             try:
-                reader = pack.make_readv_reader(transport, path, offsets)
+                reader = _mod_pack.make_readv_reader(transport, path, offsets)
                 for _names, read_func in reader.iter_records():
                     yield read_func(None)
             except _mod_transport.NoSuchFile as e:

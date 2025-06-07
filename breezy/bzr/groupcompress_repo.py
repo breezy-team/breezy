@@ -19,13 +19,14 @@
 import hashlib
 import time
 
-from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
+from bzrformats import _bzr_rs, chk_map, chk_serializer, inventory, versionedfile
+from bzrformats import index as _mod_index
+from bzrformats import pack as _mod_pack
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
+
+from .. import controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from ..bzr import chk_map, chk_serializer, inventory, versionedfile
-from ..bzr import index as _mod_index
-from ..bzr import pack as _mod_pack
-from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
-from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
 from .pack_repo import (
     NewPack,

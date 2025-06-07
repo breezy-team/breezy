@@ -18,12 +18,13 @@
 
 from io import BytesIO
 
+from bzrformats import inventory, xml5
+
 from ... import conflicts as _mod_conflicts
 from ... import errors, lock
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
 from ...bzr import conflicts as _mod_bzr_conflicts
-from ...bzr import inventory, xml5
 from ...bzr import transform as bzr_transform
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree

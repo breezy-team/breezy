@@ -38,24 +38,22 @@ from breezy import (
 )
 from breezy import revision as _mod_revision
 from breezy.bzr import (
-    btree_index,
     bzrdir,
     groupcompress_repo,
-    inventory,
     knitpack_repo,
     knitrepo,
     pack_repo,
-    versionedfile,
     vf_repository,
     vf_search,
 )
 from breezy.bzr import repository as bzrrepository
 from breezy.tests import TestCase, TestCaseWithTransport
+from bzrformats import btree_index, inventory, versionedfile
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.index import GraphIndex
 
 from ...errors import UnknownFormatError
 from ...repository import RepositoryFormat
-from ..btree_index import BTreeBuilder, BTreeGraphIndex
-from ..index import GraphIndex
 
 
 class TestDefaultFormat(TestCase):

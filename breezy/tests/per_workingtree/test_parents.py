@@ -19,9 +19,15 @@
 import os
 from io import BytesIO
 
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+)
+
 from ... import errors
 from ... import revision as _mod_revision
-from ...bzr.inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable

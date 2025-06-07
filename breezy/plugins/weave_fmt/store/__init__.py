@@ -25,8 +25,9 @@ unique ID.
 
 import os
 
+from bzrformats import versionedfile
+
 from .... import transport as _mod_transport
-from ....bzr import versionedfile
 from ....errors import BzrError
 from ....trace import mutter
 

@@ -21,13 +21,14 @@ import errno
 import os
 from io import StringIO
 
+from bzrformats.inventory import Inventory
+
 from ... import branch as _mod_branch
 from ... import config, controldir, errors, merge, osutils, tests, trace, urlutils
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
-from ...bzr.inventory import Inventory
 from ...bzr.workingtree import InventoryWorkingTree
 from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree

@@ -19,8 +19,7 @@
 
 __docformat__ = "google"
 
-from . import errors
-from ._bzr_rs import (  # noqa: F401
+from bzrformats._bzr_rs import (  # noqa: F401
     CURRENT_REVISION,
     NULL_REVISION,
     Revision,
@@ -28,6 +27,8 @@ from ._bzr_rs import (  # noqa: F401
     is_null,
     is_reserved_id,
 )
+
+from . import errors
 
 RevisionID = bytes
 

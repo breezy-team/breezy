@@ -115,7 +115,9 @@ class TestBranch(tests.TestCaseWithTransport):
             corrupt = b"\x00" if c == b"\xff" else b"\xff"
             f.write(corrupt)  # make sure we corrupt something
         self.run_bzr_error(
-            ["Corruption while decompressing repository file"], "branch a b", retcode=3
+            [r"Corruption while decompressing repository file.*"],
+            "branch a b",
+            retcode=3,
         )
 
     def test_branch_switch_no_branch(self):

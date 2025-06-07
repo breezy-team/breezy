@@ -19,11 +19,12 @@ import time
 
 from breezy import errors, tests
 from breezy import revision as _mod_revision
-from breezy.bzr import inventory, remote
+from breezy.bzr import remote
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
+from bzrformats import inventory
 
 from ....tests.scenarios import load_tests_apply_scenarios
 

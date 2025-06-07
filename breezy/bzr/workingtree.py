@@ -57,12 +57,14 @@ from breezy import (
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
-    generate_ids,
-    inventory,
-    serializer,
     )
+from bzrformats import inventory
+from bzrformats import generate_ids
+from bzrformats import serializer
 """,
 )
+
+from bzrformats import rio as _mod_rio
 
 from .. import errors, osutils
 from .. import revision as _mod_revision
@@ -80,7 +82,6 @@ from ..tree import (
     get_canonical_path,
 )
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry
-from . import rio as _mod_rio
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 
 MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
@@ -201,12 +202,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        from .xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         inventory_serializer_v5.write_inventory(self._inventory, out_file, working=True)
 
     def _deserialize(self, in_file):
-        from .xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         return inventory_serializer_v5.read_inventory(in_file)
 
@@ -287,7 +288,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     def set_inventory(self, new_inventory_list):
-        from .inventory import (
+        from bzrformats.inventory import (
             Inventory,
             InventoryDirectory,
             InventoryFile,
@@ -576,7 +577,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory."""
         inventory.revision_id = revision_id
-        from .xml7 import inventory_serializer_v7
+        from bzrformats.xml7 import inventory_serializer_v7
 
         return inventory_serializer_v7.write_inventory_to_lines(inventory)
 
@@ -853,7 +854,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             except _mod_transport.NoSuchFile:
                 pass
             else:
-                from .xml7 import inventory_serializer_v7
+                from bzrformats.xml7 import inventory_serializer_v7
 
                 try:
                     inv = inventory_serializer_v7.read_inventory_from_lines(xml_lines)
@@ -981,7 +982,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
-        from .inventory import InventoryDirectory
+        from bzrformats.inventory import InventoryDirectory
 
         def add_children(inventory, other_inventory, entry):
             for child_entry in other_inventory.get_children(entry.file_id).values():
@@ -1031,7 +1032,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         A new branch will be created, relative to the path for this tree.
         """
-        from .inventory import InventoryDirectory
+        from bzrformats.inventory import InventoryDirectory
 
         def mkdirs(path):
             segments = osutils.splitpath(path)

@@ -31,10 +31,10 @@ from breezy import (
     gpg,
     patch as _mod_patch,
     )
-from breezy.bzr import (
+from bzrformats import (
+    rio,
     rio_patch,
     )
-from breezy.bzr import rio
 from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )

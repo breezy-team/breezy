@@ -34,8 +34,6 @@ import fastbencode as bencode
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
 from breezy.bzr import branch as _mod_bzrbranch
-from breezy.bzr import inventory_delta, versionedfile
-from breezy.bzr.inventory import _make_delta
 from breezy.bzr.smart import branch as smart_branch
 from breezy.bzr.smart import bzrdir as smart_dir
 from breezy.bzr.smart import packrepository as smart_packrepo
@@ -44,6 +42,8 @@ from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
 from breezy.tests import test_server
 from breezy.transport import chroot, memory
+from bzrformats import inventory_delta, versionedfile
+from bzrformats.inventory import _make_delta
 
 from ..testament import Testament
 

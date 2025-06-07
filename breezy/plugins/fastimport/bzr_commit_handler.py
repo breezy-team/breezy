@@ -20,9 +20,10 @@ from typing import Optional
 
 from fastimport import processor
 
+from bzrformats import generate_ids, inventory, serializer
+from bzrformats.inventory_delta import InventoryDelta
+
 from ... import debug, errors, osutils, revision
-from ...bzr import generate_ids, inventory, serializer
-from ...bzr.inventory_delta import InventoryDelta
 from ...trace import mutter, note, warning
 from .helpers import escape_commit_message, mode_to_kind
 

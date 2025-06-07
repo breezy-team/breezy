@@ -55,7 +55,7 @@ import testtools
 from testtools import content
 
 import breezy
-from breezy.bzr import chk_map
+from bzrformats import chk_map
 
 from .. import (
     branchbuilder,
@@ -4080,6 +4080,7 @@ def _test_suite_testmod_names():
     return [
         "breezy.bzr.tests",
         "breezy.git.tests",
+        "bzrformats.tests",
         "breezy.tests.blackbox",
         "breezy.tests.commands",
         "breezy.tests.per_branch",
@@ -4108,7 +4109,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_branchbuilder",
         "breezy.tests.test_bugtracker",
         "breezy.tests.test_cache_utf8",
-        "breezy.tests.test_chunk_writer",
         "breezy.tests.test_clean_tree",
         "breezy.tests.test_cmdline",
         "breezy.tests.test_commands",
@@ -4260,7 +4260,7 @@ def _test_suite_modules_to_doctest():
     return [
         "breezy",
         "breezy.branchbuilder",
-        "breezy.bzr.inventory",
+        "bzrformats.inventory",
         "breezy.decorators",
         "breezy.lockdir",
         "breezy.option",

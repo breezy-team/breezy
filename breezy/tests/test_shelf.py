@@ -16,8 +16,9 @@
 
 import os
 
+from bzrformats import pack
+
 from .. import errors, ignores, osutils, shelf, tests, workingtree
-from ..bzr import pack
 from . import expectedFailure, features
 
 EMPTY_SHELF = (

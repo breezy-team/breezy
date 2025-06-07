@@ -22,8 +22,9 @@ from io import BytesIO, StringIO
 
 import yaml
 
+from bzrformats import rio
+
 from .. import registry, tests, version_info_formats
-from ..bzr import rio
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
     MissingTemplateVariable,

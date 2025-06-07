@@ -20,8 +20,7 @@ from breezy import controldir, errors, gpg, repository
 from breezy.bzr import remote
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
-
-from ...bzr.inventory import ROOT_ID
+from bzrformats.inventory import ROOT_ID
 
 
 class TestFetchSameRepository(TestCaseWithRepository):

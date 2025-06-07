@@ -27,17 +27,19 @@ import zlib
 
 import fastbencode as bencode
 
-from ... import errors, osutils, trace, ui, zlib_util
-from ... import revision as _mod_revision
-from ...repository import _strip_NULL_ghosts, network_format_registry
-from .. import inventory as _mod_inventory
-from .. import inventory_delta, pack, vf_search
-from ..bzrdir import BzrDir
-from ..versionedfile import (
+from bzrformats import inventory as _mod_inventory
+from bzrformats import inventory_delta, pack
+from bzrformats.versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
     record_to_fulltext_bytes,
 )
+
+from ... import errors, osutils, trace, ui, zlib_util
+from ... import revision as _mod_revision
+from ...repository import _strip_NULL_ghosts, network_format_registry
+from .. import vf_search
+from ..bzrdir import BzrDir
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,

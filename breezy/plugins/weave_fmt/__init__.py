@@ -20,6 +20,8 @@ These were formats present in pre-1.0 version of Bazaar.
 """
 
 # Since we are a built-in plugin we share the breezy version
+from bzrformats import serializer
+
 from ... import branch as _mod_branch
 from ... import (
     controldir,
@@ -27,7 +29,7 @@ from ... import (
 )
 from ... import repository as _mod_repository
 from ... import workingtree as _mod_workingtree
-from ...bzr import BzrProber, register_metadir, serializer
+from ...bzr import BzrProber, register_metadir
 
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
@@ -119,10 +121,10 @@ _mod_workingtree.format_registry.register_extra_lazy(
 )
 
 serializer.revision_format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "revision_serializer_v4"
+    "4", "bzrformats.xml4", "revision_serializer_v4"
 )
 serializer.inventory_format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "inventory_serializer_v4"
+    "4", "bzrformats.xml4", "inventory_serializer_v4"
 )
 
 

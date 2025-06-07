@@ -17,11 +17,12 @@
 import contextlib
 import os
 
+from bzrformats import inventory, knit, versionedfile
+
 from .. import branch as _mod_branch
 from .. import errors, memorytree, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
-from ..bzr import inventory, knit, versionedfile
 from ..bzr.conflicts import (
     ContentsConflict,
     DeletingParent,

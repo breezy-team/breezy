@@ -20,12 +20,14 @@
 import os
 import time
 
+from bzrformats import dirstate
+
 from ... import errors, osutils
 from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
-from .. import bzrdir, dirstate, inventory, workingtree_4
+from .. import bzrdir, inventory, workingtree_4
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):

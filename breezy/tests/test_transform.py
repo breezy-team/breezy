@@ -18,9 +18,10 @@ import os
 
 import fastbencode as bencode
 
+from bzrformats import generate_ids
+
 from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
-from ..bzr import generate_ids
 from ..controldir import ControlDir
 from ..errors import StrictCommitFailed
 from ..merge import Merge3Merger

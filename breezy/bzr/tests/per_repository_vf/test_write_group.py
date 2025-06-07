@@ -18,11 +18,12 @@
 
 from breezy import controldir, errors, memorytree, tests
 from breezy.bzr import branch as bzrbranch
-from breezy.bzr import remote, versionedfile
+from breezy.bzr import remote
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
+from bzrformats import versionedfile
 
 from ....tests.scenarios import load_tests_apply_scenarios
 

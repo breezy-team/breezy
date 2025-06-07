@@ -172,15 +172,15 @@ def add_cython_extension(module_name, libraries=None, extra_source=None):
 
 
 add_cython_extension(
-    "breezy.bzr._groupcompress_pyx", extra_source=["breezy/bzr/diff-delta.c"]
+    "bzrformats._groupcompress_pyx", extra_source=["bzrformats/diff-delta.c"]
 )
-add_cython_extension("breezy.bzr._knit_load_data_pyx")
+add_cython_extension("bzrformats._knit_load_data_pyx")
 if sys.platform == "win32":
-    add_cython_extension("breezy.bzr._dirstate_helpers_pyx", libraries=["Ws2_32"])
+    add_cython_extension("bzrformats._dirstate_helpers_pyx", libraries=["Ws2_32"])
 else:
-    add_cython_extension("breezy.bzr._dirstate_helpers_pyx")
+    add_cython_extension("bzrformats._dirstate_helpers_pyx")
     add_cython_extension("breezy._readdir_pyx")
-add_cython_extension("breezy.bzr._btree_serializer_pyx")
+add_cython_extension("bzrformats._btree_serializer_pyx")
 
 
 if unavailable_files:
@@ -234,7 +234,7 @@ rust_extensions = [
         "breezy._urlutils_rs", "crates/urlutils-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension(
-        "breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3
+        "bzrformats._bzr_rs", "bzrformats/bazaar-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
