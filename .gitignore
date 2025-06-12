@@ -20,3 +20,4 @@ build/
 *.swn
 .mypy_cache/
 breezy/locale/
+.claude/settings.local.json
