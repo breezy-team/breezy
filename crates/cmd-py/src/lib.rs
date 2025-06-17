@@ -4,7 +4,9 @@ use breezy::pytree::PyTree;
 use breezy::RevisionId;
 
 use log::Log;
-use pyo3::exceptions::{PyEOFError, PyIOError, PyNotImplementedError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{
+    PyEOFError, PyIOError, PyNotImplementedError, PyRuntimeError, PyValueError,
+};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::pyclass::CompareOp;
@@ -652,8 +654,8 @@ fn remove_tags(
 }
 
 #[pymodule]
-fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    let i18n = PyModule::new(_py, "i18n")?;
+fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+    let i18n = PyModule::new(py, "i18n")?;
     i18n.add_function(wrap_pyfunction!(i18n_install, &i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_install_plugin, &i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_gettext, &i18n)?)?;
@@ -700,15 +702,25 @@ fn _cmd_rs(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(format_see_also, m)?)?;
     m.add_class::<LockHeldInfo>()?;
 
-    let helpm = PyModule::new(_py, "help")?;
+    let helpm = PyModule::new(py, "help")?;
     help::help_topics(&helpm)?;
     m.add_submodule(&helpm)?;
 
-    let uncommitm = PyModule::new(_py, "uncommit")?;
+    let uncommitm = PyModule::new(py, "uncommit")?;
     uncommitm.add_function(wrap_pyfunction!(remove_tags, &uncommitm)?)?;
     m.add_submodule(&uncommitm)?;
 
     m.add_class::<TreeBuilder>()?;
+
+    // PyO3 submodule hack for proper import support
+    let sys = py.import("sys")?;
+    let modules = sys.getattr("modules")?;
+    let module_name = m.name()?;
+
+    // Register submodules in sys.modules for dotted import support
+    modules.set_item(format!("{}.i18n", module_name), &i18n)?;
+    modules.set_item(format!("{}.help", module_name), &helpm)?;
+    modules.set_item(format!("{}.uncommit", module_name), &uncommitm)?;
 
     Ok(())
 }

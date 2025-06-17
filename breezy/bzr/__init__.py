@@ -16,16 +16,23 @@
 
 """Bazaar support for Breezy."""
 
+__all__ = [
+    "BzrProber",
+    "LineEndingError",
+    "RemoteBzrProber",
+    "hashcache",
+    "register_metadir",
+    "rio",
+]
+
 from typing import TYPE_CHECKING
 
-from .. import _bzr_rs, config, controldir, errors, pyutils, registry
+from .. import config, controldir, errors, pyutils, registry
 from .. import transport as _mod_transport
+from .._bzr_rs import hashcache, rio
 from ..branch import format_registry as branch_format_registry
 from ..repository import format_registry as repository_format_registry
 from ..workingtree import format_registry as workingtree_format_registry
-
-rio = _bzr_rs.rio
-hashcache = _bzr_rs.hashcache
 
 if TYPE_CHECKING:
     from .bzrdir import BzrDirFormat  # noqa: F401

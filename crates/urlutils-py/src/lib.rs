@@ -283,5 +283,15 @@ fn _urlutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, &posixm)?)?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, &posixm)?)?;
     m.add_submodule(&posixm)?;
+
+    // PyO3 submodule hack for proper import support
+    let sys = py.import("sys")?;
+    let modules = sys.getattr("modules")?;
+    let module_name = m.name()?;
+
+    // Register submodules in sys.modules for dotted import support
+    modules.set_item(format!("{}.win32", module_name), &win32m)?;
+    modules.set_item(format!("{}.posix", module_name), &posixm)?;
+
     Ok(())
 }

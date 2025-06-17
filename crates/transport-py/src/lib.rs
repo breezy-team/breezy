@@ -1212,5 +1212,14 @@ fn _transport_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<WriteLock>()?;
     m.add_class::<TemporaryWriteLock>()?;
 
+    // PyO3 submodule hack for proper import support
+    let sys = py.import("sys")?;
+    let modules = sys.getattr("modules")?;
+    let module_name = m.name()?;
+
+    // Register submodules in sys.modules for dotted import support
+    modules.set_item(format!("{}.local", module_name), &localm)?;
+    modules.set_item(format!("{}.sftp", module_name), &sftpm)?;
+
     Ok(())
 }

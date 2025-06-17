@@ -534,5 +534,22 @@ fn _bzr_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     let versionedfilem = versionedfile::_versionedfile_rs(py)?;
     m.add_submodule(&versionedfilem)?;
+
+    // PyO3 submodule hack for proper import support
+    let sys = py.import("sys")?;
+    let modules = sys.getattr("modules")?;
+    let module_name = m.name()?;
+
+    // Register submodules in sys.modules for dotted import support
+    modules.set_item(format!("{}.globbing", module_name), &m_globbing)?;
+    modules.set_item(format!("{}.inventory", module_name), &inventorym)?;
+    modules.set_item(format!("{}.rio", module_name), &riom)?;
+    modules.set_item(format!("{}.hashcache", module_name), &hashcachem)?;
+    modules.set_item(format!("{}.dirstate", module_name), &dirstatem)?;
+    modules.set_item(format!("{}.groupcompress", module_name), &groupcompressm)?;
+    modules.set_item(format!("{}.chk_map", module_name), &chk_mapm)?;
+    modules.set_item(format!("{}.smart", module_name), &smartm)?;
+    modules.set_item(format!("{}.versionedfile", module_name), &versionedfilem)?;
+
     Ok(())
 }

@@ -1408,5 +1408,15 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(readlink))?;
     m.add_wrapped(wrap_pyfunction!(getchar))?;
     m.add_wrapped(wrap_pyfunction!(isdir))?;
+
+    // PyO3 submodule hack for proper import support
+    let sys = py.import("sys")?;
+    let modules = sys.getattr("modules")?;
+    let module_name = m.name()?;
+
+    // Register submodules in sys.modules for dotted import support
+    modules.set_item(format!("{}.win32", module_name), &win32m)?;
+    modules.set_item(format!("{}.posix", module_name), &posixm)?;
+
     Ok(())
 }
