@@ -15,11 +15,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import _osutils_rs
+__all__ = [
+    "color_exists",
+    "colorstring",
+    "has_ansi_colors",
+]
 
-has_ansi_colors = _osutils_rs.has_ansi_colors
-colorstring = _osutils_rs.colorstring
-color_exists = _osutils_rs.color_exists
+from ._osutils_rs import (
+    color_exists,
+    colorstring,
+    has_ansi_colors,
+)
 
 
 class FG:

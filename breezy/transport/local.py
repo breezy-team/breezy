@@ -36,9 +36,7 @@ def file_kind(f, _lstat=os.lstat):
     return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
 
-from .._transport_rs import local as _local_rs
-
-LocalTransport = _local_rs.LocalTransport  # type:ignore
+from .._transport_rs.local import LocalTransport  # type:ignore
 
 
 class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore

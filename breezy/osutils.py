@@ -14,12 +14,204 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__all__ = [
+    "MIN_ABS_PATHLENGTH",
+    "IterableFile",
+    "UnsupportedTimezoneFormat",
+    "_accessible_normalized_filename",
+    "_get_home_dir",
+    "_inaccessible_normalized_filename",
+    "_posix_normpath",
+    "_terminal_size",
+    "_win32_abspath",
+    "_win32_fix_separators",
+    "_win32_fixdrive",
+    "_win32_getcwd",
+    "_win32_normpath",
+    "abspath",
+    "available_backup_name",
+    "check_legal_path",
+    "chmod_if_possible",
+    "chunks_to_lines",
+    "chunks_to_lines_iter",
+    "compact_date",
+    "compare_files",
+    "contains_linebreaks",
+    "contains_whitespace",
+    "copy_ownership_from_path",
+    "copy_tree",
+    "delete_any",
+    "dereference_path",
+    "ensure_empty_directory_exists",
+    "file_iterator",
+    "file_kind_from_stat_mode",
+    "find_executable_on_path",
+    "format_date",
+    "format_date_with_offset_in_original_timezone",
+    "format_highres_date",
+    "format_local_date",
+    "get_fs_type",
+    "get_host_name",
+    "get_umask",
+    "get_user_encoding",
+    "getchar",
+    "getuser_unicode",
+    "is_inside",
+    "is_inside_any",
+    "is_inside_or_parent_of_any",
+    "is_local_pid_dead",
+    "isdir",
+    "joinpath",
+    "kind_marker",
+    "lexists",
+    "link_or_copy",
+    "local_concurrency",
+    "local_time_offset",
+    "make_readonly",
+    "make_writable",
+    "minimum_path_selection",
+    "normalized_filename",
+    "normalizepath",
+    "normalizes_filenames",
+    "normpath",
+    "parent_directories",
+    "pathjoin",
+    "pump_string_file",
+    "pumpfile",
+    "quotefn",
+    "rand_chars",
+    "read_mtab",
+    "readlink",
+    "realpath",
+    "relpath",
+    "set_or_unset_env",
+    "sha_file",
+    "sha_file_by_name",
+    "sha_string",
+    "sha_strings",
+    "size_sha_file",
+    "split_lines",
+    "split_lines",
+    "splitpath",
+    "supports_executable",
+    "supports_hardlinks",
+    "supports_posix_readonly",
+    "supports_symlinks",
+    "unpack_highres_date",
+]
+
 import codecs
+import contextlib
 import errno
 import os
 import sys
 import time
 
+from . import errors
+from ._osutils_rs import (
+    MIN_ABS_PATHLENGTH,
+    IterableFile,
+    UnsupportedTimezoneFormat,
+    _accessible_normalized_filename,
+    _inaccessible_normalized_filename,
+    abspath,
+    available_backup_name,
+    check_legal_path,
+    chmod_if_possible,
+    chunks_to_lines,
+    chunks_to_lines_iter,
+    compact_date,
+    compare_files,
+    contains_linebreaks,
+    contains_whitespace,
+    copy_ownership_from_path,
+    copy_tree,
+    delete_any,
+    dereference_path,
+    ensure_empty_directory_exists,
+    file_iterator,
+    find_executable_on_path,
+    format_date,
+    format_date_with_offset_in_original_timezone,
+    format_highres_date,
+    format_local_date,
+    get_fs_type,
+    get_host_name,
+    get_umask,
+    get_user_encoding,
+    getchar,
+    is_inside,
+    is_inside_any,
+    is_inside_or_parent_of_any,
+    is_local_pid_dead,
+    isdir,
+    joinpath,
+    kind_marker,
+    lexists,
+    link_or_copy,
+    local_concurrency,
+    local_time_offset,
+    make_readonly,
+    make_writable,
+    minimum_path_selection,
+    normalized_filename,
+    normalizepath,
+    normalizes_filenames,
+    normpath,
+    parent_directories,
+    pathjoin,
+    pump_string_file,
+    pumpfile,
+    quotefn,
+    rand_chars,
+    read_mtab,
+    readlink,
+    realpath,
+    relpath,
+    set_or_unset_env,
+    sha_file,
+    sha_file_by_name,
+    sha_string,
+    sha_strings,
+    size_sha_file,
+    split_lines,
+    splitpath,
+    supports_executable,
+    supports_hardlinks,
+    supports_posix_readonly,
+    supports_symlinks,
+    unpack_highres_date,
+)
+from ._osutils_rs import (
+    get_home_dir as _get_home_dir,
+)
+from ._osutils_rs import (
+    get_user_name as getuser_unicode,
+)
+from ._osutils_rs import (
+    kind_from_mode as file_kind_from_stat_mode,
+)
+from ._osutils_rs import (
+    terminal_size as _terminal_size,
+)
+from ._osutils_rs.posix import (
+    normpath as _posix_normpath,
+)
+from ._osutils_rs.win32 import (
+    abspath as _win32_abspath,
+)
+from ._osutils_rs.win32 import (
+    fix_separators as _win32_fix_separators,
+)
+from ._osutils_rs.win32 import (
+    fixdrive as _win32_fixdrive,
+)
+from ._osutils_rs.win32 import (
+    getcwd as _win32_getcwd,
+)
+from ._osutils_rs.win32 import (
+    normpath as _win32_normpath,
+)
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -38,8 +230,6 @@ from breezy import (
 )
 
 
-from . import _osutils_rs, errors
-
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
@@ -49,18 +239,6 @@ from . import _osutils_rs, errors
 O_BINARY = getattr(os, "O_BINARY", 0)
 O_TEXT = getattr(os, "O_TEXT", 0)
 O_NOINHERIT = getattr(os, "O_NOINHERIT", 0)
-
-
-UnsupportedTimezoneFormat = _osutils_rs.UnsupportedTimezoneFormat
-
-make_readonly = _osutils_rs.make_readonly
-chmod_if_possible = _osutils_rs.chmod_if_possible
-make_writable = _osutils_rs.make_writable
-
-minimum_path_selection = _osutils_rs.minimum_path_selection
-
-
-from ._osutils_rs import get_umask, kind_marker, lexists, quotefn  # noqa: F401
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -135,21 +313,11 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 rename_func(tmp_name, new)
 
 
-_posix_normpath = _osutils_rs.posix.normpath
-_win32_normpath = _osutils_rs.win32.normpath
-_win32_fixdrive = _osutils_rs.win32.fixdrive
-_win32_fix_separators = _osutils_rs.win32.fix_separators
-_win32_abspath = _osutils_rs.win32.abspath
-
-
 def _win32_realpath(path):
     import ntpath
 
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
     return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
-
-
-_win32_getcwd = _osutils_rs.win32.getcwd
 
 
 def _win32_rename(old, new):
@@ -194,16 +362,6 @@ def _rename_wrap_exception(rename_func):
 # Default rename wraps os.rename()
 rename = _rename_wrap_exception(os.rename)
 
-# Default is to just use the python builtins, but these can be rebound on
-# particular platforms.
-abspath = _osutils_rs.abspath
-realpath = _osutils_rs.realpath
-normalizepath = _osutils_rs.normalizepath
-pathjoin = _osutils_rs.pathjoin
-normpath = _osutils_rs.normpath
-_get_home_dir = _osutils_rs.get_home_dir
-
-
 getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename
@@ -213,11 +371,6 @@ splitext = os.path.splitext
 # rmtree = shutil.rmtree
 lstat = os.lstat
 fstat = os.fstat
-
-_win32_normpath = _osutils_rs.win32.normpath
-_win32_getcwd = _osutils_rs.win32.getcwd
-
-getuser_unicode = _osutils_rs.get_user_name
 
 
 if sys.platform == "win32":
@@ -299,43 +452,6 @@ def get_terminal_encoding(trace=False):
     return output_encoding
 
 
-isdir = _osutils_rs.isdir
-is_inside = _osutils_rs.is_inside
-is_inside_any = _osutils_rs.is_inside_any
-is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
-pumpfile = _osutils_rs.pumpfile
-pump_string_file = _osutils_rs.pump_string_file
-
-
-file_iterator = _osutils_rs.file_iterator
-sha_file = _osutils_rs.sha_file
-size_sha_file = _osutils_rs.size_sha_file
-sha_file_by_name = _osutils_rs.sha_file_by_name
-sha_strings = _osutils_rs.sha_strings
-sha_string = _osutils_rs.sha_string
-compare_files = _osutils_rs.compare_files
-local_time_offset = _osutils_rs.local_time_offset
-format_date = _osutils_rs.format_date
-format_date_with_offset_in_original_timezone = (
-    _osutils_rs.format_date_with_offset_in_original_timezone
-)
-format_local_date = _osutils_rs.format_local_date
-compact_date = _osutils_rs.compact_date
-format_highres_date = _osutils_rs.format_highres_date
-unpack_highres_date = _osutils_rs.unpack_highres_date
-
-rand_chars = _osutils_rs.rand_chars
-
-# TODO: We could later have path objects that remember their list
-# decomposition (might be too tricksy though.)
-
-splitpath = _osutils_rs.splitpath
-joinpath = _osutils_rs.joinpath
-
-
-parent_directories = _osutils_rs.parent_directories
-
-
 _extension_load_failures = []
 
 
@@ -383,29 +499,6 @@ def report_extension_load_failures():
     # we no longer show the specific missing extensions here, because it makes
     # the message too long and scary - see
     # https://bugs.launchpad.net/bzr/+bug/430529
-
-
-import contextlib
-
-from ._osutils_rs import (  # noqa: F401
-    _accessible_normalized_filename,
-    _inaccessible_normalized_filename,
-    check_legal_path,
-    chunks_to_lines,
-    chunks_to_lines_iter,
-    delete_any,
-    get_host_name,
-    link_or_copy,
-    local_concurrency,
-    normalized_filename,
-    normalizes_filenames,
-    split_lines,
-)
-
-readlink = _osutils_rs.readlink
-contains_whitespace = _osutils_rs.contains_whitespace
-contains_linebreaks = _osutils_rs.contains_linebreaks
-relpath = _osutils_rs.relpath
 
 
 def _cicp_canonical_relpath(base, path):
@@ -642,15 +735,6 @@ def terminal_width():
     return None
 
 
-_terminal_size = _osutils_rs.terminal_size
-supports_executable = _osutils_rs.supports_executable
-supports_hardlinks = _osutils_rs.supports_hardlinks
-supports_symlinks = _osutils_rs.supports_symlinks
-supports_posix_readonly = _osutils_rs.supports_posix_readonly
-set_or_unset_env = _osutils_rs.set_or_unset_env
-IterableFile = _osutils_rs.IterableFile
-
-
 def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     """Yield data about all the directories in a tree.
 
@@ -826,11 +910,6 @@ class UnicodeDirReader(DirReader):
         return sorted(dirblock)
 
 
-copy_ownership_from_path = _osutils_rs.copy_ownership_from_path
-copy_tree = _osutils_rs.copy_tree
-get_user_encoding = _osutils_rs.get_user_encoding
-
-
 def get_diff_header_encoding():
     return get_terminal_encoding()
 
@@ -948,18 +1027,6 @@ def connect_socket(address):
     raise err
 
 
-dereference_path = _osutils_rs.dereference_path
-
-
-file_kind_from_stat_mode = _osutils_rs.kind_from_mode
-
-
-MIN_ABS_PATHLENGTH = _osutils_rs.MIN_ABS_PATHLENGTH
-
-
-getchar = _osutils_rs.getchar
-
-
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
     """A stream writer that doesn't decode str arguments."""
 
@@ -973,9 +1040,6 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
-
-
-available_backup_name = _osutils_rs.available_backup_name
 
 
 def set_fd_cloexec(fd):
@@ -992,10 +1056,6 @@ def set_fd_cloexec(fd):
         pass
 
 
-find_executable_on_path = _osutils_rs.find_executable_on_path
-
-
-is_local_pid_dead = _osutils_rs.is_local_pid_dead
 _maybe_ignored = ["EAGAIN", "EINTR", "ENOTSUP", "EOPNOTSUPP", "EACCES"]
 _fdatasync_ignored = [
     getattr(errno, name)
@@ -1026,7 +1086,4 @@ def fdatasync(fileno):
                 raise
 
 
-ensure_empty_directory_exists = _osutils_rs.ensure_empty_directory_exists
-read_mtab = _osutils_rs.read_mtab
-get_fs_type = _osutils_rs.get_fs_type
 perf_counter = time.perf_counter
