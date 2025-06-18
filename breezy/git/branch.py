@@ -43,7 +43,7 @@ from .. import repository as _mod_repository
 from ..foreign import ForeignBranch
 from ..revision import NULL_REVISION
 from ..tag import InterTags, TagConflict, Tags, TagSelector, TagUpdates
-from ..trace import is_quiet, mutter, warning
+from ..trace import is_quiet, warning
 from .errors import NoPushSupport
 from .mapping import decode_git_path
 from .push import remote_divergence
@@ -1327,6 +1327,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         )
         c = self.source.get_config_stack()
         fetch_tags = c.get("branch.fetch_tags")
+        # Default to True for local operations to match remote behavior
+        if fetch_tags is None:
+            fetch_tags = True
 
         if stop_revision is None:
             result = interrepo.fetch(
@@ -1383,7 +1386,6 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
-    mutter("updating refs. old refs: %r, new refs: %r", old_refs, new_refs)
     result.tag_updates = {}
     result.tag_conflicts = []
     ret = {}
@@ -1478,8 +1480,21 @@ class InterToGitBranch(branch.GenericInterBranch):
         main_ref = self.target.ref
         refs = {main_ref: (None, stop_revision)}
         if fetch_tags is None:
-            c = self.source.get_config_stack()
-            fetch_tags = c.get("branch.fetch_tags")
+            # First check branch-specific config
+            branch_config = self.source.get_config()
+            branch_val = branch_config.get_user_option("branch.fetch_tags")
+            if branch_val is not None:
+                # Convert string value to boolean using the standard converter
+                from .. import ui
+
+                fetch_tags = ui.bool_from_string(branch_val)
+            else:
+                # Fall back to config stack for global/default settings
+                c = self.source.get_config_stack()
+                fetch_tags = c.get("branch.fetch_tags")
+        # For local pushes, respect the breezy configuration default
+        if fetch_tags is None:
+            fetch_tags = True
         for name, revid in self.source.tags.get_tag_dict().items():
             if self.source.repository.has_revision(revid):
                 ref = tag_name_to_ref(name)
@@ -1494,6 +1509,12 @@ class InterToGitBranch(branch.GenericInterBranch):
     def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
+        # Default to True for local fetches to match remote behavior
+        if fetch_tags is None:
+            c = self.source.get_config_stack()
+            fetch_tags = c.get("branch.fetch_tags")
+            if fetch_tags is None:
+                fetch_tags = True
         ret = []
         if fetch_tags:
             for _k, v in self.source.tags.get_tag_dict().items():
