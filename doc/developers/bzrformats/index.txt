@@ -1,0 +1,56 @@
+Bazaar/Breezy Format Specifications
+===================================
+
+This directory contains documentation about the various data formats used by
+Bazaar/Breezy for storing and transmitting version control data.
+
+Contents
+--------
+
+.. toctree::
+   :maxdepth: 1
+
+   bundle-format4
+   bundles
+   container-format
+   dirstate
+   btree_index_prefetch
+   improved_chk_index
+   indices
+   inventory
+   packrepo
+   repository
+   repository-stream
+   groupcompress-design
+
+Overview
+--------
+
+These documents describe the on-disk and network formats used by Bazaar/Breezy:
+
+* **Bundle Formats**: Formats for transmitting revisions as bundles
+  
+  - :doc:`bundles` - Bundle facility design
+  - :doc:`bundle-format4` - Bundle format 4 and Merge Directive format 2
+
+* **Repository Formats**: Storage formats for revision data
+  
+  - :doc:`repository` - Repository services and pack-based repositories
+  - :doc:`packrepo` - KnitPack repository format
+  - :doc:`groupcompress-design` - Groupcompress format design
+  - :doc:`repository-stream` - Repository streaming format
+
+* **Working Tree Formats**: Formats for working tree metadata
+  
+  - :doc:`dirstate` - Dirstate format for working trees
+  - :doc:`inventory` - Inventory formats and serialization
+
+* **Index Formats**: Indexing structures for efficient data access
+  
+  - :doc:`indices` - Indexing facilities
+  - :doc:`btree_index_prefetch` - BTree index format and prefetching
+  - :doc:`improved_chk_index` - CHK optimized index format
+
+* **Container Format**: General-purpose container for streaming data
+  
+  - :doc:`container-format` - Container format specification

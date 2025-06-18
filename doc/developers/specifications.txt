@@ -8,19 +8,19 @@ Specifications
    api-versioning
    apport
    authentication-ring
-   bundles
-   container-format
-   groupcompress-design
-   indices
-   inventory
+   bzrformats/bundles
+   bzrformats/container-format
+   bzrformats/groupcompress-design
+   bzrformats/indices
+   bzrformats/inventory
    lca-merge
    network-protocol
    plugin-api
-   repository
-   repository-stream
+   bzrformats/repository
+   bzrformats/repository-stream
    case-insensitive-file-systems
    development-repo
-   packrepo
+   bzrformats/packrepo
    feature-flags
 
 
@@ -36,17 +36,17 @@ Specifications
 * `Authentication ring <authentication-ring.html>`_ |--| Configuring
   authentication.
 
-* `Bundles <bundles.html>`_ |--| All about bzr bundles.
+* `Bundles <bzrformats/bundles.html>`_ |--| All about bzr bundles.
 
-* `Container format <container-format.html>`_ |--| Notes on a container format
+* `Container format <bzrformats/container-format.html>`_ |--| Notes on a container format
   for streaming and storing Bazaar data.
 
-* `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
+* `Groupcompress <bzrformats/groupcompress-design.html>`_ |--| Notes on the compression
   technology used in CHK repositories.
 
-* `Indices <indices.html>`_ |--| The index facilities available within breezy.
+* `Indices <bzrformats/indices.html>`_ |--| The index facilities available within breezy.
 
-* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+* `Inventories <bzrformats/inventory.html>`_ |--| Tree shape abstraction.
 
 * `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
 
@@ -54,9 +54,9 @@ Specifications
 
 * `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
 
-* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+* `Repositories <bzrformats/repository.html>`_ |--| What repositories do and are used for.
 
-* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+* `Repository stream <bzrformats/repository-stream.html>`_ |--| Notes on streaming data
   for repositories (a layer above the container format).
 
 * `Bazaar and case-insensitive file systems <case-insensitive-file-systems.html>`_
@@ -68,7 +68,7 @@ Specifications
   Contains instructions for those implementing new formats, of course,
   but also for (bleeding-edge) end users of those formats.
 
-* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
+* `Knit pack repositories <bzrformats/packrepo.html>`_ |--| KnitPack repositories
   (new in Bazaar 0.92).
 
 * `Format feature flags <feature-flags.html>`_ |--| Allow extending

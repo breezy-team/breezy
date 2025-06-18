@@ -72,7 +72,7 @@ Plans
   Implementation strategy for Breezy Windows Shell Extensions, aka
   TortoiseBzr.
 
-* `CHK Optimized index <improved_chk_index.html>`_
+* `CHK Optimized index <bzrformats/improved_chk_index.html>`_
 
 Specifications
 ==============
@@ -85,18 +85,18 @@ Specifications
 * `Authentication ring <authentication-ring.html>`_ |--| Configuring
   authentication.
 
-* `Bundles <bundles.html>`_ |--| All about brz bundles.
+* `Bundles <bzrformats/bundles.html>`_ |--| All about brz bundles.
 
-* `Container format <container-format.html>`_ |--| Notes on a container format
+* `Container format <bzrformats/container-format.html>`_ |--| Notes on a container format
   for streaming and storing Breezy data.
 
-* `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
+* `Groupcompress <bzrformats/groupcompress-design.html>`_ |--| Notes on the compression
   technology used in CHK repositories.
 
-* `Indices <indices.html>`_ |--| The index facilities available within
+* `Indices <bzrformats/indices.html>`_ |--| The index facilities available within
   breezy.
 
-* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+* `Inventories <bzrformats/inventory.html>`_ |--| Tree shape abstraction.
 
 * `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
 
@@ -104,9 +104,9 @@ Specifications
 
 * `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
 
-* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+* `Repositories <bzrformats/repository.html>`_ |--| What repositories do and are used for.
 
-* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+* `Repository stream <bzrformats/repository-stream.html>`_ |--| Notes on streaming data
   for repositories (a layer above the container format).
 
 * `Integration Guide <integration.html>`_ |--| A guide to integrate breezy into
@@ -124,13 +124,13 @@ Specifications
 Data formats
 ============
 
-* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
+* `Knit pack repositories <bzrformats/packrepo.html>`_ |--| KnitPack repositories
   (new in Bazaar 0.92).
 
 Implementation notes
 ====================
 
-* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How brz decides
+* `BTree Index Prefetch <bzrformats/btree_index_prefetch.html>`_ |--| How brz decides
   to pre-read extra nodes in the btree index.
 
 * `Computing last_modified values <last-modified.html>`_ for inventory
@@ -144,7 +144,7 @@ Implementation notes
 Miscellaneous
 =============
 
-* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
+* `dirstate <bzrformats/dirstate.html>`_ |--| An observation re. the dirstate file
 
 * `"brz update" performance analysis <update.html>`_ |--| "brz update"
   performance analysis
