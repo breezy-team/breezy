@@ -1,0 +1,383 @@
+=============
+Weave Format
+=============
+
+This document provides a complete technical specification of the Weave file
+format used by Breezy (and formerly Bazaar) for versioned text storage. The
+specification is detailed enough to enable third-party implementations that
+are byte-for-byte compatible with Breezy's implementation.
+
+Overview
+========
+
+The Weave format is a versioned file storage format that interleaves multiple
+versions of text files. It was an early format used in Bazaar, now largely
+superseded by Knit and GroupCompress formats, but still supported for
+compatibility.
+
+Key characteristics:
+* Stores multiple versions of a text file in a single file
+* Uses insertion and deletion instructions to represent differences
+* Maintains complete line-level ancestry information
+* Supports merge conflict resolution through instruction sequences
+* Self-contained format with integrity checking
+
+File Structure
+==============
+
+A Weave file consists of four main sections in order:
+
+1. **Format Header** - Single line identifying the format version
+2. **Version Headers** - Metadata block for each stored version  
+3. **Weave Body** - Interleaved text content with control instructions
+4. **End Marker** - Marks the end of the weave content
+
+Format Header
+=============
+
+The file must begin with exactly this line::
+
+    # bzr weave file v5\n
+
+Details:
+* Fixed byte sequence: ``b"# bzr weave file v5\n"``
+* The newline is part of the header (``\n`` = ASCII 10)
+* Only format version 5 is currently supported
+* This line must be the first bytes in the file
+
+Version Headers
+===============
+
+After the format header, there is a series of version header blocks, one for
+each version stored in the weave. Each version header consists of exactly four
+lines followed by a blank line:
+
+Format::
+
+    i [parent_indexes]\n
+    1 <sha1_hash>\n  
+    n <version_name>\n
+    \n
+
+Line Descriptions
+-----------------
+
+**Line 1 - Parent Index Line**::
+
+    i [parent_indexes]\n
+
+* Starts with literal character ``i`` followed by space
+* Lists parent version indexes separated by spaces
+* For root versions (no parents): ``i\n`` (just ``i`` and newline)
+* Example: ``i 0 2 5\n`` means parents are versions at indexes 0, 2, and 5
+* Parent indexes must reference earlier versions only (no forward references)
+
+**Line 2 - SHA-1 Hash Line**::
+
+    1 <sha1_hash>\n
+
+* Starts with literal character ``1`` followed by space
+* Contains 40-character lowercase hexadecimal SHA-1 hash
+* SHA-1 is computed over the reconstructed text content of this version
+* SHA-1 calculation uses concatenated lines without separating newlines
+* Example: ``1 f572d396fae9206628714fb2ce00f72e94f2258f\n``
+
+**Line 3 - Version Name Line**::
+
+    n <version_name>\n
+
+* Starts with literal character ``n`` followed by space
+* Contains the version identifier (typically a revision ID)
+* Version name is treated as arbitrary bytes
+* Example: ``n revision-20051003-1\n``
+
+**Line 4 - Separator**::
+
+    \n
+
+* Blank line (just a newline character)
+* Separates this version header from the next or from the weave body
+
+Version Numbering
+-----------------
+
+Versions are numbered sequentially starting from 0 based on their order in the
+file. The first version header defines version 0, the second defines version 1,
+etc. These index numbers are used throughout the weave body to reference
+specific versions.
+
+Weave Body
+==========
+
+The weave body contains the actual text content interleaved with control
+instructions. It begins with a start marker and ends with an end marker.
+
+Body Structure::
+
+    w\n
+    [instructions and text lines]
+    W\n
+
+Start and End Markers
+---------------------
+
+* **Start marker**: ``w\n`` (lowercase w followed by newline)
+* **End marker**: ``W\n`` (uppercase W followed by newline)
+
+Control Instructions
+--------------------
+
+The weave body contains two types of control instructions:
+
+**Insertion Instructions**:
+* ``{ <version_index>\n`` - Begin insertion block for specified version
+* ``}\n`` - End insertion block (no version index)
+
+**Deletion Instructions**:
+* ``[ <version_index>\n`` - Begin deletion block for specified version  
+* ``] <version_index>\n`` - End deletion block for specified version
+
+Text Lines
+----------
+
+Between control instructions are the actual text lines, prefixed to indicate
+newline handling:
+
+* ``. <text>\n`` - Text line that ends with a newline (newline preserved)
+* ``, <text>\n`` - Text line that does not end with a newline
+
+**Important**: The prefix characters (``.`` and ``,``) are followed by exactly
+one space, then the text content, then the file's line terminator.
+
+Examples::
+
+    . hello world\n    # Represents the text "hello world\n"
+    , no newline\n     # Represents the text "no newline" (no \n at end)
+    , \n               # Represents an empty line ""
+
+Instruction Semantics
+=====================
+
+Nesting Rules
+-------------
+
+* Insertion blocks can be nested within other insertion or deletion blocks
+* Deletion blocks can be nested within other insertion or deletion blocks
+* All blocks must be properly nested (no overlapping)
+* End instructions must match their corresponding start instructions
+
+Version Reconstruction
+----------------------
+
+To reconstruct a specific version from the weave:
+
+1. Traverse the weave body sequentially
+2. Maintain a stack of active insertion/deletion contexts
+3. Include text lines only if:
+   * Inside an insertion block for the target version OR
+   * Inside an insertion block for an ancestor of the target version
+   * AND not inside any deletion block for the target version or its ancestors
+
+Ancestry Calculation
+--------------------
+
+A version V is an ancestor of version T if:
+* V == T, OR  
+* V is listed as a parent of T, OR
+* V is an ancestor of any parent of T
+
+Example Weave
+=============
+
+Here is a complete example of a weave file containing two versions::
+
+    # bzr weave file v5
+    i
+    1 f572d396fae9206628714fb2ce00f72e94f2258f
+    n version-1
+
+    i 0
+    1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef  
+    n version-2
+
+    w
+    { 0
+    . line one
+    . line two
+    }
+    { 1
+    . line three
+    }
+    W
+
+This weave represents:
+* **version-1** (index 0): Contains "line one\nline two\n"
+* **version-2** (index 1): Contains "line one\nline two\nline three\n"
+* version-2 has version-1 as its parent
+
+SHA-1 Calculation
+=================
+
+The SHA-1 hash for each version is calculated as follows:
+
+1. Reconstruct the complete text content for the version
+2. Split into lines preserving newline characters  
+3. Concatenate all lines without any separators
+4. Compute SHA-1 hash of the resulting byte sequence
+5. Format as 40-character lowercase hexadecimal string
+
+Example (Python-like pseudocode)::
+
+    lines = reconstruct_version_lines(version_index)
+    content = b''.join(lines)  # No separators between lines
+    sha1 = hashlib.sha1(content).hexdigest()
+
+Integrity Verification
+======================
+
+Weave files include several integrity mechanisms:
+
+Format Validation
+-----------------
+
+* Format header must match exactly: ``b"# bzr weave file v5\n"``
+* Version headers must follow the specified structure
+* Weave body must be properly bracketed with ``w\n`` and ``W\n``
+* All control instructions must be properly nested
+
+Content Validation  
+------------------
+
+* SHA-1 hashes must match reconstructed content
+* Parent references must be valid (refer to existing, earlier versions)
+* Version names should be unique within the weave
+
+Error Conditions
+================
+
+Implementations should detect and report these error conditions:
+
+Format Errors
+-------------
+
+* Invalid format header
+* Malformed version headers
+* Missing start/end markers for weave body
+* Improperly nested control instructions
+* Invalid version index references
+
+Content Errors
+--------------
+
+* SHA-1 mismatch when reconstructing version content
+* Parent index references that are out of range
+* Forward references to versions not yet defined
+
+File I/O Guidelines
+===================
+
+Reading Algorithm
+-----------------
+
+1. Read and verify format header
+2. Parse version headers sequentially until ``w\n`` line is encountered
+3. Build internal structures for parents, SHA-1s, and version names
+4. Parse weave body, handling control instructions and text lines
+5. Verify that weave ends with ``W\n``
+6. Optionally verify SHA-1 hashes for all versions
+
+Writing Algorithm
+-----------------
+
+1. Write format header: ``# bzr weave file v5\n``
+2. For each version, write the 4-line header block plus blank line
+3. Write start marker: ``w\n``
+4. Write weave body with control instructions and text lines
+5. Write end marker: ``W\n``
+
+Performance Considerations
+==========================
+
+Memory Usage
+------------
+
+* Weave files are typically loaded entirely into memory
+* Large weaves can consume significant memory
+* Consider streaming parsing for very large files
+
+Access Patterns
+---------------
+
+* Random access to specific versions requires full weave parsing
+* Sequential access to multiple versions can reuse parsed structure
+* Annotation queries benefit from cached ancestry calculations
+
+Limitations and Considerations
+==============================
+
+Format Limitations
+------------------
+
+* No explicit support for binary content
+* All content treated as line-oriented text
+* No compression of repeated content
+* Can become inefficient for files with many versions
+
+Compatibility Notes
+-------------------
+
+* Only format version 5 is widely supported
+* Earlier format versions are not documented here
+* Some implementations may support format detection/conversion
+
+Character Encoding
+------------------
+
+* All content handled as raw bytes
+* No explicit character encoding support
+* Applications must handle encoding at a higher level
+
+Implementation Notes
+====================
+
+Data Structures
+---------------
+
+Typical in-memory representation includes:
+
+* List of parent sets for each version
+* List of SHA-1 hashes for each version
+* List of version names/identifiers  
+* Mapping from version names to indexes
+* Parsed weave instruction sequence
+
+Optimization Opportunities
+--------------------------
+
+* Cache reconstructed version content
+* Build ancestry graphs for efficient queries
+* Use lazy parsing for large weaves
+* Implement streaming interfaces where possible
+
+Testing Compatibility
+=====================
+
+To verify implementation compatibility:
+
+1. Test reading weaves created by Breezy/Bazaar
+2. Test writing weaves that Breezy/Bazaar can read
+3. Verify SHA-1 calculation matches exactly
+4. Test reconstruction of all versions in test weaves
+5. Test with weaves containing complex merge scenarios
+
+Reference Implementation
+========================
+
+The authoritative implementation is in the Breezy codebase:
+
+* ``breezy/bzr/weave.py`` - Main Weave class implementation
+* ``breezy/bzr/weavefile.py`` - File format reading/writing
+* ``breezy/bzr/versionedfile.py`` - Base classes and interfaces
+
+This specification is based on analysis of Breezy version 4.0+ and should be
+compatible with all standard Weave files created by Bazaar and Breezy.
