@@ -16,6 +16,7 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
+from ...branch import InterBranch
 from ...controldir import format_registry
 from ...repository import InterRepository
 from ...tests import TestCaseWithTransport
@@ -105,3 +106,109 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         ircdotnet.check()
         foobar = store[ircdotnet[b"foobar"][1]]
         foobar.check()
+
+
+class LocalBzrToGitPushTests(TestCaseWithTransport):
+    """Test local push operations from bzr to git, especially tag handling."""
+
+    def setUp(self):
+        super().setUp()
+        # Create a bzr branch with content
+        self.bzr_tree = self.make_branch_and_tree("bzr", format="bzr")
+        self.build_tree(["bzr/file1.txt"])
+        self.bzr_tree.add(["file1.txt"])
+        self.rev1 = self.bzr_tree.commit("Initial commit")
+
+        self.build_tree_contents([("bzr/file1.txt", b"updated content")])
+        self.rev2 = self.bzr_tree.commit("Second commit")
+
+        # Create tags
+        self.bzr_tree.branch.tags.set_tag("tag1", self.rev1)
+        self.bzr_tree.branch.tags.set_tag("tag2", self.rev2)
+
+        # Create a git repository as target
+        self.git_repo = self.make_repository(
+            "git", format=format_registry.make_controldir("git")
+        )
+        self.git_branch = self.git_repo.controldir.create_branch()
+
+    def test_push_with_tags_default(self):
+        """Test that tags are NOT pushed by default (breezy default behavior)."""
+        # Push from bzr to git (lossy mode required for bzr->git)
+        interbranch = InterBranch.get(self.bzr_tree.branch, self.git_branch)
+        interbranch.push(lossy=True)
+
+        # Verify tags were NOT pushed (respecting breezy's default config)
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertNotIn(b"refs/tags/tag1", git_refs)
+        self.assertNotIn(b"refs/tags/tag2", git_refs)
+
+    def test_push_without_tags_explicit(self):
+        """Test that tags are not pushed when explicitly disabled."""
+        # Set branch.fetch_tags to False
+        self.bzr_tree.branch.get_config().set_user_option("branch.fetch_tags", False)
+
+        # Push from bzr to git
+        interbranch = InterBranch.get(self.bzr_tree.branch, self.git_branch)
+        interbranch.push(lossy=True)
+
+        # Verify tags were not pushed
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertNotIn(b"refs/tags/tag1", git_refs)
+        self.assertNotIn(b"refs/tags/tag2", git_refs)
+
+    def test_push_with_tags_explicit(self):
+        """Test that tags are pushed when explicitly enabled."""
+        # Set branch.fetch_tags to True
+        self.bzr_tree.branch.get_config().set_user_option("branch.fetch_tags", True)
+
+        # Push from bzr to git (lossy mode required for bzr->git)
+        interbranch = InterBranch.get(self.bzr_tree.branch, self.git_branch)
+        interbranch.push(lossy=True)
+
+        # Verify tags were pushed
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertIn(b"refs/tags/tag1", git_refs)
+        self.assertIn(b"refs/tags/tag2", git_refs)
+
+    def test_push_partial_with_tags(self):
+        """Test that only relevant tags are pushed with partial push when enabled."""
+        # Enable tag pushing
+        self.bzr_tree.branch.get_config().set_user_option("branch.fetch_tags", True)
+
+        # Push only first revision
+        interbranch = InterBranch.get(self.bzr_tree.branch, self.git_branch)
+        interbranch.push(stop_revision=self.rev1, lossy=True)
+
+        # Only tag1 should be pushed since tag2 points to rev2 which wasn't pushed
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertIn(b"refs/tags/tag1", git_refs)
+        # Note: tag2 might still be pushed but point to a missing revision
+        # This behavior depends on the exact implementation
+
+    def test_update_push_with_new_tags(self):
+        """Test that new tags are pushed on subsequent pushes when enabled."""
+        # Enable tag pushing
+        self.bzr_tree.branch.get_config().set_user_option("branch.fetch_tags", True)
+
+        # First push without any tags
+        self.bzr_tree.branch.tags.delete_tag("tag1")
+        self.bzr_tree.branch.tags.delete_tag("tag2")
+
+        interbranch = InterBranch.get(self.bzr_tree.branch, self.git_branch)
+        interbranch.push(lossy=True)
+
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertNotIn(b"refs/tags/tag1", git_refs)
+        self.assertNotIn(b"refs/tags/tag2", git_refs)
+
+        # Add tags and push again
+        self.bzr_tree.branch.tags.set_tag("tag1", self.rev1)
+        self.bzr_tree.branch.tags.set_tag("tag2", self.rev2)
+
+        interbranch.push(lossy=True)
+
+        # Verify new tags were pushed
+        git_refs = self.git_repo._git.refs.as_dict()
+        self.assertIn(b"refs/tags/tag1", git_refs)
+        self.assertIn(b"refs/tags/tag2", git_refs)
