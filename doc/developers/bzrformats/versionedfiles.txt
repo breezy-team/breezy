@@ -207,7 +207,7 @@ Use cases:
 
 For complete technical details of the Knit file format, including
 byte-level specifications for third-party implementations, see
-``doc/developers/knit.txt``.
+``knit.txt``.
 
 Weave Format
 ------------
@@ -245,7 +245,7 @@ Use cases:
 
 For complete technical details of the GroupCompress file format, including
 byte-level specifications for third-party implementations, see
-``doc/developers/groupcompress.txt``.
+``groupcompress.txt``.
 
 Fallback and Stacking
 =====================
