@@ -2334,7 +2334,7 @@ class DirState:
         """Iterate over all the entries in the dirstate.
 
         Each yelt item is an entry in the standard format described in the
-        docstring of breezy.dirstate.
+        docstring of bzrformats.dirstate.
         """
         self._read_dirblocks_if_needed()
         for directory in self._dirblocks:

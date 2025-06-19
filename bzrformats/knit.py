@@ -63,7 +63,6 @@ from breezy import transport as _mod_transport
 from breezy.bzr import pack_repo
 from breezy.bzr.annotate import VersionedFileAnnotator
 from breezy.errors import InvalidRevisionId, RevisionNotPresent
-from breezy.i18n import gettext
 from breezy.osutils import sha_string, sha_strings
 from breezy.transport import NoSuchFile
 from bzrformats import pack
@@ -1919,7 +1918,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
                 for key_idx, (key, data, _sha_value) in records_iter:
-                    pb.update(gettext("Walking content"), key_idx, total)
+                    pb.update("Walking content", key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
                         # fulltext
@@ -1955,7 +1954,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        pb.update(gettext("Walking content"), total, total)
+        pb.update("Walking content", total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
         """Generate a line delta from delta_seq and new_content."""
@@ -3544,7 +3543,7 @@ class _KnitAnnotator(VersionedFileAnnotator):
                     self._extract_texts(records)
                 ):
                     if pb is not None:
-                        pb.update(gettext("annotating"), idx, len(records))
+                        pb.update("annotating", idx, len(records))
                     yield sub_key, text, num_lines
                 for sub_key in ann_keys:
                     text = self._text_cache[sub_key]

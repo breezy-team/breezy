@@ -21,7 +21,6 @@ import time
 import zlib
 
 from breezy import debug, errors
-from breezy.i18n import gettext
 from breezy.lru_cache import LRUSizeCache
 
 from . import osutils
@@ -1779,10 +1778,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if random_id:
                 if record.key in inserted_keys:
                     logger.info(
-                        gettext(
-                            "Insert claimed random_id=True,"
-                            " but then inserted %r two times"
-                        ),
+                        "Insert claimed random_id=True, but then inserted %r two times",
                         record.key,
                     )
                     continue
