@@ -1,3 +1,4 @@
+#![feature(slice_split_once)]
 #[cfg(feature = "pyo3")]
 use pyo3::{prelude::*, types::PyBytes};
 use std::fmt::{Debug, Error, Formatter};

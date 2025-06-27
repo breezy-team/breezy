@@ -526,6 +526,7 @@ fn _bzr_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     let groupcompressm = groupcompress::_groupcompress_rs(py)?;
     m.add_submodule(&groupcompressm)?;
 
+    // Add the chk_map module
     let chk_mapm = chk_map::_chk_map_rs(py)?;
     m.add_submodule(&chk_mapm)?;
 

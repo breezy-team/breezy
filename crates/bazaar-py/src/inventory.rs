@@ -416,7 +416,7 @@ impl InventoryFile {
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
+        common_ie_check(slf.into_py(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         let (file_id, revision, text_sha1, text_size) = match spr.0 {
             Entry::File {
@@ -534,7 +534,7 @@ impl InventoryDirectory {
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
+        common_ie_check(slf.into_py(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         // In non rich root repositories we do not expect a file graph for the
         // root.
@@ -669,7 +669,7 @@ impl InventoryLink {
         inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
-        common_ie_check(slf.to_object(py), &spr.0, py, &checker, &rev_id, inv)?;
+        common_ie_check(slf.into_py(py), &spr.0, py, &checker, &rev_id, inv)?;
 
         if spr.0.symlink_target().is_none() {
             let report_items = checker.getattr(py, "_report_items")?;
