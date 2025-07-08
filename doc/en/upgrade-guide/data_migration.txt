@@ -215,3 +215,22 @@ with::
 In contrast, the second approach sets up the parent branch correctly.
 However, it isn't ideal if you're not ready to include all the latest
 revisions from trunk into that branch yet.
+
+
+Finding obsolete branches
+-------------------------
+
+Over time, most projects accumulate branches that are no longer needed - old
+feature branches that have been merged, experimental branches that were 
+abandoned, etc. Before migrating, it's a good time to identify and remove these
+obsolete branches to reduce the amount of data that needs to be converted.
+
+Some tips for finding obsolete branches:
+
+* Look for branches that haven't been committed to in a long time
+* Check if feature branches have already been merged to trunk
+* Review branches from former contributors who are no longer active
+* Examine any "experimental" or "test" branches
+
+You can use ``brz info`` and ``brz log`` to examine branches and determine
+their status.

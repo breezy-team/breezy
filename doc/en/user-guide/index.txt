@@ -113,7 +113,6 @@ A brief tour of some popular plugins
 .. toctree::
    :maxdepth: 1
 
-   brztools_plugin
    svn_plugin
 
 
