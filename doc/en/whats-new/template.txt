@@ -22,5 +22,7 @@ For a summary of changes made in earlier releases, see:
 * :doc:`whats-new-in-2.1`
 * :doc:`whats-new-in-2.2`
 * :doc:`whats-new-in-2.3`
-<intermediate series here>
+
+  <intermediate series here>
+
 * :doc:`whats-new-in-x.(y-1)`
