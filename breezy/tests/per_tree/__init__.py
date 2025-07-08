@@ -401,9 +401,9 @@ def load_tests(loader, standard_tests, pattern):
         "tree",
         "walkdirs",
     ]
-    submod_tests = loader.loadTestsFromModuleNames(
-        [__name__ + ".test_" + name for name in per_tree_mod_names]
-    )
+    submod_tests = loader.suiteClass()
+    for name in per_tree_mod_names:
+        submod_tests.addTest(loader.loadTestsFromName(__name__ + ".test_" + name))
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created

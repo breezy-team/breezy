@@ -232,7 +232,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by daughter classes
     _conflict_type: type[conflicts.Conflict]
-    _assert_conflict: Callable[[Any, Any, Any], Any]
+    _assert_conflict: Callable[[Any, Any], Any]
 
     # Set by load_tests
     _base_actions = None

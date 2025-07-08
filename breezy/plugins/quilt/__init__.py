@@ -212,5 +212,5 @@ option_registry.register(
 
 
 def load_tests(loader, basic_tests, pattern):
-    basic_tests.addTest(loader.loadTestsFromModuleNames([__name__ + ".tests"]))
+    basic_tests.addTest(loader.loadTestsFromName(__name__ + ".tests"))
     return basic_tests
