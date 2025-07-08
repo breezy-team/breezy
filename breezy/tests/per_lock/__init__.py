@@ -41,12 +41,12 @@ def make_scenarios():
 
 
 def load_tests(loader, standard_tests, pattern):
-    submod_tests = loader.loadTestsFromModuleNames(
-        [
-            "breezy.tests.per_lock.test_lock",
-            "breezy.tests.per_lock.test_temporary_write_lock",
-        ]
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in [
+        "breezy.tests.per_lock.test_lock",
+        "breezy.tests.per_lock.test_temporary_write_lock",
+    ]:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     scenarios = make_scenarios()
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios, standard_tests)

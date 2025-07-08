@@ -54,9 +54,10 @@ def load_tests(loader, basic_tests, pattern):
         ),
     ]
     # add the tests for the sub modules
-    return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(modules_to_test), scenarios, basic_tests
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in modules_to_test:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
+    return tests.multiply_tests(submod_tests, scenarios, basic_tests)
 
 
 class TestCaseWithInventory(tests.TestCaseWithMemoryTransport):

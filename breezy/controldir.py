@@ -1128,7 +1128,11 @@ class ControlComponentFormatRegistry(
 
     def _get_all_lazy(self):
         """Return getters for all formats, even those not usable in metadirs."""
-        result = [self._dict[name].get_obj for name in self.keys()]
+        # For Rust-based registry, create getters for each format
+        result = []
+        for name in self.keys():
+            # Create a getter function that returns the format
+            result.append(lambda n=name: self.get(n))
         result.extend(self._get_extra())
         return result
 

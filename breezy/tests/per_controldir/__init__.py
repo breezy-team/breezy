@@ -81,7 +81,9 @@ def load_tests(loader, standard_tests, pattern):
         "breezy.tests.per_controldir.test_format",
         "breezy.tests.per_controldir.test_push",
     ]
-    submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
+    submod_tests = loader.suiteClass()
+    for module_name in test_per_controldir:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     formats = ControlDirFormat.known_formats()
     scenarios = make_scenarios(
         default_transport,

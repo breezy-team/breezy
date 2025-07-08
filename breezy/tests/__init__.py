@@ -4315,10 +4315,11 @@ def test_suite(keep_only=None, starting_with=None):
 
     suite = loader.suiteClass()
 
-    # modules building their suite with loadTestsFromModuleNames
-    suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
+    # modules building their suite with loadTestsFromName
+    for module_name in _test_suite_testmod_names():
+        suite.addTest(loader.loadTestsFromName(module_name))
 
-    suite.addTest(loader.loadTestsFromModuleNames(["breezy.doc"]))
+    suite.addTest(loader.loadTestsFromName("breezy.doc"))
 
     for mod in _test_suite_modules_to_doctest():
         if not interesting_module(mod):

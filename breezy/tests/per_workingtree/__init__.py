@@ -168,8 +168,11 @@ def load_tests(loader, standard_tests, pattern):
     scenarios = wt_scenarios()
 
     # add the tests for the sub modules
+    submod_tests = loader.suiteClass()
+    for module_name in test_workingtree_implementations:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(test_workingtree_implementations),
+        submod_tests,
         scenarios,
         standard_tests,
     )

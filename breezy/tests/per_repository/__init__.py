@@ -135,8 +135,8 @@ def load_tests(loader, standard_tests, pattern):
         "test_write_group",
     ]
     # Parameterize per_repository test modules by format.
-    submod_tests = loader.loadTestsFromModuleNames(
-        [prefix + module_name for module_name in test_repository_modules]
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in test_repository_modules:
+        submod_tests.addTest(loader.loadTestsFromName(prefix + module_name))
     format_scenarios = all_repository_format_scenarios()
     return multiply_tests(submod_tests, format_scenarios, standard_tests)

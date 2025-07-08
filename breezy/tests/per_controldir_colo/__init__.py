@@ -72,11 +72,11 @@ def load_tests(loader, standard_tests, pattern):
     )
 
     result = loader.suiteClass()
-    supported_tests = loader.loadTestsFromModuleNames(
-        ["breezy.tests.per_controldir_colo.test_supported"]
+    supported_tests = loader.loadTestsFromName(
+        "breezy.tests.per_controldir_colo.test_supported"
     )
-    unsupported_tests = loader.loadTestsFromModuleNames(
-        ["breezy.tests.per_controldir_colo.test_unsupported"]
+    unsupported_tests = loader.loadTestsFromName(
+        "breezy.tests.per_controldir_colo.test_unsupported"
     )
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)
