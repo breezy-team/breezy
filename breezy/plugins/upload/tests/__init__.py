@@ -24,7 +24,6 @@ def load_tests(loader, basic_tests, pattern):
         "test_auto_upload_hook",
         "test_upload",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames([f"{__name__}.{tmn}" for tmn in testmod_names])
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

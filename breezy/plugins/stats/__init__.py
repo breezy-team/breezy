@@ -39,5 +39,6 @@ def load_tests(loader, basic_tests, pattern):
             "test_stats",
         ]
     ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    for module_name in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(module_name))
     return basic_tests

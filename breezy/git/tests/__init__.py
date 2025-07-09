@@ -234,9 +234,6 @@ def load_tests(loader, basic_tests, pattern):
     ]
 
     # add the tests for the sub modules
-    suite.addTests(
-        loader.loadTestsFromModuleNames(
-            [prefix + module_name for module_name in testmod_names]
-        )
-    )
+    for module_name in testmod_names:
+        suite.addTest(loader.loadTestsFromName(prefix + module_name))
     return suite

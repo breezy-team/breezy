@@ -213,12 +213,12 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
 
 def load_tests(loader, standard_tests, pattern):
-    submod_tests = loader.loadTestsFromModuleNames(
-        [
-            "breezy.tests.per_interrepository.test_fetch",
-            "breezy.tests.per_interrepository.test_interrepository",
-        ]
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in [
+        "breezy.tests.per_interrepository.test_fetch",
+        "breezy.tests.per_interrepository.test_interrepository",
+    ]:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     scenarios = make_scenarios(
         default_transport,
         # None here will cause a readonly decorator to be created
