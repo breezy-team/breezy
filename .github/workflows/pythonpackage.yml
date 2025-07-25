@@ -38,7 +38,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
-          python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/dulwich/dulwich
+          python -m pip install -U pip coverage codecov cython testscenarios git+https://github.com/jelmer/dulwich typing-extensions
           python -m pip install ".[dev,paramiko,doc,launchpad,git,fastimport]"
       - name: Install dependencies (linux/pip)
         run: |
