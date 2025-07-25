@@ -265,7 +265,7 @@ class ConfigObj(configobj.ConfigObj):
             return configobj.tdquot
 
     def get_bool(self, section, key) -> bool:
-        return cast(bool, self[section].as_bool(key))
+        return cast("bool", self[section].as_bool(key))
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.

@@ -235,7 +235,7 @@ class Registry(Generic[K, V]):
         :raises AttributeError: If registered lazily, and the module does not
             contain the registered member.
         """
-        return cast(V, self._dict[self._get_key_or_default(key)].get_obj())
+        return cast("V", self._dict[self._get_key_or_default(key)].get_obj())
 
     def _get_module(self, key):
         """Return the module the object will be or was loaded from.

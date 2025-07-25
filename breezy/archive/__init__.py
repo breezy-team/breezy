@@ -76,7 +76,7 @@ def create_archive(
     except KeyError as exc:
         raise errors.NoSuchExportFormat(format) from exc
     return cast(
-        Iterator[bytes],
+        "Iterator[bytes]",
         archive_fn(
             tree,
             name,

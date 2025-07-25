@@ -1368,7 +1368,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """
         if parent_texts is None:
             parent_texts = {}
-        cached_version = parent_texts.get(key, None)
+        cached_version = parent_texts.get(key)
         if cached_version is not None:
             # Ensure the cache dict is valid.
             if not self.get_parent_map([key]):
