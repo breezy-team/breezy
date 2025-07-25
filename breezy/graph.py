@@ -905,8 +905,7 @@ class Graph:
                 if ancestor in candidate_heads:
                     candidate_heads.remove(ancestor)
                     del searchers[ancestor]
-                    if ancestor in active_searchers:
-                        del active_searchers[ancestor]
+                    active_searchers.pop(ancestor, None)
                 # it may meet up with a known common node
                 if ancestor in common_walker.seen:
                     # some searcher has encountered our known common nodes:

@@ -336,8 +336,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
 
     # Remove items from the map that already exist
     for revid in renames:
-        if revid in replace_map:
-            del replace_map[revid]
+        replace_map.pop(revid, None)
 
     return replace_map
 
@@ -583,10 +582,8 @@ class WorkingTreeRevisionRewriter:
         else:
             if oldrev.committer not in authors:
                 authors.append(oldrev.committer)
-        if "author" in revprops:
-            del revprops["author"]
-        if "authors" in revprops:
-            del revprops["authors"]
+        revprops.pop("author", None)
+        revprops.pop("authors", None)
         self.wt.commit(
             message=oldrev.message,
             timestamp=oldrev.timestamp,
