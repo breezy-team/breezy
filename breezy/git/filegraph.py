@@ -40,6 +40,13 @@ class GitFileLastChangeScanner:
         store = self.store
         while True:
             commit = store[commit_id]
+            if path == b"":
+                # For the root directory, use the tree itself
+                # TODO: dulwich >= 0.24.0 supports passing b"" to tree_lookup_path()
+                # This workaround can be removed when the minimum dulwich version is >= 0.24.0
+                target_mode = stat.S_IFDIR
+                target_sha = commit.tree
+                break
             try:
                 target_mode, target_sha = tree_lookup_path(
                     store.__getitem__, commit.tree, path
@@ -52,8 +59,6 @@ class GitFileLastChangeScanner:
                 path = posixpath.relpath(path, e.path)
             else:
                 break
-        if path == b"":
-            target_mode = stat.S_IFDIR
         if target_mode is None:
             raise AssertionError(f"sha {target_sha!r} for {path!r} in {commit_id!r}")
         while True:
@@ -61,15 +66,20 @@ class GitFileLastChangeScanner:
             for parent_id in commit.parents:
                 try:
                     parent_commit = store[parent_id]
-                    mode, sha = tree_lookup_path(
-                        store.__getitem__, parent_commit.tree, path
-                    )
+                    if path == b"":
+                        # For the root directory, use the tree itself
+                        # TODO: dulwich >= 0.24.0 supports passing b"" to tree_lookup_path()
+                        # This workaround can be removed when the minimum dulwich version is >= 0.24.0
+                        mode = stat.S_IFDIR
+                        sha = parent_commit.tree
+                    else:
+                        mode, sha = tree_lookup_path(
+                            store.__getitem__, parent_commit.tree, path
+                        )
                 except (KeyError, NotTreeError):
                     continue
                 else:
                     parent_commits.append(parent_commit)
-                if path == b"":
-                    mode = stat.S_IFDIR
                 # Candidate found iff, mode or text changed,
                 # or is a directory that didn't previously exist.
                 if mode != target_mode or (

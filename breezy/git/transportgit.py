@@ -731,6 +731,13 @@ class TransportObjectStore(PackBasedObjectStore):
         path = osutils.joinpath(self._split_loose_object(sha))
         self.transport.delete(urlutils.quote(path))
 
+    def delete_loose_object(self, sha):
+        """Delete a loose object.
+
+        This method is called by dulwich's pack_loose_objects method.
+        """
+        self._remove_loose_object(sha)
+
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
