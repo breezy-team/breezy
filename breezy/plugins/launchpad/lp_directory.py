@@ -18,7 +18,7 @@
 
 from urllib.parse import urlsplit
 
-from ... import debug, errors, trace, transport
+from ... import debug, errors, trace, transport, ui
 from ...urlutils import InvalidURL, join, split
 from .account import get_lp_login
 from .uris import LPNET_SERVICE_ROOT
@@ -92,6 +92,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
         path, subpath = split(path)
         subpaths.insert(0, subpath)
     if lp_branch:
+        ui.ui_factory.show_user_warning("launchpad_bazaar_deprecation")
         return {
             "urls": [
                 join(lp_branch.composePublicURL(scheme="bzr+ssh"), *subpaths),
