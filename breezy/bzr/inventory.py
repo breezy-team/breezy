@@ -2178,7 +2178,7 @@ class CHKInventory(CommonInventory):
                 self._fileid_to_entry_cache[file_id] = ie
             yield ie
 
-    def _preload_cache(self):
+    def _preload_cache(self) -> None:
         """Make sure all file-ids are in _fileid_to_entry_cache."""
         if self._fully_cached:
             return  # No need to do it again
@@ -2204,7 +2204,6 @@ class CHKInventory(CommonInventory):
                 continue
             parent_id, basename = key
             ie = cache[child_file_id]
-            parent_ie: InventoryEntry
             if parent_id == last_parent_id:
                 if last_parent_ie is None:
                     raise AssertionError("last_parent_ie should not be None")
@@ -2217,6 +2216,10 @@ class CHKInventory(CommonInventory):
                     " An entry in the parent_id_basename_to_file_id map"
                     " has parent_id {{{}}} but the kind of that object"
                     ' is {!r} not "directory"'.format(parent_id, parent_ie.kind)
+                )
+            if not isinstance(parent_ie, CHKInventoryDirectory):
+                raise TypeError(
+                    "Expected a CHKInventoryDirectory, got {!r}".format(parent_ie)
                 )
             if parent_ie._children is None:
                 parent_ie._children = {}
