@@ -84,6 +84,6 @@ jobs:
         if: "matrix.os == 'windows-latest'"
       - name: Run mypy
         run: |
-          python -m pip install mypy types-PyYAML types-paramiko types-setuptools
+          python -m pip install mypy types-PyYAML types-paramiko types-setuptools typing-extensions
           python -m mypy breezy
         if: "matrix.python-version != 'pypy3'"

@@ -10,6 +10,11 @@ brz 3.3.13
 
 :3.3.13: UNRELEASED
 
+* Add warning when accessing Bazaar branches on Launchpad, as Launchpad
+  is phasing out Bazaar code hosting. The warning can be suppressed by
+  adding ``launchpad_bazaar_deprecation`` to the ``suppress_warnings``
+  configuration option. (Jelmer Vernooĳ)
+
 brz 3.3.12
 ##########
 
