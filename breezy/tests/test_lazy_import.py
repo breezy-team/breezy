@@ -473,6 +473,10 @@ class TestScopeReplacer(TestCase):
         self.assertIn("replace itself", e.msg)
         self.assertEqual([("__call__", (), {}), "factory"], actions)
 
+        # Clean up the global namespace to avoid affecting test discovery
+        if "test_obj7" in globals():
+            del globals()["test_obj7"]
+
 
 class ImportReplacerHelper(TestCaseInTempDir):
     """Test the ability to have a lazily imported module or object."""

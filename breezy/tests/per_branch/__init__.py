@@ -189,7 +189,9 @@ def load_tests(loader, standard_tests, pattern):
         "uncommit",
         "update",
     ]
-    sub_tests = loader.loadTestsFromModuleNames(
-        ["breezy.tests.per_branch.test_" + name for name in per_branch_mod_names]
-    )
+    sub_tests = loader.suiteClass()
+    for name in per_branch_mod_names:
+        sub_tests.addTest(
+            loader.loadTestsFromName("breezy.tests.per_branch.test_" + name)
+        )
     return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

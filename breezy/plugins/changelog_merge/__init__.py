@@ -81,7 +81,6 @@ def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames([f"{__name__}.{tmn}" for tmn in testmod_names])
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

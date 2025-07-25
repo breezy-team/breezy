@@ -127,7 +127,8 @@ def load_tests(loader, standard_tests, pattern):
         "breezy.tests.per_repository_reference.test_unlock",
     ]
     # Parameterize per_repository_reference test modules by format.
-    standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
+    for module_name in module_list:
+        standard_tests.addTests(loader.loadTestsFromName(module_name))
     return multiply_tests(
         standard_tests, external_reference_test_scenarios(), loader.suiteClass()
     )

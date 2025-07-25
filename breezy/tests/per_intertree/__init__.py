@@ -124,13 +124,13 @@ def mutable_trees_to_revision_trees(test_case, source, target):
 
 def load_tests(loader, standard_tests, pattern):
     default_tree_format = WorkingTreeFormat3()
-    submod_tests = loader.loadTestsFromModuleNames(
-        [
-            "breezy.tests.per_intertree.test_compare",
-            "breezy.tests.per_intertree.test_file_content_matches",
-            "breezy.tests.per_intertree.test_find_path",
-        ]
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in [
+        "breezy.tests.per_intertree.test_compare",
+        "breezy.tests.per_intertree.test_file_content_matches",
+        "breezy.tests.per_intertree.test_find_path",
+    ]:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.
         (
