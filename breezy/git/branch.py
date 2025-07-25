@@ -1493,6 +1493,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             if branch_val is not None:
                 # Convert string value to boolean using the standard converter
                 from .. import ui
+
                 fetch_tags = ui.bool_from_string(branch_val)
             else:
                 # Fall back to config stack for global/default settings

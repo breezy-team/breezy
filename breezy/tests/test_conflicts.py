@@ -232,7 +232,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by daughter classes
     _conflict_type: type[conflicts.Conflict]
-    _assert_conflict: Callable[[Any, Any, Any], Any]
+    _assert_conflict: Callable[[Any, Any], Any]
 
     # Set by load_tests
     _base_actions = None
@@ -773,7 +773,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 class TestResolvePathConflictBefore531967(TestResolvePathConflict):
     """Same as TestResolvePathConflict but a specific conflict object."""
 
-    def assertPathConflict(self, c):
+    def assertPathConflict(self, wt, c):
         # We create a conflict object as it was created before the fix and
         # inject it into the working tree, the test will exercise the
         # compatibility code.
