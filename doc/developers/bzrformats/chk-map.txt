@@ -1,0 +1,293 @@
+========================
+CHK Map Implementation
+========================
+
+CHK (Content Hash Key) Maps are persistent dictionary data structures that store 
+key-value mappings in a CHK store using a trie-based approach. This document 
+describes the file format and algorithms used in Breezy's CHK map implementation.
+
+Overview
+========
+
+CHKMap implements a dict from tuple_of_strings->string by using a trie with 
+internal nodes of 8-bit fan out. The key tuples are mapped to strings by joining 
+them with \x00, and \x00 padding shorter keys out to the length of the longest key.
+
+The implementation consists of two main node types:
+
+1. **LeafNode**: Contains actual key-value pairs
+2. **InternalNode**: Contains references to other nodes (leaf or internal)
+
+File Format
+===========
+
+CHK maps use two distinct file formats for the two node types.
+
+LeafNode Format
+---------------
+
+LeafNodes store actual key-value data and have the following serialized format::
+
+    chkleaf:
+    <maximum_size>
+    <key_width>
+    <length>
+    <common_prefix>
+    <key_suffix_1>\x00<num_value_lines>
+    <value_line_1>
+    <value_line_2>
+    ...
+    <key_suffix_2>\x00<num_value_lines>
+    <value_line_1>
+    ...
+
+Where:
+- ``maximum_size``: The size threshold for splitting nodes (0 for unlimited)
+- ``key_width``: Number of elements in each key tuple
+- ``length``: Number of key-value pairs in this node
+- ``common_prefix``: Common prefix shared by all serialized keys in this node
+- ``key_suffix_N``: The part of the serialized key after removing common_prefix
+- ``num_value_lines``: Number of lines the value spans (for multi-line values)
+- ``value_line_N``: Lines of the value content
+
+Example LeafNode::
+
+    chkleaf:
+    100
+    1
+    2
+    foo\x00
+    bar\x001
+    value1
+    baz\x001
+    value2
+
+This represents two key-value pairs: ``(('foobar',), 'value1')`` and 
+``(('foobaz',), 'value2')``.
+
+InternalNode Format
+-------------------
+
+InternalNodes store references to child nodes and have the following format::
+
+    chknode:
+    <maximum_size>
+    <key_width>
+    <total_length>
+    <search_prefix>
+    <child_prefix_1>\x00<child_key_1>
+    <child_prefix_2>\x00<child_key_2>
+    ...
+
+Where:
+- ``maximum_size``: The size threshold for splitting nodes
+- ``key_width``: Number of elements in each key tuple
+- ``total_length``: Total number of key-value pairs in all child nodes
+- ``search_prefix``: Common search key prefix for all child prefixes
+- ``child_prefix_N``: The search key prefix that leads to this child
+- ``child_key_N``: The CHK key (sha1:...) of the child node
+
+Example InternalNode::
+
+    chknode:
+    100
+    1
+    5
+    a
+    a\x00sha1:1234567890abcdef...
+    b\x00sha1:fedcba0987654321...
+
+This represents an internal node with search prefix "a" and two children accessible
+via prefixes "aa" and "ab".
+
+Data Structures
+===============
+
+CHKMap Class
+------------
+
+The main ``CHKMap`` class provides the public interface:
+
+- ``__init__(store, root_key, search_key_func=None)``
+- ``map(key, value)`` - Add/update a key-value mapping
+- ``unmap(key)`` - Remove a key-value mapping
+- ``iteritems(key_filter=None)`` - Iterate over all or filtered items
+- ``apply_delta(delta)`` - Apply multiple changes efficiently
+- ``key()`` - Get the root CHK key for this map
+
+Node Classes
+------------
+
+**Node (Base Class)**
+- Common interface for LeafNode and InternalNode
+- Tracks ``_key``, ``_len``, ``_maximum_size``, ``_key_width``, ``_raw_size``
+
+**LeafNode**
+- Stores ``_items`` dict of key->value mappings
+- Manages ``_common_serialised_prefix`` for space efficiency
+- Implements splitting when size exceeds ``_maximum_size``
+
+**InternalNode**
+- Stores ``_items`` dict of prefix->child_node mappings
+- Manages ``_search_prefix`` and ``_node_width``
+- Handles node collapse when children are removed
+
+Key Algorithms
+==============
+
+Search Key Functions
+--------------------
+
+CHK maps use search key functions to convert actual keys into search keys used 
+for tree navigation:
+
+1. **Plain Search (_search_key_plain)**: Simply joins key tuple elements with \x00
+2. **Hash-based Search (_search_key_16, _search_key_255)**: Uses hash of key for 
+   more balanced trees
+
+Tree Navigation
+---------------
+
+Key lookup follows this algorithm:
+
+1. Start at root node
+2. If current node is LeafNode, look up key directly in ``_items``
+3. If current node is InternalNode:
+   - Compute search key for target key
+   - Find prefix that matches search key
+   - Follow reference to child node
+   - Repeat from step 2
+
+Node Splitting
+--------------
+
+When a LeafNode exceeds its maximum size:
+
+1. Compute common search prefix of all keys
+2. Split at ``len(common_prefix) + 1`` position
+3. Group keys by their prefix at split position
+4. Create new LeafNode for each prefix group
+5. Create InternalNode to reference the new LeafNodes
+6. Return the InternalNode as replacement
+
+Node Collapsing
+----------------
+
+When nodes shrink due to deletions, the system checks if an InternalNode's
+children can be collapsed back into a single LeafNode:
+
+1. Only attempt if all children are LeafNodes
+2. Try to fit all child key-value pairs into a new LeafNode
+3. If successful, replace InternalNode with the new LeafNode
+
+Optimization Features
+=====================
+
+Prefix Compression
+------------------
+
+Both node types use prefix compression to reduce storage:
+
+- **LeafNodes**: Store common prefix separately, only store suffixes per item
+- **InternalNodes**: Store common search prefix separately
+
+Caching
+-------
+
+The implementation includes several caching mechanisms:
+
+- **Page Cache**: Per-thread LRU cache for deserialized node data
+- **Node References**: Lazy loading of child nodes until accessed
+
+Delta Application
+-----------------
+
+The ``apply_delta`` method optimizes bulk updates:
+
+1. Validates that new items don't already exist
+2. Applies all deletions first
+3. Applies all additions
+4. Performs single remap check at the end
+5. Serializes all changes atomically
+
+Search Optimizations
+--------------------
+
+Iterator operations include several optimizations:
+
+- **Key Filtering**: Only load nodes that might contain matching keys
+- **Batch Loading**: Load multiple nodes in single I/O operation when possible
+- **Common Node Detection**: Skip identical subtrees during iteration
+
+Usage Patterns
+===============
+
+Creating a CHK Map
+------------------
+
+::
+
+    # From a dictionary
+    root_key = CHKMap.from_dict(store, initial_dict, 
+                               maximum_size=4096,
+                               key_width=1,
+                               search_key_func=chk_map._search_key_plain)
+    
+    # Empty map
+    chk_map = CHKMap(store, None)
+
+Reading and Writing
+-------------------
+
+::
+
+    # Load existing map
+    chk_map = CHKMap(store, root_key)
+    
+    # Add items
+    chk_map.map(('key1',), b'value1')
+    chk_map.map(('key2',), b'value2')
+    
+    # Remove items
+    chk_map.unmap(('key1',))
+    
+    # Save changes
+    new_root_key = chk_map._save()
+
+Iteration
+---------
+
+::
+
+    # Iterate all items
+    for key, value in chk_map.iteritems():
+        print(key, value)
+    
+    # Filtered iteration
+    key_filter = [('prefix1',), ('prefix2',)]
+    for key, value in chk_map.iteritems(key_filter=key_filter):
+        print(key, value)
+
+Bulk Updates
+------------
+
+::
+
+    # Efficient bulk updates
+    delta = [
+        (('old_key',), ('new_key',), b'new_value'),  # rename
+        (None, ('added_key',), b'added_value'),      # addition
+        (('deleted_key',), None, None),              # deletion
+    ]
+    new_root_key = chk_map.apply_delta(delta)
+
+Performance Characteristics
+===========================
+
+- **Lookup Time**: O(log n) where n is number of items
+- **Insert/Delete Time**: O(log n) plus potential node split/collapse costs
+- **Space Overhead**: Minimized by prefix compression and balanced tree structure
+- **Cache Efficiency**: Good due to prefix-based grouping and LRU caching
+
+The CHK map design provides efficient persistent storage for large dictionaries
+with good performance characteristics for both sequential and random access patterns.
