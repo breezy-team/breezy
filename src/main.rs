@@ -58,14 +58,15 @@ fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
 
 // Prepend sys.path with the brz path when useful.
 fn update_path(py: Python<'_>) -> PyResult<()> {
-    let mut path = std::env::current_exe()?;
+    if let Ok(mut path) = std::env::current_exe() {
 
-    path.pop(); // Drop executable name
+      path.pop(); // Drop executable name
 
-    let mut package_path = path.clone();
-    package_path.push("breezy");
-    if package_path.is_dir() {
-        prepend_path(py, path.as_path())?;
+      let mut package_path = path.clone();
+      package_path.push("breezy");
+      if package_path.is_dir() {
+          prepend_path(py, path.as_path())?;
+      }
     }
 
     Ok(())

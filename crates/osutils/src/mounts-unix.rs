@@ -82,7 +82,7 @@ fn load_mounts() -> Vec<MountEntry> {
     mounts
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "openbsd"))]
 fn parse_mount_line(line: &str) -> Option<MountEntry> {
     if line.is_empty() {
         return None;
@@ -104,7 +104,7 @@ fn parse_mount_line(line: &str) -> Option<MountEntry> {
     })
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "openbsd"))]
 #[test]
 fn test_parse_mount_line() {
     let line = "devfs on /dev (devfs, local, nobrowse)";
@@ -114,9 +114,9 @@ fn test_parse_mount_line() {
     assert_eq!(mount_entry.options, "local, nobrowse");
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "openbsd"))]
 fn load_mounts() -> Vec<MountEntry> {
-    // macOS does not have a /proc/mounts equivalent, so we use the output of
+    // BSD does not have a /proc/mounts equivalent, so we use the output of
     // `mount` command
     //
     // TODO: find a more robust and efficient way to get mount information
