@@ -65,7 +65,7 @@ impl<'a> From<Bound<'a, PyAny>> for PyNode {
 
 impl FromPyObject<'_> for PyNode {
     fn extract_bound(obj: &Bound<PyAny>) -> PyResult<Self> {
-        Ok(PyNode(obj.to_object(obj.py())))
+        Ok(PyNode(obj.clone().unbind()))
     }
 }
 
@@ -323,22 +323,26 @@ impl MergeSorter {
             Some(Ok((sequence_number, node, merge_depth, None, end_of_merge))) => Ok(Some(
                 (
                     sequence_number,
-                    node.into_pyobject(py)?.into_py(py),
+                    node.into_pyobject(py)?.unbind(),
                     merge_depth,
                     end_of_merge,
                 )
-                    .into_py(py),
+                    .into_pyobject(py)?
+                    .unbind()
+                    .into(),
             )),
 
             Some(Ok((sequence_number, node, merge_depth, Some(revno), end_of_merge))) => Ok(Some(
                 (
                     sequence_number,
-                    node.into_pyobject(py)?.into_py(py),
+                    node.into_pyobject(py)?.unbind(),
                     merge_depth,
                     revno_vec_to_py(py, revno),
                     end_of_merge,
                 )
-                    .into_py(py),
+                    .into_pyobject(py)?
+                    .unbind()
+                    .into(),
             )),
             Some(Err(breezy_graph::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
             Some(Err(e)) => panic!("Unexpected error: {:?}", e),

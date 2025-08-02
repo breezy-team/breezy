@@ -331,7 +331,7 @@ impl Transport {
         let mode = mode.map(perms_from_py_object);
         let t = &slf.borrow().0;
         py.allow_threads(|| t.mkdir(path, mode)).map_err(|e| {
-            let obj = slf.to_object(py);
+            let obj = slf.clone().unbind().into();
             map_transport_err_to_py_err(e, Some(obj), Some(path))
         })?;
         Ok(())
@@ -428,7 +428,7 @@ impl Transport {
         let t = &slf.borrow().0;
         py.allow_threads(|| t.put_bytes(path, data, Some(mode)))
             .map_err(|e| {
-                let obj = slf.to_object(py);
+                let obj = slf.clone().unbind().into();
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
             })?;
         Ok(())
@@ -456,8 +456,8 @@ impl Transport {
             )
         })
         .map_err(|e| {
-            let obj = slf.to_object(py);
-            map_transport_err_to_py_err(e, Some(obj.into_py(py)), Some(path))
+            let obj = slf.clone().unbind().into();
+            map_transport_err_to_py_err(e, Some(obj), Some(path))
         })?;
         Ok(())
     }
@@ -481,7 +481,7 @@ impl Transport {
                 )
             })
             .map_err(|e| {
-                let obj = slf.to_object(py);
+                let obj = slf.clone().unbind().into();
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
             })?;
         Ok(ret)
@@ -509,8 +509,8 @@ impl Transport {
             )
         })
         .map_err(|e| {
-            let obj = slf.to_object(py);
-            map_transport_err_to_py_err(e, Some(obj.into_py(py)), Some(path))
+            let obj = slf.clone().unbind().into();
+            map_transport_err_to_py_err(e, Some(obj), Some(path))
         })?;
         Ok(())
     }
@@ -610,7 +610,7 @@ impl Transport {
                 ReadError::new_err((path.to_string(), "Not a directory".to_string()))
             }
             e => {
-                let obj = slf.to_object(py);
+                let obj = slf.clone().unbind().into();
                 map_transport_err_to_py_err(e, Some(obj), Some(path))
             }
         })?;
