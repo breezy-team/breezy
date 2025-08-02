@@ -836,7 +836,7 @@ fn read_mtab(py: Python, path: PathBuf) -> PyResult<Bound<PyIterator>> {
         let tuple = PyTuple::new(py, [entry.path.to_str().unwrap(), entry.fs_type.as_str()])?;
         list.append(tuple)?;
     }
-    list.as_ref().try_iter()
+    list.try_iter()
 }
 
 #[pyfunction]
@@ -850,12 +850,9 @@ fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn abspath(path: PathBuf) -> PyResult<String> {
+fn abspath(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let path = breezy_osutils::path::abspath(path.as_path())?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    Ok(path_to_pystring(py, &path)?.into_any().unbind())
 }
 
 #[pyfunction(name = "abspath")]
@@ -924,15 +921,13 @@ fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn relpath(path: PathBuf, start: PathBuf) -> PyResult<String> {
+fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<PyObject> {
     let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => Err(PathNotChild::new_err((start, path))),
         Some(p) => Ok(p),
     }?;
 
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    Ok(path_to_pystring(py, &path)?.into_any().unbind())
 }
 
 #[pyfunction(name = "normpath")]
@@ -959,21 +954,15 @@ fn contains_linebreaks(text: &str) -> bool {
 }
 
 #[pyfunction]
-fn normpath(path: PathBuf) -> PyResult<String> {
+fn normpath(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let path = breezy_osutils::path::normpath(path.as_path());
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    Ok(path_to_pystring(py, &path)?.into_any().unbind())
 }
 
 #[pyfunction]
-fn realpath(path: PathBuf) -> PyResult<String> {
+fn realpath(py: Python, path: PathBuf) -> PyResult<PyObject> {
     let path = breezy_osutils::path::realpath(path.as_path())?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
+    Ok(path_to_pystring(py, &path)?.into_any().unbind())
 }
 
 #[pyfunction]
@@ -1248,13 +1237,16 @@ fn pathjoin(py: Python, args: Vec<PyObject>) -> PyResult<PyObject> {
             .into_any()
             .unbind())
     } else {
-        Ok(ret.into_py(py))
+        Ok(path_to_pystring(py, ret.as_path())?.into_any().unbind())
     }
 }
 
 #[pyfunction]
 fn splitpath(path: PathBuf) -> PyResult<Vec<String>> {
-    match breezy_osutils::path::splitpath(path.to_str().unwrap()) {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| PyValueError::new_err("Path contains invalid UTF-8"))?;
+    match breezy_osutils::path::splitpath(path_str) {
         Ok(parts) => Ok(parts.iter().map(|p| p.to_string()).collect()),
         Err(e) => Err(PyValueError::new_err(format!(
             "Invalid path segment: {}",

@@ -240,33 +240,46 @@ impl GroupCompressBlock {
             .map(|x| match x {
                 bazaar::groupcompress::block::DumpInfo::Fulltext(text) => (
                     PyBytes::new(py, b"f"),
-                    text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
-                )
-                    .to_object(py),
+                    0usize,
+                    text.map(|x| PyBytes::new(py, x.as_ref()).unbind().into()),
+                ),
                 bazaar::groupcompress::block::DumpInfo::Delta(decomp_len, info) => (
                     PyBytes::new(py, b"d"),
                     decomp_len,
-                    info.into_iter()
-                        .map(|x| match x {
-                            bazaar::groupcompress::block::DeltaInfo::Copy(offset, len, text) => (
-                                offset,
-                                len,
-                                text.map(|x| PyBytes::new(py, x.as_ref()).to_object(py)),
-                            )
-                                .into_py(py),
-                            bazaar::groupcompress::block::DeltaInfo::Insert(len, data) => (
-                                len,
-                                data.map(|x| PyBytes::new(py, x.as_slice()).to_object(py)),
-                            )
-                                .to_object(py),
-                        })
-                        .collect::<Vec<_>>()
-                        .into_py(py),
-                )
-                    .into_py(py),
+                    Some(
+                        info.into_iter()
+                            .map(|x| match x {
+                                bazaar::groupcompress::block::DeltaInfo::Copy(
+                                    offset,
+                                    len,
+                                    text,
+                                ) => (
+                                    offset,
+                                    len,
+                                    text.map(|x| PyBytes::new(py, x.as_ref()).unbind()),
+                                )
+                                    .into_pyobject(py)
+                                    .unwrap()
+                                    .unbind(),
+                                bazaar::groupcompress::block::DeltaInfo::Insert(len, data) => (
+                                    0usize,
+                                    len,
+                                    data.map(|x| PyBytes::new(py, x.as_slice()).unbind()),
+                                )
+                                    .into_pyobject(py)
+                                    .unwrap()
+                                    .unbind(),
+                            })
+                            .collect::<Vec<_>>()
+                            .into_pyobject(py)
+                            .unwrap()
+                            .unbind(),
+                    ),
+                ),
             })
             .collect::<Vec<_>>()
-            .into_py(py))
+            .into_pyobject(py)?
+            .unbind())
     }
 }
 
