@@ -183,7 +183,7 @@ impl Stanza {
                 bazaar::rio::StanzaValue::String(v) => ret.append(v.to_string())?,
                 bazaar::rio::StanzaValue::Stanza(v) => {
                     let sub: Stanza = Stanza { stanza: *v.clone() };
-                    ret.append(sub.into_py(py))?;
+                    ret.append(sub.into_pyobject(py)?)?;
                 }
             }
         }

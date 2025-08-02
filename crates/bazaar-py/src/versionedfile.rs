@@ -46,14 +46,18 @@ impl AbstractContentFactory {
                 .0
                 .to_lines()
                 .map(|b| PyBytes::new(py, b.as_ref()))
-                .collect::<Vec<_>>()
-                .to_object(py)),
+                .map(|b| b.unbind().into())
+                .collect::<Vec<PyObject>>()
+                .into_pyobject(py)?
+                .unbind()),
             "chunked" => Ok(self
                 .0
                 .to_chunks()
                 .map(|b| PyBytes::new(py, b.as_ref()))
-                .collect::<Vec<_>>()
-                .to_object(py)),
+                .map(|b| b.unbind().into())
+                .collect::<Vec<PyObject>>()
+                .into_pyobject(py)?
+                .unbind()),
             _ => Err(UnavailableRepresentation::new_err(format!(
                 "Unsupported storage kind: {}",
                 storage_kind
