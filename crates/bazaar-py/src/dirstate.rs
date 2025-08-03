@@ -281,7 +281,10 @@ impl SHA1Provider {
         let path = extract_path(path)?;
         let (md, sha1) = self.provider.stat_and_sha1(&path)?;
         let pmd = StatResult { metadata: md };
-        Ok((pmd.into_py(py), PyBytes::new(py, sha1.as_bytes())))
+        Ok((
+            pmd.into_pyobject(py)?.unbind().into(),
+            PyBytes::new(py, sha1.as_bytes()),
+        ))
     }
 }
 

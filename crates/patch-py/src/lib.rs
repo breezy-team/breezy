@@ -171,7 +171,7 @@ fn iter_lines_handle_nl<'a>(
         py_iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()),
     );
     let pl = lines.map(|x| PyBytes::new(py, &x)).collect::<Vec<_>>();
-    PyList::new(py, &pl)?.as_ref().try_iter()
+    PyList::new(py, &pl)?.try_iter()
 }
 
 #[pyfunction]
