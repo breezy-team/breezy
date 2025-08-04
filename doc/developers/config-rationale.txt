@@ -559,8 +559,7 @@ express that an option is not set).
 
   See http://pad.lv/419854.
 
-* ``system`` (Not Implemented Yet but see http://pad.lv/419854 and
-  https://code.launchpad.net/~thomir/bzr/add-global-config/+merge/69592)
+* ``system`` (Not Implemented Yet but see http://pad.lv/419854)
 
   The options common to all users of a system (may be /etc/bzr/defaults
   or /usr/local/etc/bzr/defaults or

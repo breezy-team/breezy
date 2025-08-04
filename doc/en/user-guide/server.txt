@@ -13,7 +13,7 @@ not offer any assistance to Breezy.  If you make a Breezy repository available
 over any of these protocols, Breezy will allow you to read it remotely.  Just
 enter the URL to the branch in the Breezy command you are running.::
 
-    brz log http://bazaar.launchpad.net/~brz-pqm/brz/brz.dev
+    brz log http://example.com/path/to/branch
 
 Breezy supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 

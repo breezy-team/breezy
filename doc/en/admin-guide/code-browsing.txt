@@ -11,10 +11,7 @@ choices where they differ.
 Loggerhead
 ----------
 
-Loggerhead_ is a code browsing interface for Bazaar branches (now used in
-Launchpad).  To see an example of Loggerhead in action, browse to
-http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files which is the loggerhead
-view of Bazaar's trunk branch.  Loggerhead runs as a web application on the
+Loggerhead_ is a code browsing interface for Bazaar branches.  Loggerhead runs as a web application on the
 server which is accessed over HTTP via a RESTful interface.  It is possible to
 run this application on its own dedicated port as
 ``http://www.example.com:8080`` or to proxy this location behind a separate web
