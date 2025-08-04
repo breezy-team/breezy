@@ -55,7 +55,6 @@ class PatchesTester(TestCase):
 
     def test_parse_patches_leading_noise(self):
         # https://bugs.launchpad.net/bzr/+bug/502076
-        # https://code.launchpad.net/~toshio/bzr/allow-dirty-patches/+merge/18854
         lines = [
             b"diff -pruN commands.py",
             b"--- orig/commands.py",

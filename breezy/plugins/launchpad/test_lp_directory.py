@@ -50,7 +50,6 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
                 return "!unexpected look_up value!"
 
         directories.remove("lp:")
-        directories.remove("lp+bzr:")
         directories.register("lp:", FooService, "Map lp URLs to local urls")
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, "lp:")

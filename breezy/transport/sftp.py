@@ -713,7 +713,7 @@ class SFTPTransport(ConnectedTransport):
             if e.args == ("Failure",):
                 raise failure_exc(path, str(e) + more_info)
             # Can be something like args = ('Directory not empty:
-            # '/srv/bazaar.launchpad.net/blah...: '
+            # '/srv/example.com/blah...: '
             # [Errno 39] Directory not empty',)
             if (
                 e.args[0].startswith("Directory not empty: ")
