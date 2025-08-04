@@ -18,7 +18,7 @@
 
 from urllib.parse import urlsplit
 
-from ... import debug, errors, trace, transport, ui
+from ... import debug, trace, transport
 from ...urlutils import InvalidURL, join, split
 from .account import get_lp_login
 from .uris import LPNET_SERVICE_ROOT
@@ -27,7 +27,6 @@ from .uris import LPNET_SERVICE_ROOT
 # is counted as a netloc protocol.
 transport.register_urlparse_netloc_protocol("bzr+ssh")
 transport.register_urlparse_netloc_protocol("lp")
-transport.register_urlparse_netloc_protocol("lp+bzr")
 
 
 def _requires_launchpad_login(scheme, netloc, path, query, fragment):
@@ -47,17 +46,10 @@ def _expand_user(path, url, lp_login):
             raise InvalidURL(
                 path=url,
                 extra='Cannot resolve "~" to your username.'
-                ' See "bzr help launchpad-login"',
+                ' See "brz help launchpad-login"',
             )
         path = "~" + lp_login + path[1:]
     return path
-
-
-def _update_url_scheme(url):
-    scheme, netloc, path, query, fragment = urlsplit(url)
-    if scheme == "lp+bzr":
-        scheme = "lp"
-    return url, path
 
 
 def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
@@ -65,41 +57,14 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
 
     lp = connect_launchpad(api_base_url, version="devel")
     subpaths = []
-    lp_branch = None
     git_repo = None
     while path:
-        lp_branch = lp.branches.getByPath(path=path)
         git_repo = lp.git_repositories.getByPath(path=path)
-        if lp_branch and git_repo:
-            target = git_repo.target
-            vcs = target.vcs
-            trace.warning(
-                "Found both a Bazaar branch and a git repository at lp:%s. Using "
-                "%s, since that is the projects' default vcs",
-                path,
-                vcs,
-            )
-            if vcs == "Git":
-                lp_branch = None
-            elif vcs == "Bazaar":
-                git_repo = None
-            else:
-                raise errors.BzrError(
-                    "Unknown default vcs {} for {}".format(vcs, target)
-                )
-        if lp_branch or git_repo:
+        if git_repo:
             break
         path, subpath = split(path)
         subpaths.insert(0, subpath)
-    if lp_branch:
-        ui.ui_factory.show_user_warning("launchpad_bazaar_deprecation")
-        return {
-            "urls": [
-                join(lp_branch.composePublicURL(scheme="bzr+ssh"), *subpaths),
-                join(lp_branch.composePublicURL(scheme="http"), *subpaths),
-            ]
-        }
-    elif git_repo:
+    if git_repo:
         return {
             "urls": [
                 join(git_repo.git_ssh_url, *subpaths),
@@ -112,7 +77,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
 
 def _resolve(url, _lp_login=None):
     """Resolve the base URL for this transport."""
-    url, path = _update_url_scheme(url)
+    scheme, netloc, path, query, fragment = urlsplit(url)
     if _lp_login is None:
         _lp_login = get_lp_login()
     path = path.strip("/")
@@ -133,8 +98,8 @@ def _resolve(url, _lp_login=None):
             if _lp_login is None:
                 if not _warned_login:
                     trace.warning(
-                        "You have not informed bzr of your Launchpad ID, and you must do this to\n"
-                        'write to Launchpad or access private data.  See "bzr help launchpad-login".'
+                        "You have not informed brz of your Launchpad ID, and you must do this to\n"
+                        'write to Launchpad or access private data.  See "brz help launchpad-login".'
                     )
                     _warned_login = True
         else:
