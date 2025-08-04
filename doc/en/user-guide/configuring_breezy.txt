@@ -120,9 +120,9 @@ will display some output of the form::
     post_commit_to = commits@example.com
     news_merge_files = NEWS
   branch:
-    parent_location = bzr+ssh://bazaar.launchpad.net/+branch/brz/
+    parent_location = https://github.com/breezy-team/breezy
     nickname = config-modify
-    push_location = bzr+ssh://bazaar.launchpad.net/~vila/brz/config-modify/
+    push_location = git+ssh://git@github.com/username/breezy.git
   breezy:
     debug_flags = hpss,
 

@@ -51,7 +51,7 @@ possible to support heuristics later when interpreting user-specified URLs.
 
 An example URL would be:
 
- bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls
+ bzr://example.com/path/to/repo,branch-name
 
 The segment after the comma will initially be interpreted as a colocated
 branch name but we would like to keep the option to allow

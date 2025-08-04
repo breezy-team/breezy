@@ -95,8 +95,7 @@ Proposing a merge
 
 Then propose a merge into Breezy; for Breezy 3.0 and later you can use the ``brz
 propose`` command.  In the comment for your merge proposal please
-explain what you're trying to do and why.  For `example
-<https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
+explain what you're trying to do and why.  For example:
 
   As discussed on the mailing list, this patch adds a What's New document
   summarising the changes since 2.0.
