@@ -21,14 +21,13 @@ Beyond Linux, Breezy packages are available for a large
 range of other operating systems include Mac OS X, FreeBSD and Solaris.
 See https://www.breezy-vcs.org/pages/download.html for the latest instructions.
 
-
 Installing from scratch
 -----------------------
 
 If you wish to install Breezy from scratch rather than using a
 pre-built package, the steps are:
 
-  1. If it is not installed already, install Python 2.7 or later.
+  1. If it is not installed already, install Python 3.9 or later and rust.
 
   2. Download the ``breezy-xxx.tar.gz`` file (where xxx is the version
      number) from https://www.breezy-vcs.org/pages/download.html or from Launchpad
@@ -36,7 +35,8 @@ pre-built package, the steps are:
 
   3. Unpack the archive using tar, WinZip or equivalent.
 
-  4. Put the created directory on your PATH.
+  4. Run ``pip install .`` in the unpacked directory. This will install Breezy
+     and all its dependencies.
 
 To test the installation, try running the **brz** command like this::
 
@@ -53,15 +53,7 @@ Installing into site-wide locations
 Instead of adding the directory to your PATH, you can install brz into the
 system locations using::
 
-  python setup.py install
-
-If you do not have a compiler, or do not have the python development tools
-installed, brz supplies a (slower) pure-python implementation of all
-extensions. You can install without compiling extensions with::
-
-  python setup.py install build_ext --allow-python-fallback
-
-
+  pip install .
 
 Running the development version
 -------------------------------
@@ -82,11 +74,13 @@ Here are the steps to follow:
 
        brz branch lp:brz
 
-  3. Put the created directory on your PATH.
+  3. Run ``pip install -e .`` in the directory you just created. This will
+     install Breezy in "editable" mode, meaning that any changes you make to the
+     source code will be immediately reflected when you run the **brz** command.
 
 Advanced users may also wish to build the optional C extensions for greater
 speed. This can be done using ``make`` and requires ``cython`` and a C compiler.
-Please contact us on email or IRC if you need assistance with this.
+Please contact us on email or Matrix if you need assistance with this.
 
 
 Running multiple versions
