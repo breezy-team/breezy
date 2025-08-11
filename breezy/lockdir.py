@@ -187,6 +187,11 @@ class LockDir(lock.Lock):
         self._warned_about_lock_holder = None
 
     def __repr__(self):
+        """Return string representation of the LockDir.
+
+        Returns:
+            str: A string representation showing the class name and lock location.
+        """
         return f"{self.__class__.__name__}({self.transport.base}{self.path})"
 
     is_held = property(lambda self: self._lock_held)
@@ -619,9 +624,19 @@ class LockDir(lock.Lock):
                 raise LockContention("(local)", lock_url)
 
     def leave_in_place(self):
+        """Mark the lock to be left in place when this object is cleaned up.
+
+        This is useful when the lock has been acquired via a token and should
+        remain held even after this LockDir instance is done with it.
+        """
         self._locked_via_token = True
 
     def dont_leave_in_place(self):
+        """Mark the lock to be released when this object is cleaned up.
+
+        This reverses the effect of leave_in_place(), ensuring the lock
+        will be properly released.
+        """
         self._locked_via_token = False
 
     def lock_write(self, token=None):
@@ -666,6 +681,15 @@ class LockDir(lock.Lock):
         self._fake_read_lock = True
 
     def validate_token(self, token):
+        """Check that a token matches the lock currently held.
+
+        Args:
+            token: The token to validate against the current lock.
+
+        Raises:
+            TokenMismatch: If the provided token doesn't match the token
+                of the existing lock.
+        """
         if token is not None:
             info = self.peek()
             if info is None:
