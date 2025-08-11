@@ -173,6 +173,19 @@ def plain_tar_generator(
 
 
 def tar_xz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=False):
+    """Generate a tar file compressed with xz.
+
+    Args:
+        tree: The tree to archive.
+        dest: Destination for the archive.
+        root: Root directory in the archive.
+        subdir: Subdirectory to archive.
+        force_mtime: Optional modification time to force.
+        recurse_nested: Whether to recurse into nested trees.
+
+    Returns:
+        Generator yielding tar.xz archive data.
+    """
     return tar_lzma_generator(
         tree, dest, root, subdir, force_mtime, "xz", recurse_nested=recurse_nested
     )

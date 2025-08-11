@@ -215,12 +215,18 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
 
 
 def get_global_state():
+    """Get the global library state.
+
+    Returns the current global state if it exists, otherwise initializes
+    and returns a new state.
+    """
     if _global_state is None:
         return initialize()
     return _global_state
 
 
 def test_suite():
+    """Return the test suite for the breezy module."""
     import tests
 
     return tests.test_suite()

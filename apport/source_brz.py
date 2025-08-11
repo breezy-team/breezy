@@ -35,6 +35,11 @@ def _add_log_tail(report):
 
 
 def add_info(report):
+    """Add Breezy-specific information to the apport crash report.
+
+    Args:
+        report: The apport report to add information to.
+    """
     _add_log_tail(report)
     if "BrzPlugins" not in report:
         # may already be present in-process

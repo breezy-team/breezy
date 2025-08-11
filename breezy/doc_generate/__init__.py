@@ -21,6 +21,20 @@ import os
 
 
 def get_module(target):
+    """Import and return a documentation generation module for the given target.
+
+    Args:
+        target: The target type for documentation generation (e.g., 'commands',
+            'options'). This will be used to construct the module name
+            'breezy.doc_generate.autodoc_{target}'.
+
+    Returns:
+        The imported module object for the specified documentation target.
+
+    Raises:
+        ImportError: If the autodoc module for the target doesn't exist.
+        AttributeError: If module components cannot be found during traversal.
+    """
     mod_name = f"breezy.doc_generate.autodoc_{target}"
     mod = __import__(mod_name)
     components = mod_name.split(".")

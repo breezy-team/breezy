@@ -1,3 +1,5 @@
+"""Sphinx configuration for Breezy documentation generation."""
+
 from typing import Any
 
 #
