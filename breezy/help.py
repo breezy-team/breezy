@@ -21,17 +21,35 @@
 
 # TODO: `help commands --all` should show hidden commands
 
+"""Help system for Breezy commands and topics.
+
+This module provides functionality to display help information for Breezy
+commands, topics, and plugins. It includes support for searching help topics
+across multiple indices and formatting help text for display.
+"""
+
 from . import commands as _mod_commands
 from . import errors, help_topics, osutils, plugin, ui, utextwrap
 
 
 class NoHelpTopic(errors.BzrError):
+    """Error raised when a help topic cannot be found.
+
+    This exception is raised when a user requests help for a topic that
+    doesn't exist in any of the available help indices.
+    """
+
     _fmt = (
         "No help could be found for '%(topic)s'. "
         "Please use 'brz help topics' to obtain a list of topics."
     )
 
     def __init__(self, topic):
+        """Initialize NoHelpTopic exception.
+
+        Args:
+            topic: The help topic that could not be found.
+        """
         self.topic = topic
 
 
@@ -125,6 +143,11 @@ class HelpIndices:
     """
 
     def __init__(self):
+        """Initialize HelpIndices with default search path.
+
+        Sets up the search path with indices for help topics, commands,
+        plugins, and configuration options.
+        """
         self.search_path = [
             help_topics.HelpTopicIndex(),
             _mod_commands.HelpCommandIndex(),
