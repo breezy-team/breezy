@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Operating system utilities for Breezy.
+
+This module provides various utilities for file system operations,
+path manipulation, and platform-specific functionality.
+"""
+
 __all__ = [
     "MIN_ABS_PATHLENGTH",
     "IterableFile",
