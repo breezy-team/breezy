@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Status reporting for working trees and revisions.
+
+This module provides functionality for displaying the status of changes between
+trees, including modified files, pending merges, conflicts, and unversioned files.
+The main entry points are show_tree_status() for displaying working tree status
+and report_changes() for comparing two arbitrary trees.
+"""
+
 import sys
 
 from . import delta as _mod_delta
@@ -471,9 +479,22 @@ class StatusHookParams:
         self.specific_files = specific_files
 
     def __eq__(self, other):
+        """Check equality with another StatusHookParams instance.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if all attributes are equal, False otherwise.
+        """
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return a string representation of the StatusHookParams instance.
+
+        Returns:
+            str: A string representation showing the class name and all attribute values.
+        """
         return "<{}({}, {}, {}, {}, {}, {}, {}, {})>".format(
             self.__class__.__name__,
             self.old_tree,

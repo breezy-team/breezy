@@ -23,7 +23,14 @@ from .. import errors, registry
 
 
 class ArchiveFormatInfo:
+    """Information about an archive format."""
+    
     def __init__(self, extensions):
+        """Initialize ArchiveFormatInfo.
+        
+        Args:
+            extensions: List of file extensions for this archive format.
+        """
         self.extensions = extensions
 
 
@@ -31,11 +38,17 @@ class ArchiveFormatRegistry(registry.Registry):
     """Registry of archive formats."""
 
     def __init__(self):
+        """Initialize the archive format registry."""
         self._extension_map = {}
         super().__init__()
 
     @property
     def extensions(self):
+        """Get all registered file extensions.
+        
+        Returns:
+            Keys of the extension map.
+        """
         return self._extension_map.keys()
 
     def register(self, key, factory, extensions, help=None):
@@ -46,6 +59,15 @@ class ArchiveFormatRegistry(registry.Registry):
         self._register_extensions(key, extensions)
 
     def register_lazy(self, key, module_name, member_name, extensions, help=None):
+        """Register an archive format lazily.
+        
+        Args:
+            key: Unique identifier for the format.
+            module_name: Name of the module containing the format.
+            member_name: Name of the format class/function in the module.
+            extensions: List of file extensions for this format.
+            help: Optional help text for the format.
+        """
         registry.Registry.register_lazy(
             self, key, module_name, member_name, help, ArchiveFormatInfo(extensions)
         )
@@ -71,6 +93,23 @@ class ArchiveFormatRegistry(registry.Registry):
 def create_archive(
     format, tree, name, root=None, subdir=None, force_mtime=None, recurse_nested=False
 ) -> Iterator[bytes]:
+    """Create an archive of the specified format.
+    
+    Args:
+        format: The archive format to use.
+        tree: The tree to archive.
+        name: The name for the archive.
+        root: Optional root directory.
+        subdir: Optional subdirectory to archive.
+        force_mtime: Optional modification time to force.
+        recurse_nested: Whether to recurse into nested trees.
+        
+    Returns:
+        Iterator yielding archive data as bytes.
+        
+    Raises:
+        NoSuchExportFormat: If the specified format is not supported.
+    """
     try:
         archive_fn = format_registry.get(format)
     except KeyError as exc:

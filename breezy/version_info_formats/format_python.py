@@ -46,6 +46,11 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
+        """Generate a python module containing version information.
+
+        Args:
+            to_file: A file-like object to write the generated python module to.
+        """
         info = {
             "build_date": create_date_str(),
             "revno": None,
