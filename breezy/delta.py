@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Delta objects and functions for representing changes between trees.
+
+This module provides the TreeDelta class for representing changes between
+two tree states, along with utilities for comparing trees and reporting
+changes in various formats.
+"""
+
 from io import StringIO
 
 from breezy import osutils, trace
@@ -50,6 +57,7 @@ class TreeDelta:
     """
 
     def __init__(self):
+        """Initialize an empty TreeDelta."""
         self.added = []
         self.removed = []
         self.renamed = []
@@ -61,6 +69,14 @@ class TreeDelta:
         self.missing = []
 
     def __eq__(self, other):
+        """Check equality between TreeDelta objects.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the two TreeDelta objects contain the same changes.
+        """
         if not isinstance(other, TreeDelta):
             return False
         return (
@@ -75,9 +91,22 @@ class TreeDelta:
         )
 
     def __ne__(self, other):
+        """Check inequality between TreeDelta objects.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the two TreeDelta objects contain different changes.
+        """
         return not (self == other)
 
     def __repr__(self):
+        """Return a string representation of the TreeDelta.
+
+        Returns:
+            str: A string representation showing all change lists.
+        """
         return (
             "TreeDelta(added={!r}, removed={!r}, renamed={!r},"
             " copied={!r}, kind_changed={!r}, modified={!r}, unchanged={!r},"
@@ -94,6 +123,12 @@ class TreeDelta:
         )
 
     def has_changed(self):
+        """Check if this delta contains any changes.
+
+        Returns:
+            bool: True if there are any changes (modified, added, removed,
+                renamed, copied, or kind_changed files).
+        """
         return bool(
             self.modified
             or self.added
@@ -106,6 +141,16 @@ class TreeDelta:
     def get_changes_as_text(
         self, show_ids=False, show_unchanged=False, short_status=False
     ):
+        """Get a text representation of the changes in this delta.
+
+        Args:
+            show_ids: If True, include file IDs in the output.
+            show_unchanged: If True, include unchanged files in the output.
+            short_status: If True, use single-letter status indicators.
+
+        Returns:
+            str: A formatted string representing the changes.
+        """
         output = StringIO()
         report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
