@@ -18,7 +18,7 @@
 This contains functionality for installing bundles into repositories.
 """
 
-from ... import ui
+from ... import errors, ui
 from ...i18n import gettext
 from ...merge import Merger
 from ...progress import ProgressPhase
@@ -27,6 +27,16 @@ from ..vf_repository import install_revision
 
 
 def install_bundle(repository, bundle_reader):
+    """Install a bundle into a repository.
+
+    Args:
+        repository: The repository to install the bundle into.
+        bundle_reader: A bundle reader object that provides access to the
+            bundle's revisions.
+
+    Returns:
+        The result of the custom install method if available, otherwise None.
+    """
     custom_install = getattr(bundle_reader, "install", None)
     if custom_install is not None:
         return custom_install(repository)
@@ -52,7 +62,7 @@ def merge_bundle(
         merger.pp = pp
         merger.pp.next_phase()
         if check_clean and tree.has_changes():
-            raise errors.UncommittedChanges(self)
+            raise errors.UncommittedChanges(tree)
         merger.other_rev_id = reader.target
         merger.other_tree = merger.revision_tree(reader.target)
         merger.other_basis = reader.target
