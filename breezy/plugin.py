@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Breezy plugin support.
+
+This module provides functionality for loading and managing Breezy plugins.
+"""
+
 __docformat__ = "google"
 
 """Breezy plugin support.
@@ -391,21 +396,50 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
+    """Get the user-specific plugin directory path.
+
+    Returns:
+        Path to the user's plugin directory.
+    """
     from .bedding import config_dir
 
     return osutils.pathjoin(config_dir(), "plugins")
 
 
 def record_plugin_warning(warning_message):
+    """Record a plugin warning message.
+
+    Args:
+        warning_message: The warning message to record.
+
+    Returns:
+        The warning message.
+    """
     trace.mutter(warning_message)
     return warning_message
 
 
 def valid_plugin_name(name):
+    """Check if a plugin name is valid.
+
+    Args:
+        name: The plugin name to validate.
+
+    Returns:
+        True if the name is valid, False otherwise.
+    """
     return not re.search("\\.|-| ", name)
 
 
 def sanitise_plugin_name(name):
+    """Sanitize a plugin name for use as a Python module name.
+
+    Args:
+        name: The plugin name to sanitize.
+
+    Returns:
+        The sanitized plugin name.
+    """
     sanitised_name = re.sub("[-. ]", "_", name)
     if sanitised_name.startswith("brz_"):
         sanitised_name = sanitised_name[len("brz_") :]
@@ -480,6 +514,7 @@ class PluginsHelpIndex:
     """A help index that returns help topics for plugins."""
 
     def __init__(self):
+        """Initialize the PluginsHelpIndex."""
         self.prefix = "plugins/"
 
     def get_topics(self, topic):
@@ -567,6 +602,11 @@ class PlugIn:
             return repr(self.module)
 
     def __repr__(self):
+        """Return string representation of the plugin info.
+
+        Returns:
+            String representation including class, name, and module.
+        """
         return "<{}.{} name={}, module={}>".format(
             self.__class__.__module__, self.__class__.__name__, self.name, self.module
         )
@@ -607,6 +647,11 @@ class PlugIn:
 
     @property
     def __version__(self):
+        """Get the plugin version string.
+
+        Returns:
+            Version string or 'unknown' if not available.
+        """
         version_info = self.version_info()
         if version_info is None or len(version_info) == 0:
             return "unknown"
