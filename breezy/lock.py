@@ -46,10 +46,26 @@ have_fcntl = True
 
 
 def ReadLock(path):
+    """Create a read lock for the given path.
+
+    Args:
+        path: Path to create the read lock for.
+
+    Returns:
+        A read lock instance.
+    """
     return _transport_rs.ReadLock(path, "strict_locks" in debug.debug_flags)
 
 
 def WriteLock(path):
+    """Create a write lock for the given path.
+
+    Args:
+        path: Path to create the write lock for.
+
+    Returns:
+        A write lock instance.
+    """
     return _transport_rs.WriteLock(path, "strict_locks" in debug.debug_flags)
 
 
@@ -57,7 +73,13 @@ LockToken = bytes
 
 
 class LockHooks(Hooks):
+    """Hook registry for lock-related operations.
+
+    Provides hooks for lock acquisition, release, and breaking events.
+    """
+
     def __init__(self):
+        """Initialize the lock hooks registry."""
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
         self.add_hook(
             "lock_acquired",
@@ -86,25 +108,70 @@ class Lock:
 
     def __init__(
         self, transport: Transport, path: str, file_modebits: int, dir_modebits: int
-    ) -> None: ...
+    ) -> None:
+        """Initialize the lock.
 
-    def create(self, mode: int): ...
+        Args:
+            transport: Transport to use for lock operations.
+            path: Path within the transport for the lock.
+            file_modebits: Mode bits for lock files.
+            dir_modebits: Mode bits for lock directories.
+        """
+        ...
 
-    def break_lock(self) -> None: ...
+    def create(self, mode: int):
+        """Create the lock with the specified mode.
 
-    def leave_in_place(self) -> None: ...
+        Args:
+            mode: File mode for the lock.
+        """
+        ...
 
-    def dont_leave_in_place(self) -> None: ...
+    def break_lock(self) -> None:
+        """Break an existing lock, if any."""
+        ...
 
-    def validate_token(self, token: Optional[LockToken]) -> None: ...
+    def leave_in_place(self) -> None:
+        """Configure the lock to be left in place when released."""
+        ...
 
-    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]: ...
+    def dont_leave_in_place(self) -> None:
+        """Configure the lock to be removed when released."""
+        ...
 
-    def lock_read(self) -> None: ...
+    def validate_token(self, token: Optional[LockToken]) -> None:
+        """Validate a lock token.
 
-    def unlock(self) -> None: ...
+        Args:
+            token: Token to validate, or None.
+        """
+        ...
+
+    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]:
+        """Acquire a write lock.
+
+        Args:
+            token: Optional lock token from a previous lock.
+
+        Returns:
+            Lock token for this lock, or None.
+        """
+        ...
+
+    def lock_read(self) -> None:
+        """Acquire a read lock."""
+        ...
+
+    def unlock(self) -> None:
+        """Release the lock."""
+        ...
 
     def peek(self) -> LockToken:
+        """Look at the current lock state without acquiring it.
+
+        Returns:
+            Current lock token.
+        """
         raise NotImplementedError(self.peek)
 
 
@@ -117,9 +184,22 @@ class LockResult:
         self.details = details
 
     def __eq__(self, other):
+        """Compare with another LockResult.
+
+        Args:
+            other: Other LockResult to compare with.
+
+        Returns:
+            True if the lock results are equal.
+        """
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
+        """Return string representation for debugging.
+
+        Returns:
+            String representation of this LockResult.
+        """
         return f"{self.__class__.__name__}({self.lock_url}, {self.details})"
 
 
@@ -130,16 +210,42 @@ class LogicalLockResult:
     """
 
     def __init__(self, unlock, token=None):
+        """Initialize the logical lock result.
+
+        Args:
+            unlock: Callable to unlock this lock.
+            token: Optional lock token.
+        """
         self.unlock = unlock
         self.token = token
 
     def __repr__(self):
+        """Return string representation for debugging.
+
+        Returns:
+            String representation of this LogicalLockResult.
+        """
         return f"LogicalLockResult({self.unlock})"
 
     def __enter__(self):
+        """Enter the runtime context for the lock.
+
+        Returns:
+            This LogicalLockResult instance.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context and unlock.
+
+        Args:
+            exc_type: Exception type, if any.
+            exc_val: Exception value, if any.
+            exc_tb: Exception traceback, if any.
+
+        Returns:
+            False to propagate any exception.
+        """
         # If there was an error raised, prefer the original one
         try:
             self.unlock()
@@ -185,6 +291,14 @@ class _RelockDebugMixin:
 
 @contextlib.contextmanager
 def write_locked(lockable):
+    """Context manager for write-locking a lockable object.
+
+    Args:
+        lockable: Object that supports lock_write() and unlock() methods.
+
+    Yields:
+        The locked object.
+    """
     lockable.lock_write()
     try:
         yield lockable
