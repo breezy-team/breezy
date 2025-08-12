@@ -1,3 +1,10 @@
+"""Repository management and revision storage for Breezy.
+
+This module provides the Repository class and related functionality for storing
+and managing revision history, file texts, inventory data, and revision
+signatures. Repositories are the core storage mechanism for version control
+data in Breezy.
+"""
 # Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -50,13 +57,22 @@ _deprecation_warning_done = False
 
 
 class IsInWriteGroupError(errors.InternalBzrError):
+    """Error raised when trying to refresh data while in a write group."""
+
     _fmt = "May not refresh_data of repo %(repo)s while in a write group."
 
     def __init__(self, repo):
+        """Initialize the error with the repository.
+
+        Args:
+            repo: The repository that is in a write group.
+        """
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CannotSetRevisionId(errors.BzrError):
+    """Error raised when the repository format doesn't support setting revision IDs."""
+
     _fmt = "Repository format does not support setting revision ids."
 
 
@@ -69,6 +85,12 @@ class FetchResult:
     """
 
     def __init__(self, total_fetched=None, revidmap=None):
+        """Initialize a fetch result.
+
+        Args:
+            total_fetched: Number of revisions fetched.
+            revidmap: For lossy fetches, map from source revid to target revid.
+        """
         self.total_fetched = total_fetched
         self.revidmap = revidmap
 
@@ -248,10 +270,17 @@ class RepositoryWriteLockResult(LogicalLockResult):
     """
 
     def __init__(self, unlock, repository_token):
+        """Initialize a repository write lock result.
+
+        Args:
+            unlock: Callable to unlock the repository.
+            repository_token: Token from the underlying lock.
+        """
         LogicalLockResult.__init__(self, unlock)
         self.repository_token = repository_token
 
     def __repr__(self):
+        """Return string representation of the lock result."""
         return f"RepositoryWriteLockResult({self.repository_token}, {self.unlock})"
 
 
@@ -262,14 +291,22 @@ class WriteGroup:
     """
 
     def __init__(self, repository, suppress_errors=False):
+        """Initialize a write group context manager.
+
+        Args:
+            repository: The repository to manage a write group for.
+            suppress_errors: Whether to suppress errors when aborting.
+        """
         self.repository = repository
         self._suppress_errors = suppress_errors
 
     def __enter__(self):
+        """Enter the write group context."""
         self.repository.start_write_group()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the write group context, committing or aborting as needed."""
         if exc_type:
             self.repository.abort_write_group(self._suppress_errors)
             return False
@@ -414,13 +451,16 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @property
     def user_transport(self):
+        """Get the transport for user-visible data."""
         return self.controldir.user_transport
 
     @property
     def control_transport(self):
+        """Get the transport for control data."""
         return self._transport
 
     def __repr__(self):
+        """Return string representation of the repository."""
         if self._fallback_repositories:
             return "{}({!r}, fallback_repositories={!r})".format(
                 self.__class__.__name__, self.base, self._fallback_repositories
@@ -455,6 +495,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return self._write_group is not None
 
     def is_locked(self):
+        """Return True if this repository is locked."""
         return self.control_files.is_locked()
 
     def is_write_locked(self):
@@ -516,6 +557,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return LogicalLockResult(self.unlock)
 
     def get_physical_lock_status(self):
+        """Return physical lock status from the control files."""
         return self.control_files.get_physical_lock_status()
 
     def leave_lock_in_place(self):
@@ -710,6 +752,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         self._refresh_data()
 
     def resume_write_group(self, tokens):
+        """Resume a write group using the provided tokens.
+
+        Args:
+            tokens: Tokens needed to resume the write group.
+        """
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
         if self._write_group:
@@ -785,6 +832,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Unlock the repository."""
         if self.control_files._lock_count == 1 and self.control_files._lock_mode == "w":
             if self._write_group is not None:
                 self.abort_write_group()
@@ -971,6 +1019,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 ]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """Store a GPG signature for the specified revision.
+
+        Args:
+            gpg_strategy: GPG strategy for signing.
+            plaintext: The plaintext to sign.
+            revision_id: The revision to store the signature for.
+        """
         raise NotImplementedError(self.store_revision_signature)
 
     def add_signature_text(self, revision_id, signature):
@@ -1092,6 +1147,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
 
     def get_transaction(self):
+        """Return the current transaction from the control files."""
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
@@ -1170,6 +1226,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.make_working_trees)
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision using the given GPG strategy.
+
+        Args:
+            revision_id: The revision to sign.
+            gpg_strategy: The GPG strategy to use for signing.
+        """
         raise NotImplementedError(self.sign_revision)
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
@@ -1247,6 +1309,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             _deprecation_warning_done = True
 
     def supports_rich_root(self):
+        """Return True if this repository supports rich root data."""
         return self._format.rich_root_data
 
     def _check_ascii_revisionid(self, revision_id, method):
@@ -1386,13 +1449,16 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_multiple_authors: bool = True
 
     def __repr__(self):
+        """Return string representation of the format."""
         return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):
+        """Compare format objects for equality."""
         # format objects are generally stateless
         return isinstance(other, self.__class__)
 
     def __ne__(self, other):
+        """Compare format objects for inequality."""
         return not self == other
 
     def get_format_description(self):
@@ -1442,6 +1508,14 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(self.network_name)
 
     def check_conversion_target(self, target_format):
+        """Check if this format can be converted to the target format.
+
+        Args:
+            target_format: The format to convert to.
+
+        Raises:
+            BadConversionTarget: If conversion is not supported.
+        """
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 "Does not support rich root data.", target_format, from_format=self

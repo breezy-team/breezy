@@ -37,6 +37,14 @@ from .workingtree import WorkingTree
 
 # TODO(jelmer): Move this to transport.py ?
 def open_from_url(location):
+    """Open a file from a URL location.
+
+    Args:
+        location: URL or path to open.
+
+    Returns:
+        File-like object for the location.
+    """
     location = urlutils.normalize_url(location)
     dirname, basename = urlutils.split(location)
     if location.endswith("/") and not basename.endswith("/"):
@@ -45,36 +53,78 @@ def open_from_url(location):
 
 
 class NotArchiveType(BzrError):
+    """Error raised when a file is not a recognized archive type."""
+
     _fmt = "%(path)s is not an archive."
 
     def __init__(self, path):
+        """Initialize with the problematic path.
+
+        Args:
+            path: Path that is not an archive.
+        """
         BzrError.__init__(self)
         self.path = path
 
 
 class ZipFileWrapper:
+    """Wrapper for zipfile.ZipFile providing consistent archive interface."""
+
     def __init__(self, fileobj, mode):
+        """Initialize the zip file wrapper.
+
+        Args:
+            fileobj: File-like object to read from.
+            mode: Mode to open the zipfile in.
+        """
         self.zipfile = zipfile.ZipFile(fileobj, mode)
 
     def getmembers(self):
+        """Get all members of the zip file.
+
+        Yields:
+            ZipInfoWrapper objects for each member.
+        """
         for info in self.zipfile.infolist():
             yield ZipInfoWrapper(self.zipfile, info)
 
     def extractfile(self, infowrapper):
+        """Extract a file from the zip archive.
+
+        Args:
+            infowrapper: ZipInfoWrapper for the file to extract.
+
+        Returns:
+            BytesIO object containing the file contents.
+        """
         return BytesIO(self.zipfile.read(infowrapper.name))
 
     def add(self, filename):
+        """Add a file or directory to the zip archive.
+
+        Args:
+            filename: Path to the file or directory to add.
+        """
         if isdir(filename):
             self.zipfile.writestr(filename + "/", "")
         else:
             self.zipfile.write(filename)
 
     def close(self):
+        """Close the zip file."""
         self.zipfile.close()
 
 
 class ZipInfoWrapper:
+    """Wrapper for ZipInfo providing consistent archive member interface."""
+
     def __init__(self, zipfile, info):
+        """Initialize the zip info wrapper.
+
+        Args:
+            zipfile: Parent zipfile object.
+            info: ZipInfo object to wrap.
+        """
         self.info = info
         self.type = None
         self.name = info.filename
@@ -82,24 +132,43 @@ class ZipInfoWrapper:
         self.mode = 0o666
 
     def isdir(self):
+        """Return True if this is a directory entry."""
         # Really? Eeeew!
         return bool(self.name.endswith("/"))
 
     def isreg(self):
+        """Return True if this is a regular file entry."""
         # Really? Eeeew!
         return not self.isdir()
 
 
 class DirWrapper:
+    """Wrapper for directories providing consistent archive interface."""
+
     def __init__(self, fileobj, mode="r"):
+        """Initialize the directory wrapper.
+
+        Args:
+            fileobj: File-like object containing the root directory path.
+            mode: Access mode (only 'r' supported).
+        """
         if mode != "r":
             raise AssertionError("only readonly supported")
         self.root = os.path.realpath(fileobj.read().decode("utf-8"))
 
     def __repr__(self):
+        """Return string representation of the DirWrapper."""
         return f"DirWrapper({self.root!r})"
 
     def getmembers(self, subdir=None):
+        """Get all members of the directory.
+
+        Args:
+            subdir: Subdirectory to scan, or None for root.
+
+        Yields:
+            FileInfo objects for each member.
+        """
         mydir = pathjoin(self.root, subdir) if subdir is not None else self.root
         for child in os.listdir(mydir):
             if subdir is not None:
@@ -110,11 +179,27 @@ class DirWrapper:
                 yield from self.getmembers(child)
 
     def extractfile(self, member):
+        """Extract a file from the directory.
+
+        Args:
+            member: FileInfo object for the file to extract.
+
+        Returns:
+            File object for reading the file.
+        """
         return open(member.fullpath, "rb")
 
 
 class FileInfo:
+    """Information about a file in a directory archive."""
+
     def __init__(self, root, filepath):
+        """Initialize file information.
+
+        Args:
+            root: Root directory path.
+            filepath: Relative path to the file.
+        """
         self.fullpath = pathjoin(root, filepath)
         self.root = root
         if filepath != "":
@@ -129,15 +214,19 @@ class FileInfo:
             self.name += "/"
 
     def __repr__(self):
+        """Return string representation of the FileInfo."""
         return f"FileInfo({self.name!r})"
 
     def isreg(self):
+        """Return True if this is a regular file."""
         return stat.S_ISREG(self.mode)
 
     def isdir(self):
+        """Return True if this is a directory."""
         return stat.S_ISDIR(self.mode)
 
     def issym(self):
+        """Return True if this is a symbolic link."""
         if stat.S_ISLNK(self.mode):
             self.linkname = os.readlink(self.fullpath)
             return True
@@ -170,6 +259,15 @@ def common_directory(names):
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
+    """Handle directory creation during import.
+
+    Args:
+        tt: TreeTransform object.
+        trans_id: Transform ID for the directory.
+        tree: Working tree being modified.
+        relative_path: Relative path within the tree.
+        path: Full filesystem path.
+    """
     if isdir(path) and tree.is_versioned(relative_path):
         tt.cancel_deletion(trans_id)
     else:
@@ -186,12 +284,28 @@ def add_implied_parents(implied_parents, path):
 
 
 def names_of_files(tar_file):
+    """Extract file names from an archive, excluding global extended headers.
+
+    Args:
+        tar_file: Archive file object.
+
+    Yields:
+        Names of files in the archive.
+    """
     for member in tar_file.getmembers():
         if member.type != "g":
             yield member.name
 
 
 def should_ignore(relative_path):
+    """Check if a path should be ignored during import.
+
+    Args:
+        relative_path: Path to check.
+
+    Returns:
+        True if the path should be ignored.
+    """
     return is_control_filename(top_path(relative_path))
 
 
@@ -204,22 +318,47 @@ def import_tar(tree, tar_input):
 
 
 def import_zip(tree, zip_input):
+    """Import contents of a zip file into a working tree.
+
+    Args:
+        tree: Working tree to import into.
+        zip_input: Input stream containing zip data.
+    """
     zip_file = ZipFileWrapper(zip_input, "r")
     import_archive(tree, zip_file)
 
 
 def import_dir(tree, dir_input):
+    """Import contents of a directory into a working tree.
+
+    Args:
+        tree: Working tree to import into.
+        dir_input: Input stream containing directory path.
+    """
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file)
 
 
 def import_archive(tree, archive_file):
+    """Import contents of an archive into a working tree.
+
+    Args:
+        tree: Working tree to import into.
+        archive_file: Archive object to read from.
+    """
     with tree.transform() as tt:
         import_archive_to_transform(tree, archive_file, tt)
         tt.apply()
 
 
 def import_archive_to_transform(tree, archive_file, tt):
+    """Import archive contents using an existing transform.
+
+    Args:
+        tree: Working tree to import into.
+        archive_file: Archive object to read from.
+        tt: TreeTransform to use for changes.
+    """
     prefix = common_directory(names_of_files(archive_file))
     removed = set()
     for path, entry in tree.iter_entries_by_dir():

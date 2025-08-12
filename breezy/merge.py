@@ -1,3 +1,10 @@
+"""Merge operations and conflict resolution for Breezy.
+
+This module provides functionality for merging changes between branches and
+resolving conflicts that may arise during the merge process. It includes
+various merge algorithms and strategies for handling different types of files
+and conflicts.
+"""
 # Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -42,6 +49,12 @@ from . import tree as _mod_tree
 
 
 class CantReprocessAndShowBase(errors.BzrError):
+    """Error raised when reprocessing conflicts with showing base content.
+
+    This error occurs when both reprocessing and showing base content are
+    requested, which would obscure the relationship of conflicting lines.
+    """
+
     _fmt = (
         "Can't reprocess and show base, because reprocessing obscures "
         "the relationship of conflicting lines to the base"
@@ -49,6 +62,13 @@ class CantReprocessAndShowBase(errors.BzrError):
 
 
 def transform_tree(from_tree, to_tree, interesting_files=None):
+    """Transform from_tree to match to_tree by merging changes.
+
+    Args:
+        from_tree: The tree to be modified.
+        to_tree: The tree to match.
+        interesting_files: Optional list of files to focus the merge on.
+    """
     with from_tree.lock_tree_write():
         merge_inner(
             from_tree.branch,
@@ -61,7 +81,10 @@ def transform_tree(from_tree, to_tree, interesting_files=None):
 
 
 class MergeHooks(hooks.Hooks):
+    """Hooks available for merge operations."""
+
     def __init__(self):
+        """Initialize merge hooks."""
         hooks.Hooks.__init__(self, "breezy.merge", "Merger.hooks")
         self.add_hook(
             "merge_file_content",
@@ -178,6 +201,11 @@ class ConfigurableFileMerger(PerFileMerger):
     default_files = None
 
     def __init__(self, merger):
+        """Initialize a configurable file merger.
+
+        Args:
+            merger: The Merger instance performing the merge.
+        """
         super().__init__(merger)
         self.affected_files = None
         self.default_files = self.__class__.default_files or []
@@ -211,6 +239,14 @@ class ConfigurableFileMerger(PerFileMerger):
         return False
 
     def merge_matching(self, params):
+        """Merge matching files by delegating to merge_text.
+
+        Args:
+            params: MergeFileHookParams containing merge details.
+
+        Returns:
+            Result of merge_text method.
+        """
         return self.merge_text(params)
 
     def merge_text(self, params):
@@ -238,6 +274,16 @@ class MergeFileHookParams:
     """
 
     def __init__(self, merger, paths, trans_id, this_kind, other_kind, winner):
+        """Initialize merge file hook parameters.
+
+        Args:
+            merger: The merger performing the merge.
+            paths: Tuple of (base_path, other_path, this_path).
+            trans_id: Transform ID for the merge of this file.
+            this_kind: Kind of file in 'this' tree.
+            other_kind: Kind of file in 'other' tree.
+            winner: One of 'this', 'other', 'conflict'.
+        """
         self._merger = merger
         self.paths = paths
         self.base_path, self.other_path, self.this_path = paths
@@ -267,6 +313,8 @@ class MergeFileHookParams:
 
 
 class Merger:
+    """Merge changes between branches and resolve conflicts."""
+
     hooks = MergeHooks()
 
     # TODO(jelmer): There should probably be a merger base type
@@ -282,6 +330,17 @@ class Merger:
         recurse="down",
         revision_graph=None,
     ):
+        """Initialize a Merger for merging changes.
+
+        Args:
+            this_branch: The branch being merged into.
+            other_tree: The tree being merged from.
+            base_tree: The common base tree.
+            this_tree: The working tree being merged into.
+            change_reporter: Reporter for displaying merge progress.
+            recurse: How to handle recursive merges.
+            revision_graph: Graph of revisions for merge analysis.
+        """
         object.__init__(self)
         self.this_branch = this_branch
         self.this_basis = this_branch.last_revision()
@@ -320,6 +379,7 @@ class Merger:
 
     @property
     def revision_graph(self):
+        """Get the revision graph for this merge."""
         if self._revision_graph is None:
             self._revision_graph = self.this_branch.repository.get_graph()
         return self._revision_graph
@@ -436,6 +496,15 @@ class Merger:
         return merger
 
     def revision_tree(self, revision_id, branch=None):
+        """Get a revision tree, using cache if available.
+
+        Args:
+            revision_id: The revision ID to get a tree for.
+            branch: Optional branch to get the tree from.
+
+        Returns:
+            The revision tree for the given revision ID.
+        """
         if revision_id not in self._cached_trees:
             if branch is None:
                 branch = self.this_branch
@@ -463,9 +532,19 @@ class Merger:
         return branch, self.revision_tree(revision_id, branch)
 
     def set_interesting_files(self, file_list):
+        """Set the list of files to focus merge operations on.
+
+        Args:
+            file_list: List of file paths to focus on during merge.
+        """
         self.interesting_files = file_list
 
     def set_pending(self):
+        """Mark the other revision as a pending merge if appropriate.
+
+        This adds the other revision as a parent of the current tree
+        if it's suitable for a pending merge.
+        """
         if (
             not self.base_is_ancestor
             or not self.base_is_other_ancestor
@@ -545,6 +624,11 @@ class Merger:
             target.fetch(source, revision_id)
 
     def find_base(self):
+        """Find the common base revision for the merge.
+
+        This determines the lowest common ancestor (LCA) between this_basis
+        and other_basis, handling special cases like criss-cross merges.
+        """
         revisions = [self.this_basis, self.other_basis]
         if _mod_revision.NULL_REVISION in revisions:
             self.base_rev_id = _mod_revision.NULL_REVISION
@@ -626,6 +710,11 @@ class Merger:
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):
+        """Create and configure the appropriate merger instance.
+
+        Returns:
+            A configured merger instance based on the merge_type.
+        """
         kwargs = {
             "working_tree": self.this_tree,
             "this_tree": self.this_tree,
@@ -709,6 +798,14 @@ class Merger:
         return merge
 
     def do_merge(self):
+        """Perform the merge operation.
+
+        This method locks the necessary trees and performs the merge,
+        reporting the results and any conflicts.
+
+        Returns:
+            The merger that was used for the merge operation.
+        """
         with contextlib.ExitStack() as stack:
             stack.enter_context(self.this_tree.lock_tree_write())
             if self.base_tree is not None:
@@ -826,6 +923,11 @@ class Merge3Merger:
             self.do_merge()
 
     def do_merge(self):
+        """Perform the three-way merge operation.
+
+        This locks all required trees, creates a transform, computes the
+        merge changes, and applies them to the working tree.
+        """
         with contextlib.ExitStack() as stack:
             stack.enter_context(self.working_tree.lock_tree_write())
             stack.enter_context(self.this_tree.lock_read())
@@ -840,6 +942,12 @@ class Merge3Merger:
                 self.working_tree.add_conflicts(self.cooked_conflicts)
 
     def make_preview_transform(self):
+        """Create a preview transform showing what the merge would do.
+
+        Returns:
+            A TreeTransform that shows the changes the merge would make
+            without actually applying them.
+        """
         with self.base_tree.lock_read(), self.other_tree.lock_read():
             self.tt = self.working_tree.preview_transform()
             self._compute_transform()
@@ -1182,6 +1290,11 @@ class Merge3Merger:
             )
 
     def write_modified(self, results):
+        """Record which files were modified during the merge.
+
+        Args:
+            results: The results from applying the merge transform.
+        """
         if not self.working_tree.supports_merge_modified():
             return
         modified_hashes = {}
@@ -1764,6 +1877,8 @@ class WeaveMerger(Merge3Merger):
 
 
 class LCAMerger(WeaveMerger):
+    """Merger that uses Lowest Common Ancestor (LCA) merge plans."""
+
     requires_file_merge_plan = True
 
     def _generate_merge_plan(self, this_path, base):
@@ -1776,6 +1891,17 @@ class Diff3Merger(Merge3Merger):
     requires_file_merge_plan = False
 
     def dump_file(self, temp_dir, name, tree, path):
+        """Dump a file from a tree to a temporary directory.
+
+        Args:
+            temp_dir: Directory to dump the file to.
+            name: Name for the dumped file.
+            tree: Tree to get the file from.
+            path: Path of the file in the tree.
+
+        Returns:
+            The path to the dumped file.
+        """
         out_path = osutils.pathjoin(temp_dir, name)
         with open(out_path, "wb") as out_file:
             in_file = tree.get_file(path)
@@ -1809,9 +1935,17 @@ class Diff3Merger(Merge3Merger):
 
 
 class PathNotInTree(errors.BzrError):
+    """Error raised when a path is not present in a tree during merge-into."""
+
     _fmt = """Merge-into failed because %(tree)s does not contain %(path)s."""
 
     def __init__(self, path, tree):
+        """Initialize the error with path and tree information.
+
+        Args:
+            path: The path that was not found.
+            tree: The tree where the path was missing.
+        """
         errors.BzrError.__init__(self, path=path, tree=tree)
 
 
@@ -1878,6 +2012,10 @@ class MergeIntoMerger(Merger):
             self._maybe_fetch(self.other_branch, self.this_branch, self.other_basis)
 
     def set_pending(self):
+        """Set pending merge status for merge-into operations.
+
+        Only sets pending if this is a complete tree merge (not partial).
+        """
         if self._source_subpath != "":
             return
         Merger.set_pending(self)
