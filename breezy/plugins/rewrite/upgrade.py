@@ -33,6 +33,11 @@ class UpgradeChangesContent(BzrError):
     _fmt = """Upgrade will change contents in revision %(revid)s. Use --allow-changes to override."""
 
     def __init__(self, revid):
+        """Initialize the error with the revision ID that has content changes.
+
+        Args:
+            revid: The revision ID that would have content changes during upgrade.
+        """
         self.revid = revid
 
 
