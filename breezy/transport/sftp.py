@@ -50,10 +50,25 @@ SFTPError = _sftp_rs.SFTPError
 
 
 class WriteStream:
+    """Simple write stream wrapper for SFTP file objects."""
+
     def __init__(self, f):
+        """Initialize write stream.
+
+        Args:
+            f: SFTP file object to wrap.
+        """
         self.f = f
 
     def write(self, data):
+        """Write data to the stream.
+
+        Args:
+            data: Bytes to write.
+
+        Returns:
+            int: Number of bytes written.
+        """
         self.f.write(data)
         return len(data)
 
@@ -69,6 +84,15 @@ class SFTPLock:
     __slots__ = ["lock_file", "lock_path", "path", "transport"]
 
     def __init__(self, path, transport):
+        """Initialize SFTP lock.
+
+        Args:
+            path: Path to lock.
+            transport: SFTP transport to use.
+
+        Raises:
+            LockError: If the file is already locked.
+        """
         self.lock_file = None
         self.path = path
         self.lock_path = path + ".write-lock"
@@ -81,6 +105,7 @@ class SFTPLock:
             raise LockError(f"File {self.path!r} already locked") from err
 
     def unlock(self):
+        """Release the lock by closing and deleting the lock file."""
         if not self.lock_file:
             return
         self.lock_file.close()
@@ -346,6 +371,7 @@ class SFTPTransport(ConnectedTransport):
         return connection, (user, password)
 
     def disconnect(self):
+        """Disconnect the current SFTP connection."""
         connection = self._get_connection()
         if connection is not None:
             connection.close()
@@ -387,6 +413,14 @@ class SFTPTransport(ConnectedTransport):
             )
 
     def get_bytes(self, relpath):
+        """Get the contents of a file as a byte string.
+
+        Args:
+            relpath: Path to the file relative to transport root.
+
+        Returns:
+            bytes: The file contents.
+        """
         # reimplement this here so that we can report how many bytes came back
         with self.get(relpath) as f:
             bytes = f.read()
@@ -575,6 +609,20 @@ class SFTPTransport(ConnectedTransport):
         create_parent_dir=False,
         dir_mode=None,
     ):
+        """Write bytes to a file non-atomically.
+
+        This is not safe if the target already exists as it will truncate it.
+
+        Args:
+            relpath: Path relative to transport root.
+            raw_bytes: Bytes to write.
+            mode: File permissions.
+            create_parent_dir: Whether to create parent directory if needed.
+            dir_mode: Permissions for created parent directories.
+
+        Raises:
+            TypeError: If raw_bytes is not bytes.
+        """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(f"raw_bytes must be a plain string, not {type(raw_bytes)}")
 

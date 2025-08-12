@@ -54,6 +54,7 @@ class GioLocalURLServer(TestServer):
     """
 
     def start_server(self):
+        """Start the server (no-op for local filesystem access)."""
         pass
 
     def get_url(self):
@@ -68,6 +69,12 @@ class GioFileStream(FileStream):
     """
 
     def __init__(self, transport, relpath):
+        """Initialize the GIO file stream.
+
+        Args:
+            transport: The GIO transport instance.
+            relpath: Relative path to the file.
+        """
         FileStream.__init__(self, transport, relpath)
         self.gio_file = transport._get_GIO(relpath)
         self.stream = self.gio_file.create()
@@ -76,6 +83,14 @@ class GioFileStream(FileStream):
         self.stream.close()
 
     def write(self, bytes):
+        """Write bytes to the stream.
+
+        Args:
+            bytes: Data to write.
+
+        Raises:
+            BzrError: If the write operation fails.
+        """
         try:
             # Using pump_string_file seems to make things crash
             osutils.pumpfile(BytesIO(bytes), self.stream)
@@ -85,7 +100,14 @@ class GioFileStream(FileStream):
 
 
 class GioStatResult:
+    """Stat result wrapper for GIO file information."""
+
     def __init__(self, f):
+        """Initialize stat result from a GIO file.
+
+        Args:
+            f: GIO file object to get information from.
+        """
         info = f.query_info("standard::size,standard::type")
         self.st_size = info.get_size()
         type = info.get_file_type()
@@ -226,6 +248,10 @@ class GioTransport(ConnectedTransport):
         return connection, (user, password)
 
     def disconnect(self):
+        """Disconnect from the transport.
+
+        Note: GIO handles connection management internally, so this is a no-op.
+        """
         # FIXME: Nothing seems to be necessary here, which sounds a bit strange
         # -- vila 20100601
         pass

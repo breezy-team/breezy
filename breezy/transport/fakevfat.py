@@ -82,18 +82,53 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
         return name.lower()
 
     def get(self, relpath):
+        """Get a file from the transport.
+
+        Args:
+            relpath: Relative path to the file.
+
+        Returns:
+            File-like object for reading.
+        """
         return self._decorated.get(self._squash_name(relpath))
 
     def mkdir(self, relpath, mode=None):
+        """Create a directory.
+
+        Args:
+            relpath: Relative path of directory to create.
+            mode: Permissions mode (ignored, always uses 0o755).
+
+        Returns:
+            Result from decorated transport's mkdir.
+        """
         return self._decorated.mkdir(self._squash_name(relpath), 0o755)
 
     def has(self, relpath):
+        """Check if a path exists.
+
+        Args:
+            relpath: Relative path to check.
+
+        Returns:
+            bool: True if the path exists.
+        """
         return self._decorated.has(self._squash_name(relpath))
 
     def _readv(self, relpath, offsets):
         return self._decorated.readv(self._squash_name(relpath), offsets)
 
     def put_file(self, relpath, f, mode=None):
+        """Write a file to the transport.
+
+        Args:
+            relpath: Relative path where to write the file.
+            f: File-like object to read from.
+            mode: Permissions mode for the file.
+
+        Returns:
+            Result from decorated transport's put_file.
+        """
         return self._decorated.put_file(self._squash_name(relpath), f, mode)
 
 

@@ -79,6 +79,11 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.get(relpath)
 
     def get_smart_client(self):
+        """Get a smart protocol client from the decorated transport.
+
+        Returns:
+            The smart client from the underlying transport.
+        """
         return self._decorated.get_smart_client()
 
     def has(self, relpath):
@@ -147,6 +152,17 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.list_dir(relpath)
 
     def readv(self, relpath, offsets, adjust_for_latency=False, upper_limit=None):
+        """Read multiple ranges from a file.
+
+        Args:
+            relpath: Path relative to transport root.
+            offsets: List of (offset, length) tuples to read.
+            adjust_for_latency: Whether to adjust reading for latency.
+            upper_limit: Maximum amount to read.
+
+        Returns:
+            Iterator of (offset, data) tuples.
+        """
         # we override at the readv() level rather than _readv() so that any
         # latency adjustments will be done by the underlying transport
         self._trace(("readv", relpath, offsets, adjust_for_latency, upper_limit))
@@ -157,6 +173,12 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.recommended_page_size()
 
     def rename(self, rel_from, rel_to):
+        """Rename a file or directory.
+
+        Args:
+            rel_from: Current relative path.
+            rel_to: New relative path.
+        """
         self._activity.append(("rename", rel_from, rel_to))
         return self._decorated.rename(rel_from, rel_to)
 
