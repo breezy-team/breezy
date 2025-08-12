@@ -1,3 +1,10 @@
+"""Multi-parent diffing and patching algorithms for Breezy.
+
+This module provides functionality for computing and applying patches that can
+handle multiple parents, such as three-way merges and conflict resolution.
+It includes topological iteration over version graphs and multi-parent diff
+algorithms.
+"""
 # Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -34,6 +41,15 @@ from .i18n import gettext
 
 
 def topo_iter_keys(vf, keys=None):
+    """Iterate over keys in topological order.
+
+    Args:
+        vf: Version file to iterate over.
+        keys: Keys to iterate over, or None for all keys.
+
+    Returns:
+        Iterator over keys in topological order.
+    """
     if keys is None:
         keys = vf.keys()
     parents = vf.get_parent_map(keys)
@@ -41,6 +57,15 @@ def topo_iter_keys(vf, keys=None):
 
 
 def topo_iter(vf, versions=None):
+    """Iterate over versions in topological order.
+
+    Args:
+        vf: Version file to iterate over.
+        versions: Versions to iterate over, or None for all versions.
+
+    Returns:
+        Iterator over versions in topological order.
+    """
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
@@ -82,15 +107,22 @@ class MultiParent:
     __slots__ = ["hunks"]
 
     def __init__(self, hunks=None):
+        """Initialize a MultiParent diff.
+
+        Args:
+            hunks: List of diff hunks, or None to start with empty list.
+        """
         if hunks is not None:
             self.hunks = hunks
         else:
             self.hunks = []
 
     def __repr__(self):
+        """Return string representation of MultiParent."""
         return f"MultiParent({self.hunks!r})"
 
     def __eq__(self, other):
+        """Check equality with another MultiParent."""
         if self.__class__ is not other.__class__:
             return False
         return self.hunks == other.hunks
@@ -159,6 +191,7 @@ class MultiParent:
         return diff
 
     def get_matching_blocks(self, parent, parent_len):
+        """Get blocks that match the specified parent."""
         for hunk in self.hunks:
             if not isinstance(hunk, ParentText) or hunk.parent != parent:
                 continue
@@ -186,9 +219,11 @@ class MultiParent:
             yield from hunk.to_patch()
 
     def patch_len(self):
+        """Get the length of the patch in bytes."""
         return len(b"".join(self.to_patch()))
 
     def zipped_patch_len(self):
+        """Get the length of the gzipped patch in bytes."""
         return len(gzip_string(self.to_patch()))
 
     @classmethod
@@ -268,6 +303,11 @@ class NewText:
     __slots__ = ["lines"]
 
     def __init__(self, lines):
+        """Initialize NewText with the given lines.
+
+        Args:
+            lines: Lines of new text content.
+        """
         self.lines = lines
 
     def __eq__(self, other):
@@ -290,6 +330,14 @@ class ParentText:
     __slots__ = ["child_pos", "num_lines", "parent", "parent_pos"]
 
     def __init__(self, parent, parent_pos, child_pos, num_lines):
+        """Initialize ParentText reference.
+
+        Args:
+            parent: Parent index.
+            parent_pos: Position in parent text.
+            child_pos: Position in child text.
+            num_lines: Number of lines referenced.
+        """
         self.parent = parent
         self.parent_pos = parent_pos
         self.child_pos = child_pos
@@ -325,6 +373,12 @@ class BaseVersionedFile:
     """Pseudo-VersionedFile skeleton for MultiParent."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
+        """Initialize BaseVersionedFile.
+
+        Args:
+            snapshot_interval: Interval between snapshots.
+            max_snapshots: Maximum number of snapshots to keep.
+        """
         self._lines = {}
         self._parents = {}
         self._snapshots = set()
@@ -539,6 +593,12 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
     """Memory-backed pseudo-versionedfile."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
+        """Initialize MultiMemoryVersionedFile.
+
+        Args:
+            snapshot_interval: Interval between snapshots.
+            max_snapshots: Maximum number of snapshots to keep.
+        """
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
         self._diffs = {}
 
@@ -560,6 +620,13 @@ class MultiVersionedFile(BaseVersionedFile):
     """Disk-backed pseudo-versionedfile."""
 
     def __init__(self, filename, snapshot_interval=25, max_snapshots=None):
+        """Initialize MultiVersionedFile.
+
+        Args:
+            filename: Name of the file to back this versioned file.
+            snapshot_interval: Interval between snapshots.
+            max_snapshots: Maximum number of snapshots to keep.
+        """
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
         self._filename = filename
         self._diff_offset = {}
@@ -621,6 +688,13 @@ class _Reconstructor:
     """Build a text from the diffs, ancestry graph and cached lines."""
 
     def __init__(self, diffs, lines, parents):
+        """Initialize text reconstructor.
+
+        Args:
+            diffs: Dictionary of diffs by version ID.
+            lines: Dictionary of cached lines by version ID.
+            parents: Dictionary of parent relationships.
+        """
         self.diffs = diffs
         self.lines = lines
         self.parents = parents

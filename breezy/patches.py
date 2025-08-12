@@ -1,3 +1,9 @@
+"""Patch parsing and application functionality for Breezy.
+
+This module provides classes and functions for parsing unified diffs,
+applying patches to files, and handling patch-related operations.
+It supports both text and binary patch formats.
+"""
 # Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
@@ -29,20 +35,37 @@ class PatchSyntax(BzrError):
 
 
 class MalformedLine(PatchSyntax):
+    """Error raised when a patch contains a malformed line."""
+
     _fmt = "Malformed line.  %(desc)s\n%(line)r"
 
     def __init__(self, desc, line):
+        """Initialize MalformedLine error.
+
+        Args:
+            desc: Description of the malformed line.
+            line: The malformed line content.
+        """
         self.desc = desc
         self.line = line
 
 
 class PatchConflict(BzrError):
+    """Error raised when patch application encounters a conflict."""
+
     _fmt = (
         "Text contents mismatch at line %(line_no)d.  Original has "
         '"%(orig_line)s", but patch says it should be "%(patch_line)s"'
     )
 
     def __init__(self, line_no, orig_line, patch_line):
+        """Initialize PatchConflict error.
+
+        Args:
+            line_no: Line number where conflict occurred.
+            orig_line: Original line content.
+            patch_line: Expected line content from patch.
+        """
         self.line_no = line_no
         self.orig_line = orig_line.rstrip("\n")
         self.patch_line = patch_line.rstrip("\n")

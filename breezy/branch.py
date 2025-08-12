@@ -1874,9 +1874,11 @@ class ChangeBranchTipParams:
         self.new_revid = new_revid
 
     def __eq__(self, other):
+        """Check equality with another ChangeBranchTipParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of ChangeBranchTipParams."""
         return "<{} of {} from ({}, {}) to ({}, {})>".format(
             self.__class__.__name__,
             self.branch,
@@ -1923,9 +1925,11 @@ class BranchInitHookParams:
         self.branch = branch
 
     def __eq__(self, other):
+        """Check equality with another BranchInitHookParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of BranchInitHookParams."""
         return f"<{self.__class__.__name__} of {self.branch}>"
 
 
@@ -1956,9 +1960,11 @@ class SwitchHookParams:
         self.revision_id = revision_id
 
     def __eq__(self, other):
+        """Check equality with another SwitchHookParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of SwitchHookParams."""
         return "<{} for {} to ({}, {})>".format(
             self.__class__.__name__, self.control_dir, self.to_branch, self.revision_id
         )
@@ -1968,6 +1974,11 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
+        """Initialize branch format registry.
+
+        Args:
+            other_registry: Optional existing registry to copy from.
+        """
         super().__init__(other_registry)
         self._default_format = None
         self._default_format_key = None
@@ -2010,6 +2021,7 @@ class BranchWriteLockResult(LogicalLockResult):
     """
 
     def __repr__(self):
+        """Return string representation of BranchWriteLockResult."""
         return f"BranchWriteLockResult({self.unlock!r}, {self.token!r})"
 
 
@@ -2055,6 +2067,7 @@ class PullResult(_Result):
     tag_updates: "TagUpdates"
 
     def report(self, to_file: TextIO) -> None:
+        """Report the result of a pull operation to a file."""
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
@@ -2100,6 +2113,7 @@ class BranchPushResult(_Result):
     local_branch: Optional[Branch]
 
     def report(self, to_file: TextIO) -> None:
+        """Report the result of a push operation to a file."""
         from .i18n import gettext, ngettext
 
         # TODO: This function gets passed a to_file, but then
@@ -2137,6 +2151,11 @@ class BranchCheckResult:
     """
 
     def __init__(self, branch):
+        """Initialize BranchCheckResult.
+
+        Args:
+            branch: The branch that was checked.
+        """
         self.branch = branch
         self.errors = []
 
@@ -2243,6 +2262,7 @@ class InterBranch(InterObject[Branch]):
 
     @classmethod
     def get(self, source: Branch, target: Branch) -> "InterBranch":
+        """Get appropriate InterBranch implementation for source and target branches."""
         return cast("InterBranch", super().get(source, target))
 
 
@@ -2260,6 +2280,7 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def is_compatible(klass, source, target):
+        """Check if this InterBranch implementation is compatible with the given branches."""
         # GenericBranch uses the public API, so always compatible
         return True
 
@@ -2269,6 +2290,7 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def unwrap_format(klass, format):
+        """Unwrap a branch format to get the underlying format."""
         from .bzr.remote import RemoteBranchFormat
 
         if isinstance(format, RemoteBranchFormat):
@@ -2296,6 +2318,7 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(self.target.tags, selector=tag_selector)
 
     def fetch(self, stop_revision=None, limit=None, lossy=False):
+        """Fetch revisions from source to target branch."""
         if self.target.base == self.source.base:
             return (0, [])
         from .bzr.fetch import FetchSpecFactory, TargetRepoKinds
@@ -2575,6 +2598,7 @@ class GenericInterBranch(InterBranch):
             return result
 
     def update_references(self):
+        """Update reference locations from source to target branch."""
         if not getattr(self.source._format, "supports_reference_locations", False):
             return
         reference_dict = self.source._get_all_reference_info()

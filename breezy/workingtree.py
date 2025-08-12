@@ -1,3 +1,15 @@
+"""WorkingTree object and friends.
+
+A WorkingTree represents the editable working copy of a branch.
+Operations which represent the WorkingTree are also done here,
+such as renaming or adding files.
+
+At the moment every WorkingTree has its own branch.  Remote
+WorkingTrees aren't supported.
+
+To get a WorkingTree, call controldir.open_workingtree() or
+WorkingTree.open(dir).
+"""
 # Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,19 +27,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 __docformat__ = "google"
-
-"""WorkingTree object and friends.
-
-A WorkingTree represents the editable working copy of a branch.
-Operations which represent the WorkingTree are also done here,
-such as renaming or adding files.
-
-At the moment every WorkingTree has its own branch.  Remote
-WorkingTrees aren't supported.
-
-To get a WorkingTree, call controldir.open_workingtree() or
-WorkingTree.open(dir).
-"""
 
 import contextlib
 import os
@@ -65,14 +64,20 @@ from .transport.local import file_kind
 
 
 class SettingFileIdUnsupported(errors.BzrError):
+    """Error raised when trying to set file ids in an unsupported format."""
+
     _fmt = "This format does not support setting file ids."
 
 
 class ShelvingUnsupported(errors.BzrError):
+    """Error raised when trying to shelve changes in an unsupported format."""
+
     _fmt = "This format does not support shelving changes."
 
 
 class PointlessMerge(errors.BzrError):
+    """Error raised when there's nothing to merge."""
+
     _fmt = "Nothing to merge."
 
 
