@@ -670,12 +670,22 @@ class Config:
         pass
 
     def get_nickname(self):
+        """Get the nickname for this location.
+
+        Returns:
+            The nickname string or None if not configured.
+        """
         return self._get_nickname()
 
     def _get_nickname(self):
         return None
 
     def get_bzr_remote_path(self):
+        """Get the path for bzr on the remote machine.
+
+        Returns:
+            The remote path string or None if not configured.
+        """
         try:
             return os.environ["BZR_REMOTE_PATH"]
         except KeyError:
@@ -1072,6 +1082,11 @@ class LockableConfig(IniBasedConfig):
     lock_name = "lock"
 
     def __init__(self, file_name):
+        """Initialize a lockable configuration.
+
+        Args:
+            file_name: Path to the configuration file.
+        """
         super().__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         # FIXME: It doesn't matter that we don't provide possible_transports
