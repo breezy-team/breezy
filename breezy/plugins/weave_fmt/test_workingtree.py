@@ -29,9 +29,18 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
 
     def create_format2_tree(self, url):
+        """Create a format 2 working tree for testing.
+
+        Args:
+            url: The URL for the tree location.
+
+        Returns:
+            A format 2 working tree instance.
+        """
         return self.make_branch_and_tree(url, format=BzrDirFormat6())
 
     def test_conflicts(self):
+        """Test backwards compatibility for conflict handling."""
         # test backwards compatibility
         tree = self.create_format2_tree(".")
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts, None)

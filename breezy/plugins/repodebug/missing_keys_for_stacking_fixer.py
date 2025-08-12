@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Commands for fixing repository stacking issues and mirroring revisions."""
+
 from ... import errors
 from ...bzr.vf_search import PendingAncestryResult
 from ...commands import Command
@@ -38,6 +40,12 @@ class cmd_fix_missing_keys_for_stacking(Command):
     ]
 
     def run(self, branch_url, dry_run=False):
+        """Execute the fix-missing-keys-for-stacking command.
+
+        Args:
+            branch_url: URL of the branch to fix.
+            dry_run: Whether to show what would be done without actually doing it.
+        """
         try:
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
@@ -101,6 +109,12 @@ class cmd_mirror_revs_into(Command):
     _see_also = ["fetch-all-records"]
 
     def run(self, source, destination):
+        """Execute the mirror-revs-into command.
+
+        Args:
+            source: Source repository URL.
+            destination: Destination repository URL.
+        """
         bd = ControlDir.open(source)
         source_r = bd.open_branch().repository
         bd = ControlDir.open(destination)

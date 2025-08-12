@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""XML serialization support for weave format version 4."""
 
 from ... import revision as _mod_revision
 from ...bzr import inventory
@@ -29,7 +30,18 @@ from ...errors import BzrError
 
 
 class Revision(_mod_revision.Revision):
+    """Revision class with additional v4-specific attributes."""
+
     def __new__(cls, *args, **kwargs):
+        """Create new Revision instance with inventory_id and parent_sha1s.
+
+        Args:
+            *args: Positional arguments passed to parent class.
+            **kwargs: Keyword arguments, including inventory_id and parent_sha1s.
+
+        Returns:
+            New Revision instance with additional attributes.
+        """
         inventory_id = kwargs.pop("inventory_id", None)
         parent_sha1s = kwargs.pop("parent_sha1s", None)
         self = _mod_revision.Revision.__new__(cls, *args, **kwargs)

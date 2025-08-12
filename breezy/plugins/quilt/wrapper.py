@@ -31,9 +31,18 @@ DEFAULT_SERIES_FILE = "series"
 
 
 class QuiltError(errors.BzrError):
+    """Error raised when quilt command execution fails."""
+
     _fmt = "An error (%(retcode)d) occurred running quilt: %(stderr)s%(extra)s"
 
     def __init__(self, retcode, stdout, stderr):
+        """Initialize QuiltError.
+
+        Args:
+            retcode: Exit code from quilt command.
+            stdout: Standard output from quilt command.
+            stderr: Standard error from quilt command.
+        """
         self.retcode = retcode
         self.stderr = stderr
         if stdout is not None:
@@ -44,6 +53,8 @@ class QuiltError(errors.BzrError):
 
 
 class QuiltNotInstalled(errors.BzrError):
+    """Error raised when quilt is not installed or not found."""
+
     _fmt = "Quilt is not installed."
 
 
@@ -231,6 +242,14 @@ def quilt_delete(working_dir, patch, patches_dir=None, series_file=None, remove=
 
 
 def quilt_upgrade(working_dir):
+    """Upgrade the patches directory to the current quilt format.
+
+    Args:
+        working_dir: Directory to work in.
+
+    Returns:
+        Output from quilt command.
+    """
     return run_quilt(["upgrade"], working_dir=working_dir)
 
 
