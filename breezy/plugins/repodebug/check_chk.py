@@ -27,6 +27,24 @@ class cmd_check_chk(commands.Command):
     takes_options = ["directory", "revision"]
 
     def run(self, directory=".", revision=None):
+        """Run the check-chk command to verify CHK pages are in canonical form.
+
+        This command iterates through inventories and checks that their CHK maps
+        (content-hash-key maps) are in canonical form by reconstructing them and
+        comparing the keys.
+
+        Args:
+            directory: Path to the directory containing the branch to check.
+                Defaults to current directory.
+            revision: Revision specification. Can be:
+                - None/empty: Check all inventories in the repository
+                - Single revision: Check only that revision's inventory
+                - Two revisions: Check inventories unique to the second revision
+                  compared to the first
+
+        Returns:
+            None. Warnings are printed for any CHK pages not in canonical form.
+        """
         wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
