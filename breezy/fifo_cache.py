@@ -24,6 +24,13 @@ class FIFOCache(dict):
     """A class which manages a cache of entries, removing old ones."""
 
     def __init__(self, max_cache: int = 100, after_cleanup_count=None) -> None:
+        """Initialize a FIFOCache.
+
+        Args:
+            max_cache: The maximum number of entries to cache.
+            after_cleanup_count: After cleanup, we should have at most this
+                many entries. Defaults to 80% of max_cache.
+        """
         dict.__init__(self)
         self._max_cache = max_cache
         if after_cleanup_count is None:
@@ -40,6 +47,11 @@ class FIFOCache(dict):
         self.add(key, value, cleanup=None)
 
     def __delitem__(self, key):
+        """Remove a key from the cache.
+
+        Args:
+            key: The key to remove from the cache.
+        """
         # Remove the key from an arbitrary location in the queue
         self._queue.remove(key)
         self._remove(key)
@@ -124,9 +136,26 @@ class FIFOCache(dict):
     # raise NotImplementedError on dict functions that would mutate the cache
     # which have not been properly implemented yet.
     def copy(self):
+        """Not implemented for FIFOCache.
+
+        Raises:
+            NotImplementedError: This method is not supported for FIFOCache.
+        """
         raise NotImplementedError(self.copy)
 
     def pop(self, key, default=None):
+        """Not implemented for FIFOCache.
+
+        The pop operation is ambiguous with cleanup functions, as it would
+        need to clean up the value before returning it, making it useless.
+
+        Args:
+            key: The key to pop.
+            default: Default value if key not found.
+
+        Raises:
+            NotImplementedError: This method is not supported for FIFOCache.
+        """
         # If there is a cleanup() function, than it is unclear what pop()
         # should do. Specifically, we would have to call the cleanup on the
         # value before we return it, which should cause whatever resources were
@@ -135,6 +164,13 @@ class FIFOCache(dict):
         raise NotImplementedError(self.pop)
 
     def popitem(self):
+        """Not implemented for FIFOCache.
+
+        See pop() for rationale.
+
+        Raises:
+            NotImplementedError: This method is not supported for FIFOCache.
+        """
         # See pop()
         raise NotImplementedError(self.popitem)
 

@@ -30,14 +30,28 @@ class CountedLock:
     """
 
     def __init__(self, real_lock):
+        """Initialize a CountedLock.
+
+        Args:
+            real_lock: The underlying lock object to decorate.
+        """
         self._real_lock = real_lock
         self._lock_mode = None
         self._lock_count = 0
 
     def __repr__(self):
+        """Return a string representation of the CountedLock.
+
+        Returns:
+            A string representation showing the wrapped lock.
+        """
         return f"{self.__class__.__name__}({self._real_lock!r})"
 
     def break_lock(self):
+        """Break the underlying lock and reset internal state.
+
+        This forces the lock to be released and resets the lock count and mode.
+        """
         self._real_lock.break_lock()
         self._lock_mode = None
         self._lock_count = 0
@@ -55,6 +69,11 @@ class CountedLock:
             return False
 
     def is_locked(self):
+        """Check if the lock is currently held.
+
+        Returns:
+            True if the lock is held in any mode, False otherwise.
+        """
         return self._lock_mode is not None
 
     def lock_read(self):
@@ -95,6 +114,14 @@ class CountedLock:
             return self._token
 
     def unlock(self):
+        """Release the lock.
+
+        If the lock is held multiple times (reentrant), this decrements the
+        count. The underlying lock is only released when the count reaches zero.
+
+        Raises:
+            LockNotHeld: If the lock is not currently held.
+        """
         if self._lock_count == 0:
             raise errors.LockNotHeld(self)
         elif self._lock_count == 1:
