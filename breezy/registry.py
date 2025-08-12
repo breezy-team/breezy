@@ -136,6 +136,11 @@ class Registry(Generic[K, V, I]):
         return dict(self._aliases.items())
 
     def alias_map(self) -> dict[K, list[K]]:
+        """Get a map from target names to lists of their aliases.
+
+        Returns:
+            Dictionary mapping each target key to a list of its aliases.
+        """
         ret: dict[K, list[K]] = {}
         for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
@@ -283,9 +288,22 @@ class Registry(Generic[K, V, I]):
         del self._dict[key]
 
     def __contains__(self, key):
+        """Check if a key is registered in this registry.
+
+        Args:
+            key: The key to check for.
+
+        Returns:
+            True if the key is registered, False otherwise.
+        """
         return key in self._dict
 
     def __iter__(self):
+        """Iterate over all registered keys.
+
+        Returns:
+            Iterator over the registered keys.
+        """
         return iter(self._dict)
 
     def keys(self):
@@ -293,10 +311,20 @@ class Registry(Generic[K, V, I]):
         return sorted(self._dict)
 
     def iteritems(self) -> Iterator[tuple[K, V]]:
+        """Iterate over (key, object) pairs.
+
+        Yields:
+            Tuple of (key, resolved_object) for each registered item.
+        """
         for key in self._dict:
             yield key, self._dict[key].get_obj()
 
     def items(self):
+        """Get a list of (key, object) pairs.
+
+        Returns:
+            List of (key, resolved_object) tuples for all registered items.
+        """
         # We should not use the iteritems() implementation below (see bug
         # #430510)
         return [(key, self._dict[key].get_obj()) for key in self.keys()]
@@ -325,10 +353,27 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
+        """Initialize FormatRegistry.
+
+        Args:
+            other_registry: Optional additional registry to mirror registrations to.
+        """
         super().__init__()
         self._other_registry = other_registry
 
     def register(self, key, obj, help=None, info=None, override_existing=False):
+        """Register a format object.
+
+        Args:
+            key: The format name key.
+            obj: The format object or factory function.
+            help: Optional help text for this format.
+            info: Optional additional information about the format.
+            override_existing: Whether to allow overriding existing registrations.
+
+        Returns:
+            None
+        """
         Registry.register(
             self, key, obj, help=help, info=info, override_existing=override_existing
         )
@@ -346,6 +391,19 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
         info=None,
         override_existing=False,
     ):
+        """Register a format that will be imported on first access.
+
+        Args:
+            key: The format name key.
+            module_name: Name of the module containing the format.
+            member_name: Name of the format object within the module.
+            help: Optional help text for this format.
+            info: Optional additional information about the format.
+            override_existing: Whether to allow overriding existing registrations.
+
+        Returns:
+            None
+        """
         # Overridden to allow capturing registrations to two seperate
         # registries in a single call.
         Registry.register_lazy(
@@ -368,11 +426,27 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
             )
 
     def remove(self, key):
+        """Remove a format from the registry.
+
+        Args:
+            key: The format name key to remove.
+
+        Returns:
+            None
+        """
         super().remove(key)
         if self._other_registry is not None:
             self._other_registry.remove(key)
 
     def get(self, format_string):
+        """Get a format object, calling factory functions if needed.
+
+        Args:
+            format_string: The format name to retrieve.
+
+        Returns:
+            The format object, with factory functions automatically called.
+        """
         r = Registry.get(self, format_string)
         if callable(r):
             r = r()

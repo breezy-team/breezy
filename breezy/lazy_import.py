@@ -47,17 +47,39 @@ from .errors import BzrError, InternalBzrError
 
 
 class ImportNameCollision(InternalBzrError):
+    """Exception raised when an import would collide with an existing name.
+
+    This occurs when trying to import something with a name that already
+    exists in the target scope.
+    """
     _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
 
     def __init__(self, name):
+        """Initialize ImportNameCollision exception.
+
+        Args:
+            name: The name that would collide.
+        """
         BzrError.__init__(self)
         self.name = name
 
 
 class IllegalUseOfScopeReplacer(InternalBzrError):
+    """Exception raised when a ScopeReplacer is used incorrectly.
+
+    This can happen when a lazy object tries to replace itself or is
+    accessed after being assigned to another variable when proxying is disabled.
+    """
     _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
 
     def __init__(self, name, msg, extra=None):
+        """Initialize IllegalUseOfScopeReplacer exception.
+
+        Args:
+            name: Name of the ScopeReplacer object.
+            msg: Description of the illegal use.
+            extra: Optional additional information.
+        """
         BzrError.__init__(self)
         self.name = name
         self.msg = msg
@@ -68,9 +90,20 @@ class IllegalUseOfScopeReplacer(InternalBzrError):
 
 
 class InvalidImportLine(InternalBzrError):
+    """Exception raised when an import line cannot be parsed.
+
+    This occurs when the lazy import parser encounters a line that
+    doesn't match the expected import statement format.
+    """
     _fmt = "Not a valid import statement: %(msg)\n%(text)s"
 
     def __init__(self, text, msg):
+        """Initialize InvalidImportLine exception.
+
+        Args:
+            text: The invalid import line text.
+            msg: Description of why the line is invalid.
+        """
         BzrError.__init__(self)
         self.text = text
         self.msg = msg
@@ -141,14 +174,40 @@ class ScopeReplacer:
         return real_obj
 
     def __getattribute__(self, attr):
+        """Get an attribute from the resolved object.
+
+        Args:
+            attr: Name of the attribute to get.
+
+        Returns:
+            The attribute value from the resolved object.
+        """
         obj = object.__getattribute__(self, "_resolve")()
         return getattr(obj, attr)
 
     def __setattr__(self, attr, value):
+        """Set an attribute on the resolved object.
+
+        Args:
+            attr: Name of the attribute to set.
+            value: Value to set the attribute to.
+
+        Returns:
+            Result of setattr on the resolved object.
+        """
         obj = object.__getattribute__(self, "_resolve")()
         return setattr(obj, attr, value)
 
     def __call__(self, *args, **kwargs):
+        """Call the resolved object as a function.
+
+        Args:
+            *args: Positional arguments to pass to the resolved object.
+            **kwargs: Keyword arguments to pass to the resolved object.
+
+        Returns:
+            Result of calling the resolved object.
+        """
         obj = object.__getattribute__(self, "_resolve")()
         return obj(*args, **kwargs)
 
@@ -271,6 +330,12 @@ class ImportProcessor:
     __slots__ = ["_lazy_import_class", "imports"]
 
     def __init__(self, lazy_import_class=None) -> None:
+        """Initialize a ScopeTree for managing lazy imports.
+
+        Args:
+            lazy_import_class: Class to use for creating import replacers.
+                             Defaults to ImportReplacer if not specified.
+        """
         self.imports: dict[str, Any] = {}
         if lazy_import_class is None:
             self._lazy_import_class = ImportReplacer

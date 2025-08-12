@@ -97,6 +97,17 @@ def note(*args, **kwargs):
 
 
 def warning(*args, **kwargs):
+    """Output a warning message to the user.
+
+    Takes the same parameters as logging.warning.
+
+    Args:
+        *args: Positional arguments for warning message formatting.
+        **kwargs: Keyword arguments for warning message formatting.
+
+    Returns:
+        None
+    """
     ui.ui_factory.clear_term()
     _brz_logger.warning(*args, **kwargs)
 
@@ -110,6 +121,18 @@ def show_error(*args, **kwargs):
 
 
 def mutter(fmt, *args):
+    """Log a debug message to the trace file.
+
+    This only outputs to the trace file, not to stderr.
+    If no trace handler is active, the message is discarded.
+
+    Args:
+        fmt: Format string for the message.
+        *args: Arguments for format string interpolation.
+
+    Returns:
+        None
+    """
     global _trace_handler
     if _trace_handler is None:
         return
@@ -253,6 +276,15 @@ def get_verbosity_level():
 
 
 def be_quiet(quiet=True):
+    """Set quiet mode on or off.
+
+    Args:
+        quiet: If True, enable quiet mode (verbosity level -1).
+               If False, restore normal verbosity (level 0).
+
+    Returns:
+        None
+    """
     if quiet:
         set_verbosity_level(-1)
     else:
@@ -376,6 +408,15 @@ def report_exception(exc_info, err_file):
 
 
 def print_exception(exc_info, err_file):
+    """Print a full exception with traceback to err_file.
+
+    Args:
+        exc_info: Exception info tuple from sys.exc_info().
+        err_file: File-like object to write the exception to.
+
+    Returns:
+        None
+    """
     import traceback
 
     exc_type, exc_object, exc_tb = exc_info
@@ -440,9 +481,24 @@ class Config:
     """
 
     def __enter__(self):
+        """Enter the context manager.
+
+        Returns:
+            self: This Config instance.
+        """
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False: Always returns False to propagate exceptions.
+        """
         return False  # propogate exceptions.
 
 
@@ -453,11 +509,26 @@ class DefaultConfig(Config):
     """
 
     def __enter__(self):
+        """Enter the context manager and set up default logging.
+
+        Returns:
+            self: This DefaultConfig instance.
+        """
         self._original_filename = get_brz_log_filename()
         self._original_state = enable_default_logging()
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and restore original logging state.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False: Always returns False to propagate exceptions.
+        """
         pop_log_file(self._original_state)
         _cmd_rs.set_brz_log_filename(self._original_filename)
         return False  # propogate exceptions.
