@@ -129,13 +129,16 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     @property
     def user_transport(self):
+        """Transport for user files in the working tree."""
         return self.controldir.user_transport
 
     @property
     def control_transport(self):
+        """Transport for control files in the working tree."""
         return self._transport
 
     def supports_symlinks(self):
+        """Check if this working tree supports symbolic links."""
         return osutils.supports_symlinks(self.basedir)
 
     def is_control_filename(self, filename):
@@ -182,18 +185,23 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.break_lock)
 
     def requires_rich_root(self):
+        """Check if this working tree requires rich root support."""
         return self._format.requires_rich_root
 
     def supports_tree_reference(self):
+        """Check if this working tree supports tree references."""
         return False
 
     def supports_content_filtering(self):
+        """Check if this working tree supports content filtering."""
         return self._format.supports_content_filtering()
 
     def supports_views(self):
+        """Check if this working tree supports views."""
         return self.views.supports_views()
 
     def supports_setting_file_ids(self):
+        """Check if this working tree supports setting file IDs."""
         return self._format.supports_setting_file_ids
 
     def get_config_stack(self):
@@ -315,9 +323,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return WorkingTree.open(path, _unsupported=True)
 
     def __repr__(self):
+        """Return string representation of WorkingTree."""
         return f"<{self.__class__.__name__} of {getattr(self, 'basedir', None)}>"
 
     def abspath(self, filename):
+        """Return the absolute path for a file in this working tree."""
         return osutils.pathjoin(self.basedir, filename)
 
     def basis_tree(self) -> "RevisionTree":
@@ -361,9 +371,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return osutils.relpath(self.basedir, path)
 
     def has_filename(self, filename):
+        """Check if a file exists in this working tree."""
         return osutils.lexists(self.abspath(filename))
 
     def get_file(self, path, filtered=True):
+        """Get a file object for a file in this working tree."""
         return self.get_file_with_stat(path, filtered=filtered)[0]
 
     def get_file_with_stat(self, path, filtered=True, _fstat=osutils.fstat):
@@ -388,6 +400,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return (file_obj, stat_value)
 
     def get_file_text(self, path, filtered=True):
+        """Get the text content of a file in this working tree."""
         with self.get_file(path, filtered=filtered) as my_file:
             return my_file.read()
 
@@ -501,6 +514,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             )
 
     def add_pending_merge(self, *revision_ids):
+        """Add revision IDs as pending merge parents."""
         with self.lock_tree_write():
             # TODO: Perhaps should check at this point that the
             # history of the revision is actually present?
@@ -589,6 +603,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             self._set_merges_from_parent_ids(revision_ids)
 
     def set_pending_merges(self, rev_list):
+        """Set the list of pending merge revision IDs."""
         with self.lock_tree_write():
             parents = self.get_parent_ids()
             leftmost = parents[:1]
@@ -677,6 +692,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             self.add([path], ["directory"])
 
     def get_symlink_target(self, path):
+        """Get the target of a symbolic link."""
         abspath = self.abspath(path)
         try:
             return osutils.readlink(abspath)
@@ -684,6 +700,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             raise NoSuchFile(path) from err
 
     def subsume(self, other_tree):
+        """Subsume another working tree into this one."""
         raise NotImplementedError(self.subsume)
 
     def _directory_is_tree_reference(self, relpath):
@@ -701,6 +718,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.flush)
 
     def kind(self, relpath):
+        """Get the kind of a file in this working tree."""
         return file_kind(self.abspath(relpath))
 
     def list_files(
@@ -806,6 +824,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         show_base=False,
         tag_selector=None,
     ):
+        """Pull changes from another branch."""
         raise NotImplementedError(self.pull)
 
     def put_file_bytes_non_atomic(self, path, bytes):
@@ -901,6 +920,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.lock_write)
 
     def get_physical_lock_status(self):
+        """Get the physical lock status of this working tree."""
         raise NotImplementedError(self.get_physical_lock_status)
 
     def set_last_revision(self, new_revision):
@@ -937,6 +957,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(
         self, filenames=None, old_tree=None, backups=True, pb=None, report_changes=False
     ):
+        """Revert files in the working tree."""
         from .conflicts import resolve
         from .transform import revert
 
@@ -1033,12 +1054,15 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.update)
 
     def set_conflicts(self, arg):
+        """Set the list of conflicts for this working tree."""
         raise errors.UnsupportedOperation(self.set_conflicts, self)
 
     def add_conflicts(self, arg):
+        """Add conflicts to this working tree."""
         raise errors.UnsupportedOperation(self.add_conflicts, self)
 
     def conflicts(self):
+        """Get the list of conflicts in this working tree."""
         raise NotImplementedError(self.conflicts)
 
     def walkdirs(self, prefix=""):
@@ -1157,12 +1181,15 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             return next(self.get_canonical_paths([path]))
 
     def reference_parent(self, path, branch=None, possible_transports=None):
+        """Get the parent branch for a tree reference."""
         raise errors.UnsupportedOperation(self.reference_parent, self)
 
     def get_reference_info(self, path, branch=None):
+        """Get information about a tree reference."""
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     def set_reference_info(self, tree_path, branch_location):
+        """Set information about a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
 
 
@@ -1170,6 +1197,7 @@ class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
+        """Initialize working tree format registry."""
         super().__init__(other_registry)
         self._default_format = None
         self._default_format_key = None
@@ -1266,9 +1294,11 @@ class WorkingTreeFormat(ControlComponentFormat):
         raise NotImplementedError(self.initialize)
 
     def __eq__(self, other):
+        """Check equality with another working tree format."""
         return self.__class__ is other.__class__
 
     def __ne__(self, other):
+        """Check inequality with another working tree format."""
         return not (self == other)
 
     def get_format_description(self):

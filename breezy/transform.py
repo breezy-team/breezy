@@ -1,3 +1,9 @@
+"""Tree transformation functionality for Breezy.
+
+This module provides classes and functions for transforming trees by creating,
+moving, renaming, and deleting files and directories. The main class is
+TreeTransform which allows atomic application of multiple changes to a tree.
+"""
 # Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -43,26 +49,42 @@ ROOT_PARENT = "root-parent"
 
 
 class NoFinalPath(BzrError):
+    """Error raised when a transform has no final path for a trans_id."""
+
     _fmt = "No final name for trans_id %(trans_id)r\nroot trans-id: %(root_trans_id)r\n"
 
     def __init__(self, trans_id, transform):
+        """Initialize NoFinalPath error.
+
+        Args:
+            trans_id: The transform ID with no final path.
+            transform: The transform object.
+        """
         self.trans_id = trans_id
         self.root_trans_id = transform.root
 
 
 class ReusingTransform(BzrError):
+    """Error raised when attempting to reuse an already applied transform."""
+
     _fmt = "Attempt to reuse a transform that has already been applied."
 
 
 class MalformedTransform(InternalBzrError):
+    """Error raised when a tree transform is malformed."""
+
     _fmt = "Tree transform is malformed %(conflicts)r"
 
 
 class CantMoveRoot(BzrError):
+    """Error raised when attempting to move the root directory."""
+
     _fmt = "Moving the root directory is not supported at this time"
 
 
 class ImmortalLimbo(BzrError):
+    """Error raised when unable to delete transform temporary directory."""
+
     _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
@@ -73,6 +95,8 @@ class ImmortalLimbo(BzrError):
 
 
 class TransformRenameFailed(BzrError):
+    """Error raised when a transform rename operation fails."""
+
     _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
 
     def __init__(self, from_path, to_path, why, errno):
@@ -83,6 +107,16 @@ class TransformRenameFailed(BzrError):
 
 
 def unique_add(map, key, value):
+    """Add a key-value pair to a map, ensuring the key is unique.
+
+    Args:
+        map: Dictionary to add to.
+        key: Key to add.
+        value: Value to associate with key.
+
+    Raises:
+        DuplicateKey: If key already exists in the map.
+    """
     if key in map:
         raise DuplicateKey(key=key)
     map[key] = value
@@ -133,6 +167,12 @@ class TreeTransform:
     """
 
     def __init__(self, tree, pb=None):
+        """Initialize a TreeTransform.
+
+        Args:
+            tree: The tree to transform.
+            pb: Optional progress bar.
+        """
         self._tree = tree
         # A progress bar
         self._pb = pb
@@ -175,9 +215,28 @@ class TreeTransform:
         raise NotImplementedError(self.iter_tree_children)
 
     def canonical_path(self, path):
+        """Return the canonical form of a path.
+
+        Args:
+            path: Path to canonicalize.
+
+        Returns:
+            Canonical path.
+        """
         return path
 
     def tree_kind(self, trans_id):
+        """Get the kind of file in the tree.
+
+        Args:
+            trans_id: Transform ID to get kind for.
+
+        Returns:
+            File kind string.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self.tree_kind)
 
     def by_parent(self):
