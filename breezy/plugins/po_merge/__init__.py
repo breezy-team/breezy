@@ -59,6 +59,12 @@ from ...hooks import install_lazy_named_hook
 
 
 def register_lazy_option(key, member):
+    """Register a lazy configuration option for po_merge.
+
+    Args:
+        key: The configuration key name.
+        member: The member name in the po_merge module.
+    """
     config.option_registry.register_lazy(
         key, "breezy.plugins.po_merge.po_merge", member
     )
@@ -87,6 +93,16 @@ install_lazy_named_hook(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the po_merge plugin.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The test suite to add tests to.
+        pattern: The pattern to match test files (unused).
+
+    Returns:
+        The test suite with added tests.
+    """
     testmod_names = [
         "tests",
     ]

@@ -31,6 +31,12 @@ from .quilt import QuiltPatches
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
+    """Merger that prevents quilt patches from being unapplied during merge operations.
+
+    This merger class sets a flag to prevent automatic unapplying of quilt patches
+    when performing merge operations.
+    """
+
     _no_quilt_unapplying = True
 
 
@@ -124,6 +130,15 @@ def post_process_quilt_patches(tree, old_patches, policy):
 
 
 def start_commit_quilt_patches(tree, policy):
+    """Apply or unapply quilt patches at the start of a commit based on policy.
+
+    Args:
+        tree: Working tree where quilt patches should be processed.
+        policy: Policy for handling patches. Can be:
+            - None: No action, but warn if both applied and unapplied patches exist
+            - "applied": Apply all patches before commit
+            - "unapplied": Unapply all patches before commit
+    """
     quilt = QuiltPatches.find(tree)
     if quilt is None:
         return
