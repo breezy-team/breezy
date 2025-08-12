@@ -81,7 +81,7 @@ Reviews on Launchpad
 Anyone can propose or comment on a merge proposal just by creating a
 Launchpad account.
 
-From <https://code.launchpad.net/brz/+activereviews> you can see all
+From the project's merge proposal page you can see all
 currently active reviews, and choose one to comment on.  This page also
 shows proposals that are now approved and should be merged by someone with
 PQM access.

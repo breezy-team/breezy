@@ -5,6 +5,27 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.13
+##########
+
+:3.3.13: UNRELEASED
+
+* Add warning when accessing Bazaar branches on Launchpad, as Launchpad
+  is phasing out Bazaar code hosting. The warning can be suppressed by
+  adding ``launchpad_bazaar_deprecation`` to the ``suppress_warnings``
+  configuration option. (Jelmer Vernooĳ)
+
+* Fix compatibility with paramiko 4.0.0, which removed DSA key support.
+  (Jelmer Vernooĳ)
+
+brz 3.3.12
+##########
+
+:3.3.12: 2025-05-13
+
+* Drop use of ``PyInt_AsUnsignedLongMask``, which is deprecated in
+  modern Python. (Jelmer Vernooĳ)
+
 brz 3.3.11
 ##########
 

@@ -184,9 +184,18 @@ unfixable = ["ANN204"]
 [tool.ruff.lint.extend-per-file-ignores]
 "breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
 
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.setuptools-gettext]
 build_dir = "breezy/locale"
+
+[tool.cibuildwheel.linux]
+skip = "*-musllinux_* *cp314*"
+archs = ["auto", "aarch64"]
+
+[tool.cibuildwheel.macos]
+skip = "*cp314*"
+
+[tool.cibuildwheel.windows]
+skip = "*cp314*"
