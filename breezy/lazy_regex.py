@@ -30,9 +30,20 @@ from . import errors
 
 
 class InvalidPattern(errors.BzrError):
+    """Exception raised when an invalid regex pattern is encountered.
+
+    This exception is raised instead of re.error to provide cleaner
+    error messages to users when regex compilation fails.
+    """
+
     _fmt = "Invalid pattern(s) found. %(msg)s"
 
     def __init__(self, msg):
+        """Initialize InvalidPattern exception.
+
+        Args:
+            msg: The error message describing why the pattern is invalid.
+        """
         self.msg = msg
 
 
