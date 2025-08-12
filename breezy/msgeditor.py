@@ -29,6 +29,12 @@ from .hooks import Hooks
 
 
 class BadCommitMessageEncoding(BzrError):
+    """Exception raised when commit message contains unsupported characters.
+
+    This error occurs when the commit message contains characters that cannot
+    be encoded using the current system's encoding.
+    """
+
     _fmt = (
         "The specified commit message contains characters unsupported by "
         "the current encoding."
@@ -291,8 +297,7 @@ def make_commit_message_template_encoded(
 
 
 class MessageEditorHooks(Hooks):
-    """A dictionary mapping hook name to a list of callables for message editor
-    hooks.
+    """A dictionary mapping hook name to a list of callables for message editor hooks.
 
     e.g. ['commit_message_template'] is the list of items to be called to
     generate a commit message template
@@ -333,6 +338,7 @@ hooks = MessageEditorHooks()
 
 def set_commit_message(commit, start_message=None):
     """Sets the commit message.
+
     :param commit: Commit object for the active commit.
     :return: The commit message or None to continue using the message editor.
     """
