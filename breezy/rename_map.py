@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Rename detection and mapping functionality for Breezy.
+
+This module provides utilities to detect file renames that have occurred outside
+of version control. It uses content similarity analysis based on edge hashing
+(hashing of line pairs) to identify files that may have been renamed.
+
+The main class RenameMap can analyze a working tree to guess which unversioned
+files are actually renamed versions of missing versioned files.
+"""
+
 import contextlib
 from io import BytesIO
 
@@ -26,6 +36,11 @@ class RenameMap:
     """Determine a mapping of renames."""
 
     def __init__(self, tree):
+        """Initialize a RenameMap for the given tree.
+
+        Args:
+            tree: The tree to analyze for rename detection.
+        """
         self.tree = tree
         self.edge_hashes = {}
 
