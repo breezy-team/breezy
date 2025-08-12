@@ -1,23 +1,3 @@
-# Copyright (C) 2005-2014, 2016 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
-#            and others
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-__docformat__ = "google"
-
 """Configuration that affects the behaviour of Breezy.
 
 Currently this configuration resides in ~/.config/breezy/breezy.conf
@@ -75,6 +55,26 @@ ll=log --line -r-10..-1
 h=help
 up=pull
 """
+
+# Copyright (C) 2005-2014, 2016 Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+__docformat__ = "google"
 
 import os
 import sys
@@ -155,75 +155,149 @@ STORE_GLOBAL = 4
 
 
 class OptionExpansionLoop(errors.BzrError):
+    """Error raised when circular references are detected during option expansion."""
+
     _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
 
     def __init__(self, string, refs):
+        """Initialize OptionExpansionLoop error.
+
+        Args:
+            string: The string being expanded when loop was detected.
+            refs: List of references forming the expansion loop.
+        """
         self.string = string
         self.refs = "->".join(refs)
 
 
 class ExpandingUnknownOption(errors.BzrError):
+    """Error raised when an undefined option is referenced during expansion."""
+
     _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
 
     def __init__(self, name, string):
+        """Initialize ExpandingUnknownOption error.
+
+        Args:
+            name: Name of the undefined option.
+            string: The string being expanded when error occurred.
+        """
         self.name = name
         self.string = string
 
 
 class IllegalOptionName(errors.BzrError):
+    """Error raised when an option name contains illegal characters."""
+
     _fmt = 'Option "%(name)s" is not allowed.'
 
     def __init__(self, name):
+        """Initialize IllegalOptionName error.
+
+        Args:
+            name: The illegal option name.
+        """
         self.name = name
 
 
 class ConfigContentError(errors.BzrError):
+    """Error raised when a config file has encoding issues."""
+
     _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
 
     def __init__(self, filename):
+        """Initialize ConfigContentError.
+
+        Args:
+            filename: Path to the config file with encoding issues.
+        """
         self.filename = filename
 
 
 class ParseConfigError(errors.BzrError):
+    """Error raised when a config file cannot be parsed."""
+
     _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
 
     def __init__(self, errors, filename):
+        """Initialize ParseConfigError.
+
+        Args:
+            errors: List of parsing errors encountered.
+            filename: Path to the config file that failed to parse.
+        """
         self.filename = filename
         self.errors = "\n".join(e.msg for e in errors)
 
 
 class ConfigOptionValueError(errors.BzrError):
+    """Error raised when a config option has an invalid value."""
+
     _fmt = 'Bad value "%(value)s" for option "%(name)s".\nSee ``brz help %(name)s``'
 
     def __init__(self, name, value):
+        """Initialize ConfigOptionValueError.
+
+        Args:
+            name: Name of the config option.
+            value: The invalid value that was provided.
+        """
         errors.BzrError.__init__(self, name=name, value=value)
 
 
 class NoEmailInUsername(errors.BzrError):
+    """Error raised when username doesn't contain a valid email address."""
+
     _fmt = "%(username)r does not seem to contain a reasonable email address"
 
     def __init__(self, username):
+        """Initialize NoEmailInUsername error.
+
+        Args:
+            username: The username that lacks a valid email address.
+        """
         self.username = username
 
 
 class NoSuchConfig(errors.BzrError):
+    """Error raised when a requested configuration doesn't exist."""
+
     _fmt = 'The "%(config_id)s" configuration does not exist.'
 
     def __init__(self, config_id):
+        """Initialize NoSuchConfig error.
+
+        Args:
+            config_id: The ID of the non-existent configuration.
+        """
         errors.BzrError.__init__(self, config_id=config_id)
 
 
 class NoSuchConfigOption(errors.BzrError):
+    """Error raised when a requested config option doesn't exist."""
+
     _fmt = 'The "%(option_name)s" configuration option does not exist.'
 
     def __init__(self, option_name):
+        """Initialize NoSuchConfigOption error.
+
+        Args:
+            option_name: Name of the non-existent option.
+        """
         errors.BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(errors.BzrError):
+    """Error raised when a requested alias doesn't exist."""
+
     _fmt = 'The alias "%(alias_name)s" does not exist.'
 
     def __init__(self, alias_name):
+        """Initialize NoSuchAlias error.
+
+        Args:
+            alias_name: Name of the non-existent alias.
+        """
         errors.BzrError.__init__(self, alias_name=alias_name)
 
 
@@ -259,7 +333,15 @@ def _has_triplequote_bug():
 
 
 class ConfigObj(configobj.ConfigObj):
+    """Extended ConfigObj with Breezy-specific functionality."""
+
     def __init__(self, infile=None, **kwargs):
+        """Initialize ConfigObj with Breezy-specific defaults.
+
+        Args:
+            infile: Input file or file-like object to read from.
+            **kwargs: Additional keyword arguments passed to parent.
+        """
         # We define our own interpolation mechanism calling it option expansion
         super().__init__(infile=infile, interpolation=False, **kwargs)
 
@@ -272,9 +354,27 @@ class ConfigObj(configobj.ConfigObj):
             return configobj.tdquot
 
     def get_bool(self, section, key) -> bool:
+        """Get a boolean value from a specific section and key.
+
+        Args:
+            section: Section name to look in.
+            key: Key name to retrieve.
+
+        Returns:
+            Boolean value from the config.
+        """
         return cast("bool", self[section].as_bool(key))
 
     def get_value(self, section, name):
+        """Get a value from a specific section and name.
+
+        Args:
+            section: Section name to look in.
+            name: Name of the configuration option.
+
+        Returns:
+            The configuration value.
+        """
         # Try [] for the old DEFAULT section.
         if section == "DEFAULT":
             try:
@@ -288,6 +388,7 @@ class Config:
     """A configuration policy - what username, editor, gpg needs etc."""
 
     def __init__(self):
+        """Initialize base configuration."""
         super().__init__()
 
     def config_id(self):
@@ -295,6 +396,15 @@ class Config:
         raise NotImplementedError(self.config_id)
 
     def get_change_editor(self, old_tree, new_tree):
+        """Get a change editor for comparing two trees.
+
+        Args:
+            old_tree: The old tree to compare.
+            new_tree: The new tree to compare.
+
+        Returns:
+            A DiffFromTool instance or None if no editor is configured.
+        """
         from breezy import diff
 
         cmd = self._get_change_editor()
@@ -546,6 +656,14 @@ class Config:
         return bedding.default_email()
 
     def get_alias(self, value):
+        """Get an alias for the given value.
+
+        Args:
+            value: The value to find an alias for.
+
+        Returns:
+            The alias or None if not found.
+        """
         return self._get_alias(value)
 
     def _get_alias(self, value):
@@ -1927,7 +2045,7 @@ class CredentialStore:
 
 
 class PlainTextCredentialStore(CredentialStore):
-    __doc__ = """Plain text credential store for the authentication.conf file"""
+    """Plain text credential store for the authentication.conf file."""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1941,7 +2059,7 @@ credential_store_registry.default_key = "plain"
 
 
 class Base64CredentialStore(CredentialStore):
-    __doc__ = """Base64 credential store for the authentication.conf file"""
+    """Base64 credential store for the authentication.conf file."""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1958,7 +2076,14 @@ credential_store_registry.register(
 
 
 class BzrDirConfig:
+    """Configuration manager for a Breezy control directory."""
+
     def __init__(self, bzrdir):
+        """Initialize BzrDirConfig.
+
+        Args:
+            bzrdir: The control directory to manage config for.
+        """
         self._bzrdir = bzrdir
         self._config = bzrdir._get_config()
 
@@ -2306,6 +2431,8 @@ _list_converter_config = configobj.ConfigObj(
 
 
 class ListOption(Option):
+    """Option definition for list values."""
+
     def __init__(
         self, name, default=None, default_from_env=None, help=None, invalid=None
     ):
@@ -2889,6 +3016,7 @@ class Section:
         yield from self.options.keys()
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__} id={self.id}>"
 
@@ -3073,6 +3201,7 @@ class Store:
         raise NotImplementedError(self.get_mutable_section)
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__}({self.external_url()})>"
 
@@ -3413,7 +3542,14 @@ class BranchStore(TransportIniFileStore):
 
 
 class ControlStore(LockableIniFileStore):
+    """Configuration store for control directory settings."""
+
     def __init__(self, bzrdir):
+        """Initialize ControlStore.
+
+        Args:
+            bzrdir: The control directory to manage config for.
+        """
         super().__init__(bzrdir.transport, "control.conf", lock_dir_name="branch_lock")
         self.id = "control"
 
@@ -3450,7 +3586,15 @@ class SectionMatcher:
 
 
 class NameMatcher(SectionMatcher):
+    """Matches configuration sections by exact name."""
+
     def __init__(self, store, section_id):
+        """Initialize NameMatcher.
+
+        Args:
+            store: The configuration store to search.
+            section_id: The section ID to match.
+        """
         super().__init__(store)
         self.section_id = section_id
 
@@ -3459,7 +3603,16 @@ class NameMatcher(SectionMatcher):
 
 
 class LocationSection(Section):
+    """A section that provides location-specific variable expansion."""
+
     def __init__(self, section, extra_path, branch_name=None):
+        """Initialize LocationSection.
+
+        Args:
+            section: The base section to extend.
+            extra_path: Additional path information for expansion.
+            branch_name: Optional branch name for expansion.
+        """
         super().__init__(section.id, section.options)
         self.extra_path = extra_path
         if branch_name is None:
@@ -3543,7 +3696,15 @@ class StartingPathMatcher(SectionMatcher):
 
 
 class LocationMatcher(SectionMatcher):
+    """Matches configuration sections by location pattern."""
+
     def __init__(self, store, location):
+        """Initialize LocationMatcher.
+
+        Args:
+            store: The configuration store to search.
+            location: The location path to match against.
+        """
         super().__init__(store)
         url, params = urlutils.split_segment_parameters(location)
         if location.startswith("file://"):
@@ -3808,6 +3969,7 @@ class Stack:
             hook(self, name)
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__}({id(self)})>"
 
@@ -4070,7 +4232,7 @@ class BranchOnlyStack(Stack):
 
 
 class cmd_config(commands.Command):
-    __doc__ = """Display, set or remove a configuration option.
+    """Display, set or remove a configuration option.
 
     Display the active value for option NAME.
 
