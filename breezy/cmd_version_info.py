@@ -54,7 +54,7 @@ def _parse_version_info_format(format):
 
 
 class cmd_version_info(Command):
-    __doc__ = """Show version information about this tree.
+    r"""Show version information about this tree.
 
     You can use this command to add information about version into
     source code of an application. The output can be in one of the
@@ -108,6 +108,21 @@ class cmd_version_info(Command):
         template=None,
         revision=None,
     ):
+        """Run the version-info command.
+
+        Args:
+            location: Path to the branch or working tree to examine. Defaults to current directory.
+            format: Output format for version information. If None, uses default format.
+            all: If True, include all possible information (history, clean status, file revisions).
+            check_clean: If True, check if the tree has uncommitted changes.
+            include_history: If True, include the revision history.
+            include_file_revisions: If True, include the last revision for each file.
+            template: Custom template string for output formatting.
+            revision: Specific revision to examine. Must be a single revision specifier.
+
+        Raises:
+            CommandError: If more than one revision specifier is provided.
+        """
         if revision and len(revision) > 1:
             raise errors.CommandError(
                 gettext(
