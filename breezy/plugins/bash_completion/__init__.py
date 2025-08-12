@@ -31,6 +31,16 @@ commands.plugin_cmds.register_lazy(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the bash completion plugin.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to add tests to.
+        pattern: The pattern to match test files (unused).
+
+    Returns:
+        The enhanced test suite with bash completion plugin tests added.
+    """
     testmod_names = [
         "tests",
     ]

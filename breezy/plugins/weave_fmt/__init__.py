@@ -127,6 +127,16 @@ serializer.inventory_format_registry.register_lazy(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the weave_fmt plugin.
+
+    Args:
+        loader: The test loader instance used to load tests.
+        basic_tests: The basic test suite to add tests to.
+        pattern: Pattern for test discovery (unused).
+
+    Returns:
+        The test suite with additional weave_fmt plugin tests loaded.
+    """
     testmod_names = [
         "test_bzrdir",
         "test_repository",
