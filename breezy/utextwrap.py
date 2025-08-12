@@ -23,6 +23,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Text wrapping utilities with support for East Asian character widths."""
+
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
@@ -55,6 +57,14 @@ class UTextWrapper(textwrap.TextWrapper):
     """
 
     def __init__(self, width=None, **kwargs):
+        """Initialize the UTextWrapper instance.
+
+        Args:
+            width: Maximum line width. If None, defaults to terminal width - 1.
+            **kwargs: Additional keyword arguments passed to TextWrapper.
+                      Includes 'ambiguous_width' for East Asian ambiguous width
+                      characters (default: 1, can be 1 or 2).
+        """
         if width is None:
             width = (osutils.terminal_width() or osutils.default_terminal_width) - 1
 
@@ -274,6 +284,14 @@ class UTextWrapper(textwrap.TextWrapper):
         return cjk_split_chunks
 
     def wrap(self, text):
+        """Wrap text, ensuring proper handling of unicode.
+
+        Args:
+            text: The text to wrap.
+
+        Returns:
+            List of wrapped lines.
+        """
         # ensure text is unicode
         return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
 

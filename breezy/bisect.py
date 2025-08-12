@@ -33,6 +33,12 @@ class BisectCurrent:
     """Bisect class for managing the current revision."""
 
     def __init__(self, controldir, filename=BISECT_REV_PATH):
+        """Initialize the BisectCurrent object.
+
+        Args:
+            controldir: The control directory for the tree.
+            filename: The filename to store the current bisect revision id.
+        """
         self._filename = filename
         self._controldir = controldir
         self._branch = self._controldir.open_branch()
@@ -97,6 +103,12 @@ class BisectLog:
     """Bisect log file handler."""
 
     def __init__(self, controldir, filename=BISECT_INFO_PATH):
+        """Initialize the BisectLog object.
+
+        Args:
+            controldir: The control directory for the tree.
+            filename: The filename to store the bisect log.
+        """
         self._items = []
         self._current = BisectCurrent(controldir)
         self._controldir = controldir
@@ -230,9 +242,25 @@ class BisectLog:
         self._set_status(self._current.get_current_revid(), status)
 
     def is_merge_point(self, revid):
+        """Check if the given revision is a merge point.
+
+        Args:
+            revid: The revision id to check.
+
+        Returns:
+            True if the revision has more than one parent, False otherwise.
+        """
         return len(self.get_parent_revids(revid)) > 1
 
     def get_parent_revids(self, revid):
+        """Get the parent revision IDs for a given revision.
+
+        Args:
+            revid: The revision id to get parents for.
+
+        Returns:
+            List of parent revision IDs, or None if not found.
+        """
         repo = self._branch.repository
         with repo.lock_read():
             retval = repo.get_parent_map([revid]).get(revid, None)
@@ -429,6 +457,12 @@ class cmd_bisect(Command):
         bisect_log.bisect(self.outf)
 
     def run_bisect(self, controldir, script):
+        """Run automatic bisection using a script.
+
+        Args:
+            controldir: The control directory for the tree.
+            script: Script path to run for testing each revision.
+        """
         import subprocess
 
         note("Starting bisect.")

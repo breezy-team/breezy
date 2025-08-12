@@ -14,10 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Shell completion support for Breezy commands."""
+
 import sys
 
 
 def shellcomplete(context=None, outfile=None):
+    """Generate shell completion output.
+
+    Args:
+        context: If provided, complete for a specific command.
+                 If None, list all available commands.
+        outfile: File object to write output to (default: sys.stdout).
+    """
     if outfile is None:
         outfile = sys.stdout
     if context is None:
@@ -27,6 +36,15 @@ def shellcomplete(context=None, outfile=None):
 
 
 def shellcomplete_on_command(cmdname, outfile=None):
+    """Generate shell completion output for a specific command.
+
+    Args:
+        cmdname: Name of the command to complete for.
+        outfile: File object to write output to (default: sys.stdout).
+
+    Raises:
+        NotImplementedError: If the command has no documentation.
+    """
     cmdname = str(cmdname)
 
     if outfile is None:
@@ -50,6 +68,12 @@ def shellcomplete_on_command(cmdname, outfile=None):
 
 
 def shellcomplete_on_options(options, outfile=None):
+    """Generate shell completion output for command options.
+
+    Args:
+        options: Collection of option objects to output.
+        outfile: File object to write output to (default: sys.stdout).
+    """
     for opt in options:
         short_name = opt.short_name()
         if short_name:
