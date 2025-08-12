@@ -142,6 +142,12 @@ class EmailMessage:
         return self._headers.get(header, None)
 
     def __setitem__(self, header, value):
+        """Set a header in the message.
+
+        Args:
+            header: The header name to set.
+            value: The value to set for the header.
+        """
         return self._headers.__setitem__(header, value)
 
     @staticmethod
