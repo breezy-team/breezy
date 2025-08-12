@@ -52,6 +52,7 @@ class ImportNameCollision(InternalBzrError):
     This occurs when trying to import something with a name that already
     exists in the target scope.
     """
+
     _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
 
     def __init__(self, name):
@@ -70,6 +71,7 @@ class IllegalUseOfScopeReplacer(InternalBzrError):
     This can happen when a lazy object tries to replace itself or is
     accessed after being assigned to another variable when proxying is disabled.
     """
+
     _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
 
     def __init__(self, name, msg, extra=None):
@@ -95,6 +97,7 @@ class InvalidImportLine(InternalBzrError):
     This occurs when the lazy import parser encounters a line that
     doesn't match the expected import statement format.
     """
+
     _fmt = "Not a valid import statement: %(msg)\n%(text)s"
 
     def __init__(self, text, msg):

@@ -69,6 +69,7 @@ class FileOutsideView(errors.BzrError):
     This error occurs when trying to operate on a file that is not included
     in the currently active view.
     """
+
     _fmt = 'Specified file "%(file_name)s" is outside the current view: %(view_str)s'
 
     def __init__(self, file_name, view_files):

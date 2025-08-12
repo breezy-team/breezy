@@ -60,11 +60,12 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 
 class CommandAvailableInPlugin(Exception):
     """Exception indicating a command is available in a plugin."""
+
     internal_error = False
 
     def __init__(self, cmd_name, plugin_metadata, provider):
         """Initialize CommandAvailableInPlugin.
-        
+
         Args:
             cmd_name: Name of the command.
             plugin_metadata: Metadata about the plugin providing the command.
@@ -118,10 +119,10 @@ class CommandRegistry(registry.Registry):
 
     def get(self, command_name):
         """Get a command by name, resolving aliases.
-        
+
         Args:
             command_name: Name or alias of the command.
-            
+
         Returns:
             Command class for the given name.
         """
@@ -382,6 +383,7 @@ def _get_cmd_object(
 
 class NoPluginAvailable(errors.BzrError):
     """Error raised when no plugin is available to provide a command."""
+
     pass
 
 
@@ -559,10 +561,10 @@ class Command:
 
     def enter_context(self, cm):
         """Enter a context manager and ensure it gets cleaned up.
-        
+
         Args:
             cm: Context manager to enter.
-            
+
         Returns:
             The result of entering the context manager.
         """
@@ -1051,12 +1053,12 @@ def _match_argform(cmd, takes_args, args):
 
 def apply_coveraged(the_callable, *args, **kwargs):
     """Run a callable under coverage measurement.
-    
+
     Args:
         the_callable: Function to call under coverage.
         *args: Arguments to pass to the callable.
         **kwargs: Keyword arguments to pass to the callable.
-        
+
     Returns:
         Result of calling the_callable.
     """
@@ -1075,12 +1077,12 @@ def apply_coveraged(the_callable, *args, **kwargs):
 
 def apply_profiled(the_callable, *args, **kwargs):
     """Run a callable under hotshot profiler.
-    
+
     Args:
         the_callable: Function to call under profiling.
         *args: Arguments to pass to the callable.
         **kwargs: Keyword arguments to pass to the callable.
-        
+
     Returns:
         Result of calling the_callable.
     """
@@ -1135,13 +1137,13 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     """Run a callable under lsprof profiler.
-    
+
     Args:
         filename: File to save profile data to, or None to print to stdout.
         the_callable: Function to call under profiling.
         *args: Arguments to pass to the callable.
         **kwargs: Keyword arguments to pass to the callable.
-        
+
     Returns:
         Result of calling the_callable.
     """

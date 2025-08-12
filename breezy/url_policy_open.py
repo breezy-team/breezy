@@ -26,11 +26,13 @@ from .transport import do_catching_redirections, get_transport
 
 class BadUrl(errors.BzrError):
     """Error raised when trying to access a URL that is not allowed."""
+
     _fmt = "Tried to access a branch from bad URL %(url)s."
 
 
 class BranchReferenceForbidden(errors.BzrError):
     """Error raised when branch references are forbidden but encountered."""
+
     _fmt = (
         "Trying to mirror a branch reference and the branch type "
         "does not allow references."
@@ -135,7 +137,7 @@ class WhitelistPolicy(BranchOpenPolicy):
 
     def __init__(self, should_follow_references, allowed_urls=None, check=False):
         """Initialize WhitelistPolicy.
-        
+
         Args:
             should_follow_references: Whether to follow branch references.
             allowed_urls: List of URLs that are allowed.
@@ -153,10 +155,10 @@ class WhitelistPolicy(BranchOpenPolicy):
 
     def check_one_url(self, url):
         """Check if a URL is allowed.
-        
+
         Args:
             url: URL to check.
-            
+
         Raises:
             BadUrl: If the URL is not in the allowed list.
         """
@@ -177,7 +179,7 @@ class SingleSchemePolicy(BranchOpenPolicy):
 
     def __init__(self, allowed_scheme):
         """Initialize SingleSchemePolicy.
-        
+
         Args:
             allowed_scheme: The URL scheme that is allowed.
         """
@@ -189,11 +191,11 @@ class SingleSchemePolicy(BranchOpenPolicy):
 
     def transform_fallback_location(self, branch, url):
         """Transform a fallback location URL.
-        
+
         Args:
             branch: The branch object.
             url: The fallback URL.
-            
+
         Returns:
             Tuple of (new_url, check_required).
         """
@@ -297,12 +299,12 @@ class BranchOpener:
         self, callable, *args, **kw
     ):
         """Run callable with transform fallback location hook installed.
-        
+
         Args:
             callable: Function to call.
             *args: Arguments to pass to callable.
             **kw: Keyword arguments to pass to callable.
-            
+
         Returns:
             Result of calling callable.
         """

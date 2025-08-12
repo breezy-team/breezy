@@ -33,6 +33,7 @@ _hostname = None
 
 class AtomicFileAlreadyClosed(errors.PathError):
     """Raised when an operation is attempted on a closed AtomicFile."""
+
     _fmt = '"%(function)s" called on an AtomicFile after it was closed: "%(path)s"'
 
     def __init__(self, path, function):

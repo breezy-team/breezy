@@ -41,11 +41,12 @@ from breezy.i18n import gettext
 
 class UnknownHook(errors.BzrError):
     """Error raised when an unknown hook is referenced."""
+
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of breezy."
 
     def __init__(self, hook_type, hook_name):
         """Initialize UnknownHook.
-        
+
         Args:
             hook_type: The type of hook.
             hook_name: The name of the unknown hook.
@@ -57,10 +58,11 @@ class UnknownHook(errors.BzrError):
 
 class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
     """Registry for all known hook points in breezy.
-    
+
     This registry maps hook points to their location and provides utilities
     for managing the collection of known hooks.
     """
+
     # known_hooks registry contains
     # tuple of (module, member name) which is the hook point
     # module where the specific hooks are defined
@@ -70,7 +72,7 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
         self, hook_module_name, hook_member_name, hook_factory_member_name
     ):
         """Register a hook lazily to avoid circular imports.
-        
+
         Args:
             hook_module_name: Module containing the hook point.
             hook_member_name: Member name of the hook point.
@@ -297,7 +299,7 @@ class Hooks(dict):
 
     def name_hook_lazy(self, callable_module, callable_member, callable_name):
         """Associate a name with a lazily-loaded callable.
-        
+
         Args:
             callable_module: Module containing the callable.
             callable_member: Member name of the callable.
@@ -465,10 +467,10 @@ Plugins (including hooks) are run on the server if all of these is true:
 
 def hooks_help_text(topic):
     """Generate help text for hooks.
-    
+
     Args:
         topic: The help topic (unused but required by help system).
-        
+
     Returns:
         String containing formatted help text for all known hooks.
     """

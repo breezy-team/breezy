@@ -60,7 +60,7 @@ class IllegalMergeDirectivePayload(errors.BzrError):
 
     def __init__(self, start):
         """Initialize IllegalMergeDirectivePayload.
-        
+
         Args:
             start: The invalid payload content that was encountered.
         """
@@ -75,7 +75,7 @@ class MergeRequestBodyParams:
         self, body, orig_body, directive, to, basename, subject, branch, tree=None
     ):
         """Initialize MergeRequestBodyParams.
-        
+
         Args:
             body: The processed body text.
             orig_body: The original body text.
@@ -295,7 +295,7 @@ class BaseMergeDirective:
 
         Args:
             branch: The Branch this merge directive was generated from.
-            
+
         Returns:
             A string suitable for use as a filename.
         """
@@ -313,12 +313,12 @@ class BaseMergeDirective:
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
         """Generate a diff between two revisions.
-        
+
         Args:
             repository: Repository containing the revisions.
             revision_id: The newer revision.
             ancestor_id: The older revision to diff against.
-            
+
         Returns:
             Diff content as bytes.
         """
@@ -331,12 +331,12 @@ class BaseMergeDirective:
     @classmethod
     def _generate_bundle(cls, repository, revision_id, ancestor_id):
         """Generate a bundle between two revisions.
-        
+
         Args:
             repository: Repository containing the revisions.
             revision_id: The newer revision.
             ancestor_id: The older revision to use as base.
-            
+
         Returns:
             Bundle content as bytes.
         """
@@ -349,7 +349,7 @@ class BaseMergeDirective:
 
         Args:
             branch: The source branch, to get the signing strategy.
-            
+
         Returns:
             A signed string representation.
         """
@@ -363,7 +363,7 @@ class BaseMergeDirective:
             mail_to: The address to mail the message to.
             branch: The source branch, to get signing strategy and source email.
             sign: If True, gpg-sign the email.
-            
+
         Returns:
             An email message object.
         """
@@ -379,10 +379,10 @@ class BaseMergeDirective:
 
     def install_revisions(self, target_repo):
         """Install revisions and return the target revision.
-        
+
         Args:
             target_repo: Repository to install revisions into.
-            
+
         Returns:
             The revision ID that was installed.
         """
@@ -591,7 +591,7 @@ class MergeDirective(BaseMergeDirective):
 
     def to_lines(self):
         """Serialize this merge directive as lines.
-        
+
         Returns:
             List of byte strings representing the serialized directive.
         """
@@ -610,7 +610,7 @@ class MergeDirective(BaseMergeDirective):
 
     def get_merge_request(self, repository):
         """Provide data for performing a merge.
-        
+
         Args:
             repository: Repository to use for merge operations.
 
@@ -622,6 +622,7 @@ class MergeDirective(BaseMergeDirective):
 
 class MergeDirective2(BaseMergeDirective):
     """Version 2 merge directive format supporting separate patches and bundles."""
+
     _format_string = b"Bazaar merge directive format 2 (Bazaar 0.90)"
 
     def __init__(
@@ -639,7 +640,7 @@ class MergeDirective2(BaseMergeDirective):
         base_revision_id=None,
     ):
         """Initialize MergeDirective2.
-        
+
         Args:
             revision_id: The revision to merge.
             testament_sha1: SHA1 of the testament.
@@ -735,7 +736,7 @@ class MergeDirective2(BaseMergeDirective):
 
     def to_lines(self):
         """Serialize this merge directive as lines.
-        
+
         Returns:
             List of byte strings representing the serialized directive.
         """
@@ -852,7 +853,7 @@ class MergeDirective2(BaseMergeDirective):
 
     def get_merge_request(self, repository):
         """Provide data for performing a merge.
-        
+
         Args:
             repository: Repository to use for merge operations.
 
@@ -864,10 +865,10 @@ class MergeDirective2(BaseMergeDirective):
 
     def _maybe_verify(self, repository):
         """Verify the patch if present.
-        
+
         Args:
             repository: Repository to use for verification.
-            
+
         Returns:
             String indicating verification status: 'verified', 'failed', or 'inapplicable'.
         """
@@ -882,10 +883,10 @@ class MergeDirective2(BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
     """Registry for merge directive format handlers."""
-    
+
     def register(self, directive, format_string=None):
         """Register a merge directive format.
-        
+
         Args:
             directive: The directive class to register.
             format_string: Format string to use (defaults to directive._format_string).

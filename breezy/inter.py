@@ -25,6 +25,7 @@ from .pyutils import get_named_object
 
 class NoCompatibleInter(BzrError):
     """Raised when no compatible InterObject is available for two objects."""
+
     _fmt = (
         "No compatible object available for operations from %(source)r to %(target)r."
     )

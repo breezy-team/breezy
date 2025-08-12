@@ -36,11 +36,12 @@ from . import registry as _mod_registry
 
 class BadOptionValue(errors.BzrError):
     """Exception raised when an invalid value is provided for an option."""
+
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
 
     def __init__(self, name, value):
         """Initialize BadOptionValue.
-        
+
         Args:
             name: The name of the option.
             value: The bad value that was provided.
@@ -112,13 +113,13 @@ def _parse_revision_str(revstr):
 
 def _parse_change_str(revstr):
     """Parse the revision string for the --change option.
-    
+
     Args:
         revstr: Revision string to parse.
-        
+
     Returns:
         Tuple of (before_revision, revision) specs.
-        
+
     Raises:
         RangeInChangeOption: If a revision range is provided.
 
@@ -137,10 +138,10 @@ def _parse_change_str(revstr):
 
 def _parse_merge_type(typestring):
     """Parse a merge type string.
-    
+
     Args:
         typestring: String identifying the merge type.
-        
+
     Returns:
         The merge type class.
     """
@@ -232,7 +233,7 @@ class Option:
 
     def set_short_name(self, short_name):
         """Set the short name for this option.
-        
+
         Args:
             short_name: Single character short name.
         """
@@ -240,7 +241,7 @@ class Option:
 
     def get_negation_name(self):
         """Return the negation name for this option.
-        
+
         Returns:
             String with 'no-' prefix added or removed as appropriate.
         """
@@ -311,10 +312,10 @@ class Option:
 
     def is_hidden(self, name):
         """Return True if this option should be hidden in help.
-        
+
         Args:
             name: Option name (unused in base implementation).
-            
+
         Returns:
             Boolean indicating if the option is hidden.
         """
@@ -515,10 +516,10 @@ class RegistryOption(Option):
 
     def is_alias(self, name):
         """Check whether a particular name is an alias.
-        
+
         Args:
             name: The name to check.
-            
+
         Returns:
             Boolean indicating if the name is an alias.
         """
@@ -528,10 +529,10 @@ class RegistryOption(Option):
 
     def is_hidden(self, name):
         """Return True if the named option should be hidden.
-        
+
         Args:
             name: The option name to check.
-            
+
         Returns:
             Boolean indicating if the option is hidden.
         """
@@ -542,7 +543,7 @@ class RegistryOption(Option):
 
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting.
-    
+
     This is used to integrate with breezy's error handling system rather
     than having optparse call sys.exit() on errors.
     """
@@ -556,10 +557,10 @@ class OptionParser(optparse.OptionParser):
 
     def error(self, message):
         """Handle option parsing errors.
-        
+
         Args:
             message: Error message to report.
-            
+
         Raises:
             CommandError: Always, instead of calling sys.exit().
         """
@@ -636,7 +637,7 @@ _verbosity_level = 0
 
 def _verbosity_level_callback(option, opt_str, value, parser):
     """Callback function for handling verbosity level changes.
-    
+
     Args:
         option: The Option object.
         opt_str: The option string that triggered this callback.

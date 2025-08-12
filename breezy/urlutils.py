@@ -28,6 +28,7 @@ class InvalidURL(errors.PathError):
 
     This is raised when a URL string cannot be parsed or is malformed.
     """
+
     _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
 
 
@@ -36,6 +37,7 @@ class InvalidURLJoin(errors.PathError):
 
     This occurs when trying to join URL components in an invalid way.
     """
+
     _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
     def __init__(self, reason, base, join_args):
@@ -57,6 +59,7 @@ class InvalidRebaseURLs(errors.PathError):
 
     This occurs when trying to rebase URLs that differ by more than just their paths.
     """
+
     _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
 
     def __init__(self, from_, to):

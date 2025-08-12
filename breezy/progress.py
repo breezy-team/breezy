@@ -39,10 +39,10 @@ def _supports_progress(f):
     output, and that we can repaint a line to update it.
 
     This doesn't check the policy for whether we *should* use them.
-    
+
     Args:
         f: File-like object to check for progress support.
-        
+
     Returns:
         Boolean indicating whether progress bars can be used.
     """
@@ -122,7 +122,7 @@ class ProgressTask:
         """Report updated task message and if relevant progress counters.
 
         The message given must be unicode, not a byte string.
-        
+
         Args:
             msg: Updated message to display.
             current_cnt: Current progress count.
@@ -150,7 +150,7 @@ class ProgressTask:
 
     def make_sub_task(self):
         """Create a sub-task of this progress task.
-        
+
         Returns:
             New ProgressTask that is a child of this one.
         """
@@ -178,7 +178,7 @@ class ProgressTask:
 
     def clear(self):
         """Clear the progress display.
-        
+
         Note: This method may be deprecated in the future as the model
         object shouldn't be concerned with display details.
         """
@@ -234,7 +234,7 @@ class ProgressPhase:
 
     def __init__(self, message, total, pb):
         """Initialize ProgressPhase.
-        
+
         Args:
             message: Message to display with progress.
             total: Total number of phases.

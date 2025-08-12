@@ -24,10 +24,10 @@ from .. import errors, registry
 
 class ArchiveFormatInfo:
     """Information about an archive format."""
-    
+
     def __init__(self, extensions):
         """Initialize ArchiveFormatInfo.
-        
+
         Args:
             extensions: List of file extensions for this archive format.
         """
@@ -45,7 +45,7 @@ class ArchiveFormatRegistry(registry.Registry):
     @property
     def extensions(self):
         """Get all registered file extensions.
-        
+
         Returns:
             Keys of the extension map.
         """
@@ -60,7 +60,7 @@ class ArchiveFormatRegistry(registry.Registry):
 
     def register_lazy(self, key, module_name, member_name, extensions, help=None):
         """Register an archive format lazily.
-        
+
         Args:
             key: Unique identifier for the format.
             module_name: Name of the module containing the format.
@@ -94,7 +94,7 @@ def create_archive(
     format, tree, name, root=None, subdir=None, force_mtime=None, recurse_nested=False
 ) -> Iterator[bytes]:
     """Create an archive of the specified format.
-    
+
     Args:
         format: The archive format to use.
         tree: The tree to archive.
@@ -103,10 +103,10 @@ def create_archive(
         subdir: Optional subdirectory to archive.
         force_mtime: Optional modification time to force.
         recurse_nested: Whether to recurse into nested trees.
-        
+
     Returns:
         Iterator yielding archive data as bytes.
-        
+
     Raises:
         NoSuchExportFormat: If the specified format is not supported.
     """

@@ -1,6 +1,6 @@
 """Support for shelving changes in a working tree.
 
-This module provides functionality for temporarily storing ('shelving') 
+This module provides functionality for temporarily storing ('shelving')
 uncommitted changes and restoring ('unshelving') them later. This is useful
 for temporarily setting aside work in progress to work on something else.
 """
@@ -44,16 +44,18 @@ from breezy.bzr import (
 
 class ShelfCorrupt(errors.BzrError):
     """Error raised when a shelf file is corrupted or invalid."""
+
     _fmt = "Shelf corrupt."
 
 
 class NoSuchShelfId(errors.BzrError):
     """Error raised when trying to access a shelf that doesn't exist."""
+
     _fmt = 'No changes are shelved with id "%(shelf_id)d".'
 
     def __init__(self, shelf_id):
         """Initialize NoSuchShelfId.
-        
+
         Args:
             shelf_id: The ID of the shelf that doesn't exist.
         """
@@ -62,11 +64,12 @@ class NoSuchShelfId(errors.BzrError):
 
 class InvalidShelfId(errors.BzrError):
     """Error raised when an invalid shelf ID is provided."""
+
     _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
 
     def __init__(self, invalid_id):
         """Initialize InvalidShelfId.
-        
+
         Args:
             invalid_id: The invalid shelf ID that was provided.
         """
@@ -364,12 +367,12 @@ class ShelfCreator:
     @staticmethod
     def metadata_record(serializer, revision_id, message=None):
         """Create a metadata record for a shelf.
-        
+
         Args:
             serializer: Serializer to use for creating the record.
             revision_id: ID of the revision being shelved.
             message: Optional message describing the shelved changes.
-            
+
         Returns:
             Serialized metadata record.
         """
@@ -418,10 +421,10 @@ class Unshelver:
     @staticmethod
     def iter_records(shelf_file):
         """Iterate over records in a shelf file.
-        
+
         Args:
             shelf_file: File containing shelf data.
-            
+
         Returns:
             Iterator over records in the shelf file.
         """
@@ -432,13 +435,13 @@ class Unshelver:
     @staticmethod
     def parse_metadata(records):
         """Parse metadata from shelf records.
-        
+
         Args:
             records: Iterator over shelf records.
-            
+
         Returns:
             Dictionary containing shelf metadata.
-            
+
         Raises:
             ShelfCorrupt: If the metadata record is invalid.
         """
@@ -487,7 +490,7 @@ class ShelfManager:
 
     def __init__(self, tree, transport):
         """Initialize ShelfManager.
-        
+
         Args:
             tree: Working tree to manage shelves for.
             transport: Transport for storing shelf files.
@@ -498,10 +501,10 @@ class ShelfManager:
 
     def get_shelf_filename(self, shelf_id):
         """Generate filename for a shelf with the given ID.
-        
+
         Args:
             shelf_id: Numeric ID of the shelf.
-            
+
         Returns:
             String filename for the shelf.
         """
@@ -509,10 +512,10 @@ class ShelfManager:
 
     def get_shelf_ids(self, filenames):
         """Extract shelf IDs from a list of filenames.
-        
+
         Args:
             filenames: List of filenames to examine.
-            
+
         Returns:
             List of numeric shelf IDs found in the filenames.
         """

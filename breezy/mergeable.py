@@ -92,6 +92,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         NotABundle: If the file cannot be parsed as a bundle or merge directive,
             or if various transport errors occur.
     """
+
     def get_bundle(transport):
         return BytesIO(transport.get_bytes(filename)), transport
 

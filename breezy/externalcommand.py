@@ -24,7 +24,6 @@ as if they were internal Breezy commands.
 # forth, we should just pass in the whole argv, and allow
 # ExternalCommands to handle it differently to internal commands?
 
-
 import os
 
 from .commands import Command

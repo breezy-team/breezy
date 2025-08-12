@@ -35,6 +35,7 @@ class GhostFetcher:
     missing from the local repository, and attempts to fetch them from
     another branch.
     """
+
     @classmethod
     def from_cmdline(cls, other):
         """Create a GhostFetcher from command line arguments.

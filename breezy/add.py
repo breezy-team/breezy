@@ -75,13 +75,13 @@ class AddWithSkipLargeAction(AddAction):
 
     def skip_file(self, tree, path, kind, stat_value=None):
         """Check if a file should be skipped based on its size.
-        
+
         Args:
             tree: The working tree containing the file.
             path: Path to the file.
             kind: The type of the file item.
             stat_value: Optional stat value for the file.
-            
+
         Returns:
             True if the file should be skipped, False otherwise.
         """
@@ -107,7 +107,7 @@ class AddFromBaseAction(AddAction):
 
     def __init__(self, base_tree, base_path, to_file=None, should_print=None):
         """Initialize AddFromBaseAction.
-        
+
         Args:
             base_tree: The base tree to extract file IDs from.
             base_path: The base path in the tree.
@@ -120,13 +120,13 @@ class AddFromBaseAction(AddAction):
 
     def __call__(self, inv, parent_ie, path, kind):
         """Process a file, attempting to extract its ID from the base tree.
-        
+
         Args:
             inv: The inventory.
             parent_ie: The parent inventory entry.
             path: Path to the file.
             kind: The type of the file item.
-            
+
         Returns:
             The result of processing the file.
         """
