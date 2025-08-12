@@ -25,10 +25,12 @@ from .transport import do_catching_redirections, get_transport
 
 
 class BadUrl(errors.BzrError):
+    """Error raised when trying to access a URL that is not allowed."""
     _fmt = "Tried to access a branch from bad URL %(url)s."
 
 
 class BranchReferenceForbidden(errors.BzrError):
+    """Error raised when branch references are forbidden but encountered."""
     _fmt = (
         "Trying to mirror a branch reference and the branch type "
         "does not allow references."
@@ -124,6 +126,7 @@ class AcceptAnythingPolicy(_BlacklistPolicy):
     """Accept anything, to make testing easier."""
 
     def __init__(self):
+        """Initialize AcceptAnythingPolicy."""
         super().__init__(True, set())
 
 
@@ -131,15 +134,32 @@ class WhitelistPolicy(BranchOpenPolicy):
     """Branch policy that only allows certain URLs."""
 
     def __init__(self, should_follow_references, allowed_urls=None, check=False):
+        """Initialize WhitelistPolicy.
+        
+        Args:
+            should_follow_references: Whether to follow branch references.
+            allowed_urls: List of URLs that are allowed.
+            check: Whether to check URLs.
+        """
         if allowed_urls is None:
             allowed_urls = []
+        self._should_follow_references = should_follow_references
         self.allowed_urls = {url.rstrip("/") for url in allowed_urls}
         self.check = check
 
     def should_follow_references(self):
+        """Return whether to follow branch references."""
         return self._should_follow_references
 
     def check_one_url(self, url):
+        """Check if a URL is allowed.
+        
+        Args:
+            url: URL to check.
+            
+        Raises:
+            BadUrl: If the URL is not in the allowed list.
+        """
         if url.rstrip("/") not in self.allowed_urls:
             raise BadUrl(url)
 
@@ -156,12 +176,27 @@ class SingleSchemePolicy(BranchOpenPolicy):
     """Branch open policy that rejects URLs not on the given scheme."""
 
     def __init__(self, allowed_scheme):
+        """Initialize SingleSchemePolicy.
+        
+        Args:
+            allowed_scheme: The URL scheme that is allowed.
+        """
         self.allowed_scheme = allowed_scheme
 
     def should_follow_references(self):
+        """Return whether to follow branch references (always True)."""
         return True
 
     def transform_fallback_location(self, branch, url):
+        """Transform a fallback location URL.
+        
+        Args:
+            branch: The branch object.
+            url: The fallback URL.
+            
+        Returns:
+            Tuple of (new_url, check_required).
+        """
         return urlutils.join(branch.base, url), True
 
     def check_one_url(self, url):
@@ -261,6 +296,16 @@ class BranchOpener:
     def run_with_transform_fallback_location_hook_installed(
         self, callable, *args, **kw
     ):
+        """Run callable with transform fallback location hook installed.
+        
+        Args:
+            callable: Function to call.
+            *args: Arguments to pass to callable.
+            **kw: Keyword arguments to pass to callable.
+            
+        Returns:
+            Result of calling callable.
+        """
         if (
             self.transform_fallback_locationHook
             not in Branch.hooks["transform_fallback_location"]

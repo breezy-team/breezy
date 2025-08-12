@@ -1,3 +1,11 @@
+"""Merge directive support for Breezy.
+
+This module provides infrastructure for creating, parsing, and working with
+merge directives - structured requests to merge changes between branches.
+Merge directives can contain patches, bundles, or references to branches
+to facilitate code review and collaboration workflows.
+"""
+
 # Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -51,6 +59,11 @@ class IllegalMergeDirectivePayload(errors.BzrError):
     _fmt = "Bad merge directive payload %(start)r"
 
     def __init__(self, start):
+        """Initialize IllegalMergeDirectivePayload.
+        
+        Args:
+            start: The invalid payload content that was encountered.
+        """
         errors.BzrError(self)
         self.start = start
 
@@ -61,6 +74,18 @@ class MergeRequestBodyParams:
     def __init__(
         self, body, orig_body, directive, to, basename, subject, branch, tree=None
     ):
+        """Initialize MergeRequestBodyParams.
+        
+        Args:
+            body: The processed body text.
+            orig_body: The original body text.
+            directive: The merge directive.
+            to: Email recipient.
+            basename: Base name for attachments.
+            subject: Email subject line.
+            branch: Source branch.
+            tree: Source tree (optional).
+        """
         self.body = body
         self.orig_body = orig_body
         self.directive = directive
@@ -75,6 +100,7 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
+        """Initialize MergeDirectiveHooks."""
         hooks.Hooks.__init__(self, "breezy.merge_directive", "BaseMergeDirective.hooks")
         self.add_hook(
             "merge_request_body",
@@ -182,7 +208,8 @@ class BaseMergeDirective:
     def write_to_directory(self, path):
         """Write this merge directive to a series of files in a directory.
 
-        :param path: Filesystem path to write to
+        Args:
+            path: Filesystem path to write to.
         """
         raise NotImplementedError(self.write_to_directory)
 
@@ -266,8 +293,11 @@ class BaseMergeDirective:
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk.
 
-        :param branch: The Branch this merge directive was generated fro
-        :return: A string
+        Args:
+            branch: The Branch this merge directive was generated from.
+            
+        Returns:
+            A string suitable for use as a filename.
         """
         revno, revision_id = branch.last_revision_info()
         if self.revision_id == revision_id:
@@ -282,6 +312,16 @@ class BaseMergeDirective:
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
+        """Generate a diff between two revisions.
+        
+        Args:
+            repository: Repository containing the revisions.
+            revision_id: The newer revision.
+            ancestor_id: The older revision to diff against.
+            
+        Returns:
+            Diff content as bytes.
+        """
         tree_1 = repository.revision_tree(ancestor_id)
         tree_2 = repository.revision_tree(revision_id)
         s = BytesIO()
@@ -290,6 +330,16 @@ class BaseMergeDirective:
 
     @classmethod
     def _generate_bundle(cls, repository, revision_id, ancestor_id):
+        """Generate a bundle between two revisions.
+        
+        Args:
+            repository: Repository containing the revisions.
+            revision_id: The newer revision.
+            ancestor_id: The older revision to use as base.
+            
+        Returns:
+            Bundle content as bytes.
+        """
         s = BytesIO()
         bundle_serializer.write_bundle(repository, revision_id, ancestor_id, s)
         return s.getvalue()
@@ -297,8 +347,11 @@ class BaseMergeDirective:
     def to_signed(self, branch):
         """Serialize as a signed string.
 
-        :param branch: The source branch, to get the signing strategy
-        :return: a string
+        Args:
+            branch: The source branch, to get the signing strategy.
+            
+        Returns:
+            A signed string representation.
         """
         my_gpg = gpg.GPGStrategy(branch.get_config_stack())
         return my_gpg.sign(b"".join(self.to_lines()), gpg.MODE_CLEAR)
@@ -306,11 +359,13 @@ class BaseMergeDirective:
     def to_email(self, mail_to, branch, sign=False):
         """Serialize as an email message.
 
-        :param mail_to: The address to mail the message to
-        :param branch: The source branch, to get the signing strategy and
-            source email address
-        :param sign: If True, gpg-sign the email
-        :return: an email message
+        Args:
+            mail_to: The address to mail the message to.
+            branch: The source branch, to get signing strategy and source email.
+            sign: If True, gpg-sign the email.
+            
+        Returns:
+            An email message object.
         """
         mail_from = branch.get_config_stack().get("email")
         if self.message is not None:
@@ -323,7 +378,14 @@ class BaseMergeDirective:
         return message
 
     def install_revisions(self, target_repo):
-        """Install revisions and return the target revision."""
+        """Install revisions and return the target revision.
+        
+        Args:
+            target_repo: Repository to install revisions into.
+            
+        Returns:
+            The revision ID that was installed.
+        """
         if not target_repo.has_revision(self.revision_id):
             if self.patch_type == "bundle":
                 info = bundle_serializer.read_bundle(BytesIO(self.get_raw_bundle()))
@@ -366,11 +428,12 @@ class BaseMergeDirective:
     def compose_merge_request(self, mail_client, to, body, branch, tree=None):
         """Compose a request to merge this directive.
 
-        :param mail_client: The mail client to use for composing this request.
-        :param to: The address to compose the request to.
-        :param branch: The Branch that was used to produce this directive.
-        :param tree: The Tree (if any) for the Branch used to produce this
-            directive.
+        Args:
+            mail_client: The mail client to use for composing this request.
+            to: The address to compose the request to.
+            body: Body text for the request.
+            branch: The Branch that was used to produce this directive.
+            tree: The Tree (if any) for the Branch used to produce this directive.
         """
         basename = self.get_disk_name(branch)
         subject = "[MERGE] "
@@ -461,13 +524,16 @@ class MergeDirective(BaseMergeDirective):
         self.patch_type = patch_type
 
     def clear_payload(self):
+        """Clear the patch payload from this directive."""
         self.patch = None
         self.patch_type = None
 
     def get_raw_bundle(self):
+        """Return the raw bundle data for this directive."""
         return self.bundle
 
     def _bundle(self):
+        """Return bundle data if this directive contains a bundle."""
         if self.patch_type == "bundle":
             return self.patch
         else:
@@ -524,6 +590,11 @@ class MergeDirective(BaseMergeDirective):
         )
 
     def to_lines(self):
+        """Serialize this merge directive as lines.
+        
+        Returns:
+            List of byte strings representing the serialized directive.
+        """
         lines = self._to_lines()
         if self.patch is not None:
             lines.extend(self.patch.splitlines(True))
@@ -539,13 +610,18 @@ class MergeDirective(BaseMergeDirective):
 
     def get_merge_request(self, repository):
         """Provide data for performing a merge.
+        
+        Args:
+            repository: Repository to use for merge operations.
 
-        Returns suggested base, suggested target, and patch verification status
+        Returns:
+            Tuple of (suggested_base, suggested_target, patch_verification_status).
         """
         return None, self.revision_id, "inapplicable"
 
 
 class MergeDirective2(BaseMergeDirective):
+    """Version 2 merge directive format supporting separate patches and bundles."""
     _format_string = b"Bazaar merge directive format 2 (Bazaar 0.90)"
 
     def __init__(
@@ -562,6 +638,20 @@ class MergeDirective2(BaseMergeDirective):
         bundle=None,
         base_revision_id=None,
     ):
+        """Initialize MergeDirective2.
+        
+        Args:
+            revision_id: The revision to merge.
+            testament_sha1: SHA1 of the testament.
+            time: Timestamp of the directive.
+            timezone: Timezone of the directive.
+            target_branch: Target branch URL.
+            patch: Patch content (optional).
+            source_branch: Source branch URL (optional).
+            message: Commit message (optional).
+            bundle: Bundle content (optional).
+            base_revision_id: Base revision for the patch (optional).
+        """
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         BaseMergeDirective.__init__(
@@ -589,10 +679,12 @@ class MergeDirective2(BaseMergeDirective):
     patch_type = property(_patch_type)
 
     def clear_payload(self):
+        """Clear the patch and bundle payload from this directive."""
         self.patch = None
         self.bundle = None
 
     def get_raw_bundle(self):
+        """Return the decoded raw bundle data for this directive."""
         if self.bundle is None:
             return None
         else:
@@ -642,6 +734,11 @@ class MergeDirective2(BaseMergeDirective):
         return cls(time=time, timezone=timezone, patch=patch, bundle=bundle, **kwargs)
 
     def to_lines(self):
+        """Serialize this merge directive as lines.
+        
+        Returns:
+            List of byte strings representing the serialized directive.
+        """
         lines = self._to_lines(base_revision=True)
         if self.patch is not None:
             lines.append(b"# Begin patch\n")
@@ -755,13 +852,25 @@ class MergeDirective2(BaseMergeDirective):
 
     def get_merge_request(self, repository):
         """Provide data for performing a merge.
+        
+        Args:
+            repository: Repository to use for merge operations.
 
-        Returns suggested base, suggested target, and patch verification status
+        Returns:
+            Tuple of (suggested_base, suggested_target, patch_verification_status).
         """
         verified = self._maybe_verify(repository)
         return self.base_revision_id, self.revision_id, verified
 
     def _maybe_verify(self, repository):
+        """Verify the patch if present.
+        
+        Args:
+            repository: Repository to use for verification.
+            
+        Returns:
+            String indicating verification status: 'verified', 'failed', or 'inapplicable'.
+        """
         if self.patch is not None:
             if self._verify_patch(repository):
                 return "verified"
@@ -772,7 +881,15 @@ class MergeDirective2(BaseMergeDirective):
 
 
 class MergeDirectiveFormatRegistry(registry.Registry):
+    """Registry for merge directive format handlers."""
+    
     def register(self, directive, format_string=None):
+        """Register a merge directive format.
+        
+        Args:
+            directive: The directive class to register.
+            format_string: Format string to use (defaults to directive._format_string).
+        """
         if format_string is None:
             format_string = directive._format_string
         registry.Registry.register(self, format_string, directive)

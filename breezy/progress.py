@@ -1,3 +1,14 @@
+"""Progress indicators.
+
+The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
+will manage a conceptual stack of nested activities.
+
+This module provides the infrastructure for displaying progress information
+to the user during long-running operations. It includes progress tasks,
+progress bars, and utilities for determining when progress indicators
+should be shown.
+"""
+
 # Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,12 +27,6 @@
 
 __docformat__ = "google"
 
-"""Progress indicators.
-
-The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
-will manage a conceptual stack of nested activities.
-"""
-
 import os
 
 from . import _cmd_rs
@@ -34,6 +39,12 @@ def _supports_progress(f):
     output, and that we can repaint a line to update it.
 
     This doesn't check the policy for whether we *should* use them.
+    
+    Args:
+        f: File-like object to check for progress support.
+        
+    Returns:
+        Boolean indicating whether progress bars can be used.
     """
     isatty = getattr(f, "isatty", None)
     if isatty is None:
@@ -102,14 +113,20 @@ class ProgressTask:
         self.show_transport_activity = True
 
     def __repr__(self):
+        """Return string representation of this ProgressTask."""
         return "{}({!r}/{!r}, msg={!r})".format(
             self.__class__.__name__, self.current_cnt, self.total_cnt, self.msg
         )
 
     def update(self, msg, current_cnt=None, total_cnt=None):
-        """Report updated task message and if relevent progress counters.
+        """Report updated task message and if relevant progress counters.
 
         The message given must be unicode, not a byte string.
+        
+        Args:
+            msg: Updated message to display.
+            current_cnt: Current progress count.
+            total_cnt: Total expected count.
         """
         self.msg = msg
         self.current_cnt = current_cnt
@@ -121,15 +138,22 @@ class ProgressTask:
             self.ui_factory._progress_updated(self)
 
     def tick(self):
+        """Update progress without changing counts."""
         self.update(self.msg)
 
     def finished(self):
+        """Mark this progress task as finished."""
         if self.progress_view:
             self.progress_view.task_finished(self)
         else:
             self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
+        """Create a sub-task of this progress task.
+        
+        Returns:
+            New ProgressTask that is a child of this one.
+        """
         return ProgressTask(
             self, ui_factory=self.ui_factory, progress_view=self.progress_view
         )
@@ -153,6 +177,11 @@ class ProgressTask:
             return self._parent_task._overall_completion_fraction(own_fraction)
 
     def clear(self):
+        """Clear the progress display.
+        
+        Note: This method may be deprecated in the future as the model
+        object shouldn't be concerned with display details.
+        """
         # TODO: deprecate this method; the model object shouldn't be concerned
         # with whether it's shown or not.  Most callers use this because they
         # want to write some different non-progress output to the screen, but
@@ -166,9 +195,11 @@ class ProgressTask:
             self.ui_factory.clear_term()
 
     def __enter__(self):
+        """Enter context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager and mark task as finished."""
         self.finished()
         return False
 
@@ -183,12 +214,15 @@ class DummyProgress:
     """
 
     def tick(self):
+        """Do nothing (dummy implementation)."""
         pass
 
     def update(self, msg=None, current=None, total=None):
+        """Do nothing (dummy implementation)."""
         pass
 
     def clear(self):
+        """Do nothing (dummy implementation)."""
         pass
 
 
@@ -199,6 +233,13 @@ class ProgressPhase:
     """Update progress object with the current phase."""
 
     def __init__(self, message, total, pb):
+        """Initialize ProgressPhase.
+        
+        Args:
+            message: Message to display with progress.
+            total: Total number of phases.
+            pb: Progress bar object to update.
+        """
         object.__init__(self)
         self.pb = pb
         self.message = message
@@ -206,6 +247,7 @@ class ProgressPhase:
         self.cur_phase = None
 
     def next_phase(self):
+        """Move to the next phase and update progress."""
         if self.cur_phase is None:
             self.cur_phase = 0
         else:
