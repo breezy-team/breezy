@@ -104,6 +104,7 @@ class TransportDecorator(Transport):
         return self._decorated.get(relpath)
 
     def get_smart_client(self):
+        """See Transport.get_smart_client."""
         return self._decorated.get_smart_client()
 
     def has(self, relpath):
@@ -151,6 +152,7 @@ class TransportDecorator(Transport):
         return self._decorated.recommended_page_size()
 
     def rename(self, rel_from, rel_to):
+        """See Transport.rename."""
         return self._decorated.rename(rel_from, rel_to)
 
     def rmdir(self, relpath):
