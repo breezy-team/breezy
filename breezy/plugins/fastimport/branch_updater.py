@@ -25,6 +25,13 @@ from .helpers import best_format_for_objects_in_a_repository, single_plural
 
 
 class BranchUpdater:
+    """Updates Bazaar branches based on imported data.
+
+    This class is responsible for creating and updating Bazaar branches
+    to match the heads imported from a foreign version control system,
+    typically Git.
+    """
+
     def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
         """Create an object responsible for updating branches.
 

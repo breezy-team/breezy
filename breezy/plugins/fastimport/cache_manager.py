@@ -56,6 +56,13 @@ class _Cleanup:
 
 
 class CacheManager:
+    """Manages various caches for the fast-import functionality.
+
+    This class handles caching of blobs, inventories, marks, and other data
+    to improve performance during import operations. It includes both memory
+    and disk-based caching strategies.
+    """
+
     _small_blob_threshold = 25 * 1024
     _sticky_cache_size = 300 * 1024 * 1024
     _sticky_flushed_size = 100 * 1024 * 1024
@@ -115,6 +122,18 @@ class CacheManager:
         self.reftracker = RefTracker()
 
     def add_mark(self, mark, commit_id):
+        """Add a mapping from a mark to a commit ID.
+
+        Args:
+            mark: The mark identifier (should not start with ':').
+            commit_id: The commit ID to associate with the mark.
+
+        Returns:
+            True if the mark already existed, False otherwise.
+
+        Raises:
+            ValueError: If the mark starts with ':'.
+        """
         if mark.startswith(b":"):
             raise ValueError(mark)
         is_new = mark in self.marks

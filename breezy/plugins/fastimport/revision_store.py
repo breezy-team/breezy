@@ -171,6 +171,12 @@ class _TreeShim:
 
 
 class RevisionStore:
+    """Manages loading revisions into a repository.
+
+    This class provides functionality for creating and storing revisions
+    in a Bazaar repository, handling inventory deltas and parent relationships.
+    """
+
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
 
