@@ -14,15 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """View management.
 
 Views are contained within a working tree and normally constructed
-when first accessed.  Clients should do, for example, ...
+when first accessed. Clients should do, for example:
 
-  tree.views.lookup_view()
+    tree.views.lookup_view()
 """
+
+__docformat__ = "google"
 
 import re
 
@@ -38,6 +38,11 @@ class NoSuchView(errors.BzrError):
     _fmt = "No such view: %(view_name)s."
 
     def __init__(self, view_name):
+        """Initialize NoSuchView exception.
+
+        Args:
+            view_name: Name of the view that was not found.
+        """
         self.view_name = view_name
 
 
@@ -50,13 +55,30 @@ class ViewsNotSupported(errors.BzrError):
     )
 
     def __init__(self, tree):
+        """Initialize ViewsNotSupported exception.
+
+        Args:
+            tree: The tree that does not support views.
+        """
         self.tree = tree
 
 
 class FileOutsideView(errors.BzrError):
+    """Exception raised when a file is outside the current view.
+
+    This error occurs when trying to operate on a file that is not included
+    in the currently active view.
+    """
+
     _fmt = 'Specified file "%(file_name)s" is outside the current view: %(view_str)s'
 
     def __init__(self, file_name, view_files):
+        """Initialize FileOutsideView exception.
+
+        Args:
+            file_name: Name of the file that is outside the view.
+            view_files: List of files that are included in the current view.
+        """
         self.file_name = file_name
         self.view_str = ", ".join(view_files)
 
@@ -94,12 +116,22 @@ class PathBasedViews(_Views):
     """
 
     def __init__(self, tree):
+        """Initialize PathBasedViews manager.
+
+        Args:
+            tree: The working tree to manage views for.
+        """
         self.tree = tree
         self._loaded = False
         self._current = None
         self._views = {}
 
     def supports_views(self):
+        """Check if this view manager supports views.
+
+        Returns:
+            True, as PathBasedViews supports view storage.
+        """
         return True
 
     def get_view_info(self):
@@ -260,9 +292,19 @@ class DisabledViews(_Views):
     """
 
     def __init__(self, tree):
+        """Initialize DisabledViews manager.
+
+        Args:
+            tree: The tree that does not support views.
+        """
         self.tree = tree
 
     def supports_views(self):
+        """Check if this view manager supports views.
+
+        Returns:
+            False, as DisabledViews does not support view storage.
+        """
         return False
 
     def _not_supported(self, *a, **k):

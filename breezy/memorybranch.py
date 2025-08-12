@@ -25,7 +25,20 @@ from .tag import DisabledTags, MemoryTags
 
 
 class MemoryBranch(Branch, _RelockDebugMixin):
+    """A branch implementation that keeps data in memory.
+
+    This branch implementation stores branch data in memory rather than
+    on disk, making it useful for temporary operations and testing.
+    """
+
     def __init__(self, repository, last_revision_info, tags=None):
+        """Initialize a MemoryBranch.
+
+        Args:
+            repository: The repository that backs this branch.
+            last_revision_info: Tuple of (revno, revision_id) for the last revision.
+            tags: Optional dictionary of tags, or None to disable tags.
+        """
         self.repository = repository
         self._last_revision_info = last_revision_info
         self._revision_history_cache = None
@@ -40,26 +53,64 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         self.base = "memory://" + osutils.rand_chars(10)
 
     def __repr__(self):
+        """Return string representation of MemoryBranch.
+
+        Returns:
+            String representation of this MemoryBranch.
+        """
         return "<MemoryBranch()>"
 
     def get_config(self):
+        """Get the configuration for this branch.
+
+        Returns:
+            A Config object for this branch.
+        """
         return _mod_config.Config()
 
     def lock_read(self):
+        """Acquire a read lock on this branch.
+
+        Returns:
+            A lock result that can be used to unlock.
+        """
         self.repository.lock_read()
         return LogicalLockResult(self.unlock)
 
     def is_locked(self):
+        """Check if this branch is currently locked.
+
+        Returns:
+            True if the branch is locked, False otherwise.
+        """
         return self.repository.is_locked()
 
     def lock_write(self, token=None):
+        """Acquire a write lock on this branch.
+
+        Args:
+            token: Optional lock token (unused for MemoryBranch).
+
+        Returns:
+            A write lock result that can be used to unlock.
+        """
         self.repository.lock_write()
         return BranchWriteLockResult(self.unlock, None)
 
     def unlock(self):
+        """Release any locks held on this branch.
+
+        Returns:
+            None
+        """
         self.repository.unlock()
 
     def last_revision_info(self):
+        """Return information about the last revision.
+
+        Returns:
+            Tuple of (revno, revision_id) for the last revision.
+        """
         return self._last_revision_info
 
     def _gen_revision_history(self):
