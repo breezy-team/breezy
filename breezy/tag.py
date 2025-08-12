@@ -77,7 +77,14 @@ def _reconcile_tags(
 
 
 class Tags:
+    """Interface for managing tags in a branch."""
+
     def __init__(self, branch):
+        """Initialize the Tags object.
+
+        Args:
+            branch: The branch this tags object is associated with.
+        """
         self.branch = branch
 
     def get_tag_dict(self) -> dict[str, RevisionID]:
@@ -165,6 +172,14 @@ class Tags:
                     self.set_tag(name, rename_map[revid])
 
     def has_tag(self, tag_name: str) -> bool:
+        """Check if a tag exists.
+
+        Args:
+            tag_name: Name of the tag to check.
+
+        Returns:
+            True if the tag exists, False otherwise.
+        """
         return tag_name in self.get_tag_dict()
 
 
@@ -184,14 +199,41 @@ class DisabledTags(Tags):
     delete_tag = _not_supported
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
+        """Merge tags to another tags object.
+
+        For disabled tags, there are never any tags to copy.
+
+        Args:
+            to_tags: Target tags object.
+            overwrite: Whether to overwrite existing tags.
+            ignore_master: Whether to ignore master branch tags.
+            selector: Optional tag selector function.
+
+        Returns:
+            Tuple of (updates, conflicts) - both empty for disabled tags.
+        """
         # we never have anything to copy
         return {}, []
 
     def rename_revisions(self, rename_map):
+        """Rename revisions in tags dictionary.
+
+        For disabled tags, there are no tags to rename.
+
+        Args:
+            rename_map: Dictionary mapping old revids to new revids.
+        """
         # No tags, so nothing to rename
         pass
 
     def get_reverse_tag_dict(self):
+        """Get a reverse mapping from revision ids to tag names.
+
+        For disabled tags, there are no tags so the mapping is empty.
+
+        Returns:
+            Empty dictionary.
+        """
         # There aren't any tags, so the reverse mapping is empty.
         return {}
 
@@ -204,6 +246,17 @@ class InterTags(InterObject[Tags]):
 
     @classmethod
     def is_compatible(klass, source: Tags, target: Tags) -> bool:
+        """Check if two Tags objects are compatible for operations.
+
+        This is the default implementation that always returns True.
+
+        Args:
+            source: Source tags object.
+            target: Target tags object.
+
+        Returns:
+            True if compatible, False otherwise.
+        """
         # This is the default implementation
         return True
 
@@ -288,10 +341,22 @@ class InterTags(InterObject[Tags]):
 
 
 class MemoryTags(Tags):
+    """A tags implementation that stores tags in memory."""
+
     def __init__(self, tag_dict):
+        """Initialize MemoryTags with a tag dictionary.
+
+        Args:
+            tag_dict: Dictionary mapping tag names to revision ids.
+        """
         self._tag_dict = tag_dict
 
     def get_tag_dict(self):
+        """Return the dictionary of tags.
+
+        Returns:
+            Dictionary mapping tag names to revision ids.
+        """
         return self._tag_dict
 
     def lookup_tag(self, tag_name):
@@ -303,15 +368,34 @@ class MemoryTags(Tags):
             raise errors.NoSuchTag(tag_name) from e
 
     def set_tag(self, name, revid):
+        """Set a tag to point to a revision.
+
+        Args:
+            name: Name of the tag.
+            revid: Revision id to point to.
+        """
         self._tag_dict[name] = revid
 
     def delete_tag(self, name):
+        """Delete a tag.
+
+        Args:
+            name: Name of the tag to delete.
+
+        Raises:
+            NoSuchTag: If the tag doesn't exist.
+        """
         try:
             del self._tag_dict[name]
         except KeyError as err:
             raise errors.NoSuchTag(name) from err
 
     def rename_revisions(self, revid_map):
+        """Rename revisions in the tag dictionary.
+
+        Args:
+            revid_map: Dictionary mapping old revids to new revids.
+        """
         self._tag_dict = {
             name: revid_map.get(revid, revid) for name, revid in self._tag_dict.items()
         }
@@ -320,6 +404,17 @@ class MemoryTags(Tags):
         self._tag_dict = dict(result.items())
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
+        """Merge tags to another tags object.
+
+        Args:
+            to_tags: Target tags object.
+            overwrite: Whether to overwrite existing tags.
+            ignore_master: Whether to ignore master branch tags.
+            selector: Optional tag selector function.
+
+        Returns:
+            Tuple of (updates, conflicts).
+        """
         source_dict = self.get_tag_dict()
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(

@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Conflict resolution and management utilities.
+
+This module provides commands and classes for handling merge conflicts,
+including listing conflicts, resolving them, and managing conflict files.
+"""
+
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
@@ -37,6 +43,8 @@ from . import commands, errors, option, osutils, registry, trace
 
 
 class cmd_conflicts(commands.Command):
+    """Command to list files with conflicts."""
+
     __doc__ = """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -57,6 +65,12 @@ class cmd_conflicts(commands.Command):
     _see_also = ["resolve", "conflict-types"]
 
     def run(self, text=False, directory="."):
+        """Execute the conflicts command.
+
+        Args:
+            text: If True, only list paths of files with text conflicts.
+            directory: Directory to search for conflicts in.
+        """
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
@@ -88,7 +102,10 @@ resolve_action_registry.default_key = "done"
 
 
 class ResolveActionOption(option.RegistryOption):
+    """Registry option for resolve actions."""
+
     def __init__(self):
+        """Initialize ResolveActionOption."""
         super().__init__(
             "action",
             "How to resolve the conflict.",
@@ -98,6 +115,8 @@ class ResolveActionOption(option.RegistryOption):
 
 
 class cmd_resolve(commands.Command):
+    """Command to mark conflicts as resolved."""
+
     __doc__ = """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -119,6 +138,14 @@ class cmd_resolve(commands.Command):
     _see_also = ["conflicts"]
 
     def run(self, file_list=None, all=False, action=None, directory=None):
+        """Execute the resolve command.
+
+        Args:
+            file_list: List of files to resolve.
+            all: If True, resolve all conflicts.
+            action: Action to take when resolving.
+            directory: Directory to work in.
+        """
         if all:
             if file_list:
                 raise errors.CommandError(
@@ -237,6 +264,11 @@ class ConflictList:
     """
 
     def __init__(self, conflicts=None):
+        """Initialize ConflictList.
+
+        Args:
+            conflicts: Optional list of conflicts to initialize with.
+        """
         object.__init__(self)
         if conflicts is None:
             self.__list = []
@@ -244,27 +276,43 @@ class ConflictList:
             self.__list = conflicts
 
     def is_empty(self):
+        """Check if the conflict list is empty.
+
+        Returns:
+            True if there are no conflicts, False otherwise.
+        """
         return len(self.__list) == 0
 
     def __len__(self):
+        """Return the number of conflicts."""
         return len(self.__list)
 
     def __iter__(self):
+        """Iterate over conflicts."""
         return iter(self.__list)
 
     def __getitem__(self, key):
+        """Get conflict by index."""
         return self.__list[key]
 
     def append(self, conflict):
+        """Append a conflict to the list.
+
+        Args:
+            conflict: Conflict to append.
+        """
         return self.__list.append(conflict)
 
     def __eq__(self, other_list):
+        """Check equality with another conflict list."""
         return list(self) == list(other_list)
 
     def __ne__(self, other_list):
+        """Check inequality with another conflict list."""
         return not (self == other_list)
 
     def __repr__(self):
+        """Return string representation of ConflictList."""
         return f"ConflictList({self.__list!r})"
 
     def to_strings(self):
@@ -317,6 +365,11 @@ class Conflict:
     typestring: str
 
     def __init__(self, path):
+        """Initialize Conflict with a path.
+
+        Args:
+            path: Path where the conflict occurred.
+        """
         self.path = path
 
     def associated_filenames(self):
@@ -324,6 +377,11 @@ class Conflict:
         raise NotImplementedError(self.associated_filenames)
 
     def cleanup(self, tree):
+        """Clean up conflict files associated with this conflict.
+
+        Args:
+            tree: Working tree containing the files.
+        """
         for fname in self.associated_filenames():
             with contextlib.suppress(FileNotFoundError):
                 osutils.delete_any(tree.abspath(fname))
