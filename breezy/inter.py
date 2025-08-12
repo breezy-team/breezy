@@ -24,11 +24,18 @@ from .pyutils import get_named_object
 
 
 class NoCompatibleInter(BzrError):
+    """Raised when no compatible InterObject is available for two objects."""
     _fmt = (
         "No compatible object available for operations from %(source)r to %(target)r."
     )
 
     def __init__(self, source, target):
+        """Initialize NoCompatibleInter exception.
+
+        Args:
+            source: The source object.
+            target: The target object.
+        """
         self.source = source
         self.target = target
 
@@ -112,10 +119,27 @@ class InterObject(Generic[T]):
 
     @classmethod
     def is_compatible(cls, source, target):
+        """Check if this InterObject is compatible with the given source and target.
+
+        Args:
+            source: The source object.
+            target: The target object.
+
+        Returns:
+            True if this InterObject can handle operations between source and target.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(cls.is_compatible)
 
     @classmethod
     def iter_optimisers(klass):
+        """Iterate through registered optimisers.
+
+        Yields:
+            Optimiser classes, loading lazy optimisers as needed.
+        """
         for provider in klass._optimisers:
             if isinstance(provider, tuple):
                 yield get_named_object(provider[0], provider[1])
@@ -147,6 +171,12 @@ class InterObject(Generic[T]):
 
     @classmethod
     def register_lazy_optimiser(klass, module_name, member_name):
+        """Register an optimiser to be loaded on demand.
+
+        Args:
+            module_name: The module containing the optimiser.
+            member_name: The name of the optimiser class in the module.
+        """
         # TODO(jelmer): Allow passing in a custom .is_compatible
         klass._optimisers.append((module_name, member_name))
 
