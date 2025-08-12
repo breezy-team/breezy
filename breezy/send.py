@@ -1,3 +1,10 @@
+"""Send merge requests via email or output to files.
+
+This module provides functionality to create and send merge requests from a branch
+to a target branch. It supports various output formats including bundle patches,
+diff patches, and merge directives that can be sent via email or written to files.
+"""
+
 # Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -42,6 +49,31 @@ def send(
     to_file,
     strict=None,
 ):
+    """Send a merge request from a branch to a target branch.
+
+    This function creates a merge directive (bundle/patch) containing changes from
+    the source branch that can be applied to the target branch. The output can be
+    sent via email or written to a file.
+
+    Args:
+        target_branch: URL or path of the target branch to send changes to.
+        revision: List of revision specifiers to determine what changes to send.
+        public_branch: URL of the public branch location for the source branch.
+        remember: Whether to remember the target branch location for future sends.
+        format: Output format for the merge directive (e.g., '4', '0.9').
+        no_bundle: If True, don't include a bundle in the merge directive.
+        no_patch: If True, don't include a patch in the merge directive.
+        output: Output file or directory path. If None, send via email.
+        from_: Source branch location to send changes from.
+        mail_to: Email address to send the merge request to.
+        message: Optional message to include with the merge request.
+        body: Optional body text for the email message.
+        to_file: File object to write output to when output is '-'.
+        strict: Whether to require a clean working tree before sending.
+
+    Raises:
+        CommandError: If required parameters are missing or invalid.
+    """
     possible_transports = []
     tree, branch = controldir.ControlDir.open_containing_tree_or_branch(
         from_, possible_transports=possible_transports

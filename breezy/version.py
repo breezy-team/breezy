@@ -26,6 +26,20 @@ from . import bedding, controldir, errors, osutils, trace
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
+    """Display version information about Breezy.
+
+    Shows version details including the Breezy version, Python interpreter
+    information, platform details, and optionally configuration paths and
+    copyright information.
+
+    Args:
+        show_config: If True, display configuration directory and log file paths.
+            Defaults to True.
+        show_copyright: If True, display copyright and license information.
+            Defaults to True.
+        to_file: File-like object to write the version information to.
+            If None, uses sys.stdout. Defaults to None.
+    """
     if to_file is None:
         to_file = sys.stdout
     to_file.write(f"Breezy (brz) {breezy.__version__}\n")

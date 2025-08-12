@@ -78,6 +78,16 @@ install_lazy_named_hook(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the changelog_merge plugin.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to extend.
+        pattern: Test discovery pattern (not used).
+
+    Returns:
+        The extended test suite with changelog_merge tests.
+    """
     testmod_names = [
         "tests",
     ]
