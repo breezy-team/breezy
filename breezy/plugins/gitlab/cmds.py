@@ -23,6 +23,23 @@ from ...trace import note
 
 
 class cmd_gitlab_login(Command):
+    """Log into a GitLab instance.
+
+    This command takes a GitLab instance URL (e.g. https://gitlab.com)
+    as well as an optional private token. Private tokens can be created via the
+    web UI.
+
+    :Examples:
+
+      Log into GNOME's GitLab (prompts for a token):
+
+         brz gitlab-login https://gitlab.gnome.org/
+
+      Log into Debian's salsa, using a token created earlier:
+
+         brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo
+    """
+
     __doc__ = """Log into a GitLab instance.
 
     This command takes a GitLab instance URL (e.g. https://gitlab.com)
@@ -48,6 +65,17 @@ class cmd_gitlab_login(Command):
     ]
 
     def run(self, url, private_token=None, name=None, no_check=False):
+        """Execute the gitlab-login command.
+
+        Args:
+            url: GitLab instance URL.
+            private_token: Optional private token for authentication.
+            name: Optional name for GitLab site in configuration.
+            no_check: Don't check that the token is valid.
+
+        Raises:
+            CommandError: If site name cannot be determined and not provided.
+        """
         from breezy import ui
 
         from .forge import store_gitlab_token

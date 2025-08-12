@@ -122,6 +122,18 @@ def open_destination_directory(location, format=None, verbose=True):
 
 
 def kind_to_mode(kind, executable):
+    """Convert a file kind and executable flag to a mode value.
+
+    Args:
+        kind: The file kind ('file', 'symlink', 'directory', 'tree-reference').
+        executable: Boolean indicating if the file is executable (only for 'file' kind).
+
+    Returns:
+        The mode value as an integer.
+
+    Raises:
+        AssertionError: If the kind is unknown or executable value is invalid.
+    """
     if kind == "file":
         if executable is True:
             return stat.S_IFREG | 0o755
@@ -140,6 +152,17 @@ def kind_to_mode(kind, executable):
 
 
 def mode_to_kind(mode):
+    """Convert a mode value to a file kind and executable flag.
+
+    Args:
+        mode: The mode value as an integer.
+
+    Returns:
+        A tuple of (kind, executable) where kind is a string and executable is a boolean.
+
+    Raises:
+        AssertionError: If the mode value is invalid.
+    """
     # Note: Output from git-fast-export slightly different to spec
     if mode in (0o644, 0o100644):
         return "file", False

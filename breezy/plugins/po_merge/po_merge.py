@@ -76,6 +76,11 @@ class PoMerger(merge.PerFileMerger):
     """Merge .po files."""
 
     def __init__(self, merger):
+        """Initialize the PoMerger.
+
+        Args:
+            merger: The parent merger object.
+        """
         super(merge.PerFileMerger, self).__init__(merger)
         # config options are cached locally until config files are (see
         # http://pad.lv/832042)
@@ -144,6 +149,14 @@ class PoMerger(merge.PerFileMerger):
         return proc.returncode, out, err
 
     def merge_matching(self, params):
+        """Merge matching files using msgmerge.
+
+        Args:
+            params: Merge parameters for the file.
+
+        Returns:
+            The result of merge_text().
+        """
         return self.merge_text(params)
 
     def merge_text(self, params):
