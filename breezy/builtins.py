@@ -376,6 +376,18 @@ class cmd_status(Command):
         verbose=False,
         no_classify=False,
     ):
+        """Display status of files in the working tree.
+
+        Args:
+            show_ids: Show file ids in output.
+            file_list: List of files to show status for.
+            revision: Show status relative to a revision or revision range.
+            short: Use short status indicators.
+            versioned: Only show versioned files.
+            no_pending: Don't show pending merges.
+            verbose: Show detailed status information.
+            no_classify: Don't mark object type using indicators.
+        """
         from .status import show_tree_status
         from .workingtree import WorkingTree
 
@@ -424,6 +436,12 @@ class cmd_cat_revision(Command):
     encoding = "strict"
 
     def print_revision(self, revisions, revid):
+        """Print revision metadata to output.
+
+        Args:
+            revisions: Revision store to get revision from.
+            revid: Revision ID to print.
+        """
         stream = revisions.get_record_stream([(revid,)], "unordered", True)
         record = next(stream)
         if record.storage_kind == "absent":
@@ -433,6 +451,13 @@ class cmd_cat_revision(Command):
 
     @display_command
     def run(self, revision_id=None, revision=None, directory="."):
+        """Write out metadata for a revision.
+
+        Args:
+            revision_id: Specific revision identifier to print.
+            revision: Revision specification to use instead of revision_id.
+            directory: Directory containing the repository.
+        """
         if revision_id is not None and revision is not None:
             raise errors.CommandError(
                 gettext("You can only supply one of revision_id or --revision")
