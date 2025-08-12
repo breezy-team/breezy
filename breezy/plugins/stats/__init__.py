@@ -31,6 +31,16 @@ plugin_cmds.register_lazy("cmd_ancestor_growth", [], "breezy.plugins.stats.cmds"
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load test modules for the stats plugin.
+
+    Args:
+        loader: The test loader instance used to load tests.
+        basic_tests: The test suite to add tests to.
+        pattern: The pattern to match test files (unused).
+
+    Returns:
+        TestSuite: The test suite with added tests from the stats plugin modules.
+    """
     testmod_names = [
         __name__ + "." + x
         for x in [

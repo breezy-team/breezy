@@ -29,6 +29,38 @@ SCHEME_REPLACEMENT = {
 
 
 def git_url_to_bzr_url(location, branch=None, ref=None):
+    """Convert a Git URL to a Bzr URL format.
+
+    This function takes a Git repository URL and converts it to a format
+    that Bzr can understand. It handles various Git URL schemes including
+    git+ssh, git, http, https, ftp, and ssh. It also supports rsync-style
+    URLs (e.g., user@host:path).
+
+    Args:
+        location: The Git URL to convert. Can be in various formats including
+            standard URLs (http://..., git://...) or rsync-style (user@host:path).
+        branch: Optional branch name to append to the URL. Cannot be specified
+            together with ref.
+        ref: Optional Git reference (e.g., tag or commit) to append to the URL.
+            Cannot be specified together with branch. If ref is b"HEAD", it
+            will be ignored.
+
+    Returns:
+        A string containing the converted Bzr URL. If the input URL scheme is
+        not recognized as a Git scheme, the original location is returned
+        unchanged.
+
+    Raises:
+        ValueError: If both branch and ref parameters are specified.
+
+    Examples:
+        >>> git_url_to_bzr_url("git://github.com/user/repo.git")
+        'git://github.com/user/repo.git'
+        >>> git_url_to_bzr_url("user@host:path/to/repo")
+        'git+ssh://user@host/path/to/repo'
+        >>> git_url_to_bzr_url("https://github.com/user/repo", branch="main")
+        'https://github.com/user/repo,branch=main'
+    """
     if branch is not None and ref is not None:
         raise ValueError("only specify one of branch or ref")
     url = urlutils.URL.from_string(location)
