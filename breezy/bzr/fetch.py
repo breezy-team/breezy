@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """Copying of history from one branch to another.
 
 The basic plan is that every branch knows the history of everything
@@ -23,6 +21,8 @@ that has merged into it.  As the first step of a merge, pull, or
 branch operation we copy history from the source into the destination
 branch.
 """
+
+__docformat__ = "google"
 
 import operator
 
@@ -50,11 +50,13 @@ class RepoFetcher:
         """Create a repo fetcher.
 
         Args:
-          last_revision: If set, try to limit to the data this revision
-            references.
-          fetch_spec: A SearchResult specifying which revisions to fetch.
-            If set, this overrides last_revision.
-          find_ghosts: If True search the entire history for ghosts.
+            to_repository: The target repository to fetch into.
+            from_repository: The source repository to fetch from.
+            last_revision: If set, try to limit to the data this revision
+                references.
+            find_ghosts: If True search the entire history for ghosts.
+            fetch_spec: A SearchResult specifying which revisions to fetch.
+                If set, this overrides last_revision.
         """
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
@@ -144,12 +146,14 @@ class RepoFetcher:
             self.sink.finished()
 
     def _revids_to_fetch(self):
-        """Determines the exact revisions needed from self.from_repository to
+        """Determines the exact revisions needed from self.from_repository.
+
+        Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
         Returns:
-          A SearchResult of some sort.  (Possibly a
-          PendingAncestryResult, EmptySearchResult, etc.)
+            A SearchResult of some sort.  (Possibly a
+            PendingAncestryResult, EmptySearchResult, etc.)
         """
         from . import vf_search
 
@@ -211,6 +215,16 @@ class Inter1and2Helper:
             revs = revs[100:]
 
     def _find_root_ids(self, revs, parent_map, graph):
+        """Find root ids for the given revisions.
+
+        Args:
+            revs: List of revision ids to find root ids for.
+            parent_map: Map of revision id to parent revision ids.
+            graph: Graph object for accessing revision relationships.
+
+        Returns:
+            Dictionary mapping revision id to root id.
+        """
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.path2id("")
@@ -380,6 +394,7 @@ class FetchSpecFactory:
     """
 
     def __init__(self):
+        """Initialize a new FetchSpecFactory."""
         self._explicit_rev_ids = set()
         self.source_branch = None
         self.source_branch_stop_revision_id = None

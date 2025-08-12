@@ -32,6 +32,14 @@ class cmd_ping(Command):
     takes_args = ["location"]
 
     def run(self, location):
+        """Execute the ping command to test connection to a smart server.
+
+        Args:
+            location: The URL or path to the Bazaar smart server to ping.
+
+        Raises:
+            CommandError: If the location does not support the smart protocol.
+        """
         from breezy.bzr.smart.client import _SmartClient
 
         transport = get_transport(location)
