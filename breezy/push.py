@@ -33,6 +33,11 @@ class PushResult:
     """
 
     def __init__(self):
+        """Initialize a new PushResult instance.
+
+        Sets all result attributes to None initially. These will be populated
+        during the push operation.
+        """
         self.branch_push_result = None
         self.stacked_on = None
         self.workingtree_updated = None

@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""XML serialization format version 8.
+
+This module provides XML-based inventory serialization for Bazaar format 8.
+It includes support for rich roots and the altered-by hack for efficient
+file ID lookups.
+"""
+
 from typing import Optional
 
 from breezy._bzr_rs import revision_serializer_v8  # noqa: F401
@@ -37,6 +44,18 @@ _xml_unescape_map = {
 
 
 def _unescaper(match, _map=_xml_unescape_map):
+    """Unescape XML entity references.
+
+    Args:
+        match: A regex match object containing the entity code.
+        _map: Dictionary mapping entity names to their unescaped values.
+
+    Returns:
+        bytes: The unescaped character(s).
+
+    Raises:
+        KeyError: If the entity code is not recognized.
+    """
     code = match.group(1)
     try:
         return _map[code]
@@ -123,6 +142,14 @@ class InventorySerializer_v8(XMLInventorySerializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_chunks(self, inv):
+        """Write inventory to chunks.
+
+        Args:
+            inv: The inventory to serialize.
+
+        Returns:
+            list: The inventory serialized as a list of byte chunks.
+        """
         return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):

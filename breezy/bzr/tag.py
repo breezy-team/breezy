@@ -15,6 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tag storage implementation for Bazaar branches.
+
+This module provides the BasicTags class which implements tag storage
+in an unversioned branch control file, typically stored as .bzr/branch/tags.
+Tags map human-readable names to revision identifiers.
+"""
+
 import contextlib
 
 import fastbencode as bencode
@@ -50,6 +57,12 @@ class BasicTags(Tags):
             raise errors.NoSuchTag(tag_name) from e
 
     def get_tag_dict(self):
+        """Return a dictionary of all tags in the branch.
+
+        Returns:
+            dict: A dictionary mapping tag names (str) to revision IDs (bytes).
+                Returns an empty dictionary if no tags file exists.
+        """
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
