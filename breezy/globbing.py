@@ -140,6 +140,11 @@ class Globster:
     }
 
     def __init__(self, patterns):
+        """Initialize a Globster with a set of patterns.
+
+        Args:
+            patterns: A list of glob patterns to match against.
+        """
         self._regex_patterns = []
         pattern_lists = {
             "extension": [],
@@ -235,6 +240,11 @@ class ExceptionGlobster:
     """
 
     def __init__(self, patterns):
+        """Initialize an ExceptionGlobster with a set of patterns.
+
+        Args:
+            patterns: A list of glob patterns, potentially with '!' or '!!' prefixes.
+        """
         ignores = [[], [], []]
         for p in patterns:
             if p.startswith("!!"):

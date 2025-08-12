@@ -35,6 +35,15 @@ class cmd_test_script(commands.Command):
 
     @commands.display_command
     def run(self, infile, null_output=False):
+        """Run the test script command.
+
+        Args:
+            infile: Path to the test script file to execute.
+            null_output: If True, null command outputs match any output.
+
+        Returns:
+            Number of errors and failures encountered during test execution.
+        """
         from breezy import tests
 
         from .tests.script import TestCaseWithTransportAndScript
