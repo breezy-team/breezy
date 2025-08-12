@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Decorators for use in Breezy.
+
+This module provides various decorators that add functionality to methods
+and functions, including error suppression and property caching.
+"""
+
 from . import trace
 
 

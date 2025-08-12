@@ -15,6 +15,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Terminal color support for Unix terminals.
+
+This module provides utilities for working with colored output in Unix terminals,
+including ANSI color codes and helpers for checking terminal capabilities.
+"""
+
 __all__ = [
     "color_exists",
     "colorstring",
