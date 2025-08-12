@@ -36,26 +36,47 @@ MODE_CLEAR = 2
 
 
 class GpgNotInstalled(errors.DependencyNotPresent):
+    """Exception raised when python-gpg is not installed."""
+
     _fmt = (
         "python-gpg is not installed, it is needed to create or "
         "verify signatures. %(error)s"
     )
 
     def __init__(self, error):
+        """Initialize GpgNotInstalled exception.
+
+        Args:
+            error: The underlying error that occurred.
+        """
         errors.DependencyNotPresent.__init__(self, "gpg", error)
 
 
 class SigningFailed(errors.BzrError):
+    """Exception raised when GPG signing fails."""
+
     _fmt = 'Failed to GPG sign data: "%(error)s"'
 
     def __init__(self, error):
+        """Initialize SigningFailed exception.
+
+        Args:
+            error: The error message describing why signing failed.
+        """
         errors.BzrError.__init__(self, error=error)
 
 
 class SignatureVerificationFailed(errors.BzrError):
+    """Exception raised when GPG signature verification fails."""
+
     _fmt = 'Failed to verify GPG signature data with error "%(error)s"'
 
     def __init__(self, error):
+        """Initialize SignatureVerificationFailed exception.
+
+        Args:
+            error: The error message describing why verification failed.
+        """
         errors.BzrError.__init__(self, error=error)
 
 
@@ -101,21 +122,49 @@ class DisabledGPGStrategy:
 
     @staticmethod
     def verify_signatures_available():
+        """Check if signature verification is available.
+
+        Returns:
+            True since this disabled strategy is always available.
+        """
         return True
 
     def __init__(self, ignored):
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
+        """Attempt to sign content (always fails for disabled strategy).
+
+        Args:
+            content: Content to sign.
+            mode: Signing mode.
+
+        Raises:
+            SigningFailed: Always raised since signing is disabled.
+        """
         raise SigningFailed("Signing is disabled.")
 
     def verify(self, signed_data, signature=None):
+        """Attempt to verify signature (always fails for disabled strategy).
+
+        Args:
+            signed_data: The signed data.
+            signature: Optional detached signature.
+
+        Raises:
+            SignatureVerificationFailed: Always raised since verification is disabled.
+        """
         raise SignatureVerificationFailed(
             "Signature verification is \
 disabled."
         )
 
     def set_acceptable_keys(self, command_line_input):
+        """Set acceptable keys for verification (no-op for disabled strategy).
+
+        Args:
+            command_line_input: Command line input specifying acceptable keys.
+        """
         pass
 
 
@@ -126,12 +175,26 @@ class LoopbackGPGStrategy:
 
     @staticmethod
     def verify_signatures_available():
+        """Check if signature verification is available.
+
+        Returns:
+            True since this loopback strategy is always available.
+        """
         return True
 
     def __init__(self, ignored):
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
+        """Sign content by wrapping it in pseudo-signature markers.
+
+        Args:
+            content: Content to sign.
+            mode: Signing mode (ignored in loopback).
+
+        Returns:
+            Content wrapped in pseudo-signature markers.
+        """
         return (
             b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n"
             + content
@@ -139,6 +202,15 @@ class LoopbackGPGStrategy:
         )
 
     def verify(self, signed_data, signature=None):
+        """Verify signature by removing pseudo-signature markers.
+
+        Args:
+            signed_data: The signed data with pseudo-signature markers.
+            signature: Optional detached signature (ignored in loopback).
+
+        Returns:
+            Tuple of (SIGNATURE_VALID, None, plain_text).
+        """
         plain_text = signed_data.replace(
             b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b""
         )
@@ -146,6 +218,11 @@ class LoopbackGPGStrategy:
         return SIGNATURE_VALID, None, plain_text
 
     def set_acceptable_keys(self, command_line_input):
+        """Set acceptable keys for verification.
+
+        Args:
+            command_line_input: Comma-separated list of key patterns.
+        """
         if command_line_input is not None:
             patterns = command_line_input.split(",")
             self.acceptable_keys = []
@@ -174,6 +251,11 @@ class GPGStrategy:
     acceptable_keys: Optional[list[str]] = None
 
     def __init__(self, config_stack):
+        """Initialize GPGStrategy with a configuration stack.
+
+        Args:
+            config_stack: Configuration stack containing GPG settings.
+        """
         self._config_stack = config_stack
         try:
             import gpg
@@ -224,6 +306,20 @@ class GPGStrategy:
             return False
 
     def sign(self, content, mode):
+        """Sign content using GPG.
+
+        Args:
+            content: Content to sign (must be bytes).
+            mode: Signing mode (MODE_NORMAL, MODE_DETACH, or MODE_CLEAR).
+
+        Returns:
+            Signed content as bytes.
+
+        Raises:
+            GpgNotInstalled: If python-gpg is not available.
+            SigningFailed: If signing fails.
+            BzrBadParameterUnicode: If content is a string instead of bytes.
+        """
         try:
             import gpg
         except ModuleNotFoundError as err:
