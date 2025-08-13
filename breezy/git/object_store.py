@@ -21,6 +21,7 @@ import contextlib
 import posixpath
 import stat
 from collections.abc import Iterable, Iterator
+from typing import Optional
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -776,19 +777,59 @@ class BazaarObjectStore(BaseObjectStore):
     def generate_lossy_pack_data(
         self, have, want, shallow=None, progress=None, get_tagged=None, ofs_delta=False
     ):
-        object_ids = list(
-            self.find_missing_objects(
-                have,
-                want,
-                progress=progress,
-                shallow=shallow,
-                get_tagged=get_tagged,
-                lossy=True,
-            )
-        )
-        return pack_objects_to_data(
-            [(self[oid], path) for (oid, (type_num, path)) in object_ids]
-        )
+        # We need to generate the actual objects here, not just find their IDs
+        # because self[oid] would reconstruct them with the wrong lossy setting
+        objects = []
+        processed = set()
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
+        for commit_sha in have:
+            commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    processed.add(type_data[0])
+            except KeyError:
+                trace.mutter("unable to find remote ref %s", commit_sha)
+        pending = set()
+        for commit_sha in want:
+            if commit_sha in have:
+                continue
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    pending.add(type_data[0])
+            except KeyError:
+                pass
+        shallows = set()
+        for commit_sha in shallow or set():
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    shallows.add(type_data[0])
+            except KeyError:
+                pass
+
+        seen = set()
+        with self.repository.lock_read():
+            graph = self.repository.get_graph()
+            todo = _find_missing_bzr_revids(graph, pending, processed, shallow)
+            with ui.ui_factory.nested_progress_bar() as pb:
+                for i, revid in enumerate(graph.iter_topo_order(todo)):
+                    pb.update("generating git objects", i, len(todo))
+                    try:
+                        rev = self.repository.get_revision(revid)
+                    except errors.NoSuchRevision:
+                        continue
+                    tree = self.tree_cache.revision_tree(revid)
+                    for path, obj in self._revision_to_objects(rev, tree, lossy=True):
+                        if obj.id not in seen:
+                            objects.append((obj, path))
+                            seen.add(obj.id)
+
+        return pack_objects_to_data(objects)
 
     def find_missing_objects(
         self,
@@ -797,16 +838,15 @@ class BazaarObjectStore(BaseObjectStore):
         shallow=None,
         progress=None,
         get_tagged=None,
-        lossy: bool = False,
-        ofs_delta=False,
-    ) -> Iterator[tuple[ObjectID, tuple[int, str]]]:
+        get_parents=lambda x: [],
+    ) -> Iterator[tuple[ObjectID, Optional[bytes]]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent
         :param wants: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(haves + wants)
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(haves) + list(wants))
         for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
@@ -849,9 +889,11 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchRevision:
                         continue
                     tree = self.tree_cache.revision_tree(revid)
-                    for path, obj in self._revision_to_objects(rev, tree, lossy=lossy):
+                    for path, obj in self._revision_to_objects(
+                        rev, tree, lossy=(not self.mapping.roundtripping)
+                    ):
                         if obj.id not in seen:
-                            yield (obj.id, (obj.type_num, path))
+                            yield (obj.id, path.encode("utf-8") if path else None)
                             seen.add(obj.id)
 
     def add_thin_pack(self):

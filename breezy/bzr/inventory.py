@@ -904,6 +904,22 @@ class CHKInventory:
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
 
+    def iter_just_entries(self):
+        """Iterate over all entries.
+
+        Unlike iter_entries(), just the entries are returned (not (path, ie))
+        and the order of entries is undefined.
+
+        XXX: We may not want to merge this into bzr.dev.
+        """
+        for key, entry in self.id_to_entry.iteritems():
+            file_id = key[0]
+            ie = self._fileid_to_entry_cache.get(file_id, None)
+            if ie is None:
+                ie = self._bytes_to_entry(entry)
+                self._fileid_to_entry_cache[file_id] = ie
+            yield ie
+
     def _preload_cache(self):
         """Make sure all file-ids are in _fileid_to_entry_cache."""
         if self._fully_cached:
@@ -930,7 +946,6 @@ class CHKInventory:
                 continue
             parent_id, basename = key
             ie = cache[child_file_id]
-            parent_ie: InventoryEntry
             if parent_id == last_parent_id:
                 if last_parent_ie is None:
                     raise AssertionError("last_parent_ie should not be None")

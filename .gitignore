@@ -18,6 +18,13 @@ build/
 *.swp
 *.swo
 *.swn
+.*.swp
 .mypy_cache/
 breezy/locale/
 .claude/settings.local.json
+selftest.log
+doc/en/user-reference/*.txt
+doc/en/_build/
+doc/developers/_build/
+doc/developers/Makefile
+doc/developers/make.bat

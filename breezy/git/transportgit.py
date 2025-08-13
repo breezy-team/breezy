@@ -84,8 +84,6 @@ class _RemoteGitFile:
 
         self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
         self._closed = False
-        for method in _GitFile.PROXY_METHODS:
-            setattr(self, method, getattr(self._file, method))
 
     def abort(self):
         self._file.close()
@@ -114,6 +112,55 @@ class _RemoteGitFile:
         self.transport.put_file(self.filename, self._file)
         self._file.close()
         self._closed = True
+
+    # Implement IO methods by delegating to the underlying file
+    def read(self, size=-1):
+        return self._file.read(size)
+
+    def write(self, data):
+        return self._file.write(data)
+
+    def readline(self, size=-1):
+        return self._file.readline(size)
+
+    def readlines(self, hint=-1):
+        return self._file.readlines(hint)
+
+    def writelines(self, lines):
+        return self._file.writelines(lines)
+
+    def seek(self, offset, whence=0):
+        return self._file.seek(offset, whence)
+
+    def tell(self):
+        return self._file.tell()
+
+    def flush(self):
+        return self._file.flush()
+
+    def truncate(self, size=None):
+        return self._file.truncate(size)
+
+    def fileno(self):
+        return self._file.fileno()
+
+    def isatty(self):
+        return self._file.isatty()
+
+    def readable(self):
+        return self._file.readable()
+
+    def writable(self):
+        return self._file.writable()
+
+    def seekable(self):
+        return self._file.seekable()
+
+    def __iter__(self):
+        return iter(self._file)
+
+    def __next__(self):
+        return next(iter(self._file))
 
 
 def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):

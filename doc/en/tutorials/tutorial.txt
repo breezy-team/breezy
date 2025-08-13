@@ -206,9 +206,8 @@ You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  brz also supports
 accessing branches over SSH, HTTP and SFTP, amongst other things::
 
-    % brz log brz+ssh://code.launchpad.net/~brz/brz/brz.dev/
-    % brz log http://code.launchpad.net/~brz/brz/brz.dev/
-    % brz log sftp://code.launchpad.net/~brz/brz/brz.dev/
+    % brz log https://github.com/breezy-team/breezy
+    % brz log git+ssh://git@github.com/breezy-team/breezy.git
 
 By installing brz plugins you can also access branches using the rsync
 protocol.

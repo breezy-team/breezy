@@ -47,8 +47,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # okay, try finding id_rsa or id_dss?  (posix only)
     if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, "id_rsa"):
         return
-    if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, "id_dsa"):
-        return
+    # DSSKey was removed in paramiko 4.0.0 as DSA keys are deprecated
+    if hasattr(paramiko, "DSSKey"):
+        if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, "id_dsa"):
+            return
 
     # If we have gotten this far, we are about to try for passwords, do an
     # auth_none check to see if it is even supported.

@@ -112,11 +112,9 @@ as being available in an external location. Branches can also
 be given a Status such as *New*, *Development*, *Mature* or
 *Abandoned*.
 
-Note: External branches can even be hosted in legacy version control
-tools, i.e. CVS and Subversion. Code in these systems will be
-scanned and converted to Breezy branches on a periodic basis.
-For maximum fidelity of course, it is preferable for external
-branches to be hosted in Breezy.
+Note: Launchpad primarily supports Git repositories, though
+some projects may have external branches in other version control
+systems.
 
 
 Browsing branches
@@ -140,7 +138,7 @@ Getting the code for a project
 ------------------------------
 
 As Launchpad keeps track of thousands of projects
-and their latest code whether it be managed by Breezy, CVS or Subversion,
+and their latest code,
 Breezy users can grab that code as easily as this::
 
   brz branch lp:project-name
@@ -167,7 +165,7 @@ Publishing your changes
 Having fixed that annoying bug or added that cool feature you've always
 wanted, it's time to impress your friends and make the world a better
 place by making your code available to others. As explained earlier,
-Launchpad is a free Breezy code hosting service so you can push your
+Launchpad is a free code hosting service so you can push your
 branch to it and others can access your code from there. For example,
 assuming you are a member of the relevant team, login to launchpad like this::
 

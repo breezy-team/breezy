@@ -56,11 +56,8 @@ using the lp-promote-ppa script found within the hydrazine project.  This
 procedure reduces the risk of broken packages or dependencies between
 packages in the main PPA from which many people get bzr updates.
 
-The packaging information is kept in branches of bzr on Launchpad, named
-like
-<https://code.launchpad.net/~bzr/ubuntu/hardy/bzr/bzr-ppa>.
-or
-<lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
+The packaging information is kept in branches on Launchpad, named
+like <lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
 with the ``brz-debian`` plugin.
 
 Supported releases

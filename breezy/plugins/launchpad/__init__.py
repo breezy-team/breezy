@@ -32,10 +32,22 @@ The plugin also provides the following commands:
 
 """
 
-from ... import version_info  # noqa: F401
+# see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
+
+from ... import (
+    ui,
+    version_info,  # noqa: F401
+)
 from ...commands import plugin_cmds
 from ...directory_service import directories
 from ...help_topics import topic_registry
+
+# Register the Bazaar deprecation warning template
+ui.UIFactory._user_warning_templates["launchpad_bazaar_deprecation"] = (
+    "Launchpad is phasing out Bazaar code hosting. "
+    "For more information, see: "
+    "https://blog.launchpad.net/general/phasing-out-bazaar-code-hosting"
+)
 
 for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
@@ -81,6 +93,9 @@ _launchpad_help = """Integration with Launchpad.net
 
 Launchpad.net provides free Bazaar branch hosting with integrated bug and
 specification tracking.
+
+NOTE: Launchpad is phasing out Bazaar code hosting. For more information, see:
+https://blog.launchpad.net/general/phasing-out-bazaar-code-hosting
 
 The bzr client (through the plugin called 'launchpad') has special
 features to communicate with Launchpad:

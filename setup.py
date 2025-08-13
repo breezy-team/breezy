@@ -30,6 +30,14 @@ try:
 except ImportError:
     from distutils.version import LooseVersion as Version
 
+try:
+    from setuptools_gettext import build_mo  # noqa: F401
+except ImportError:
+    sys.stderr.write(
+        "[ERROR] Please install setuptools_gettext to build translations.\n"
+    )
+    sys.exit(1)
+
 from distutils.command.build_scripts import build_scripts
 
 from setuptools import Command

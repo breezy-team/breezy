@@ -429,6 +429,9 @@ class Launchpad(Forge):
         allow_lossy=True,
         tag_selector=None,
     ):
+        from ... import ui
+
+        ui.ui_factory.show_user_warning("launchpad_bazaar_deprecation")
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport(BZR_SCHEME_MAP["ssh"] + to_path)
         try:

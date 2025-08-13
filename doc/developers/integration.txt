@@ -248,14 +248,12 @@ Branching from an existing branch
 
 To branch you create a branch object representing the branch you are
 branching from, and supply a path/url to the new branch location.
-The following code clones the brz trunk branch (the latest copy of the Breezy
-source code) - be warned it has to download 60meg so takes a while to run
-with no feedback::
+The following code clones a branch::
 
   from breezy import branch
 
-  b = branch.Branch.open('bzr+ssh://bazaar.launchpad.net/+branch/brz/')
-  nb = b.controldir.sprout('/tmp/newBrzBzranch').open_branch()
+  b = branch.Branch.open('https://github.com/breezy-team/breezy')
+  nb = b.controldir.sprout('/tmp/newBrzBranch').open_branch()
 
 
 This provides no feedback, since Breezy automatically uses the 'silent' UI.
@@ -270,7 +268,7 @@ just call push with the other branch as a parameter::
   from breezy import branch
 
   b1 = branch.Branch.open('file:///home/user/mybranch')
-  b2 = branch.Branch.open('bzr+ssh://bazaar.launchpad.net/+branch/brz/')
+  b2 = branch.Branch.open('https://example.com/path/to/branch')
   b1.push(b2)
 
 

@@ -770,7 +770,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 class TestResolvePathConflictBefore531967(TestResolvePathConflict):
     """Same as TestResolvePathConflict but a specific conflict object."""
 
-    def assertPathConflict(self, c):
+    def assertPathConflict(self, wt, c):
         # We create a conflict object as it was created before the fix and
         # inject it into the working tree, the test will exercise the
         # compatibility code.
