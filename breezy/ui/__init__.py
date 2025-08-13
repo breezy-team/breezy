@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""User interface abstraction for Breezy.
+
+This package provides user interface abstractions that allow applications
+to interact with users in different ways - text, GUI, silent mode, etc.
+"""
+
 __docformat__ = "google"
 
 """Abstraction for interacting with the user.
@@ -115,9 +121,11 @@ class ConfirmationUserInterfacePolicy:
         self.specific_answers = specific_answers
 
     def __getattr__(self, name):
+        """Delegate attribute access to the wrapped UI."""
         return getattr(self.wrapped_ui, name)
 
     def __repr__(self):
+        """Return string representation of the confirmation policy."""
         return "{}({!r}, {!r}, {!r})".format(
             self.__class__.__name__,
             self.wrapped_ui,
@@ -126,6 +134,16 @@ class ConfirmationUserInterfacePolicy:
         )
 
     def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        """Confirm an action using configured answers.
+
+        Args:
+            prompt: The prompt text to show.
+            confirmation_id: Unique identifier for this confirmation.
+            prompt_kwargs: Arguments for string formatting in the prompt.
+
+        Returns:
+            Boolean indicating whether the action should proceed.
+        """
         if confirmation_id in self.specific_answers:
             return self.specific_answers[confirmation_id]
         elif self.default_answer is not None:
@@ -185,6 +203,7 @@ class UIFactory:
     }
 
     def __init__(self) -> None:
+        """Initialize the UIFactory."""
         self._task_stack: list[ProgressTask] = []
         self.suppressed_warnings: set[str] = set()
         self._quiet = False
@@ -250,6 +269,11 @@ class UIFactory:
         raise NotImplementedError(self.get_password)
 
     def is_quiet(self):
+        """Return whether the UI is in quiet mode.
+
+        Returns:
+            True if the UI should suppress non-essential output.
+        """
         return self._quiet
 
     def make_output_stream(self, encoding=None, encoding_type="replace"):
@@ -328,6 +352,15 @@ class UIFactory:
         pass
 
     def format_user_warning(self, warning_id, message_args):
+        """Format a user warning message.
+
+        Args:
+            warning_id: Identifier for the warning type.
+            message_args: Arguments to interpolate into the warning template.
+
+        Returns:
+            Formatted warning message string.
+        """
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
@@ -475,9 +508,20 @@ class NoninteractiveUIFactory(UIFactory):
     """Base class for UIs with no user."""
 
     def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        """Always confirm actions in noninteractive mode.
+
+        Args:
+            prompt: The prompt text (ignored).
+            confirmation_id: Unique identifier for this confirmation (ignored).
+            prompt_kwargs: Arguments for string formatting (ignored).
+
+        Returns:
+            Always returns True.
+        """
         return True
 
     def __repr__(self):
+        """Return string representation of the UI factory."""
         return f"{self.__class__.__name__}()"
 
 
@@ -492,24 +536,54 @@ class SilentUIFactory(NoninteractiveUIFactory):
     """
 
     def __init__(self):
+        """Initialize the SilentUIFactory."""
         UIFactory.__init__(self)
 
     def note(self, msg):
+        """Display a note (silent - does nothing).
+
+        Args:
+            msg: Message to display (ignored).
+        """
         pass
 
     def get_username(self, prompt, **kwargs):
+        """Get username from user (silent - returns None).
+
+        Args:
+            prompt: Prompt text (ignored).
+            **kwargs: Additional arguments (ignored).
+
+        Returns:
+            Always returns None.
+        """
         return None
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
         return NullOutputStream(encoding)
 
     def show_error(self, msg):
+        """Show error message (silent - does nothing).
+
+        Args:
+            msg: Error message (ignored).
+        """
         pass
 
     def show_message(self, msg):
+        """Show message (silent - does nothing).
+
+        Args:
+            msg: Message to display (ignored).
+        """
         pass
 
     def show_warning(self, msg):
+        """Show warning message (silent - does nothing).
+
+        Args:
+            msg: Warning message (ignored).
+        """
         pass
 
 
@@ -517,27 +591,82 @@ class CannedInputUIFactory(SilentUIFactory):
     """A silent UI that return canned input."""
 
     def __init__(self, responses):
+        """Initialize CannedInputUIFactory.
+
+        Args:
+            responses: List of pre-configured responses to return.
+        """
         self.responses = responses
 
     def __repr__(self):
+        """Return string representation of the canned input UI."""
         return f"{self.__class__.__name__}({self.responses!r})"
 
     def confirm_action(self, prompt, confirmation_id, args):
+        """Confirm action using canned response.
+
+        Args:
+            prompt: Prompt text.
+            confirmation_id: Unique identifier for this confirmation.
+            args: Arguments for string formatting.
+
+        Returns:
+            Boolean response from the canned responses.
+        """
         return self.get_boolean(prompt % args)
 
     def get_boolean(self, prompt):
+        """Get boolean response from canned input.
+
+        Args:
+            prompt: Prompt text (ignored).
+
+        Returns:
+            Next boolean response from the canned responses.
+        """
         return self.responses.pop(0)
 
     def get_integer(self, prompt):
+        """Get integer response from canned input.
+
+        Args:
+            prompt: Prompt text (ignored).
+
+        Returns:
+            Next integer response from the canned responses.
+        """
         return self.responses.pop(0)
 
     def get_password(self, prompt="", **kwargs):
+        """Get password from canned input.
+
+        Args:
+            prompt: Prompt text (ignored).
+            **kwargs: Additional arguments (ignored).
+
+        Returns:
+            Next password response from the canned responses.
+        """
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):
+        """Get username from canned input.
+
+        Args:
+            prompt: Prompt text (ignored).
+            **kwargs: Additional arguments (ignored).
+
+        Returns:
+            Next username response from the canned responses.
+        """
         return self.responses.pop(0)
 
     def assert_all_input_consumed(self):
+        """Assert that all canned responses have been consumed.
+
+        Raises:
+            AssertionError: If there are unused responses.
+        """
         if self.responses:
             raise AssertionError(f"expected all input in {self!r} to be consumed")
 
@@ -560,15 +689,33 @@ class NullProgressView:
     """Soak up and ignore progress information."""
 
     def clear(self):
+        """Clear the progress display (no-op)."""
         pass
 
     def show_progress(self, task):
+        """Show progress for a task (no-op).
+
+        Args:
+            task: Progress task to display (ignored).
+        """
         pass
 
     def show_transport_activity(self, transport, direction, byte_count):
+        """Show transport activity (no-op).
+
+        Args:
+            transport: Transport instance (ignored).
+            direction: Transfer direction (ignored).
+            byte_count: Number of bytes transferred (ignored).
+        """
         pass
 
     def log_transport_activity(self, display=False):
+        """Log transport activity (no-op).
+
+        Args:
+            display: Whether to display the activity (ignored).
+        """
         pass
 
 
@@ -576,13 +723,29 @@ class NullOutputStream:
     """Acts like a file, but discard all output."""
 
     def __init__(self, encoding):
+        """Initialize NullOutputStream.
+
+        Args:
+            encoding: Character encoding (stored but not used).
+        """
         self.encoding = encoding
 
     def write(self, data):
+        """Write data (no-op - discards all output).
+
+        Args:
+            data: Data to write (ignored).
+        """
         pass
 
     def writelines(self, data):
+        """Write lines (no-op - discards all output).
+
+        Args:
+            data: Lines to write (ignored).
+        """
         pass
 
     def close(self):
+        """Close the stream (no-op)."""
         pass
