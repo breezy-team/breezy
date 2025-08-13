@@ -25,9 +25,12 @@ from .features import strace_feature
 
 
 class TestStrace(tests.TestCaseWithTransport):
+    """Tests for strace functionality."""
+
     _test_needs_features = [strace_feature]
 
     def setUp(self):
+        """Set up the test environment."""
         # NB: see http://pad.lv/626679 and
         # <https://code.launchpad.net/~mbp/bzr/626679-strace/+merge/34157>:
         # testing strace by connecting to ourselves has repeatedly caused
@@ -62,6 +65,7 @@ class TestStrace(tests.TestCaseWithTransport):
                 raise
 
     def test_strace_callable_is_called(self):
+        """Test that strace properly invokes the callable with correct arguments."""
         self._check_threads()
 
         output = []
@@ -75,6 +79,7 @@ class TestStrace(tests.TestCaseWithTransport):
         self.assertEqual([("a", ("b",), {"c": "c"})], output)
 
     def test_strace_callable_result(self):
+        """Test that strace returns the correct result from the callable."""
         self._check_threads()
 
         def function():

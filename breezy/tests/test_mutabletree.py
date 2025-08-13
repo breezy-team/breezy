@@ -23,6 +23,8 @@ from .. import mutabletree, tests
 
 
 class TestHooks(tests.TestCase):
+    """Tests for MutableTreeHooks functionality."""
+
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
         defaults.
@@ -41,16 +43,21 @@ class TestHooks(tests.TestCase):
 
 
 class TestHasChanges(tests.TestCaseWithTransport):
+    """Tests for the has_changes method of MutableTree."""
+
     def setUp(self):
+        """Set up test environment with a branch and tree."""
         super().setUp()
         self.tree = self.make_branch_and_tree("tree")
 
     def test_with_uncommitted_changes(self):
+        """Test that has_changes returns True when there are uncommitted changes."""
         self.build_tree(["tree/file"])
         self.tree.add("file")
         self.assertTrue(self.tree.has_changes())
 
     def test_with_pending_merges(self):
+        """Test that has_changes returns True when there are pending merges."""
         self.tree.commit("first commit")
         other_tree = self.tree.controldir.sprout("other").open_workingtree()
         other_tree.commit("mergeable commit")

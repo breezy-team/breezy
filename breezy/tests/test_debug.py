@@ -20,16 +20,27 @@ from .. import config, debug, tests
 
 
 class TestDebugFlags(tests.TestCaseInTempDir):
+    """Tests for debug flag configuration functionality."""
+
     def test_set_no_debug_flags_from_config(self):
+        """Test that no debug flags are set when config is empty."""
         self.assertDebugFlags([], b"")
 
     def test_set_single_debug_flags_from_config(self):
+        """Test setting a single debug flag from config."""
         self.assertDebugFlags(["hpss"], b"debug_flags = hpss\n")
 
     def test_set_multiple_debug_flags_from_config(self):
+        """Test setting multiple debug flags from config."""
         self.assertDebugFlags(["hpss", "error"], b"debug_flags = hpss, error\n")
 
     def assertDebugFlags(self, expected_flags, conf_bytes):
+        """Assert that the given config bytes result in the expected debug flags.
+
+        Args:
+            expected_flags: List of expected debug flag names.
+            conf_bytes: Configuration content as bytes.
+        """
         conf = config.GlobalStack()
         conf.store._load_from_string(b"[DEFAULT]\n" + conf_bytes)
         conf.store.save()

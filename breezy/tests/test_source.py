@@ -47,6 +47,8 @@ LICENSE_EXCEPTIONS = [
 
 
 class TestSourceHelper(TestCase):
+    """Base helper class for source code analysis tests."""
+
     def source_file_name(self, package):
         """Return the path of the .py file for package."""
         if getattr(sys, "frozen", None) is not None:
@@ -59,6 +61,8 @@ class TestSourceHelper(TestCase):
 
 
 class TestApiUsage(TestSourceHelper):
+    """Tests for API usage patterns in the source code."""
+
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
@@ -93,6 +97,8 @@ class TestApiUsage(TestSourceHelper):
 
 
 class TestSource(TestSourceHelper):
+    """Tests for source code quality and compliance."""
+
     def get_breezy_dir(self):
         """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
@@ -129,6 +135,14 @@ class TestSource(TestSourceHelper):
                 yield osutils.pathjoin(root, f)
 
     def get_source_file_contents(self, extensions=None):
+        """Yield source file names and their contents.
+
+        Args:
+            extensions: Tuple of file extensions to include (default: None).
+
+        Yields:
+            Tuple of (filename, file_contents) for each matching source file.
+        """
         for fname in self.get_source_files(extensions=extensions):
             with open(fname) as f:
                 yield fname, f.read()
