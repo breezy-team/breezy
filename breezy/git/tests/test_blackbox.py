@@ -355,12 +355,12 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -373,12 +373,12 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -394,7 +394,7 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -410,7 +410,7 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        cid = worktree.do_commit(
+        cid = worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -429,12 +429,12 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.do_commit(
+        worktree.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -451,7 +451,7 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree(["a/file"])
         worktree = r.get_worktree()
         worktree.stage("file")
-        cid = worktree.do_commit(
+        cid = worktree.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -481,7 +481,7 @@ class TestGitBlackBox(ExternalBase):
         self.build_tree_contents([("gitr/foo", b"hello from git")])
         worktree = r.get_worktree()
         worktree.stage("foo")
-        worktree.do_commit(b"message", committer=b"Somebody <user@example.com>")
+        worktree.commit(b"message", committer=b"Somebody <user@example.com>")
         out, err = self.run_bzr(["check", "gitr"])
         self.maxDiff = None
         self.assertEqual(out, "")
@@ -548,7 +548,7 @@ class ShallowTests(ExternalBase):
         self.build_tree_contents([("gitr/foo", b"hello from git")])
         worktree = self.repo.get_worktree()
         worktree.stage("foo")
-        worktree.do_commit(
+        worktree.commit(
             b"message",
             committer=b"Somebody <user@example.com>",
             author=b"Somebody <user@example.com>",
