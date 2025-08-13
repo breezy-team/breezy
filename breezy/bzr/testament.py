@@ -194,6 +194,11 @@ class Testament:
         return l
 
     def as_text(self):
+        """Return the testament as a single UTF-8 encoded byte string.
+
+        Returns:
+            bytes: The complete testament text.
+        """
         return b"".join(self.as_text_lines())
 
     def as_short_text(self):
@@ -217,6 +222,11 @@ class Testament:
         return r
 
     def as_sha1(self):
+        """Return the SHA-1 hash of the testament.
+
+        Returns:
+            str: The hexadecimal SHA-1 digest of the testament.
+        """
         return sha_strings(self.as_text_lines())
 
 

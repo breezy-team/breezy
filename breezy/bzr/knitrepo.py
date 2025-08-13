@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Knit-based repository formats and implementations."""
+
 from ..lazy_import import lazy_import
 
 lazy_import(
@@ -118,6 +120,16 @@ class KnitRepository(MetaDirVersionedFileRepository):
         _revision_serializer,
         _inventory_serializer,
     ):
+        """Initialize a KnitRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory.
+            control_files: Control files for the repository.
+            _commit_builder_class: Class to use for building commits.
+            _revision_serializer: Serializer for revisions.
+            _inventory_serializer: Serializer for inventories.
+        """
         super().__init__(_format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._revision_serializer = _revision_serializer
@@ -406,6 +418,14 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         return inventory_serializer_v5
 
     def __ne__(self, other):
+        """Check if this format is not equal to another.
+
+        Args:
+            other: The other format to compare to.
+
+        Returns:
+            bool: True if the formats are different, False otherwise.
+        """
         return self.__class__ is not other.__class__
 
     @classmethod

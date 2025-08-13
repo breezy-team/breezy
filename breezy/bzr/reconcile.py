@@ -375,6 +375,14 @@ class PackReconciler(VersionedFileRepoReconciler):
     # https://bugs.launchpad.net/bzr/+bug/154173
 
     def __init__(self, repo, other=None, thorough=False, canonicalize_chks=False):
+        """Initialize a PackReconciler.
+
+        Args:
+            repo: The repository to reconcile.
+            other: Other repository for reconciliation reference.
+            thorough: Whether to perform thorough reconciliation.
+            canonicalize_chks: Whether to canonicalize CHK records.
+        """
         super().__init__(repo, other=other, thorough=thorough)
         self.canonicalize_chks = canonicalize_chks
 
@@ -430,11 +438,22 @@ class BranchReconciler:
     """Reconciler that works on a branch."""
 
     def __init__(self, a_branch, thorough=False):
+        """Initialize a BranchReconciler.
+
+        Args:
+            a_branch: The branch to reconcile.
+            thorough: Whether to perform thorough reconciliation.
+        """
         self.fixed_history = None
         self.thorough = thorough
         self.branch = a_branch
 
     def reconcile(self):
+        """Perform reconciliation on the branch.
+
+        Returns:
+            ReconcileResult: The result of the reconciliation.
+        """
         with self.branch.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
             ret = ReconcileResult()
             ret.fixed_history = self._reconcile_steps()
