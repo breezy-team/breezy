@@ -168,6 +168,13 @@ class TextUIFactory(UIFactory):
         self._progress_view = NullProgressView()
 
     def __enter__(self):
+        """Set up the UI factory context.
+
+        This initializes the streams and progress view.
+
+        Returns:
+            self: The TextUIFactory instance.
+        """
         # Choose default encoding and handle py2/3 differences
         self._setup_streams()
         # paints progress, network activity, etc
@@ -203,6 +210,11 @@ class TextUIFactory(UIFactory):
         return choose_ui.interact()
 
     def be_quiet(self, state):
+        """Set quiet mode on or off.
+
+        Args:
+            state: True to enable quiet mode, False to disable.
+        """
         if state and not self._quiet:
             self.clear_term()
         UIFactory.be_quiet(self, state)
@@ -221,6 +233,14 @@ class TextUIFactory(UIFactory):
         self._progress_view.clear()
 
     def get_integer(self, prompt):
+        """Prompt the user for an integer value.
+
+        Args:
+            prompt: The prompt message to display.
+
+        Returns:
+            int: The integer value entered by the user.
+        """
         while True:
             self.prompt(prompt)
             line = self.stdin.readline()
@@ -230,6 +250,11 @@ class TextUIFactory(UIFactory):
                 pass
 
     def get_non_echoed_password(self):
+        """Read a password without echoing it to the terminal.
+
+        Returns:
+            str or None: The password entered, or None if no input.
+        """
         isatty = getattr(self.stdin, "isatty", None)
         if isatty is not None and isatty():
             import getpass
@@ -341,13 +366,28 @@ class TextUIFactory(UIFactory):
             log(display=display)
 
     def show_error(self, msg):
+        """Display an error message.
+
+        Args:
+            msg: The error message to display.
+        """
         self.clear_term()
         self.stderr.write(f"bzr: error: {msg}\n")
 
     def show_message(self, msg):
+        """Display a message to the user.
+
+        Args:
+            msg: The message to display.
+        """
         self.note(msg)
 
     def show_warning(self, msg):
+        """Display a warning message.
+
+        Args:
+            msg: The warning message to display.
+        """
         self.clear_term()
         self.stderr.write(f"bzr: warning: {msg}\n")
 
@@ -406,6 +446,13 @@ class TextProgressView:
     """
 
     def __init__(self, term_file, encoding=None, errors=None):
+        """Initialize a TextProgressView.
+
+        Args:
+            term_file: The terminal file object to write progress to.
+            encoding: Character encoding to use (defaults to terminal encoding).
+            errors: Error handling mode (unused in this implementation).
+        """
         self._term_file = term_file
         if encoding is None:
             self._encoding = getattr(term_file, "encoding", None) or "ascii"
@@ -444,6 +491,7 @@ class TextProgressView:
         self._term_file.write("\r" + u + "\r")
 
     def clear(self):
+        """Clear any progress output from the terminal."""
         if self._have_output:
             self._show_line("")
         self._have_output = False
@@ -631,6 +679,11 @@ class TextProgressView:
         return msg
 
     def log_transport_activity(self, display=False):
+        """Log transport activity statistics.
+
+        Args:
+            display: If True, also display the statistics to the terminal.
+        """
         msg = self._format_bytes_by_direction()
         trace.mutter(msg)
         if display and self._total_byte_count > 0:
@@ -690,6 +743,14 @@ class TextUIOutputStream:
     """
 
     def __init__(self, ui_factory, stream, encoding=None, errors="strict"):
+        """Initialize a TextUIOutputStream.
+
+        Args:
+            ui_factory: The UI factory that owns this stream.
+            stream: The underlying stream to wrap.
+            encoding: Character encoding to use (defaults to stream encoding).
+            errors: Error handling mode ('strict', 'replace', 'ignore', or 'exact').
+        """
         self.ui_factory = ui_factory
         # GZ 2017-05-21: Clean up semantics when callers are made saner.
         inner = _unwrap_stream(stream)
@@ -718,14 +779,25 @@ class TextUIOutputStream:
         self.wrapped_stream.write(to_write)
 
     def flush(self):
+        """Flush the stream, clearing terminal first."""
         self.ui_factory.clear_term()
         self.wrapped_stream.flush()
 
     def write(self, to_write):
+        """Write data to the stream.
+
+        Args:
+            to_write: String or bytes to write.
+        """
         self.ui_factory.clear_term()
         self._write(to_write)
 
     def writelines(self, lines):
+        """Write multiple lines to the stream.
+
+        Args:
+            lines: Iterable of strings or bytes to write.
+        """
         self.ui_factory.clear_term()
         for line in lines:
             self._write(line)
