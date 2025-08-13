@@ -44,12 +44,15 @@ class XMLRevisionSerializer(serializer.RevisionSerializer):
         raise NotImplementedError(self._unpack_revision)
 
     def write_revision_to_string(self, rev):
+        """Serialize a revision object to a UTF-8 string."""
         return b"".join(self.write_revision_to_lines(rev))
 
     def read_revision(self, f):
+        """Read a revision from an open file object."""
         return self._unpack_revision(self._read_element(f))
 
     def read_revision_from_string(self, xml_string):
+        """Read a revision from an XML string."""
         return self._unpack_revision(fromstring(xml_string))  # noqa: S314
 
     def _read_element(self, f):
@@ -100,6 +103,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
         raise NotImplementedError(self._unpack_inventory)
 
     def read_inventory(self, f, revision_id=None):
+        """Read an inventory from an open file object."""
         try:
             try:
                 return self._unpack_inventory(self._read_element(f), revision_id=None)
@@ -139,6 +143,7 @@ from .._bzr_rs import encode_and_escape, escape_invalid_chars  # noqa: F401
 def unpack_inventory_entry(
     elt, entry_cache=None, return_from_cache=False, root_id=None
 ):
+    """Unpack an inventory entry from XML element."""
     elt_get = elt.get
     file_id = elt_get("file_id")
     revision = elt_get("revision")

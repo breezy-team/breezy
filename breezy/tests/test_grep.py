@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for breezy grep functionality."""
+
 import os
 import re
 import unicodedata as ud
@@ -2435,7 +2437,10 @@ def subst_dates(string):
 
 
 class TestGrepDiff(tests.TestCaseWithTransport):
+    """Test grep functionality on revision differences."""
+
     def make_example_branch(self):
+        """Create a simple branch with example files for testing."""
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("hello", b"foo\n"), ("goodbye", b"baz\n")])
         tree.add(["hello"])

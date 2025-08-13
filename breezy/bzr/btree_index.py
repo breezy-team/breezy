@@ -584,6 +584,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
     def __lt__(self, other):
+        """Compare with another index for sorting."""
         if isinstance(other, type(self)):
             return self._nodes < other._nodes
         # Always sort existing indexes before ones that are still being built.
@@ -689,6 +690,7 @@ class BTreeGraphIndex:
         self._row_offsets = None  # Start of each row, [-1] is the end
 
     def __hash__(self):
+        """Return hash based on object identity."""
         return id(self)
 
     def __eq__(self, other):
@@ -701,6 +703,7 @@ class BTreeGraphIndex:
         )
 
     def __lt__(self, other):
+        """Compare with another index for sorting by name and size."""
         if isinstance(other, type(self)):
             return (self._name, self._size) < (other._name, other._size)
         # Always sort existing indexes before ones that are still being built.
@@ -709,6 +712,7 @@ class BTreeGraphIndex:
         raise TypeError
 
     def __ne__(self, other):
+        """Return True if not equal to other."""
         return not self.__eq__(other)
 
     def _get_and_cache_nodes(self, nodes):
@@ -902,6 +906,7 @@ class BTreeGraphIndex:
         self._leaf_node_cache.clear()
 
     def external_references(self, ref_list_num):
+        """Return external references from the specified reference list."""
         if self._root_node is None:
             self._get_root_node()
         if ref_list_num + 1 > self.node_ref_lists:

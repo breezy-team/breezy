@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for breezy.clean_tree module."""
 
 import os
 import shutil
@@ -27,7 +28,10 @@ from . import TestCaseInTempDir
 
 
 class TestCleanTree(TestCaseInTempDir):
+    """Test cases for clean_tree functionality."""
+
     def test_symlinks(self):
+        """Test that clean_tree handles symlinks safely without following them."""
         if supports_symlinks(self.test_dir) is False:
             return
         os.mkdir("branch")

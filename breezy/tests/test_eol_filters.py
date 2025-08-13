@@ -26,16 +26,22 @@ _sample_file1 = b"""hello\nworld\r\n"""
 
 
 class TestEolFilters(TestCase):
+    """Test cases for end-of-line conversion filters."""
+
     def test_to_lf(self):
+        """Test conversion to LF line endings."""
         result = _to_lf_converter([_sample_file1])
         self.assertEqual([b"hello\nworld\n"], result)
 
     def test_to_crlf(self):
+        """Test conversion to CRLF line endings."""
         result = _to_crlf_converter([_sample_file1])
         self.assertEqual([b"hello\r\nworld\r\n"], result)
 
 
 class TestEolRulesSpecifications(TestCase):
+    """Test cases for EOL rules and filter stack specifications."""
+
     def test_exact_value(self):
         """'eol = exact' should have no content filters."""
         prefs = (("eol", "exact"),)
