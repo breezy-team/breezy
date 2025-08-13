@@ -36,9 +36,16 @@ class ContainerError(errors.BzrError):
 
 
 class UnknownContainerFormatError(ContainerError):
+    """Exception raised when encountering unknown container format."""
+
     _fmt = "Unrecognised container format: %(container_format)r"
 
     def __init__(self, container_format):
+        """Initialize UnknownContainerFormatError.
+
+        Args:
+            container_format: The unknown container format encountered.
+        """
         self.container_format = container_format
 
 
