@@ -71,6 +71,14 @@ class cmd_git_import(Command):
             return head_controldir.create_branch()
 
     def run(self, src_location, dest_location=None, colocated=False, dest_format=None):
+        """Import all branches from a git repository.
+
+        Args:
+            src_location: Source git repository location.
+            dest_location: Optional destination location (defaults to basename of source).
+            colocated: Whether to create colocated branches.
+            dest_format: Optional destination format.
+        """
         import os
 
         from .. import controldir, trace, ui, urlutils
@@ -169,6 +177,13 @@ class cmd_git_object(Command):
 
     @display_command
     def run(self, sha1=None, directory=".", pretty=False):
+        """List or display Git objects.
+
+        Args:
+            sha1: Optional SHA1 to display (lists all if not provided).
+            directory: Repository location (defaults to current directory).
+            pretty: Whether to pretty-print objects.
+        """
         from ..controldir import ControlDir
         from ..errors import CommandError
         from ..i18n import gettext
@@ -199,6 +214,11 @@ class cmd_git_refs(Command):
 
     @display_command
     def run(self, location="."):
+        """Output all virtual refs for a repository.
+
+        Args:
+            location: Repository location (defaults to current directory).
+        """
         from ..controldir import ControlDir
         from .object_store import get_object_store
         from .refs import get_refs_container
@@ -250,6 +270,13 @@ class cmd_git_apply(Command):
         wt.commit(authors=[c.author.decode("utf-8")], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
+        """Apply a series of git-am style patches.
+
+        Args:
+            patches_list: List of patch files to apply.
+            signoff: Whether to add Signed-off-by line.
+            force: Whether to apply patches even with uncommitted changes.
+        """
         from ..errors import UncommittedChanges
         from ..workingtree import WorkingTree
 
@@ -274,6 +301,13 @@ class cmd_git_push_pristine_tar_deltas(Command):
     takes_args = ["target", "package"]
 
     def run(self, target, package, directory="."):
+        """Push pristine tar deltas to a git repository.
+
+        Args:
+            target: Target git repository.
+            package: Package name for pristine tar files.
+            directory: Source repository location (defaults to current directory).
+        """
         from ..branch import Branch
         from ..errors import CommandError, NoSuchRevision
         from ..repository import Repository
