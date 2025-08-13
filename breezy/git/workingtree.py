@@ -15,7 +15,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""An adapter between a Git index and a Bazaar Working Tree."""
+"""Git working tree implementation for Breezy.
+
+This module provides an adapter between Git indexes and Breezy working trees,
+allowing Git repositories to be manipulated using the Breezy working tree API.
+The module includes:
+
+- GitWorkingTree: A working tree implementation that uses a Git index
+- GitWorkingTreeFormat: Format class for Git working trees
+- Conflict classes for handling Git-style merge conflicts (TextConflict, ContentsConflict)
+
+The implementation bridges Git's index-based working tree model with Breezy's
+working tree abstraction, handling differences in file tracking, conflict
+resolution, and tree operations.
+"""
 
 import contextlib
 import itertools
@@ -72,9 +85,19 @@ class TextConflict(_mod_conflicts.Conflict):
     _conflict_re = re.compile(b"^(<{7}|={7}|>{7})")
 
     def __init__(self, path):
+        """Initialize a TextConflict.
+
+        Args:
+            path: The path where the conflict occurred.
+        """
         super().__init__(path)
 
     def associated_filenames(self):
+        """Return the list of associated conflict files.
+
+        Returns:
+            List of filenames for the conflict files (.BASE, .OTHER, .THIS).
+        """
         return [self.path + suffix for suffix in (".BASE", ".OTHER", ".THIS")]
 
     def _resolve(self, tt, winner_suffix):
@@ -102,6 +125,14 @@ class TextConflict(_mod_conflicts.Conflict):
         tt.apply()
 
     def action_auto(self, tree):
+        """Attempt to automatically resolve the conflict.
+
+        Args:
+            tree: The working tree where the conflict exists.
+
+        Raises:
+            NotImplementedError: If the conflict cannot be auto-resolved.
+        """
         # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
         #                can't be auto resolved does not seem ideal.
         try:
@@ -117,13 +148,30 @@ class TextConflict(_mod_conflicts.Conflict):
                     raise NotImplementedError("Conflict markers present")
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        """Resolve the conflict with proper cleanup.
+
+        Args:
+            tree: The working tree where the conflict exists.
+            *args: Arguments to pass to _resolve.
+            **kwargs: Keyword arguments to pass to _resolve.
+        """
         with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
     def action_take_this(self, tree):
+        """Resolve the conflict by taking the 'THIS' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'OTHER' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
     def do(self, action, tree):
@@ -144,21 +192,51 @@ class TextConflict(_mod_conflicts.Conflict):
         pass
 
     def describe(self):
+        """Return a human-readable description of the conflict.
+
+        Returns:
+            A string describing the conflict.
+        """
         return f"Text conflict in {self.__dict__['path']}"
 
     def __str__(self):
+        """Return string representation of the conflict.
+
+        Returns:
+            A string representation of the conflict.
+        """
         return self.describe()
 
     def __repr__(self):
+        """Return detailed string representation of the conflict.
+
+        Returns:
+            A detailed string representation for debugging.
+        """
         return f"{type(self).__name__}({self.path!r})"
 
     @classmethod
     def from_index_entry(cls, path, entry):
-        """Create a conflict from a Git index entry."""
+        """Create a conflict from a Git index entry.
+
+        Args:
+            path: The path where the conflict occurred.
+            entry: The Git index entry containing conflict information.
+
+        Returns:
+            A new TextConflict instance.
+        """
         return cls(path)
 
     def to_index_entry(self, tree):
-        """Convert the conflict to a Git index entry."""
+        """Convert the conflict to a Git index entry.
+
+        Args:
+            tree: The working tree containing the conflict.
+
+        Returns:
+            A ConflictedIndexEntry representing this conflict.
+        """
         encoded_path = encode_git_path(tree.abspath(self.path))
         try:
             base = index_entry_from_path(encoded_path + b".BASE")
@@ -185,6 +263,12 @@ class ContentsConflict(_mod_conflicts.Conflict):
     format = "Contents conflict in %(path)s"
 
     def __init__(self, path, conflict_path=None):
+        """Initialize a ContentsConflict.
+
+        Args:
+            path: The path where the conflict occurred.
+            conflict_path: Optional path to the conflict file.
+        """
         for suffix in (".BASE", ".THIS", ".OTHER"):
             if path.endswith(suffix):
                 # Here is the raw path
@@ -194,9 +278,23 @@ class ContentsConflict(_mod_conflicts.Conflict):
         self.conflict_path = conflict_path
 
     def _revision_tree(self, tree, revid):
+        """Get the revision tree for a given revision ID.
+
+        Args:
+            tree: The working tree.
+            revid: The revision ID to get the tree for.
+
+        Returns:
+            The revision tree for the given revision ID.
+        """
         return tree.branch.repository.revision_tree(revid)
 
     def associated_filenames(self):
+        """Return the list of associated conflict files.
+
+        Returns:
+            List of filenames for the conflict files (.BASE, .OTHER, .THIS).
+        """
         return [self.path + suffix for suffix in (".BASE", ".OTHER", ".THIS")]
 
     def _resolve(self, tt, suffix_to_remove):
@@ -238,25 +336,61 @@ class ContentsConflict(_mod_conflicts.Conflict):
             tt.apply()
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        """Resolve the conflict with proper cleanup.
+
+        Args:
+            tree: The working tree where the conflict exists.
+            *args: Arguments to pass to _resolve.
+            **kwargs: Keyword arguments to pass to _resolve.
+        """
         with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
     def action_take_this(self, tree):
+        """Resolve the conflict by taking the 'THIS' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'OTHER' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
     @classmethod
     def from_index_entry(cls, entry):
-        """Create a conflict from a Git index entry."""
+        """Create a conflict from a Git index entry.
+
+        Args:
+            entry: The Git index entry containing conflict information.
+
+        Returns:
+            A new ContentsConflict instance.
+        """
         return cls(entry.path)
 
     def describe(self):
+        """Return a human-readable description of the conflict.
+
+        Returns:
+            A string describing the conflict.
+        """
         return f"Contents conflict in {self.__dict__['path']}"
 
     def to_index_entry(self, tree):
-        """Convert the conflict to a Git index entry."""
+        """Convert the conflict to a Git index entry.
+
+        Args:
+            tree: The working tree containing the conflict.
+
+        Returns:
+            A ConflictedIndexEntry representing this conflict.
+        """
         encoded_path = encode_git_path(tree.abspath(self.path))
         try:
             base = index_entry_from_path(encoded_path + b".BASE")
@@ -277,6 +411,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, controldir, repo, branch):
+        """Initialize a Git working tree.
+
+        Args:
+            controldir: The control directory for this working tree.
+            repo: The repository associated with this working tree.
+            branch: The branch associated with this working tree.
+        """
         MutableGitIndexTree.__init__(self)
         basedir = controldir.root_transport.local_abspath(".")
         self.basedir = osutils.realpath(basedir)
@@ -295,16 +436,42 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._reset_data()
 
     def supports_tree_reference(self):
+        """Return True if this tree supports tree references (submodules).
+
+        Returns:
+            True, as Git working trees support submodules.
+        """
         return True
 
     def supports_rename_tracking(self):
+        """Return True if this tree supports rename tracking.
+
+        Returns:
+            False, as Git working trees don't support rename tracking through this interface.
+        """
         return False
 
     def _read_index(self):
+        """Read the Git index file.
+
+        This loads the index from disk and marks it as clean.
+        """
         self.index = Index(self.control_transport.local_abspath("index"))
         self._index_dirty = False
 
     def _get_submodule_index(self, relpath):
+        """Get the index for a submodule.
+
+        Args:
+            relpath: The relative path to the submodule (as bytes).
+
+        Returns:
+            The Index object for the submodule.
+
+        Raises:
+            TypeError: If relpath is not bytes.
+            tree.MissingNestedTree: If the submodule is not found.
+        """
         if not isinstance(relpath, bytes):
             raise TypeError(relpath)
         try:
@@ -376,12 +543,26 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise
 
     def is_locked(self):
+        """Return True if this tree is locked.
+
+        Returns:
+            True if the tree is currently locked, False otherwise.
+        """
         return self._lock_count >= 1
 
     def get_physical_lock_status(self):
+        """Return the physical lock status.
+
+        Returns:
+            False, as Git working trees don't use physical locks.
+        """
         return False
 
     def break_lock(self):
+        """Break any locks on this working tree.
+
+        This removes index.lock if it exists and breaks the branch lock.
+        """
         with contextlib.suppress(_mod_transport.NoSuchFile):
             self.control_transport.delete("index.lock")
         self.branch.break_lock()
@@ -410,9 +591,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.branch.unlock()
 
     def _cleanup(self):
+        """Perform cleanup operations before unlocking.
+
+        This is a hook for subclasses to perform cleanup operations.
+        """
         pass
 
     def _detect_case_handling(self):
+        """Detect whether the filesystem is case-sensitive.
+
+        Sets self.case_sensitive based on whether we can stat a file
+        with different casing than the actual file.
+        """
         try:
             self._transport.stat(".git/cOnFiG")
         except _mod_transport.NoSuchFile:
@@ -421,12 +611,31 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.case_sensitive = False
 
     def merge_modified(self):
+        """Return a dictionary of modified files during merge.
+
+        Returns:
+            Empty dict, as Git working trees don't track merge modifications this way.
+        """
         return {}
 
     def set_merge_modified(self, modified_hashes):
+        """Set the merge modified hashes.
+
+        Args:
+            modified_hashes: Dictionary of modified file hashes.
+
+        Raises:
+            errors.UnsupportedOperation: This operation is not supported.
+        """
         raise errors.UnsupportedOperation(self.set_merge_modified, self)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parent trees for this working tree.
+
+        Args:
+            parents_list: List of (revision_id, tree) tuples.
+            allow_leftmost_as_ghost: Whether to allow the leftmost parent to be a ghost.
+        """
         self.set_parent_ids([p for p, t in parents_list])
 
     def _set_merges_from_parent_ids(self, rhs_parent_ids):
@@ -491,7 +700,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return parents
 
     def check_state(self):
-        """Check that the working state is/isn't valid."""
+        """Check that the working state is/isn't valid.
+
+        This is a no-op for Git working trees as they are always in a valid state.
+        """
         pass
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True, force=False):
@@ -714,6 +926,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return added, ignored
 
     def has_filename(self, filename):
+        """Check if a filename exists in the working tree.
+
+        Args:
+            filename: The relative path to check.
+
+        Returns:
+            True if the file exists, False otherwise.
+        """
         return osutils.lexists(self.abspath(filename))
 
     def _iter_files_recursive(
@@ -776,6 +996,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     kinds[pos] = kind
 
     def flush(self):
+        """Flush pending changes to the index file.
+
+        Raises:
+            errors.NotWriteLocked: If the tree is not write-locked.
+        """
         if self._lock_mode != "w":
             raise errors.NotWriteLocked(self)
         # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
@@ -786,6 +1011,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._flush(f)
 
     def _flush(self, f):
+        """Flush the index to a file.
+
+        Args:
+            f: The file object to write to.
+        """
         try:
             shaf = SHA1Writer(f)
             write_index_dict(shaf, self.index)
@@ -1790,6 +2020,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """Format for Git working trees.
+
+    This format provides Git working tree functionality within the Breezy framework.
+    It does not support versioned directories, file IDs, or storing uncommitted changes.
+    """
+
     _tree_class = GitWorkingTree
 
     supports_versioned_directories = False
@@ -1810,11 +2046,21 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     @property
     def _matchingcontroldir(self):
+        """Return the control directory format that matches this working tree format.
+
+        Returns:
+            A LocalGitControlDirFormat instance.
+        """
         from .dir import LocalGitControlDirFormat
 
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
+        """Return a human-readable description of this format.
+
+        Returns:
+            A string describing this format.
+        """
         return "Git Working Tree"
 
     def initialize(
@@ -1825,7 +2071,21 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         accelerator_tree=None,
         hardlink=False,
     ):
-        """See WorkingTreeFormat.initialize()."""
+        """Initialize a new Git working tree.
+
+        Args:
+            a_controldir: The control directory to initialize the working tree in.
+            revision_id: The revision ID to set as the initial revision.
+            from_branch: Unused for Git working trees.
+            accelerator_tree: Unused for Git working trees.
+            hardlink: Unused for Git working trees.
+
+        Returns:
+            A new GitWorkingTree instance.
+
+        Raises:
+            errors.IncompatibleFormat: If a_controldir is not a LocalGitDir.
+        """
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir)
         branch = a_controldir.open_branch(nascent_ok=True)
