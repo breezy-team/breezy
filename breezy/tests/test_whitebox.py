@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Whitebox tests for internal implementation details.
+
+This module contains tests that verify the internal behavior of various
+breezy components, particularly path manipulation utilities.
+"""
+
 import os
 import tempfile
 
@@ -22,6 +28,8 @@ from ..osutils import abspath, pathjoin, realpath, relpath
 
 
 class MoreTests(tests.TestCaseWithTransport):
+    """Tests for internal path manipulation and other utilities."""
+
     def test_relpath(self):
         """Test for branch path lookups.
 

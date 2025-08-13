@@ -48,6 +48,8 @@ from .. import osutils, registry
 
 
 class ContentFilter:
+    """A filter that converts content between canonical and convenience formats."""
+
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
 
@@ -59,6 +61,7 @@ class ContentFilter:
         self.writer = writer
 
     def __repr__(self):
+        """Return a string representation of the ContentFilter."""
         return f"reader: {self.reader}, writer: {self.writer}"
 
 
@@ -159,7 +162,15 @@ def internal_size_sha_file_byname(name, filters):
 
 
 class FilteredStat:
+    """A stat-like object that can have a filtered size."""
+
     def __init__(self, base, st_size=None):
+        """Initialize a FilteredStat from a base stat object.
+
+        Args:
+            base: Base stat object to copy attributes from.
+            st_size: Optional override for the size attribute.
+        """
         self.st_mode = base.st_mode
         self.st_size = st_size or base.st_size
         self.st_mtime = base.st_mtime

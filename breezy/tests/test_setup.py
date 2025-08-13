@@ -22,7 +22,10 @@ from .. import tests
 
 
 class TestDistutilsVersion(tests.TestCase):
+    """Tests for version comparison utilities used in setup.py."""
+
     def test_version_with_string(self):
+        """Test version comparison for pyrex-specific version strings."""
         # We really care about two pyrex specific versions and our ability to
         # detect them
         lv = version.Version

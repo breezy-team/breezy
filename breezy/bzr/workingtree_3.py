@@ -31,7 +31,16 @@ from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
 class PreDirStateWorkingTree(InventoryWorkingTree):
+    """Working tree implementation before DirState was introduced."""
+
     def __init__(self, basedir=".", *args, **kwargs):
+        """Initialize a PreDirStateWorkingTree.
+
+        Args:
+            basedir: The base directory for the working tree.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+        """
         super().__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -72,6 +81,18 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 )
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file in the working tree.
+
+        Args:
+            path: Path to the file relative to the tree root.
+            stat_value: Optional stat value for the file.
+
+        Returns:
+            The SHA1 hash of the file contents.
+
+        Raises:
+            NoSuchFile: If the file is not versioned.
+        """
         with self.lock_read():
             # To make sure NoSuchFile gets raised..
             if not self.is_versioned(path):
@@ -114,6 +135,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         return [("trees", self.last_revision())]
 
     def unlock(self):
+        """Unlock the working tree and perform cleanup operations."""
         if self._control_files._lock_count == 1:
             # do non-implementation specific cleanup
             self._cleanup()
