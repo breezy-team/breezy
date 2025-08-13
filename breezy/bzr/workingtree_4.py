@@ -78,6 +78,12 @@ from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
 class DirStateWorkingTree(InventoryWorkingTree):
+    """A working tree that uses a dirstate for efficient state tracking.
+
+    This implementation uses a dirstate file to track the state of files
+    in the working tree, providing improved performance over earlier formats.
+    """
+
     def __init__(
         self, basedir, branch, _control_files=None, _format=None, _controldir=None
     ):
@@ -149,6 +155,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
             self._inventory = None
 
     def add_reference(self, sub_tree):
+        """Add a tree reference to a subtree.
+
+        Args:
+            sub_tree: The working tree to add as a reference.
+
+        Raises:
+            BadReferenceTarget: If the subtree is not a valid reference target.
+        """
         # use standard implementation, which calls back to self._add
         #
         # So we don't store the reference_revision in the working dirstate,
@@ -221,6 +235,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return kind, executable, stat_value
 
     def commit(self, message=None, revprops=None, *args, **kwargs):
+        """Create a new revision for the working tree.
+
+        Args:
+            message: Commit message string.
+            revprops: Dictionary of revision properties.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            The new revision ID.
+        """
         with self.lock_write():
             # mark the tree as dirty post commit - commit
             # can change the current versioned list by doing deletes.
@@ -417,6 +442,18 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return state._get_entry(0, fileid_utf8=file_id, path_utf8=path)
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file in the working tree.
+
+        Args:
+            path: The path to the file relative to the tree root.
+            stat_value: Optional stat value to avoid re-statting the file.
+
+        Returns:
+            The SHA1 hash as a hex string, or None if not a regular file.
+
+        Raises:
+            NoSuchFile: If the path does not exist in the tree.
+        """
         # check file id is valid unconditionally.
         entry = self._get_entry(path=path)
         if entry[0] is None:
@@ -470,6 +507,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return self.current_dirstate().get_parent_ids()
 
     def get_reference_revision(self, path):
+        """Get the revision ID of a tree reference.
+
+        Args:
+            path: The path to the tree reference.
+
+        Returns:
+            The revision ID of the referenced tree, or None.
+        """
         # referenced tree's revision is whatever's currently there
         try:
             return self.get_nested_tree(path).last_revision()
@@ -480,6 +525,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return entry[1][0][1]
 
     def get_nested_tree(self, path):
+        """Get the nested tree at the given path.
+
+        Args:
+            path: The path to the nested tree.
+
+        Returns:
+            The WorkingTree at the specified path.
+
+        Raises:
+            MissingNestedTree: If no tree exists at the path.
+        """
         try:
             return WorkingTree.open(self.abspath(path))
         except errors.NotBranchError as err:
@@ -539,6 +595,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return result
 
     def all_versioned_paths(self):
+        """Get all paths that are versioned in this tree.
+
+        Returns:
+            A set of all versioned paths.
+        """
         self._must_be_locked()
         return {
             path for path, entry in self.root_inventory.iter_entries(recursive=True)
@@ -564,6 +625,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return iter(result)
 
     def iter_references(self):
+        """Iterate over all tree references in the working tree.
+
+        Yields:
+            Relative paths to tree references.
+        """
         if not self._repo_supports_tree_reference:
             # When the repo doesn't support references, we will have nothing to
             # return
@@ -591,6 +657,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
         state._observed_sha1(entry, *sha_and_stat)
 
     def kind(self, relpath):
+        """Get the file kind for the given path.
+
+        Args:
+            relpath: Path relative to the tree root.
+
+        Returns:
+            One of 'file', 'directory', 'symlink', or 'tree-reference'.
+        """
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
         if self._repo_supports_tree_reference and kind == "directory":
@@ -1258,6 +1332,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return self.current_dirstate().sha1_from_stat(path, stat_result)
 
     def supports_tree_reference(self):
+        """Check if this tree supports tree references.
+
+        Returns:
+            True if tree references are supported, False otherwise.
+        """
         return self._repo_supports_tree_reference
 
     def unlock(self):
@@ -1458,7 +1537,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
+    """SHA1 provider that applies content filters before hashing."""
+
     def __init__(self, tree):
+        """Initialize the SHA1 provider.
+
+        Args:
+            tree: The working tree to use for content filtering.
+        """
         self.tree = tree
 
     def sha1(self, abspath):
@@ -1546,6 +1632,8 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
+    """Base format for working trees that use dirstate for storage."""
+
     missing_parent_conflicts = True
 
     supports_versioned_directories = True
@@ -1748,6 +1836,11 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
         return "Working tree format 5"
 
     def supports_content_filtering(self):
+        """Check if this format supports content filtering.
+
+        Returns:
+            True, indicating this format supports content filtering.
+        """
         return True
 
 
@@ -1772,9 +1865,19 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         wt._transport.put_bytes("views", b"", mode=wt.controldir._get_file_mode())
 
     def supports_content_filtering(self):
+        """Check if this format supports content filtering.
+
+        Returns:
+            True, indicating this format supports content filtering.
+        """
         return True
 
     def supports_views(self):
+        """Check if this format supports views.
+
+        Returns:
+            True, indicating this format supports views.
+        """
         return True
 
     def _get_matchingcontroldir(self):
@@ -1792,6 +1895,14 @@ class DirStateRevisionTree(InventoryTree):
     """
 
     def __init__(self, dirstate, revision_id, repository, nested_tree_transport):
+        """Initialize a DirStateRevisionTree.
+
+        Args:
+            dirstate: The dirstate object containing the tree data.
+            revision_id: The revision ID this tree represents.
+            repository: The repository containing the revision.
+            nested_tree_transport: Transport for accessing nested trees.
+        """
         self._dirstate = dirstate
         self._revision_id = revision_id
         self._repository = repository
@@ -1804,6 +1915,11 @@ class DirStateRevisionTree(InventoryTree):
         )
 
     def __repr__(self):
+        """Return a string representation of this revision tree.
+
+        Returns:
+            A string showing the class name, revision ID, and dirstate.
+        """
         return f"<{self.__class__.__name__} of {self._revision_id} in {self._dirstate}>"
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
@@ -1814,6 +1930,18 @@ class DirStateRevisionTree(InventoryTree):
         return [(key[-1], line) for (key, line) in annotations]
 
     def iter_child_entries(self, path):
+        """Iterate over child entries of a directory.
+
+        Args:
+            path: Path to the directory.
+
+        Returns:
+            An iterator of child inventory entries.
+
+        Raises:
+            NoSuchFile: If the path does not exist.
+            NotADirectory: If the path is not a directory.
+        """
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path)
             if inv is None:
@@ -1869,6 +1997,17 @@ class DirStateRevisionTree(InventoryTree):
             return path_utf8.decode("utf8")
 
     def get_nested_tree(self, path):
+        """Get the nested tree at the given path.
+
+        Args:
+            path: The path to the nested tree.
+
+        Returns:
+            The nested revision tree.
+
+        Raises:
+            MissingNestedTree: If the nested tree cannot be loaded.
+        """
         with self.lock_read():
             nested_revid = self.get_reference_revision(path)
             return self._get_nested_tree(path, None, nested_revid)
@@ -1891,6 +2030,11 @@ class DirStateRevisionTree(InventoryTree):
         return revtree
 
     def iter_references(self):
+        """Iterate over tree references in this revision tree.
+
+        Yields:
+            Paths to tree references.
+        """
         if not self._repo_supports_tree_reference:
             # When the repo doesn't support references, we will have nothing to
             # return
@@ -2053,6 +2197,15 @@ class DirStateRevisionTree(InventoryTree):
         return rev.timestamp
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file in this revision tree.
+
+        Args:
+            path: The path to the file.
+            stat_value: Ignored for revision trees.
+
+        Returns:
+            The SHA1 hash as a hex string, or None if not a regular file.
+        """
         entry = self._get_entry(path=path)
         parent_index = self._get_parent_index()
         parent_details = entry[1][parent_index]
@@ -2061,19 +2214,50 @@ class DirStateRevisionTree(InventoryTree):
         return None
 
     def get_file_revision(self, path):
+        """Get the revision ID that last modified the file at path.
+
+        Args:
+            path: The path to the file.
+
+        Returns:
+            The revision ID that last modified the file.
+        """
         with self.lock_read():
             inv, inv_file_id = self._path2inv_file_id(path)
             return inv.get_entry(inv_file_id).revision
 
     def get_file(self, path):
+        """Get a file-like object for the file at path.
+
+        Args:
+            path: The path to the file.
+
+        Returns:
+            A BytesIO object containing the file contents.
+        """
         return BytesIO(self.get_file_text(path))
 
     def get_file_size(self, path):
-        """See Tree.get_file_size."""
+        """Get the size of the file at path.
+
+        Args:
+            path: The path to the file.
+
+        Returns:
+            The size of the file in bytes.
+        """
         inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).text_size
 
     def get_file_text(self, path):
+        """Get the text content of the file at path.
+
+        Args:
+            path: The path to the file.
+
+        Returns:
+            The file contents as bytes.
+        """
         content = None
         for _, content_iter in self.iter_files_bytes([(path, None)]):
             if content is not None:
@@ -2086,13 +2270,28 @@ class DirStateRevisionTree(InventoryTree):
         return content
 
     def get_reference_revision(self, path):
+        """Get the revision ID of a tree reference.
+
+        Args:
+            path: The path to the tree reference.
+
+        Returns:
+            The revision ID of the referenced tree.
+        """
         inv, inv_file_id = self._path2inv_file_id(path)
         return inv.get_entry(inv_file_id).reference_revision
 
     def iter_files_bytes(self, desired_files):
-        """See Tree.iter_files_bytes.
+        """Iterate over the contents of multiple files.
 
-        This version is implemented on top of Repository.iter_files_bytes
+        This version is implemented on top of Repository.iter_files_bytes.
+
+        Args:
+            desired_files: An iterable of (path, identifier) tuples.
+
+        Yields:
+            (identifier, content_iterator) tuples where content_iterator
+            yields the bytes content of the file.
         """
         parent_index = self._get_parent_index()
         repo_desired_files = []
@@ -2106,6 +2305,14 @@ class DirStateRevisionTree(InventoryTree):
         return self._repository.iter_files_bytes(repo_desired_files)
 
     def get_symlink_target(self, path):
+        """Get the target of a symlink.
+
+        Args:
+            path: The path to the symlink.
+
+        Returns:
+            The target path of the symlink as a string, or None if not a symlink.
+        """
         entry = self._get_entry(path=path)
         if entry is None:
             raise NoSuchFile(tree=self, path=path)
@@ -2118,7 +2325,11 @@ class DirStateRevisionTree(InventoryTree):
             return target
 
     def get_revision_id(self):
-        """Return the revision id for this tree."""
+        """Return the revision ID for this tree.
+
+        Returns:
+            The revision ID this tree represents.
+        """
         return self._revision_id
 
     def _get_root_inventory(self):
@@ -2131,13 +2342,38 @@ class DirStateRevisionTree(InventoryTree):
     root_inventory = property(_get_root_inventory, doc="Inventory of this Tree")
 
     def get_parent_ids(self):
-        """The parents of a tree in the dirstate are not cached."""
+        """Get the parent revision IDs for this tree.
+
+        The parents of a tree in the dirstate are not cached.
+
+        Returns:
+            A list of parent revision IDs.
+        """
         return self._repository.get_revision(self._revision_id).parent_ids
 
     def has_filename(self, filename):
+        """Check if a file exists in this tree.
+
+        Args:
+            filename: The path to check.
+
+        Returns:
+            True if the file exists in the tree, False otherwise.
+        """
         return bool(self.path2id(filename))
 
     def kind(self, path):
+        """Get the file kind for the given path.
+
+        Args:
+            path: Path relative to the tree root.
+
+        Returns:
+            One of 'file', 'directory', 'symlink', or 'tree-reference'.
+
+        Raises:
+            NoSuchFile: If the path does not exist in the tree.
+        """
         entry = self._get_entry(path=path)[1]
         if entry is None:
             raise NoSuchFile(path)
@@ -2145,11 +2381,27 @@ class DirStateRevisionTree(InventoryTree):
         return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 
     def stored_kind(self, path):
-        """See Tree.stored_kind."""
+        """Get the stored kind for the given path.
+
+        For revision trees, this is the same as kind().
+
+        Args:
+            path: Path relative to the tree root.
+
+        Returns:
+            The file kind as stored in the tree.
+        """
         return self.kind(path)
 
     def path_content_summary(self, path):
-        """See Tree.path_content_summary."""
+        """Get a summary of the content at the given path.
+
+        Args:
+            path: Path relative to the tree root.
+
+        Returns:
+            A tuple of (kind, size, executable, link_or_sha1).
+        """
         inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
             return ("missing", None, None, None)
@@ -2163,6 +2415,17 @@ class DirStateRevisionTree(InventoryTree):
             return (kind, None, None, None)
 
     def is_executable(self, path):
+        """Check if the file at path is executable.
+
+        Args:
+            path: Path relative to the tree root.
+
+        Returns:
+            True if the file is executable, False otherwise.
+
+        Raises:
+            NoSuchFile: If the path does not exist in the tree.
+        """
         inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
             raise NoSuchFile(path)
@@ -2172,11 +2435,27 @@ class DirStateRevisionTree(InventoryTree):
         return ie.executable
 
     def is_locked(self):
+        """Check if this tree is locked.
+
+        Returns:
+            True if the tree is locked, False otherwise.
+        """
         return self._locked
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
     ):
+        """List files in the tree.
+
+        Args:
+            include_root: Whether to include the root directory.
+            from_dir: Directory to start listing from.
+            recursive: Whether to recurse into subdirectories.
+            recurse_nested: Whether to recurse into nested trees.
+
+        Yields:
+            (path, status, kind, entry) tuples for each file.
+        """
         # The only files returned by this are those from the version
         if from_dir is None:
             from_dir_id = None
@@ -2230,7 +2509,14 @@ class DirStateRevisionTree(InventoryTree):
             raise errors.ObjectNotLocked(self)
 
     def path2id(self, path):
-        """Return the id for path in this tree."""
+        """Return the file ID for path in this tree.
+
+        Args:
+            path: The path to look up, as a string or list of path components.
+
+        Returns:
+            The file ID for the path, or None if not found.
+        """
         # lookup by path: faster than splitting and walking the ivnentory.
         if isinstance(path, list):
             if path == []:
@@ -2246,7 +2532,7 @@ class DirStateRevisionTree(InventoryTree):
             return entry[0][2]
 
     def unlock(self):
-        """Unlock, freeing any cache memory used during the lock."""
+        """Unlock the tree, freeing any cache memory used during the lock."""
         # outside of a lock, the inventory is suspect: release it.
         self._locked -= 1
         if not self._locked:
@@ -2258,10 +2544,24 @@ class DirStateRevisionTree(InventoryTree):
             self._repository.unlock()
 
     def supports_tree_reference(self):
+        """Check if this tree supports tree references.
+
+        Returns:
+            True if tree references are supported, False otherwise.
+        """
         with self.lock_read():
             return self._repo_supports_tree_reference
 
     def walkdirs(self, prefix=""):
+        """Walk through directories in the tree.
+
+        Args:
+            prefix: The directory path to start from.
+
+        Yields:
+            (relpath, dirblock) tuples where dirblock is a list of
+            (relpath, name, kind, stat, kind) tuples.
+        """
         # TODO: jam 20070215 This is the lazy way by using the RevisionTree
         # implementation based on an inventory.
         # This should be cleaned up to use the much faster Dirstate code
@@ -2300,6 +2600,15 @@ class InterDirStateTree(InterInventoryTree):
     # dirstate, and possibly between trees stored in different dirstates.
 
     def __init__(self, source, target):
+        """Initialize InterDirStateTree.
+
+        Args:
+            source: The source tree to compare from.
+            target: The target tree to compare to.
+
+        Raises:
+            Exception: If the trees are not compatible for comparison.
+        """
         super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
             raise Exception(f"invalid source {source!r} and target {target!r}")
@@ -2314,12 +2623,32 @@ class InterDirStateTree(InterInventoryTree):
 
     @classmethod
     def make_source_parent_tree_python_dirstate(klass, test_case, source, target):
+        """Create parent tree using Python dirstate implementation.
+
+        Args:
+            test_case: The test case instance.
+            source: The source tree.
+            target: The target tree.
+
+        Returns:
+            A tuple of (basis_tree, target).
+        """
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = dirstate.ProcessEntryPython
         return result
 
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
+        """Create parent tree using compiled dirstate implementation.
+
+        Args:
+            test_case: The test case instance.
+            source: The source tree.
+            target: The target tree.
+
+        Returns:
+            A tuple of (basis_tree, target).
+        """
         from .tests.test__dirstate_helpers import compiled_dirstate_helpers_feature
 
         test_case.requireFeature(compiled_dirstate_helpers_feature)
@@ -2455,6 +2784,15 @@ class InterDirStateTree(InterInventoryTree):
 
     @staticmethod
     def is_compatible(source, target):
+        """Check if source and target trees are compatible for optimized comparison.
+
+        Args:
+            source: The source tree.
+            target: The target tree.
+
+        Returns:
+            True if the trees can use the optimized InterDirStateTree comparison.
+        """
         # the target must be a dirstate working tree
         if not isinstance(target, DirStateWorkingTree):
             return False
@@ -2479,9 +2817,15 @@ class Converter3to4:
     """Perform an in-place upgrade of format 3 to format 4 trees."""
 
     def __init__(self):
+        """Initialize the format converter."""
         self.target_format = WorkingTreeFormat4()
 
     def convert(self, tree):
+        """Convert a format 3 tree to format 4.
+
+        Args:
+            tree: The working tree to convert.
+        """
         # lock the control files not the tree, so that we dont get tree
         # on-unlock behaviours, and so that noone else diddles with the
         # tree during upgrade.
@@ -2532,9 +2876,15 @@ class Converter4to5:
     """Perform an in-place upgrade of format 4 to format 5 trees."""
 
     def __init__(self):
+        """Initialize the format converter."""
         self.target_format = WorkingTreeFormat5()
 
     def convert(self, tree):
+        """Convert a format 4 tree to format 5.
+
+        Args:
+            tree: The working tree to convert.
+        """
         # lock the control files not the tree, so that we don't get tree
         # on-unlock behaviours, and so that no-one else diddles with the
         # tree during upgrade.
@@ -2557,9 +2907,15 @@ class Converter4or5to6:
     """Perform an in-place upgrade of format 4 or 5 to format 6 trees."""
 
     def __init__(self):
+        """Initialize the format converter."""
         self.target_format = WorkingTreeFormat6()
 
     def convert(self, tree):
+        """Convert a format 4 or 5 tree to format 6.
+
+        Args:
+            tree: The working tree to convert.
+        """
         # lock the control files not the tree, so that we don't get tree
         # on-unlock behaviours, and so that no-one else diddles with the
         # tree during upgrade.

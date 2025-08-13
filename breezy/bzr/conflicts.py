@@ -1,3 +1,9 @@
+"""Conflict handling for Bazaar working trees.
+
+This module provides functionality for detecting, representing, and resolving
+conflicts that occur during merge operations in Bazaar working trees.
+"""
+
 # Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,6 +52,12 @@ class Conflict(BaseConflict):
     has_files = False
 
     def __init__(self, path, file_id=None):
+        """Initialize a Conflict.
+
+        Args:
+            path: Path to the conflicted file.
+            file_id: Optional file ID for the conflicted file.
+        """
         super().__init__(path)
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
@@ -54,6 +66,11 @@ class Conflict(BaseConflict):
         self.file_id = file_id
 
     def as_stanza(self):
+        """Convert conflict to a stanza representation.
+
+        Returns:
+            rio.Stanza: A stanza containing the conflict's type, path, and optionally file_id.
+        """
         s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
             # Stanza requires Unicode apis
@@ -61,9 +78,22 @@ class Conflict(BaseConflict):
         return s
 
     def _cmp_list(self):
+        """Return a list of attributes for comparison.
+
+        Returns:
+            list: List containing typestring, path, and file_id for comparison.
+        """
         return [self.typestring, self.path, self.file_id]
 
     def __eq__(self, other):
+        """Check equality with another conflict.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the conflicts are equal, False otherwise.
+        """
         if getattr(other, "_cmp_list", None) is None:
             return False
         x = self._cmp_list()
@@ -71,32 +101,82 @@ class Conflict(BaseConflict):
         return x == y
 
     def __hash__(self):
+        """Return hash of the conflict.
+
+        Returns:
+            int: Hash value based on conflict type, path, and file_id.
+        """
         return hash((type(self), self.path, self.file_id))
 
     def __ne__(self, other):
+        """Check inequality with another conflict.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the conflicts are not equal, False otherwise.
+        """
         return not self.__eq__(other)
 
     def __unicode__(self):
+        """Return unicode string representation of the conflict.
+
+        Returns:
+            str: Human-readable description of the conflict.
+        """
         return self.describe()
 
     def __str__(self):
+        """Return string representation of the conflict.
+
+        Returns:
+            str: Human-readable description of the conflict.
+        """
         return self.describe()
 
     def describe(self):
+        """Return a human-readable description of the conflict.
+
+        Returns:
+            str: Formatted description using the conflict's format string and attributes.
+        """
         return self.format % self.__dict__
 
     def __repr__(self):
+        """Return a developer-friendly representation of the conflict.
+
+        Returns:
+            str: String representation suitable for debugging.
+        """
         rdict = dict(self.__dict__)
         rdict["class"] = self.__class__.__name__
         return self.rformat % rdict
 
     @staticmethod
     def factory(type, **kwargs):
+        """Create a Conflict instance from a type string.
+
+        Args:
+            type: The conflict type string.
+            **kwargs: Additional keyword arguments for the conflict constructor.
+
+        Returns:
+            Conflict: A new Conflict instance of the specified type.
+        """
         global ctype
         return ctype[type](**kwargs)
 
     @staticmethod
     def sort_key(conflict):
+        """Generate a sort key for a conflict.
+
+        Args:
+            conflict: The conflict to generate a sort key for.
+
+        Returns:
+            tuple: A tuple of (path, typestring) suitable for sorting conflicts.
+        """
         if conflict.path is not None:
             return conflict.path, conflict.typestring
         elif getattr(conflict, "conflict_path", None) is not None:
@@ -117,6 +197,14 @@ class Conflict(BaseConflict):
         meth(tree)
 
     def action_auto(self, tree):
+        """Automatically resolve the conflict if possible.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: When automatic resolution is not implemented.
+        """
         raise NotImplementedError(self.action_auto)
 
     def action_done(self, tree):
@@ -125,12 +213,35 @@ class Conflict(BaseConflict):
         pass
 
     def action_take_this(self, tree):
+        """Resolve the conflict by taking the 'this' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: When this action is not implemented.
+        """
         raise NotImplementedError(self.action_take_this)
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'other' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: When this action is not implemented.
+        """
         raise NotImplementedError(self.action_take_other)
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        """Resolve the conflict using a tree transform with automatic cleanup.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+            *args: Additional positional arguments passed to _resolve.
+            **kwargs: Additional keyword arguments passed to _resolve.
+        """
         with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
@@ -138,14 +249,25 @@ class Conflict(BaseConflict):
 class ConflictList(BaseConflictList):
     @staticmethod
     def from_stanzas(stanzas):
-        """Produce a new ConflictList from an iterable of stanzas."""
+        """Produce a new ConflictList from an iterable of stanzas.
+
+        Args:
+            stanzas: An iterable of rio.Stanza objects.
+
+        Returns:
+            ConflictList: A new ConflictList containing conflicts created from the stanzas.
+        """
         conflicts = ConflictList()
         for stanza in stanzas:
             conflicts.append(Conflict.factory(**stanza.as_dict()))
         return conflicts
 
     def to_stanzas(self):
-        """Generator of stanzas."""
+        """Generate stanzas from the conflicts in this list.
+
+        Yields:
+            rio.Stanza: A stanza representation for each conflict in the list.
+        """
         for conflict in self:
             yield conflict.as_stanza()
 
@@ -211,16 +333,33 @@ class PathConflict(Conflict):
     rformat = "%(class)s(%(path)r, %(conflict_path)r, %(file_id)r)"
 
     def __init__(self, path, conflict_path=None, file_id=None):
+        """Initialize a PathConflict.
+
+        Args:
+            path: The path involved in the conflict.
+            conflict_path: The conflicting path, if any.
+            file_id: The file ID of the conflicted file.
+        """
         Conflict.__init__(self, path, file_id)
         self.conflict_path = conflict_path
 
     def as_stanza(self):
+        """Convert PathConflict to a stanza representation.
+
+        Returns:
+            rio.Stanza: A stanza containing the conflict's information.
+        """
         s = Conflict.as_stanza(self)
         if self.conflict_path is not None:
             s.add("conflict_path", self.conflict_path)
         return s
 
     def associated_filenames(self):
+        """Return the list of files associated with this conflict.
+
+        Returns:
+            list: Empty list as path conflicts don't generate additional files.
+        """
         # No additional files have been generated here
         return []
 
@@ -264,9 +403,26 @@ class PathConflict(Conflict):
         tt.apply()
 
     def _revision_tree(self, tree, revid):
+        """Get a revision tree from the repository.
+
+        Args:
+            tree: The working tree.
+            revid: The revision ID to retrieve.
+
+        Returns:
+            RevisionTree: The revision tree for the specified revision.
+        """
         return tree.branch.repository.revision_tree(revid)
 
     def _infer_file_id(self, tree):
+        """Infer the file ID from parent trees when not explicitly set.
+
+        Args:
+            tree: The working tree.
+
+        Returns:
+            tuple: A tuple of (revision_tree, file_id) or (None, None) if not found.
+        """
         # Prior to bug #531967, file_id wasn't always set, there may still be
         # conflict files in the wild so we need to cope with them
         # Establish which path we should use to find back the file-id
@@ -288,6 +444,11 @@ class PathConflict(Conflict):
         return None, None
 
     def action_take_this(self, tree):
+        """Resolve the conflict by keeping the 'this' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         if self.file_id is not None:
             self._resolve_with_cleanups(tree, self.file_id, self.path, winner="this")
         else:
@@ -297,6 +458,11 @@ class PathConflict(Conflict):
             tree.revert([revtree.id2path(file_id)], old_tree=revtree, backups=False)
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'other' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         if self.file_id is not None:
             self._resolve_with_cleanups(
                 tree, self.file_id, self.conflict_path, winner="other"
@@ -318,6 +484,11 @@ class ContentsConflict(PathConflict):
     format = "Contents conflict in %(path)s"
 
     def associated_filenames(self):
+        """Return the list of files associated with this conflict.
+
+        Returns:
+            list: List of filenames with .BASE and .OTHER suffixes.
+        """
         return [self.path + suffix for suffix in (".BASE", ".OTHER")]
 
     def _resolve(self, tt, suffix_to_remove):
@@ -359,9 +530,19 @@ class ContentsConflict(PathConflict):
             tt.apply()
 
     def action_take_this(self, tree):
+        """Resolve the conflict by keeping the 'this' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'other' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
 
@@ -381,6 +562,11 @@ class TextConflict(Conflict):
     _conflict_re = re.compile(b"^(<{7}|={7}|>{7})")
 
     def associated_filenames(self):
+        """Return the list of files associated with this conflict.
+
+        Returns:
+            list: List of filenames with .THIS, .BASE, and .OTHER suffixes.
+        """
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
 
     def _resolve(self, tt, winner_suffix):
@@ -409,6 +595,14 @@ class TextConflict(Conflict):
         tt.apply()
 
     def action_auto(self, tree):
+        """Automatically resolve the conflict if no conflict markers are present.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: If the file contains conflict markers or is not a file.
+        """
         # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
         #                can't be auto resolved does not seem ideal.
         try:
@@ -425,9 +619,19 @@ class TextConflict(Conflict):
                     raise NotImplementedError("Conflict markers present")
 
     def action_take_this(self, tree):
+        """Resolve the conflict by keeping the 'this' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'other' version.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
 
@@ -439,18 +643,40 @@ class HandledConflict(Conflict):
     rformat = "%(class)s(%(action)r, %(path)r, %(file_id)r)"
 
     def __init__(self, action, path, file_id=None):
+        """Initialize a HandledConflict.
+
+        Args:
+            action: The action taken to resolve the conflict.
+            path: The path involved in the conflict.
+            file_id: The file ID of the conflicted file.
+        """
         Conflict.__init__(self, path, file_id)
         self.action = action
 
     def _cmp_list(self):
+        """Return a list of attributes for comparison.
+
+        Returns:
+            list: Parent's comparison list plus the action.
+        """
         return Conflict._cmp_list(self) + [self.action]
 
     def as_stanza(self):
+        """Convert HandledConflict to a stanza representation.
+
+        Returns:
+            rio.Stanza: A stanza containing the conflict's information including action.
+        """
         s = Conflict.as_stanza(self)
         s.add("action", self.action)
         return s
 
     def associated_filenames(self):
+        """Return the list of files associated with this conflict.
+
+        Returns:
+            list: Empty list as handled conflicts don't generate additional files.
+        """
         # Nothing has been generated here
         return []
 
@@ -468,6 +694,15 @@ class HandledPathConflict(HandledConflict):
     def __init__(
         self, action, path, conflict_path, file_id=None, conflict_file_id=None
     ):
+        """Initialize a HandledPathConflict.
+
+        Args:
+            action: The action taken to resolve the conflict.
+            path: The path involved in the conflict.
+            conflict_path: The conflicting path.
+            file_id: The file ID of the conflicted file.
+            conflict_file_id: The file ID of the conflicting file.
+        """
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
@@ -477,12 +712,22 @@ class HandledPathConflict(HandledConflict):
         self.conflict_file_id = conflict_file_id
 
     def _cmp_list(self):
+        """Return a list of attributes for comparison.
+
+        Returns:
+            list: Parent's comparison list plus conflict_path and conflict_file_id.
+        """
         return HandledConflict._cmp_list(self) + [
             self.conflict_path,
             self.conflict_file_id,
         ]
 
     def as_stanza(self):
+        """Convert HandledPathConflict to a stanza representation.
+
+        Returns:
+            rio.Stanza: A stanza containing the conflict's information.
+        """
         s = HandledConflict.as_stanza(self)
         s.add("conflict_path", self.conflict_path)
         if self.conflict_file_id is not None:
@@ -507,10 +752,24 @@ class DuplicateEntry(HandledPathConflict):
     format = "Conflict adding file %(conflict_path)s.  %(action)s %(path)s."
 
     def action_take_this(self, tree):
+        """Resolve the conflict by keeping 'this' entry.
+
+        Removes the conflicting entry and renames 'this' entry to the conflict path.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         tree.remove([self.conflict_path], force=True, keep_files=False)
         tree.rename_one(self.path, self.conflict_path)
 
     def action_take_other(self, tree):
+        """Resolve the conflict by keeping the 'other' entry.
+
+        Removes 'this' entry, leaving the conflicting entry in place.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         tree.remove([self.path], force=True, keep_files=False)
 
 
@@ -531,10 +790,20 @@ class ParentLoop(HandledPathConflict):
     format = "Conflict moving %(path)s into %(conflict_path)s. %(action)s."
 
     def action_take_this(self, tree):
+        """Accept the Breezy proposal for resolving the parent loop.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         # just acccept brz proposal
         pass
 
     def action_take_other(self, tree):
+        """Resolve the parent loop by swapping the paths.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         with tree.transform() as tt:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
@@ -562,9 +831,19 @@ class UnversionedParent(HandledConflict):
     # conflict shouldn't exist (the long story is that the conflict is
     # generated with another one that can be resolved properly) -- vila 091224
     def action_take_this(self, tree):
+        """Accept 'this' version (no-op for unversioned parent conflicts).
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         pass
 
     def action_take_other(self, tree):
+        """Accept 'other' version (no-op for unversioned parent conflicts).
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         pass
 
 
@@ -580,9 +859,19 @@ class MissingParent(HandledConflict):
     format = "Conflict adding files to %(path)s.  %(action)s."
 
     def action_take_this(self, tree):
+        """Remove the files that were added to the missing directory.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         tree.remove([self.path], force=True, keep_files=False)
 
     def action_take_other(self, tree):
+        """Accept the Breezy proposal (keep the added files).
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         # just acccept brz proposal
         pass
 
@@ -601,10 +890,20 @@ class DeletingParent(HandledConflict):
     # MissingParent from the *user* pov.
 
     def action_take_this(self, tree):
+        """Accept the Breezy proposal (keep the directory with its contents).
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         # just acccept brz proposal
         pass
 
     def action_take_other(self, tree):
+        """Delete the directory and all its contents.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+        """
         tree.remove([self.path], force=True, keep_files=False)
 
 
@@ -620,6 +919,14 @@ class NonDirectoryParent(HandledConflict):
     # FIXME: .OTHER should be used instead of .new when the conflict is created
 
     def action_take_this(self, tree):
+        """Keep the non-directory and remove the .new directory.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: If the path doesn't end with .new.
+        """
         # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith(".new"):
             conflict_path = self.path[: -(len(".new"))]
@@ -629,6 +936,14 @@ class NonDirectoryParent(HandledConflict):
             raise NotImplementedError(self.action_take_this)
 
     def action_take_other(self, tree):
+        """Replace the non-directory with the .new directory.
+
+        Args:
+            tree: The tree where the conflict should be resolved.
+
+        Raises:
+            NotImplementedError: If the path doesn't end with .new.
+        """
         # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith(".new"):
             conflict_path = self.path[: -(len(".new"))]
@@ -642,7 +957,11 @@ ctype = {}
 
 
 def register_types(*conflict_types):
-    """Register a Conflict subclass for serialization purposes."""
+    """Register Conflict subclasses for serialization purposes.
+
+    Args:
+        *conflict_types: One or more Conflict subclasses to register.
+    """
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type
