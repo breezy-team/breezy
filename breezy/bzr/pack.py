@@ -50,34 +50,64 @@ class UnknownContainerFormatError(ContainerError):
 
 
 class UnexpectedEndOfContainerError(ContainerError):
+    """Exception raised when container stream ends unexpectedly."""
+
     _fmt = "Unexpected end of container stream"
 
 
 class UnknownRecordTypeError(ContainerError):
+    """Exception raised when encountering unknown record type."""
+
     _fmt = "Unknown record type: %(record_type)r"
 
     def __init__(self, record_type):
+        """Initialize UnknownRecordTypeError.
+
+        Args:
+            record_type: The unknown record type encountered.
+        """
         self.record_type = record_type
 
 
 class InvalidRecordError(ContainerError):
+    """Exception raised when a record is invalid."""
+
     _fmt = "Invalid record: %(reason)s"
 
     def __init__(self, reason):
+        """Initialize InvalidRecordError.
+
+        Args:
+            reason: The reason the record is invalid.
+        """
         self.reason = reason
 
 
 class ContainerHasExcessDataError(ContainerError):
+    """Exception raised when container has excess data after end marker."""
+
     _fmt = "Container has data after end marker: %(excess)r"
 
     def __init__(self, excess):
+        """Initialize ContainerHasExcessDataError.
+
+        Args:
+            excess: The excess data found after end marker.
+        """
         self.excess = excess
 
 
 class DuplicateRecordNameError(ContainerError):
+    """Exception raised when container has duplicate record names."""
+
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
+        """Initialize DuplicateRecordNameError.
+
+        Args:
+            name: The duplicate record name.
+        """
         self.name = name.decode("utf-8")
 
 
@@ -179,6 +209,11 @@ class ContainerWriter:
         self.write_func(self._serialiser.begin())
 
     def write_func(self, bytes):
+        """Write bytes to the container.
+
+        Args:
+            bytes: The bytes to write.
+        """
         self._write_func(bytes)
         self.current_offset += len(bytes)
 
