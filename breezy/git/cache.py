@@ -33,8 +33,13 @@ from ..transport import FileExists, NoSuchFile, get_transport_from_path
 
 
 def get_remote_cache_transport(repository):
-    """Retrieve the transport to use when accessing (unwritable) remote
-    repositories.
+    """Retrieve the transport to use when accessing (unwritable) remote repositories.
+
+    Args:
+        repository: Repository object to get cache transport for.
+
+    Returns:
+        Transport object for cache access.
     """
     uuid = getattr(repository, "uuid", None)
     if uuid is None:
@@ -50,7 +55,11 @@ _mapdbs = threading.local()
 
 
 def mapdbs():
-    """Get a cache for this thread's db connections."""
+    """Get a cache for this thread's database connections.
+
+    Returns:
+        dict: Dictionary cache for database connections in current thread.
+    """
     try:
         return _mapdbs.cache
     except AttributeError:
@@ -59,7 +68,11 @@ def mapdbs():
 
 
 class GitShaMap:
-    """Git<->Bzr revision id mapping database."""
+    """Abstract base class for Git SHA to Bazaar revision ID mapping databases.
+
+    This class defines the interface for mapping Git SHAs to Bazaar revision data
+    and vice versa.
+    """
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -74,82 +87,167 @@ class GitShaMap:
     def lookup_blob_id(self, file_id, revision):
         """Retrieve a Git blob SHA by file id.
 
-        :param file_id: File id of the file/symlink
-        :param revision: revision in which the file was last changed.
+        Args:
+            file_id: File id of the file/symlink.
+            revision: Revision in which the file was last changed.
+
+        Returns:
+            Git blob SHA as bytes.
         """
         raise NotImplementedError(self.lookup_blob_id)
 
     def lookup_tree_id(self, file_id, revision):
-        """Retrieve a Git tree SHA by file id."""
+        """Retrieve a Git tree SHA by file id.
+
+        Args:
+            file_id: File ID to look up.
+            revision: Revision to look up tree in.
+
+        Returns:
+            Git tree SHA as bytes.
+        """
         raise NotImplementedError(self.lookup_tree_id)
 
     def lookup_commit(self, revid):
-        """Retrieve a Git commit SHA by Bazaar revision id."""
+        """Retrieve a Git commit SHA by Bazaar revision id.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            Git commit SHA as bytes.
+        """
         raise NotImplementedError(self.lookup_commit)
 
     def revids(self):
-        """List the revision ids known."""
+        """List the revision ids known.
+
+        Returns:
+            Iterator of revision IDs.
+        """
         raise NotImplementedError(self.revids)
 
     def missing_revisions(self, revids):
-        """Return set of all the revisions that are not present."""
+        """Return set of all the revisions that are not present.
+
+        Args:
+            revids: Collection of revision IDs to check.
+
+        Returns:
+            set: Set of revision IDs that are missing from the cache.
+        """
         present_revids = set(self.revids())
         if not isinstance(revids, set):
             revids = set(revids)
         return revids - present_revids
 
     def sha1s(self):
-        """List the SHA1s."""
+        """List the SHA1s.
+
+        Returns:
+            Iterator of Git SHA1s as bytes.
+        """
         raise NotImplementedError(self.sha1s)
 
     def start_write_group(self):
-        """Start writing changes."""
+        """Start writing changes.
+
+        Begin a write transaction for batch updates.
+        """
 
     def commit_write_group(self):
-        """Commit any pending changes."""
+        """Commit any pending changes.
+
+        Commits all changes made since the last start_write_group call.
+        """
 
     def abort_write_group(self):
-        """Abort any pending changes."""
+        """Abort any pending changes.
+
+        Discards all changes made since the last start_write_group call.
+        """
 
 
 class ContentCache:
-    """Object that can cache Git objects."""
+    """Abstract base class for caching Git objects.
+
+    Provides an interface for storing and retrieving Git objects by their SHA.
+    """
 
     def add(self, object):
-        """Add an object."""
+        """Add an object to the cache.
+
+        Args:
+            object: Git object to add.
+        """
         raise NotImplementedError(self.add)
 
     def add_multi(self, objects):
-        """Add multiple objects."""
+        """Add multiple objects to the cache.
+
+        Args:
+            objects: Iterable of Git objects to add.
+        """
         for obj in objects:
             self.add(obj)
 
     def __getitem__(self, sha):
-        """Retrieve an item, by SHA."""
+        """Retrieve an item by SHA.
+
+        Args:
+            sha: Git SHA to retrieve.
+
+        Returns:
+            Git object corresponding to the SHA.
+
+        Raises:
+            KeyError: If the SHA is not found in cache.
+        """
         raise NotImplementedError(self.__getitem__)
 
 
 class BzrGitCacheFormat:
-    """Bazaar-Git Cache Format."""
+    """Abstract base class for Bazaar-Git cache formats.
+
+    Defines the interface for different storage formats of the Git SHA mapping cache.
+    """
 
     def get_format_string(self):
-        """Return a single-line unique format string for this cache format."""
+        """Return a single-line unique format string for this cache format.
+
+        Returns:
+            bytes: Format identification string.
+        """
         raise NotImplementedError(self.get_format_string)
 
     def open(self, transport):
-        """Open this format on a transport."""
+        """Open this format on a transport.
+
+        Args:
+            transport: Transport to open cache on.
+
+        Returns:
+            BzrGitCache instance.
+        """
         raise NotImplementedError(self.open)
 
     def initialize(self, transport):
-        """Create a new instance of this cache format at transport."""
+        """Create a new instance of this cache format at transport.
+
+        Args:
+            transport: Transport to initialize cache on.
+        """
         transport.put_bytes("format", self.get_format_string())
 
     @classmethod
     def from_transport(self, transport):
         """Open a cache file present on a transport, or initialize one.
 
-        :param transport: Transport to use
-        :return: A BzrGitCache instance
+        Args:
+            transport: Transport to use.
+
+        Returns:
+            BzrGitCache instance.
         """
         try:
             format_name = transport.get_bytes("format")
@@ -167,8 +265,11 @@ class BzrGitCacheFormat:
         use the users global cache directory if the repository has no
         transport associated with it.
 
-        :param repository: Repository to open the cache for
-        :return: A `BzrGitCache`
+        Args:
+            repository: Repository to open the cache for.
+
+        Returns:
+            BzrGitCache instance.
         """
         from ..transport.local import LocalTransport
 
@@ -192,7 +293,10 @@ class BzrGitCacheFormat:
 
 
 class CacheUpdater:
-    """Base class for objects that can update a bzr-git cache."""
+    """Abstract base class for objects that can update a bzr-git cache.
+
+    Provides interface for adding objects to the cache during revision processing.
+    """
 
     def add_object(self, obj, bzr_key_data, path):
         """Add an object.
@@ -205,31 +309,65 @@ class CacheUpdater:
         raise NotImplementedError(self.add_object)
 
     def finish(self):
+        """Complete the cache update operation.
+
+        Returns:
+            The commit object that was added.
+        """
         raise NotImplementedError(self.finish)
 
 
 class BzrGitCache:
-    """Caching backend."""
+    """Main caching backend for Git SHA to Bazaar mappings.
+
+    Combines an ID mapping database with a cache updater for managing
+    the cache lifecycle.
+    """
 
     def __init__(self, idmap, cache_updater_klass):
+        """Initialize BzrGitCache.
+
+        Args:
+            idmap: GitShaMap instance for storing mappings.
+            cache_updater_klass: Class to use for cache updates.
+        """
         self.idmap = idmap
         self._cache_updater_klass = cache_updater_klass
 
     def get_updater(self, rev):
-        """Update an object that implements the CacheUpdater interface for
-        updating this cache.
+        """Create an object that implements the CacheUpdater interface for updating this cache.
+
+        Args:
+            rev: Revision object to create updater for.
+
+        Returns:
+            CacheUpdater instance for the given revision.
         """
         return self._cache_updater_klass(self, rev)
 
 
 def DictBzrGitCache():
+    """Create a dictionary-based BzrGitCache for testing.
+
+    Returns:
+        BzrGitCache instance using in-memory dictionary storage.
+    """
     return BzrGitCache(DictGitShaMap(), DictCacheUpdater)
 
 
 class DictCacheUpdater(CacheUpdater):
-    """Cache updater for dict-based caches."""
+    """Cache updater for dictionary-based caches.
+
+    Used primarily for testing, stores cache data in memory dictionaries.
+    """
 
     def __init__(self, cache, rev):
+        """Initialize DictCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
@@ -269,9 +407,13 @@ class DictCacheUpdater(CacheUpdater):
 
 
 class DictGitShaMap(GitShaMap):
-    """Git SHA map that uses a dictionary."""
+    """Git SHA map implementation using in-memory dictionaries.
+
+    Used primarily for testing, stores all mappings in memory dictionaries.
+    """
 
     def __init__(self):
+        """Initialize DictGitShaMap with empty dictionaries."""
         self._by_sha = {}
         self._by_fileid = {}
         self._by_revid = {}
@@ -349,10 +491,20 @@ class SqliteCacheUpdater(CacheUpdater):
 
 
 def SqliteBzrGitCache(p):
+    """Create a SQLite-based BzrGitCache.
+
+    Args:
+        p: Path to SQLite database file.
+
+    Returns:
+        BzrGitCache instance using SQLite storage.
+    """
     return BzrGitCache(SqliteGitShaMap(p), SqliteCacheUpdater)
 
 
 class SqliteGitCacheFormat(BzrGitCacheFormat):
+    """Cache format using SQLite database storage."""
+
     def get_format_string(self):
         return b"bzr-git sha map version 1 using sqlite\n"
 
@@ -365,9 +517,18 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
 
 
 class SqliteGitShaMap(GitShaMap):
-    """Bazaar GIT Sha map that uses a sqlite database for storage."""
+    """Git SHA map implementation using SQLite database for storage.
+
+    Uses SQLite database with separate tables for commits, blobs, and trees
+    to provide persistent storage of Git SHA to Bazaar mappings.
+    """
 
     def __init__(self, path=None):
+        """Initialize SqliteGitShaMap.
+
+        Args:
+            path: Path to SQLite database file. If None, uses in-memory database.
+        """
         import sqlite3
 
         self.path = path
@@ -484,9 +645,18 @@ class SqliteGitShaMap(GitShaMap):
 
 
 class TdbCacheUpdater(CacheUpdater):
-    """Cache updater for tdb-based caches."""
+    """Cache updater for TDB-based caches.
+
+    Handles updates to Trivial Database (TDB) storage format.
+    """
 
     def __init__(self, cache, rev):
+        """Initialize TdbCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.db = cache.idmap.db
         self.revid = rev.revision_id
@@ -539,11 +709,22 @@ class TdbCacheUpdater(CacheUpdater):
 
 
 def TdbBzrGitCache(p):
+    """Create a TDB-based BzrGitCache.
+
+    Args:
+        p: Path to TDB database file.
+
+    Returns:
+        BzrGitCache instance using TDB storage.
+    """
     return BzrGitCache(TdbGitShaMap(p), TdbCacheUpdater)
 
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
-    """Cache format for tdb-based caches."""
+    """Cache format using Trivial Database (TDB) storage.
+
+    Uses TDB for fast key-value storage of Git SHA mappings.
+    """
 
     def get_format_string(self):
         return b"bzr-git sha map version 3 using tdb\n"
@@ -576,6 +757,11 @@ class TdbGitShaMap(GitShaMap):
     TDB_HASH_SIZE = 50000
 
     def __init__(self, path=None):
+        """Initialize TdbGitShaMap.
+
+        Args:
+            path: Path to TDB database file. If None, uses in-memory storage.
+        """
         import tdb
 
         self.path = path
@@ -600,15 +786,24 @@ class TdbGitShaMap(GitShaMap):
         self.db[b"version"] = b"%d" % self.TDB_MAP_VERSION
 
     def start_write_group(self):
-        """Start writing changes."""
+        """Start writing changes.
+
+        Begins a TDB transaction for batch updates.
+        """
         self.db.transaction_start()
 
     def commit_write_group(self):
-        """Commit any pending changes."""
+        """Commit any pending changes.
+
+        Commits the current TDB transaction.
+        """
         self.db.transaction_commit()
 
     def abort_write_group(self):
-        """Abort any pending changes."""
+        """Abort any pending changes.
+
+        Cancels the current TDB transaction.
+        """
         self.db.transaction_cancel()
 
     def __repr__(self):
@@ -672,7 +867,17 @@ class TdbGitShaMap(GitShaMap):
 
 
 class VersionedFilesContentCache(ContentCache):
+    """Content cache using Bazaar's versioned files storage.
+
+    Stores Git objects using Bazaar's versioned file format.
+    """
+
     def __init__(self, vf):
+        """Initialize VersionedFilesContentCache.
+
+        Args:
+            vf: VersionedFiles instance to store objects in.
+        """
         self._vf = vf
 
     def add(self, obj):
@@ -693,7 +898,18 @@ class VersionedFilesContentCache(ContentCache):
 
 
 class IndexCacheUpdater(CacheUpdater):
+    """Cache updater for index-based caches.
+
+    Updates Bazaar BTree index-based cache storage.
+    """
+
     def __init__(self, cache, rev):
+        """Initialize IndexCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
@@ -731,12 +947,24 @@ class IndexCacheUpdater(CacheUpdater):
 
 
 class IndexBzrGitCache(BzrGitCache):
+    """BzrGitCache implementation using Bazaar index storage.
+
+    Uses Bazaar's BTree index format for storing SHA mappings.
+    """
+
     def __init__(self, transport=None):
+        """Initialize IndexBzrGitCache.
+
+        Args:
+            transport: Transport to use for index storage.
+        """
         shamap = IndexGitShaMap(transport.clone("index"))
         super().__init__(shamap, IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
+    """Cache format using Bazaar BTree index storage with Git object cache."""
+
     def get_format_string(self):
         return b"bzr-git sha map with git object cache version 1\n"
 
@@ -764,6 +992,11 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
+        """Initialize IndexGitShaMap.
+
+        Args:
+            transport: Transport for index storage. If None, uses in-memory storage.
+        """
         self._name = None
         if transport is None:
             self._transport = None
@@ -797,6 +1030,11 @@ class IndexGitShaMap(GitShaMap):
             return f"{self.__class__.__name__}()"
 
     def repack(self):
+        """Repack the index by combining all index files into one.
+
+        Raises:
+            BzrError: If a write group is already active.
+        """
         if self._builder is not None:
             raise bzr_errors.BzrError("builder already open")
         self.start_write_group()
@@ -928,6 +1166,11 @@ formats.register("default", IndexGitCacheFormat())
 
 
 def migrate_ancient_formats(repo_transport):
+    """Migrate older cache formats to the current directory structure.
+
+    Args:
+        repo_transport: Transport for the repository.
+    """
     # Migrate older cache formats
     repo_transport = remove_readonly_transport_decorator(repo_transport)
     has_sqlite = repo_transport.has("git.db")
@@ -949,6 +1192,17 @@ def migrate_ancient_formats(repo_transport):
 
 
 def remove_readonly_transport_decorator(transport):
+    """Remove read-only decorator from transport if present.
+
+    Args:
+        transport: Transport to remove decorator from.
+
+    Returns:
+        Transport without read-only decorator.
+
+    Raises:
+        ReadOnlyError: If transport cannot be made writable.
+    """
     if transport.is_readonly():
         try:
             return transport._decorated
@@ -964,7 +1218,11 @@ def from_repository(repository):
     this will use a local file in the users cache directory
     (typically ~/.cache/bazaar/git/)
 
-    :param repository: A repository object
+    Args:
+        repository: A repository object.
+
+    Returns:
+        BzrGitCache instance for the repository.
     """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
