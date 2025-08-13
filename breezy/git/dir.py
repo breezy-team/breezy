@@ -138,6 +138,11 @@ class GitDir(ControlDir):
 
     @property
     def control_transport(self):
+        """Get the transport for accessing the control directory.
+
+        Returns:
+            Transport: The transport for the control directory.
+        """
         return self.transport
 
     def is_supported(self):
@@ -282,6 +287,26 @@ class GitDir(ControlDir):
         source_branch=None,
         create_tree_if_local=True,
     ):
+        """Create a copy of this repository and branch at the specified URL.
+
+        Args:
+            url: The URL where the new copy should be created.
+            revision_id: Specific revision to sprout to (None for latest).
+            force_new_repo: Whether to force creation of a new repository.
+            recurse: How to handle submodules ("down", "none").
+            possible_transports: List of transports that may be reused.
+            accelerator_tree: Tree to use for acceleration.
+            hardlink: Whether to use hardlinks when possible.
+            stacked: Whether to create a stacked branch (not supported for Git).
+            source_branch: Specific branch to sprout from.
+            create_tree_if_local: Whether to create a working tree for local URLs.
+
+        Returns:
+            ControlDir: The newly created control directory.
+
+        Raises:
+            UnstackableBranchFormat: If stacked=True (Git doesn't support stacking).
+        """
         from ..repository import InterRepository
         from ..transport import get_transport
         from ..transport.local import LocalTransport
@@ -601,17 +626,32 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     @property
     def repository_format(self):
+        """Get the repository format for this control directory.
+
+        Returns:
+            GitRepositoryFormat: The Git repository format.
+        """
         from .repository import GitRepositoryFormat
 
         return GitRepositoryFormat()
 
     @property
     def workingtree_format(self):
+        """Get the working tree format for this control directory.
+
+        Returns:
+            GitWorkingTreeFormat: The Git working tree format.
+        """
         from .workingtree import GitWorkingTreeFormat
 
         return GitWorkingTreeFormat()
 
     def get_branch_format(self):
+        """Get the branch format for this control directory.
+
+        Returns:
+            LocalGitBranchFormat: The local Git branch format.
+        """
         from .branch import LocalGitBranchFormat
 
         return LocalGitBranchFormat()
@@ -640,9 +680,22 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return LocalGitDir(transport, gitrepo, self)
 
     def get_format_description(self):
+        """Get a human-readable description of this format.
+
+        Returns:
+            str: Description of the format.
+        """
         return "Local Git Repository"
 
     def initialize_on_transport(self, transport):
+        """Initialize a new Git repository on the given transport.
+
+        Args:
+            transport: The transport where the repository should be created.
+
+        Returns:
+            LocalGitDir: The newly created Git control directory.
+        """
         from .transportgit import TransportRepo
 
         git_repo = TransportRepo.init(transport, bare=self.bare)
@@ -661,6 +714,26 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         shared_repo=False,
         vfs_only=False,
     ):
+        """Initialize a control directory with extended options.
+
+        Args:
+            transport: The transport where the repository should be created.
+            use_existing_dir: Whether to use an existing directory.
+            create_prefix: Whether to create parent directories.
+            force_new_repo: Whether to force creation of a new repository.
+            stacked_on: Location to stack on (not supported for Git).
+            stack_on_pwd: Working directory for relative stack_on paths.
+            repo_format_name: Name of repository format to use.
+            make_working_trees: Whether to create working trees.
+            shared_repo: Whether to create a shared repository.
+            vfs_only: Whether to use VFS-only access.
+
+        Returns:
+            tuple: (repository, controldir, requires_stacking, repository_policy)
+
+        Raises:
+            SharedRepositoriesUnsupported: If shared_repo=True.
+        """
         if shared_repo:
             raise brz_errors.SharedRepositoriesUnsupported(self)
 
@@ -692,9 +765,25 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return (result_repo, controldir, False, repository_policy)
 
     def is_supported(self):
+        """Check if this format is supported.
+
+        Returns:
+            bool: Always True for Git formats.
+        """
         return True
 
     def supports_transport(self, transport):
+        """Check if this format supports the given transport.
+
+        Args:
+            transport: The transport to check.
+
+        Returns:
+            bool: True if the transport uses the file:// scheme.
+
+        Raises:
+            NotBranchError: If the transport is not accessible.
+        """
         try:
             external_url = transport.external_url()
         except brz_errors.InProcessTransport as err:
@@ -762,10 +851,20 @@ class LocalGitDir(GitDir):
 
     @property
     def user_transport(self):
+        """Get the user transport for this control directory.
+
+        Returns:
+            Transport: The transport for user-accessible files.
+        """
         return self.root_transport
 
     @property
     def control_transport(self):
+        """Get the transport for accessing the control directory.
+
+        Returns:
+            Transport: The transport for the .git directory.
+        """
         return self._git._controltransport
 
     def __init__(self, transport, gitrepo, format):
@@ -905,6 +1004,18 @@ class LocalGitDir(GitDir):
         return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
+        """Get the transport for a branch.
+
+        Args:
+            branch_format: The branch format (must be Git-compatible).
+            name: Name of the branch (unused for Git).
+
+        Returns:
+            Transport: The transport for accessing the branch.
+
+        Raises:
+            IncompatibleFormat: If the branch format is not Git-compatible.
+        """
         if branch_format is None:
             return self.transport
         if isinstance(branch_format, LocalGitControlDirFormat):
@@ -912,6 +1023,17 @@ class LocalGitDir(GitDir):
         raise brz_errors.IncompatibleFormat(branch_format, self._format)
 
     def get_repository_transport(self, format):
+        """Get the transport for a repository.
+
+        Args:
+            format: The repository format (must be Git-compatible).
+
+        Returns:
+            Transport: The transport for accessing the repository.
+
+        Raises:
+            IncompatibleFormat: If the repository format is not Git-compatible.
+        """
         if format is None:
             return self.transport
         if isinstance(format, LocalGitControlDirFormat):
@@ -919,6 +1041,17 @@ class LocalGitDir(GitDir):
         raise brz_errors.IncompatibleFormat(format, self._format)
 
     def get_workingtree_transport(self, format):
+        """Get the transport for a working tree.
+
+        Args:
+            format: The working tree format (must be Git-compatible).
+
+        Returns:
+            Transport: The transport for accessing the working tree.
+
+        Raises:
+            IncompatibleFormat: If the working tree format is not Git-compatible.
+        """
         if format is None:
             return self.transport
         if isinstance(format, LocalGitControlDirFormat):
@@ -934,7 +1067,23 @@ class LocalGitDir(GitDir):
         possible_transports=None,
         nascent_ok=False,
     ):
-        """'create' a branch for this dir."""
+        """Open a branch in this control directory.
+
+        Args:
+            name: Name of the branch to open (None for default).
+            unsupported: Whether to allow unsupported branch formats.
+            ignore_fallbacks: Whether to ignore fallback locations.
+            ref: Specific Git ref to open as a branch.
+            possible_transports: List of transports that may be reused.
+            nascent_ok: Whether to allow opening non-existent branches.
+
+        Returns:
+            LocalGitBranch: The opened branch.
+
+        Raises:
+            NotBranchError: If the branch doesn't exist and nascent_ok=False.
+            BranchReferenceLoop: If there's a reference loop.
+        """
         repo = self.find_repository()
         from .branch import LocalGitBranch
 
@@ -949,6 +1098,15 @@ class LocalGitDir(GitDir):
         return LocalGitBranch(controldir, repo, ref_chain[-1])
 
     def destroy_branch(self, name=None):
+        """Destroy a branch in this control directory.
+
+        Args:
+            name: Name of the branch to destroy (None for current).
+
+        Raises:
+            UnsupportedOperation: If trying to destroy HEAD.
+            NotBranchError: If the branch doesn't exist.
+        """
         refname = self._get_selected_ref(name)
         if refname == b"HEAD":
             # HEAD can't be removed
@@ -961,19 +1119,49 @@ class LocalGitDir(GitDir):
             ) from err
 
     def destroy_repository(self):
+        """Destroy the repository in this control directory.
+
+        Raises:
+            UnsupportedOperation: Always (Git repositories can't be destroyed separately).
+        """
         raise brz_errors.UnsupportedOperation(self.destroy_repository, self)
 
     def destroy_workingtree(self):
+        """Destroy the working tree in this control directory.
+
+        Raises:
+            UnsupportedOperation: Always (Git working trees can't be destroyed separately).
+        """
         raise brz_errors.UnsupportedOperation(self.destroy_workingtree, self)
 
     def destroy_workingtree_metadata(self):
+        """Destroy working tree metadata in this control directory.
+
+        Raises:
+            UnsupportedOperation: Always (Git working tree metadata can't be destroyed separately).
+        """
         raise brz_errors.UnsupportedOperation(self.destroy_workingtree_metadata, self)
 
     def needs_format_conversion(self, format=None):
+        """Check if this control directory needs format conversion.
+
+        Args:
+            format: The target format to check against.
+
+        Returns:
+            bool: True if conversion is needed.
+        """
         return not isinstance(self._format, format.__class__)
 
     def open_repository(self):
-        """'open' a repository for this dir."""
+        """Open the repository in this control directory.
+
+        Returns:
+            GitRepository: The opened Git repository.
+
+        Raises:
+            NoRepositoryPresent: If there's a commondir file (worktree setup).
+        """
         if self.control_transport.has("commondir"):
             raise brz_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)
@@ -1009,6 +1197,17 @@ class LocalGitDir(GitDir):
         raise brz_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
+        """Create a repository in this control directory.
+
+        Args:
+            shared: Whether to create a shared repository (not supported for Git).
+
+        Returns:
+            GitRepository: The Git repository (already exists).
+
+        Raises:
+            IncompatibleFormat: If shared=True.
+        """
         from .repository import GitRepositoryFormat
 
         if shared:
@@ -1018,6 +1217,20 @@ class LocalGitDir(GitDir):
     def create_branch(
         self, name=None, repository=None, append_revisions_only=None, ref=None
     ):
+        """Create a new branch in this control directory.
+
+        Args:
+            name: Name of the branch to create (None for default).
+            repository: Repository to use (ignored, uses existing).
+            append_revisions_only: Whether the branch should be append-only.
+            ref: Specific Git ref to use for the branch.
+
+        Returns:
+            LocalGitBranch: The newly created branch.
+
+        Raises:
+            AlreadyBranchError: If the branch already exists.
+        """
         refname = self._get_selected_ref(name, ref)
         if refname != b"HEAD" and refname in self._git.refs:
             raise brz_errors.AlreadyBranchError(self.user_url)
@@ -1034,6 +1247,12 @@ class LocalGitDir(GitDir):
         return branch
 
     def backup_bzrdir(self):
+        """Create a backup of this control directory.
+
+        Returns:
+            tuple or None: (original_path, backup_path) if non-bare repository,
+            None if bare repository.
+        """
         if not self._git.bare:
             self.root_transport.copy_tree(".git", ".git.backup")
             return (
@@ -1048,6 +1267,20 @@ class LocalGitDir(GitDir):
     def create_workingtree(
         self, revision_id=None, from_branch=None, accelerator_tree=None, hardlink=False
     ):
+        """Create a working tree in this control directory.
+
+        Args:
+            revision_id: Revision to check out (None for branch tip).
+            from_branch: Branch to create the working tree from.
+            accelerator_tree: Tree to use for acceleration (unused).
+            hardlink: Whether to use hardlinks (unused).
+
+        Returns:
+            GitWorkingTree: The newly created working tree.
+
+        Raises:
+            UnsupportedOperation: If this is a bare repository.
+        """
         if self._git.bare:
             raise brz_errors.UnsupportedOperation(self.create_workingtree, self)
         if from_branch is None:
@@ -1063,6 +1296,14 @@ class LocalGitDir(GitDir):
         return wt
 
     def _find_or_create_repository(self, force_new_repo=None):
+        """Find or create a repository for this control directory.
+
+        Args:
+            force_new_repo: Whether to force creation (ignored for Git).
+
+        Returns:
+            GitRepository: The existing Git repository.
+        """
         return self.create_repository(shared=False)
 
     def _find_creation_modes(self):
