@@ -348,6 +348,14 @@ class ConfigObj(configobj.ConfigObj):
     if _has_triplequote_bug():
 
         def _get_triple_quote(self, value):
+            """Work around ConfigObj triple quote bug.
+
+            Args:
+                value: The value to determine triple quote style for.
+
+            Returns:
+                The corrected triple quote string.
+            """
             quot = super()._get_triple_quote(value)
             if quot == configobj.tdquot:
                 return configobj.tsquot
@@ -696,6 +704,11 @@ class Config:
         return self._get_nickname()
 
     def _get_nickname(self):
+        """Get the nickname for this configuration.
+
+        Returns:
+            None in the base implementation.
+        """
         return None
 
     def get_bzr_remote_path(self):
@@ -1209,6 +1222,11 @@ class LockableConfig(IniBasedConfig):
             super().remove_user_option(option_name, section_name)
 
     def _write_config_file(self):
+        """Write the configuration file to disk with lock validation.
+
+        Raises:
+            ObjectNotLocked: If no write lock is held.
+        """
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a
             # missing call to lock_write() by one of the callers.
@@ -1220,6 +1238,7 @@ class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
     def __init__(self):
+        """Initialize global configuration with default config path."""
         super().__init__(file_name=bedding.config_path())
 
     def config_id(self):
@@ -1371,6 +1390,11 @@ class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
+        """Initialize location configuration for a specific location.
+
+        Args:
+            location: The location to configure. File URLs are converted to local paths.
+        """
         super().__init__(file_name=bedding.locations_config_path())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
@@ -1490,6 +1514,11 @@ class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
     def __init__(self, branch):
+        """Initialize branch configuration.
+
+        Args:
+            branch: The branch to configure.
+        """
         super().__init__()
         self._location_config = None
         self._branch_data_config = None
@@ -1502,15 +1531,30 @@ class BranchConfig(Config):
         )
 
     def config_id(self):
+        """Return the configuration ID for branch configuration.
+
+        Returns:
+            String identifier "branch".
+        """
         return "branch"
 
     def _get_branch_data_config(self):
+        """Get the branch data configuration.
+
+        Returns:
+            TreeConfig instance for this branch.
+        """
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
             self._branch_data_config.config_id = self.config_id
         return self._branch_data_config
 
     def _get_location_config(self):
+        """Get the location configuration for this branch.
+
+        Returns:
+            LocationConfig instance for the branch's base location.
+        """
         if self._location_config is None:
             if self.branch.base is None:
                 self.branch.base = "memory://"
@@ -1518,6 +1562,11 @@ class BranchConfig(Config):
         return self._location_config
 
     def _get_global_config(self):
+        """Get the global configuration.
+
+        Returns:
+            GlobalConfig instance.
+        """
         if self._global_config is None:
             self._global_config = GlobalConfig()
         return self._global_config
@@ -1558,6 +1607,11 @@ class BranchConfig(Config):
         return self._get_best_value("_get_user_id")
 
     def _get_change_editor(self):
+        """Get the best change editor configuration from available sources.
+
+        Returns:
+            The configured change editor command string, or None if not configured.
+        """
         return self._get_best_value("_get_change_editor")
 
     def _get_signature_checking(self):
@@ -1582,6 +1636,14 @@ class BranchConfig(Config):
             yield from source()._get_sections(name)
 
     def _get_options(self, sections=None):
+        """Get options from location and branch configurations.
+
+        Args:
+            sections: List of sections to search, defaults to all sections.
+
+        Yields:
+            Tuples of (name, value, section, config_id) for each option.
+        """
         # First the locations options
         yield from self._get_location_config()._get_options()
         # Then the branch options
@@ -1604,6 +1666,14 @@ class BranchConfig(Config):
         yield from self._get_global_config()._get_options()
 
     def set_user_option(self, name, value, store=STORE_BRANCH, warn_masked=False):
+        """Set a user option in the appropriate configuration store.
+
+        Args:
+            name: Option name to set.
+            value: Value to set for the option.
+            store: Configuration store to use (branch, global, or location).
+            warn_masked: Whether to warn if the option is masked by location config.
+        """
         if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
         elif store == STORE_GLOBAL:
@@ -1632,6 +1702,12 @@ class BranchConfig(Config):
                         )
 
     def remove_user_option(self, option_name, section_name=None):
+        """Remove a user option from the branch data configuration.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section the option is in, defaults to None.
+        """
         self._get_branch_data_config().remove_option(option_name, section_name)
 
     def _post_commit(self):
@@ -1639,6 +1715,11 @@ class BranchConfig(Config):
         return self._get_safe_value("_post_commit")
 
     def _get_nickname(self):
+        """Get the nickname for this branch configuration.
+
+        Returns:
+            The explicit nickname if configured, branch name, or derived from base URL.
+        """
         value = self._get_explicit_nickname()
         if value is not None:
             return value
@@ -1651,6 +1732,11 @@ class BranchConfig(Config):
         return self._get_explicit_nickname() is not None
 
     def _get_explicit_nickname(self):
+        """Get the explicitly configured nickname from config sources.
+
+        Returns:
+            The explicitly configured nickname, or None if not set.
+        """
         return self._get_best_value("_get_nickname")
 
     def _log_format(self):
@@ -1700,10 +1786,23 @@ class TreeConfig(IniBasedConfig):
     # -- mbp 20080507
 
     def __init__(self, branch):
+        """Initialize tree configuration for a branch.
+
+        Args:
+            branch: The branch to get configuration from.
+        """
         self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):
+        """Get the configuration parser.
+
+        Args:
+            file: Optional file to parse, if None use branch config.
+
+        Returns:
+            ConfigObj parser instance.
+        """
         if file is not None:
             return IniBasedConfig._get_parser(file)
         return self._config._get_configobj()
@@ -1753,6 +1852,11 @@ class AuthenticationConfig:
     """
 
     def __init__(self, _file=None):
+        """Initialize authentication configuration.
+
+        Args:
+            _file: Optional file path or content for testing, defaults to system path.
+        """
         self._config = None  # The ConfigObj
         if _file is None:
             self._input = self._filename = bedding.authentication_config_path()
@@ -1763,6 +1867,15 @@ class AuthenticationConfig:
             self._input = _file
 
     def _get_config(self):
+        """Get or create the configuration object.
+
+        Returns:
+            ConfigObj instance for the authentication configuration.
+
+        Raises:
+            ParseConfigError: If the config file cannot be parsed.
+            ConfigContentError: If the config file has encoding issues.
+        """
         if self._config is not None:
             return self._config
         try:
@@ -2290,6 +2403,12 @@ class TransportConfig:
     """
 
     def __init__(self, transport, filename):
+        """Initialize transport-based configuration.
+
+        Args:
+            transport: Transport instance for accessing the config file.
+            filename: Name of the configuration file.
+        """
         self._transport = transport
         self._filename = filename
 
@@ -2349,6 +2468,11 @@ class TransportConfig:
         self._set_configobj(configobj)
 
     def _get_config_file(self):
+        """Get the configuration file content.
+
+        Returns:
+            File-like object containing the configuration data.
+        """
         try:
             f = BytesIO(self._transport.get_bytes(self._filename))
             for hook in OldConfigHooks["load"]:
@@ -2366,9 +2490,23 @@ class TransportConfig:
             return BytesIO()
 
     def _external_url(self):
+        """Get the external URL of the configuration file.
+
+        Returns:
+            String URL of the configuration file.
+        """
         return urlutils.join(self._transport.external_url(), self._filename)
 
     def _get_configobj(self):
+        """Parse the configuration file and return a ConfigObj.
+
+        Returns:
+            ConfigObj instance containing the parsed configuration.
+
+        Raises:
+            ParseConfigError: If the config file cannot be parsed.
+            ConfigContentError: If the config file has encoding issues.
+        """
         f = self._get_config_file()
         try:
             try:
@@ -2382,6 +2520,11 @@ class TransportConfig:
         return conf
 
     def _set_configobj(self, configobj):
+        """Save a ConfigObj to the configuration file.
+
+        Args:
+            configobj: ConfigObj instance to save.
+        """
         out_file = BytesIO()
         configobj.write(out_file)
         out_file.seek(0)
@@ -2480,6 +2623,11 @@ class Option:
 
     @property
     def help(self):
+        """Get the help text for this option.
+
+        Returns:
+            The help text string.
+        """
         return self._help
 
     def convert_from_unicode(self, store, unicode_value):
@@ -2759,6 +2907,11 @@ class RegistryOption(Option):
 
     @property
     def help(self):
+        """Get extended help text including supported values.
+
+        Returns:
+            Help text with all supported registry values listed.
+        """
         ret = [self._help, "\n\nThe following values are supported:\n"]
         for key in self.registry.keys():
             ret.append(f" {key} - {self.registry.get_help(key)}\n")
@@ -3442,6 +3595,11 @@ class Store:
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
+        """Check if the store has changes that need to be saved.
+
+        Returns:
+            True if there are unsaved changes, False otherwise.
+        """
         return any(s.orig for s in self.dirty_sections.values())
 
     def apply_changes(self, dirty_sections):
@@ -3505,6 +3663,11 @@ class CommandLineStore(Store):
     """A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
+        """Initialize command line store.
+
+        Args:
+            opts: Optional dictionary of command line options.
+        """
         super().__init__()
         if opts is None:
             opts = {}
@@ -3512,10 +3675,16 @@ class CommandLineStore(Store):
         self.id = "cmdline"
 
     def _reset(self):
+        """Reset the command line options."""
         # The dict should be cleared but not replaced so it can be shared.
         self.options.clear()
 
     def _from_cmdline(self, overrides):
+        """Load configuration from command line overrides.
+
+        Args:
+            overrides: List of command line option overrides.
+        """
         # Reset before accepting new definitions
         self._reset()
         for over in overrides:
