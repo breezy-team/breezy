@@ -39,12 +39,19 @@ if TYPE_CHECKING:
 
 
 class LineEndingError(errors.BzrError):
+    """Exception raised when line ending corruption is detected."""
+
     _fmt = (
         "Line ending corrupted for file: %(file)s; "
         "Maybe your files got corrupted in transport?"
     )
 
     def __init__(self, file):
+        """Create a LineEndingError exception.
+
+        Args:
+            file: The file that has corrupted line endings.
+        """
         self.file = file
 
 
@@ -58,6 +65,7 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return 10
 
     @classmethod
@@ -92,6 +100,7 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known .bzr formats."""
         result = []
         for _name, format in cls.formats.items():
             if callable(format):
@@ -108,6 +117,7 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return -10
 
     @classmethod
@@ -142,6 +152,7 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known remote formats."""
         from .remote import RemoteBzrDirFormat
 
         return [RemoteBzrDirFormat()]

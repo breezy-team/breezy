@@ -40,6 +40,8 @@ def as_tuples(obj):
 
 
 class cmd_dump_btree(Command):
+    """Command to dump btree index file contents."""
+
     __doc__ = """Dump the contents of a btree index file to stdout.
 
     PATH is a btree index file, it can be any URL. This includes things like
@@ -65,6 +67,7 @@ class cmd_dump_btree(Command):
     ]
 
     def run(self, path, raw=False):
+        """Execute the btree dump command."""
         dirname, basename = osutils.split(path)
         t = transport.get_transport(dirname)
         if raw:
@@ -137,6 +140,8 @@ class cmd_dump_btree(Command):
 
 
 class cmd_file_id(Command):
+    """Command to print file_id of a file or directory."""
+
     __doc__ = """Print file_id of a particular file or directory.
 
     The file_id is assigned when the file is first added and remains the
@@ -150,6 +155,7 @@ class cmd_file_id(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the file_id command."""
         tree, relpath = WorkingTree.open_containing(filename)
         file_id = tree.path2id(relpath)
         if file_id is None:
@@ -159,6 +165,8 @@ class cmd_file_id(Command):
 
 
 class cmd_file_path(Command):
+    """Command to print path of file_ids to a file or directory."""
+
     __doc__ = """Print path of file_ids to a file or directory.
 
     This prints one line for each directory down to the target,
@@ -170,6 +178,7 @@ class cmd_file_path(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the file_path command."""
         tree, relpath = WorkingTree.open_containing(filename)
         fid = tree.path2id(relpath)
         if fid is None:

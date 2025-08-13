@@ -250,9 +250,17 @@ ERROR_DIRECTORY = 267
 
 
 class DirstateCorrupt(errors.BzrError):
+    """Exception raised when a dirstate file is corrupt."""
+
     _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
 
     def __init__(self, state, msg):
+        """Create a DirstateCorrupt exception.
+
+        Args:
+            state: The dirstate that is corrupt.
+            msg: Error message describing the corruption.
+        """
         errors.BzrError.__init__(self)
         self.state = state
         self.msg = msg
@@ -403,6 +411,7 @@ class DirState:
         self._use_filesystem_for_exec = use_filesystem_for_exec
 
     def __repr__(self):
+        """Return string representation of the dirstate."""
         return f"{self.__class__.__name__}({self._filename!r})"
 
     def _mark_modified(self, hash_changed_entries=None, header_modified=False):
@@ -3552,6 +3561,8 @@ def py_update_entry(
 
 
 class ProcessEntryPython:
+    """Python implementation for processing directory state entries."""
+
     __slots__ = [
         "include_unchanged",
         "last_source_parent",
@@ -3584,6 +3595,18 @@ class ProcessEntryPython:
         want_unversioned,
         tree,
     ):
+        """Initialize the ProcessEntryPython.
+
+        Args:
+            include_unchanged: Whether to include unchanged entries.
+            use_filesystem_for_exec: Whether to use filesystem for executable checks.
+            search_specific_files: Specific files to search for.
+            state: The dirstate being processed.
+            source_index: Index of the source tree.
+            target_index: Index of the target tree.
+            want_unversioned: Whether to include unversioned files.
+            tree: The tree object.
+        """
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Are we doing a partial iter_changes?
@@ -3911,6 +3934,7 @@ class ProcessEntryPython:
         return None, None
 
     def __iter__(self):
+        """Return iterator for processing entries."""
         return self
 
     def _gather_result_for_consistency(self, result):

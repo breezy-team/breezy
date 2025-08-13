@@ -27,6 +27,8 @@ load_tests = load_tests_apply_scenarios
 
 
 class TestBzrlibVersioning(tests.TestCase):
+    """Test version information reporting functionality."""
+
     def test_get_brz_source_tree(self):
         """Get tree for bzr source, if any."""
         self.permit_source_tree_branch_repo()
@@ -42,6 +44,7 @@ class TestBzrlibVersioning(tests.TestCase):
             self.assertIsInstance(src_tree, workingtree.WorkingTree)
 
     def test_python_binary_path(self):
+        """Test that version output includes valid Python interpreter path."""
         self.permit_source_tree_branch_repo()
         sio = StringIO()
         version.show_version(show_config=False, show_copyright=False, to_file=sio)
@@ -52,16 +55,20 @@ class TestBzrlibVersioning(tests.TestCase):
 
 
 class TestPlatformUse(tests.TestCase):
+    """Test platform information display in version output."""
+
     scenarios = [
         ("ascii", {"_platform": "test-platform"}),
         ("unicode", {"_platform": "Schr\xc3\xb6dinger"}),
     ]
 
     def setUp(self):
+        """Set up test environment for platform testing."""
         super().setUp()
         self.permit_source_tree_branch_repo()
 
     def test_platform(self):
+        """Test that platform information is correctly displayed in version output."""
         out = self.make_utf8_encoded_stringio()
         self.overrideAttr(platform, "platform", lambda **kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False, to_file=out)
