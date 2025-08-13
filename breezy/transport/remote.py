@@ -152,9 +152,19 @@ class RemoteTransport(transport.ConnectedTransport):
             raise errors.UnexpectedSmartServerResponse(resp)
 
     def get_smart_client(self):
+        """Get the smart client for this transport.
+
+        Returns:
+            The underlying smart client connection.
+        """
         return self._get_connection()
 
     def get_smart_medium(self):
+        """Get the smart medium for this transport.
+
+        Returns:
+            The underlying smart medium connection.
+        """
         return self._get_connection()
 
     def _remote_path(self, relpath):
@@ -207,6 +217,17 @@ class RemoteTransport(transport.ConnectedTransport):
         return BytesIO(self.get_bytes(relpath))
 
     def get_bytes(self, relpath):
+        """Get the contents of a file as a byte string.
+
+        Args:
+            relpath: Relative path to the file.
+
+        Returns:
+            The file contents as bytes.
+
+        Raises:
+            NoSuchFile: If the file doesn't exist.
+        """
         remote = self._remote_path(relpath)
         try:
             resp, response_handler = self._client.call_expecting_body(b"get", remote)
@@ -224,6 +245,12 @@ class RemoteTransport(transport.ConnectedTransport):
             return ("%d" % mode).encode("ascii")
 
     def mkdir(self, relpath, mode=None):
+        """Create a directory at the given path.
+
+        Args:
+            relpath: Relative path where to create the directory.
+            mode: Optional file mode for the directory.
+        """
         self._call2(
             b"mkdir", self._remote_path(relpath), self._serialise_optional_mode(mode)
         )
@@ -236,6 +263,16 @@ class RemoteTransport(transport.ConnectedTransport):
         return result
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
+        """Write bytes to a file at the given location.
+
+        Args:
+            relpath: Relative path where to write the file.
+            raw_bytes: The bytes to write.
+            mode: Optional file mode.
+
+        Raises:
+            TypeError: If raw_bytes is not a bytes object.
+        """
         if not isinstance(raw_bytes, bytes):
             raise TypeError(f"raw_bytes must be bytes string, not {type(raw_bytes)}")
         resp = self._call_with_body_bytes(
@@ -273,6 +310,13 @@ class RemoteTransport(transport.ConnectedTransport):
         self._ensure_ok(resp)
 
     def put_file(self, relpath, upload_file, mode=None):
+        """Write a file-like object to the given location.
+
+        Args:
+            relpath: Relative path where to write the file.
+            upload_file: File-like object to upload.
+            mode: Optional file mode.
+        """
         # its not ideal to seek back, but currently put_non_atomic_file depends
         # on transports not reading before failing - which is a faulty
         # assumption I think - RBC 20060915
@@ -286,6 +330,15 @@ class RemoteTransport(transport.ConnectedTransport):
     def put_file_non_atomic(
         self, relpath, f, mode=None, create_parent_dir=False, dir_mode=None
     ):
+        """Put a file in a non-atomic manner.
+
+        Args:
+            relpath: Relative path where to write the file.
+            f: File-like object to write.
+            mode: Optional file mode.
+            create_parent_dir: Whether to create parent directories.
+            dir_mode: Mode for created parent directories.
+        """
         return self.put_bytes_non_atomic(
             relpath,
             f.read(),
@@ -295,9 +348,29 @@ class RemoteTransport(transport.ConnectedTransport):
         )
 
     def append_file(self, relpath, from_file, mode=None):
+        """Append data from a file-like object to an existing file.
+
+        Args:
+            relpath: Relative path to the file to append to.
+            from_file: File-like object to read data from.
+            mode: Optional file mode.
+
+        Returns:
+            The offset where the appended data starts.
+        """
         return self.append_bytes(relpath, from_file.read(), mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
+        """Append bytes to an existing file.
+
+        Args:
+            relpath: Relative path to the file to append to.
+            bytes: Bytes to append.
+            mode: Optional file mode.
+
+        Returns:
+            The offset where the appended data starts.
+        """
         resp = self._call_with_body_bytes(
             b"append",
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
@@ -308,6 +381,11 @@ class RemoteTransport(transport.ConnectedTransport):
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def delete(self, relpath):
+        """Delete a file at the given location.
+
+        Args:
+            relpath: Relative path to the file to delete.
+        """
         resp = self._call2(b"delete", self._remote_path(relpath))
         self._ensure_ok(resp)
 
@@ -431,12 +509,29 @@ class RemoteTransport(transport.ConnectedTransport):
                     return
 
     def rename(self, rel_from, rel_to):
+        """Rename a file or directory.
+
+        Args:
+            rel_from: Current relative path.
+            rel_to: New relative path.
+        """
         self._call(b"rename", self._remote_path(rel_from), self._remote_path(rel_to))
 
     def move(self, rel_from, rel_to):
+        """Move a file or directory.
+
+        Args:
+            rel_from: Current relative path.
+            rel_to: New relative path.
+        """
         self._call(b"move", self._remote_path(rel_from), self._remote_path(rel_to))
 
     def rmdir(self, relpath):
+        """Remove an empty directory.
+
+        Args:
+            relpath: Relative path to the directory to remove.
+        """
         self._call(b"rmdir", self._remote_path(relpath))
 
     def _ensure_ok(self, resp):
@@ -447,11 +542,20 @@ class RemoteTransport(transport.ConnectedTransport):
         remote._translate_error(err, path=relpath)
 
     def disconnect(self):
+        """Disconnect the transport medium."""
         m = self.get_smart_medium()
         if m is not None:
             m.disconnect()
 
     def stat(self, relpath):
+        """Get stat information for a file.
+
+        Args:
+            relpath: Relative path to stat.
+
+        Returns:
+            A stat-like object with st_size and st_mode attributes.
+        """
         resp = self._call2(b"stat", self._remote_path(relpath))
         if resp[0] == b"stat":
             return _SmartStat(int(resp[1]), int(resp[2], 8))
@@ -471,15 +575,33 @@ class RemoteTransport(transport.ConnectedTransport):
     # return BogusLock(relpath)
 
     def listable(self):
+        """Check if this transport supports listing directories.
+
+        Returns:
+            Always True for remote transports.
+        """
         return True
 
     def list_dir(self, relpath):
+        """List the contents of a directory.
+
+        Args:
+            relpath: Relative path to the directory to list.
+
+        Returns:
+            List of directory entries.
+        """
         resp = self._call2(b"list_dir", self._remote_path(relpath))
         if resp[0] == b"names":
             return [name.decode("utf-8") for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
+        """Iterate over all files recursively.
+
+        Yields:
+            Relative paths to all files in the transport.
+        """
         resp = self._call2(b"iter_files_recursive", self._remote_path(""))
         if resp[0] == b"names":
             return [name.decode("utf-8") for name in resp[1:]]
