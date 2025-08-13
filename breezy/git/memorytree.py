@@ -37,6 +37,13 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
     """A Git memory tree."""
 
     def __init__(self, branch, store, head):
+        """Initialize the GitMemoryTree.
+
+        Args:
+            branch: The branch instance.
+            store: Git object store.
+            head: Head commit SHA.
+        """
         MutableGitIndexTree.__init__(self)
         self.branch = branch
         self.mapping = self.branch.repository.get_mapping()
@@ -51,9 +58,22 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
 
     @property
     def controldir(self):
+        """Get the control directory for this tree.
+
+        Returns:
+            The branch's control directory.
+        """
         return self.branch.controldir
 
     def is_control_filename(self, path):
+        """Check if a path is a control filename.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            False, as Git memory trees don't have control files.
+        """
         return False
 
     def _gather_kinds(self, files, kinds):
@@ -180,6 +200,14 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         return index_entry_from_stat(stat_val, blob.id, mode=stat_val.st_mode)
 
     def get_file_with_stat(self, path):
+        """Get file content along with its stat information.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            Tuple of (file_content, stat_info).
+        """
         return (self.get_file(path), self._lstat(path))
 
     def get_file(self, path):
@@ -212,9 +240,22 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         return self.branch.repository.revision_tree(self.last_revision())
 
     def get_config_stack(self):
+        """Get the configuration stack for this tree.
+
+        Returns:
+            The branch's configuration stack.
+        """
         return self.branch.get_config_stack()
 
     def has_filename(self, path):
+        """Check if a file exists in the tree.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            True if the file exists, False otherwise.
+        """
         return self._file_transport.has(path)
 
     def _set_merges_from_parent_ids(self, rhs_parent_ids):
@@ -225,6 +266,12 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         self._parent_ids.extend(rhs_parent_ids)
 
     def set_parent_ids(self, parent_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids for this tree.
+
+        Args:
+            parent_ids: List of parent revision ids.
+            allow_leftmost_as_ghost: Whether to allow the first parent to be a ghost.
+        """
         if len(parent_ids) == 0:
             self._parent_ids = []
             self.branch.head = None
@@ -243,9 +290,25 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         self._file_transport.rename(from_rel, to_rel)
 
     def kind(self, p):
+        """Get the kind of a file.
+
+        Args:
+            p: Path to examine.
+
+        Returns:
+            File kind ('file', 'directory', 'symlink', etc.).
+        """
         stat_value = self._file_transport.stat(p)
         return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
     def get_symlink_target(self, path):
+        """Get the target of a symbolic link.
+
+        Args:
+            path: Path to the symbolic link.
+
+        Returns:
+            The target path of the symbolic link.
+        """
         with self.lock_read():
             return self._file_transport.readlink(path)

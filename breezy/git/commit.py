@@ -35,6 +35,12 @@ class GitCommitBuilder(CommitBuilder):
     supports_record_entry_contents = False
 
     def __init__(self, *args, **kwargs):
+        """Initialize the GitCommitBuilder.
+
+        Args:
+            *args: Positional arguments passed to parent constructor.
+            **kwargs: Keyword arguments passed to parent constructor.
+        """
         super().__init__(*args, **kwargs)
         self.random_revid = True
         self._validate_revprops(self._revprops)
@@ -46,9 +52,24 @@ class GitCommitBuilder(CommitBuilder):
         self._mapping = self.repository.get_mapping()
 
     def any_changes(self):
+        """Check if there are any changes to commit.
+
+        Returns:
+            True if there are changes, False otherwise.
+        """
         return self._any_changes
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
+        """Record changes from an iterator of changes.
+
+        Args:
+            workingtree: The working tree.
+            basis_revid: Revision ID of the basis tree.
+            iter_changes: Iterator of changes to record.
+
+        Yields:
+            Tuples of (path, (git_sha1, stat_info)) for modified files.
+        """
         seen_root = False
         for change in iter_changes:
             if change.kind == (None, None):
@@ -150,10 +171,19 @@ class GitCommitBuilder(CommitBuilder):
         self.new_inventory = None
 
     def update_basis(self, tree):
+        """Update the basis tree for this commit.
+
+        Args:
+            tree: The basis tree (not used in Git implementation).
+        """
         # Nothing to do here
         pass
 
     def finish_inventory(self):
+        """Finish building the inventory.
+
+        This finalizes the blob dictionary by removing any None entries.
+        """
         # eliminate blobs that were removed
         self._blobs = dict(self._blobs.items())
 
@@ -161,6 +191,14 @@ class GitCommitBuilder(CommitBuilder):
         return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.items())
 
     def commit(self, message):
+        """Create a commit with the specified message.
+
+        Args:
+            message: Commit message.
+
+        Returns:
+            The revision ID of the new commit.
+        """
         self._validate_unicode_text(message, "commit message")
         c = Commit()
         c.parents = [
@@ -233,14 +271,34 @@ class GitCommitBuilder(CommitBuilder):
         return self._new_revision_id
 
     def abort(self):
+        """Abort the commit process.
+
+        This aborts any open write group in the repository.
+        """
         if self.repository.is_in_write_group():
             self.repository.abort_write_group()
 
     def revision_tree(self):
+        """Get the revision tree for the committed revision.
+
+        Returns:
+            The revision tree for the new commit.
+        """
         return self.repository.revision_tree(self._new_revision_id)
 
     def get_basis_delta(self):
+        """Get the basis delta for this commit.
+
+        Returns:
+            The inventory delta for this commit.
+        """
         return self._inv_delta
 
     def update_basis_by_delta(self, revid, delta):
+        """Update the basis tree using a delta.
+
+        Args:
+            revid: Revision ID of the basis.
+            delta: Delta to apply (not used in Git implementation).
+        """
         pass
