@@ -783,11 +783,10 @@ class BazaarObjectStore(BaseObjectStore):
                 progress=progress,
                 shallow=shallow,
                 get_tagged=get_tagged,
-                lossy=True,
             )
         )
         return pack_objects_to_data(
-            [(self[oid], path) for (oid, (type_num, path)) in object_ids]
+            [(self[oid], path.decode('utf-8') if path else '') for (oid, path) in object_ids]
         )
 
     def find_missing_objects(
@@ -797,9 +796,8 @@ class BazaarObjectStore(BaseObjectStore):
         shallow=None,
         progress=None,
         get_tagged=None,
-        lossy: bool = False,
-        ofs_delta=False,
-    ) -> Iterator[tuple[ObjectID, tuple[int, str]]]:
+        get_parents=lambda x: [],
+    ) -> Iterator[tuple[ObjectID, bytes | None]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent
@@ -849,10 +847,11 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchRevision:
                         continue
                     tree = self.tree_cache.revision_tree(revid)
-                    for path, obj in self._revision_to_objects(rev, tree, lossy=lossy):
+                    for path, obj in self._revision_to_objects(rev, tree, lossy=False):
                         if obj.id not in seen:
-                            yield (obj.id, (obj.type_num, path))
+                            yield (obj.id, path.encode('utf-8') if path else None)
                             seen.add(obj.id)
+
 
     def add_thin_pack(self):
         import os

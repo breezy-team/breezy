@@ -84,7 +84,6 @@ class BzrBackendRepo(BackendRepo):
                     shallow=shallows,
                     progress=progress,
                     get_tagged=get_tagged,
-                    lossy=True,
                 )
             else:
                 return MissingObjectFinder(
