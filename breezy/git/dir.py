@@ -44,24 +44,66 @@ from .transportgit import OBJECTDIR, TransportObjectStore
 
 
 class GitDirConfig:
+    """Configuration adapter for Git control directories.
+
+    Provides a simple configuration interface that doesn't support
+    stack-on settings for Git repositories.
+    """
+
     def get_default_stack_on(self):
+        """Get the default stack-on location.
+
+        Returns:
+            None: Git repositories don't support stacking.
+        """
         return None
 
     def set_default_stack_on(self, value):
+        """Set the default stack-on location.
+
+        Args:
+            value: The stack-on location to set.
+
+        Raises:
+            BzrError: Always raised as Git repositories don't support stacking.
+        """
         raise brz_errors.BzrError("Cannot set configuration")
 
 
 class GitControlDirFormat(ControlDirFormat):
+    """Base format class for Git control directories.
+
+    This format supports colocated branches and has fixed components.
+    """
+
     colocated_branches = True
     fixed_components = True
 
     def __eq__(self, other):
+        """Check equality with another format.
+
+        Args:
+            other: The other format to compare with.
+
+        Returns:
+            bool: True if formats are of the same type.
+        """
         return type(self) is type(other)
 
     def is_supported(self):
+        """Check if this format is supported.
+
+        Returns:
+            bool: Always True for Git formats.
+        """
         return True
 
     def network_name(self):
+        """Get the network name for this format.
+
+        Returns:
+            bytes: The network identifier 'git'.
+        """
         return b"git"
 
 
@@ -99,22 +141,65 @@ class GitDir(ControlDir):
         return self.transport
 
     def is_supported(self):
+        """Check if this control directory is supported.
+
+        Returns:
+            bool: Always True for Git directories.
+        """
         return True
 
     def can_convert_format(self):
+        """Check if this directory can be converted to another format.
+
+        Returns:
+            bool: Always False for Git directories.
+        """
         return False
 
     def break_lock(self):
+        """Break any locks on this control directory.
+
+        Raises:
+            NotImplementedError: Git has no global locks to break.
+        """
         # There are no global locks, so nothing to break.
         raise NotImplementedError(self.break_lock)
 
     def cloning_metadir(self, stacked=False):
+        """Get the control directory format for cloning.
+
+        Args:
+            stacked: Whether to create a stacked branch (ignored for Git).
+
+        Returns:
+            ControlDir: A Git control directory format.
+        """
         return format_registry.make_controldir("git")
 
     def checkout_metadir(self, stacked=False):
+        """Get the control directory format for checkout.
+
+        Args:
+            stacked: Whether to create a stacked branch (ignored for Git).
+
+        Returns:
+            ControlDir: A Git control directory format.
+        """
         return format_registry.make_controldir("git")
 
     def _get_selected_ref(self, branch, ref=None):
+        """Get the Git ref for the specified branch.
+
+        Args:
+            branch: The branch name to get the ref for.
+            ref: Explicit ref to use (overrides branch).
+
+        Returns:
+            bytes: The Git ref name.
+
+        Raises:
+            BzrError: If both branch and ref are specified.
+        """
         if ref is not None and branch is not None:
             raise brz_errors.BzrError("can't specify both ref and branch")
         if ref is not None:
@@ -138,9 +223,22 @@ class GitDir(ControlDir):
         return b"HEAD"
 
     def get_config(self):
+        """Get the configuration for this control directory.
+
+        Returns:
+            GitDirConfig: The configuration object.
+        """
         return GitDirConfig()
 
     def _available_backup_name(self, base):
+        """Find an available backup name for the given base name.
+
+        Args:
+            base: The base name to find a backup name for.
+
+        Returns:
+            str: An available backup name.
+        """
         return osutils.available_backup_name(base, self.root_transport.has)
 
     def retire_controldir(self, limit=10000):
@@ -392,6 +490,11 @@ class GitDir(ControlDir):
         return UseExistingRepository(self.find_repository())
 
     def branch_names(self):
+        """Get the names of all branches in this repository.
+
+        Returns:
+            list: List of branch names as strings.
+        """
         from .refs import ref_to_branch_name
 
         ret = []
@@ -407,6 +510,11 @@ class GitDir(ControlDir):
         return ret
 
     def get_branches(self):
+        """Get all branches in this repository.
+
+        Returns:
+            dict: Mapping of branch names to Branch objects.
+        """
         from .refs import ref_to_branch_name
 
         ret = {}
@@ -422,6 +530,11 @@ class GitDir(ControlDir):
         return ret
 
     def list_branches(self):
+        """Get a list of all branches in this repository.
+
+        Returns:
+            list: List of Branch objects.
+        """
         return list(self.get_branches().values())
 
     def push_branch(
@@ -475,7 +588,10 @@ class GitDir(ControlDir):
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
-    """The .git directory control format."""
+    """The .git directory control format for local repositories.
+
+    This format represents a standard Git repository with a working tree.
+    """
 
     bare = False
 
@@ -586,6 +702,14 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return external_url.startswith("file:")
 
     def is_control_filename(self, filename):
+        """Check if a filename is a Git control file.
+
+        Args:
+            filename: The filename to check.
+
+        Returns:
+            bool: True if the filename is a Git control file.
+        """
         return (
             filename == ".git"
             or filename.startswith(".git/")
@@ -594,13 +718,32 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
 
 class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
+    """Format for bare Git repositories without working trees.
+
+    This format represents a Git repository that contains only the
+    Git data without a working directory.
+    """
+
     bare = True
     supports_workingtrees = False
 
     def get_format_description(self):
+        """Get a human-readable description of this format.
+
+        Returns:
+            str: Description of the bare Git format.
+        """
         return "Local Git Repository (bare)"
 
     def is_control_filename(self, filename):
+        """Check if a filename is a Git control file.
+
+        Args:
+            filename: The filename to check.
+
+        Returns:
+            bool: Always False for bare repositories (all files are data).
+        """
         return False
 
 
@@ -626,6 +769,13 @@ class LocalGitDir(GitDir):
         return self._git._controltransport
 
     def __init__(self, transport, gitrepo, format):
+        """Initialize a LocalGitDir.
+
+        Args:
+            transport: The transport for accessing the repository.
+            gitrepo: The underlying Git repository object.
+            format: The control directory format.
+        """
         self._format = format
         self.root_transport = transport
         self._mode_check_done = False
@@ -637,12 +787,30 @@ class LocalGitDir(GitDir):
         self._mode_check_done = None
 
     def _get_symref(self, ref):
+        """Get the target of a symbolic reference.
+
+        Args:
+            ref: The symbolic reference to follow.
+
+        Returns:
+            bytes or None: The target ref, or None if not a symref.
+        """
         ref_chain, unused_sha = self._git.refs.follow(ref)
         if len(ref_chain) == 1:
             return None
         return ref_chain[1]
 
     def set_branch_reference(self, target_branch, name=None):
+        """Set a branch to be a reference to another branch.
+
+        Args:
+            target_branch: The branch to reference.
+            name: Name of the branch to set as a reference.
+
+        Raises:
+            BranchReferenceLoop: If setting the reference would create a loop.
+            IncompatibleFormat: If the target branch is incompatible.
+        """
         ref = self._get_selected_ref(name)
         target_transport = target_branch.controldir.control_transport
         if self.control_transport.base == target_transport.base:
@@ -681,6 +849,17 @@ class LocalGitDir(GitDir):
             self._git.refs.set_symbolic_ref(ref, target_ref)
 
     def get_branch_reference(self, name=None):
+        """Get the URL of the branch this branch references.
+
+        Args:
+            name: Name of the branch to check for references.
+
+        Returns:
+            str or None: URL of the referenced branch, or None if not a reference.
+
+        Raises:
+            BranchReferenceLoop: If there is a reference loop.
+        """
         ref = self._get_selected_ref(name)
         try:
             target_ref = self._get_symref(ref)
@@ -713,6 +892,14 @@ class LocalGitDir(GitDir):
         return None
 
     def find_branch_format(self, name=None):
+        """Find the format of a branch.
+
+        Args:
+            name: Name of the branch (unused for Git).
+
+        Returns:
+            LocalGitBranchFormat: The Git branch format.
+        """
         from .branch import LocalGitBranchFormat
 
         return LocalGitBranchFormat()
@@ -792,9 +979,26 @@ class LocalGitDir(GitDir):
         return self._gitrepository_class(self)
 
     def has_workingtree(self):
+        """Check if this control directory has a working tree.
+
+        Returns:
+            bool: True if there is a working tree (not bare).
+        """
         return not self._git.bare
 
     def open_workingtree(self, recommend_upgrade=True, unsupported=False):
+        """Open the working tree for this control directory.
+
+        Args:
+            recommend_upgrade: Whether to recommend format upgrades.
+            unsupported: Whether to allow unsupported working trees.
+
+        Returns:
+            GitWorkingTree: The opened working tree.
+
+        Raises:
+            NoWorkingTree: If this is a bare repository.
+        """
         if not self._git.bare:
             repo = self.find_repository()
             from .workingtree import GitWorkingTree
@@ -904,12 +1108,30 @@ class LocalGitDir(GitDir):
         return self._dir_mode
 
     def get_refs_container(self):
+        """Get the Git refs container for this repository.
+
+        Returns:
+            RefsContainer: The Git refs container.
+        """
         return self._git.refs
 
     def get_peeled(self, ref):
+        """Get the peeled value of a Git reference.
+
+        Args:
+            ref: The reference to peel.
+
+        Returns:
+            bytes: The SHA-1 of the commit the ref points to.
+        """
         return self._git.get_peeled(ref)
 
     def _find_commondir(self):
+        """Find the common directory for Git worktrees.
+
+        Returns:
+            ControlDir: The control directory containing the shared Git data.
+        """
         try:
             commondir = self.control_transport.get_bytes("commondir")
         except NoSuchFile:
