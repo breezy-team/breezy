@@ -87,6 +87,7 @@ class BzrError(Exception):
           msg: If given, this is the literal complete text for the error, not
                subject to expansion. 'msg' is used instead of 'message' because
                python evolved and, in 2.6, forbids the use of 'message'.
+          **kwds: Additional keyword arguments to be stored as instance attributes.
         """
         Exception.__init__(self)
         if msg is not None:
@@ -431,9 +432,20 @@ BzrCommandError = CommandError
 
 
 class NotWriteLocked(BzrError):
+    """Object is not write locked but needs to be.
+
+    Raised when an operation requires a write lock but the object is not
+    currently write locked.
+    """
+
     _fmt = """%(not_locked)r is not write locked but needs to be."""
 
     def __init__(self, not_locked):
+        """Initialize with the object that is not write locked.
+
+        Args:
+            not_locked: The object that needs to be write locked.
+        """
         self.not_locked = not_locked
 
 
@@ -477,7 +489,11 @@ class PathError(BzrError):
 
 
 class RenameFailedFilesExist(BzrError):
-    """Used when renaming and both source and dest exist."""
+    """Rename failed because both source and destination exist.
+
+    Raised when attempting to rename a file but both the source and destination
+    files already exist, creating a conflict.
+    """
 
     _fmt = (
         "Could not rename %(source)s => %(dest)s because both files exist."
@@ -486,6 +502,13 @@ class RenameFailedFilesExist(BzrError):
     )
 
     def __init__(self, source, dest, extra=None):
+        """Initialize with source and destination paths.
+
+        Args:
+            source: The source file path.
+            dest: The destination file path.
+            extra: Optional additional error information.
+        """
         BzrError.__init__(self)
         self.source = str(source)
         self.dest = str(dest)
@@ -572,21 +595,45 @@ class PermissionDenied(PathError):
 
 
 class UnstackableLocationError(BzrError):
+    """Branch cannot be stacked on the specified target.
+
+    Raised when attempting to stack a branch on a target that is not
+    suitable for stacking.
+    """
+
     _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
 
     def __init__(self, branch_url, target_url):
+        """Initialize with branch and target URLs.
+
+        Args:
+            branch_url: URL of the branch to be stacked.
+            target_url: URL of the target that cannot be stacked on.
+        """
         BzrError.__init__(self)
         self.branch_url = branch_url
         self.target_url = target_url
 
 
 class UnstackableRepositoryFormat(BzrError):
+    """Repository format does not support stacking.
+
+    Raised when attempting to use stacking features with a repository format
+    that does not support stacking.
+    """
+
     _fmt = (
         "The repository '%(url)s'(%(format)s) is not a stackable format. "
         "You will need to upgrade the repository to permit branch stacking."
     )
 
     def __init__(self, format, url):
+        """Initialize with format and URL information.
+
+        Args:
+            format: The repository format that doesn't support stacking.
+            url: URL of the repository.
+        """
         BzrError.__init__(self)
         self.format = format
         self.url = url
@@ -602,6 +649,12 @@ class ReadError(PathError):
 
 
 class ShortReadvError(PathError):
+    """readv() operation read fewer bytes than expected.
+
+    Raised when a readv() operation reads fewer bytes than requested,
+    indicating a potential file corruption or read error.
+    """
+
     _fmt = (
         "readv() read %(actual)s bytes rather than %(length)s bytes"
         ' at %(offset)s for "%(path)s"%(extra)s'
@@ -610,6 +663,15 @@ class ShortReadvError(PathError):
     internal_error = True
 
     def __init__(self, path, offset, length, actual, extra=None):
+        """Initialize with read operation details.
+
+        Args:
+            path: The file path where the short read occurred.
+            offset: The offset where the read was attempted.
+            length: The number of bytes requested.
+            actual: The actual number of bytes read.
+            extra: Optional additional error information.
+        """
         PathError.__init__(self, path, extra=extra)
         self.offset = offset
         self.length = length
@@ -774,14 +836,32 @@ class ParentBranchExists(AlreadyBranchError):
 
 
 class BranchExistsWithoutWorkingTree(PathError):
+    """Directory contains a branch but no working tree.
+
+    Raised when a directory contains a branch but no working tree,
+    and a working tree is expected or required.
+    """
+
     _fmt = 'Directory contains a branch, but no working tree \
 (use brz checkout if you wish to build a working tree): "%(path)s"'
 
 
 class InaccessibleParent(PathError):
+    """Parent directory is not accessible.
+
+    Raised when a parent directory cannot be accessed given a base path
+    and relative path.
+    """
+
     _fmt = 'Parent not accessible given base "%(base)s" and relative path "%(path)s"'
 
     def __init__(self, path, base):
+        """Initialize with path and base information.
+
+        Args:
+            path: The relative path that cannot be accessed.
+            base: The base path used for resolution.
+        """
         PathError.__init__(self, path)
         self.base = base
 
@@ -844,18 +924,44 @@ class UnknownFormatError(BzrError):
 
 
 class IncompatibleFormat(BzrError):
+    """Format is not compatible with control directory version.
+
+    Raised when a format is not compatible with the control directory
+    version being used.
+    """
+
     _fmt = "Format %(format)s is not compatible with .bzr version %(controldir)s."
 
     def __init__(self, format, controldir_format):
+        """Initialize with format compatibility information.
+
+        Args:
+            format: The format that is incompatible.
+            controldir_format: The control directory format.
+        """
         BzrError.__init__(self)
         self.format = format
         self.controldir = controldir_format
 
 
 class ParseFormatError(BzrError):
+    """Parse error in format file.
+
+    Raised when a format file cannot be parsed due to syntax errors or
+    invalid content.
+    """
+
     _fmt = "Parse error on line %(lineno)d of %(format)s format: %(line)s"
 
     def __init__(self, format, lineno, line, text):
+        """Initialize with parse error details.
+
+        Args:
+            format: The format being parsed.
+            lineno: The line number where the error occurred.
+            line: The problematic line content.
+            text: The full text being parsed.
+        """
         BzrError.__init__(self)
         self.format = format
         self.lineno = lineno
@@ -864,41 +970,67 @@ class ParseFormatError(BzrError):
 
 
 class IncompatibleRepositories(BzrError):
-    """Report an error that two repositories are not compatible.
+    """Two repositories are not compatible.
 
-    Note that the source and target repositories are permitted to be strings:
-    this exception is thrown from the smart server and may refer to a
-    repository the client hasn't opened.
+    Raised when attempting an operation between two repositories that have
+    incompatible formats or features.
+
+    Note:
+        The source and target repositories are permitted to be strings:
+        this exception is thrown from the smart server and may refer to a
+        repository the client hasn't opened.
     """
 
     _fmt = "%(target)s\nis not compatible with\n%(source)s\n%(details)s"
 
     def __init__(self, source, target, details=None):
+        """Initialize with repository compatibility information.
+
+        Args:
+            source: The source repository (may be a string).
+            target: The target repository (may be a string).
+            details: Optional details about the incompatibility.
+        """
         if details is None:
             details = "(no details)"
         BzrError.__init__(self, target=target, source=source, details=details)
 
 
 class IncompatibleRevision(BzrError):
+    """Revision is not compatible with repository format.
+
+    Raised when a revision cannot be processed by the current repository
+    format, typically during format upgrades or downgrades.
+    """
+
     _fmt = "Revision is not compatible with %(repo_format)s"
 
     def __init__(self, repo_format):
+        """Initialize with repository format information.
+
+        Args:
+            repo_format: The repository format that is incompatible.
+        """
         BzrError.__init__(self)
         self.repo_format = repo_format
 
 
 class AlreadyVersionedError(BzrError):
-    """Used when a path is expected not to be versioned, but it is."""
+    """Path is already versioned but was expected not to be.
+
+    Raised when attempting to add a path to version control that is
+    already under version control.
+    """
 
     _fmt = "%(context_info)s%(path)s is already versioned."
 
     def __init__(self, path, context_info=None):
-        """Construct a new AlreadyVersionedError.
+        """Initialize with path and context information.
 
-        :param path: This is the path which is versioned,
-            which should be in a user friendly form.
-        :param context_info: If given, this is information about the context,
-            which could explain why this is expected to not be versioned.
+        Args:
+            path: The path which is versioned, in user-friendly form.
+            context_info: Optional context information explaining why this
+                path was expected not to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -909,17 +1041,21 @@ class AlreadyVersionedError(BzrError):
 
 
 class NotVersionedError(BzrError):
-    """Used when a path is expected to be versioned, but it is not."""
+    """Path is not versioned but was expected to be.
+
+    Raised when attempting to perform a version control operation on a path
+    that is not under version control.
+    """
 
     _fmt = "%(context_info)s%(path)s is not versioned."
 
     def __init__(self, path, context_info=None):
-        """Construct a new NotVersionedError.
+        """Initialize with path and context information.
 
-        :param path: This is the path which is not versioned,
-            which should be in a user friendly form.
-        :param context_info: If given, this is information about the context,
-            which could explain why this is expected to be versioned.
+        Args:
+            path: The path which is not versioned, in user-friendly form.
+            context_info: Optional context information explaining why this
+                path was expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -930,11 +1066,20 @@ class NotVersionedError(BzrError):
 
 
 class PathsNotVersionedError(BzrError):
-    """Used when reporting several paths which are not versioned."""
+    """Multiple paths are not versioned.
+
+    Raised when reporting that several paths are not under version control
+    when they were expected to be.
+    """
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
     def __init__(self, paths):
+        """Initialize with a list of non-versioned paths.
+
+        Args:
+            paths: List of paths that are not versioned.
+        """
         from .osutils import quotefn
 
         BzrError.__init__(self)
@@ -943,12 +1088,21 @@ class PathsNotVersionedError(BzrError):
 
 
 class PathsDoNotExist(BzrError):
+    """Multiple paths do not exist.
+
+    Raised when reporting that paths are neither versioned nor present in
+    the working tree.
+    """
+
     _fmt = "Path(s) do not exist: %(paths_as_string)s%(extra)s"
 
-    # used when reporting that paths are neither versioned nor in the working
-    # tree
-
     def __init__(self, paths, extra=None):
+        """Initialize with a list of non-existent paths.
+
+        Args:
+            paths: List of paths that do not exist.
+            extra: Optional additional error information.
+        """
         # circular import
         from .osutils import quotefn
 
@@ -962,13 +1116,31 @@ class PathsDoNotExist(BzrError):
 
 
 class BadFileKindError(BzrError):
+    """Cannot operate on file of unsupported kind.
+
+    Raised when attempting to perform an operation on a file whose type
+    (kind) is not supported by the current operation.
+    """
+
     _fmt = 'Cannot operate on "%(filename)s" of unsupported kind "%(kind)s"'
 
     def __init__(self, filename, kind):
+        """Initialize with filename and file kind.
+
+        Args:
+            filename: The name of the file with unsupported kind.
+            kind: The unsupported file kind.
+        """
         BzrError.__init__(self, filename=filename, kind=kind)
 
 
 class ForbiddenControlFileError(BzrError):
+    """Cannot operate on a control file.
+
+    Raised when attempting to perform a user operation on a file that is
+    part of the version control system's internal control structure.
+    """
+
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
 
 
@@ -1059,68 +1231,148 @@ class ReadOnlyError(LockError):
 
 
 class LockFailed(LockError):
+    """Lock acquisition failed.
+
+    Raised when a lock cannot be acquired for a specified reason.
+    """
+
     internal_error = False
 
     _fmt = "Cannot lock %(lock)s: %(why)s"
 
     def __init__(self, lock, why):
+        """Initialize with lock and failure reason.
+
+        Args:
+            lock: The lock that failed to be acquired.
+            why: The reason why the lock failed.
+        """
         LockError.__init__(self, "")
         self.lock = lock
         self.why = why
 
 
 class OutSideTransaction(BzrError):
+    """Operation attempted outside of transaction.
+
+    Raised when a transaction-related operation is attempted after the
+    transaction has already finished.
+    """
+
     _fmt = (
         "A transaction related operation was attempted after the transaction finished."
     )
 
 
 class ObjectNotLocked(LockError):
+    """Object is not locked.
+
+    Raised when an operation requires a locked object but the object is
+    not currently locked.
+
+    Note:
+        This indicates that any particular object is not locked. See also
+        LockNotHeld which means that a particular *lock* object is not held
+        by the caller -- perhaps they should be unified.
+    """
+
     _fmt = "%(obj)r is not locked"
 
-    # this can indicate that any particular object is not locked; see also
-    # LockNotHeld which means that a particular *lock* object is not held by
-    # the caller -- perhaps they should be unified.
     def __init__(self, obj):
+        """Initialize with the unlocked object.
+
+        Args:
+            obj: The object that is not locked.
+        """
         self.obj = obj
 
 
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
+    """Attempt to modify object in read-only transaction.
+
+    Raised when attempting to modify an object within a read-only transaction.
+    """
+
     _fmt = "Cannot change object %(obj)r in read only transaction"
 
     def __init__(self, obj):
+        """Initialize with the object that was attempted to be modified.
+
+        Args:
+            obj: The object that cannot be changed in read-only mode.
+        """
         self.obj = obj
 
 
 class UnlockableTransport(LockError):
+    """Transport cannot be locked because it is read-only.
+
+    Raised when attempting to acquire a lock on a transport that is
+    read-only and therefore cannot be locked.
+    """
+
     internal_error = False
 
     _fmt = "Cannot lock: transport is read only: %(transport)s"
 
     def __init__(self, transport):
+        """Initialize with the read-only transport.
+
+        Args:
+            transport: The transport that cannot be locked.
+        """
         self.transport = transport
 
 
 class LockContention(LockError):
+    """Lock contention detected.
+
+    Raised when a lock cannot be acquired because another process or
+    thread is already holding it.
+    """
+
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
 
     internal_error = False
 
     def __init__(self, lock, msg=""):
+        """Initialize with lock and optional message.
+
+        Args:
+            lock: The lock that could not be acquired.
+            msg: Optional message providing additional details.
+        """
         self.lock = lock
         self.msg = msg
 
 
 class LockBroken(LockError):
+    """Lock was broken while still open.
+
+    Raised when a lock is forcibly broken while it was still being used,
+    which may indicate storage consistency issues.
+    """
+
     _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
 
     internal_error = False
 
     def __init__(self, lock):
+        """Initialize with the broken lock.
+
+        Args:
+            lock: The lock that was broken while open.
+        """
         self.lock = lock
 
 
 class LockBreakMismatch(LockError):
+    """Lock break attempted on wrong lock holder.
+
+    Raised when attempting to break a lock that was released and re-acquired
+    by a different holder than the one being targeted for breaking.
+    """
+
     _fmt = (
         "Lock was released and re-acquired before being broken:"
         " %(lock)s: held by %(holder)r, wanted to break %(target)r"
@@ -1129,12 +1381,25 @@ class LockBreakMismatch(LockError):
     internal_error = False
 
     def __init__(self, lock, holder, target):
+        """Initialize with lock holder information.
+
+        Args:
+            lock: The lock that has a holder mismatch.
+            holder: The current holder of the lock.
+            target: The target holder that was expected to be broken.
+        """
         self.lock = lock
         self.holder = holder
         self.target = target
 
 
 class LockCorrupt(LockError):
+    """Lock file is corrupted.
+
+    Raised when a lock appears to be held but the lock file contains
+    corrupted or invalid data.
+    """
+
     _fmt = (
         "Lock is apparently held, but corrupted: %(corruption_info)s\n"
         "Use 'brz break-lock' to clear it"
@@ -1143,81 +1408,184 @@ class LockCorrupt(LockError):
     internal_error = False
 
     def __init__(self, corruption_info, file_data=None):
+        """Initialize with corruption information.
+
+        Args:
+            corruption_info: Information about how the lock is corrupted.
+            file_data: Optional raw file data from the corrupted lock.
+        """
         self.corruption_info = corruption_info
         self.file_data = file_data
 
 
 class LockNotHeld(LockError):
+    """Lock is not currently held.
+
+    Raised when attempting an operation that requires holding a specific
+    lock, but that lock is not currently held by the caller.
+    """
+
     _fmt = "Lock not held: %(lock)s"
 
     internal_error = False
 
     def __init__(self, lock):
+        """Initialize with the lock that is not held.
+
+        Args:
+            lock: The lock that is not held.
+        """
         self.lock = lock
 
 
 class TokenLockingNotSupported(LockError):
+    """Object does not support token-based locking.
+
+    Raised when attempting to use token-based locking on an object that
+    does not support this feature.
+    """
+
     _fmt = "The object %(obj)s does not support token specifying a token when locking."
 
     def __init__(self, obj):
+        """Initialize with the object that doesn't support token locking.
+
+        Args:
+            obj: The object that does not support token locking.
+        """
         self.obj = obj
 
 
 class TokenMismatch(LockBroken):
+    """Lock token mismatch.
+
+    Raised when the provided lock token does not match the expected
+    lock token, indicating that the lock may have been broken and
+    re-acquired by another process.
+    """
+
     _fmt = "The lock token %(given_token)r does not match lock token %(lock_token)r."
 
     internal_error = True
 
     def __init__(self, given_token, lock_token):
+        """Initialize with token information.
+
+        Args:
+            given_token: The token that was provided.
+            lock_token: The token that was expected.
+        """
         self.given_token = given_token
         self.lock_token = lock_token
 
 
 class UpgradeReadonly(BzrError):
+    """Cannot upgrade read-only location.
+
+    Raised when attempting to upgrade a repository or branch at a read-only
+    URL where write access is required for the upgrade process.
+    """
+
     _fmt = "Upgrade URL cannot work with readonly URLs."
 
 
 class UpToDateFormat(BzrError):
+    """Branch format is already up to date.
+
+    Raised when attempting to upgrade a branch format that is already
+    at the most recent version.
+    """
+
     _fmt = "The branch format %(format)s is already at the most recent format."
 
     def __init__(self, format):
+        """Initialize with the format that is already up to date.
+
+        Args:
+            format: The format that is already current.
+        """
         BzrError.__init__(self)
         self.format = format
 
 
 class NoSuchRevision(InternalBzrError):
+    """Revision does not exist in branch.
+
+    Raised when attempting to access a revision that does not exist
+    in the specified branch or revision store.
+    """
+
     revision: bytes
 
     _fmt = "%(branch)s has no revision %(revision)s"
 
     def __init__(self, branch, revision):
-        # 'branch' may sometimes be an internal object like a KnitRevisionStore
+        """Initialize with branch and revision information.
+
+        Args:
+            branch: The branch where the revision was not found.
+                   May be an internal object like a KnitRevisionStore.
+            revision: The revision that was not found.
+        """
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
 class RangeInChangeOption(BzrError):
+    """Revision range provided to --change option.
+
+    Raised when a revision range is provided to the --change option
+    which only accepts single revisions.
+    """
+
     _fmt = "Option --change does not accept revision ranges"
 
 
 class NoSuchRevisionSpec(BzrError):
+    """No revision specification namespace registered.
+
+    Raised when attempting to parse a revision specification string
+    that does not match any registered namespace.
+    """
+
     _fmt = "No namespace registered for string: %(spec)r"
 
     def __init__(self, spec):
+        """Initialize with the invalid revision specification.
+
+        Args:
+            spec: The revision specification string that has no namespace.
+        """
         BzrError.__init__(self, spec=spec)
 
 
 class NoSuchRevisionInTree(NoSuchRevision):
-    """When using Tree.revision_tree, and the revision is not accessible."""
+    """Revision is not accessible in tree.
+
+    Raised when using Tree.revision_tree() and the requested revision
+    is not present or accessible in the tree.
+    """
 
     _fmt = "The revision id {%(revision_id)s} is not present in the tree %(tree)s."
 
     def __init__(self, tree, revision_id):
+        """Initialize with tree and revision information.
+
+        Args:
+            tree: The tree where the revision was not found.
+            revision_id: The revision ID that is not present in the tree.
+        """
         BzrError.__init__(self)
         self.tree = tree
         self.revision_id = revision_id
 
 
 class AppendRevisionsOnlyViolation(BzrError):
+    """Operation would violate append_revisions_only setting.
+
+    Raised when attempting an operation that would change the main history
+    of a branch that has the append_revisions_only setting enabled.
+    """
+
     _fmt = (
         "Operation denied because it would change the main history,"
         " which is not permitted by the append_revisions_only setting on"
@@ -1225,6 +1593,11 @@ class AppendRevisionsOnlyViolation(BzrError):
     )
 
     def __init__(self, location):
+        """Initialize with the branch location.
+
+        Args:
+            location: The location of the branch with append_revisions_only set.
+        """
         import breezy.urlutils as urlutils
 
         location = urlutils.unescape_for_display(location, "ascii")
@@ -1232,6 +1605,12 @@ class AppendRevisionsOnlyViolation(BzrError):
 
 
 class DivergedBranches(BzrError):
+    """Branches have diverged.
+
+    Raised when two branches have diverged and no longer share a common
+    recent history, requiring a merge to reconcile them.
+    """
+
     _fmt = (
         "These branches have diverged."
         " Use the missing command to see how.\n"
@@ -1239,70 +1618,175 @@ class DivergedBranches(BzrError):
     )
 
     def __init__(self, branch1, branch2):
+        """Initialize with the two diverged branches.
+
+        Args:
+            branch1: The first diverged branch.
+            branch2: The second diverged branch.
+        """
         self.branch1 = branch1
         self.branch2 = branch2
 
 
 class NotLefthandHistory(InternalBzrError):
+    """History does not follow left-hand parents.
+
+    Raised when a supplied history does not follow the left-hand parent
+    convention, which is required for certain operations.
+    """
+
     _fmt = "Supplied history does not follow left-hand parents"
 
     def __init__(self, history):
+        """Initialize with the invalid history.
+
+        Args:
+            history: The history that does not follow left-hand parents.
+        """
         BzrError.__init__(self, history=history)
 
 
 class UnrelatedBranches(BzrError):
+    """Branches have no common ancestor.
+
+    Raised when attempting to merge or compare branches that have no
+    common ancestor and no merge base revision was specified.
+    """
+
     _fmt = "Branches have no common ancestor, and no merge base revision was specified."
 
 
 class CannotReverseCherrypick(BzrError):
+    """Selected merge cannot perform reverse cherrypicks.
+
+    Raised when the selected merge algorithm does not support reverse
+    cherrypick operations. Alternative merge algorithms should be used.
+    """
+
     _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 
 
 class NoCommonAncestor(BzrError):
+    """Revisions have no common ancestor.
+
+    Raised when attempting to find a common ancestor between two revisions
+    that do not share any common history.
+    """
+
     _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
 
     def __init__(self, revision_a, revision_b):
+        """Initialize with the two revisions.
+
+        Args:
+            revision_a: The first revision.
+            revision_b: The second revision.
+        """
         self.revision_a = revision_a
         self.revision_b = revision_b
 
 
 class NoCommonRoot(BzrError):
+    """Revisions are not derived from the same root.
+
+    Raised when attempting an operation on revisions that do not share
+    a common root revision.
+    """
+
     _fmt = (
         "Revisions are not derived from the same root: %(revision_a)s %(revision_b)s."
     )
 
     def __init__(self, revision_a, revision_b):
+        """Initialize with the two revisions.
+
+        Args:
+            revision_a: The first revision.
+            revision_b: The second revision.
+        """
         BzrError.__init__(self, revision_a=revision_a, revision_b=revision_b)
 
 
 class NotAncestor(BzrError):
+    """Revision is not an ancestor of another revision.
+
+    Raised when attempting an operation that requires one revision to be
+    an ancestor of another, but the ancestry relationship does not exist.
+    """
+
     _fmt = "Revision %(rev_id)s is not an ancestor of %(not_ancestor_id)s"
 
     def __init__(self, rev_id, not_ancestor_id):
+        """Initialize with revision information.
+
+        Args:
+            rev_id: The revision that is not an ancestor.
+            not_ancestor_id: The revision that was expected to be a descendant.
+        """
         BzrError.__init__(self, rev_id=rev_id, not_ancestor_id=not_ancestor_id)
 
 
 class NoCommits(BranchError):
+    """Branch has no commits.
+
+    Raised when attempting an operation that requires commits on a branch
+    that has no revision history.
+    """
+
     _fmt = "Branch %(branch)s has no commits."
 
 
 class UnlistableStore(BzrError):
+    """Store is not listable.
+
+    Raised when attempting to list the contents of a store that does
+    not support listing operations.
+    """
+
     def __init__(self, store):
+        """Initialize with the non-listable store.
+
+        Args:
+            store: The store that is not listable.
+        """
         BzrError.__init__(self, f"Store {store} is not listable")
 
 
 class UnlistableBranch(BzrError):
+    """Branch stores are not listable.
+
+    Raised when attempting to list the stores of a branch that does
+    not support listing operations.
+    """
+
     def __init__(self, br):
+        """Initialize with the branch with non-listable stores.
+
+        Args:
+            br: The branch whose stores are not listable.
+        """
         BzrError.__init__(self, f"Stores for branch {br} are not listable")
 
 
 class BoundBranchOutOfDate(BzrError):
+    """Bound branch is out of date with master.
+
+    Raised when a bound branch is behind its master branch and needs
+    to be updated before certain operations can proceed.
+    """
+
     _fmt = (
         "Bound branch %(branch)s is out of date with master branch"
         " %(master)s.%(extra_help)s"
     )
 
     def __init__(self, branch, master):
+        """Initialize with branch and master information.
+
+        Args:
+            branch: The bound branch that is out of date.
+            master: The master branch that is ahead.
+        """
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
@@ -1310,12 +1794,26 @@ class BoundBranchOutOfDate(BzrError):
 
 
 class CommitToDoubleBoundBranch(BzrError):
+    """Cannot commit to a doubly-bound branch.
+
+    Raised when attempting to commit to a branch that is bound to a master
+    which is itself bound to another remote branch, creating an unsupported
+    double-binding scenario.
+    """
+
     _fmt = (
         "Cannot commit to branch %(branch)s."
         " It is bound to %(master)s, which is bound to %(remote)s."
     )
 
     def __init__(self, branch, master, remote):
+        """Initialize with branch binding information.
+
+        Args:
+            branch: The branch being committed to.
+            master: The master branch that the branch is bound to.
+            remote: The remote branch that the master is bound to.
+        """
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
@@ -1323,20 +1821,44 @@ class CommitToDoubleBoundBranch(BzrError):
 
 
 class OverwriteBoundBranch(BzrError):
+    """Cannot overwrite a bound branch.
+
+    Raised when attempting to pull with --overwrite to a branch that is
+    bound to a master, which is not allowed.
+    """
+
     _fmt = "Cannot pull --overwrite to a branch which is bound %(branch)s"
 
     def __init__(self, branch):
+        """Initialize with the bound branch.
+
+        Args:
+            branch: The bound branch that cannot be overwritten.
+        """
         BzrError.__init__(self)
         self.branch = branch
 
 
 class BoundBranchConnectionFailure(BzrError):
+    """Failed to connect to target of bound branch.
+
+    Raised when a bound branch cannot connect to its master branch,
+    preventing synchronization operations.
+    """
+
     _fmt = (
         "Unable to connect to target of bound branch %(branch)s"
         " => %(target)s: %(error)s"
     )
 
     def __init__(self, branch, target, error):
+        """Initialize with connection failure details.
+
+        Args:
+            branch: The bound branch that failed to connect.
+            target: The target master branch.
+            error: The connection error that occurred.
+        """
         BzrError.__init__(self)
         self.branch = branch
         self.target = target
@@ -1344,35 +1866,81 @@ class BoundBranchConnectionFailure(BzrError):
 
 
 class VersionedFileError(BzrError):
+    """Base class for versioned file errors.
+
+    Raised when operations on versioned files encounter problems.
+    """
+
     _fmt = "Versioned file error"
 
 
 class RevisionNotPresent(VersionedFileError):
+    """Revision not present in versioned file.
+
+    Raised when attempting to access a revision that does not exist
+    in the specified versioned file.
+    """
+
     _fmt = 'Revision {%(revision_id)s} not present in "%(file_id)s".'
 
     def __init__(self, revision_id, file_id):
+        """Initialize with revision and file information.
+
+        Args:
+            revision_id: The revision ID that is not present.
+            file_id: The file ID where the revision was not found.
+        """
         VersionedFileError.__init__(self)
         self.revision_id = revision_id
         self.file_id = file_id
 
 
 class RevisionAlreadyPresent(VersionedFileError):
+    """Revision already present in versioned file.
+
+    Raised when attempting to add a revision that already exists
+    in the specified versioned file.
+    """
+
     _fmt = 'Revision {%(revision_id)s} already present in "%(file_id)s".'
 
     def __init__(self, revision_id, file_id):
+        """Initialize with revision and file information.
+
+        Args:
+            revision_id: The revision ID that is already present.
+            file_id: The file ID where the revision already exists.
+        """
         VersionedFileError.__init__(self)
         self.revision_id = revision_id
         self.file_id = file_id
 
 
 class VersionedFileInvalidChecksum(VersionedFileError):
+    """Text checksum validation failed.
+
+    Raised when the checksum of text in a versioned file does not match
+    the expected checksum, indicating data corruption.
+    """
+
     _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class NoSuchExportFormat(BzrError):
+    """Export format not supported.
+
+    Raised when attempting to export to a format that is not
+    supported by the export system.
+    """
+
     _fmt = "Export format %(format)r not supported"
 
     def __init__(self, format):
+        """Initialize with the unsupported format.
+
+        Args:
+            format: The export format that is not supported.
+        """
         BzrError.__init__(self)
         self.format = format
 
@@ -1421,16 +1989,38 @@ class SmartProtocolError(TransportError):
 
 
 class UnexpectedProtocolVersionMarker(TransportError):
+    """Unexpected protocol version marker received.
+
+    Raised when receiving a protocol version marker that is not
+    recognized or expected.
+    """
+
     _fmt = "Received bad protocol version marker: %(marker)r"
 
     def __init__(self, marker):
+        """Initialize with the unexpected marker.
+
+        Args:
+            marker: The unexpected protocol version marker.
+        """
         self.marker = marker
 
 
 class UnknownSmartMethod(InternalBzrError):
+    """Server does not recognize smart method.
+
+    Raised when the server receives a smart protocol request with
+    an unknown or unsupported method verb.
+    """
+
     _fmt = "The server does not recognise the '%(verb)s' request."
 
     def __init__(self, verb):
+        """Initialize with the unknown method verb.
+
+        Args:
+            verb: The smart method verb that is not recognized.
+        """
         self.verb = verb
 
 
@@ -1476,6 +2066,21 @@ class ConnectionTimeout(ConnectionError):
 
     _fmt = "Connection Timeout: %(msg)s%(orig_error)s"
 
+    def __init__(self, msg=None, orig_error=None):
+        """Initialize with timeout details.
+
+        Args:
+            msg: Optional timeout message.
+            orig_error: Optional original exception that caused the timeout.
+        """
+        if orig_error is None:
+            orig_error = ""
+        else:
+            orig_error = "; " + str(orig_error)
+        if msg is None:
+            msg = "Connection timed out"
+        ConnectionError.__init__(self, f"{msg}{orig_error}")
+
 
 class InvalidRange(TransportError):
     """Invalid range access in file.
@@ -1499,9 +2104,23 @@ class InvalidRange(TransportError):
 
 
 class InvalidHttpResponse(TransportError):
+    """Invalid HTTP response received.
+
+    Raised when an HTTP response is malformed or does not conform
+    to expected format.
+    """
+
     _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
     def __init__(self, path, msg, orig_error=None, headers=None):
+        """Initialize with response details.
+
+        Args:
+            path: The path that generated the invalid response.
+            msg: Error message describing the invalid response.
+            orig_error: Optional original exception.
+            headers: Optional HTTP headers from the response.
+        """
         self.path = path
         if orig_error is None:
             orig_error = ""
@@ -1514,9 +2133,23 @@ class InvalidHttpResponse(TransportError):
 
 
 class UnexpectedHttpStatus(InvalidHttpResponse):
+    """Unexpected HTTP status code received.
+
+    Raised when an HTTP response contains a status code that was
+    not expected for the operation.
+    """
+
     _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
 
     def __init__(self, path, code, extra=None, headers=None):
+        """Initialize with HTTP status details.
+
+        Args:
+            path: The path that returned the unexpected status.
+            code: The unexpected HTTP status code.
+            extra: Optional additional information about the status.
+            headers: Optional HTTP headers from the response.
+        """
         self.path = path
         self.code = code
         self.extra = extra or ""
@@ -1527,6 +2160,11 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
 
 
 class BadHttpRequest(UnexpectedHttpStatus):
+    """Bad HTTP request error.
+
+    Raised when an HTTP request is malformed or contains invalid parameters.
+    """
+
     _fmt = "Bad http request for %(path)s: %(reason)s"
 
     def __init__(self, path, reason):
@@ -1536,6 +2174,11 @@ class BadHttpRequest(UnexpectedHttpStatus):
 
 
 class InvalidHttpRange(InvalidHttpResponse):
+    """Invalid HTTP range header.
+
+    Raised when an HTTP range request contains an invalid range specification.
+    """
+
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
 
     def __init__(self, path, range, msg):
@@ -1557,6 +2200,11 @@ class HttpBoundaryMissing(InvalidHttpResponse):
 
 
 class InvalidHttpContentType(InvalidHttpResponse):
+    """Invalid HTTP Content-Type header.
+
+    Raised when an HTTP response contains an unexpected or invalid Content-Type header.
+    """
+
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
 
     def __init__(self, path, ctype, msg):
@@ -1565,6 +2213,11 @@ class InvalidHttpContentType(InvalidHttpResponse):
 
 
 class RedirectRequested(TransportError):
+    """HTTP redirect response received.
+
+    Raised when an HTTP request receives a redirect response that needs to be handled.
+    """
+
     _fmt = "%(source)s is%(permanently)s redirected to %(target)s"
 
     def __init__(self, source, target, is_permanent=False):
@@ -1578,6 +2231,12 @@ class RedirectRequested(TransportError):
 
 
 class TooManyRedirections(TransportError):
+    """Too many HTTP redirections encountered.
+
+    Raised when the number of HTTP redirections exceeds the maximum allowed limit,
+    potentially indicating a redirect loop.
+    """
+
     _fmt = "Too many redirections"
 
 
@@ -1650,6 +2309,12 @@ class GraphCycleError(BzrError):
 
 
 class WritingCompleted(InternalBzrError):
+    """Writing to request already completed.
+
+    Raised when attempting to write to a MediumRequest that has already
+    finished its writing phase.
+    """
+
     _fmt = (
         "The MediumRequest '%(request)s' has already had finish_writing "
         "called upon it - accept bytes may not be called anymore."
@@ -1660,6 +2325,12 @@ class WritingCompleted(InternalBzrError):
 
 
 class WritingNotComplete(InternalBzrError):
+    """Writing to request not yet completed.
+
+    Raised when attempting to read from a MediumRequest before the writing
+    phase has been completed with finish_writing.
+    """
+
     _fmt = (
         "The MediumRequest '%(request)s' has not has finish_writing "
         "called upon it - until the write phase is complete no "
@@ -1754,6 +2425,12 @@ class BundleNotSupported(BzrError):
 
 
 class MissingText(BzrError):
+    """Text revision missing from branch.
+
+    Raised when a branch is missing a specific text revision for a file that is
+    needed for an operation.
+    """
+
     _fmt = "Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"
 
     def __init__(self, branch, text_revision, file_id):
@@ -1774,6 +2451,11 @@ class DuplicateKey(BzrError):
 
 
 class DuplicateHelpPrefix(BzrError):
+    """Help prefix appears multiple times in search path.
+
+    Raised when a help prefix is registered multiple times in the help search path.
+    """
+
     _fmt = "The prefix %(prefix)s is in the help search path twice."
 
     def __init__(self, prefix):
@@ -1781,10 +2463,13 @@ class DuplicateHelpPrefix(BzrError):
 
 
 class BzrBadParameter(InternalBzrError):
-    _fmt = "Bad parameter: %(param)r"
+    """Base class for bad parameter errors.
 
-    # This exception should never be thrown, but it is a base class for all
-    # parameter-to-function errors.
+    This exception should never be thrown directly, but serves as a base class for all
+    parameter-to-function errors.
+    """
+
+    _fmt = "Bad parameter: %(param)r"
 
     def __init__(self, param):
         BzrError.__init__(self)
@@ -1792,10 +2477,21 @@ class BzrBadParameter(InternalBzrError):
 
 
 class BzrBadParameterNotUnicode(BzrBadParameter):
+    """Parameter is not unicode or UTF-8.
+
+    Raised when a parameter that must be unicode or UTF-8 encoded is provided
+    in a different encoding.
+    """
+
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
 
 
 class BzrMoveFailedError(BzrError):
+    """File move operation failed.
+
+    Raised when a file or directory move operation cannot be completed.
+    """
+
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 
     def __init__(self, from_path="", to_path="", extra=None):
@@ -1831,6 +2527,11 @@ class BzrMoveFailedError(BzrError):
 
 
 class BzrRenameFailedError(BzrMoveFailedError):
+    """File rename operation failed.
+
+    Raised when a file or directory rename operation cannot be completed.
+    """
+
     _fmt = (
         "Could not rename %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
     )
@@ -1840,22 +2541,48 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
 
 class BzrBadParameterNotString(BzrBadParameter):
+    """Parameter is not a string.
+
+    Raised when a parameter that must be a string or unicode string is provided
+    with a different type.
+    """
+
     _fmt = "Parameter %(param)s is not a string or unicode string."
 
 
 class BzrBadParameterMissing(BzrBadParameter):
+    """Required parameter is missing.
+
+    Raised when a required parameter is not provided to a function or method.
+    """
+
     _fmt = "Parameter %(param)s is required but not present."
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
+    """Parameter is unicode but bytes expected.
+
+    Raised when a unicode parameter is provided but only byte strings are permitted.
+    """
+
     _fmt = "Parameter %(param)s is unicode but only byte-strings are permitted."
 
 
 class BzrBadParameterContainsNewline(BzrBadParameter):
+    """Parameter contains invalid newline character.
+
+    Raised when a parameter contains a newline character where it is not permitted.
+    """
+
     _fmt = "Parameter %(param)s contains a newline."
 
 
 class ParamikoNotPresent(DependencyNotPresent):
+    """Paramiko library is not available.
+
+    Raised when paramiko is required for SFTP support but is not installed or cannot be imported.
+    """
+
     _fmt = "Unable to import paramiko (required for sftp support): %(error)s"
 
     def __init__(self, error):
@@ -1863,6 +2590,12 @@ class ParamikoNotPresent(DependencyNotPresent):
 
 
 class UninitializableFormat(BzrError):
+    """Format cannot be initialized by current Breezy version.
+
+    Raised when attempting to initialize a format that is not supported by the current
+    version of Breezy.
+    """
+
     _fmt = "Format %(format)s cannot be initialised by this version of brz."
 
     def __init__(self, format):
@@ -1871,6 +2604,12 @@ class UninitializableFormat(BzrError):
 
 
 class BadConversionTarget(BzrError):
+    """Invalid conversion target format.
+
+    Raised when attempting to convert from one format to another format that is
+    not a valid conversion target.
+    """
+
     _fmt = (
         "Cannot convert from format %(from_format)s to format %(format)s."
         "    %(problem)s"
@@ -1884,6 +2623,11 @@ class BadConversionTarget(BzrError):
 
 
 class NoDiffFound(BzrError):
+    """No appropriate diff tool found for file.
+
+    Raised when no suitable diff tool can be found to generate differences for a specific file.
+    """
+
     _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
 
     def __init__(self, path):
@@ -1891,6 +2635,11 @@ class NoDiffFound(BzrError):
 
 
 class ExecutableMissing(BzrError):
+    """Required executable not found on system.
+
+    Raised when a required external executable cannot be found in the system PATH.
+    """
+
     _fmt = "%(exe_name)s could not be found on this machine"
 
     def __init__(self, exe_name):
@@ -1898,6 +2647,11 @@ class ExecutableMissing(BzrError):
 
 
 class NoDiff(BzrError):
+    """Diff tool is not installed.
+
+    Raised when the diff utility is not installed on the system but is required for an operation.
+    """
+
     _fmt = "Diff is not installed on this machine: %(msg)s"
 
     def __init__(self, msg):
@@ -1905,10 +2659,21 @@ class NoDiff(BzrError):
 
 
 class NoDiff3(BzrError):
+    """Diff3 tool is not installed.
+
+    Raised when the diff3 utility is not installed on the system but is required for three-way merging.
+    """
+
     _fmt = "Diff3 is not installed on this machine."
 
 
 class ExistingLimbo(BzrError):
+    """Tree contains leftover limbo directory.
+
+    Raised when a tree contains a leftover limbo directory from a failed operation
+    that needs to be cleaned up before proceeding.
+    """
+
     _fmt = """This tree contains left-over files from a failed operation.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
@@ -1919,6 +2684,12 @@ class ExistingLimbo(BzrError):
 
 
 class ExistingPendingDeletion(BzrError):
+    """Tree contains leftover pending deletion directory.
+
+    Raised when a tree contains a leftover pending deletion directory from a failed
+    operation that needs to be cleaned up before proceeding.
+    """
+
     _fmt = """This tree contains left-over files from a failed operation.
     Please examine %(pending_deletion)s to see if it contains any files you
     wish to keep, and delete it when you are done."""
@@ -1928,6 +2699,12 @@ class ExistingPendingDeletion(BzrError):
 
 
 class ImmortalPendingDeletion(BzrError):
+    """Cannot delete transform temporary directory.
+
+    Raised when a transform temporary directory cannot be deleted, possibly due to
+    permission issues or files being in use.
+    """
+
     _fmt = (
         "Unable to delete transform temporary directory "
         "%(pending_deletion)s.  Please examine %(pending_deletion)s to see if it "
@@ -1939,6 +2716,12 @@ class ImmortalPendingDeletion(BzrError):
 
 
 class OutOfDateTree(BzrError):
+    """Working tree is out of date.
+
+    Raised when the working tree is behind its branch and needs to be updated
+    before an operation can proceed.
+    """
+
     _fmt = "Working tree is out of date, please run 'brz update'.%(more)s"
 
     def __init__(self, tree, more=None):
@@ -1949,6 +2732,11 @@ class OutOfDateTree(BzrError):
 
 
 class PublicBranchOutOfDate(BzrError):
+    """Public branch is missing required revision.
+
+    Raised when the public branch is missing a revision that is needed for an operation.
+    """
+
     _fmt = 'Public branch "%(public_location)s" lacks revision "%(revstring)s".'
 
     def __init__(self, public_location, revstring):
@@ -1959,14 +2747,30 @@ class PublicBranchOutOfDate(BzrError):
 
 
 class MergeModifiedFormatError(BzrError):
+    """Error in merge modified format.
+
+    Raised when there is a formatting error in merge modified data.
+    """
+
     _fmt = "Error in merge modified format"
 
 
 class ConflictFormatError(BzrError):
+    """Error in conflict listing format.
+
+    Raised when there is a formatting error in conflict listing data.
+    """
+
     _fmt = "Format error in conflict listings"
 
 
 class CorruptRepository(BzrError):
+    """Repository corruption detected.
+
+    Raised when repository corruption is detected that requires reconciliation
+    to repair.
+    """
+
     _fmt = (
         "An error has been detected in the repository %(repo_path)s.\n"
         "Please run brz reconcile on this repository."
@@ -2004,6 +2808,11 @@ class InconsistentDeltaDelta(InconsistentDelta):
 
 
 class UpgradeRequired(BzrError):
+    """Branch upgrade required for feature.
+
+    Raised when a feature requires a newer branch format than what is currently available.
+    """
+
     _fmt = "To use this feature you must upgrade your branch at %(path)s."
 
     def __init__(self, path):
@@ -2012,10 +2821,20 @@ class UpgradeRequired(BzrError):
 
 
 class RepositoryUpgradeRequired(UpgradeRequired):
+    """Repository upgrade required for feature.
+
+    Raised when a feature requires a newer repository format than what is currently available.
+    """
+
     _fmt = "To use this feature you must upgrade your repository at %(path)s."
 
 
 class RichRootUpgradeRequired(UpgradeRequired):
+    """Rich root support upgrade required.
+
+    Raised when a feature requires rich root support but the current format does not support it.
+    """
+
     _fmt = (
         "To use this feature you must upgrade your branch at %(path)s to"
         " a format which supports rich roots."
@@ -2023,10 +2842,20 @@ class RichRootUpgradeRequired(UpgradeRequired):
 
 
 class LocalRequiresBoundBranch(BzrError):
+    """Local-only commit requires bound branch.
+
+    Raised when attempting a local-only commit on a branch that is not bound to a master.
+    """
+
     _fmt = "Cannot perform local-only commits on unbound branches."
 
 
 class UnsupportedOperation(BzrError):
+    """Operation is not supported on this object type.
+
+    Raised when attempting an operation that is not supported by the particular object type.
+    """
+
     _fmt = "The method %(mname)s is not supported on objects of type %(tname)s."
 
     def __init__(self, method, method_self):
@@ -2036,19 +2865,31 @@ class UnsupportedOperation(BzrError):
 
 
 class FetchLimitUnsupported(UnsupportedOperation):
-    fmt = "InterBranch %(interbranch)r does not support fetching limits."
+    """Fetch limit not supported by interbranch implementation.
+
+    Raised when attempting to use fetch limits on an interbranch implementation that does not support them.
+    """
+
+    _fmt = "InterBranch %(interbranch)r does not support fetching limits."
 
     def __init__(self, interbranch):
         BzrError.__init__(self, interbranch=interbranch)
 
 
 class NonAsciiRevisionId(UnsupportedOperation):
-    """Raised when a commit is attempting to set a non-ascii revision id
-    but cant.
+    """Raised when a commit is attempting to set a non-ascii revision id.
+
+    This exception is raised when a commit operation tries to set a revision
+    ID that contains non-ASCII characters but cannot do so.
     """
 
 
 class SharedRepositoriesUnsupported(UnsupportedOperation):
+    """Shared repositories not supported by format.
+
+    Raised when attempting to use shared repositories with a format that does not support them.
+    """
+
     _fmt = "Shared repositories are not supported by %(format)r."
 
     def __init__(self, format):
@@ -2056,6 +2897,11 @@ class SharedRepositoriesUnsupported(UnsupportedOperation):
 
 
 class GhostTagsNotSupported(BzrError):
+    """Ghost tags not supported by format.
+
+    Raised when attempting to use ghost tags with a format that does not support them.
+    """
+
     _fmt = "Ghost tags not supported by format %(format)r."
 
     def __init__(self, format):
@@ -2063,10 +2909,21 @@ class GhostTagsNotSupported(BzrError):
 
 
 class BinaryFile(BzrError):
+    """File is binary when text was expected.
+
+    Raised when a binary file is encountered in a context where text is required.
+    """
+
     _fmt = "File is binary but should be text."
 
 
 class IllegalPath(BzrError):
+    """Path contains illegal characters for current platform.
+
+    Raised when a path contains characters or patterns that are not permitted
+    on the current operating system platform.
+    """
+
     _fmt = "The path %(path)s is not permitted on this platform"
 
     def __init__(self, path):
@@ -2075,6 +2932,12 @@ class IllegalPath(BzrError):
 
 
 class TestamentMismatch(BzrError):
+    """Testament verification failed.
+
+    Raised when a revision's testament does not match its expected value,
+    indicating potential data corruption.
+    """
+
     _fmt = """Testament did not match expected value.
        For revision_id {%(revision_id)s}, expected {%(expected)s}, measured
        {%(measured)s}"""
@@ -2086,6 +2949,11 @@ class TestamentMismatch(BzrError):
 
 
 class NotABundle(BzrError):
+    """Content is not a revision bundle.
+
+    Raised when content that was expected to be a bzr revision bundle does not have the correct format.
+    """
+
     _fmt = "Not a bzr revision-bundle: %(text)r"
 
     def __init__(self, text):
@@ -2094,6 +2962,11 @@ class NotABundle(BzrError):
 
 
 class BadBundle(BzrError):
+    """Revision bundle is malformed.
+
+    Raised when a revision bundle contains errors or is corrupted.
+    """
+
     _fmt = "Bad bzr revision-bundle: %(text)r"
 
     def __init__(self, text):
@@ -2102,18 +2975,39 @@ class BadBundle(BzrError):
 
 
 class MalformedHeader(BadBundle):
+    """Revision bundle header is malformed.
+
+    Raised when a revision bundle has an invalid or corrupted header.
+    """
+
     _fmt = "Malformed bzr revision-bundle header: %(text)r"
 
 
 class MalformedPatches(BadBundle):
+    """Revision bundle patches are malformed.
+
+    Raised when a revision bundle contains invalid or corrupted patch data.
+    """
+
     _fmt = "Malformed patches in bzr revision-bundle: %(text)r"
 
 
 class MalformedFooter(BadBundle):
+    """Revision bundle footer is malformed.
+
+    Raised when a revision bundle has an invalid or corrupted footer.
+    """
+
     _fmt = "Malformed footer in bzr revision-bundle: %(text)r"
 
 
 class UnsupportedEOLMarker(BadBundle):
+    """Unsupported end-of-line marker in bundle.
+
+    Raised when a revision bundle uses an unsupported end-of-line marker
+    instead of the expected newline character.
+    """
+
     _fmt = "End of line marker was not \\n in bzr revision-bundle"
 
     def __init__(self):
@@ -2123,6 +3017,11 @@ class UnsupportedEOLMarker(BadBundle):
 
 
 class IncompatibleBundleFormat(BzrError):
+    """Bundle format is incompatible.
+
+    Raised when attempting to use bundle formats that are incompatible with each other.
+    """
+
     _fmt = "Bundle format %(bundle_format)s is incompatible with %(other)s"
 
     def __init__(self, bundle_format, other):
@@ -2132,10 +3031,20 @@ class IncompatibleBundleFormat(BzrError):
 
 
 class RootNotRich(BzrError):
+    """Operation requires rich root data storage.
+
+    Raised when an operation requires rich root support but the current format does not provide it.
+    """
+
     _fmt = """This operation requires rich root data storage"""
 
 
 class NoSmartMedium(InternalBzrError):
+    """Transport cannot tunnel smart protocol.
+
+    Raised when a transport does not support tunneling the smart protocol.
+    """
+
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
 
     def __init__(self, transport):
@@ -2143,6 +3052,11 @@ class NoSmartMedium(InternalBzrError):
 
 
 class UnknownSSH(BzrError):
+    """Unknown SSH implementation specified.
+
+    Raised when the BRZ_SSH environment variable contains an unrecognized value.
+    """
+
     _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 
     def __init__(self, vendor):
@@ -2151,6 +3065,12 @@ class UnknownSSH(BzrError):
 
 
 class SSHVendorNotFound(BzrError):
+    """No SSH implementation available.
+
+    Raised when no SSH implementation can be found and the BRZ_SSH environment
+    variable is not set to specify one.
+    """
+
     _fmt = (
         "Don't know how to handle SSH connections."
         " Please set BRZ_SSH environment variable."
@@ -2171,6 +3091,11 @@ class GhostRevisionsHaveNoRevno(BzrError):
 
 
 class GhostRevisionUnusableHere(BzrError):
+    """Ghost revision cannot be used in this context.
+
+    Raised when a ghost revision is encountered in a context where it cannot be used.
+    """
+
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
 
     def __init__(self, revision_id):
@@ -2179,14 +3104,22 @@ class GhostRevisionUnusableHere(BzrError):
 
 
 class NotAMergeDirective(BzrError):
-    """File starting with %(firstline)r is not a merge directive."""
+    """Content is not a merge directive.
+
+    Raised when content that was expected to be a merge directive does not have the correct format.
+    """
+
+    _fmt = "File starting with %(firstline)r is not a merge directive."
 
     def __init__(self, firstline):
         BzrError.__init__(self, firstline=firstline)
 
 
 class NoMergeSource(BzrError):
-    """Raise if no merge source was specified for a merge directive."""
+    """No merge source specified for merge directive.
+
+    Raised when a merge directive does not specify either a bundle or a public branch location.
+    """
 
     _fmt = "A merge directive must provide either a bundle or a public branch location."
 
@@ -2355,7 +3288,9 @@ class CannotBindAddress(BzrError):
 
 
 class TipChangeRejected(BzrError):
-    """A pre_change_branch_tip hook function may raise this to cleanly and
+    """Branch tip change was rejected by hook.
+
+    A pre_change_branch_tip hook function may raise this to cleanly and
     explicitly abort a change to a branch tip.
     """
 
