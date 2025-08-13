@@ -41,6 +41,11 @@ from .pack_repo import (
 
 
 class GCPack(NewPack):
+    """Group compress pack implementation.
+
+    A pack that uses group compression for storage efficiency.
+    """
+
     def __init__(self, pack_collection, upload_suffix="", file_mode=None):
         """Create a NewPack instance.
 
@@ -168,6 +173,11 @@ class GCPack(NewPack):
 
 
 class ResumedGCPack(ResumedPack):
+    """A resumed pack for group compress repositories.
+
+    Handles resuming pack operations for group compress format repositories.
+    """
+
     def _check_references(self):
         """Make sure our external compression parents are present."""
         # See GCPack._check_references for why this is empty
@@ -184,6 +194,15 @@ class GCCHKPacker(Packer):
     def __init__(
         self, pack_collection, packs, suffix, revision_ids=None, reload_func=None
     ):
+        """Initialize a GCCHKPacker.
+
+        Args:
+            pack_collection: The pack collection to operate on.
+            packs: List of packs to process.
+            suffix: Suffix for the new pack name.
+            revision_ids: Optional list of revision IDs to pack.
+            reload_func: Optional function to reload pack data.
+        """
         super().__init__(
             pack_collection,
             packs,
@@ -546,6 +565,12 @@ class GCCHKReconcilePacker(GCCHKPacker):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize a GCCHKReconcilePacker.
+
+        Args:
+            *args: Arguments passed to parent class.
+            **kwargs: Keyword arguments passed to parent class.
+        """
         super().__init__(*args, **kwargs)
         self._data_changed = False
         self._gather_text_refs = True
@@ -642,6 +667,12 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize a GCCHKCanonicalizingPacker.
+
+        Args:
+            *args: Arguments passed to parent class.
+            **kwargs: Keyword arguments passed to parent class.
+        """
         super().__init__(*args, **kwargs)
         self._data_changed = False
 
@@ -762,6 +793,11 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
 
 
 class GCRepositoryPackCollection(RepositoryPackCollection):
+    """Pack collection for group compress repositories.
+
+    Manages packs in group compress format repositories.
+    """
+
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
     normal_packer_class = GCCHKPacker
@@ -1376,6 +1412,15 @@ class GroupCHKStreamSource(StreamSource):
         return ("texts", text_stream)
 
     def get_stream(self, search):
+        """Get a stream of records for the given search.
+
+        Args:
+            search: Search object specifying what records to retrieve.
+
+        Yields:
+            Tuples of (stream_type, record_stream) for different data types.
+        """
+
         def wrap_and_count(pb, rc, stream):
             """Yield records from stream while showing progress."""
             count = 0
@@ -1416,6 +1461,14 @@ class GroupCHKStreamSource(StreamSource):
             pb.update("Done", rc.max, rc.max)
 
     def get_stream_for_missing_keys(self, missing_keys):
+        """Get a stream to supply missing keys.
+
+        Args:
+            missing_keys: Keys that were found to be missing.
+
+        Yields:
+            Stream data for the missing keys.
+        """
         # missing keys can only occur when we are byte copying and not
         # translating (because translation means we don't send
         # unreconstructable deltas ever).
@@ -1520,6 +1573,11 @@ class RepositoryFormat2a(RepositoryFormatPack):
 
     @classmethod
     def get_format_string(cls):
+        """Get the format string for this repository format.
+
+        Returns:
+            Format identifier string as bytes.
+        """
         return b"Bazaar repository format 2a (needs bzr 1.16 or later)\n"
 
     def get_format_description(self):
@@ -1542,6 +1600,11 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
 
     @classmethod
     def get_format_string(cls):
+        """Get the format string for this repository format.
+
+        Returns:
+            Format identifier string as bytes.
+        """
         return b"Bazaar development format 8\n"
 
     def get_format_description(self):

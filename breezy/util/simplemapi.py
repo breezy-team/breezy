@@ -81,6 +81,11 @@ MAPI_DIALOG = 8
 
 
 class MapiRecipDesc(Structure):
+    """MAPI recipient descriptor structure.
+
+    Represents a message recipient with name, address, and other properties.
+    """
+
     _fields_ = [
         ("ulReserved", c_ulong),
         ("ulRecipClass", c_ulong),
@@ -96,6 +101,11 @@ lppMapiRecipDesc = POINTER(lpMapiRecipDesc)  # noqa: N816
 
 
 class MapiFileDesc(Structure):
+    """MAPI file descriptor structure.
+
+    Represents a file attachment with path, filename, and position in message.
+    """
+
     _fields_ = [
         ("ulReserved", c_ulong),
         ("flFlags", c_ulong),
@@ -110,6 +120,12 @@ lpMapiFileDesc = POINTER(MapiFileDesc)  # noqa: N816
 
 
 class MapiMessage(Structure):
+    """MAPI message structure.
+
+    Contains all components of an email message including subject, body,
+    recipients, and attachments.
+    """
+
     _fields_ = [
         ("ulReserved", c_ulong),
         ("lpszSubject", c_char_p),
@@ -158,11 +174,26 @@ MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 
 
 class MAPIError(WindowsError):  # type: ignore
+    """Exception raised for MAPI-specific errors.
+
+    Wraps MAPI error codes in a Python exception.
+    """
+
     def __init__(self, code):
+        """Initialize MAPI error with error code.
+
+        Args:
+            code: MAPI error code integer.
+        """
         OSError(self)  # type: ignore
         self.code = code
 
     def __str__(self):
+        """Return string representation of MAPI error.
+
+        Returns:
+            String describing the MAPI error code.
+        """
         return "MAPI error %d" % (self.code,)
 
 

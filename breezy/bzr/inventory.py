@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Inventory management for Bazaar.
+
+This module provides classes and functions for managing file inventories
+in Bazaar repositories, including entries for files, directories, symlinks,
+and tree references.
+"""
+
 # FIXME: This refactoring of the workingtree code doesn't seem to keep
 # the WorkingTree's copy of the inventory in sync with the branch.  The
 # branch modifies its working inventory when it does a commit to make
@@ -105,6 +112,14 @@ class CHKInventory:
     """
 
     def has_filename(self, filename):
+        """Check if a filename exists in the inventory.
+
+        Args:
+            filename: Path to check for existence.
+
+        Returns:
+            True if the filename exists, False otherwise.
+        """
         return bool(self.path2id(filename))
 
     def id2path(self, file_id):
@@ -178,6 +193,14 @@ class CHKInventory:
                 stack.pop()
 
     def iter_sorted_children(self, file_id):
+        """Iterate through children of a directory in sorted order.
+
+        Args:
+            file_id: The file ID of the directory.
+
+        Yields:
+            Child inventory entries sorted by name.
+        """
         return (c for (_n, c) in sorted(self.get_children(file_id).items()))
 
     def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
@@ -351,6 +374,11 @@ class CHKInventory:
         raise NotImplementedError(self.get_idpath)
 
     def __init__(self, search_key_name):
+        """Initialize CHKInventory with a search key name.
+
+        Args:
+            search_key_name: Name of the search key for CHK operations.
+        """
         self._fileid_to_entry_cache = {}
         self._fully_cached = False
         self._path_to_fileid_cache = {}
@@ -417,6 +445,15 @@ class CHKInventory:
         return result
 
     def get_child(self, dir_id, name):
+        """Get a specific child from a directory.
+
+        Args:
+            dir_id: The file ID of the directory.
+            name: The name of the child to retrieve.
+
+        Returns:
+            The child inventory entry or None if not found.
+        """
         # TODO(jelmer): Implement a version that doesn't load all children.
         return self.get_children(dir_id).get(name)
 
@@ -881,12 +918,28 @@ class CHKInventory:
         return result
 
     def has_id(self, file_id):
+        """Check if a file_id exists in the inventory.
+
+        Args:
+            file_id: The file ID to check.
+
+        Returns:
+            True if the file_id exists, False otherwise.
+        """
         # Perhaps have an explicit 'contains' method on CHKMap ?
         if self._fileid_to_entry_cache.get(file_id, None) is not None:
             return True
         return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def is_root(self, file_id):
+        """Check if a file_id is the root of the inventory.
+
+        Args:
+            file_id: The file ID to check.
+
+        Returns:
+            True if this is the root file ID, False otherwise.
+        """
         return file_id == self.root_id
 
     def _iter_file_id_parents(self, file_id):
@@ -1071,6 +1124,14 @@ class CHKInventory:
         return len(self.id_to_entry)
 
     def path2id(self, relpath):
+        """Return the file ID for a relative path.
+
+        Args:
+            relpath: Relative path as string or list of path components.
+
+        Returns:
+            The file ID for the path, or None if not found.
+        """
         # TODO: perhaps support negative hits?
         if isinstance(relpath, str):
             names = osutils.splitpath(relpath)
