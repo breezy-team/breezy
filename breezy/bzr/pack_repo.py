@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Pack-based repository format implementation.
+
+This module implements a repository format that stores data in 'pack' files,
+which are container files that hold multiple versioned texts, inventories,
+revisions, and signatures. The pack format provides efficient storage and
+fast access to repository data through specialized indices.
+"""
+
 import contextlib
 import hashlib
 import re
@@ -127,6 +135,20 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
         lossy=False,
         owns_transaction=True,
     ):
+        """Initialize a PackCommitBuilder.
+
+        Args:
+            repository: The target repository for the commit.
+            parents: Parent revision IDs for the commit.
+            config: Branch configuration.
+            timestamp: Commit timestamp (optional).
+            timezone: Commit timezone (optional).
+            committer: Committer identity (optional).
+            revprops: Revision properties (optional).
+            revision_id: Specific revision ID to use (optional).
+            lossy: Whether this is a lossy conversion (optional).
+            owns_transaction: Whether this builder owns the transaction (optional).
+        """
         VersionedFileCommitBuilder.__init__(
             self,
             repository,
@@ -238,6 +260,11 @@ class Pack:
         return self.name + ".pack"
 
     def get_revision_count(self):
+        """Get the number of revisions in this pack.
+
+        Returns:
+            int: The number of revisions stored in this pack.
+        """
         return self.revision_index.key_count()
 
     def index_name(self, index_type, name):
@@ -279,11 +306,27 @@ class Pack:
         setattr(self, index_type + "_index", index)
 
     def __lt__(self, other):
+        """Compare packs by object ID for sorting.
+
+        Args:
+            other: Another Pack instance to compare with.
+
+        Returns:
+            bool: True if this pack is less than the other.
+
+        Raises:
+            TypeError: If other is not a Pack instance.
+        """
         if not isinstance(other, Pack):
             raise TypeError(other)
         return id(self) < id(other)
 
     def __hash__(self):
+        """Return hash of pack based on its indices.
+
+        Returns:
+            int: Hash value for this pack.
+        """
         return hash(
             (
                 type(self),
@@ -335,12 +378,33 @@ class ExistingPack(Pack):
             raise AssertionError()
 
     def __eq__(self, other):
+        """Check equality with another pack.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if packs are equal.
+        """
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
+        """Check inequality with another pack.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if packs are not equal.
+        """
         return not self.__eq__(other)
 
     def __repr__(self):
+        """Return string representation of this pack.
+
+        Returns:
+            str: String representation including class, transport, and name.
+        """
         return "<{}.{} object at 0x{:x}, {}, {}".format(
             self.__class__.__module__,
             self.__class__.__name__,
@@ -350,10 +414,22 @@ class ExistingPack(Pack):
         )
 
     def __hash__(self):
+        """Return hash of pack based on type and name.
+
+        Returns:
+            int: Hash value for this existing pack.
+        """
         return hash((type(self), self.name))
 
 
 class ResumedPack(ExistingPack):
+    """A pack that is being resumed from a previous suspended state.
+
+    This class represents a pack that was previously being written but was
+    suspended (e.g., due to interrupted write group). It can be resumed to
+    continue the writing process.
+    """
+
     def __init__(
         self,
         name,
@@ -399,6 +475,14 @@ class ResumedPack(ExistingPack):
         # XXX: perhaps check that the .pack file exists?
 
     def access_tuple(self):
+        """Return transport and filename tuple for pack access.
+
+        Returns:
+            tuple: (transport, filename) depending on pack state.
+
+        Raises:
+            AssertionError: If pack is in an invalid state.
+        """
         if self._state == "finished":
             return Pack.access_tuple(self)
         elif self._state == "resumed":
@@ -407,6 +491,11 @@ class ResumedPack(ExistingPack):
             raise AssertionError(self._state)
 
     def abort(self):
+        """Abort the resumed pack by deleting temporary files.
+
+        Removes the pack file and all associated index files from the
+        upload transport.
+        """
         self.upload_transport.delete(self.file_name())
         indices = [
             self.revision_index,
@@ -420,6 +509,11 @@ class ResumedPack(ExistingPack):
             index._transport.delete(index._name)
 
     def finish(self):
+        """Complete the resumed pack by moving files to final locations.
+
+        Moves the pack file and all index files from the upload area to their
+        final locations in the repository, and updates the pack state.
+        """
         self._check_references()
         index_types = ["revision", "inventory", "text", "signature"]
         if self.chk_index is not None:
@@ -579,6 +673,11 @@ class NewPack(Pack):
         )
 
     def finish_content(self):
+        """Finalize the content of the pack and assign it a name.
+
+        Ends the container writer, flushes any remaining buffered data,
+        and assigns the pack a name based on the MD5 hash of its contents.
+        """
         if self.name is not None:
             return
         self._writer.end()
@@ -659,6 +758,11 @@ class NewPack(Pack):
         return index._external_references()
 
     def set_write_cache_size(self, size):
+        """Set the write cache size for the pack.
+
+        Args:
+            size: Maximum number of bytes to cache before writing to disk.
+        """
         self._cache_limit = size
 
     def _write_index(self, index_type, index, label, suspend=False):
@@ -993,6 +1097,11 @@ class RepositoryPackCollection:
         self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
+        """Return string representation of the pack collection.
+
+        Returns:
+            str: String representation including class name and repository.
+        """
         return f"{self.__class__.__name__}({self.repo!r})"
 
     def add_pack_to_memory(self, pack):
@@ -1895,6 +2004,16 @@ class PackRepository(MetaDirVersionedFileRepository):
         _revision_serializer,
         _inventory_serializer,
     ):
+        """Initialize a PackRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory containing this repository.
+            control_files: LockableFiles instance for repository control files.
+            _commit_builder_class: Class to use for commit builders.
+            _revision_serializer: Serializer for revision objects.
+            _inventory_serializer: Serializer for inventory objects.
+        """
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._revision_serializer = _revision_serializer
@@ -1944,6 +2063,11 @@ class PackRepository(MetaDirVersionedFileRepository):
         return hint
 
     def suspend_write_group(self):
+        """Suspend the current write group and return resume tokens.
+
+        Returns:
+            list: Tokens that can be used to resume the write group later.
+        """
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
         self.revisions._index._key_dependencies.clear()
@@ -1961,15 +2085,30 @@ class PackRepository(MetaDirVersionedFileRepository):
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
 
     def get_transaction(self):
+        """Get the current transaction for this repository.
+
+        Returns:
+            Transaction: The current transaction, either write or read-only.
+        """
         if self._write_lock_count:
             return self._transaction
         else:
             return self.control_files.get_transaction()
 
     def is_locked(self):
+        """Check if the repository is locked.
+
+        Returns:
+            bool: True if the repository is locked for reading or writing.
+        """
         return self._write_lock_count or self.control_files.is_locked()
 
     def is_write_locked(self):
+        """Check if the repository is write-locked.
+
+        Returns:
+            bool: True if the repository is locked for writing.
+        """
         return self._write_lock_count
 
     def lock_write(self, token=None):
@@ -2015,10 +2154,24 @@ class PackRepository(MetaDirVersionedFileRepository):
         return LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
+        """Leave the lock in place when unlocking.
+
+        This operation is not supported for pack repositories.
+
+        Raises:
+            NotImplementedError: Always, as this operation is not supported.
+        """
         # not supported - raise an error
         raise NotImplementedError(self.leave_lock_in_place)
 
     def dont_leave_lock_in_place(self):
+        """Don't leave the lock in place when unlocking.
+
+        This operation is not supported for pack repositories.
+
+        Raises:
+            NotImplementedError: Always, as this operation is not supported.
+        """
         # not supported - raise an error
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
@@ -2046,6 +2199,17 @@ class PackRepository(MetaDirVersionedFileRepository):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Unlock the repository.
+
+        Decrements the lock count and releases locks when count reaches zero.
+        If a write group is still active when trying to release a write lock,
+        raises an error.
+
+        Raises:
+            BzrError: If trying to unlock while a write group is active.
+            LockNotHeld: If the repository is not locked.
+            LockBroken: If the lock has been broken.
+        """
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
             self._unstacked_provider.disable_cache()

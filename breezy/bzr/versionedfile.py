@@ -84,12 +84,25 @@ for target_storage_kind in ("fulltext", "chunked", "lines"):
 
 
 class UnavailableRepresentation(errors.InternalBzrError):
+    """Raised when a requested content encoding is not available.
+
+    This error occurs when trying to access content in a specific encoding
+    that is not supported or available for the given key.
+    """
+
     _fmt = (
         "The encoding '%(wanted)s' is not available for key %(key)s which "
         "is encoded as '%(native)s'."
     )
 
     def __init__(self, key, wanted, native):
+        """Initialize an UnavailableRepresentation error.
+
+        Args:
+            key: The content key that was requested.
+            wanted: The encoding that was requested.
+            native: The encoding that is actually available.
+        """
         errors.InternalBzrError.__init__(self)
         self.wanted = wanted
         self.native = native
@@ -97,6 +110,12 @@ class UnavailableRepresentation(errors.InternalBzrError):
 
 
 class ExistingContent(errors.BzrError):
+    """Raised when attempting to insert content that already exists.
+
+    This error occurs when trying to add content to a versioned file
+    that has already been stored.
+    """
+
     _fmt = "The content being inserted is already present."
 
 
@@ -137,6 +156,15 @@ class FileContentFactory(ContentFactory):
     """File-based content factory."""
 
     def __init__(self, key, parents, fileobj, sha1=None, size=None):
+        """Initialize a FileContentFactory.
+
+        Args:
+            key: Unique identifier for this content.
+            parents: Parent keys for this content.
+            fileobj: File-like object containing the content data.
+            sha1: SHA1 hash of the content (optional).
+            size: Size of the content in bytes (optional).
+        """
         self.key = key
         self.parents = parents
         self.file = fileobj
@@ -146,6 +174,17 @@ class FileContentFactory(ContentFactory):
         self._needs_reset = False
 
     def get_bytes_as(self, storage_kind):
+        """Get the content bytes in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('fulltext', 'chunked', 'lines').
+
+        Returns:
+            bytes or list: The content data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the requested storage kind is not supported.
+        """
         if self._needs_reset:
             self.file.seek(0)
         self._needs_reset = True
@@ -158,6 +197,17 @@ class FileContentFactory(ContentFactory):
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over content bytes in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('chunked', 'lines').
+
+        Returns:
+            iterator: Iterator over the content data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the requested storage kind is not supported.
+        """
         if self._needs_reset:
             self.file.seek(0)
         self._needs_reset = True
@@ -338,6 +388,14 @@ class VersionedFile:
 
     @staticmethod
     def check_not_reserved_id(version_id):
+        """Check that a version ID is not a reserved identifier.
+
+        Args:
+            version_id: The version ID to check, or None.
+
+        Raises:
+            ValueError: If version_id is a reserved identifier.
+        """
         if version_id is not None:
             revision.check_not_reserved_id(version_id)
 
@@ -739,6 +797,16 @@ class VersionedFile:
     def weave_merge(
         self, plan, a_marker=TextMerge.A_MARKER, b_marker=TextMerge.B_MARKER
     ):
+        """Merge text using a weave merge algorithm.
+
+        Args:
+            plan: The merge plan to execute.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+
+        Returns:
+            list: Merged lines of text.
+        """
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 
@@ -770,6 +838,21 @@ class RecordingVersionedFilesDecorator:
         random_id=False,
         check_content=True,
     ):
+        """Add lines to the versioned file and record the call.
+
+        Args:
+            key: The key for the new version.
+            parents: Parent keys for the new version.
+            lines: The text lines to add.
+            parent_texts: Parent text data (optional).
+            left_matching_blocks: Matching blocks for delta compression (optional).
+            nostore_sha: SHA to skip storing if duplicate (optional).
+            random_id: Whether to use a random ID (optional).
+            check_content: Whether to validate content (optional).
+
+        Returns:
+            The result from the backing versioned file.
+        """
         self.calls.append(
             (
                 "add_lines",
@@ -803,6 +886,19 @@ class RecordingVersionedFilesDecorator:
         random_id=False,
         check_content=True,
     ):
+        """Add content from a factory and record the call.
+
+        Args:
+            factory: ContentFactory providing the content.
+            parent_texts: Parent text data (optional).
+            left_matching_blocks: Matching blocks for delta compression (optional).
+            nostore_sha: SHA to skip storing if duplicate (optional).
+            random_id: Whether to use a random ID (optional).
+            check_content: Whether to validate content (optional).
+
+        Returns:
+            The result from the backing versioned file.
+        """
         self.calls.append(
             (
                 "add_content",
@@ -824,13 +920,32 @@ class RecordingVersionedFilesDecorator:
         )
 
     def check(self):
+        """Check the backing versioned file for consistency."""
         self._backing_vf.check()
 
     def get_parent_map(self, keys):
+        """Get parent mapping for keys and record the call.
+
+        Args:
+            keys: Keys to get parent mapping for.
+
+        Returns:
+            dict: Mapping of keys to their parents.
+        """
         self.calls.append(("get_parent_map", copy(keys)))
         return self._backing_vf.get_parent_map(keys)
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of records and record the call.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: How to sort the results.
+            include_delta_closure: Whether to include delta closure.
+
+        Returns:
+            Iterator over record data.
+        """
         self.calls.append(
             ("get_record_stream", list(keys), sort_order, include_delta_closure)
         )
@@ -839,14 +954,36 @@ class RecordingVersionedFilesDecorator:
         )
 
     def get_sha1s(self, keys):
+        """Get SHA1 hashes for keys and record the call.
+
+        Args:
+            keys: Keys to get SHA1s for.
+
+        Returns:
+            dict: Mapping of keys to their SHA1 hashes.
+        """
         self.calls.append(("get_sha1s", copy(keys)))
         return self._backing_vf.get_sha1s(keys)
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        """Iterate over lines added or present in keys and record the call.
+
+        Args:
+            keys: Keys to iterate over.
+            pb: Optional progress bar.
+
+        Returns:
+            Iterator over lines.
+        """
         self.calls.append(("iter_lines_added_or_present_in_keys", copy(keys)))
         return self._backing_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
 
     def keys(self):
+        """Get all keys and record the call.
+
+        Returns:
+            Iterable of all keys in the versioned file.
+        """
         self.calls.append(("keys",))
         return self._backing_vf.keys()
 
@@ -872,6 +1009,16 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
         self._key_priority = key_priority
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of records with custom ordering and record the call.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: How to sort the results ('unordered' uses key_priority).
+            include_delta_closure: Whether to include delta closure.
+
+        Yields:
+            Record data in the specified order.
+        """
         self.calls.append(
             ("get_record_stream", list(keys), sort_order, include_delta_closure)
         )
@@ -1196,6 +1343,14 @@ class VersionedFiles:
 
     @staticmethod
     def check_not_reserved_id(version_id):
+        """Check that a version ID is not a reserved identifier.
+
+        Args:
+            version_id: The version ID to check, or None.
+
+        Raises:
+            ValueError: If version_id is a reserved identifier.
+        """
         if version_id is not None:
             revision.check_not_reserved_id(version_id)
 
@@ -1320,6 +1475,11 @@ class VersionedFiles:
         return generator.compute_diffs()
 
     def get_annotator(self):
+        """Get an annotator for this versioned file.
+
+        Returns:
+            VersionedFileAnnotator: An annotator instance for this versioned file.
+        """
         from .annotate import VersionedFileAnnotator
 
         return VersionedFileAnnotator(self)
@@ -1613,6 +1773,13 @@ class ThunkedVersionedFiles(VersionedFiles):
 
 
 class VersionedFilesWithFallbacks(VersionedFiles):
+    """A versioned files implementation that supports fallback sources.
+
+    This class extends VersionedFiles to provide support for fallback
+    versioned files that can supply content not present in the primary
+    versioned files.
+    """
+
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         raise NotImplementedError(self.without_fallbacks)
@@ -1760,6 +1927,13 @@ class PlanWeaveMerge(TextMerge):
     """
 
     def __init__(self, plan, a_marker=TextMerge.A_MARKER, b_marker=TextMerge.B_MARKER):
+        """Initialize a PlanWeaveMerge.
+
+        Args:
+            plan: The merge plan to execute.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+        """
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = list(plan)
 
@@ -1894,6 +2068,15 @@ class WeaveMerge(PlanWeaveMerge):
         a_marker=PlanWeaveMerge.A_MARKER,
         b_marker=PlanWeaveMerge.B_MARKER,
     ):
+        """Initialize a WeaveMerge.
+
+        Args:
+            versionedfile: The versioned file containing the versions to merge.
+            ver_a: First version ID to merge.
+            ver_b: Second version ID to merge.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+        """
         plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
@@ -1978,6 +2161,11 @@ class NoDupeAddLinesDecorator:
     """
 
     def __init__(self, store):
+        """Initialize a NoDupeAddLinesDecorator.
+
+        Args:
+            store: The underlying versioned files store to decorate.
+        """
         self._store = store
 
     def add_lines(
@@ -2023,6 +2211,14 @@ class NoDupeAddLinesDecorator:
         )
 
     def __getattr__(self, name):
+        """Delegate attribute access to the underlying store.
+
+        Args:
+            name: Name of the attribute to access.
+
+        Returns:
+            The attribute value from the underlying store.
+        """
         return getattr(self._store, name)
 
 
