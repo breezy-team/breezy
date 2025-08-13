@@ -24,10 +24,26 @@ from .. import revision as _mod_revision
 
 
 def is_tag(x):
+    """Check if a ref is a tag.
+
+    Args:
+        x: The ref to check.
+
+    Returns:
+        bool: True if the ref is a tag, False otherwise.
+    """
     return x.startswith(LOCAL_TAG_PREFIX)
 
 
 def is_peeled(x):
+    """Check if a ref is a peeled tag.
+
+    Args:
+        x: The ref to check.
+
+    Returns:
+        bool: True if the ref is a peeled tag, False otherwise.
+    """
     return x.endswith(PEELED_TAG_SUFFIX)
 
 
@@ -70,20 +86,53 @@ def ref_to_branch_name(ref):
 
 
 def ref_to_tag_name(ref):
+    """Map a ref to a tag name.
+
+    Args:
+        ref: The tag ref to map.
+
+    Returns:
+        str: The tag name.
+
+    Raises:
+        ValueError: If the ref is not a valid tag ref.
+    """
     if ref.startswith(LOCAL_TAG_PREFIX):
         return ref[len(LOCAL_TAG_PREFIX) :].decode("utf-8")
     raise ValueError(f"unable to map ref {ref} back to tag name")
 
 
 class BazaarRefsContainer(RefsContainer):
+    """Container for Bazaar refs that provides git-compatible ref access."""
+
     def __init__(self, dir, object_store):
+        """Initialize BazaarRefsContainer.
+
+        Args:
+            dir: The control directory.
+            object_store: The object store to use for lookups.
+        """
         self.dir = dir
         self.object_store = object_store
 
     def get_packed_refs(self):
+        """Get packed refs.
+
+        Returns:
+            dict: Empty dict as Bazaar doesn't use packed refs.
+        """
         return {}
 
     def set_symbolic_ref(self, name, other):
+        """Set a symbolic reference.
+
+        Args:
+            name: The name of the symbolic ref.
+            other: The target of the symbolic ref.
+
+        Raises:
+            NotImplementedError: If name is not HEAD.
+        """
         if name == b"HEAD":
             pass  # FIXME: Switch default branch
         else:
@@ -111,6 +160,14 @@ class BazaarRefsContainer(RefsContainer):
         return branch.last_revision()
 
     def read_loose_ref(self, ref):
+        """Read a loose reference.
+
+        Args:
+            ref: The ref to read.
+
+        Returns:
+            bytes: The SHA1 of the ref, or None if not found.
+        """
         try:
             branch_name = ref_to_branch_name(ref)
         except ValueError:
@@ -125,9 +182,22 @@ class BazaarRefsContainer(RefsContainer):
             return self.object_store._lookup_revision_sha1(revid)
 
     def get_peeled(self, ref):
+        """Get the peeled value of a ref.
+
+        Args:
+            ref: The ref to peel.
+
+        Returns:
+            bytes: The peeled SHA1 of the ref.
+        """
         return self.read_loose_ref(ref)
 
     def allkeys(self):
+        """Get all ref names.
+
+        Returns:
+            set: Set of all ref names.
+        """
         keys = set()
         for branch in self.dir.list_branches():
             repo = branch.repository
@@ -143,6 +213,11 @@ class BazaarRefsContainer(RefsContainer):
         return keys
 
     def __delitem__(self, ref):
+        """Delete a ref.
+
+        Args:
+            ref: The ref to delete.
+        """
         try:
             branch_name = ref_to_branch_name(ref)
         except ValueError:
@@ -150,6 +225,12 @@ class BazaarRefsContainer(RefsContainer):
         self.dir.destroy_branch(branch_name)
 
     def __setitem__(self, ref, sha):
+        """Set a ref to a specific SHA.
+
+        Args:
+            ref: The ref to set.
+            sha: The SHA to set the ref to.
+        """
         try:
             branch_name = ref_to_branch_name(ref)
         except ValueError:
@@ -166,6 +247,15 @@ class BazaarRefsContainer(RefsContainer):
 
 
 def get_refs_container(controldir, object_store):
+    """Get a refs container for a control directory.
+
+    Args:
+        controldir: The control directory.
+        object_store: The object store to use.
+
+    Returns:
+        RefsContainer: A refs container for the control directory.
+    """
     fn = getattr(controldir, "get_refs_container", None)
     if fn is not None:
         return fn()
