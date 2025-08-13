@@ -31,7 +31,7 @@ dependencies = [
     "fastbencode",
     "patiencediff",
     "merge3",
-    "dulwich>=0.21.6",
+    "dulwich>=0.24",
     "urllib3>=1.24.1",
     "pyyaml",
     "tzlocal",
@@ -71,7 +71,7 @@ testing = [
     "testtools",
     "testscenarios",
     "python-subunit",
-    "dulwich>=0.21.6",
+    "dulwich>=0.24",
 ]
 
 [tool.setuptools]
