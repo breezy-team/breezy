@@ -92,7 +92,6 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid, message=None, **kw
     repo.object_store.add_objects(objects)
     if message is None:
         message = b"pristine-tar data for %s" % filename
-    worktree = repo.get_worktree()
-    return worktree.commit(
+    return repo.do_commit(
         ref=b"refs/heads/pristine-tar", tree=tree.id, message=message, **kwargs
     )
