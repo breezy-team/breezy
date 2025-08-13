@@ -1,3 +1,5 @@
+"""Bzr-specific transform functionality."""
+
 # Copyright (C) 2006-2011 Canonical Ltd
 # Copyright (C) 2020 Breezy Developers
 #
@@ -296,6 +298,14 @@ class TreeTransformBase(TreeTransform):
         return self._tree.path2id(path)
 
     def final_is_versioned(self, trans_id):
+        """Check if a transform ID will be versioned after changes.
+
+        Args:
+            trans_id: The transform ID to check.
+
+        Returns:
+            True if the file will be versioned.
+        """
         return self.final_file_id(trans_id) is not None
 
     def final_file_id(self, trans_id):
@@ -1089,6 +1099,22 @@ def cook_path_conflict(
     other_parent,
     other_name,
 ):
+    """Cook a path conflict into a conflict object.
+
+    Args:
+        tt: TreeTransform instance.
+        fp: FinalPaths instance.
+        conflict_type: The type of conflict.
+        trans_id: Transform ID.
+        file_id: File ID.
+        this_parent: Parent in this tree.
+        this_name: Name in this tree.
+        other_parent: Parent in other tree.
+        other_name: Name in other tree.
+
+    Returns:
+        A Conflict object.
+    """
     if this_parent is None or this_name is None:
         this_path = "<deleted>"
     else:
@@ -1110,6 +1136,17 @@ def cook_path_conflict(
 
 
 def cook_content_conflict(tt, fp, conflict_type, trans_ids):
+    """Cook a content conflict into a conflict object.
+
+    Args:
+        tt: TreeTransform instance.
+        fp: FinalPaths instance.
+        conflict_type: The type of conflict.
+        trans_ids: List of transform IDs.
+
+    Returns:
+        A Conflict object.
+    """
     for trans_id in trans_ids:
         file_id = tt.final_file_id(trans_id)
         if file_id is not None:
@@ -1125,6 +1162,17 @@ def cook_content_conflict(tt, fp, conflict_type, trans_ids):
 
 
 def cook_text_conflict(tt, fp, conflict_type, trans_id):
+    """Cook a text conflict into a conflict object.
+
+    Args:
+        tt: TreeTransform instance.
+        fp: FinalPaths instance.
+        conflict_type: The type of conflict.
+        trans_id: Transform ID.
+
+    Returns:
+        A Conflict object.
+    """
     path = fp.get_path(trans_id)
     file_id = tt.final_file_id(trans_id)
     return Conflict.factory(conflict_type, path=path, file_id=file_id)
@@ -1138,6 +1186,15 @@ CONFLICT_COOKERS = {
 
 
 def iter_cook_conflicts(raw_conflicts, tt):
+    """Iterate over cooked conflicts.
+
+    Args:
+        raw_conflicts: Iterator of raw conflicts.
+        tt: TreeTransform instance.
+
+    Yields:
+        Cooked Conflict objects.
+    """
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -1253,6 +1310,13 @@ class DiskTreeTransform(TreeTransformBase):
         return osutils.pathjoin(self._limbodir, trans_id)
 
     def adjust_path(self, name, parent, trans_id):
+        """Adjust the path of a transform ID.
+
+        Args:
+            name: The new name.
+            parent: The new parent transform ID.
+            trans_id: The transform ID to adjust.
+        """
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
         super().adjust_path(name, parent, trans_id)
@@ -1393,6 +1457,12 @@ class DiskTreeTransform(TreeTransformBase):
         osutils.delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
+        """Handle creation of orphan files.
+
+        Args:
+            trans_id: Transform ID of the orphaned file.
+            parent_id: Parent transform ID.
+        """
         conf = self._tree.get_config_stack()
         handle_orphan = conf.get("transform.orphan_policy")
         handle_orphan(self, trans_id, parent_id)
@@ -1635,6 +1705,11 @@ class InventoryTreeTransform(DiskTreeTransform):
         return conflicts
 
     def find_raw_conflicts(self):
+        """Find raw conflicts in the transform.
+
+        Returns:
+            List of raw conflicts.
+        """
         conflicts = super().find_raw_conflicts()
         conflicts.extend(self._duplicate_ids())
         return conflicts
@@ -1907,14 +1982,37 @@ class TransformPreview(InventoryTreeTransform):
     """
 
     def __init__(self, tree, pb=None, case_sensitive=True):
+        """Initialize TreeTransform.
+
+        Args:
+            tree: The tree to transform.
+            pb: Progress bar (ignored).
+            case_sensitive: Whether the filesystem is case sensitive.
+        """
         tree.lock_read()
         limbodir = tempfile.mkdtemp(prefix="bzr-limbo-")
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
+        """Get the canonical form of a path.
+
+        Args:
+            path: The path to canonicalize.
+
+        Returns:
+            The canonical path.
+        """
         return path
 
     def tree_kind(self, trans_id):
+        """Get the kind of a file in the tree.
+
+        Args:
+            trans_id: Transform ID.
+
+        Returns:
+            The file kind, or None if not found.
+        """
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             return None
@@ -1946,6 +2044,15 @@ class TransformPreview(InventoryTreeTransform):
             pass
 
     def new_orphan(self, trans_id, parent_id):
+        """Handle orphan creation (not implemented).
+
+        Args:
+            trans_id: Transform ID of the orphaned file.
+            parent_id: Parent transform ID.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError(self.new_orphan)
 
 
@@ -1953,6 +2060,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees."""
 
     def __init__(self, transform):
+        """Initialize InventoryPreviewTree.
+
+        Args:
+            transform: The transform to preview.
+        """
         PreviewTree.__init__(self, transform)
         self._final_paths = FinalPaths(transform)
         self._iter_changes_cache = {
@@ -1960,12 +2072,27 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         }
 
     def supports_setting_file_ids(self):
+        """Check if this tree supports setting file IDs.
+
+        Returns:
+            True if setting file IDs is supported.
+        """
         return True
 
     def supports_symlinks(self):
+        """Check if this tree supports symlinks.
+
+        Returns:
+            True if symlinks are supported.
+        """
         return self._transform._create_symlinks
 
     def supports_tree_reference(self):
+        """Check if this tree supports tree references.
+
+        Returns:
+            False - tree references are not yet supported.
+        """
         # TODO(jelmer): Support tree references in PreviewTree.
         # return self._transform._tree.supports_tree_reference()
         return False
@@ -2007,6 +2134,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         raise NotImplementedError(PreviewTree.root_inventory)
 
     def all_file_ids(self):
+        """Get all file IDs in the tree.
+
+        Returns:
+            Set of all file IDs.
+        """
         tree_ids = set(self._transform._tree.all_file_ids())
         tree_ids.difference_update(
             self._transform.tree_file_id(t) for t in self._transform._removed_id
@@ -2015,6 +2147,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return tree_ids
 
     def all_versioned_paths(self):
+        """Get all versioned paths in the tree.
+
+        Returns:
+            Set of all versioned paths.
+        """
         tree_paths = set(self._transform._tree.all_versioned_paths())
 
         tree_paths.difference_update(
@@ -2028,6 +2165,14 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return tree_paths
 
     def path2id(self, path):
+        """Get the file ID for a given path.
+
+        Args:
+            path: The path to look up.
+
+        Returns:
+            The file ID, or None if not found.
+        """
         if isinstance(path, list):
             if path == []:
                 path = [""]
@@ -2035,6 +2180,18 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return self._transform.final_file_id(self._path2trans_id(path))
 
     def id2path(self, file_id, recurse="down"):
+        """Get the path for a given file ID.
+
+        Args:
+            file_id: The file ID to look up.
+            recurse: Recursion direction (ignored).
+
+        Returns:
+            The path for the file ID.
+
+        Raises:
+            NoSuchId: If the file ID is not found.
+        """
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
@@ -2042,6 +2199,11 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             raise errors.NoSuchId(self, file_id) from e
 
     def extras(self):
+        """Get extra (unversioned) files.
+
+        Returns:
+            List of paths to extra files.
+        """
         possible_extras = {
             self._transform.trans_id_tree_path(p)
             for p in self._transform._tree.extras()
@@ -2087,6 +2249,14 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return ordered_ids
 
     def iter_child_entries(self, path):
+        """Iterate over child entries of a path.
+
+        Args:
+            path: The path to get children for.
+
+        Yields:
+            Child entries.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)
@@ -2098,6 +2268,18 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             yield entry
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        """Iterate over entries by directory order.
+
+        Args:
+            specific_files: Optional list of specific files to include.
+            recurse_nested: Whether to recurse into nested trees.
+
+        Yields:
+            Directory entries in directory order.
+
+        Raises:
+            NotImplementedError: If recurse_nested is True.
+        """
         if recurse_nested:
             raise NotImplementedError("follow tree references not yet supported")
 
@@ -2169,6 +2351,14 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return self._stat_limbo_file(trans_id).st_mtime
 
     def path_content_summary(self, path):
+        """Get content summary for a path.
+
+        Args:
+            path: The path to summarize.
+
+        Returns:
+            Tuple of (kind, size, executable, link_or_sha1).
+        """
         trans_id = self._path2trans_id(path)
         tt = self._transform
         tree_path = tt._tree_id_paths.get(trans_id)
@@ -2235,6 +2425,15 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return self._transform.iter_changes()
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
+        """Iterate over annotations for a file.
+
+        Args:
+            path: Path to the file to annotate.
+            default_revision: Default revision for annotations.
+
+        Yields:
+            Annotation tuples.
+        """
         file_id = self.path2id(path)
         changes = self._iter_changes_cache.get(file_id)
         if changes is None:
@@ -2274,6 +2473,14 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         )
 
     def walkdirs(self, prefix=""):
+        """Walk directories in the tree.
+
+        Args:
+            prefix: Prefix path to start walking from.
+
+        Yields:
+            Directory walk results.
+        """
         pending = [self._transform.root]
         while len(pending) > 0:
             parent_id = pending.pop()
@@ -2355,6 +2562,16 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False, delta_from_tree=
 
 
 def resolve_checkout(tt, conflicts, divert):
+    """Resolve conflicts in a checkout.
+
+    Args:
+        tt: TreeTransform instance.
+        conflicts: List of conflicts to resolve.
+        divert: Whether to divert conflicting files.
+
+    Returns:
+        Set of new conflicts.
+    """
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         # Anything but a 'duplicate' would indicate programmer error

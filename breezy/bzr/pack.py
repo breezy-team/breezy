@@ -280,6 +280,17 @@ class ReadVFile:
             self._string = BytesIO(data)
 
     def read(self, length):
+        """Read specified number of bytes from the current string.
+
+        Args:
+            length: Number of bytes to read.
+
+        Returns:
+            The bytes read.
+
+        Raises:
+            BzrError: If insufficient bytes are available.
+        """
         self._next()
         result = self._string.read(length)
         if len(result) < length:
@@ -313,6 +324,8 @@ def make_readv_reader(transport, filename, requested_records):
 
 
 class BaseReader:
+    """Base class for reading container data from files."""
+
     def __init__(self, source_file):
         """Constructor.
 
@@ -322,6 +335,14 @@ class BaseReader:
         self._source = source_file
 
     def reader_func(self, length=None):
+        """Read data from the source file.
+
+        Args:
+            length: Optional number of bytes to read. If None, reads all available.
+
+        Returns:
+            The bytes read from the source.
+        """
         return self._source.read(length)
 
     def _read_line(self):
@@ -433,6 +454,8 @@ class ContainerReader(BaseReader):
 
 
 class BytesRecordReader(BaseReader):
+    """Reader for bytes records in container format."""
+
     def read(self):
         """Read this record.
 
@@ -498,6 +521,7 @@ class ContainerPushParser:
     """
 
     def __init__(self):
+        """Initialize a new ContainerPushParser."""
         self._buffer = b""
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
@@ -509,6 +533,11 @@ class ContainerPushParser:
         self._current_record_names = []
 
     def accept_bytes(self, bytes):
+        """Accept additional bytes and parse them.
+
+        Args:
+            bytes: New bytes to add to the parsing buffer.
+        """
         self._buffer += bytes
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
@@ -525,6 +554,14 @@ class ContainerPushParser:
             cur_buffer_length = len(self._buffer)
 
     def read_pending_records(self, max=None):
+        """Read parsed records from the buffer.
+
+        Args:
+            max: Maximum number of records to return. If None, returns all.
+
+        Returns:
+            List of parsed records.
+        """
         if max:
             records = self._parsed_records[:max]
             del self._parsed_records[:max]
@@ -599,6 +636,11 @@ class ContainerPushParser:
         pass
 
     def read_size_hint(self):
+        """Get a hint for how many bytes should be read next.
+
+        Returns:
+            Number of bytes that should be read for optimal parsing.
+        """
         hint = 16384
         if self._state_handler == self._state_expecting_body:
             remaining = self._current_record_length - len(self._buffer)
@@ -609,6 +651,14 @@ class ContainerPushParser:
 
 
 def iter_records_from_file(source_file):
+    """Iterate over records from a file.
+
+    Args:
+        source_file: File-like object to read from.
+
+    Yields:
+        Records from the container file.
+    """
     parser = ContainerPushParser()
     while True:
         bytes = source_file.read(parser.read_size_hint())
