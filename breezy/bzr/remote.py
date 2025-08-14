@@ -953,6 +953,23 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return format
 
     def create_repository(self, shared=False):
+        """Create a new repository in this bzrdir.
+
+        Creates a new repository using the repository format associated
+        with this bzrdir format. The repository can optionally be shared.
+
+        Args:
+            shared: If True, create a shared repository that can be used
+                   by multiple branches. Defaults to False.
+
+        Returns:
+            A Repository object (either RemoteRepository or the result
+            of opening the created repository).
+
+        Note:
+            Delegates to the format object to handle format-specific
+            initialization details.
+        """
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         result = self._format.repository_format.initialize(self, shared)
@@ -974,6 +991,29 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise SmartProtocolError(f"unexpected response code {response}")
 
     def create_branch(self, name=None, repository=None, append_revisions_only=None):
+        """Create a new branch in this bzrdir.
+
+        Creates a new branch using the branch format associated with
+        this bzrdir format. Optionally associates it with a specific
+        repository.
+
+        Args:
+            name: Name of the branch to create. If None, uses the default
+                 branch name. Non-empty names raise NoColocatedBranchSupport.
+            repository: Optional repository to associate with the branch.
+                       If None, the default repository will be used.
+            append_revisions_only: If True, the branch will only allow
+                                  appending new revisions (no rebasing).
+
+        Returns:
+            A Branch object (either RemoteBranch or a wrapped branch).
+
+        Raises:
+            NoColocatedBranchSupport: If a non-empty branch name is provided.
+
+        Note:
+            The result is cached to optimize subsequent open_branch() calls.
+        """
         if name is None:
             name = self._get_selected_branch()
         if name != "":
@@ -1036,6 +1076,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return b._format
 
     def branch_names(self):
+        """Get the names of all branches in this bzrdir.
+
+        Retrieves a list of branch names present in this bzrdir.
+        For most repository formats, this will just be the default
+        branch, but some formats support multiple named branches.
+
+        Returns:
+            A list of branch names as strings.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+
+        Note:
+            Falls back to VFS if the server doesn't support the smart method.
+        """
         path = self._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(b"BzrDir.get_branches", path)
@@ -1052,6 +1107,26 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return ret
 
     def get_branches(self, possible_transports=None, ignore_fallbacks=False):
+        """Get all branches in this bzrdir as a dictionary.
+
+        Retrieves all branches in this bzrdir, returning them as a
+        dictionary mapping branch names to branch objects.
+
+        Args:
+            possible_transports: Optional list of transport objects that
+                               can be used for efficiency.
+            ignore_fallbacks: If True, don't open fallback repositories
+                            for the branches.
+
+        Returns:
+            A dictionary mapping branch names (strings) to Branch objects.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+
+        Note:
+            Falls back to VFS if the server doesn't support the smart method.
+        """
         path = self._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(b"BzrDir.get_branches", path)
@@ -1778,6 +1853,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self.refresh_data()
 
     def resume_write_group(self, tokens):
+        """Resume a write group with the given tokens.
+
+        Continues a write group operation that was previously suspended,
+        using the provided tokens to restore the write group state.
+
+        Args:
+            tokens: List of tokens representing the suspended write group state.
+                   Each token is a string identifier for a write group component.
+
+        Returns:
+            None
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+            UnknownSmartMethod: If the server doesn't support this operation,
+                               in which case the operation falls back to VFS.
+        """
         if self._real_repository:
             return self._real_repository.resume_write_group(tokens)
         path = self.controldir._path_for_remote_call(self._client)
@@ -1796,6 +1888,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._write_group_tokens = tokens
 
     def suspend_write_group(self):
+        """Suspend the current write group and return its tokens.
+
+        Temporarily halts a write group operation and returns tokens that
+        can be used later to resume the write group with resume_write_group().
+
+        Returns:
+            List of tokens representing the suspended write group state.
+            Each token is a string identifier for a write group component.
+            Returns an empty list if no write group is active.
+        """
         if self._real_repository:
             return self._real_repository.suspend_write_group()
         ret = self._write_group_tokens or []
@@ -1803,12 +1905,49 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return ret
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
+        """Return inventories from the ancestry that are not present.
+
+        This method identifies inventory objects that are referenced by
+        the repository's revision history but are not actually stored
+        in the repository.
+
+        Args:
+            check_for_missing_texts: If True, also verify that the text
+                                   objects referenced by inventories are present.
+                                   Defaults to True.
+
+        Returns:
+            A collection of inventory keys that are missing from the repository.
+            The exact type depends on the underlying repository implementation.
+
+        Note:
+            This method requires VFS access and will trigger _ensure_real().
+        """
         self._ensure_real()
         return self._real_repository.get_missing_parent_inventories(
             check_for_missing_texts=check_for_missing_texts
         )
 
     def _get_rev_id_for_revno_vfs(self, revno, known_pair):
+        """VFS fallback for getting revision ID from revision number.
+
+        This is a private fallback method used when the smart server
+        doesn't support the Repository.get_rev_id_for_revno RPC or
+        when working with older server versions.
+
+        Args:
+            revno: The revision number to look up.
+            known_pair: A (revno, revid) pair representing a known point
+                       in the revision history for optimization.
+
+        Returns:
+            Same as get_rev_id_for_revno(): A tuple (found, result) where
+            found is a boolean and result is either the revision_id (if found)
+            or a (revno, revid) pair of a known point (if not found).
+
+        Note:
+            This method requires VFS access and will trigger _ensure_real().
+        """
         self._ensure_real()
         return self._real_repository.get_rev_id_for_revno(revno, known_pair)
 
@@ -1939,6 +2078,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return RemoteStreamSource(self, to_format)
 
     def get_file_graph(self):
+        """Get a graph of file text relationships.
+
+        Creates a graph object that can be used to traverse the relationships
+        between different versions of file texts in the repository.
+
+        Returns:
+            A Graph object representing file text relationships, with the
+            repository's text store as the parent provider.
+        """
         with self.lock_read():
             return graph.Graph(self.texts)
 
@@ -1973,6 +2121,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
+        """Check if this repository has the same location as another.
+
+        Compares this repository with another to determine if they refer
+        to the same physical location, taking into account both the class
+        type and the transport base URL.
+
+        Args:
+            other: Another repository object to compare with.
+
+        Returns:
+            True if both repositories have the same class and transport base,
+            False otherwise.
+
+        Note:
+            TODO: Move to RepositoryBase and unify with the regular Repository
+            one; unfortunately the tests rely on slightly different behaviour at
+            present -- mbp 20090710
+        """
         # TODO: Move to RepositoryBase and unify with the regular Repository
         # one; unfortunately the tests rely on slightly different behaviour at
         # present -- mbp 20090710
@@ -2122,6 +2288,27 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             raise errors.UnexpectedSmartServerResponse(response)
 
     def lock_write(self, token=None, _skip_rpc=False):
+        """Lock the repository for write operations.
+
+        Acquires a write lock on the repository, optionally using a provided
+        token to resume a previous lock state.
+
+        Args:
+            token: Optional lock token to resume a previous lock state.
+                  If None, a new write lock will be acquired.
+            _skip_rpc: Private parameter to skip the RPC call for testing.
+                      Should not be used by regular code.
+
+        Returns:
+            A RepositoryWriteLockResult containing the unlock method and
+            the lock token (if any).
+
+        Raises:
+            ReadOnlyError: If attempting to acquire write lock while already
+                          read-locked.
+            TokenMismatch: If the provided token doesn't match the expected token.
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         if not self._lock_mode:
             self._note_lock("w")
             if _skip_rpc:
@@ -2154,11 +2341,28 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return RepositoryWriteLockResult(self.unlock, self._lock_token or None)
 
     def leave_lock_in_place(self):
+        """Configure the repository to leave the lock in place on unlock.
+
+        This prevents the lock from being automatically released when
+        unlock() is called, which is useful for operations that need
+        to maintain locks across multiple method calls.
+
+        Raises:
+            NotImplementedError: If the repository doesn't have a lock token.
+        """
         if not self._lock_token:
             raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        """Configure the repository to release the lock on unlock.
+
+        This restores the default behavior where the lock is automatically
+        released when unlock() is called.
+
+        Raises:
+            NotImplementedError: If the repository doesn't have a lock token.
+        """
         if not self._lock_token:
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
@@ -2253,6 +2457,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release any locks held on this repository.
+
+        Decrements the lock count and releases the actual lock when
+        the count reaches zero. For write locks, this may involve
+        calling the server to release the remote lock.
+
+        Returns:
+            None
+
+        Raises:
+            LockNotHeld: If no lock is currently held.
+            LockBroken: If the lock has been broken by another process.
+        """
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
         self._lock_count -= 1
@@ -2352,6 +2569,18 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     # These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
+        """Get the revision tree for a specific revision.
+
+        Creates a revision tree object representing the state of files
+        and directories at a particular revision.
+
+        Args:
+            revision_id: The revision ID to create a tree for.
+
+        Returns:
+            An InventoryRevisionTree for the specified revision.
+            For NULL_REVISION, returns an empty tree.
+        """
         with self.lock_read():
             if revision_id == _mod_revision.NULL_REVISION:
                 return InventoryRevisionTree(
@@ -2519,6 +2748,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def get_inventory(self, revision_id):
+        """Get the inventory for a specific revision.
+
+        Retrieves the inventory object that describes the file and directory
+        structure for a given revision.
+
+        Args:
+            revision_id: The revision ID to get the inventory for.
+
+        Returns:
+            An Inventory object for the specified revision.
+
+        Raises:
+            NoSuchRevision: If the revision_id is not present in the repository.
+        """
         with self.lock_read():
             return list(self.iter_inventories([revision_id]))[0]
 
@@ -2653,6 +2896,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 yield None, missing.pop()
 
     def get_revision(self, revision_id):
+        """Get a single revision object by its ID.
+
+        Retrieves the revision metadata including the author, committer,
+        timestamp, commit message, and parent relationships.
+
+        Args:
+            revision_id: The revision ID to retrieve.
+
+        Returns:
+            A Revision object containing the revision metadata.
+
+        Raises:
+            NoSuchRevision: If the revision_id is not present in the repository.
+        """
         with self.lock_read():
             return self.get_revisions([revision_id])[0]
 
@@ -3467,6 +3724,27 @@ class RemoteStreamSink(vf_repository.StreamSink):
         return self.insert_stream_without_locking(stream, self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
+        """Insert a stream of repository data into the target repository.
+
+        This method efficiently transfers repository data by streaming it
+        to the remote repository, using the most appropriate protocol
+        version available.
+
+        Args:
+            stream: An iterator of (substream_type, substream) tuples containing
+                   the repository data to transfer.
+            src_format: The format of the source repository.
+            resume_tokens: List of tokens from a previous partial transfer
+                          that can be used to resume the operation.
+
+        Returns:
+            List of resume tokens if the transfer is incomplete, or empty list
+            if the transfer completed successfully.
+
+        Raises:
+            UnknownSmartMethod: If the server doesn't support streaming methods.
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
         candidate_calls = [(b"Repository.insert_stream_1.19", (1, 19))]
@@ -3582,6 +3860,24 @@ class RemoteStreamSource(vf_repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):
+        """Get a stream of repository data based on the search criteria.
+
+        Retrieves repository data (revisions, inventories, texts) that match
+        the search criteria, returning it as a stream suitable for transfer
+        to another repository.
+
+        Args:
+            search: A search object defining which revisions and associated
+                   data should be included in the stream.
+
+        Returns:
+            An iterator of (substream_type, substream) tuples containing
+            the requested repository data.
+
+        Note:
+            For repositories with fallback repositories and topological
+            fetch order, this delegates to the VFS implementation.
+        """
         if (
             self.from_repository._fallback_repositories
             and self.to_format._fetch_order == "topological"
@@ -3606,6 +3902,24 @@ class RemoteStreamSource(vf_repository.StreamSource):
         return real_source.get_stream_for_missing_keys(missing_keys)
 
     def get_stream_for_missing_keys(self, missing_keys):
+        """Get a stream containing data for the specified missing keys.
+
+        Retrieves repository data for keys that are known to be missing
+        from the target repository, optimizing the transfer by only
+        sending the required data.
+
+        Args:
+            missing_keys: An iterable of (key_type, key_id) tuples representing
+                         the specific data items that need to be transferred.
+
+        Returns:
+            An iterator of (substream_type, substream) tuples containing
+            the data for the missing keys.
+
+        Note:
+            Falls back to VFS implementation for non-RemoteRepository sources
+            or when the server doesn't support the required protocol version.
+        """
         if not isinstance(self.from_repository, RemoteRepository):
             return self._get_real_stream_for_missing_keys(missing_keys)
         client = self.from_repository._client
