@@ -4,17 +4,10 @@ Breezy install instructions
 Dependencies
 ------------
 
-Breezy requires Python 3.6 or newer as well as the rust compiler.
+Breezy requires Python 3.9 or newer as well as the rust compiler.
 
-It also requires the `setuptools`, `setuptools_rust`, `configobj`,
-`fastbencode` and `patiencediff` Python modules to be installed.
-
-These can be installed either from your operating system's package
-manager, using pip or by downloading them from:
-
-  configobj: https://github.com/DiffSK/configobj
-  patiencediff: https://github.com/breezy-team/patiencediff
-  fastbencode: https://github.com/breezy-team/fastbencode
+It also requires the `setuptools`, `setuptools_rust`, ``setuptools_gettext``,
+`configobj`, `fastbencode` and `patiencediff` Python modules to be installed.
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
@@ -53,16 +46,13 @@ to create.
 Installation
 ------------
 
-When upgrading using setup.py, it is recommended that you first delete the
-bzrlib directory from the install target.
-
 To install brz as a user, run
 
-  python setup.py install --home ~
+  pip install --user .
 
 To install system-wide, run (as root)
 
-  python setup.py install
+  pip install .
 
 For more information on installation, see
 <http://wiki.breezy-vcs.org/InstallationFaq> for the Bazaar installation FAQ

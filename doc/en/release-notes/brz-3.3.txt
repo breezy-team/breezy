@@ -15,6 +15,9 @@ brz 3.3.13
   adding ``launchpad_bazaar_deprecation`` to the ``suppress_warnings``
   configuration option. (Jelmer Vernooĳ)
 
+* Fix compatibility with paramiko 4.0.0, which removed DSA key support.
+  (Jelmer Vernooĳ)
+
 brz 3.3.12
 ##########
 
