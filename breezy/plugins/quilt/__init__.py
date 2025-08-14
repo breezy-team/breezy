@@ -30,9 +30,21 @@ from ...errors import BzrError
 
 
 class QuiltUnapplyError(BzrError):
+    """Error raised when unable to unapply quilt patches.
+
+    This exception is raised when the quilt patch unapplication process fails
+    during merge operations or other quilt-related operations.
+    """
+
     _fmt = "Unable to unapply quilt patches for %(kind)r tree: %(msg)s"
 
     def __init__(self, kind, msg):
+        """Initialize a QuiltUnapplyError.
+
+        Args:
+            kind (str): The type of tree where unapplying failed (e.g., 'this', 'base', 'other').
+            msg (str): The error message from the quilt operation, or None.
+        """
         BzrError.__init__(self)
         self.kind = kind
         if msg is not None and msg.count("\n") == 1:
@@ -41,6 +53,19 @@ class QuiltUnapplyError(BzrError):
 
 
 def pre_merge_quilt(merger):
+    """Pre-merge hook that unapplies quilt patches to prevent spurious conflicts.
+
+    This function is called before merge operations to temporarily unapply quilt
+    patches from the working tree, base tree, and other tree involved in the merge.
+    This helps prevent conflicts that would arise from patches being applied
+    differently across the trees being merged.
+
+    Args:
+        merger: The merger object containing the trees to be merged and merge configuration.
+
+    Raises:
+        QuiltUnapplyError: If unapplying patches fails on any of the trees.
+    """
     if getattr(merger, "_no_quilt_unapplying", False):
         return
 
@@ -100,6 +125,15 @@ def pre_merge_quilt(merger):
 
 
 def post_merge_quilt_cleanup(merger):
+    """Post-merge hook that cleans up temporary directories and processes patches.
+
+    This function is called after merge operations to clean up any temporary
+    directories created during the pre-merge quilt processing and to apply
+    the configured quilt tree policy for post-merge patch handling.
+
+    Args:
+        merger: The merger object that was used for the merge operation.
+    """
     import shutil
 
     for dir in getattr(merger, "_quilt_tempdirs", []):
@@ -129,6 +163,14 @@ def start_commit_check_quilt(tree):
 
 
 def post_build_tree_quilt(tree):
+    """Post-build-tree hook that applies quilt patches according to tree policy.
+
+    This function is called after tree building operations (like checkout or update)
+    to apply quilt patches according to the configured quilt.tree_policy setting.
+
+    Args:
+        tree: The tree that was just built and may need patch processing.
+    """
     config = tree.get_config_stack()
     policy = config.get("quilt.tree_policy")
     if policy is None:
@@ -187,6 +229,20 @@ option_registry.register(
 
 
 def policy_from_store(s):
+    """Convert a string from configuration store to a valid quilt policy.
+
+    Validates that the policy string is one of the allowed values for quilt
+    commit and tree policies.
+
+    Args:
+        s (str): The policy string from configuration storage.
+
+    Returns:
+        str: The validated policy string.
+
+    Raises:
+        ValueError: If the policy string is not 'applied' or 'unapplied'.
+    """
     if s not in ("applied", "unapplied"):
         raise ValueError(f"Invalid quilt.commit_policy: {s}")
     return s
@@ -212,5 +268,18 @@ option_registry.register(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests for the quilt plugin.
+
+    This function is called by the test framework to discover and load
+    tests for this plugin module.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to add tests to.
+        pattern: Pattern for test discovery (unused).
+
+    Returns:
+        TestSuite: The test suite with quilt plugin tests added.
+    """
     basic_tests.addTest(loader.loadTestsFromName(__name__ + ".tests"))
     return basic_tests
