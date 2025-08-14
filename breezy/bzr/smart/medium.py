@@ -62,12 +62,25 @@ _MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
 
 
 class HpssVfsRequestNotAllowed(errors.BzrError):
+    """Exception raised when VFS requests are not allowed over HPSS.
+
+    This exception is raised when a VFS (Virtual File System) request is
+    attempted over the High Performance Smart Server protocol but such
+    requests have been disabled.
+    """
+
     _fmt = (
         "VFS requests over the smart server are not allowed. Encountered: "
         "%(method)s, %(arguments)s."
     )
 
     def __init__(self, method, arguments):
+        """Initialize the exception.
+
+        Args:
+            method: The VFS method that was attempted.
+            arguments: The arguments passed to the method.
+        """
         self.method = method
         self.arguments = arguments
 
@@ -130,13 +143,20 @@ class SmartMedium:
     """Base class for smart protocol media, both client- and server-side."""
 
     def __init__(self):
+        """Initialize the smart medium."""
         self._push_back_buffer = None
 
     def _push_back(self, data):
-        """Return unused bytes to the medium, because they belong to the next
-        request(s).
+        """Return unused bytes to the medium for the next request(s).
 
         This sets the _push_back_buffer to the given bytes.
+
+        Args:
+            data: Bytes to push back into the buffer.
+
+        Raises:
+            TypeError: If data is not bytes.
+            AssertionError: If push_back_buffer is already set.
         """
         if not isinstance(data, bytes):
             raise TypeError(data)
@@ -149,6 +169,14 @@ class SmartMedium:
         self._push_back_buffer = data
 
     def _get_push_back_buffer(self):
+        """Get and clear the push back buffer.
+
+        Returns:
+            The bytes that were pushed back, or None if no bytes were pushed back.
+
+        Raises:
+            AssertionError: If the push back buffer is an empty string.
+        """
         if self._push_back_buffer == b"":
             raise AssertionError(
                 f"{self}._push_back_buffer should never be the empty string, "
@@ -170,6 +198,17 @@ class SmartMedium:
         return self._read_bytes(bytes_to_read)
 
     def _read_bytes(self, count):
+        """Read bytes from the underlying medium.
+
+        Args:
+            count: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the medium.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self._read_bytes)
 
     def _get_line(self):
@@ -366,11 +405,20 @@ class SmartServerStreamMedium(SmartMedium):
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
-    def __init__(self, sock, backing_transport, root_client_path="/", timeout=None):
-        """Constructor.
+    """A server medium that communicates over a socket stream.
 
-        :param sock: the socket the server will read from.  It will be put
-            into blocking mode.
+    This medium handles smart server requests coming over a socket connection,
+    providing blocking I/O operations for reading and writing data.
+    """
+
+    def __init__(self, sock, backing_transport, root_client_path="/", timeout=None):
+        """Initialize the socket stream medium.
+
+        Args:
+            sock: The socket the server will read from. It will be put into blocking mode.
+            backing_transport: Transport for the directory served.
+            root_client_path: The root path for client requests.
+            timeout: Timeout for client connections.
         """
         SmartServerStreamMedium.__init__(
             self, backing_transport, root_client_path=root_client_path, timeout=timeout
@@ -384,14 +432,21 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             self._client_info = "<unknown>"
 
     def __str__(self):
+        """Return string representation of the medium."""
         return f"{self.__class__.__name__}(client={self._client_info})"
 
     def __repr__(self):
+        """Return detailed representation of the medium."""
         return "{}.{}(client={})".format(
             self.__module__, self.__class__.__name__, self._client_info
         )
 
     def _serve_one_request_unguarded(self, protocol):
+        """Serve one request without exception handling.
+
+        Args:
+            protocol: The protocol object to handle the request.
+        """
         while protocol.next_read_size():
             # We can safely try to read large chunks.  If there is less data
             # than MAX_SOCKET_CHUNK ready, the socket will just return a
@@ -421,15 +476,33 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         return self._wait_on_descriptor(self.socket, timeout_seconds)
 
     def _read_bytes(self, desired_count):
+        """Read bytes from the socket.
+
+        Args:
+            desired_count: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the socket.
+        """
         return osutils.read_bytes_from_socket(self.socket, self._report_activity)
 
     def terminate_due_to_error(self):
-        # TODO: This should log to a server log file, but no such thing
-        # exists yet.  Andrew Bennetts 2006-09-29.
+        """Terminate the connection due to an error.
+
+        This closes the socket and marks the medium as finished.
+
+        TODO: This should log to a server log file, but no such thing
+        exists yet.  Andrew Bennetts 2006-09-29.
+        """
         self.socket.close()
         self.finished = True
 
     def _write_out(self, bytes):
+        """Write bytes to the socket.
+
+        Args:
+            bytes: The bytes to write to the socket.
+        """
         tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if debug.debug_flag_enabled("hpss"):
@@ -441,12 +514,20 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
-    def __init__(self, in_file, out_file, backing_transport, timeout=None):
-        """Construct new server.
+    """A server medium that communicates over pipes (stdin/stdout).
 
-        :param in_file: Python file from which requests can be read.
-        :param out_file: Python file to write responses.
-        :param backing_transport: Transport for the directory served.
+    This medium is typically used when the smart server is launched via SSH
+    or subprocess and communicates through standard input and output streams.
+    """
+
+    def __init__(self, in_file, out_file, backing_transport, timeout=None):
+        """Initialize the pipe stream medium.
+
+        Args:
+            in_file: Python file from which requests can be read.
+            out_file: Python file to write responses.
+            backing_transport: Transport for the directory served.
+            timeout: Timeout for client connections.
         """
         SmartServerStreamMedium.__init__(self, backing_transport, timeout=timeout)
         if sys.platform == "win32":
@@ -472,6 +553,11 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             signals.unregister_on_hangup(id(self))
 
     def _serve_one_request_unguarded(self, protocol):
+        """Serve one request without exception handling.
+
+        Args:
+            protocol: The protocol object to handle the request.
+        """
         while True:
             # We need to be careful not to read past the end of the current
             # request, or else the read from the pipe will block, so we use
@@ -490,6 +576,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             protocol.accept_bytes(bytes)
 
     def _disconnect_client(self):
+        """Disconnect the client by closing input and output streams."""
         self._in.close()
         self._out.flush()
         self._out.close()
@@ -513,15 +600,33 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             return
 
     def _read_bytes(self, desired_count):
+        """Read bytes from the input stream.
+
+        Args:
+            desired_count: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the input stream.
+        """
         return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
-        # TODO: This should log to a server log file, but no such thing
-        # exists yet.  Andrew Bennetts 2006-09-29.
+        """Terminate the connection due to an error.
+
+        This closes the output stream and marks the medium as finished.
+
+        TODO: This should log to a server log file, but no such thing
+        exists yet.  Andrew Bennetts 2006-09-29.
+        """
         self._out.close()
         self.finished = True
 
     def _write_out(self, bytes):
+        """Write bytes to the output stream.
+
+        Args:
+            bytes: The bytes to write to the output stream.
+        """
         self._out.write(bytes)
 
 
@@ -568,9 +673,15 @@ class SmartClientMediumRequest:
     def _accept_bytes(self, bytes):
         """Helper for accept_bytes.
 
-        Accept_bytes checks the state of the request to determing if bytes
+        Accept_bytes checks the state of the request to determine if bytes
         should be accepted. After that it hands off to _accept_bytes to do the
         actual acceptance.
+
+        Args:
+            bytes: The bytes to accept for this request.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self._accept_bytes)
 
@@ -594,6 +705,9 @@ class SmartClientMediumRequest:
         finished_reading checks the state of the request to determine if
         finished_reading is allowed, and if it is hands off to _finished_reading
         to perform the action.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self._finished_reading)
 
@@ -614,6 +728,9 @@ class SmartClientMediumRequest:
         finished_writing checks the state of the request to determine if
         finished_writing is allowed, and if it is hands off to _finished_writing
         to perform the action.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self._finished_writing)
 
@@ -644,6 +761,14 @@ class SmartClientMediumRequest:
         return self._medium.read_bytes(count)
 
     def read_line(self):
+        """Read a complete line from the medium.
+
+        Returns:
+            A line of bytes ending with a newline.
+
+        Raises:
+            ConnectionResetError: If the connection is unexpectedly closed.
+        """
         line = self._read_line()
         if not line.endswith(b"\n"):
             # end of file encountered reading from server
@@ -658,19 +783,35 @@ class SmartClientMediumRequest:
 
         By default this forwards to self._medium._get_line because we are
         operating on the medium's stream.
+
+        Returns:
+            A line of bytes from the medium's stream.
         """
         return self._medium._get_line()
 
 
 class _VfsRefuser:
-    """An object that refuses all VFS requests."""
+    """An object that refuses all VFS requests.
+
+    This class installs a hook that prevents VFS (Virtual File System) requests
+    from being executed over the smart protocol, raising an exception instead.
+    """
 
     def __init__(self):
+        """Initialize the VFS refuser and install the hook."""
         client._SmartClient.hooks.install_named_hook(
             "call", self.check_vfs, "vfs refuser"
         )
 
     def check_vfs(self, params):
+        """Check if a request is a VFS request and refuse it if so.
+
+        Args:
+            params: The request parameters containing method and args.
+
+        Raises:
+            HpssVfsRequestNotAllowed: If the request is a VFS request.
+        """
         try:
             request_method = request.request_handlers.get(params.method)
         except KeyError:
@@ -686,6 +827,8 @@ class _DebugCounter:
     When a medium is garbage-collected, or failing that when
     breezy.global_state exits, the total number of calls made on that medium
     are reported via trace.note.
+
+    This is used for debugging and performance analysis of smart protocol usage.
     """
 
     def __init__(self):
@@ -700,6 +843,9 @@ class _DebugCounter:
 
         This only keeps a weakref to the medium, so shouldn't affect the
         medium's lifetime.
+
+        Args:
+            medium: The medium to track calls for.
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
@@ -711,6 +857,11 @@ class _DebugCounter:
         weakref.ref(medium, self.done)
 
     def increment_call_count(self, params):
+        """Increment the call count for a medium.
+
+        Args:
+            params: The request parameters containing medium and method info.
+        """
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
         value["count"] += 1
@@ -723,6 +874,11 @@ class _DebugCounter:
             value["vfs_count"] += 1
 
     def done(self, ref):
+        """Report the final call count for a medium.
+
+        Args:
+            ref: The weakref to the medium that is being garbage collected.
+        """
         value = self.counts[ref]
         count, vfs_count, medium_repr = (
             value["count"],
@@ -742,6 +898,11 @@ class _DebugCounter:
             )
 
     def flush_all(self):
+        """Report call counts for all tracked mediums.
+
+        This is typically called at program exit to ensure all statistics
+        are reported even if the mediums haven't been garbage collected yet.
+        """
         for ref in list(self.counts.keys()):
             self.done(ref)
 
@@ -754,6 +915,11 @@ class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
     def __init__(self, base):
+        """Initialize the smart client medium.
+
+        Args:
+            base: The base URL for this medium.
+        """
         super().__init__()
         self.base = base
         self._protocol_version_error = None
@@ -887,10 +1053,20 @@ class SmartClientStreamMedium(SmartClientMedium):
     """
 
     def __init__(self, base):
+        """Initialize the stream medium.
+
+        Args:
+            base: The base URL for this medium.
+        """
         SmartClientMedium.__init__(self, base)
         self._current_request = None
 
     def accept_bytes(self, bytes):
+        """Accept bytes for transmission.
+
+        Args:
+            bytes: The bytes to accept for transmission.
+        """
         self._accept_bytes(bytes)
 
     def __del__(self):
@@ -931,6 +1107,13 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
+        """Initialize the simple pipes client medium.
+
+        Args:
+            readable_pipe: Pipe to read from.
+            writeable_pipe: Pipe to write to.
+            base: The base URL for this medium.
+        """
         SmartClientStreamMedium.__init__(self, base)
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
@@ -963,11 +1146,24 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
 
 class SSHParams:
-    """A set of parameters for starting a remote bzr via SSH."""
+    """A set of parameters for starting a remote bzr via SSH.
+
+    This class encapsulates the connection parameters needed to establish
+    an SSH connection to a remote bzr server.
+    """
 
     def __init__(
         self, host, port=None, username=None, password=None, bzr_remote_path="bzr"
     ):
+        """Initialize SSH connection parameters.
+
+        Args:
+            host: The hostname or IP address to connect to.
+            port: The port number to connect to (optional).
+            username: The username for SSH authentication (optional).
+            password: The password for SSH authentication (optional).
+            bzr_remote_path: The path to the bzr executable on the remote host.
+        """
         self.host = host
         self.port = port
         self.username = username
@@ -976,10 +1172,13 @@ class SSHParams:
 
 
 class SmartSSHClientMedium(SmartClientStreamMedium):
-    """A client medium using SSH.
+    """A client medium using SSH for communication.
 
     It delegates IO to a SmartSimplePipesClientMedium or
     SmartClientAlreadyConnectedSocketMedium (depending on platform).
+
+    This medium handles the SSH connection setup and then delegates the
+    actual smart protocol communication to an appropriate underlying medium.
     """
 
     def __init__(self, base, ssh_params, vendor=None):
@@ -1002,6 +1201,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._ssh_connection = None
 
     def __repr__(self):
+        """Return detailed representation of the SSH medium."""
         if self._ssh_params.port is None:
             maybe_port = ""
         else:
@@ -1019,7 +1219,11 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         )
 
     def _accept_bytes(self, bytes):
-        """See SmartClientStreamMedium.accept_bytes."""
+        """Accept bytes for transmission over SSH.
+
+        Args:
+            bytes: The bytes to send over the SSH connection.
+        """
         self._ensure_connection()
         self._real_medium.accept_bytes(bytes)
 
@@ -1033,7 +1237,14 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             self._ssh_connection = None
 
     def _ensure_connection(self):
-        """Connect this medium if not already connected."""
+        """Establish SSH connection if not already connected.
+
+        This method creates an SSH connection using the configured parameters
+        and sets up the appropriate underlying medium for communication.
+
+        Raises:
+            AssertionError: If an unexpected I/O kind is returned from SSH.
+        """
         if self._real_medium is not None:
             return
         vendor = ssh._get_ssh_vendor() if self._vendor is None else self._vendor
@@ -1072,7 +1283,17 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._real_medium._flush()
 
     def _read_bytes(self, count):
-        """See SmartClientStreamMedium.read_bytes."""
+        """Read bytes from the SSH connection.
+
+        Args:
+            count: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the connection.
+
+        Raises:
+            MediumNotConnected: If the SSH connection is not established.
+        """
         if self._real_medium is None:
             raise errors.MediumNotConnected(self)
         return self._real_medium.read_bytes(count)
@@ -1084,23 +1305,39 @@ BZR_DEFAULT_PORT = 4155
 
 
 class SmartClientSocketMedium(SmartClientStreamMedium):
-    """A client medium using a socket.
+    """A client medium using a socket for communication.
 
-    This class isn't usable directly.  Use one of its subclasses instead.
+    This class isn't usable directly. Use one of its subclasses instead.
+
+    This is a base class that provides common socket functionality for
+    smart protocol clients that communicate over socket connections.
     """
 
     def __init__(self, base):
+        """Initialize the socket medium.
+
+        Args:
+            base: The base URL for this medium.
+        """
         SmartClientStreamMedium.__init__(self, base)
         self._socket = None
         self._connected = False
 
     def _accept_bytes(self, bytes):
-        """See SmartClientMedium.accept_bytes."""
+        """Send bytes over the socket connection.
+
+        Args:
+            bytes: The bytes to send over the socket.
+        """
         self._ensure_connection()
         osutils.send_all(self._socket, bytes, self._report_activity)
 
     def _ensure_connection(self):
-        """Connect this medium if not already connected."""
+        """Establish socket connection if not already connected.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self._ensure_connection)
 
     def _flush(self):
@@ -1112,7 +1349,17 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
         """
 
     def _read_bytes(self, count):
-        """See SmartClientMedium.read_bytes."""
+        """Read bytes from the socket.
+
+        Args:
+            count: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the socket.
+
+        Raises:
+            MediumNotConnected: If the socket is not connected.
+        """
         if not self._connected:
             raise errors.MediumNotConnected(self)
         return osutils.read_bytes_from_socket(self._socket, self._report_activity)
@@ -1127,16 +1374,33 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
 
 
 class SmartTCPClientMedium(SmartClientSocketMedium):
-    """A client medium that creates a TCP connection."""
+    """A client medium that creates a TCP connection.
+
+    This medium handles smart protocol communication over TCP sockets,
+    connecting to a specified host and port.
+    """
 
     def __init__(self, host, port, base):
-        """Creates a client that will connect on the first use."""
+        """Initialize a TCP client medium.
+
+        Args:
+            host: The hostname or IP address to connect to.
+            port: The port number to connect to.
+            base: The base URL for the transport.
+        """
         SmartClientSocketMedium.__init__(self, base)
         self._host = host
         self._port = port
 
     def _ensure_connection(self):
-        """Connect this medium if not already connected."""
+        """Establish TCP connection if not already connected.
+
+        This method resolves the hostname, creates a socket, and connects
+        to the specified host and port.
+
+        Raises:
+            ConnectionError: If the connection cannot be established.
+        """
         if self._connected:
             return
         port = BZR_DEFAULT_PORT if self._port is None else int(self._port)
@@ -1185,19 +1449,40 @@ class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
 
     Note that this class will assume it "owns" the socket, so it will close it
     when its disconnect method is called.
+
+    This is typically used when a socket connection has already been established
+    by another component and is being passed to the smart protocol layer.
     """
 
     def __init__(self, base, sock):
+        """Initialize the already-connected socket medium.
+
+        Args:
+            base: The base URL for this medium.
+            sock: The already-connected socket.
+        """
         SmartClientSocketMedium.__init__(self, base)
         self._socket = sock
         self._connected = True
 
     def _ensure_connection(self):
+        """No-op since the socket is already connected.
+
+        This medium is initialized with an already-connected socket,
+        so no connection establishment is needed.
+        """
         # Already connected, by definition!  So nothing to do.
         pass
 
 
 class TooManyConcurrentRequests(errors.InternalBzrError):
+    """Exception raised when too many concurrent requests are made.
+
+    This exception is raised when a medium that doesn't support concurrent
+    requests (like stream-based mediums) is asked to handle multiple
+    requests simultaneously.
+    """
+
     _fmt = (
         "The medium '%(medium)s' has reached its concurrent request limit."
         " Be sure to finish_writing and finish_reading on the"
@@ -1205,13 +1490,30 @@ class TooManyConcurrentRequests(errors.InternalBzrError):
     )
 
     def __init__(self, medium):
+        """Initialize the exception.
+
+        Args:
+            medium: The medium that has reached its concurrent request limit.
+        """
         self.medium = medium
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
-    """A SmartClientMediumRequest that works with an SmartClientStreamMedium."""
+    """A SmartClientMediumRequest that works with an SmartClientStreamMedium.
+
+    This request type ensures that only one request at a time is active
+    on a stream-based medium, since these mediums cannot multiplex requests.
+    """
 
     def __init__(self, medium):
+        """Initialize a stream medium request.
+
+        Args:
+            medium: The SmartClientStreamMedium to use for this request.
+
+        Raises:
+            TooManyConcurrentRequests: If there's already an active request.
+        """
         SmartClientMediumRequest.__init__(self, medium)
         # check that we are safe concurrency wise. If some streams start
         # allowing concurrent requests - i.e. via multiplexing - then this
@@ -1223,25 +1525,31 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         self._medium._current_request = self
 
     def _accept_bytes(self, bytes):
-        """See SmartClientMediumRequest._accept_bytes.
+        """Accept bytes for this request.
 
         This forwards to self._medium._accept_bytes because we are operating
-        on the mediums stream.
+        on the medium's stream.
+
+        Args:
+            bytes: The bytes to accept for this request.
         """
         self._medium._accept_bytes(bytes)
 
     def _finished_reading(self):
-        """See SmartClientMediumRequest._finished_reading.
+        """Mark this request as finished reading.
 
         This clears the _current_request on self._medium to allow a new
         request to be created.
+
+        Raises:
+            AssertionError: If this request is not the current request.
         """
         if self._medium._current_request is not self:
             raise AssertionError()
         self._medium._current_request = None
 
     def _finished_writing(self):
-        """See SmartClientMediumRequest._finished_writing.
+        """Mark this request as finished writing.
 
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
