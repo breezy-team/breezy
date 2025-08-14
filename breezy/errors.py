@@ -743,6 +743,7 @@ class NotBranchError(PathError):
         PathError.__init__(self, path=path)
 
     def __repr__(self):
+        """Return developer-friendly string representation of the error."""
         return f"<{self.__class__.__name__} {self.__dict__!r}>"
 
     def _get_format_string(self):
@@ -1195,6 +1196,7 @@ class CommitNotPossible(LockError):
     _fmt = "A commit was attempted but we do not have a write lock open."
 
     def __init__(self):
+        """Initialize the CommitNotPossible exception."""
         pass
 
 
@@ -1207,6 +1209,7 @@ class AlreadyCommitted(LockError):
     _fmt = "A rollback was requested, but is not able to be accomplished."
 
     def __init__(self):
+        """Initialize the AlreadyCommitted exception."""
         pass
 
 
@@ -2168,6 +2171,12 @@ class BadHttpRequest(UnexpectedHttpStatus):
     _fmt = "Bad http request for %(path)s: %(reason)s"
 
     def __init__(self, path, reason):
+        """Initialize with path and reason for the bad request.
+
+        Args:
+            path: The path for which the bad request was made.
+            reason: The reason why the request is bad.
+        """
         self.path = path
         self.reason = reason
         TransportError.__init__(self, reason)
@@ -2182,6 +2191,13 @@ class InvalidHttpRange(InvalidHttpResponse):
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
 
     def __init__(self, path, range, msg):
+        """Initialize with path, range and error message.
+
+        Args:
+            path: The path for which the invalid range was requested.
+            range: The invalid range specification.
+            msg: Error message describing the invalid range.
+        """
         self.range = range
         InvalidHttpResponse.__init__(self, path, msg)
 
@@ -2196,6 +2212,12 @@ class HttpBoundaryMissing(InvalidHttpResponse):
     _fmt = "HTTP MIME Boundary missing for %(path)s: %(msg)s"
 
     def __init__(self, path, msg):
+        """Initialize with path and error message.
+
+        Args:
+            path: The path for which the boundary is missing.
+            msg: Error message describing the missing boundary.
+        """
         InvalidHttpResponse.__init__(self, path, msg)
 
 
@@ -2208,6 +2230,13 @@ class InvalidHttpContentType(InvalidHttpResponse):
     _fmt = 'Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s'
 
     def __init__(self, path, ctype, msg):
+        """Initialize with path, content type and error message.
+
+        Args:
+            path: The path that returned the invalid content type.
+            ctype: The invalid content type header value.
+            msg: Error message describing the invalid content type.
+        """
         self.ctype = ctype
         InvalidHttpResponse.__init__(self, path, msg)
 
@@ -2221,6 +2250,13 @@ class RedirectRequested(TransportError):
     _fmt = "%(source)s is%(permanently)s redirected to %(target)s"
 
     def __init__(self, source, target, is_permanent=False):
+        """Initialize with redirect information.
+
+        Args:
+            source: The original URL that was redirected.
+            target: The target URL to redirect to.
+            is_permanent: Whether this is a permanent redirect.
+        """
         self.source = source
         self.target = target
         if is_permanent:
@@ -2321,6 +2357,11 @@ class WritingCompleted(InternalBzrError):
     )
 
     def __init__(self, request):
+        """Initialize with the completed request.
+
+        Args:
+            request: The MediumRequest that has already completed writing.
+        """
         self.request = request
 
 
@@ -2338,6 +2379,11 @@ class WritingNotComplete(InternalBzrError):
     )
 
     def __init__(self, request):
+        """Initialize with the incomplete request.
+
+        Args:
+            request: The MediumRequest that has not completed writing.
+        """
         self.request = request
 
 
@@ -2434,6 +2480,13 @@ class MissingText(BzrError):
     _fmt = "Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"
 
     def __init__(self, branch, text_revision, file_id):
+        """Initialize with branch and missing text information.
+
+        Args:
+            branch: The branch that is missing the text revision.
+            text_revision: The revision ID of the missing text.
+            file_id: The file ID of the file that is missing text.
+        """
         BzrError.__init__(self)
         self.branch = branch
         self.base = branch.base
@@ -2459,6 +2512,11 @@ class DuplicateHelpPrefix(BzrError):
     _fmt = "The prefix %(prefix)s is in the help search path twice."
 
     def __init__(self, prefix):
+        """Initialize with the duplicate prefix.
+
+        Args:
+            prefix: The help prefix that appears multiple times.
+        """
         self.prefix = prefix
 
 
@@ -2472,6 +2530,11 @@ class BzrBadParameter(InternalBzrError):
     _fmt = "Bad parameter: %(param)r"
 
     def __init__(self, param):
+        """Initialize with the bad parameter.
+
+        Args:
+            param: The parameter that is invalid.
+        """
         BzrError.__init__(self)
         self.param = param
 
@@ -2495,6 +2558,13 @@ class BzrMoveFailedError(BzrError):
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(_has_extra)s%(extra)s"
 
     def __init__(self, from_path="", to_path="", extra=None):
+        """Initialize with move operation details.
+
+        Args:
+            from_path: The source path for the move operation.
+            to_path: The destination path for the move operation.
+            extra: Optional additional error information.
+        """
         from .osutils import splitpath
 
         BzrError.__init__(self)
@@ -2537,6 +2607,13 @@ class BzrRenameFailedError(BzrMoveFailedError):
     )
 
     def __init__(self, from_path, to_path, extra=None):
+        """Initialize with rename operation details.
+
+        Args:
+            from_path: The source path for the rename operation.
+            to_path: The destination path for the rename operation.
+            extra: Optional additional error information.
+        """
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
 
 
@@ -2586,6 +2663,11 @@ class ParamikoNotPresent(DependencyNotPresent):
     _fmt = "Unable to import paramiko (required for sftp support): %(error)s"
 
     def __init__(self, error):
+        """Initialize with paramiko import error.
+
+        Args:
+            error: The import error that occurred when trying to import paramiko.
+        """
         DependencyNotPresent.__init__(self, "paramiko", error)
 
 
@@ -2599,6 +2681,11 @@ class UninitializableFormat(BzrError):
     _fmt = "Format %(format)s cannot be initialised by this version of brz."
 
     def __init__(self, format):
+        """Initialize with the uninitializable format.
+
+        Args:
+            format: The format that cannot be initialized.
+        """
         BzrError.__init__(self)
         self.format = format
 
@@ -2616,6 +2703,13 @@ class BadConversionTarget(BzrError):
     )
 
     def __init__(self, problem, format, from_format=None):
+        """Initialize with conversion problem details.
+
+        Args:
+            problem: Description of the conversion problem.
+            format: The target format that cannot be converted to.
+            from_format: Optional source format being converted from.
+        """
         BzrError.__init__(self)
         self.problem = problem
         self.format = format
@@ -2631,6 +2725,11 @@ class NoDiffFound(BzrError):
     _fmt = 'Could not find an appropriate Differ for file "%(path)s"'
 
     def __init__(self, path):
+        """Initialize with the path that has no diff tool.
+
+        Args:
+            path: The file path for which no diff tool was found.
+        """
         BzrError.__init__(self, path)
 
 
@@ -2643,6 +2742,11 @@ class ExecutableMissing(BzrError):
     _fmt = "%(exe_name)s could not be found on this machine"
 
     def __init__(self, exe_name):
+        """Initialize with the missing executable name.
+
+        Args:
+            exe_name: Name of the executable that could not be found.
+        """
         BzrError.__init__(self, exe_name=exe_name)
 
 
@@ -2655,6 +2759,11 @@ class NoDiff(BzrError):
     _fmt = "Diff is not installed on this machine: %(msg)s"
 
     def __init__(self, msg):
+        """Initialize with error message.
+
+        Args:
+            msg: Description of the diff installation issue.
+        """
         BzrError.__init__(self, msg=msg)
 
 
@@ -2679,6 +2788,11 @@ class ExistingLimbo(BzrError):
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
+        """Initialize with limbo directory path.
+
+        Args:
+            limbo_dir: Path to the leftover limbo directory.
+        """
         BzrError.__init__(self)
         self.limbo_dir = limbo_dir
 
@@ -2695,6 +2809,11 @@ class ExistingPendingDeletion(BzrError):
     wish to keep, and delete it when you are done."""
 
     def __init__(self, pending_deletion):
+        """Initialize with pending deletion directory path.
+
+        Args:
+            pending_deletion: Path to the leftover pending deletion directory.
+        """
         BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
@@ -2712,6 +2831,11 @@ class ImmortalPendingDeletion(BzrError):
     )
 
     def __init__(self, pending_deletion):
+        """Initialize with pending deletion directory path.
+
+        Args:
+            pending_deletion: Path to the transform temporary directory that cannot be deleted.
+        """
         BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
@@ -2725,6 +2849,12 @@ class OutOfDateTree(BzrError):
     _fmt = "Working tree is out of date, please run 'brz update'.%(more)s"
 
     def __init__(self, tree, more=None):
+        """Initialize with tree and optional additional information.
+
+        Args:
+            tree: The working tree that is out of date.
+            more: Optional additional information to include in the error message.
+        """
         more = "" if more is None else " " + more
         BzrError.__init__(self)
         self.tree = tree
@@ -2740,6 +2870,12 @@ class PublicBranchOutOfDate(BzrError):
     _fmt = 'Public branch "%(public_location)s" lacks revision "%(revstring)s".'
 
     def __init__(self, public_location, revstring):
+        """Initialize with public branch location and revision string.
+
+        Args:
+            public_location: The URL of the public branch that is out of date.
+            revstring: The revision string that is missing.
+        """
         import breezy.urlutils as urlutils
 
         public_location = urlutils.unescape_for_display(public_location, "ascii")
@@ -2777,6 +2913,11 @@ class CorruptRepository(BzrError):
     )
 
     def __init__(self, repo):
+        """Initialize with corrupted repository.
+
+        Args:
+            repo: The repository that has detected corruption.
+        """
         BzrError.__init__(self)
         self.repo_path = repo.user_url
 
@@ -2790,6 +2931,13 @@ class InconsistentDelta(BzrError):
     )
 
     def __init__(self, path, file_id, reason):
+        """Initialize with delta inconsistency details.
+
+        Args:
+            path: The path involved in the inconsistent delta.
+            file_id: The file ID involved in the inconsistent delta.
+            reason: The reason why the delta is inconsistent.
+        """
         BzrError.__init__(self)
         self.path = path
         self.file_id = file_id
@@ -2802,6 +2950,12 @@ class InconsistentDeltaDelta(InconsistentDelta):
     _fmt = "An inconsistent delta was supplied: %(delta)r\nreason: %(reason)s"
 
     def __init__(self, delta, reason):
+        """Initialize with delta and inconsistency reason.
+
+        Args:
+            delta: The inconsistent delta.
+            reason: The reason why the delta is inconsistent.
+        """
         BzrError.__init__(self)
         self.delta = delta
         self.reason = reason
@@ -2816,6 +2970,11 @@ class UpgradeRequired(BzrError):
     _fmt = "To use this feature you must upgrade your branch at %(path)s."
 
     def __init__(self, path):
+        """Initialize with path that requires upgrade.
+
+        Args:
+            path: The path to the branch that needs upgrading.
+        """
         BzrError.__init__(self)
         self.path = path
 
@@ -2859,6 +3018,12 @@ class UnsupportedOperation(BzrError):
     _fmt = "The method %(mname)s is not supported on objects of type %(tname)s."
 
     def __init__(self, method, method_self):
+        """Initialize with method and object information.
+
+        Args:
+            method: The method that is not supported.
+            method_self: The object on which the method was called.
+        """
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
@@ -2873,6 +3038,11 @@ class FetchLimitUnsupported(UnsupportedOperation):
     _fmt = "InterBranch %(interbranch)r does not support fetching limits."
 
     def __init__(self, interbranch):
+        """Initialize with the interbranch that doesn't support fetch limits.
+
+        Args:
+            interbranch: The interbranch implementation that lacks fetch limit support.
+        """
         BzrError.__init__(self, interbranch=interbranch)
 
 
@@ -2893,6 +3063,11 @@ class SharedRepositoriesUnsupported(UnsupportedOperation):
     _fmt = "Shared repositories are not supported by %(format)r."
 
     def __init__(self, format):
+        """Initialize with format that doesn't support shared repositories.
+
+        Args:
+            format: The format that doesn't support shared repositories.
+        """
         BzrError.__init__(self, format=format)
 
 
@@ -2905,6 +3080,11 @@ class GhostTagsNotSupported(BzrError):
     _fmt = "Ghost tags not supported by format %(format)r."
 
     def __init__(self, format):
+        """Initialize with format that doesn't support ghost tags.
+
+        Args:
+            format: The format that doesn't support ghost tags.
+        """
         self.format = format
 
 
@@ -2927,6 +3107,11 @@ class IllegalPath(BzrError):
     _fmt = "The path %(path)s is not permitted on this platform"
 
     def __init__(self, path):
+        """Initialize with the illegal path.
+
+        Args:
+            path: The path that contains illegal characters.
+        """
         BzrError.__init__(self)
         self.path = path
 
@@ -2943,6 +3128,13 @@ class TestamentMismatch(BzrError):
        {%(measured)s}"""
 
     def __init__(self, revision_id, expected, measured):
+        """Initialize with testament verification details.
+
+        Args:
+            revision_id: The revision ID that failed testament verification.
+            expected: The expected testament value.
+            measured: The measured testament value.
+        """
         self.revision_id = revision_id
         self.expected = expected
         self.measured = measured
@@ -2957,6 +3149,11 @@ class NotABundle(BzrError):
     _fmt = "Not a bzr revision-bundle: %(text)r"
 
     def __init__(self, text):
+        """Initialize with the non-bundle text.
+
+        Args:
+            text: The text that was expected to be a bundle but isn't.
+        """
         BzrError.__init__(self)
         self.text = text
 
@@ -2970,6 +3167,11 @@ class BadBundle(BzrError):
     _fmt = "Bad bzr revision-bundle: %(text)r"
 
     def __init__(self, text):
+        """Initialize with the malformed bundle text.
+
+        Args:
+            text: The malformed bundle text.
+        """
         BzrError.__init__(self)
         self.text = text
 
@@ -3011,6 +3213,11 @@ class UnsupportedEOLMarker(BadBundle):
     _fmt = "End of line marker was not \\n in bzr revision-bundle"
 
     def __init__(self):
+        """Initialize the unsupported EOL marker error.
+
+        Note: BadBundle's constructor assumes there's explanatory text,
+        but for this there is not.
+        """
         # XXX: BadBundle's constructor assumes there's explanatory text,
         # but for this there is not
         BzrError.__init__(self)
@@ -3025,6 +3232,12 @@ class IncompatibleBundleFormat(BzrError):
     _fmt = "Bundle format %(bundle_format)s is incompatible with %(other)s"
 
     def __init__(self, bundle_format, other):
+        """Initialize with incompatible bundle format details.
+
+        Args:
+            bundle_format: The bundle format that is incompatible.
+            other: The other format or object that is incompatible.
+        """
         BzrError.__init__(self)
         self.bundle_format = bundle_format
         self.other = other
@@ -3048,6 +3261,11 @@ class NoSmartMedium(InternalBzrError):
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
 
     def __init__(self, transport):
+        """Initialize with the transport that cannot tunnel smart protocol.
+
+        Args:
+            transport: The transport that doesn't support smart protocol tunneling.
+        """
         self.transport = transport
 
 
@@ -3060,6 +3278,11 @@ class UnknownSSH(BzrError):
     _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 
     def __init__(self, vendor):
+        """Initialize with the unrecognized SSH vendor.
+
+        Args:
+            vendor: The unrecognized SSH vendor from BRZ_SSH.
+        """
         BzrError.__init__(self)
         self.vendor = vendor
 
@@ -3086,6 +3309,12 @@ class GhostRevisionsHaveNoRevno(BzrError):
     )
 
     def __init__(self, revision_id, ghost_revision_id):
+        """Initialize with revision IDs that cannot determine revno.
+
+        Args:
+            revision_id: The revision ID we were trying to find revno for.
+            ghost_revision_id: The ghost revision ID that blocks the search.
+        """
         self.revision_id = revision_id
         self.ghost_revision_id = ghost_revision_id
 
@@ -3099,6 +3328,11 @@ class GhostRevisionUnusableHere(BzrError):
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
 
     def __init__(self, revision_id):
+        """Initialize with the unusable ghost revision ID.
+
+        Args:
+            revision_id: The ghost revision ID that cannot be used here.
+        """
         BzrError.__init__(self)
         self.revision_id = revision_id
 
@@ -3112,6 +3346,11 @@ class NotAMergeDirective(BzrError):
     _fmt = "File starting with %(firstline)r is not a merge directive."
 
     def __init__(self, firstline):
+        """Initialize with the first line of the non-merge-directive content.
+
+        Args:
+            firstline: The first line of content that is not a merge directive.
+        """
         BzrError.__init__(self, firstline=firstline)
 
 
@@ -3136,6 +3375,11 @@ class PatchMissing(BzrError):
     _fmt = "Patch_type was %(patch_type)s, but no patch was supplied."
 
     def __init__(self, patch_type):
+        """Initialize with the patch type that was specified.
+
+        Args:
+            patch_type: The patch type that was specified but has no patch.
+        """
         BzrError.__init__(self)
         self.patch_type = patch_type
 
@@ -3151,55 +3395,124 @@ class TargetNotBranch(BzrError):
     )
 
     def __init__(self, location):
+        """Initialize with the location that is not a branch.
+
+        Args:
+            location: The target location that is not a branch.
+        """
         BzrError.__init__(self)
         self.location = location
 
 
 class BadSubsumeSource(BzrError):
+    """Source tree cannot be subsumed into target tree.
+
+    Raised when attempting to subsume a source tree into a target tree
+    but the operation cannot be completed.
+    """
+
     _fmt = "Can't subsume %(other_tree)s into %(tree)s. %(reason)s"
 
     def __init__(self, tree, other_tree, reason):
+        """Initialize with tree subsume details.
+
+        Args:
+            tree: The target tree for the subsume operation.
+            other_tree: The source tree being subsumed.
+            reason: The reason why the subsume cannot be completed.
+        """
         self.tree = tree
         self.other_tree = other_tree
         self.reason = reason
 
 
 class SubsumeTargetNeedsUpgrade(BzrError):
+    """Subsume target requires format upgrade.
+
+    Raised when attempting to subsume a tree that needs to be upgraded
+    to a newer format before the operation can proceed.
+    """
+
     _fmt = """Subsume target %(other_tree)s needs to be upgraded."""
 
     def __init__(self, other_tree):
+        """Initialize with the tree that needs upgrade.
+
+        Args:
+            other_tree: The tree that needs to be upgraded.
+        """
         self.other_tree = other_tree
 
 
 class NoSuchTag(BzrError):
+    """Specified tag does not exist.
+
+    Raised when trying to access a tag that does not exist in the repository.
+    """
+
     _fmt = "No such tag: %(tag_name)s"
 
     def __init__(self, tag_name):
+        """Initialize with the missing tag name.
+
+        Args:
+            tag_name: The name of the tag that does not exist.
+        """
         self.tag_name = tag_name
 
 
 class TagsNotSupported(BzrError):
+    """Branch format does not support tags.
+
+    Raised when attempting to use tags with a branch format that does not support them.
+    """
+
     _fmt = (
         "Tags not supported by %(branch)s;"
         " you may be able to use 'brz upgrade %(branch_url)s'."
     )
 
     def __init__(self, branch):
+        """Initialize with the branch that doesn't support tags.
+
+        Args:
+            branch: The branch that lacks tag support.
+        """
         self.branch = branch
         self.branch_url = branch.user_url
 
 
 class TagAlreadyExists(BzrError):
+    """Specified tag already exists.
+
+    Raised when trying to create a tag that already exists in the repository.
+    """
+
     _fmt = "Tag %(tag_name)s already exists."
 
     def __init__(self, tag_name):
+        """Initialize with the existing tag name.
+
+        Args:
+            tag_name: The name of the tag that already exists.
+        """
         self.tag_name = tag_name
 
 
 class UnexpectedSmartServerResponse(BzrError):
+    """Smart server returned unexpected response.
+
+    Raised when the smart server returns a response that cannot be understood.
+    """
+
     _fmt = "Could not understand response from smart server: %(response_tuple)r"
 
     def __init__(self, response_tuple):
+        """Initialize with the unexpected response.
+
+        Args:
+            response_tuple: The response tuple that was not understood.
+        """
         self.response_tuple = response_tuple
 
 
@@ -3214,6 +3527,11 @@ class ErrorFromSmartServer(BzrError):
     internal_error = True
 
     def __init__(self, error_tuple):
+        """Initialize with smart server error details.
+
+        Args:
+            error_tuple: The error tuple received from the smart server.
+        """
         self.error_tuple = error_tuple
         try:
             self.error_verb = error_tuple[0]
@@ -3223,19 +3541,42 @@ class ErrorFromSmartServer(BzrError):
 
 
 class RepositoryDataStreamError(BzrError):
+    """Repository data stream is corrupt or incompatible.
+
+    Raised when a repository data stream cannot be processed due to corruption
+    or incompatibility.
+    """
+
     _fmt = "Corrupt or incompatible data stream: %(reason)s"
 
     def __init__(self, reason):
+        """Initialize with the reason for the data stream error.
+
+        Args:
+            reason: The reason why the data stream is corrupt or incompatible.
+        """
         self.reason = reason
 
 
 class UncommittedChanges(BzrError):
+    """Working tree has uncommitted changes.
+
+    Raised when an operation requires a clean working tree but uncommitted
+    changes are present.
+    """
+
     _fmt = (
         'Working tree "%(display_url)s" has uncommitted changes'
         " (See brz status).%(more)s"
     )
 
     def __init__(self, tree, more=None):
+        """Initialize with the tree containing uncommitted changes.
+
+        Args:
+            tree: The working tree with uncommitted changes.
+            more: Optional additional information to include in the error message.
+        """
         more = "" if more is None else " " + more
         import breezy.urlutils as urlutils
 
@@ -3248,9 +3589,20 @@ class UncommittedChanges(BzrError):
 
 
 class StoringUncommittedNotSupported(BzrError):
+    """Branch format does not support storing uncommitted changes.
+
+    Raised when attempting to store uncommitted changes in a branch that
+    does not support this feature.
+    """
+
     _fmt = 'Branch "%(display_url)s" does not support storing uncommitted changes.'
 
     def __init__(self, branch):
+        """Initialize with the branch that doesn't support storing uncommitted changes.
+
+        Args:
+            branch: The branch that lacks support for storing uncommitted changes.
+        """
         import breezy.urlutils as urlutils
 
         user_url = getattr(branch, "user_url", None)
@@ -3262,6 +3614,11 @@ class StoringUncommittedNotSupported(BzrError):
 
 
 class ShelvedChanges(UncommittedChanges):
+    """Working tree has shelved changes.
+
+    Raised when a working tree has shelved changes that prevent an operation.
+    """
+
     _fmt = (
         'Working tree "%(display_url)s" has shelved changes'
         " (See brz shelve --list).%(more)s"
@@ -3269,9 +3626,21 @@ class ShelvedChanges(UncommittedChanges):
 
 
 class UnableEncodePath(BzrError):
+    """Path cannot be encoded in user encoding.
+
+    Raised when a path contains characters that cannot be encoded in the
+    user's current encoding.
+    """
+
     _fmt = "Unable to encode %(kind)s path %(path)r in user encoding %(user_encoding)s"
 
     def __init__(self, path, kind):
+        """Initialize with path and kind details.
+
+        Args:
+            path: The path that cannot be encoded.
+            kind: The kind of path (e.g. 'file', 'directory').
+        """
         from .osutils import get_user_encoding
 
         self.path = path
@@ -3280,9 +3649,21 @@ class UnableEncodePath(BzrError):
 
 
 class CannotBindAddress(BzrError):
+    """Cannot bind to network address.
+
+    Raised when unable to bind to a specific network address and port.
+    """
+
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
 
     def __init__(self, host, port, orig_error):
+        """Initialize with address binding details.
+
+        Args:
+            host: The host address that could not be bound.
+            port: The port number that could not be bound.
+            orig_error: The original error that occurred during binding.
+        """
         # nb: in python2.4 socket.error doesn't have a useful repr
         BzrError.__init__(self, host=host, port=port, orig_error=repr(orig_error.args))
 
@@ -3297,21 +3678,46 @@ class TipChangeRejected(BzrError):
     _fmt = "Tip change rejected: %(msg)s"
 
     def __init__(self, msg):
+        """Initialize with the rejection message.
+
+        Args:
+            msg: The message from the hook explaining why the tip change was rejected.
+        """
         self.msg = msg
 
 
 class JailBreak(BzrError):
+    """Attempt to access URL outside server jail.
+
+    Raised when trying to access a URL that is outside the allowed server jail boundaries.
+    """
+
     _fmt = "An attempt to access a url outside the server jail was made: '%(url)s'."
 
     def __init__(self, url):
+        """Initialize with the forbidden URL.
+
+        Args:
+            url: The URL that attempted to break out of the jail.
+        """
         BzrError.__init__(self, url=url)
 
 
 class UserAbort(BzrError):
+    """User explicitly aborted the operation.
+
+    Raised when the user cancels or aborts an operation in progress.
+    """
+
     _fmt = "The user aborted the operation."
 
 
 class UnresumableWriteGroup(BzrError):
+    """Repository cannot resume write group.
+
+    Raised when a repository cannot resume a write group that was suspended.
+    """
+
     _fmt = (
         "Repository %(repository)s cannot resume write group "
         "%(write_groups)r: %(reason)s"
@@ -3320,21 +3726,44 @@ class UnresumableWriteGroup(BzrError):
     internal_error = True
 
     def __init__(self, repository, write_groups, reason):
+        """Initialize with repository and write group details.
+
+        Args:
+            repository: The repository that cannot resume the write group.
+            write_groups: The write groups that cannot be resumed.
+            reason: The reason why the write group cannot be resumed.
+        """
         self.repository = repository
         self.write_groups = write_groups
         self.reason = reason
 
 
 class UnsuspendableWriteGroup(BzrError):
+    """Repository cannot suspend write group.
+
+    Raised when a repository cannot suspend an active write group.
+    """
+
     _fmt = "Repository %(repository)s cannot suspend a write group."
 
     internal_error = True
 
     def __init__(self, repository):
+        """Initialize with repository that cannot suspend write group.
+
+        Args:
+            repository: The repository that cannot suspend a write group.
+        """
         self.repository = repository
 
 
 class LossyPushToSameVCS(BzrError):
+    """Lossy push attempted within same VCS.
+
+    Raised when attempting a lossy push between branches in the same VCS,
+    which should not be necessary.
+    """
+
     _fmt = (
         "Lossy push not possible between %(source_branch)r and "
         "%(target_branch)r that are in the same VCS."
@@ -3343,11 +3772,22 @@ class LossyPushToSameVCS(BzrError):
     internal_error = True
 
     def __init__(self, source_branch, target_branch):
+        """Initialize with source and target branch details.
+
+        Args:
+            source_branch: The source branch for the lossy push.
+            target_branch: The target branch for the lossy push.
+        """
         self.source_branch = source_branch
         self.target_branch = target_branch
 
 
 class NoRoundtrippingSupport(BzrError):
+    """Roundtripping not supported between branches.
+
+    Raised when roundtripping is not supported between the specified branches.
+    """
+
     _fmt = (
         "Roundtripping is not supported between %(source_branch)r and "
         "%(target_branch)r."
@@ -3356,27 +3796,57 @@ class NoRoundtrippingSupport(BzrError):
     internal_error = True
 
     def __init__(self, source_branch, target_branch):
+        """Initialize with source and target branch details.
+
+        Args:
+            source_branch: The source branch.
+            target_branch: The target branch.
+        """
         self.source_branch = source_branch
         self.target_branch = target_branch
 
 
 class RecursiveBind(BzrError):
+    """Branch is bound to itself.
+
+    Raised when a branch appears to be bound to itself, creating a recursive binding.
+    """
+
     _fmt = (
         'Branch "%(branch_url)s" appears to be bound to itself. '
         "Please use `brz unbind` to fix."
     )
 
     def __init__(self, branch_url):
+        """Initialize with the recursively bound branch URL.
+
+        Args:
+            branch_url: The URL of the branch that is bound to itself.
+        """
         self.branch_url = branch_url
 
 
 class UnsupportedKindChange(BzrError):
+    """Format does not support the requested kind change.
+
+    Raised when attempting to change the kind of a file in a way that is not
+    supported by the current format.
+    """
+
     _fmt = (
         "Kind change from %(from_kind)s to %(to_kind)s for "
         "%(path)s not supported by format %(format)r"
     )
 
     def __init__(self, path, from_kind, to_kind, format):
+        """Initialize with kind change details.
+
+        Args:
+            path: The path of the file whose kind is changing.
+            from_kind: The original file kind.
+            to_kind: The target file kind.
+            format: The format that doesn't support this kind change.
+        """
         self.path = path
         self.from_kind = from_kind
         self.to_kind = to_kind
@@ -3384,6 +3854,12 @@ class UnsupportedKindChange(BzrError):
 
 
 class ChangesAlreadyStored(CommandError):
+    """Branch already stores uncommitted changes.
+
+    Raised when attempting to store uncommitted changes but the branch already
+    has stored uncommitted changes.
+    """
+
     _fmt = (
         "Cannot store uncommitted changes because this branch already"
         " stores uncommitted changes."
@@ -3391,12 +3867,23 @@ class ChangesAlreadyStored(CommandError):
 
 
 class RevnoOutOfBounds(InternalBzrError):
+    """Revision number is outside expected boundaries.
+
+    Raised when a requested revision number is outside the valid range.
+    """
+
     _fmt = (
         "The requested revision number %(revno)d is outside of the "
         "expected boundaries (%(minimum)d <= %(maximum)d)."
     )
 
     def __init__(self, revno, bounds):
+        """Initialize with revision number and bounds.
+
+        Args:
+            revno: The revision number that is out of bounds.
+            bounds: Tuple of (minimum, maximum) valid revision numbers.
+        """
         InternalBzrError.__init__(
             self, revno=revno, minimum=bounds[0], maximum=bounds[1]
         )
