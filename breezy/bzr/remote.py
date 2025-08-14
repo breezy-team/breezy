@@ -668,6 +668,12 @@ class RemoteControlStore(_mod_config.IniFileStore):
         super().save()
 
     def _ensure_real(self):
+        """Ensure that the real (local) control store is available.
+
+        This method makes sure that the control directory has been realized
+        as a local object and creates the real control store if it doesn't
+        already exist.
+        """
         self.controldir._ensure_real()
         if self._real_store is None:
             self._real_store = _mod_config.ControlStore(self.controldir)
@@ -681,6 +687,18 @@ class RemoteControlStore(_mod_config.IniFileStore):
         return urlutils.join(self.branch.user_url, "control.conf")
 
     def _load_content(self):
+        """Load the configuration content from the remote server.
+
+        This method attempts to load configuration content using the smart
+        server protocol. If the smart server doesn't support the required
+        method, it falls back to using the local VFS-based store.
+
+        Returns:
+            The raw bytes of the configuration content.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         path = self.controldir._path_for_remote_call(self.controldir._client)
         try:
             response, handler = self.controldir._call_expecting_body(
@@ -694,6 +712,22 @@ class RemoteControlStore(_mod_config.IniFileStore):
         return handler.read_body_bytes()
 
     def _save_content(self, content):
+        """Save configuration content to the remote server.
+
+        Currently this method falls back to using the local VFS-based store
+        because the smart server protocol doesn't support writing to control
+        directories yet.
+
+        Args:
+            content: The raw bytes of configuration content to save.
+
+        Returns:
+            The result of saving the content via the real store.
+
+        Note:
+            This is a known limitation - ideally this should use an HPSS call
+            but it's not currently possible to write lock control directories.
+        """
         # FIXME JRV 2011-11-22: Ideally this should use a
         # HPSS call too, but at the moment it is not possible
         # to write lock control directories.
@@ -848,6 +882,14 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return _mod_bzrdir.BzrDir.break_lock(self)
 
     def _vfs_checkout_metadir(self):
+        """Get checkout metadir using VFS fallback.
+
+        This method is used when the remote server doesn't support the
+        smart protocol for retrieving checkout metadir information.
+
+        Returns:
+            The checkout metadir format from the real bzrdir.
+        """
         self._ensure_real()
         return self._real_bzrdir.checkout_metadir()
 
@@ -889,10 +931,29 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
+        """Get cloning metadir using VFS fallback.
+
+        Args:
+            require_stacking: Whether the cloned directory must support stacking.
+
+        Returns:
+            The cloning metadir format from the real bzrdir.
+        """
         self._ensure_real()
         return self._real_bzrdir.cloning_metadir(require_stacking=require_stacking)
 
     def cloning_metadir(self, require_stacking=False):
+        """Get the controldir format for cloning this bzrdir.
+
+        Args:
+            require_stacking: Whether the cloned directory must support stacking.
+
+        Returns:
+            A controldir format suitable for cloning this directory.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
@@ -1270,6 +1331,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         )
 
     def _open_repo_v1(self, path):
+        """Open repository using the legacy v1 find_repository method.
+
+        This is a fallback method for older servers that don't support
+        external references.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, repository) from the remote call.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repository"
         response = self._call(verb, path)
         if response[0] != b"ok":
@@ -1282,6 +1357,17 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, repo
 
     def _open_repo_v2(self, path):
+        """Open repository using the v2 find_repositoryV2 method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, repository) from the remote call.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repositoryV2"
         response = self._call(verb, path)
         if response[0] != b"ok":
@@ -1292,6 +1378,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, repo
 
     def _open_repo_v3(self, path):
+        """Open repository using the v3 find_repositoryV3 method.
+
+        This is the most recent method that supports all repository features.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, None) from the remote call.
+
+        Raises:
+            UnknownSmartMethod: If the server doesn't support v3 method.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repositoryV3"
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
@@ -1306,6 +1406,19 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, None
 
     def open_repository(self):
+        """Open the repository in this bzrdir.
+
+        Tries different versions of the repository opening protocol
+        until one succeeds.
+
+        Returns:
+            A RemoteRepository instance.
+
+        Raises:
+            NoRepositoryPresent: If no repository is present in this bzrdir.
+            UnknownSmartMethod: If no supported repository method is available.
+            SmartProtocolError: If the response format is incorrect.
+        """
         path = self._path_for_remote_call(self._client)
         response = None
         for probe in [self._open_repo_v3, self._open_repo_v2, self._open_repo_v1]:
@@ -1334,6 +1447,14 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.NoRepositoryPresent(self)
 
     def has_workingtree(self):
+        """Check if this bzrdir has a working tree.
+
+        Returns:
+            True if a working tree is present, False otherwise.
+
+        Raises:
+            SmartProtocolError: If the server response is unexpected.
+        """
         if self._has_working_tree is None:
             path = self._path_for_remote_call(self._client)
             try:
@@ -1348,6 +1469,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return self._has_working_tree
 
     def open_workingtree(self, recommend_upgrade=True):
+        """Open the working tree in this bzrdir.
+
+        Args:
+            recommend_upgrade: Whether to recommend upgrading (ignored).
+
+        Raises:
+            NotLocalUrl: If this bzrdir has a working tree (remote working trees not supported).
+            NoWorkingTree: If this bzrdir doesn't have a working tree.
+        """
         if self.has_workingtree():
             raise errors.NotLocalUrl(self.root_transport)
         else:
@@ -1409,14 +1539,31 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return False
 
     def _get_config(self):
+        """Get the configuration for this bzrdir.
+
+        Returns:
+            A RemoteBzrDirConfig instance.
+        """
         return RemoteBzrDirConfig(self)
 
     def _get_config_store(self):
+        """Get the configuration store for this bzrdir.
+
+        Returns:
+            A RemoteControlStore instance.
+        """
         return RemoteControlStore(self)
 
 
 class RemoteInventoryTree(InventoryRevisionTree):
     def __init__(self, repository, inv, revision_id):
+        """Initialize a RemoteInventoryTree.
+
+        Args:
+            repository: The repository containing the tree data.
+            inv: The inventory for this revision tree.
+            revision_id: The revision ID this tree represents.
+        """
         super().__init__(repository, inv, revision_id)
 
     def archive(
@@ -1500,6 +1647,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_ghosts = False
 
     def __init__(self):
+        """Initialize a RemoteRepositoryFormat.
+
+        Sets up the format with default values for various capability flags
+        that will be determined by probing the remote repository.
+        """
         _mod_repository.RepositoryFormat.__init__(self)
         self._custom_format = None
         self._network_name = None
@@ -1513,15 +1665,30 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._rich_root_data = None
 
     def __repr__(self):
+        """Return a string representation of this format.
+
+        Returns:
+            A string showing the class name and network name.
+        """
         return f"{self.__class__.__name__}(_network_name={self._network_name!r})"
 
     @property
     def fast_deltas(self):
+        """Whether this repository format supports fast deltas.
+
+        Returns:
+            True if fast deltas are supported.
+        """
         self._ensure_real()
         return self._custom_format.fast_deltas
 
     @property
     def rich_root_data(self):
+        """Whether this repository format supports rich root data.
+
+        Returns:
+            True if rich root data is supported.
+        """
         if self._rich_root_data is None:
             self._ensure_real()
             self._rich_root_data = self._custom_format.rich_root_data
@@ -1529,6 +1696,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_chks(self):
+        """Whether this repository format supports CHK inventories.
+
+        Returns:
+            True if CHK inventories are supported.
+        """
         if self._supports_chks is None:
             self._ensure_real()
             self._supports_chks = self._custom_format.supports_chks
@@ -1536,6 +1708,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_external_lookups(self):
+        """Whether this repository format supports external lookups.
+
+        Returns:
+            True if external lookups are supported.
+        """
         if self._supports_external_lookups is None:
             self._ensure_real()
             self._supports_external_lookups = (
@@ -1545,6 +1722,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_funky_characters(self):
+        """Whether this repository format supports funky characters in filenames.
+
+        Returns:
+            True if funky characters are supported.
+        """
         if self._supports_funky_characters is None:
             self._ensure_real()
             self._supports_funky_characters = (
@@ -1554,6 +1736,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_nesting_repositories(self):
+        """Whether this repository format supports nested repositories.
+
+        Returns:
+            True if nested repositories are supported.
+        """
         if self._supports_nesting_repositories is None:
             self._ensure_real()
             self._supports_nesting_repositories = (
@@ -1563,6 +1750,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_tree_reference(self):
+        """Whether this repository format supports tree references.
+
+        Returns:
+            True if tree references are supported.
+        """
         if self._supports_tree_reference is None:
             self._ensure_real()
             self._supports_tree_reference = self._custom_format.supports_tree_reference
@@ -1570,6 +1762,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def revision_graph_can_have_wrong_parents(self):
+        """Whether the revision graph might have wrong parents.
+
+        This indicates if the repository format allows for revision graphs
+        where the parent relationships might be incorrect or incomplete.
+
+        Returns:
+            True if the revision graph can have wrong parents.
+        """
         if self._revision_graph_can_have_wrong_parents is None:
             self._ensure_real()
             self._revision_graph_can_have_wrong_parents = (
@@ -1604,6 +1804,15 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             return result
 
     def initialize(self, a_controldir, shared=False):
+        """Initialize a repository in the given control directory.
+
+        Args:
+            a_controldir: The control directory to initialize the repository in.
+            shared: Whether to create a shared repository.
+
+        Returns:
+            A RemoteRepository instance representing the new repository.
+        """
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_controldir, RemoteBzrDir):
             return self._vfs_initialize(a_controldir, shared)
@@ -1641,11 +1850,30 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             return remote_repo
 
     def open(self, a_controldir):
+        """Open the repository in the given control directory.
+
+        Args:
+            a_controldir: The control directory containing the repository.
+
+        Returns:
+            A RemoteRepository instance.
+
+        Raises:
+            AssertionError: If a_controldir is not a RemoteBzrDir.
+        """
         if not isinstance(a_controldir, RemoteBzrDir):
             raise AssertionError(f"{a_controldir!r} is not a RemoteBzrDir")
         return a_controldir.open_repository()
 
     def _ensure_real(self):
+        """Ensure that a real (local) repository format is available.
+
+        This method makes sure we have access to the underlying concrete
+        repository format by looking it up in the network format registry.
+
+        Raises:
+            UnknownFormatError: If the network name is not recognized.
+        """
         if self._custom_format is None:
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
@@ -1658,27 +1886,60 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def _fetch_order(self):
+        """The order preference for fetching data.
+
+        Returns:
+            The fetch order from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._fetch_order
 
     @property
     def _fetch_uses_deltas(self):
+        """Whether fetching uses delta compression.
+
+        Returns:
+            True if the format uses deltas for fetching.
+        """
         self._ensure_real()
         return self._custom_format._fetch_uses_deltas
 
     @property
     def _fetch_reconcile(self):
+        """Whether fetching requires reconciliation.
+
+        Returns:
+            True if the format requires reconciliation during fetch.
+        """
         self._ensure_real()
         return self._custom_format._fetch_reconcile
 
     def get_format_description(self):
+        """Get a human-readable description of this repository format.
+
+        Returns:
+            A string describing the format, prefixed with 'Remote: '.
+        """
         self._ensure_real()
         return "Remote: " + self._custom_format.get_format_description()
 
     def __eq__(self, other):
+        """Check if this format is equal to another format.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if both objects are instances of the same class.
+        """
         return self.__class__ is other.__class__
 
     def network_name(self):
+        """Get the network name for this repository format.
+
+        Returns:
+            The network name string for this format.
+        """
         if self._network_name:
             return self._network_name
         self._creating_repo._ensure_real()
@@ -1686,16 +1947,31 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def pack_compresses(self):
+        """Whether this format compresses pack data.
+
+        Returns:
+            True if the format compresses pack data.
+        """
         self._ensure_real()
         return self._custom_format.pack_compresses
 
     @property
     def _revision_serializer(self):
+        """Get the revision serializer for this format.
+
+        Returns:
+            The revision serializer from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._revision_serializer
 
     @property
     def _inventory_serializer(self):
+        """Get the inventory serializer for this format.
+
+        Returns:
+            The inventory serializer from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._inventory_serializer
 
