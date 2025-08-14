@@ -36,10 +36,40 @@ CHANGESET_OLD_HEADER_RE = re.compile(
 
 
 def _get_bundle_header(version):
+    r"""Generate a bundle header string for the specified version.
+
+    Creates a properly formatted bundle header by combining the standard
+    bundle header prefix with the specified version string.
+
+    Args:
+        version: The version string to include in the header (e.g., "4", "0.9").
+
+    Returns:
+        bytes: The complete bundle header as bytes, including trailing newline.
+
+    Example:
+        >>> _get_bundle_header("4")
+        b'# Bazaar revision bundle v4\n'
+    """
     return b"".join([BUNDLE_HEADER, version.encode("ascii"), b"\n"])
 
 
 def _get_filename(f):
+    """Get the filename from a file-like object.
+
+    Attempts to extract the filename from a file-like object's 'name' attribute.
+    If the object doesn't have a name attribute, returns a default placeholder.
+
+    Args:
+        f: A file-like object that may have a 'name' attribute.
+
+    Returns:
+        str: The filename if available, otherwise "<unknown>".
+
+    Note:
+        This is commonly used for error reporting and debugging purposes
+        when working with file objects that may not have associated filenames.
+    """
     return getattr(f, "name", "<unknown>")
 
 
@@ -71,6 +101,26 @@ def read_bundle(f):
 
 
 def get_serializer(version):
+    """Get a bundle serializer instance for the specified version.
+
+    Looks up and instantiates a bundle serializer from the registry based on
+    the provided version string. The serializer handles reading and writing
+    bundles in the specified format.
+
+    Args:
+        version: The bundle format version string (e.g., "4", "0.9", "0.8").
+
+    Returns:
+        BundleSerializer: An instantiated serializer object for the specified version.
+
+    Raises:
+        BundleNotSupported: If the specified version is not registered or supported.
+
+    Example:
+        >>> serializer = get_serializer("4")
+        >>> isinstance(serializer, BundleSerializer)
+        True
+    """
     try:
         serializer = serializer_registry.get(version)
     except KeyError as e:
@@ -116,6 +166,16 @@ class BundleSerializer:
     """
 
     def __init__(self, version):
+        """Initialize a BundleSerializer instance.
+
+        Args:
+            version: The bundle format version this serializer handles.
+                    This determines the specific serialization format and
+                    capabilities of the serializer instance.
+
+        Attributes:
+            version: The bundle format version string this serializer supports.
+        """
         self.version = version
 
     def read(self, f):
@@ -140,6 +200,27 @@ class BundleSerializer:
 
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
+    """Generate a base64-encoded diff for binary or text content.
+
+    Creates a unified diff between old and new content, then encodes the result
+    in base64 format. This is useful for including binary file changes in
+    text-based bundle formats where raw binary data cannot be embedded directly.
+
+    Args:
+        old_filename: The original filename or identifier for the old content.
+        old_lines: List of lines representing the original file content.
+        new_filename: The new filename or identifier for the modified content.
+        new_lines: List of lines representing the modified file content.
+        to_file: The file-like object to write the base64-encoded diff to.
+
+    Note:
+        The diff is generated using internal_diff with binary support enabled,
+        then base64-encoded for safe inclusion in text-based formats. A trailing
+        newline is appended after the base64 content.
+
+    Side Effects:
+        Writes base64-encoded diff data followed by a newline to the to_file object.
+    """
     temp = BytesIO()
     internal_diff(
         old_filename, old_lines, new_filename, new_lines, temp, allow_binary=True
