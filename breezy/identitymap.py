@@ -40,6 +40,11 @@ class IdentityMap:
         return self._map.get(self._weave_key(id), None)
 
     def __init__(self) -> None:
+        """Initialize an empty IdentityMap.
+
+        Creates internal dictionaries for mapping objects by their keys
+        and reverse mapping from objects to their keys.
+        """
         super().__init__()
         self._map: dict[object, object] = {}
         self._reverse_map: dict[object, object] = {}

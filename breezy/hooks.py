@@ -14,9 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
+"""Support for plugin hooking logic.
 
-"""Support for plugin hooking logic."""
+This module provides the infrastructure for hooks that allow plugins to
+extend or modify the behavior of breezy operations. Hooks are registered
+at specific points in the codebase and can be used to customize behavior
+without modifying core code.
+"""
+
+__docformat__ = "google"
 
 from . import errors, registry
 from .lazy_import import lazy_import
@@ -34,15 +40,29 @@ from breezy.i18n import gettext
 
 
 class UnknownHook(errors.BzrError):
+    """Error raised when an unknown hook is referenced."""
+
     _fmt = "The %(type)s hook '%(hook)s' is unknown in this version of breezy."
 
     def __init__(self, hook_type, hook_name):
+        """Initialize UnknownHook.
+
+        Args:
+            hook_type: The type of hook.
+            hook_name: The name of the unknown hook.
+        """
         errors.BzrError.__init__(self)
         self.type = hook_type
         self.hook = hook_name
 
 
 class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
+    """Registry for all known hook points in breezy.
+
+    This registry maps hook points to their location and provides utilities
+    for managing the collection of known hooks.
+    """
+
     # known_hooks registry contains
     # tuple of (module, member name) which is the hook point
     # module where the specific hooks are defined
@@ -51,6 +71,13 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
     def register_lazy_hook(
         self, hook_module_name, hook_member_name, hook_factory_member_name
     ):
+        """Register a hook lazily to avoid circular imports.
+
+        Args:
+            hook_module_name: Module containing the hook point.
+            hook_member_name: Member name of the hook point.
+            hook_factory_member_name: Factory function to create the hook.
+        """
         self.register_lazy(
             (hook_module_name, hook_member_name),
             hook_module_name,
@@ -271,6 +298,13 @@ class Hooks(dict):
         self._callable_names[a_callable] = name
 
     def name_hook_lazy(self, callable_module, callable_member, callable_name):
+        """Associate a name with a lazily-loaded callable.
+
+        Args:
+            callable_module: Module containing the callable.
+            callable_member: Member name of the callable.
+            callable_name: Display name for the callable.
+        """
         self._lazy_callable_names[(callable_module, callable_member)] = callable_name
 
 
@@ -332,6 +366,7 @@ class HookPoint:
         return "\n".join(strings)
 
     def __eq__(self, other):
+        """Return True if this HookPoint equals another."""
         return isinstance(other, type(self)) and other.__dict__ == self.__dict__
 
     def hook_lazy(self, callback_module, callback_member, callback_label):
@@ -372,12 +407,15 @@ class HookPoint:
             self._callbacks.remove(entry)
 
     def __iter__(self):
+        """Iterate over registered callbacks."""
         return (callback.get_obj() for callback, name in self._callbacks)
 
     def __len__(self):
+        """Return the number of registered callbacks."""
         return len(self._callbacks)
 
     def __repr__(self):
+        """Return string representation of this HookPoint."""
         strings = []
         strings.append(f"<{type(self).__name__}(")
         strings.append(self.name)
@@ -428,6 +466,14 @@ Plugins (including hooks) are run on the server if all of these is true:
 
 
 def hooks_help_text(topic):
+    """Generate help text for hooks.
+
+    Args:
+        topic: The help topic (unused but required by help system).
+
+    Returns:
+        String containing formatted help text for all known hooks.
+    """
     segments = [_help_prefix]
     for hook_key in sorted(known_hooks.keys()):
         hooks = known_hooks_key_to_object(hook_key)

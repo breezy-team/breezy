@@ -42,16 +42,30 @@ class DirectoryLookupFailure(errors.BzrError):
 
 
 class InvalidLocationAlias(DirectoryLookupFailure):
+    """Raised when an invalid location alias is used."""
+
     _fmt = '"%(alias_name)s" is not a valid location alias.'
 
     def __init__(self, alias_name):
+        """Initialize InvalidLocationAlias.
+
+        Args:
+            alias_name: The invalid alias name.
+        """
         DirectoryLookupFailure.__init__(self, alias_name=alias_name)
 
 
 class UnsetLocationAlias(DirectoryLookupFailure):
+    """Raised when a location alias has no value assigned."""
+
     _fmt = "No %(alias_name)s location assigned."
 
     def __init__(self, alias_name):
+        """Initialize UnsetLocationAlias.
+
+        Args:
+            alias_name: The unset alias name (including the colon prefix).
+        """
         DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
 
 
@@ -144,6 +158,20 @@ class AliasDirectory(Directory):
     branch_aliases.register("this", lambda b: b.base, help="This branch.")
 
     def look_up(self, name, url, purpose=None):
+        """Look up a branch location alias.
+
+        Args:
+            name: Directory name.
+            url: The URL to dereference.
+            purpose: Purpose of the URL ('read', 'write' or None).
+
+        Returns:
+            The resolved location URL.
+
+        Raises:
+            InvalidLocationAlias: If the alias is not recognized.
+            UnsetLocationAlias: If the alias has no value set.
+        """
         branch = _mod_branch.Branch.open_containing(".")[0]
         parts = url.split("/", 1)
         if len(parts) == 2:
@@ -165,6 +193,14 @@ class AliasDirectory(Directory):
 
     @classmethod
     def help_text(cls, topic):
+        """Generate help text for location aliases.
+
+        Args:
+            topic: The help topic (unused).
+
+        Returns:
+            A formatted help string describing available aliases.
+        """
         alias_lines = []
         for key in cls.branch_aliases.keys():
             help = cls.branch_aliases.get_help(key)
@@ -196,6 +232,16 @@ class ColocatedDirectory(Directory):
     """
 
     def look_up(self, name, url, purpose=None):
+        """Look up a colocated branch.
+
+        Args:
+            name: The colocated branch name.
+            url: The URL to dereference.
+            purpose: Purpose of the URL ('read', 'write' or None).
+
+        Returns:
+            The URL of the colocated branch.
+        """
         dir = _mod_controldir.ControlDir.open_containing(".")[0]
         return urlutils.join_segment_parameters(
             dir.user_url, {"branch": urlutils.escape(name)}

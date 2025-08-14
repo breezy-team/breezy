@@ -171,12 +171,28 @@ def format_command(params, cmd):
 
 
 def format_alias(params, alias, cmd_name):
+    """Formats an alias entry for the man page.
+
+    Args:
+        params: Dictionary containing parameters for string formatting.
+        alias: The alias name to format.
+        cmd_name: The name of the command this alias points to.
+
+    Returns:
+        Formatted string containing the alias documentation for the man page.
+    """
     help = f'.SS "brz {alias}"\n'
     help += f'Alias for "{cmd_name}", see "brz {cmd_name}".\n'
     return help
 
 
 def environment_variables():
+    """Generates the environment variables section for the man page.
+
+    Yields:
+        Formatted strings for each environment variable known to Breezy,
+        including section headers and properly escaped descriptions.
+    """
     yield '.SH "ENVIRONMENT"\n'
 
     from breezy.help_topics import known_env_variables

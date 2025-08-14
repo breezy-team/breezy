@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Revision related functionality and data structures.
+
+This module provides utilities for working with revisions, including
+iterating through revision ancestry and finding ancestors in revision
+trees.
+"""
+
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
@@ -61,6 +68,22 @@ def get_history(repository, current_revision):
 def iter_ancestors(
     revision_id: RevisionID, revision_source, only_present: bool = False
 ):
+    """Iterate through the ancestors of a revision.
+
+    Args:
+        revision_id: The revision ID to start from.
+        revision_source: Source to retrieve revisions from.
+        only_present: If True, only yield revisions that are present
+            in the revision source.
+
+    Yields:
+        tuple[RevisionID, int]: Tuples of (ancestor_id, distance) where
+            distance is the number of generations away from the starting
+            revision.
+
+    Raises:
+        NoSuchRevision: If the starting revision_id cannot be found.
+    """
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:

@@ -15,6 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Colored diff output support.
+
+This module provides functionality to output colorized diffs,
+supporting both style checking and color configuration through
+colordiffrc files.
+"""
+
 import contextlib
 import re
 from os.path import expanduser
@@ -35,7 +42,22 @@ GLOBAL_COLORDIFFRC = "/etc/colordiffrc"
 
 
 class LineParser:
+    """Parser for diff lines to identify line types.
+
+    This class parses individual lines from a diff and returns
+    appropriate objects representing the line type (hunk, insert, remove, etc.).
+    """
+
     def parse_line(self, line):
+        """Parse a single line from a diff.
+
+        Args:
+            line: The line to parse as bytes.
+
+        Returns:
+            Appropriate line object (Hunk, InsertLine, RemoveLine, ContextLine)
+            or the original line if it doesn't match any known diff format.
+        """
         if line.startswith(b"@"):
             return hunk_from_header(line)
         elif line.startswith(b"+"):
@@ -49,6 +71,15 @@ class LineParser:
 
 
 def read_colordiffrc(path):
+    """Read color configuration from a colordiffrc file.
+
+    Args:
+        path: Path to the colordiffrc file to read.
+
+    Returns:
+        Dictionary mapping color setting names to color values.
+        Only valid colors are included.
+    """
     colors = {}
     with open(path) as f:
         for line in f.readlines():
@@ -70,7 +101,19 @@ def read_colordiffrc(path):
 
 
 class DiffWriter:
+    """Writer for colorized diff output with optional style checking.
+
+    This class processes diff output and applies colors according to line types
+    and can optionally perform style checking for whitespace issues.
+    """
+
     def __init__(self, target, check_style=False):
+        """Initialize DiffWriter.
+
+        Args:
+            target: File-like object to write colored output to.
+            check_style: Whether to perform style checking for whitespace issues.
+        """
         self.target = target
         self.lp = LineParser()
         self.chunks = []
@@ -101,6 +144,16 @@ class DiffWriter:
             self.colors.update(read_colordiffrc(path))
 
     def colorstring(self, type, item, bad_ws_match):
+        """Apply color formatting to a diff item and write it to target.
+
+        Args:
+            type: The type of line (e.g., 'newtext', 'oldtext', 'metaline').
+            item: The diff item to colorize.
+            bad_ws_match: Regex match for whitespace issues, if any.
+
+        Returns:
+            None
+        """
         color = self.colors[type]
         if color is not None:
             if self.check_style and bad_ws_match:
@@ -128,6 +181,14 @@ class DiffWriter:
         self.target.write(string)
 
     def write(self, text):
+        """Write text to the colored diff output.
+
+        Args:
+            text: The text to write as bytes.
+
+        Returns:
+            None
+        """
         newstuff = text.split(b"\n")
         for newchunk in newstuff[:-1]:
             self._writeline(b"".join(self.chunks + [newchunk, b"\n"]))
@@ -135,6 +196,14 @@ class DiffWriter:
         self.chunks = [newstuff[-1]]
 
     def writelines(self, lines):
+        """Write multiple lines to the colored diff output.
+
+        Args:
+            lines: Iterable of lines to write.
+
+        Returns:
+            None
+        """
         for line in lines:
             self.write(line)
 
@@ -173,6 +242,11 @@ class DiffWriter:
         self.colorstring(line_class, item, bad_ws_match)
 
     def flush(self):
+        """Flush the target output stream.
+
+        Returns:
+            None
+        """
         self.target.flush()
 
     @staticmethod

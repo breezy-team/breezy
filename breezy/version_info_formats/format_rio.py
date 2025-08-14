@@ -27,6 +27,11 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
     """This writes a rio stream out."""
 
     def generate(self, to_file):
+        """Generate version information in RIO format and write to file.
+
+        Args:
+            to_file: File-like object to write the version information to.
+        """
         info = rio.Stanza()
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
@@ -85,6 +90,7 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
+        """Initialize hooks for RioVersionInfoBuilder."""
         super().__init__(
             "breezy.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks"
         )

@@ -149,10 +149,32 @@ def _get_current_locale():
 
 
 class Domain:
+    """A gettext domain wrapper for plugin translations.
+
+    This class provides a simple interface to access translations
+    for a specific gettext domain, typically used by plugins.
+
+    Attributes:
+        domain: The gettext domain name (e.g., 'brz-PLUGINNAME').
+    """
+
     def __init__(self, domain):
+        """Initialize a Domain instance.
+
+        Args:
+            domain: The gettext domain name for the plugin.
+        """
         self.domain = domain
 
     def gettext(self, message):
+        """Translate a message using this domain.
+
+        Args:
+            message: The message string to translate.
+
+        Returns:
+            The translated message string.
+        """
         return _i18n_rs.dgettext(self.domain, message)
 
 

@@ -26,6 +26,13 @@ class CHKSerializer(serializer.InventorySerializer):
     supported_kinds = {"file", "directory", "symlink", "tree-reference"}
 
     def __init__(self, format_num, node_size, search_key_name):
+        """Initialize a CHKSerializer instance.
+
+        Args:
+            format_num: The format number for the serializer (e.g., b"9" or b"10").
+            node_size: The maximum size for CHK nodes (typically 65536).
+            search_key_name: The name of the search key algorithm (e.g., b"hash-255-way").
+        """
         self.format_num = format_num
         self.maximum_size = node_size
         self.search_key_name = search_key_name

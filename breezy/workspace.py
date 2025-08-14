@@ -36,9 +36,17 @@ from .workingtree import WorkingTree
 
 
 class WorkspaceDirty(BzrError):
+    """Raised when a workspace has uncommitted changes."""
+
     _fmt = "The directory %(path)s has pending changes."
 
     def __init__(self, tree, subpath):
+        """Initialize WorkspaceDirty error.
+
+        Args:
+            tree: The working tree.
+            subpath: The subpath within the tree that has changes.
+        """
         self.tree = tree
         self.subpath = subpath
         BzrError.__init__(self, path=tree.abspath(subpath))
@@ -171,6 +179,13 @@ class Workspace:
     """
 
     def __init__(self, tree, subpath="", use_inotify=None):
+        """Initialize a Workspace.
+
+        Args:
+            tree: The working tree to operate on.
+            subpath: Path under which to consider and commit changes.
+            use_inotify: Whether to use inotify (default: yes, if available).
+        """
         self.tree = tree
         self.subpath = subpath
         self.use_inotify = use_inotify
@@ -179,10 +194,27 @@ class Workspace:
 
     @classmethod
     def from_path(cls, path, use_inotify=None):
+        """Create a Workspace from a filesystem path.
+
+        Args:
+            path: Filesystem path to open.
+            use_inotify: Whether to use inotify (default: yes, if available).
+
+        Returns:
+            New Workspace instance.
+        """
         tree, subpath = WorkingTree.open_containing(path)
         return cls(tree, subpath, use_inotify=use_inotify)
 
     def __enter__(self):
+        """Enter the workspace context.
+
+        Returns:
+            The Workspace instance.
+
+        Raises:
+            WorkspaceDirty: If the tree has uncommitted changes.
+        """
         check_clean_tree(self.tree)
         self._es.__enter__()
         self._dirty_tracker = get_dirty_tracker(
@@ -199,6 +231,16 @@ class Workspace:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the workspace context.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            Result of the exit stack's __exit__ method.
+        """
         return self._es.__exit__(exc_type, exc_val, exc_tb)
 
     def tree_path(self, path=""):
@@ -243,6 +285,11 @@ class Workspace:
         return changed
 
     def iter_changes(self):
+        """Iterate over changes in the workspace.
+
+        Yields:
+            Changes between the basis tree and working tree.
+        """
         with self.tree.lock_write():
             specific_files = self._stage()
             basis_tree = self.tree.basis_tree()

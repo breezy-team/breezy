@@ -39,6 +39,15 @@ from .trace import mutter, note
 
 
 def _escape(s):
+    """Escape special characters in a string for .po file format.
+
+    Args:
+        s: The string to escape.
+
+    Returns:
+        The escaped string with backslashes, newlines, carriage returns,
+        tabs, and double quotes properly escaped.
+    """
     s = (
         s.replace("\\", "\\\\")
         .replace("\n", "\\n")
@@ -50,8 +59,18 @@ def _escape(s):
 
 
 def _normalize(s):
-    # This converts the various Python string types into a format that
-    # is appropriate for .po files, namely much closer to C style.
+    """Convert Python strings into .po file format.
+
+    This converts the various Python string types into a format that
+    is appropriate for .po files, namely much closer to C style.
+
+    Args:
+        s: The string to normalize.
+
+    Returns:
+        A string formatted for .po files with proper escaping and
+        line continuation for multi-line strings.
+    """
     lines = s.split("\n")
     if len(lines) == 1:
         s = '"' + _escape(s) + '"'
@@ -85,9 +104,27 @@ def _parse_source(source_text, filename="<unknown>"):
 
 
 class _ModuleContext:
-    """Record of the location within a source tree."""
+    """Record of the location within a source tree.
+
+    This class tracks the context of where strings and classes are defined
+    within a module, including their line numbers for accurate .po file
+    generation.
+
+    Attributes:
+        path: The file path of the module.
+        lineno: The current line number within the module.
+        _cls_to_lineno: Mapping of class names to their line numbers.
+        _str_to_lineno: Mapping of string literals to their line numbers.
+    """
 
     def __init__(self, path, lineno=1, _source_info=None):
+        """Initialize a ModuleContext.
+
+        Args:
+            path: The file path of the module.
+            lineno: The starting line number (default: 1).
+            _source_info: Optional tuple of (cls_to_lineno, str_to_lineno) mappings.
+        """
         self.path = path
         self.lineno = lineno
         if _source_info is not None:
@@ -107,7 +144,15 @@ class _ModuleContext:
         )
 
     def from_class(self, cls):
-        """Get new context with same details but lineno of class in source."""
+        """Get new context with same details but lineno of class in source.
+
+        Args:
+            cls: The class object to find in the source.
+
+        Returns:
+            A new ModuleContext positioned at the class definition line,
+            or self if the class is not found.
+        """
         try:
             lineno = self._cls_to_lineno[cls.__name__]
         except (AttributeError, KeyError):
@@ -118,7 +163,15 @@ class _ModuleContext:
         )
 
     def from_string(self, string):
-        """Get new context with same details but lineno of string in source."""
+        """Get new context with same details but lineno of string in source.
+
+        Args:
+            string: The string literal to find in the source.
+
+        Returns:
+            A new ModuleContext positioned at the string literal line,
+            or self if the string is not found.
+        """
         try:
             lineno = self._str_to_lineno[string]
         except (AttributeError, KeyError):
@@ -130,9 +183,25 @@ class _ModuleContext:
 
 
 class _PotExporter:
-    """Write message details to output stream in .pot file format."""
+    """Write message details to output stream in .pot file format.
+
+    This class handles the export of translatable strings to a .pot
+    (Portable Object Template) file format, managing duplicate detection
+    and context tracking.
+
+    Attributes:
+        outf: The output file stream to write to.
+        _msgids: Set of message IDs to track duplicates (None if duplicates allowed).
+        _module_contexts: Cache of module contexts for performance.
+    """
 
     def __init__(self, outf, include_duplicates=False):
+        """Initialize a PotExporter.
+
+        Args:
+            outf: Output file stream to write .pot entries to.
+            include_duplicates: If True, allow duplicate message IDs in output.
+        """
         self.outf = outf
         if include_duplicates:
             self._msgids = None
@@ -141,6 +210,14 @@ class _PotExporter:
         self._module_contexts = {}
 
     def poentry(self, path, lineno, s, comment=None):
+        """Write a single .po entry to the output stream.
+
+        Args:
+            path: Source file path where the string is defined.
+            lineno: Line number where the string is defined.
+            s: The translatable string.
+            comment: Optional comment to include above the entry.
+        """
         if self._msgids is not None:
             if s in self._msgids:
                 return
@@ -151,10 +228,25 @@ class _PotExporter:
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
+        """Write a .po entry using context to determine location.
+
+        Args:
+            context: ModuleContext to locate the string within.
+            string: The translatable string.
+            comment: Optional comment to include above the entry.
+        """
         context = context.from_string(string)
         self.poentry(context.path, context.lineno, string, comment)
 
     def poentry_per_paragraph(self, path, lineno, msgid, include=None):
+        """Write separate .po entries for each paragraph in a message.
+
+        Args:
+            path: Source file path where the string is defined.
+            lineno: Starting line number where the string is defined.
+            msgid: The message containing potentially multiple paragraphs.
+            include: Optional filter function to select which paragraphs to export.
+        """
         # TODO: How to split long help?
         paragraphs = msgid.split("\n\n")
         if include is not None:
@@ -164,6 +256,14 @@ class _PotExporter:
             lineno += p.count("\n") + 2
 
     def get_context(self, obj):
+        """Get the ModuleContext for a given object.
+
+        Args:
+            obj: A Python object (module, class, function, etc.).
+
+        Returns:
+            A ModuleContext positioned at the object's definition.
+        """
         module = inspect.getmodule(obj)
         try:
             context = self._module_contexts[module.__name__]
@@ -176,6 +276,14 @@ class _PotExporter:
 
 
 def _write_option(exporter, context, opt, note):
+    """Export translatable strings from a command option.
+
+    Args:
+        exporter: The PotExporter instance.
+        context: The ModuleContext for locating strings.
+        opt: The option object to export strings from.
+        note: Additional note to include in comments.
+    """
     if getattr(opt, "hidden", False):
         return
     optname = opt.name
@@ -191,6 +299,11 @@ def _write_option(exporter, context, opt, note):
 
 
 def _standard_options(exporter):
+    """Export all standard Bazaar options.
+
+    Args:
+        exporter: The PotExporter instance.
+    """
     OPTIONS = option.Option.OPTIONS
     context = exporter.get_context(option)
     for name in sorted(OPTIONS):
@@ -199,6 +312,13 @@ def _standard_options(exporter):
 
 
 def _command_options(exporter, context, cmd):
+    """Export options specific to a command.
+
+    Args:
+        exporter: The PotExporter instance.
+        context: The ModuleContext for the command.
+        cmd: The command object whose options to export.
+    """
     note = f"option of {cmd.name()!r} command"
     for opt in cmd.takes_options:
         # String values in Command option lists are for global options
@@ -207,12 +327,26 @@ def _command_options(exporter, context, cmd):
 
 
 def _write_command_help(exporter, cmd):
+    """Export help text and options for a command.
+
+    Args:
+        exporter: The PotExporter instance.
+        cmd: The command object to export help for.
+    """
     context = exporter.get_context(cmd.__class__)
     rawdoc = cmd.__doc__
     dcontext = context.from_string(rawdoc)
     doc = inspect.cleandoc(rawdoc)
 
     def exclude_usage(p):
+        """Filter function to exclude usage examples from translation.
+
+        Args:
+            p: A paragraph of text.
+
+        Returns:
+            True if the paragraph should be included, False otherwise.
+        """
         # ':Usage:' has special meaning in help topics.
         # This is usage example of command and should not be translated.
         if p.splitlines()[0] != ":Usage:":
@@ -267,7 +401,14 @@ def _command_helps(exporter, plugin_name=None):
 
 
 def _error_messages(exporter):
-    """Extract fmt string from breezy.errors."""
+    """Extract format strings from breezy.errors.
+
+    This function exports all error message format strings from
+    BzrError subclasses that are not internal errors.
+
+    Args:
+        exporter: The PotExporter instance.
+    """
     context = exporter.get_context(errors)
     base_klass = errors.BzrError
     for name in dir(errors):
@@ -287,6 +428,14 @@ def _error_messages(exporter):
 
 
 def _help_topics(exporter):
+    """Export help topic strings.
+
+    Exports both the detailed help text and summaries for all
+    registered help topics.
+
+    Args:
+        exporter: The PotExporter instance.
+    """
     topic_registry = help_topics.topic_registry
     for key in topic_registry.keys():
         doc = topic_registry.get(key)
@@ -304,6 +453,17 @@ def _help_topics(exporter):
 
 
 def export_pot(outf, plugin=None, include_duplicates=False):
+    """Export translatable strings to a .pot file.
+
+    This is the main entry point for extracting translatable strings from
+    Bazaar commands, options, error messages, and help topics.
+
+    Args:
+        outf: Output file stream to write the .pot file to.
+        plugin: Optional plugin name to export strings from. If None,
+            exports strings from core Bazaar.
+        include_duplicates: If True, include duplicate message IDs in output.
+    """
     exporter = _PotExporter(outf, include_duplicates)
     if plugin is None:
         _standard_options(exporter)

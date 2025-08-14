@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Functions for displaying information about Breezy directories.
+
+This module provides utilities for showing information about branches,
+repositories, and working trees.
+"""
+
 __all__ = ["show_bzrdir_info"]
 
 import contextlib

@@ -74,6 +74,17 @@ class AddWithSkipLargeAction(AddAction):
     _max_size = None
 
     def skip_file(self, tree, path, kind, stat_value=None):
+        """Check if a file should be skipped based on its size.
+
+        Args:
+            tree: The working tree containing the file.
+            path: Path to the file.
+            kind: The type of the file item.
+            stat_value: Optional stat value for the file.
+
+        Returns:
+            True if the file should be skipped, False otherwise.
+        """
         if kind != "file":
             return False
         opt_name = "add.maximum_file_size"
@@ -95,11 +106,30 @@ class AddFromBaseAction(AddAction):
     """This class will try to extract file ids from another tree."""
 
     def __init__(self, base_tree, base_path, to_file=None, should_print=None):
+        """Initialize AddFromBaseAction.
+
+        Args:
+            base_tree: The base tree to extract file IDs from.
+            base_path: The base path in the tree.
+            to_file: Optional file to write output to.
+            should_print: Optional callback to determine if output should be printed.
+        """
         super().__init__(to_file=to_file, should_print=should_print)
         self.base_tree = base_tree
         self.base_path = base_path
 
     def __call__(self, inv, parent_ie, path, kind):
+        """Process a file, attempting to extract its ID from the base tree.
+
+        Args:
+            inv: The inventory.
+            parent_ie: The parent inventory entry.
+            path: Path to the file.
+            kind: The type of the file item.
+
+        Returns:
+            The result of processing the file.
+        """
         # Place the parent call
         # Now check to see if we can extract an id for this file
         file_id, base_path = self._get_base_file_id(path, parent_ie)

@@ -77,6 +77,19 @@ _register_directory()
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load test suite for the launchpad plugin.
+
+    This function is used by the unittest framework for test discovery.
+    It loads all test modules for the launchpad plugin.
+
+    Args:
+        loader: The test loader instance used to load tests.
+        basic_tests: The test suite to add tests to.
+        pattern: The pattern used to match test files (unused).
+
+    Returns:
+        The test suite with all launchpad plugin tests added.
+    """
     testmod_names = [
         "test_account",
         "test_lp_api",

@@ -16,6 +16,12 @@
 
 # Original author: David Allouche
 
+"""Branch switching logic for lightweight checkouts.
+
+This module implements the logic for switching a lightweight checkout
+to point to a different branch.
+"""
+
 from . import errors, merge, revision
 from .branch import Branch
 from .i18n import gettext

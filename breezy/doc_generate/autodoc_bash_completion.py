@@ -23,10 +23,27 @@ from breezy.doc_generate import get_autodoc_datetime
 
 
 def get_filename(options):
+    """Generate the filename for the bash completion script.
+
+    Args:
+        options: Options object containing brz_name attribute.
+
+    Returns:
+        str: The filename in format "{brz_name}.bash_completion".
+    """
     return f"{options.brz_name}.bash_completion"
 
 
 def infogen(options, outfile):
+    """Generate the preamble for the bash completion script.
+
+    Writes header information including version, timestamps, and command name
+    to the output file.
+
+    Args:
+        options: Options object containing brz_name attribute.
+        outfile: File-like object to write the preamble to.
+    """
     d = get_autodoc_datetime()
     params = {
         "brzcmd": options.brz_name,

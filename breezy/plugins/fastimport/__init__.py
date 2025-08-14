@@ -59,7 +59,12 @@ from ...commands import plugin_cmds
 
 
 def load_fastimport():
-    """Load the fastimport module or raise an appropriate exception."""
+    """Load the fastimport module or raise an appropriate exception.
+
+    Raises:
+        DependencyNotPresent: If the fastimport module is not installed or
+            if the installed version is less than 0.9.8.
+    """
     try:
         import fastimport
     except ModuleNotFoundError:
@@ -79,6 +84,11 @@ def load_fastimport():
 
 
 def test_suite():
+    """Return the test suite for the fastimport plugin.
+
+    Returns:
+        TestSuite: A test suite containing all tests for the fastimport plugin.
+    """
     from . import tests
 
     return tests.test_suite()

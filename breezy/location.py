@@ -25,6 +25,10 @@ class LocationHooks(Hooks):
     """Dictionary mapping hook name to a list of callables for location hooks."""
 
     def __init__(self):
+        """Initialize LocationHooks with predefined hook points.
+
+        Registers hooks for URL and location rewriting operations.
+        """
         Hooks.__init__(self, "breezy.location", "hooks")
         self.add_hook(
             "rewrite_url",

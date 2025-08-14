@@ -24,13 +24,30 @@ from . import errors, osutils
 
 
 class InvalidURL(errors.PathError):
+    """Exception raised when an invalid URL is encountered.
+
+    This is raised when a URL string cannot be parsed or is malformed.
+    """
+
     _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
 
 
 class InvalidURLJoin(errors.PathError):
+    """Exception raised when a URL join operation is invalid.
+
+    This occurs when trying to join URL components in an invalid way.
+    """
+
     _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
     def __init__(self, reason, base, join_args):
+        """Initialize InvalidURLJoin exception.
+
+        Args:
+            reason: Description of why the join failed.
+            base: The base URL that was being joined to.
+            join_args: The arguments that were being joined.
+        """
         self.reason = reason
         self.base = base
         self.join_args = join_args
@@ -38,9 +55,20 @@ class InvalidURLJoin(errors.PathError):
 
 
 class InvalidRebaseURLs(errors.PathError):
+    """Exception raised when URLs cannot be rebased.
+
+    This occurs when trying to rebase URLs that differ by more than just their paths.
+    """
+
     _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
 
     def __init__(self, from_, to):
+        """Initialize InvalidRebaseURLs exception.
+
+        Args:
+            from_: The source URL being rebased from.
+            to: The target URL being rebased to.
+        """
         self.from_ = from_
         self.to = to
         errors.PathError.__init__(self, from_, "URLs differ by more than path.")
@@ -262,6 +290,16 @@ class URL:
     def __init__(
         self, scheme, quoted_user, quoted_password, quoted_host, port, quoted_path
     ):
+        """Initialize URL object with parsed components.
+
+        Args:
+            scheme: URL scheme (e.g., 'http', 'https', 'file').
+            quoted_user: URL-quoted username or None.
+            quoted_password: URL-quoted password or None.
+            quoted_host: URL-quoted hostname.
+            port: Port number as integer or None.
+            quoted_path: URL-quoted path component.
+        """
         self.scheme = scheme
         self.quoted_host = quoted_host
         self.host = unquote(self.quoted_host)
@@ -280,6 +318,14 @@ class URL:
         self.path = unquote(self.quoted_path)
 
     def __eq__(self, other):
+        """Check if two URL objects are equal.
+
+        Args:
+            other: Another URL object to compare with.
+
+        Returns:
+            True if the URLs are equal, False otherwise.
+        """
         return (
             isinstance(other, self.__class__)
             and self.scheme == other.scheme
@@ -290,6 +336,11 @@ class URL:
         )
 
     def __repr__(self):
+        """Return a detailed string representation of the URL.
+
+        Returns:
+            String representation showing all URL components.
+        """
         return "<{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})>".format(
             self.__class__.__name__,
             self.scheme,
@@ -348,6 +399,14 @@ class URL:
         return cls(scheme, user, password, host, port, path)
 
     def __str__(self):
+        """Return the URL as a string.
+
+        Note: The password is omitted from the string representation
+        for security reasons.
+
+        Returns:
+            String representation of the URL.
+        """
         netloc = self.quoted_host
         if ":" in netloc:
             netloc = f"[{netloc}]"

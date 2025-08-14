@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Support for mergeable objects.
+
+This module provides functionality for handling mergeable objects such as
+bundles and merge directives. It includes methods to read these objects
+from URLs or transports and install their revisions into repositories.
+"""
+
 from io import BytesIO
 
 from .lazy_import import lazy_import
@@ -64,6 +71,28 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
 
 
 def read_mergeable_from_transport(transport, filename, _do_directive=True):
+    """Read a mergeable object from a transport.
+
+    This function attempts to read a mergeable object (bundle or merge directive)
+    from the specified transport and filename. It handles redirections and
+    various error conditions that may occur during the read operation.
+
+    Args:
+        transport: The transport to read from.
+        filename: The filename to read from the transport.
+        _do_directive: If True, attempt to parse as a merge directive first.
+            Defaults to True.
+
+    Returns:
+        A tuple of (mergeable_object, transport) where mergeable_object is
+        either a MergeDirective or a Bundle, and transport is the final
+        transport used after any redirections.
+
+    Raises:
+        NotABundle: If the file cannot be parsed as a bundle or merge directive,
+            or if various transport errors occur.
+    """
+
     def get_bundle(transport):
         return BytesIO(transport.get_bytes(filename)), transport
 

@@ -29,13 +29,30 @@ from ..revision import NULL_REVISION
 
 
 class MissingTemplateVariable(errors.BzrError):
+    """Exception raised when a template variable is not available.
+
+    This error is raised when processing a template that references
+    a variable that has not been defined.
+    """
+
     _fmt = "Variable {%(name)s} is not available."
 
     def __init__(self, name):
+        """Initialize MissingTemplateVariable exception.
+
+        Args:
+            name: The name of the missing template variable.
+        """
         self.name = name
 
 
 class NoTemplate(errors.BzrError):
+    """Exception raised when no template is specified.
+
+    This error is raised when attempting to generate output
+    without having provided a template.
+    """
+
     _fmt = "No template specified."
 
 
@@ -61,12 +78,30 @@ class Template:
     _tag_re = lazy_compile("{(\\w+)}")
 
     def __init__(self):
+        """Initialize an empty Template instance."""
         self._data = {}
 
     def add(self, name, value):
+        """Add a variable to the template.
+
+        Args:
+            name: The name of the variable to add.
+            value: The value to assign to the variable.
+        """
         self._data[name] = value
 
     def process(self, tpl):
+        """Process a template string and substitute variables.
+
+        Args:
+            tpl: The template string containing {variable} placeholders.
+
+        Yields:
+            String segments of the processed template.
+
+        Raises:
+            MissingTemplateVariable: If a referenced variable is not defined.
+        """
         unicode_escape = codecs.getdecoder("unicode_escape")
         tpl = unicode_escape(tpl)[0]
         pos = 0
@@ -94,6 +129,14 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file based on a custom template."""
 
     def generate(self, to_file):
+        """Generate version info based on the custom template.
+
+        Args:
+            to_file: File-like object to write the generated output to.
+
+        Raises:
+            NoTemplate: If no template has been specified.
+        """
         if self._template is None:
             raise NoTemplate()
 

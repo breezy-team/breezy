@@ -98,6 +98,17 @@ class ForeignRevision(Revision):
     """
 
     def __new__(cls, foreign_revid, mapping, *args, **kwargs):
+        """Create a new ForeignRevision instance.
+
+        Args:
+            foreign_revid: The foreign revision id.
+            mapping: The VcsMapping to use.
+            *args: Additional positional arguments for Revision.__new__.
+            **kwargs: Additional keyword arguments for Revision.__new__.
+
+        Returns:
+            A new ForeignRevision instance.
+        """
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = None
         self = Revision.__new__(cls, *args, **kwargs)
@@ -217,5 +228,10 @@ class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
+        """Initialize a ForeignBranch.
+
+        Args:
+            mapping: The VcsMapping to use for this branch.
+        """
         self.mapping = mapping
         super().__init__()

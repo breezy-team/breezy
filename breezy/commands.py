@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Infrastructure for command handling in Breezy.
+
+This module provides the command registry, base Command class, and supporting
+infrastructure for the breezy command-line interface. It handles command
+discovery, argument parsing, help generation, and execution.
+
+Commands are registered with the builtin_command_registry or plugin_cmds
+registry, and are automatically discovered and made available to the user.
+"""
+
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
@@ -49,14 +59,24 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 
 
 class CommandAvailableInPlugin(Exception):
+    """Exception indicating a command is available in a plugin."""
+
     internal_error = False
 
     def __init__(self, cmd_name, plugin_metadata, provider):
+        """Initialize CommandAvailableInPlugin.
+
+        Args:
+            cmd_name: Name of the command.
+            plugin_metadata: Metadata about the plugin providing the command.
+            provider: Provider object for the plugin.
+        """
         self.plugin_metadata = plugin_metadata
         self.cmd_name = cmd_name
         self.provider = provider
 
     def __str__(self):
+        """Return string representation of the exception."""
         _fmt = (
             '"{}" is not a standard brz command. \n'
             "However, the following official plugin provides this command: {}\n"
@@ -91,12 +111,21 @@ class CommandRegistry(registry.Registry):
     """
 
     def __init__(self):
+        """Initialize CommandRegistry."""
         registry.Registry.__init__(self)
         self.overridden_registry = None
         # map from aliases to the real command that implements the name
         self._alias_dict = {}
 
     def get(self, command_name):
+        """Get a command by name, resolving aliases.
+
+        Args:
+            command_name: Name or alias of the command.
+
+        Returns:
+            Command class for the given name.
+        """
         real_name = self._alias_dict.get(command_name, command_name)
         return registry.Registry.get(self, real_name)
 
@@ -353,6 +382,8 @@ def _get_cmd_object(
 
 
 class NoPluginAvailable(errors.BzrError):
+    """Error raised when no plugin is available to provide a command."""
+
     pass
 
 
@@ -529,6 +560,14 @@ class Command:
         self._exit_stack.close()
 
     def enter_context(self, cm):
+        """Enter a context manager and ensure it gets cleaned up.
+
+        Args:
+            cm: Context manager to enter.
+
+        Returns:
+            The result of entering the context manager.
+        """
         return self._exit_stack.enter_context(cm)
 
     def _usage(self):
@@ -1013,6 +1052,16 @@ def _match_argform(cmd, takes_args, args):
 
 
 def apply_coveraged(the_callable, *args, **kwargs):
+    """Run a callable under coverage measurement.
+
+    Args:
+        the_callable: Function to call under coverage.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
     import coverage
 
     cov = coverage.Coverage()
@@ -1027,6 +1076,16 @@ def apply_coveraged(the_callable, *args, **kwargs):
 
 
 def apply_profiled(the_callable, *args, **kwargs):
+    """Run a callable under hotshot profiler.
+
+    Args:
+        the_callable: Function to call under profiling.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
     import tempfile
 
     import hotshot
@@ -1077,6 +1136,17 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
+    """Run a callable under lsprof profiler.
+
+    Args:
+        filename: File to save profile data to, or None to print to stdout.
+        the_callable: Function to call under profiling.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
     from .lsprof import profile
 
     ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
@@ -1385,6 +1455,7 @@ class HelpCommandIndex:
     """A index for bzr help that returns commands."""
 
     def __init__(self):
+        """Initialize HelpCommandIndex."""
         self.prefix = "commands/"
 
     def get_topics(self, topic):
@@ -1423,6 +1494,7 @@ class ProvidersRegistry(registry.Registry):
     """This registry exists to allow other providers to exist."""
 
     def __iter__(self):
+        """Iterate over all registered providers."""
         for _key, provider in self.items():
             yield provider
 

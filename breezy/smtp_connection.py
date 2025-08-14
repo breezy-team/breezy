@@ -47,25 +47,44 @@ Username to use for authentication to SMTP server.
 
 
 class SMTPError(BzrError):
+    """Base class for SMTP-related errors."""
+
     _fmt = "SMTP error: %(error)s"
 
     def __init__(self, error):
+        """Initialize SMTPError.
+
+        Args:
+            error: The error message or exception.
+        """
         self.error = error
 
 
 class SMTPConnectionRefused(SMTPError):
+    """Raised when SMTP connection is refused."""
+
     _fmt = "SMTP connection to %(host)s refused"
 
     def __init__(self, error, host):
+        """Initialize SMTPConnectionRefused.
+
+        Args:
+            error: The underlying connection error.
+            host: The SMTP host that refused the connection.
+        """
         self.error = error
         self.host = host
 
 
 class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+    """Raised when default SMTP server connection is refused."""
+
     _fmt = "Please specify smtp_server.  No server at default %(host)s."
 
 
 class NoDestinationAddress(InternalBzrError):
+    """Raised when email message has no destination address."""
+
     _fmt = "Message does not have a destination address."
 
 
@@ -80,6 +99,12 @@ class SMTPConnection:
     _default_smtp_server = "localhost"
 
     def __init__(self, config, _smtp_factory=None):
+        """Initialize SMTPConnection.
+
+        Args:
+            config: Configuration object containing SMTP settings.
+            _smtp_factory: Optional factory for creating SMTP connections (for testing).
+        """
         self._smtp_factory = _smtp_factory
         if self._smtp_factory is None:
             self._smtp_factory = smtplib.SMTP

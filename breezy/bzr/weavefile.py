@@ -42,6 +42,19 @@ FORMAT_1 = b"# bzr weave file v5\n"
 
 
 def write_weave(weave, f, format=None):
+    """Write a weave to a file.
+
+    Args:
+        weave: The weave object to write.
+        f: File-like object to write to.
+        format: The weave format version to use. Currently only supports None or 1.
+
+    Raises:
+        ValueError: If an unknown format is specified.
+
+    Returns:
+        The result of write_weave_v5 (None).
+    """
     if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
@@ -85,6 +98,14 @@ def write_weave_v5(weave, f):
 
 
 def read_weave(f):
+    """Read a weave from a file.
+
+    Args:
+        f: File-like object to read from.
+
+    Returns:
+        A Weave object containing the data read from the file.
+    """
     # FIXME: detect the weave type and dispatch
     from .weave import Weave
 
