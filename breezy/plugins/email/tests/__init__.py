@@ -15,10 +15,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Test suite for the email plugin."""
+
 from unittest import TestLoader, TestSuite
 
 
 def test_suite():
+    """Create and return the test suite for the email plugin.
+
+    Returns:
+        TestSuite: A unittest TestSuite containing all email plugin tests.
+    """
     result = TestSuite()
     from . import testemail
 

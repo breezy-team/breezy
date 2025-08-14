@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Email notification functionality for Breezy.
+
+This module provides the EmailSender class which handles sending email
+notifications for commits and other operations in Breezy repositories.
+It supports both external mail programs and SMTP-based sending.
+"""
+
 import subprocess
 import tempfile
 
@@ -30,6 +37,15 @@ class EmailSender:
     _smtplib_implementation = SMTPConnection
 
     def __init__(self, branch, revision_id, config, local_branch=None, op="commit"):
+        """Initialize an EmailSender instance.
+
+        Args:
+            branch: The branch containing the revision to send email about.
+            revision_id: The ID of the revision to send email about.
+            config: Configuration object containing email settings.
+            local_branch: Optional local branch repository to use if it has the revision.
+            op: The operation type ("commit", "push", "pull", etc.). Defaults to "commit".
+        """
         self.config = config
         self.branch = branch
         self.repository = branch.repository
@@ -43,10 +59,25 @@ class EmailSender:
         self.op = op
 
     def _setup_revision_and_revno(self):
+        """Set up revision object and revision number from the repository.
+
+        This method populates the self.revision and self.revno attributes
+        by fetching the revision object and converting the revision ID to a
+        revision number.
+        """
         self.revision = self.repository.get_revision(self._revision_id)
         self.revno = self.branch.revision_id_to_revno(self._revision_id)
 
     def _format(self, text):
+        """Format template text by substituting placeholders with revision data.
+
+        Args:
+            text: Template text containing placeholders like $committer, $message,
+                  $revision, and $url.
+
+        Returns:
+            The formatted text with placeholders replaced by actual values.
+        """
         fields = {
             "committer": self.revision.committer,
             "message": self.revision.get_summary(),
@@ -58,6 +89,16 @@ class EmailSender:
         return text
 
     def body(self):
+        """Generate the email body content.
+
+        Creates the email body by combining a configurable header with a
+        formatted log of the revision. For merge commits, it shows all
+        related revisions; for regular commits, it shows just the single
+        revision.
+
+        Returns:
+            A string containing the formatted email body.
+        """
         from ... import log
 
         rev1 = rev2 = self.revno
@@ -141,10 +182,23 @@ class EmailSender:
         return self.config.get("post_commit_difflimit")
 
     def mailer(self):
-        """What mail program to use."""
+        """Get the mail program to use for sending emails.
+
+        Returns:
+            The name of the mail program configured in post_commit_mailer,
+            or the default mailer if not configured.
+        """
         return self.config.get("post_commit_mailer")
 
     def _command_line(self):
+        """Build command line arguments for the external mail program.
+
+        Constructs the command line to invoke the configured mailer with
+        appropriate subject, from address, and recipient addresses.
+
+        Returns:
+            A list of command line arguments suitable for subprocess execution.
+        """
         cmd = [
             self.mailer(),
             "-s",
@@ -156,11 +210,24 @@ class EmailSender:
         return cmd
 
     def to(self):
-        """What is the address the mail should go to."""
+        """Get the recipient addresses for the email.
+
+        Returns:
+            A list of email addresses that should receive the commit notification.
+        """
         return self.config.get("post_commit_to")
 
     def url(self):
-        """What URL to display in the subject of the mail."""
+        """Get the URL to display in the email subject and body.
+
+        Tries to get the URL from configuration in this order:
+        1. post_commit_url configuration option
+        2. public_branch configuration option
+        3. The branch's base URL
+
+        Returns:
+            A string containing the URL to reference in the email.
+        """
         url = self.config.get("post_commit_url")
         if url is None:
             url = self.config.get("public_branch")
@@ -169,14 +236,31 @@ class EmailSender:
         return url
 
     def from_address(self):
-        """What address should I send from."""
+        """Get the sender email address for the notification.
+
+        Tries to get the from address from configuration in this order:
+        1. post_commit_sender configuration option
+        2. email configuration option
+
+        Returns:
+            A string containing the email address to use as the sender,
+            or None if neither configuration option is set.
+        """
         result = self.config.get("post_commit_sender")
         if result is None:
             result = self.config.get("email")
         return result
 
     def extra_headers(self):
-        """Additional headers to include when sending."""
+        """Get additional email headers from configuration.
+
+        Parses the revision_mail_headers configuration option to create
+        a dictionary of extra headers to include in the email.
+
+        Returns:
+            A dictionary mapping header names to values, or None if no
+            extra headers are configured.
+        """
         result = {}
         headers = self.config.get("revision_mail_headers")
         if not headers:
@@ -202,7 +286,14 @@ class EmailSender:
                 self._send_using_process()
 
     def _send_using_process(self):
-        """Spawn a 'mail' subprocess to send the email."""
+        """Send email by spawning an external mail program subprocess.
+
+        Creates a temporary file containing the email body and diff,
+        then spawns the configured mail program to send it.
+
+        Raises:
+            BzrError: If the mail program exits with a non-zero status code.
+        """
         # TODO think up a good test for this, but I think it needs
         # a custom binary shipped with. RBC 20051021
         with tempfile.NamedTemporaryFile() as msgfile:
@@ -220,7 +311,12 @@ class EmailSender:
                 raise errors.BzrError(f"Failed to send email: exit status {rc}")
 
     def _send_using_smtplib(self):
-        """Use python's smtplib to send the email."""
+        """Send email using Python's smtplib through SMTPConnection.
+
+        Constructs an EmailMessage with the commit information and sends
+        it using the configured SMTP connection. If a diff is available,
+        it's attached as an inline attachment.
+        """
         body = self.body()
         diff = self.get_diff()
         subject = self.subject()
@@ -242,6 +338,15 @@ class EmailSender:
         smtp.send_email(msg)
 
     def should_send(self):
+        """Determine whether an email should be sent based on configuration and operation.
+
+        Checks the post_commit_push_pull configuration and current operation type
+        to decide if an email should be sent. Also verifies that both recipient
+        and sender addresses are configured.
+
+        Returns:
+            True if an email should be sent, False otherwise.
+        """
         post_commit_push_pull = self.config.get("post_commit_push_pull")
         if post_commit_push_pull and self.op == "commit":
             # We will be called again with a push op, send the mail then.
@@ -252,10 +357,23 @@ class EmailSender:
         return bool(self.to() and self.from_address())
 
     def send_maybe(self):
+        """Send an email if the conditions are met.
+
+        This is a convenience method that checks should_send() and only
+        calls send() if the conditions are appropriate.
+        """
         if self.should_send():
             self.send()
 
     def subject(self):
+        """Generate the email subject line.
+
+        Uses the post_commit_subject configuration if available, otherwise
+        creates a default subject with the revision number, summary, and URL.
+
+        Returns:
+            A formatted string suitable for use as an email subject line.
+        """
         _subject = self.config.get("post_commit_subject")
         if _subject is None:
             _subject = "Rev %d: %s in %s" % (
@@ -266,6 +384,12 @@ class EmailSender:
         return self._format(_subject)
 
     def diff_filename(self):
+        """Generate a filename for the diff attachment.
+
+        Returns:
+            A string containing the filename for the diff attachment,
+            formatted as 'patch-<revno>.diff'.
+        """
         return f"patch-{self.revno}.diff"
 
 
