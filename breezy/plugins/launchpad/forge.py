@@ -68,6 +68,15 @@ GIT_SCHEME_MAP = {
 
 
 def status_to_lp_mp_statuses(status):
+    """Convert a general status to Launchpad-specific merge proposal statuses.
+
+    Args:
+        status: A status string, one of 'open', 'closed', 'merged', or 'all'.
+
+    Returns:
+        A list of Launchpad merge proposal status strings corresponding to
+        the input status.
+    """
     statuses = []
     if status in ("open", "all"):
         statuses.extend(
@@ -87,6 +96,15 @@ def status_to_lp_mp_statuses(status):
 
 
 def plausible_launchpad_url(url):
+    """Check if a URL appears to be a Launchpad URL.
+
+    Args:
+        url: The URL string to check, or None.
+
+    Returns:
+        True if the URL appears to be a Launchpad URL (either lp: scheme
+        or a URL pointing to bazaar/git.launchpad.net), False otherwise.
+    """
     if url is None:
         return False
     if url.startswith("lp:"):
@@ -98,7 +116,18 @@ def plausible_launchpad_url(url):
 
 
 class WebserviceFailure(Exception):
+    """Exception raised when a webservice call fails.
+
+    This exception wraps failures from Launchpad webservice API calls,
+    providing cleaner error handling.
+    """
+
     def __init__(self, message):
+        """Initialize the WebserviceFailure exception.
+
+        Args:
+            message: The error message describing the failure.
+        """
         self.message = message
 
 
@@ -124,15 +153,39 @@ def _call_webservice(call, *args, **kwargs):
 
 
 class LaunchpadMergeProposal(MergeProposal):
+    """A merge proposal on Launchpad.
+
+    This class provides an interface to interact with Launchpad merge proposals,
+    supporting both Bazaar branches and Git repositories.
+    """
+
     supports_auto_merge = False
 
     def __init__(self, mp):
+        """Initialize a LaunchpadMergeProposal.
+
+        Args:
+            mp: The Launchpad merge proposal object from the API.
+        """
         self._mp = mp
 
     def get_web_url(self):
+        """Get the web URL for this merge proposal.
+
+        Returns:
+            The web URL where this merge proposal can be viewed.
+        """
         return self._mp.web_link
 
     def get_source_branch_url(self, *, preferred_schemes=None):
+        """Get the URL of the source branch for this merge proposal.
+
+        Args:
+            preferred_schemes: Optional list of preferred URL schemes (ignored for now).
+
+        Returns:
+            The URL of the source branch.
+        """
         # TODO(jelmer): Honor preferred_schemes
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
@@ -143,6 +196,12 @@ class LaunchpadMergeProposal(MergeProposal):
             )
 
     def get_source_revision(self):
+        """Get the revision ID of the source branch tip.
+
+        Returns:
+            The revision ID (bytes) of the source branch tip, or None
+            if no revision is available.
+        """
         if self._mp.source_branch:
             last_scanned_id = self._mp.source_branch.last_scanned_id
             if last_scanned_id:
@@ -160,6 +219,14 @@ class LaunchpadMergeProposal(MergeProposal):
             return default_mapping.revision_id_foreign_to_bzr(sha.encode("ascii"))
 
     def get_target_branch_url(self, *, preferred_schemes=None):
+        """Get the URL of the target branch for this merge proposal.
+
+        Args:
+            preferred_schemes: Optional list of preferred URL schemes (ignored for now).
+
+        Returns:
+            The URL of the target branch.
+        """
         # TODO(jelmer): Honor preferred_schemes
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
@@ -170,61 +237,153 @@ class LaunchpadMergeProposal(MergeProposal):
             )
 
     def set_target_branch_name(self, name):
+        """Set the name of the target branch.
+
+        Args:
+            name: The new name for the target branch.
+
+        Raises:
+            NotImplementedError: The Launchpad API doesn't support changing
+                branch names.
+        """
         # The launchpad API doesn't support changing branch names today.
         raise NotImplementedError(self.set_target_branch_name)
 
     @property
     def url(self):
+        """Get the canonical URL for this merge proposal.
+
+        Returns:
+            The canonical URL for this merge proposal.
+        """
         return lp_uris.canonical_url(self._mp)
 
     def is_merged(self):
+        """Check if this merge proposal has been merged.
+
+        Returns:
+            True if the merge proposal has been merged, False otherwise.
+        """
         return self._mp.queue_status == "Merged"
 
     def is_closed(self):
+        """Check if this merge proposal has been closed without merging.
+
+        Returns:
+            True if the merge proposal has been rejected or superseded, False otherwise.
+        """
         return self._mp.queue_status in ("Rejected", "Superseded")
 
     def reopen(self):
+        """Reopen this merge proposal for review.
+
+        Changes the status to 'Needs review' to reopen the merge proposal.
+        """
         self._mp.setStatus(status="Needs review")
 
     def get_description(self):
+        """Get the description of this merge proposal.
+
+        Returns:
+            The description text of the merge proposal.
+        """
         return self._mp.description
 
     def set_description(self, description):
+        """Set the description of this merge proposal.
+
+        Args:
+            description: The new description text for the merge proposal.
+        """
         self._mp.description = description
         self._mp.lp_save()
 
     def get_commit_message(self):
+        """Get the commit message for this merge proposal.
+
+        Returns:
+            The commit message that will be used when merging.
+        """
         return self._mp.commit_message
 
     def get_title(self):
+        """Get the title of this merge proposal.
+
+        Raises:
+            TitleUnsupported: Launchpad doesn't support merge proposal titles.
+        """
         raise TitleUnsupported(self)
 
     def set_title(self):
+        """Set the title of this merge proposal.
+
+        Raises:
+            TitleUnsupported: Launchpad doesn't support merge proposal titles.
+        """
         raise TitleUnsupported(self)
 
     def set_commit_message(self, commit_message):
+        """Set the commit message for this merge proposal.
+
+        Args:
+            commit_message: The commit message to use when merging.
+        """
         self._mp.commit_message = commit_message
         self._mp.lp_save()
 
     def close(self):
+        """Close this merge proposal without merging.
+
+        Sets the status to 'Rejected' to close the merge proposal.
+        """
         self._mp.setStatus(status="Rejected")
 
     def can_be_merged(self):
+        """Check if this merge proposal can be merged cleanly.
+
+        Returns:
+            True if the merge proposal can be merged without conflicts,
+            False if there are conflicts. If no preview diff is available,
+            assumes it can be merged.
+        """
         if not self._mp.preview_diff:
             # Maybe?
             return True
         return not bool(self._mp.preview_diff.conflicts)
 
     def get_merged_by(self):
+        """Get the name of who merged this merge proposal.
+
+        Returns:
+            The name of the person who merged the proposal, or None
+            if the proposal hasn't been merged or the information
+            is not available.
+        """
         merge_reporter = self._mp.merge_reporter
         if merge_reporter is None:
             return None
         return merge_reporter.name
 
     def get_merged_at(self):
+        """Get the date and time when this merge proposal was merged.
+
+        Returns:
+            A datetime object representing when the merge proposal was merged,
+            or None if it hasn't been merged.
+        """
         return self._mp.date_merged
 
     def merge(self, commit_message=None, auto=False):
+        """Merge the source branch into the target branch.
+
+        Args:
+            commit_message: Optional commit message to use. If None, uses
+                the merge proposal's commit message.
+            auto: If True, attempt auto-merge (not supported by Launchpad).
+
+        Raises:
+            AutoMergeUnsupported: If auto=True, as Launchpad doesn't support auto-merge.
+        """
         if auto:
             raise AutoMergeUnsupported(self)
         target_branch = _mod_branch.Branch.open(self.get_target_branch_url())
@@ -241,6 +400,11 @@ class LaunchpadMergeProposal(MergeProposal):
             shutil.rmtree(tmpdir)
 
     def post_comment(self, body):
+        """Post a comment on this merge proposal.
+
+        Args:
+            body: The text content of the comment to post.
+        """
         self._mp.createComment(content=body)
 
 
@@ -259,17 +423,32 @@ class Launchpad(Forge):
     merge_proposal_description_format = "plain"
 
     def __init__(self, service_root):
+        """Initialize the Launchpad forge.
+
+        Args:
+            service_root: The service root URL for the Launchpad API.
+        """
         self._api_base_url = service_root
         self._launchpad = None
 
     @property
     def name(self):
+        """Get the display name of this Launchpad instance.
+
+        Returns:
+            'Launchpad' for the main instance, or 'Launchpad at <url>' for others.
+        """
         if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return "Launchpad"
         return f"Launchpad at {self.base_url}"
 
     @property
     def launchpad(self):
+        """Get the Launchpad API client.
+
+        Returns:
+            A lazily-initialized Launchpad API client instance.
+        """
         if self._launchpad is None:
             from .lp_api import connect_launchpad
 
@@ -278,34 +457,97 @@ class Launchpad(Forge):
 
     @property
     def base_url(self):
+        """Get the base web URL for this Launchpad instance.
+
+        Returns:
+            The base web URL corresponding to the service root.
+        """
         return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
+        """Return a string representation of this Launchpad instance.
+
+        Returns:
+            A string representation showing the service root URL.
+        """
         return f"Launchpad(service_root={self._api_base_url})"
 
     def get_current_user(self):
+        """Get the name of the current authenticated user.
+
+        Returns:
+            The username of the current authenticated user.
+        """
         return self.launchpad.me.name
 
     def get_user_url(self, username):
+        """Get the web URL for a user profile.
+
+        Args:
+            username: The username to get the profile URL for.
+
+        Returns:
+            The web URL of the user's Launchpad profile.
+        """
         return self.launchpad.people[username].web_link
 
     def hosts(self, branch):
+        """Check if this forge hosts the given branch.
+
+        Args:
+            branch: The branch to check.
+
+        Returns:
+            True if this Launchpad instance hosts the branch, False otherwise.
+        """
         # TODO(jelmer): staging vs non-staging?
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Probe if the given hostname is supported by Launchpad.
+
+        Args:
+            hostname: The hostname to check.
+            possible_transports: Optional list of possible transports (unused).
+
+        Returns:
+            A Launchpad forge instance if the hostname is supported.
+
+        Raises:
+            UnsupportedForge: If the hostname is not a Launchpad hostname.
+        """
         if re.match(hostname, r"(bazaar|git).*\.launchpad\.net"):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
+        """Probe if the given URL is supported by Launchpad.
+
+        Args:
+            url: The URL to check.
+            possible_transports: Optional list of possible transports (unused).
+
+        Returns:
+            A Launchpad forge instance if the URL is supported.
+
+        Raises:
+            UnsupportedForge: If the URL is not a Launchpad URL.
+        """
         if plausible_launchpad_url(url):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
+        """Get the Launchpad Git repository and reference from a branch.
+
+        Args:
+            branch: The branch to get the Git reference for.
+
+        Returns:
+            A tuple of (repository, reference) Launchpad objects.
+        """
         url, params = urlutils.split_segment_parameters(branch.user_url)
         (scheme, user, password, host, port, path) = urlutils.parse_url(url)
         repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip("/"))
@@ -321,9 +563,27 @@ class Launchpad(Forge):
         return (repo_lp, ref_lp)
 
     def _get_lp_bzr_branch_from_branch(self, branch):
+        """Get the Launchpad Bazaar branch object from a branch.
+
+        Args:
+            branch: The branch to get the Launchpad branch object for.
+
+        Returns:
+            The corresponding Launchpad Bazaar branch object.
+        """
         return self.launchpad.branches.getByUrl(url=urlutils.unescape(branch.user_url))
 
     def _get_derived_git_path(self, base_path, owner, project):
+        """Generate a Git repository path for a derived branch.
+
+        Args:
+            base_path: The path of the base repository.
+            owner: The owner of the derived repository.
+            project: The project name, or None to derive from base_path.
+
+        Returns:
+            A path string for the derived Git repository.
+        """
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
             project = urlutils.parse_url(base_repo.git_ssh_url)[-1].strip("/")
@@ -398,6 +658,17 @@ class Launchpad(Forge):
         return br_to, (f"https://git.launchpad.net/{to_path}/+ref/{name}")
 
     def _get_derived_bzr_path(self, base_branch, name, owner, project):
+        """Generate a Bazaar branch path for a derived branch.
+
+        Args:
+            base_branch: The base branch to derive from.
+            name: The name of the derived branch.
+            owner: The owner of the derived branch.
+            project: The project name, or None to derive from base_branch.
+
+        Returns:
+            A path string for the derived Bazaar branch.
+        """
         if project is None:
             base_branch_lp = self._get_lp_bzr_branch_from_branch(base_branch)
             project = "/".join(base_branch_lp.unique_name.split("/")[1:-1])
@@ -406,6 +677,17 @@ class Launchpad(Forge):
         return f"~{owner}/{project}/{name}"
 
     def get_push_url(self, branch):
+        """Get the URL for pushing to the given branch.
+
+        Args:
+            branch: The branch to get the push URL for.
+
+        Returns:
+            The URL that should be used for pushing to this branch.
+
+        Raises:
+            AssertionError: If the branch URL doesn't match a known VCS pattern.
+        """
         (vcs, user, password, path, params) = self._split_url(branch.user_url)
         if vcs == "bzr":
             branch_lp = self._get_lp_bzr_branch_from_branch(branch)
@@ -454,6 +736,18 @@ class Launchpad(Forge):
         return br_to, ("https://code.launchpad.net/" + to_path)
 
     def _split_url(self, url):
+        """Split a Launchpad URL into its components.
+
+        Args:
+            url: The URL to split.
+
+        Returns:
+            A tuple of (vcs, user, password, path, params) where vcs is
+            either 'bzr' or 'git'.
+
+        Raises:
+            ValueError: If the host doesn't match a known VCS pattern.
+        """
         url, params = urlutils.split_segment_parameters(url)
         (scheme, user, password, host, port, path) = urlutils.parse_url(url)
         path = path.strip("/")
@@ -522,6 +816,21 @@ class Launchpad(Forge):
     def get_derived_branch(
         self, base_branch, name, project=None, owner=None, preferred_schemes=None
     ):
+        """Get a derived branch that has been previously published.
+
+        Args:
+            base_branch: The base branch to derive from.
+            name: The name of the derived branch.
+            project: The project name, or None to derive from base_branch.
+            owner: The owner of the derived branch, or None to use current user.
+            preferred_schemes: List of preferred URL schemes.
+
+        Returns:
+            The derived branch object.
+
+        Raises:
+            AssertionError: If no supported schemes are available or URL is invalid.
+        """
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         if owner is None:
@@ -554,6 +863,19 @@ class Launchpad(Forge):
             raise AssertionError("not a valid Launchpad URL")
 
     def iter_proposals(self, source_branch, target_branch, status="open"):
+        """Iterate over merge proposals between the given branches.
+
+        Args:
+            source_branch: The source branch of the merge proposals.
+            target_branch: The target branch of the merge proposals.
+            status: The status filter ('open', 'closed', 'merged', or 'all').
+
+        Yields:
+            LaunchpadMergeProposal objects matching the criteria.
+
+        Raises:
+            AssertionError: If the target branch URL is not a valid Launchpad URL.
+        """
         (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
             target_branch.user_url
         )
@@ -589,6 +911,18 @@ class Launchpad(Forge):
             raise AssertionError("not a valid Launchpad URL")
 
     def get_proposer(self, source_branch, target_branch):
+        """Get a merge proposal builder for the given branches.
+
+        Args:
+            source_branch: The source branch for the merge proposal.
+            target_branch: The target branch for the merge proposal.
+
+        Returns:
+            A merge proposal builder appropriate for the VCS type.
+
+        Raises:
+            AssertionError: If the target branch URL is not a valid Launchpad URL.
+        """
         (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
             target_branch.user_url
         )
@@ -603,6 +937,11 @@ class Launchpad(Forge):
 
     @classmethod
     def iter_instances(cls):
+        """Iterate over available Launchpad instances with credentials.
+
+        Yields:
+            Launchpad forge instances for which credentials are available.
+        """
         from . import lp_api
 
         credential_store = lp_api.get_credential_store()
@@ -613,22 +952,58 @@ class Launchpad(Forge):
                 yield cls(service_root)
 
     def iter_my_proposals(self, status="open", author=None):
+        """Iterate over merge proposals authored by current user or specified author.
+
+        Args:
+            status: The status filter ('open', 'closed', 'merged', or 'all').
+            author: The author to filter by, or None for current user.
+
+        Yields:
+            LaunchpadMergeProposal objects matching the criteria.
+        """
         statuses = status_to_lp_mp_statuses(status)
         author_obj = self.launchpad.me if author is None else self._getPerson(author)
         for mp in author_obj.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
     def iter_my_forks(self, owner=None):
+        """Iterate over forks owned by the current user or specified owner.
+
+        Args:
+            owner: The owner to filter by, or None for current user.
+
+        Returns:
+            An empty iterator, as Launchpad doesn't have the concept of "forks".
+        """
         # Launchpad doesn't really have the concept of "forks"
         return iter([])
 
     def _getPerson(self, person):
+        """Get a Launchpad person object by name or email.
+
+        Args:
+            person: A person name or email address.
+
+        Returns:
+            The corresponding Launchpad person object.
+        """
         if "@" in person:
             return self.launchpad.people.getByEmail(email=person)
         else:
             return self.launchpad.people[person]
 
     def get_web_url(self, branch):
+        """Get the web URL for viewing a branch.
+
+        Args:
+            branch: The branch to get the web URL for.
+
+        Returns:
+            The web URL where the branch can be viewed.
+
+        Raises:
+            AssertionError: If the branch URL doesn't match a known VCS pattern.
+        """
         (vcs, user, password, path, params) = self._split_url(branch.user_url)
         if vcs == "bzr":
             branch_lp = self._get_lp_bzr_branch_from_branch(branch)
@@ -640,6 +1015,17 @@ class Launchpad(Forge):
             raise AssertionError
 
     def get_proposal_by_url(self, url):
+        """Get a merge proposal by its URL.
+
+        Args:
+            url: The URL of the merge proposal.
+
+        Returns:
+            A LaunchpadMergeProposal object.
+
+        Raises:
+            UnsupportedForge: If the URL is not a Launchpad code domain.
+        """
         # Launchpad doesn't have a way to find a merge proposal by URL.
         (scheme, user, password, host, port, path) = urlutils.parse_url(url)
         LAUNCHPAD_CODE_DOMAINS = [
@@ -657,12 +1043,24 @@ class Launchpad(Forge):
         return LaunchpadMergeProposal(mp)
 
     def create_project(self, path, summary=None):
+        """Create a new project on Launchpad.
+
+        Args:
+            path: The project name/path.
+            summary: Optional project summary.
+        """
         self.launchpad.projects.new_project(
             display_name=path, name=path, summary=summary, title=path
         )
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
+    """Merge proposal builder for Launchpad Bazaar branches.
+
+    This class handles the creation of merge proposals between Bazaar branches
+    hosted on Launchpad.
+    """
+
     def __init__(
         self,
         lp_host,
@@ -703,7 +1101,11 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         self.fixes = fixes
 
     def get_infotext(self):
-        """Determine the initial comment for the merge proposal."""
+        """Determine the initial comment for the merge proposal.
+
+        Returns:
+            A formatted string containing source and target branch information.
+        """
         info = [f"Source: {self.source_branch_lp.bzr_identity}\n"]
         info.append(f"Target: {self.target_branch_lp.bzr_identity}\n")
         return "".join(info)
@@ -711,7 +1113,11 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
     def get_initial_body(self):
         """Get a body for the proposal for the user to modify.
 
-        :return: a str or None.
+        Uses hooks to generate an initial body based on the changes between
+        the source and target branches.
+
+        Returns:
+            A string body for the merge proposal, or None if no hooks are configured.
         """
         if not self.hooks["merge_proposal_body"]:
             return None
@@ -745,6 +1151,13 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
+        """Approve the merge proposal.
+
+        Creates an approval comment and sets the status to 'Approved'.
+
+        Args:
+            mp: The Launchpad merge proposal object to approve.
+        """
         with self.source_branch.lock_read():
             _call_webservice(
                 mp.createComment,
@@ -770,7 +1183,29 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         allow_collaboration=False,
         delete_source_after_merge: Optional[bool] = None,
     ):
-        """Perform the submission."""
+        """Create a merge proposal on Launchpad for Bazaar branches.
+
+        Args:
+            description: The description text for the merge proposal.
+            title: The title (not supported by Launchpad, will raise exception
+                if provided).
+            reviewers: List of reviewer names or email addresses.
+            labels: Labels for the proposal (not supported by Launchpad).
+            prerequisite_branch: Optional prerequisite branch that must be merged first.
+            commit_message: Optional commit message for when the proposal is merged.
+            work_in_progress: If True, mark as work in progress (not needing review).
+            allow_collaboration: Allow collaboration (ignored by Launchpad).
+            delete_source_after_merge: Delete source after merge (ignored by Launchpad).
+
+        Returns:
+            A LaunchpadMergeProposal object representing the created proposal.
+
+        Raises:
+            LabelsUnsupported: If labels are provided.
+            TitleUnsupported: If title is provided.
+            MergeProposalExists: If a merge proposal already exists.
+            WebserviceFailure: If the Launchpad API call fails.
+        """
         if labels:
             raise LabelsUnsupported(self)
         if title:
@@ -819,6 +1254,12 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
+    """Merge proposal builder for Launchpad Git repositories.
+
+    This class handles the creation of merge proposals between Git branches
+    hosted on Launchpad.
+    """
+
     def __init__(
         self,
         lp_host,
@@ -861,7 +1302,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         self.fixes = fixes
 
     def get_infotext(self):
-        """Determine the initial comment for the merge proposal."""
+        """Determine the initial comment for the merge proposal.
+
+        Returns:
+            A formatted string containing source and target branch URLs.
+        """
         info = [f"Source: {self.source_branch.user_url}\n"]
         info.append(f"Target: {self.target_branch.user_url}\n")
         return "".join(info)
@@ -869,7 +1314,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
     def get_initial_body(self):
         """Get a body for the proposal for the user to modify.
 
-        :return: a str or None.
+        Uses hooks to generate an initial body based on the changes between
+        the source and target branches.
+
+        Returns:
+            A string body for the merge proposal, or None if no hooks are configured.
         """
         if not self.hooks["merge_proposal_body"]:
             return None
@@ -893,7 +1342,15 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             return body
 
     def check_proposal(self):
-        """Check that the submission is sensible."""
+        """Check that the submission is sensible.
+
+        Validates that the source and target branches are different and that
+        a merge proposal doesn't already exist between them.
+
+        Raises:
+            CommandError: If source and target branches are the same.
+            MergeProposalExists: If a merge proposal already exists.
+        """
         if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
             raise errors.CommandError("Source and target branches must be different.")
         for mp in self.source_branch_lp.landing_targets:
@@ -903,6 +1360,13 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
+        """Approve the merge proposal.
+
+        Creates an approval comment and sets the status to 'Approved'.
+
+        Args:
+            mp: The Launchpad merge proposal object to approve.
+        """
         with self.source_branch.lock_read():
             _call_webservice(
                 mp.createComment,
@@ -928,7 +1392,28 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         allow_collaboration=False,
         delete_source_after_merge: Optional[bool] = False,
     ):
-        """Perform the submission."""
+        """Create a merge proposal on Launchpad for Git branches.
+
+        Args:
+            description: The description text for the merge proposal.
+            title: The title (not supported by Launchpad, will raise exception
+                if provided).
+            reviewers: List of reviewer names.
+            labels: Labels for the proposal (not supported by Launchpad).
+            prerequisite_branch: Optional prerequisite branch that must be merged first.
+            commit_message: Optional commit message for when the proposal is merged.
+            work_in_progress: If True, mark as work in progress (not needing review).
+            allow_collaboration: Allow collaboration (ignored by Launchpad).
+            delete_source_after_merge: Delete source after merge (ignored by Launchpad).
+
+        Returns:
+            A LaunchpadMergeProposal object representing the created proposal.
+
+        Raises:
+            LabelsUnsupported: If labels are provided.
+            MergeProposalExists: If a merge proposal already exists.
+            WebserviceFailure: If the Launchpad API call fails.
+        """
         if labels:
             raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
@@ -975,7 +1460,16 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
 
 def modified_files(old_tree, new_tree):
-    """Return a list of paths in the new tree with modified contents."""
+    """Return a generator of paths in the new tree with modified contents.
+
+    Args:
+        old_tree: The old tree to compare against.
+        new_tree: The new tree to find modifications in.
+
+    Yields:
+        File paths (as strings) for files that have modified contents
+        between the old and new trees.
+    """
     for change in new_tree.iter_changes(old_tree):
         if change.changed_content and change.kind[1] == "file":
-            yield str(path)
+            yield str(change.path[1])
