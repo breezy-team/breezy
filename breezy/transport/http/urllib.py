@@ -58,6 +58,20 @@ kerberos = None
 
 
 def splitport(host):
+    """Split a network host and port from a host string.
+
+    Parses a host string in the format 'hostname:port' and returns the
+    hostname and port as separate values.
+
+    Args:
+        host: A string containing hostname and optional port number in the
+            format 'hostname:port' or just 'hostname'.
+
+    Returns:
+        A tuple of (hostname, port) where:
+        - hostname (str): The hostname portion
+        - port (str or None): The port number as a string, or None if no port
+    """
     m = re.fullmatch("(.*):([0-9]*)", host, re.DOTALL)
     if m:
         host, port = m.groups()
@@ -66,52 +80,150 @@ def splitport(host):
 
 
 class _ReportingFileSocket:
+    """A wrapper around file-like socket objects that reports activity.
+
+    This class wraps a file-like socket object and reports read activity
+    through a callback function. It delegates all other operations to the
+    underlying socket object.
+    """
+
     def __init__(self, filesock, report_activity=None):
+        """Initialize a reporting file socket wrapper.
+
+        Args:
+            filesock: The underlying file-like socket object to wrap.
+            report_activity: Optional callback function to report activity.
+                Should accept (size, direction) parameters.
+        """
         self.filesock = filesock
         self._report_activity = report_activity
 
     def report_activity(self, size, direction):
+        """Report activity to the callback function if available.
+
+        Args:
+            size: The number of bytes involved in the activity.
+            direction: The direction of activity ('read' or 'write').
+        """
         if self._report_activity:
             self._report_activity(size, direction)
 
     def read(self, size=1):
+        """Read up to size bytes from the file socket.
+
+        Args:
+            size: Maximum number of bytes to read.
+
+        Returns:
+            Bytes read from the socket.
+        """
         s = self.filesock.read(size)
         self.report_activity(len(s), "read")
         return s
 
     def readline(self, size=-1):
+        """Read a line from the file socket.
+
+        Args:
+            size: Maximum number of bytes to read, or -1 for unlimited.
+
+        Returns:
+            A line read from the socket.
+        """
         s = self.filesock.readline(size)
         self.report_activity(len(s), "read")
         return s
 
     def readinto(self, b):
+        """Read data from the file socket into a pre-allocated buffer.
+
+        Args:
+            b: A pre-allocated buffer to read data into.
+
+        Returns:
+            Number of bytes read.
+        """
         s = self.filesock.readinto(b)
         self.report_activity(s, "read")
         return s
 
     def __getattr__(self, name):
+        """Delegate unknown attributes to the underlying file socket.
+
+        Args:
+            name: The attribute name to look up.
+
+        Returns:
+            The attribute from the underlying file socket.
+        """
         return getattr(self.filesock, name)
 
 
 class _ReportingSocket:
+    """A wrapper around socket objects that reports network activity.
+
+    This class wraps a socket object and reports both read and write activity
+    through a callback function. It provides buffered file creation and delegates
+    all other operations to the underlying socket.
+    """
+
     def __init__(self, sock, report_activity=None):
+        """Initialize a reporting socket wrapper.
+
+        Args:
+            sock: The underlying socket object to wrap.
+            report_activity: Optional callback function to report activity.
+                Should accept (size, direction) parameters.
+        """
         self.sock = sock
         self._report_activity = report_activity
 
     def report_activity(self, size, direction):
+        """Report activity to the callback function if available.
+
+        Args:
+            size: The number of bytes involved in the activity.
+            direction: The direction of activity ('read' or 'write').
+        """
         if self._report_activity:
             self._report_activity(size, direction)
 
     def sendall(self, s, *args):
+        """Send all data to the socket.
+
+        Args:
+            s: Data to send.
+            *args: Additional arguments passed to the underlying socket.
+        """
         self.sock.sendall(s, *args)
         self.report_activity(len(s), "write")
 
     def recv(self, *args):
+        """Receive data from the socket.
+
+        Args:
+            *args: Arguments passed to the underlying socket's recv method.
+
+        Returns:
+            Data received from the socket.
+        """
         s = self.sock.recv(*args)
         self.report_activity(len(s), "read")
         return s
 
     def makefile(self, mode="r", bufsize=-1):
+        """Create a buffered file-like object from the socket.
+
+        Creates a file-like object with proper buffering to improve performance
+        of readline() operations, which would otherwise read one byte at a time.
+
+        Args:
+            mode: File mode ('r', 'w', 'b', etc.).
+            bufsize: Buffer size (ignored, uses optimized 64KB buffer).
+
+        Returns:
+            A _ReportingFileSocket object that wraps the buffered file socket.
+        """
         # http.client creates a fileobject that doesn't do buffering, which
         # makes fp.readline() very expensive because it only reads one byte
         # at a time.  So we wrap the socket in an object that forces
@@ -121,6 +233,14 @@ class _ReportingSocket:
         return _ReportingFileSocket(fsock, self._report_activity)
 
     def __getattr__(self, name):
+        """Delegate unknown attributes to the underlying socket.
+
+        Args:
+            name: The attribute name to look up.
+
+        Returns:
+            The attribute from the underlying socket.
+        """
         return getattr(self.sock, name)
 
 
@@ -142,6 +262,14 @@ class Response(http.client.HTTPResponse):
     _discarded_buf_size = 8192
 
     def __init__(self, sock, debuglevel=0, method=None, url=None):
+        """Initialize a custom HTTP response object.
+
+        Args:
+            sock: The socket object for the HTTP connection.
+            debuglevel: Debug level for HTTP debugging output (default: 0).
+            method: HTTP method used for the request (optional).
+            url: URL of the request (optional).
+        """
         self.url = url
         super().__init__(sock, debuglevel=debuglevel, method=method, url=url)
 
@@ -223,11 +351,22 @@ class AbstractHTTPConnection:
     _range_warning_thresold = 1024 * 1024
 
     def __init__(self, report_activity=None):
+        """Initialize the abstract HTTP connection.
+
+        Args:
+            report_activity: Optional callback function to report network activity.
+                Should accept (size, direction) parameters.
+        """
         self._response = None
         self._report_activity = report_activity
         self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
+        """Log connection information for debugging purposes.
+
+        Outputs connection details including host, port, and proxy information
+        to the trace system for debugging HTTP connections.
+        """
         netloc = f"{self.host}:{self.port}"
         if self.proxied_host is not None:
             netloc += f"(proxy for {self.proxied_host})"
@@ -278,21 +417,48 @@ class AbstractHTTPConnection:
         self.sock = sock
 
     def _wrap_socket_for_reporting(self, sock):
-        """Wrap the socket before anybody use it."""
+        """Wrap the socket for activity reporting.
+
+        Replaces the raw socket with a _ReportingSocket that tracks
+        network activity through the configured callback function.
+
+        Args:
+            sock: The raw socket object to wrap.
+        """
         self.sock = _ReportingSocket(sock, self._report_activity)
 
 
 class HTTPConnection(AbstractHTTPConnection, http.client.HTTPConnection):  # type: ignore
+    """HTTP connection with activity reporting and connection management.
+
+    Extends the standard HTTPConnection with activity reporting capabilities
+    and improved connection management.
+    """
+
     # XXX: Needs refactoring at the caller level.
     def __init__(
         self, host, port=None, proxied_host=None, report_activity=None, ca_certs=None
     ):
+        """Initialize an HTTP connection with activity reporting.
+
+        Args:
+            host: The hostname or IP address to connect to.
+            port: The port number (optional, defaults to 80).
+            proxied_host: The original host if connecting through a proxy.
+            report_activity: Optional callback to report network activity.
+            ca_certs: Certificate authority certificates (ignored for HTTP).
+        """
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         http.client.HTTPConnection.__init__(self, host, port)
         self.proxied_host = proxied_host
         # ca_certs is ignored, it's only relevant for https
 
     def connect(self):
+        """Establish the HTTP connection with activity reporting.
+
+        Connects to the server and wraps the socket for activity reporting
+        if debug logging is enabled.
+        """
         if debug.debug_flag_enabled("http"):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
@@ -300,6 +466,12 @@ class HTTPConnection(AbstractHTTPConnection, http.client.HTTPConnection):  # typ
 
 
 class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # type: ignore
+    """HTTPS connection with SSL/TLS support, activity reporting, and connection management.
+
+    Extends the standard HTTPSConnection with activity reporting capabilities,
+    improved connection management, and SSL certificate handling.
+    """
+
     def __init__(
         self,
         host,
@@ -310,6 +482,17 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         report_activity=None,
         ca_certs=None,
     ):
+        """Initialize an HTTPS connection with SSL support and activity reporting.
+
+        Args:
+            host: The hostname or IP address to connect to.
+            port: The port number (optional, defaults to 443).
+            key_file: Path to client private key file for SSL authentication.
+            cert_file: Path to client certificate file for SSL authentication.
+            proxied_host: The original host if connecting through a proxy.
+            report_activity: Optional callback to report network activity.
+            ca_certs: Path to CA certificates file for SSL verification.
+        """
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         http.client.HTTPSConnection.__init__(self, host=host, port=port)
         self.key_file = key_file
@@ -318,6 +501,11 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         self.ca_certs = ca_certs
 
     def connect(self):
+        """Establish the HTTPS connection with SSL and activity reporting.
+
+        Connects to the server, wraps the socket for activity reporting,
+        and establishes SSL connection if not using a proxy.
+        """
         if debug.debug_flag_enabled("http"):
             self._mutter_connect()
         http.client.HTTPConnection.connect(self)
@@ -326,6 +514,15 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
             self.connect_to_origin()
 
     def connect_to_origin(self):
+        """Establish SSL connection to the origin server.
+
+        Sets up SSL context with certificate verification, client certificates,
+        and appropriate SSL settings based on configuration. Handles both
+        direct connections and connections through proxies.
+
+        Raises:
+            ssl.SSLError: If SSL connection or certificate verification fails.
+        """
         # FIXME JRV 2011-12-18: Use location config here?
         config_stack = config.GlobalStack()
         cert_reqs = config_stack.get("ssl.cert_reqs")
@@ -397,6 +594,18 @@ class Request(urllib.request.Request):
         connection=None,
         parent=None,
     ):
+        """Initialize a custom HTTP request object.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, etc.).
+            url: The URL to request.
+            data: Request body data (optional).
+            headers: Dictionary of HTTP headers (optional).
+            origin_req_host: Original request host for redirect tracking.
+            unverifiable: Whether the request is unverifiable.
+            connection: HTTP connection object to use.
+            parent: Parent request for redirect chains.
+        """
         if headers is None:
             headers = {}
         urllib.request.Request.__init__(
@@ -418,6 +627,11 @@ class Request(urllib.request.Request):
         self.proxied_host = None
 
     def get_method(self):
+        """Get the HTTP method for this request.
+
+        Returns:
+            The HTTP method string (GET, POST, etc.).
+        """
         return self.method
 
     def set_proxy(self, proxy, type):
@@ -487,10 +701,28 @@ class ConnectionHandler(urllib.request.BaseHandler):
     handler_order = 1000  # after all pre-processings
 
     def __init__(self, report_activity=None, ca_certs=None):
+        """Initialize the connection handler.
+
+        Args:
+            report_activity: Optional callback to report network activity.
+            ca_certs: Path to CA certificates file for SSL verification.
+        """
         self._report_activity = report_activity
         self.ca_certs = ca_certs
 
     def create_connection(self, request, http_connection_class):
+        """Create a new HTTP connection for the request.
+
+        Args:
+            request: The HTTP request object.
+            http_connection_class: The connection class to instantiate.
+
+        Returns:
+            A new HTTP connection object.
+
+        Raises:
+            urlutils.InvalidURL: If the request has no host or invalid URL.
+        """
         host = request.host
         if not host:
             # Just a bit of paranoia here, this should have been
@@ -538,9 +770,25 @@ class ConnectionHandler(urllib.request.BaseHandler):
         return request
 
     def http_request(self, request):
+        """Handle HTTP requests by capturing/creating connections.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            The request object with connection attached.
+        """
         return self.capture_connection(request, HTTPConnection)
 
     def https_request(self, request):
+        """Handle HTTPS requests by capturing/creating connections.
+
+        Args:
+            request: The HTTPS request object.
+
+        Returns:
+            The request object with connection attached.
+        """
         return self.capture_connection(request, HTTPSConnection)
 
 
@@ -567,6 +815,10 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
     }
 
     def __init__(self):
+        """Initialize the abstract HTTP handler.
+
+        Sets up the HTTP handler with the configured debug level.
+        """
         urllib.request.AbstractHTTPHandler.__init__(self, debuglevel=DEBUG)
 
     def http_request(self, request):
@@ -773,6 +1025,14 @@ class HTTPHandler(AbstractHTTPHandler):
     """A custom handler that just thunks into HTTPConnection."""
 
     def http_open(self, request):
+        """Open an HTTP connection for the request.
+
+        Args:
+            request: The HTTP request object.
+
+        Returns:
+            Response from the HTTP connection.
+        """
         return self.do_open(HTTPConnection, request)
 
 
@@ -782,6 +1042,16 @@ class HTTPSHandler(AbstractHTTPHandler):
     https_request = AbstractHTTPHandler.http_request
 
     def https_open(self, request):
+        """Open an HTTPS connection for the request.
+
+        Handles HTTPS connections including proxy CONNECT tunneling when needed.
+
+        Args:
+            request: The HTTPS request object.
+
+        Returns:
+            Response from the HTTPS connection.
+        """
         connection = request.connection
         if (
             connection.sock is None
@@ -1484,6 +1754,20 @@ class BasicAuthHandler(AbstractAuthHandler):
 
 
 def get_digest_algorithm_impls(algorithm):
+    """Get digest algorithm implementations for HTTP authentication.
+
+    Creates hash function implementations (H) and key derivation function (KD)
+    for the specified digest algorithm used in HTTP digest authentication.
+
+    Args:
+        algorithm: The digest algorithm name (e.g., 'MD5', 'SHA').
+
+    Returns:
+        A tuple of (H, KD) where:
+        - H: Hash function that takes bytes and returns hex digest
+        - KD: Key derivation function that takes secret and data strings
+        Both functions return None if the algorithm is not supported.
+    """
     H = None
     KD = None
     if algorithm == "MD5":
@@ -1501,6 +1785,18 @@ def get_digest_algorithm_impls(algorithm):
 
 
 def get_new_cnonce(nonce, nonce_count):
+    """Generate a new client nonce for HTTP digest authentication.
+
+    Creates a unique client nonce by combining the server nonce, nonce count,
+    current time, and random characters, then hashing the result.
+
+    Args:
+        nonce: The server-provided nonce string.
+        nonce_count: The number of times this nonce has been used.
+
+    Returns:
+        A 16-character hexadecimal string to use as client nonce.
+    """
     raw = "%s:%d:%s:%s" % (nonce, nonce_count, time.ctime(), osutils.rand_chars(8))
     return osutils.sha_string(raw.encode("utf-8"))[:16]
 
@@ -2511,7 +2807,18 @@ class HttpTransport(ConnectedTransport):
 # TODO: May be better located in smart/medium.py with the other
 # SmartMedium classes
 class SmartClientHTTPMedium(medium.SmartClientMedium):
+    """A SmartClientMedium that works over HTTP transport.
+
+    This class provides a smart protocol medium that communicates with
+    smart servers over HTTP connections using the provided HTTP transport.
+    """
+
     def __init__(self, http_transport):
+        """Initialize the HTTP smart medium.
+
+        Args:
+            http_transport: The HTTP transport to use for communication.
+        """
         super().__init__(http_transport.base)
         # We don't want to create a circular reference between the http
         # transport and its associated medium. Since the transport will live
