@@ -33,10 +33,27 @@ def parse_git_svn_id(text):
 
 
 class SubversionBranchUrlFinder:
+    """Helper class for finding Subversion branch paths from URLs.
+
+    This class maintains a cache of Subversion repository roots to avoid
+    repeated network requests when determining branch paths.
+    """
+
     def __init__(self):
+        """Initialize the URL finder with an empty cache."""
         self._roots = defaultdict(set)
 
     def find_root(self, uuid, url):
+        """Find the root URL of a Subversion repository.
+
+        Args:
+            uuid: The UUID of the Subversion repository.
+            url: A URL within the repository.
+
+        Returns:
+            str or None: The repository root URL, or None if subvertpy
+                is not available.
+        """
         for root in self._roots[uuid]:
             if url.startswith(root):
                 return root
@@ -50,6 +67,19 @@ class SubversionBranchUrlFinder:
         return root
 
     def find_branch_path(self, uuid, url):
+        """Find the branch path within a Subversion repository.
+
+        Args:
+            uuid: The UUID of the Subversion repository.
+            url: A URL within the repository.
+
+        Returns:
+            str or None: The branch path relative to the repository root,
+                or None if the root cannot be determined.
+
+        Raises:
+            AssertionError: If the URL doesn't start with the repository root.
+        """
         root = self.find_root(uuid, url)
         if root is None:
             return None
@@ -62,6 +92,14 @@ svn_branch_path_finder = SubversionBranchUrlFinder()
 
 
 def _extract_converted_from_revid(rev):
+    """Extract foreign revision IDs from the 'converted-from' property.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: (kind, serialized_foreign_revid) pairs for each conversion.
+    """
     if "converted-from" not in rev.properties:
         return
 
@@ -71,7 +109,14 @@ def _extract_converted_from_revid(rev):
 
 
 def _extract_cscvs(rev):
-    """Older-style launchpad-cscvs import."""
+    """Extract Subversion revision ID from older-style launchpad-cscvs import.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: ('svn', serialized_foreign_revid) for cscvs conversions.
+    """
     if "cscvs-svn-branch-path" not in rev.properties:
         return
     yield (
@@ -85,6 +130,14 @@ def _extract_cscvs(rev):
 
 
 def _extract_git_svn_id(rev):
+    """Extract Subversion revision ID from git-svn-id property.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: ('svn', serialized_foreign_revid) for git-svn conversions.
+    """
     if "git-svn-id" not in rev.properties:
         return
     (full_url, revnum, uuid) = parse_git_svn_id(rev.properties["git-svn-id"])
@@ -94,12 +147,28 @@ def _extract_git_svn_id(rev):
 
 
 def _extract_foreign_revision(rev):
+    """Extract foreign revision ID from a foreign revision object.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: (vcs_abbreviation, serialized_foreign_revid) for foreign revisions.
+    """
     # Perhaps 'rev' is a foreign revision ?
     if getattr(rev, "foreign_revid", None) is not None:
         yield ("svn", rev.mapping.vcs.serialize_foreign_revid(rev.foreign_revid))
 
 
 def _extract_foreign_revid(rev):
+    """Extract foreign revision ID by parsing the revision ID.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: (vcs_abbreviation, serialized_foreign_revid) for foreign revision IDs.
+    """
     # Try parsing the revision id
     try:
         foreign_revid, mapping = foreign.foreign_vcs_registry.parse_revision_id(
@@ -115,6 +184,14 @@ def _extract_foreign_revid(rev):
 
 
 def _extract_debian_md5sum(rev):
+    """Extract Debian MD5 sum from revision properties.
+
+    Args:
+        rev: Revision object to extract from.
+
+    Yields:
+        tuple: ('debian-md5sum', md5sum) for Debian package revisions.
+    """
     if "deb-md5" in rev.properties:
         yield ("debian-md5sum", rev.properties["deb-md5"])
 
