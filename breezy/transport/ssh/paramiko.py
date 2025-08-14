@@ -15,6 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""SSH transport implementation using Paramiko library.
+
+This module provides SSH connection functionality using the Paramiko library
+for secure transport operations. It handles SSH authentication including
+agent keys, private key files, and password authentication, as well as
+host key verification and management.
+"""
+
 import getpass
 import logging
 import os
@@ -30,6 +38,23 @@ BRZ_HOSTKEYS: dict[str, dict[str, str]] = {}
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
+    """Authenticate to an SSH server using paramiko.
+
+    Attempts authentication in the following order:
+    1. SSH agent keys
+    2. Private key files (id_rsa, id_dsa)
+    3. Password authentication
+
+    Args:
+        username: SSH username, or None to use local username
+        password: SSH password, or None for no password
+        host: SSH hostname
+        port: SSH port number
+        paramiko_transport: Paramiko Transport object for the connection
+
+    Raises:
+        ConnectionError: If authentication fails or is not supported
+    """
     auth = config.AuthenticationConfig()
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
@@ -112,6 +137,17 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
+    """Attempt public key authentication with a private key file.
+
+    Args:
+        paramiko_transport: Paramiko Transport object for the connection
+        pkey_class: Paramiko private key class (e.g., RSAKey, DSSKey)
+        username: SSH username for authentication
+        filename: Name of the private key file (relative to ~/.ssh/)
+
+    Returns:
+        bool: True if authentication succeeded, False otherwise
+    """
     filename = os.path.expanduser("~/.ssh/" + filename)
     try:
         key = pkey_class.from_private_key_file(filename)
@@ -137,6 +173,11 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
 
 
 def _ssh_host_keys_config_dir():
+    """Get the path to the SSH host keys configuration directory.
+
+    Returns:
+        str: Path to the directory where SSH host keys are stored
+    """
     return osutils.pathjoin(bedding.config_dir(), "ssh_host_keys")
 
 
@@ -179,9 +220,35 @@ class ParamikoVendor(SSHVendor):
     """Vendor that uses paramiko."""
 
     def _hexify(self, s):
+        """Convert a byte string to uppercase hexadecimal representation.
+
+        Args:
+            s: Byte string to convert
+
+        Returns:
+            str: Uppercase hexadecimal representation of the input
+        """
         return hexlify(s).upper()
 
     def _connect(self, username, password, host, port):
+        """Establish a low-level SSH connection using paramiko.
+
+        Handles host key verification by checking against system known_hosts
+        and breezy's stored host keys. New host keys are automatically stored.
+
+        Args:
+            username: SSH username
+            password: SSH password or None
+            host: SSH hostname
+            port: SSH port number or None for default
+
+        Returns:
+            paramiko.Transport: Authenticated paramiko Transport object
+
+        Raises:
+            TransportError: If host key verification fails
+            ConnectionError: If connection or authentication fails
+        """
         global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
 
         from .paramiko import (
@@ -231,6 +298,20 @@ class ParamikoVendor(SSHVendor):
         return t
 
     def connect_sftp(self, username, password, host, port):
+        """Connect to an SFTP server using paramiko.
+
+        Args:
+            username: SSH username
+            password: SSH password or None
+            host: SSH hostname
+            port: SSH port number or None for default
+
+        Returns:
+            paramiko.SFTPClient: Connected SFTP client object
+
+        Raises:
+            ConnectionError: If connection or SFTP client creation fails
+        """
         t = self._connect(username, password, host, port)
         try:
             return t.open_sftp_client()
@@ -240,6 +321,21 @@ class ParamikoVendor(SSHVendor):
             )
 
     def connect_ssh(self, username, password, host, port, command):
+        """Connect to SSH server and execute a command.
+
+        Args:
+            username: SSH username
+            password: SSH password or None
+            host: SSH hostname
+            port: SSH port number or None for default
+            command: List of command arguments to execute
+
+        Returns:
+            _ParamikoSSHConnection: SSH connection object for command execution
+
+        Raises:
+            ConnectionError: If connection or command execution fails
+        """
         t = self._connect(username, password, host, port)
         try:
             channel = t.open_session()
@@ -256,12 +352,28 @@ class _ParamikoSSHConnection(SSHConnection):
     """An SSH connection via paramiko."""
 
     def __init__(self, channel):
+        """Initialize a paramiko SSH connection wrapper.
+
+        Args:
+            channel: Paramiko Channel object for the SSH session
+        """
         self.channel = channel
 
     def get_sock_or_pipes(self):
+        """Get socket or pipe information for the SSH connection.
+
+        Returns:
+            tuple: A tuple containing ("socket", channel) where channel
+                   is the paramiko Channel object
+        """
         return ("socket", self.channel)
 
     def close(self):
+        """Close the SSH connection channel.
+
+        Returns:
+            The result of closing the paramiko channel
+        """
         return self.channel.close()
 
 

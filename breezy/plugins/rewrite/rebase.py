@@ -14,7 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Rebase."""
+"""Git-style rebase functionality for Breezy.
+
+This module provides comprehensive support for rebasing operations in Breezy,
+allowing users to replay commits on top of different base revisions. It includes
+facilities for managing rebase state, creating rebase plans, and executing
+the actual rebase operations using various rewriting strategies.
+
+The main components include:
+- RebaseState classes for tracking rebase progress
+- Plan generation functions for determining rebase operations
+- Revision rewriters for applying changes with new parents
+- Utility functions for managing the rebase process
+"""
 
 import os
 
@@ -38,48 +50,80 @@ REVPROP_REBASE_OF = "rebase-of"
 
 
 class RebaseState:
+    """Abstract base class for managing rebase state.
+
+    This class defines the interface for storing and retrieving rebase state
+    information, including rebase plans and currently active revision tracking.
+    Subclasses must implement the actual storage mechanisms.
+    """
+
     def has_plan(self):
         """Check whether there is a rebase plan present.
 
-        :return: boolean
+        Returns:
+            bool: True if a rebase plan exists, False otherwise.
         """
         raise NotImplementedError(self.has_plan)
 
     def read_plan(self):
         """Read a rebase plan file.
 
-        :return: Tuple with last revision info and replace map.
+        Returns:
+            tuple: A tuple containing (last_revision_info, replace_map) where
+                last_revision_info is a (revno, revid) tuple and replace_map
+                is a dictionary mapping old revision IDs to (new_revid, new_parents).
         """
         raise NotImplementedError(self.read_plan)
 
     def write_plan(self, replace_map):
         """Write a rebase plan file.
 
-        :param replace_map: Replace map (old revid -> (new revid, new parents))
+        Args:
+            replace_map (dict): Replace map where keys are old revision IDs (bytes)
+                and values are (new_revid, new_parents) tuples.
         """
         raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
-        """Remove a rebase plan file."""
+        """Remove a rebase plan file.
+
+        This method cleans up the rebase plan storage, effectively ending
+        the rebase operation state tracking.
+        """
         raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
         """Write the id of the revision that is currently being rebased.
 
-        :param revid: Revision id to write
+        Args:
+            revid (bytes or None): Revision ID of the revision currently being
+                rebased, or None if no revision is currently active.
         """
         raise NotImplementedError(self.write_active_revid)
 
     def read_active_revid(self):
         """Read the id of the revision that is currently being rebased.
 
-        :return: Id of the revision that is being rebased.
+        Returns:
+            bytes or None: ID of the revision that is being rebased, or None
+                if no revision is currently active.
         """
         raise NotImplementedError(self.read_active_revid)
 
 
 class RebaseState1(RebaseState):
+    """File-based implementation of RebaseState using transport.
+
+    This class manages rebase state by storing information in files through
+    a transport mechanism, typically representing files in the working tree.
+    """
+
     def __init__(self, wt):
+        """Initialize rebase state for a working tree.
+
+        Args:
+            wt: Working tree that will contain the rebase state files.
+        """
         self.wt = wt
         self.transport = wt._transport
 
@@ -272,13 +316,24 @@ def generate_simple_plan(
 
 
 def generate_transpose_plan(ancestry, renames, graph, generate_revid):
-    """Create a rebase plan that replaces a bunch of revisions
-    in a revision graph.
+    """Create a rebase plan that replaces a bunch of revisions in a revision graph.
 
-    :param ancestry: Ancestry to consider
-    :param renames: Renames of revision
-    :param graph: Graph object
-    :param generate_revid: Function for creating new revision ids
+    This function creates a rebase plan for transposing revisions, which involves
+    replacing a set of revisions with new ones while maintaining the graph structure
+    and updating all dependent revisions accordingly.
+
+    Args:
+        ancestry: List of (revision_id, parent_ids) tuples representing the ancestry
+            to consider for the transpose operation.
+        renames: Dictionary mapping old revision IDs to new revision IDs that should
+            replace them.
+        graph: Graph object providing access to revision relationships.
+        generate_revid: Function that generates new revision IDs. Should accept
+            (old_revid, parents_tuple) and return a new revision ID.
+
+    Returns:
+        dict: Replace map mapping old revision IDs to (new_revid, new_parents) tuples
+            for all revisions that need to be rewritten.
     """
     replace_map = {}
     todo = []
@@ -347,8 +402,18 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
 def rebase_todo(repository, replace_map):
     """Figure out what revisions still need to be rebased.
 
-    :param repository: Repository that contains the revisions
-    :param replace_map: Replace map
+    This function examines a replace map and determines which revisions
+    still need to be rebased by checking if their new versions already
+    exist in the repository.
+
+    Args:
+        repository: Repository that contains the revisions to be checked.
+        replace_map: Dictionary mapping old revision IDs to (new_revid, new_parents)
+            tuples representing the rebase plan.
+
+    Yields:
+        bytes: Revision IDs that still need to be rebased (i.e., their new
+            versions don't exist in the repository yet).
     """
     for revid, parent_ids in replace_map.items():
         if not isinstance(parent_ids, tuple):
@@ -358,11 +423,18 @@ def rebase_todo(repository, replace_map):
 
 
 def rebase(repository, replace_map, revision_rewriter):
-    """Rebase a working tree according to the specified map.
+    """Rebase revisions according to the specified replacement map.
 
-    :param repository: Repository that contains the revisions
-    :param replace_map: Dictionary with revisions to (optionally) rewrite
-    :param merge_fn: Function for replaying a revision
+    This function performs the actual rebase operation by processing revisions
+    in topological order and applying the specified replacements using the
+    provided revision rewriter.
+
+    Args:
+        repository: Repository that contains the revisions to be rebased.
+        replace_map: Dictionary mapping old revision IDs to (new_revid, new_parents)
+            tuples that specify how each revision should be rewritten.
+        revision_rewriter: Callable that handles rewriting individual revisions.
+            Should accept (old_revid, new_revid, new_parents) parameters.
     """
     # Figure out the dependencies
     graph = repository.get_graph()
@@ -383,6 +455,19 @@ def rebase(repository, replace_map, revision_rewriter):
 
 
 def wrap_iter_changes(old_iter_changes, map_tree):
+    """Wrap an iter_changes iterator to map file IDs through a MapTree.
+
+    This function takes an iterator of inventory changes and modifies the
+    file IDs and parent IDs according to a mapping tree, preserving all
+    other change information.
+
+    Args:
+        old_iter_changes: Iterator of InventoryTreeChange objects.
+        map_tree: MapTree object that provides file ID mapping.
+
+    Yields:
+        InventoryTreeChange: Modified change objects with mapped file IDs.
+    """
     for change in old_iter_changes:
         if change.parent_id[0] is not None:
             old_parent = map_tree.new_id(change.parent_id[0])
@@ -405,16 +490,37 @@ def wrap_iter_changes(old_iter_changes, map_tree):
 
 
 class CommitBuilderRevisionRewriter:
-    """Revision rewriter that use commit builder.
+    """Revision rewriter that uses commit builder to create new revisions.
 
-    :ivar repository: Repository in which the revision is present.
+    This class rewrites revisions by creating new commits with the same content
+    but different parent revisions. It uses the repository's commit builder API
+    to efficiently create the new revisions while optionally mapping file IDs.
+
+    Attributes:
+        repository: Repository in which the revisions are present.
+        map_ids (bool): Whether to map file IDs when rewriting revisions.
     """
 
     def __init__(self, repository, map_ids=True):
+        """Initialize the revision rewriter with a repository.
+
+        Args:
+            repository: Repository containing the revisions to rewrite.
+            map_ids (bool, optional): Whether to map file IDs when rewriting.
+                Defaults to True.
+        """
         self.repository = repository
         self.map_ids = map_ids
 
     def _get_present_revisions(self, revids):
+        """Filter a list of revision IDs to only include those present in repository.
+
+        Args:
+            revids: Iterable of revision IDs to filter.
+
+        Returns:
+            tuple: Tuple containing only revision IDs that exist in the repository.
+        """
         return tuple([p for p in revids if self.repository.has_revision(p)])
 
     def __call__(self, oldrevid, newrevid, new_parents):
@@ -487,8 +593,21 @@ class CommitBuilderRevisionRewriter:
 
 
 class WorkingTreeRevisionRewriter:
+    """Revision rewriter that replays commits in a working tree.
+
+    This class handles rewriting revisions by replaying them in a working tree,
+    using merge operations to apply changes with different parent revisions.
+    """
+
     def __init__(self, wt, state, merge_type=None):
-        """:param wt: Working tree in which to do the replays."""
+        """Initialize the working tree revision rewriter.
+
+        Args:
+            wt: Working tree in which to replay the revisions.
+            state: RebaseState object for tracking rebase progress.
+            merge_type (optional): Merger class to use for merges. If None,
+                defaults to Merge3Merger.
+        """
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
         self.state = state
@@ -598,11 +717,15 @@ class WorkingTreeRevisionRewriter:
 
 
 def complete_revert(wt, newparents):
-    """Simple helper that reverts to specified new parents and makes sure none
-    of the extra files are left around.
+    """Complete revert to specified parents, cleaning up extra files.
 
-    :param wt: Working tree to use for rebase
-    :param newparents: New parents of the working tree
+    This function performs a complete revert of the working tree to the specified
+    parent revisions, ensuring that no leftover files from the previous state
+    remain in the working directory.
+
+    Args:
+        wt: Working tree to revert.
+        newparents: List of revision IDs to set as the new parent revisions.
     """
     newtree = wt.branch.repository.revision_tree(newparents[0])
     delta = wt.changes_from(newtree)
@@ -622,10 +745,19 @@ def complete_revert(wt, newparents):
 
 
 class ReplaySnapshotError(BzrError):
-    """Raised when replaying a snapshot failed."""
+    """Raised when replaying a snapshot failed.
+
+    This exception is raised when there are problems during the process
+    of replaying a revision snapshot during rebase operations.
+    """
 
     _fmt = """Replaying the snapshot failed: %(msg)s."""
 
     def __init__(self, msg):
+        """Initialize the error with a descriptive message.
+
+        Args:
+            msg (str): Description of what went wrong during snapshot replay.
+        """
         BzrError.__init__(self)
         self.msg = msg
