@@ -229,6 +229,18 @@ def tree_files_for_add(file_list):
 
 
 def _get_one_revision(command_name, revisions):
+    """Get exactly one revision from a revision list.
+
+    Args:
+        command_name: Name of the command for error messages.
+        revisions: List of revisions or None.
+
+    Returns:
+        The single revision from the list, or None if revisions is None.
+
+    Raises:
+        CommandError: If revisions list doesn't contain exactly one revision.
+    """
     if revisions is None:
         return None
     if len(revisions) != 1:
@@ -516,6 +528,17 @@ class cmd_remove_tree(Command):
     ]
 
     def run(self, location_list, force=False):
+        """Execute the remove-tree command.
+
+        Args:
+            location_list: List of locations to remove working trees from.
+                          If empty, defaults to current directory.
+            force: If True, remove working tree even if it has uncommitted
+                  or shelved changes.
+
+        Raises:
+            CommandError: If working tree cannot be safely removed.
+        """
         if not location_list:
             location_list = ["."]
 
@@ -790,6 +813,21 @@ class cmd_add(Command):
         verbose=False,
         file_ids_from=None,
     ):
+        """Execute the add command to add files to version control.
+
+        Args:
+            file_list: List of files/directories to add. If empty, adds
+                      all files in current directory recursively.
+            no_recurse: If True, don't recursively add directory contents.
+            dry_run: If True, show what would be done without making changes.
+            verbose: If True, show additional information during operation.
+            file_ids_from: Tree to lookup file ids from for compatibility.
+
+        Note:
+            Files larger than add.maximum_file_size configuration option
+            will be skipped in recursive mode, but explicitly named files
+            are never skipped due to size.
+        """
         import breezy.add
 
         from .workingtree import WorkingTree
@@ -853,6 +891,16 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_with_parents(cls, wt, relpath):
+        """Add a file and its parent directories to version control.
+
+        Args:
+            wt: Working tree to add the file to.
+            relpath: Relative path of the file to add.
+
+        Note:
+            If the file is already versioned, this method does nothing.
+            Parent directories are recursively added if not already versioned.
+        """
         if wt.is_versioned(relpath):
             return
         cls.add_file_with_parents(wt, osutils.dirname(relpath))
@@ -860,9 +908,26 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_single(cls, wt, relpath):
+        """Add a single file to version control.
+
+        Args:
+            wt: Working tree to add the file to.
+            relpath: Relative path of the file to add.
+        """
         wt.add([relpath])
 
     def run(self, dir_list, parents=False):
+        """Execute the mkdir command to create versioned directories.
+
+        Args:
+            dir_list: List of directory names to create and add to version control.
+            parents: If True, create parent directories as needed and don't error
+                    if directories already exist.
+
+        Note:
+            This is equivalent to creating the directory with mkdir and then
+            adding it to version control.
+        """
         from .workingtree import WorkingTree
 
         add_file = self.add_file_with_parents if parents else self.add_file_single
@@ -2858,6 +2923,17 @@ class cmd_root(Command):
 
 
 def _parse_limit(limitstring):
+    """Parse a limit string into an integer.
+
+    Args:
+        limitstring: String representation of a limit value.
+
+    Returns:
+        Integer value of the limit.
+
+    Raises:
+        CommandError: If limitstring cannot be parsed as an integer.
+    """
     try:
         return int(limitstring)
     except ValueError as exc:
@@ -2866,6 +2942,17 @@ def _parse_limit(limitstring):
 
 
 def _parse_levels(s):
+    """Parse a levels string into an integer.
+
+    Args:
+        s: String representation of a levels value.
+
+    Returns:
+        Integer value of the levels.
+
+    Raises:
+        CommandError: If s cannot be parsed as an integer.
+    """
     try:
         return int(s)
     except ValueError as exc:
@@ -3329,6 +3416,15 @@ def _get_revision_range(revisionspec_list, branch, command_name):
 
 
 def _revision_range_to_revid_range(revision_range):
+    """Convert a revision range to a revision ID range.
+
+    Args:
+        revision_range: Tuple of (start_revision, end_revision), where each
+            revision may be None or a revision object with rev_id attribute.
+
+    Returns:
+        Tuple of (start_rev_id, end_rev_id) where each may be None.
+    """
     rev_id1 = None
     rev_id2 = None
     if revision_range[0] is not None:
@@ -3339,6 +3435,19 @@ def _revision_range_to_revid_range(revision_range):
 
 
 def get_log_format(long=False, short=False, line=False, default="long"):
+    """Determine log format based on boolean flags.
+
+    Args:
+        long: If True, use 'long' format.
+        short: If True, use 'short' format.
+        line: If True, use 'line' format.
+        default: Default format to use if no flags are set.
+
+    Returns:
+        String indicating the selected log format. Format flags are
+        processed in order: long, short, then line. Later flags override
+        earlier ones.
+    """
     log_format = default
     if long:
         log_format = "long"
@@ -8059,6 +8168,16 @@ class cmd_resolve_location(Command):
 
 
 def _register_lazy_builtins():
+    """Register lazy builtin commands from other modules.
+
+    This function registers commands that are implemented in separate modules
+    to be loaded on demand. Called at startup and should be only called once.
+
+    Note:
+        This lazy loading approach helps reduce startup time by deferring
+        the import of command implementation modules until they are actually
+        needed.
+    """
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
     for name, aliases, module_name in [
