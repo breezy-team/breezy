@@ -1179,6 +1179,23 @@ class cmd_mv(Command):
         self._run(tree, names_list, rel_names, after)
 
     def run_auto(self, names_list, after, dry_run):
+        """Automatically detect and perform file renames.
+
+        Args:
+            names_list: Optional list of paths to consider for rename detection.
+                       If specified, must contain exactly one path.
+            after: If True, record that files have already been renamed.
+                  Cannot be used with --auto.
+            dry_run: If True, show what would be renamed without making changes.
+
+        Raises:
+            CommandError: If more than one path specified with --auto or if
+                         --after is used with --auto.
+
+        Note:
+            This method uses heuristics to detect file renames that have already
+            happened in the filesystem but haven't been recorded in version control.
+        """
         from .rename_map import RenameMap
         from .workingtree import WorkingTree
 
@@ -4168,6 +4185,23 @@ class cmd_commit(Command):
     aliases = ["ci", "checkin"]
 
     def _iter_bug_urls(self, bugs, branch, status):
+        """Iterate over bug URLs from bug identifiers.
+
+        Args:
+            bugs: List of bug identifiers in format 'tracker:id' or just 'id'.
+            branch: Branch object to get bug tracker configuration from.
+            status: Bug status (e.g., FIXED, RELATED) to associate with URLs.
+
+        Yields:
+            Tuples of (bug_url, status) for each bug.
+
+        Raises:
+            CommandError: If bug format is invalid or tracker is unknown.
+
+        Note:
+            If no tracker is specified in bug ID, uses the default bug tracker
+            from branch configuration.
+        """
         default_bugtracker = None
         # Configure the properties for bug fixing attributes.
         for bug in bugs:
@@ -4623,6 +4657,11 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
+        """Print the branch nickname to output.
+
+        Args:
+            branch: Branch object whose nickname should be printed.
+        """
         self.outf.write(f"{branch.nick}\n")
 
 
@@ -4665,6 +4704,17 @@ class cmd_alias(Command):
                 self.set_alias(name[:equal_pos], name[equal_pos + 1 :])
 
     def remove_alias(self, alias_name):
+        """Remove an alias from the global configuration.
+
+        Args:
+            alias_name: Name of the alias to remove.
+
+        Raises:
+            CommandError: If alias_name is None.
+
+        Note:
+            If the alias doesn't exist, the operation will still succeed.
+        """
         if alias_name is None:
             raise errors.CommandError(
                 gettext("brz alias --remove expects an alias to remove.")
@@ -4683,6 +4733,14 @@ class cmd_alias(Command):
 
     @display_command
     def print_alias(self, alias_name):
+        """Print a specific alias definition.
+
+        Args:
+            alias_name: Name of the alias to display.
+
+        Note:
+            If the alias doesn't exist, prints 'not found' message.
+        """
         from .commands import get_alias
 
         alias = get_alias(alias_name)
@@ -4698,7 +4756,22 @@ class cmd_alias(Command):
 
 
 def get_transport_type(typestring):
-    """Parse and return a transport specifier."""
+    """Parse and return a transport specifier.
+
+    Args:
+        typestring: String identifier for the transport type.
+                   Supported values: 'sftp', 'memory', 'fakenfs'.
+
+    Returns:
+        Transport server class corresponding to the specified type.
+
+    Raises:
+        CommandError: If typestring is not a known transport type.
+
+    Note:
+        This function is primarily used for testing purposes to specify
+        alternative transport implementations.
+    """
     if typestring == "sftp":
         from .tests import stub_sftp
 
@@ -5259,6 +5332,18 @@ class cmd_merge(Command):
             return self._do_merge(merger, change_reporter, allow_pending, verified)
 
     def _get_preview(self, merger):
+        """Generate a preview tree showing the merge result.
+
+        Args:
+            merger: Merger object to create preview from.
+
+        Returns:
+            Preview tree object showing what the merge would produce.
+
+        Note:
+            The preview transform is managed by the context manager and
+            will be cleaned up automatically.
+        """
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
         self.enter_context(tt)
@@ -5266,6 +5351,16 @@ class cmd_merge(Command):
         return result_tree
 
     def _do_preview(self, merger):
+        """Display a diff preview of the merge without applying it.
+
+        Args:
+            merger: Merger object to preview.
+
+        Note:
+            Shows the differences between the current tree and what the
+            merge would produce, allowing users to review changes before
+            committing to the merge.
+        """
         from .diff import show_diff_trees
 
         result_tree = self._get_preview(merger)
@@ -5280,6 +5375,20 @@ class cmd_merge(Command):
         )
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
+        """Perform the actual merge operation.
+
+        Args:
+            merger: Merger object to execute.
+            change_reporter: Reporter for merge progress.
+            allow_pending: If True, mark merge as pending if not committed.
+            verified: Verification status from bundle/merge directive.
+
+        Returns:
+            0 if merge succeeded without conflicts, 1 if conflicts occurred.
+
+        Note:
+            If verified is 'failed', a warning is issued but merge continues.
+        """
         merger.change_reporter = change_reporter
         conflict_count = len(merger.do_merge())
         if allow_pending:
@@ -5315,6 +5424,22 @@ class cmd_merge(Command):
             shelver.finalize()
 
     def sanity_check_merger(self, merger):
+        """Validate merger configuration for compatibility.
+
+        Args:
+            merger: Merger object to validate.
+
+        Raises:
+            CommandError: If merger configuration is invalid, such as:
+                - show_base used with incompatible merge type
+                - reprocess requested for merge type that doesn't support it
+                - both conflict reduction and show base requested
+                - file merge plan required but not supported by tree format
+
+        Note:
+            This method modifies merger.reprocess if not explicitly set,
+            choosing appropriate default based on merger capabilities.
+        """
         if merger.show_base and merger.merge_type is not _mod_merge.Merge3Merger:
             raise errors.CommandError(
                 gettext("Show-base is not supported for this merge type. %s")
@@ -5782,6 +5907,11 @@ class cmd_missing(Command):
         from .missing import find_unmerged, iter_log_revisions
 
         def message(s):
+            """Write message to output if not in quiet mode.
+
+            Args:
+                s: String message to write.
+            """
             if not is_quiet():
                 self.outf.write(s)
 
@@ -7031,6 +7161,20 @@ class cmd_tags(Command):
             self.outf.write("%-20s %s\n" % (tag, revspec))
 
     def _tags_for_range(self, branch, revision):
+        """Get tags within a specified revision range.
+
+        Args:
+            branch: Branch object to get tags from.
+            revision: Revision specification defining the range.
+
+        Returns:
+            List of (tag_name, revision_id) tuples for tags that point to
+            revisions within the specified range.
+
+        Note:
+            Returns empty list if the range is invalid (e.g., if the start
+            revision is an ancestor of the end revision).
+        """
         rev1, rev2 = _get_revision_range(revision, branch, self.name())
         revid1, revid2 = rev1.rev_id, rev2.rev_id
         # _get_revision_range will always set revid2 if it's not specified.
@@ -7630,6 +7774,18 @@ class cmd_shelve(Command):
             return 0
 
     def run_for_list(self, directory=None):
+        """List all shelved changes in the working tree.
+
+        Args:
+            directory: Directory containing the working tree to list shelves for.
+                      Defaults to current directory.
+
+        Returns:
+            0 on success.
+
+        Note:
+            Displays shelf ID, number of hunks, and message for each shelf.
+        """
         from .workingtree import WorkingTree
 
         if directory is None:
@@ -7779,6 +7935,16 @@ class cmd_reference(Command):
                 tree.set_reference_info(path, location)
 
     def _display_reference_info(self, tree, branch, info):
+        """Display reference information for nested trees.
+
+        Args:
+            tree: Tree object containing the references.
+            branch: Branch object (currently unused).
+            info: List of (path, location) tuples representing nested tree references.
+
+        Note:
+            Outputs sorted list of paths and their corresponding branch locations.
+        """
         ref_list = []
         for path, location in info:
             ref_list.append((path, location))
