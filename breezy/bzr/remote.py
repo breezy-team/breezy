@@ -97,18 +97,58 @@ class _RpcHelper:
     """Mixin class that helps with issuing RPCs."""
 
     def _call(self, method, *args, **err_context):
+        """Make a remote procedure call to the smart server.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            *args: Arguments to pass to the remote method.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            The result of the remote procedure call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_expecting_body(self, method, *args, **err_context):
+        """Make a remote procedure call expecting a response body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            *args: Arguments to pass to the remote method.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            Tuple of (response_args, response_body) from the remote call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_expecting_body(method, *args)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_with_body_bytes(self, method, args, body_bytes, **err_context):
+        """Make a remote procedure call with a request body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            args: Arguments to pass to the remote method.
+            body_bytes: The body data to send with the request.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            The result of the remote procedure call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_with_body_bytes(method, args, body_bytes)
         except errors.ErrorFromSmartServer as err:
@@ -117,6 +157,20 @@ class _RpcHelper:
     def _call_with_body_bytes_expecting_body(
         self, method, args, body_bytes, **err_context
     ):
+        """Make a remote procedure call with request body, expecting response body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            args: Arguments to pass to the remote method.
+            body_bytes: The body data to send with the request.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            Tuple of (response_args, response_body) from the remote call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_with_body_bytes_expecting_body(
                 method, args, body_bytes
@@ -147,6 +201,11 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
     colocated_branches = False
 
     def __init__(self):
+        """Initialize a RemoteBzrDirFormat instance.
+
+        Creates a new remote bzrdir format that can be used to access
+        bzr directories over a smart server connection.
+        """
         _mod_bzrdir.BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
@@ -155,9 +214,20 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         self._network_name = None
 
     def __repr__(self):
+        """Return a string representation of this format.
+
+        Returns:
+            A string showing the class name and network name.
+        """
         return f"{self.__class__.__name__}(_network_name={self._network_name!r})"
 
     def get_format_description(self):
+        """Get a human-readable description of this format.
+
+        Returns:
+            A string describing the format, prefixed with 'Remote: ' if
+            a network name is available, otherwise 'bzr remote bzrdir'.
+        """
         if self._network_name:
             try:
                 real_format = controldir.network_format_registry.get(self._network_name)
@@ -168,15 +238,39 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return "bzr remote bzrdir"
 
     def get_format_string(self):
+        """Get the format string for this format.
+
+        Raises:
+            NotImplementedError: Remote formats don't have format strings.
+        """
         raise NotImplementedError(self.get_format_string)
 
     def network_name(self):
+        """Get the network name for this format.
+
+        Returns:
+            The network name string if set.
+
+        Raises:
+            AssertionError: If no network name has been set.
+        """
         if self._network_name:
             return self._network_name
         else:
             raise AssertionError("No network name set.")
 
     def initialize_on_transport(self, transport):
+        """Initialize a new bzrdir on the given transport.
+
+        Args:
+            transport: The transport to initialize the bzrdir on.
+
+        Returns:
+            A RemoteBzrDir instance representing the newly initialized directory.
+
+        Raises:
+            SmartProtocolError: If the server returns an unexpected response.
+        """
         try:
             # hand off the request to the smart server
             client_medium = transport.get_smart_medium()
@@ -197,6 +291,18 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return RemoteBzrDir(transport, format)
 
     def parse_NoneTrueFalse(self, arg):
+        """Parse a bytes argument into None, True, or False.
+
+        Args:
+            arg: Bytes object that should be empty, b'True', or b'False'.
+
+        Returns:
+            None if arg is empty/falsy, True if arg is b'True',
+            False if arg is b'False'.
+
+        Raises:
+            AssertionError: If arg is not a recognized value.
+        """
         if not arg:
             return None
         if arg == b"False":
@@ -206,6 +312,15 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         raise AssertionError(f"invalid arg {arg!r}")
 
     def _serialize_NoneTrueFalse(self, arg):
+        """Serialize None, True, or False into bytes format.
+
+        Args:
+            arg: None, True, or False value to serialize.
+
+        Returns:
+            b'False' if arg is False, b'True' if arg is truthy,
+            empty bytes if arg is None.
+        """
         if arg is False:
             return b"False"
         if arg:
@@ -213,6 +328,14 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return b""
 
     def _serialize_NoneString(self, arg):
+        """Serialize a None or string value into bytes format.
+
+        Args:
+            arg: None or bytes/string value to serialize.
+
+        Returns:
+            The original arg if truthy, otherwise empty bytes.
+        """
         return arg or b""
 
     def initialize_on_transport_ex(
@@ -227,6 +350,22 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         make_working_trees=None,
         shared_repo=False,
     ):
+        """Initialize a bzrdir with advanced options.
+
+        Args:
+            transport: The transport to initialize on.
+            use_existing_dir: If True, use an existing directory.
+            create_prefix: If True, create parent directories as needed.
+            force_new_repo: If True, force creation of a new repository.
+            stacked_on: URL to stack the new branch on.
+            stack_on_pwd: Path to stack on relative to pwd.
+            repo_format_name: Name of repository format to use.
+            make_working_trees: Whether repository should make working trees.
+            shared_repo: If True, create a shared repository.
+
+        Returns:
+            Tuple of (repository, bzrdir, require_stacking, repository_policy).
+        """
         try:
             # hand off the request to the smart server
             client_medium = transport.get_smart_medium()
@@ -294,6 +433,24 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         make_working_trees,
         shared_repo,
     ):
+        """Make the RPC call to initialize a bzrdir with extended options.
+
+        Args:
+            client: The smart client to use for the RPC call.
+            path: Path on the server to initialize.
+            transport: The transport being used.
+            use_existing_dir: Whether to use an existing directory.
+            create_prefix: Whether to create parent directories.
+            force_new_repo: Whether to force creation of a new repository.
+            stacked_on: URL to stack on.
+            stack_on_pwd: Path to stack on relative to pwd.
+            repo_format_name: Repository format name to use.
+            make_working_trees: Whether repository should make working trees.
+            shared_repo: Whether to create a shared repository.
+
+        Returns:
+            Tuple of (repository, bzrdir, require_stacking, repository_policy).
+        """
         args = []
         args.append(self._serialize_NoneTrueFalse(use_existing_dir))
         args.append(self._serialize_NoneTrueFalse(create_prefix))
@@ -388,14 +545,39 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
+        """Open a bzrdir on the given transport.
+
+        Args:
+            transport: The transport to open the bzrdir on.
+
+        Returns:
+            A RemoteBzrDir instance.
+        """
         return RemoteBzrDir(transport, self)
 
     def __eq__(self, other):
+        """Check if this format is equal to another format.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if the formats are equivalent, False otherwise.
+        """
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
 
     def __return_repository_format(self):
+        """Return the repository format for this bzrdir format.
+
+        Always returns a RemoteRepositoryFormat object, but if a specific
+        bzr repository format has been requested, configures the
+        RemoteRepositoryFormat to use that for initialization.
+
+        Returns:
+            A RemoteRepositoryFormat instance.
+        """
         # Always return a RemoteRepositoryFormat object, but if a specific bzr
         # repository format has been asked for, tell the RemoteRepositoryFormat
         # that it should use that for init() etc.
@@ -412,6 +594,12 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return result
 
     def get_branch_format(self):
+        """Get the branch format for this bzrdir format.
+
+        Returns:
+            A RemoteBranchFormat instance, wrapping the underlying format
+            if necessary.
+        """
         result = _mod_bzrdir.BzrDirMetaFormat1.get_branch_format(self)
         if not isinstance(result, RemoteBranchFormat):
             new_result = RemoteBranchFormat()
@@ -433,24 +621,50 @@ class RemoteControlStore(_mod_config.IniFileStore):
     """
 
     def __init__(self, bzrdir):
+        """Initialize a RemoteControlStore.
+
+        Args:
+            bzrdir: The bzrdir this store is associated with.
+        """
         super().__init__()
         self.controldir = bzrdir
         self._real_store = None
 
     def lock_write(self, token=None):
+        """Lock the store for writing.
+
+        Args:
+            token: Optional lock token for resuming an existing lock.
+
+        Returns:
+            A lock token that can be used to resume the lock later.
+        """
         self._ensure_real()
         return self._real_store.lock_write(token)
 
     def unlock(self):
+        """Unlock the store.
+
+        Returns:
+            The result of unlocking the underlying store.
+        """
         self._ensure_real()
         return self._real_store.unlock()
 
     def save(self):
+        """Save the configuration store.
+
+        Ensures the store is locked during the save operation.
+        """
         with self.lock_write():
             # We need to be able to override the undecorated implementation
             self.save_without_locking()
 
     def save_without_locking(self):
+        """Save the configuration store without acquiring a lock.
+
+        Should only be called when the store is already locked.
+        """
         super().save()
 
     def _ensure_real(self):
@@ -459,6 +673,11 @@ class RemoteControlStore(_mod_config.IniFileStore):
             self._real_store = _mod_config.ControlStore(self.controldir)
 
     def external_url(self):
+        """Get the external URL for this configuration store.
+
+        Returns:
+            The URL where the control.conf file can be accessed.
+        """
         return urlutils.join(self.branch.user_url, "control.conf")
 
     def _load_content(self):
@@ -487,10 +706,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     @property
     def user_transport(self):
+        """Get the user transport for this bzrdir.
+
+        Returns:
+            The root transport.
+        """
         return self.root_transport
 
     @property
     def control_transport(self):
+        """Get the control transport for this bzrdir.
+
+        Returns:
+            The control transport.
+        """
         return self.transport
 
     def __init__(self, transport, format, _client=None, _force_probe=False):
@@ -519,9 +748,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         self._probe_bzrdir()
 
     def __repr__(self):
+        """Return a string representation of this RemoteBzrDir.
+
+        Returns:
+            A string showing the class name and client.
+        """
         return f"{self.__class__.__name__}({self._client!r})"
 
     def _probe_bzrdir(self):
+        """Probe the remote bzrdir to determine its capabilities.
+
+        Uses the appropriate RPC method based on the server's capabilities.
+        """
         medium = self._client._medium
         path = self._path_for_remote_call(self._client)
         if medium._is_remote_before((2, 1)):
@@ -535,6 +773,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._rpc_open(path)
 
     def _rpc_open_2_1(self, path):
+        """Open a bzrdir using the BzrDir.open_2.1 RPC method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Raises:
+            NotBranchError: If the path is not a branch.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         response = self._call(b"BzrDir.open_2.1", path)
         if response == (b"no",):
             raise errors.NotBranchError(path=self.root_transport.base)
@@ -549,6 +796,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _rpc_open(self, path):
+        """Open a bzrdir using the legacy BzrDir.open RPC method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Raises:
+            NotBranchError: If the path is not a branch.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         response = self._call(b"BzrDir.open", path)
         if response not in [(b"yes",), (b"no",)]:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -573,9 +829,19 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._format._network_name = self._real_bzrdir._format.network_name()
 
     def _translate_error(self, err, **context):
+        """Translate an ErrorFromSmartServer into a more specific error.
+
+        Args:
+            err: The ErrorFromSmartServer to translate.
+            **context: Additional context for error translation.
+        """
         _translate_error(err, bzrdir=self, **context)
 
     def break_lock(self):
+        """Break any existing locks on this bzrdir.
+
+        Clears the branch cache to prevent aliasing problems.
+        """
         # Prevent aliasing problems in the next_open_branch_result cache.
         # See create_branch for rationale.
         self._next_open_branch_result = None
@@ -1023,14 +1289,39 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return base_url
 
     def get_branch_transport(self, branch_format, name=None):
+        """Get the transport for accessing branch data.
+
+        Args:
+            branch_format: The branch format to get transport for.
+            name: Optional name of the branch.
+
+        Returns:
+            A transport for accessing the branch data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_branch_transport(branch_format, name=name)
 
     def get_repository_transport(self, repository_format):
+        """Get the transport for accessing repository data.
+
+        Args:
+            repository_format: The repository format to get transport for.
+
+        Returns:
+            A transport for accessing the repository data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_repository_transport(repository_format)
 
     def get_workingtree_transport(self, workingtree_format):
+        """Get the transport for accessing working tree data.
+
+        Args:
+            workingtree_format: The working tree format to get transport for.
+
+        Returns:
+            A transport for accessing the working tree data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_workingtree_transport(workingtree_format)
 
@@ -1762,6 +2053,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return self._real_repository.is_in_write_group()
 
     def is_locked(self):
+        """Check if the repository is locked.
+
+        Returns:
+            True if the repository has any active locks, False otherwise.
+        """
         return self._lock_count >= 1
 
     def is_shared(self):
@@ -1773,9 +2069,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return response[0] == b"yes"
 
     def is_write_locked(self):
+        """Check if the repository is write locked.
+
+        Returns:
+            True if the repository is locked for writing, False otherwise.
+        """
         return self._lock_mode == "w"
 
     def _warn_if_deprecated(self, branch=None):
+        """Warn if this repository format is deprecated.
+
+        Args:
+            branch: Optional branch to check for deprecation.
+
+        Note:
+            For remote repositories, deprecation checking is delegated
+            to the real repository or done remotely.
+        """
         # If we have a real repository, the check will be done there, if we
         # don't the check will be done remotely.
         pass
@@ -1977,6 +2287,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             repo.unlock()
 
     def break_lock(self):
+        """Break any existing locks on this repository.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         # should hand off to the network
         path = self.controldir._path_for_remote_call(self._client)
         try:
@@ -4898,6 +5213,16 @@ error_translators.register(
 
 
 def _translate_nobranch_error(err, find, get_path):
+    """Translate a 'nobranch' error from the smart server.
+
+    Args:
+        err: The ErrorFromSmartServer to translate.
+        find: Function to find context objects.
+        get_path: Function to get the path.
+
+    Returns:
+        A NotBranchError with appropriate path and detail.
+    """
     extra = err.error_args[0].decode("utf-8") if len(err.error_args) >= 1 else None
     return errors.NotBranchError(path=find("bzrdir").root_transport.base, detail=extra)
 
