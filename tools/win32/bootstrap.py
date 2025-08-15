@@ -46,6 +46,15 @@ except ModuleNotFoundError:
 if sys.platform == "win32":
 
     def quote(c):
+        """Quote a command argument for Windows if it contains spaces.
+
+        Args:
+            c (str): The command argument to potentially quote.
+
+        Returns:
+            str: The argument quoted with double quotes if it contains spaces,
+                otherwise the original argument.
+        """
         if " " in c:
             return f'"{c}"'  # work around spawn lamosity on windows
         else:
@@ -53,6 +62,14 @@ if sys.platform == "win32":
 else:
 
     def quote(c):
+        """Quote a command argument for non-Windows platforms.
+
+        Args:
+            c (str): The command argument to quote.
+
+        Returns:
+            str: The original argument unchanged (no quoting needed on Unix-like systems).
+        """
         return c
 
 
