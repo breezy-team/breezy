@@ -1607,6 +1607,16 @@ class RemoteInventoryTree(InventoryRevisionTree):
         force_mtime=None,
         recurse_nested=False,
     ):
+        """Create an archive of this tree.
+
+        Args:
+            format: Archive format to create.
+            name: Name/path of archive to create.
+            root: Root directory in archive.
+            subdir: Subdirectory to archive.
+            force_mtime: Force modification time for entries.
+            recurse_nested: Recurse into nested trees.
+        """
         if recurse_nested:
             # For now, just fall back to non-HPSS mode if nested trees are involved.
             return super().archive(
@@ -2070,10 +2080,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
     @property
     def user_transport(self):
+        """Get the user transport for this repository."""
         return self.controldir.user_transport
 
     @property
     def control_transport(self):
+        """Get the control transport for this repository."""
         # XXX: Normally you shouldn't directly get at the remote repository
         # transport, but I'm not sure it's worth making this method
         # optional -- mbp 2010-04-21
@@ -2898,6 +2910,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
+        """Get the serializer format for this repository."""
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(
