@@ -3050,6 +3050,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def add_revision(self, revision_id, rev, inv=None):
+        """Add a revision to the repository.
+
+        Args:
+            revision_id: The revision ID to add.
+            rev: The revision object to add.
+            inv: Optional inventory for the revision.
+        """
         _mod_revision.check_not_reserved_id(revision_id)
         key = (revision_id,)
         # check inventory present
@@ -3253,6 +3260,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return self.get_revisions([revision_id])[0]
 
     def get_transaction(self):
+        """Get the current transaction for this repository."""
         self._ensure_real()
         return self._real_repository.get_transaction()
 
@@ -3332,6 +3340,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def fetch(
         self, source, revision_id=None, find_ghosts=False, fetch_spec=None, lossy=False
     ):
+        """Fetch revisions from another repository.
+
+        Args:
+            source: Source repository to fetch from.
+            revision_id: Specific revision to fetch.
+            find_ghosts: Whether to find ghost revisions.
+            fetch_spec: Specification of what to fetch.
+            lossy: Whether lossy fetch is allowed.
+        """
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
