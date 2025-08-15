@@ -2092,6 +2092,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self.controldir.get_repository_transport(None)
 
     def __str__(self):
+        """Return string representation of this repository."""
         return f"{self.__class__.__name__}({self.base})"
 
     __repr__ = __str__
@@ -3009,6 +3010,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return _mod_repository.InterRepository._assert_same_model(self, repository)
 
     def add_inventory(self, revid, inv, parents):
+        """Add an inventory to the repository.
+
+        Args:
+            revid: Revision ID for the inventory.
+            inv: Inventory to add.
+            parents: Parent inventories.
+        """
         self._ensure_real()
         return self._real_repository.add_inventory(revid, inv, parents)
 
@@ -3021,6 +3029,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         basis_inv=None,
         propagate_caches=False,
     ):
+        """Add an inventory by delta to the repository.
+
+        Args:
+            basis_revision_id: Revision ID of basis inventory.
+            delta: Inventory delta to apply.
+            new_revision_id: Revision ID for new inventory.
+            parents: Parent revision IDs.
+            basis_inv: Optional basis inventory.
+            propagate_caches: Whether to propagate caches.
+        """
         self._ensure_real()
         return self._real_repository.add_inventory_by_delta(
             basis_revision_id,
