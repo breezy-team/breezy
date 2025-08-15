@@ -4189,6 +4189,20 @@ class cmd_export(Command):
         directory=".",
         recurse_nested=False,
     ):
+        """Execute the export command.
+
+        Args:
+            dest: Destination directory or archive file.
+            branch_or_subdir: Branch or subdirectory to export from.
+            revision: Specific revision to export.
+            format: Export format (tar, tgz, tbz2, zip, dir).
+            root: Root directory name inside archive.
+            filters: Apply content filters during export.
+            per_file_timestamps: Set file timestamps to last change.
+            uncommitted: Export working tree instead of last revision.
+            directory: Directory containing the branch.
+            recurse_nested: Include nested tree contents.
+        """
         from .export import export, get_root_name, guess_format
 
         if branch_or_subdir is None:
@@ -4275,6 +4289,15 @@ class cmd_cat(Command):
         filters=False,
         directory=None,
     ):
+        """Execute the cat command.
+
+        Args:
+            filename: File to display contents of.
+            revision: Specific revision to get file from.
+            name_from_revision: Use path name from the old tree.
+            filters: Apply content filters to display.
+            directory: Directory containing the branch.
+        """
         if revision is not None and len(revision) != 1:
             raise errors.CommandError(
                 gettext("brz cat --revision takes exactly one revision specifier")
@@ -4339,6 +4362,7 @@ class cmd_local_time_offset(Command):
 
     @display_command
     def run(self):
+        """Execute the local-time-offset command."""
         self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
@@ -4543,6 +4567,24 @@ class cmd_commit(Command):
         commit_time=None,
         lossy=False,
     ):
+        """Execute the commit command.
+
+        Args:
+            message: Commit message to use.
+            file: File containing the commit message.
+            verbose: Show commit progress details.
+            selected_list: Specific files to commit.
+            unchanged: Commit even if nothing changed.
+            strict: Fail if there are unknown files.
+            local: Make a local commit in a bound branch.
+            fixes: Mark bugs as fixed by this commit.
+            bugs: Associate with bugs without marking as fixed.
+            author: Author of the commit.
+            show_diff: Show diff of changes being committed.
+            exclude: Files to exclude from the commit.
+            commit_time: Set specific commit timestamp.
+            lossy: Allow lossy commits to foreign branches.
+        """
         import itertools
 
         from .commit import PointlessCommit
@@ -4773,6 +4815,15 @@ class cmd_check(Command):
     ]
 
     def run(self, path=None, verbose=False, branch=False, repo=False, tree=False):
+        """Execute the check command.
+
+        Args:
+            path: Path to check.
+            verbose: Show detailed checking information.
+            branch: Check the branch only.
+            repo: Check the repository only.
+            tree: Check the working tree only.
+        """
         from .check import check_dwim
 
         if path is None:
