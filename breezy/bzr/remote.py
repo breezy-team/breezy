@@ -1,3 +1,9 @@
+"""Remote bzr operations using the smart protocol.
+
+This module provides classes for working with remote bzr repositories,
+branches, and control directories over the smart protocol.
+"""
+
 # Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -1126,6 +1132,17 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     def create_workingtree(
         self, revision_id=None, from_branch=None, accelerator_tree=None, hardlink=False
     ):
+        """Create a working tree at this location.
+
+        Args:
+            revision_id: Revision to check out.
+            from_branch: Branch to check out from.
+            accelerator_tree: Tree to use for acceleration.
+            hardlink: Use hardlinks when possible.
+
+        Raises:
+            NotLocalUrl: Remote locations cannot have working trees.
+        """
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self, name=None):
@@ -1310,6 +1327,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         ignore_fallbacks=False,
         possible_transports=None,
     ):
+        """Open the branch at this location.
+
+        Args:
+            name: Name of colocated branch to open.
+            unsupported: Allow opening unsupported branches.
+            ignore_fallbacks: Ignore fallback repositories.
+            possible_transports: Transports to reuse.
+
+        Returns:
+            RemoteBranch: The opened branch.
+
+        Raises:
+            NoColocatedBranchSupport: When requesting colocated branch.
+            NotImplementedError: When unsupported flag is used.
+        """
         if name is None:
             name = self._get_selected_branch()
         if name != "":
