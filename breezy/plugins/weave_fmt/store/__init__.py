@@ -35,6 +35,12 @@ from ....trace import mutter
 
 
 class StoreError(Exception):
+    """Exception raised for store-related errors.
+
+    This exception is raised when there are problems with store operations
+    such as adding, retrieving, or checking for the existence of files.
+    """
+
     pass
 
 
@@ -47,44 +53,99 @@ class Store:
     """
 
     def __len__(self):
+        """Return the number of files in the store.
+
+        Returns:
+            int: The number of files stored in this store.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError("Children should define their length")
 
     def get(self, fileid, suffix=None):
         """Returns a file reading from a particular entry.
 
-        If suffix is present, retrieve the named suffix for fileid.
+        Args:
+            fileid: The unique identifier for the file.
+            suffix: Optional suffix to retrieve a specific variant of the file.
+
+        Returns:
+            File-like object for reading the file content.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+            KeyError: If the file ID is not found in the store.
         """
         raise NotImplementedError
 
     def __iter__(self):
+        """Iterate over all file IDs in the store.
+
+        Yields:
+            File IDs present in this store.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def add(self, f, fileid):
-        """Add a file object f to the store accessible from the given fileid."""
+        """Add a file object to the store accessible from the given fileid.
+
+        Args:
+            f: File-like object containing the data to store.
+            fileid: The unique identifier for the file.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(
             "Children of Store must define their method of adding entries."
         )
 
     def has_id(self, fileid, suffix=None):
-        """Return True or false for the presence of fileid in the store.
+        """Return True or False for the presence of fileid in the store.
 
-        suffix, if present, is a per file suffix, i.e. for digital signature
-        data.
+        Args:
+            fileid: The unique identifier to check for.
+            suffix: Optional per-file suffix, e.g., for digital signature data.
+
+        Returns:
+            bool: True if the file exists in the store, False otherwise.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
         """
         raise NotImplementedError
 
     def listable(self):
-        """Return True if this store is able to be listed."""
+        """Return True if this store is able to be listed.
+
+        Returns:
+            bool: True if the store supports iteration over its contents.
+        """
         return getattr(self, "__iter__", None) is not None
 
 
 class TransportStore(Store):
-    """A TransportStore is a Store superclass for Stores that use Transports."""
+    """A Store implementation that uses Breezy transports for file access.
+
+    This class provides a Store implementation that uses Breezy's transport
+    system for file operations, supporting various backends like local
+    filesystems, HTTP, FTP, etc.
+    """
 
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
-        f -- A file-like object
+        Args:
+            f: A file-like object containing the data to store.
+            fileid: The unique identifier for the file.
+            suffix: Optional suffix for storing multiple variants.
+
+        Raises:
+            BzrError: If the file ID already exists in the store.
         """
         mutter("add store entry %r", fileid)
         names = self._id_to_names(fileid, suffix)
@@ -100,18 +161,41 @@ class TransportStore(Store):
 
     def _add(self, relpath, f):
         """Actually add the file to the given location.
-        This should be overridden by children.
+
+        Args:
+            relpath: Relative path where the file should be stored.
+            f: File-like object containing the data to store.
+
+        Raises:
+            NotImplementedError: Must be overridden by subclasses.
         """
         raise NotImplementedError("children need to implement this function.")
 
     def _check_fileid(self, fileid):
+        """Validate that a file ID is acceptable for storage.
+
+        Args:
+            fileid: The file ID to validate.
+
+        Raises:
+            TypeError: If fileid is not bytes.
+            ValueError: If fileid contains invalid characters.
+        """
         if not isinstance(fileid, bytes):
             raise TypeError(f"Fileids should be bytestrings: {type(fileid)} {fileid!r}")
         if b"\\" in fileid or b"/" in fileid:
             raise ValueError(f"invalid store id {fileid!r}")
 
     def _id_to_names(self, fileid, suffix):
-        """Return the names in the expected order."""
+        """Return the names in the expected order for compressed/uncompressed.
+
+        Args:
+            fileid: The file identifier.
+            suffix: Optional suffix to append.
+
+        Returns:
+            Tuple[str, str]: File paths to try in order of preference.
+        """
         if suffix is not None:
             fn = self._relpath(fileid, [suffix])
         else:
@@ -125,14 +209,30 @@ class TransportStore(Store):
             return fn, fn_gz
 
     def has_id(self, fileid, suffix=None):
-        """See Store.has_id."""
+        """Check if the store contains a file with the given ID.
+
+        Args:
+            fileid: The file identifier to check.
+            suffix: Optional suffix to check for.
+
+        Returns:
+            bool: True if the file exists in any expected format.
+        """
         return self._transport.has_any(self._id_to_names(fileid, suffix))
 
     def _get_name(self, fileid, suffix=None):
-        """A special check, which returns the name of an existing file.
+        """Get the actual name of an existing file in the store.
 
-        This is similar in spirit to 'has_id', but it is designed
-        to return information about which file the store has.
+        This is similar in spirit to 'has_id', but returns the actual
+        filename that exists, allowing callers to know which format
+        (compressed/uncompressed) is available.
+
+        Args:
+            fileid: The file identifier to look for.
+            suffix: Optional suffix to check for.
+
+        Returns:
+            str or None: The actual filename if found, None otherwise.
         """
         for name in self._id_to_names(fileid, suffix=suffix):
             if self._transport.has(name):
@@ -140,15 +240,35 @@ class TransportStore(Store):
         return None
 
     def _get(self, filename):
-        """Return an vanilla file stream for clients to read from.
+        """Return a vanilla file stream for clients to read from.
 
         This is the body of a template method on 'get', and should be
-        implemented by subclasses.
+        implemented by subclasses to handle the actual file retrieval.
+
+        Args:
+            filename: The filename to retrieve.
+
+        Returns:
+            File-like object for reading the file content.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
         """
         raise NotImplementedError
 
     def get(self, fileid, suffix=None):
-        """See Store.get()."""
+        """Retrieve a file from the store.
+
+        Args:
+            fileid: The file identifier to retrieve.
+            suffix: Optional suffix variant to retrieve.
+
+        Returns:
+            File-like object for reading the file content.
+
+        Raises:
+            KeyError: If the file ID is not found in the store.
+        """
         names = self._id_to_names(fileid, suffix)
         for name in names:
             try:
@@ -166,6 +286,19 @@ class TransportStore(Store):
         file_mode=None,
         escaped=False,
     ):
+        """Initialize a transport-based store.
+
+        Args:
+            a_transport: Transport to use for file operations.
+            prefixed: If True, use hash-based directory prefixing.
+            compressed: If True, prefer compressed files.
+            dir_mode: File mode to use when creating directories.
+            file_mode: File mode to use when creating files.
+            escaped: If True, use escaped filenames for special characters.
+
+        Raises:
+            ValueError: If escaped is True but prefixed is False.
+        """
         super().__init__()
         self._transport = a_transport
         self._prefixed = prefixed
@@ -189,10 +322,19 @@ class TransportStore(Store):
             self._mapper = versionedfile.PrefixMapper()
 
     def _iter_files_recursive(self):
-        """Iterate through the files in the transport."""
+        """Iterate through all files in the transport recursively.
+
+        Yields:
+            str: Relative paths of files in the store.
+        """
         yield from self._transport.iter_files_recursive()
 
     def __iter__(self):
+        """Iterate over all file IDs in the store.
+
+        Yields:
+            bytes: File IDs present in the store.
+        """
         for relpath in self._iter_files_recursive():
             # worst case is one of each suffix.
             name = os.path.basename(relpath)
@@ -207,9 +349,26 @@ class TransportStore(Store):
                 yield self._mapper.unmap(name)[0]
 
     def __len__(self):
+        """Return the number of files in the store.
+
+        Returns:
+            int: The count of files in the store.
+        """
         return len(list(self.__iter__()))
 
     def _relpath(self, fileid, suffixes=None):
+        """Calculate the relative path for a file ID.
+
+        Args:
+            fileid: The file identifier.
+            suffixes: Optional list of suffixes to append.
+
+        Returns:
+            str: The relative path for the file.
+
+        Raises:
+            ValueError: If an unregistered suffix is used.
+        """
         self._check_fileid(fileid)
         if suffixes:
             for suffix in suffixes:
@@ -223,6 +382,11 @@ class TransportStore(Store):
         return full_path
 
     def __repr__(self):
+        """Return a string representation of the store.
+
+        Returns:
+            str: String representation including the transport base.
+        """
         if self._transport is None:
             return f"{self.__class__.__name__}(None)"
         else:
@@ -231,21 +395,35 @@ class TransportStore(Store):
     __str__ = __repr__
 
     def listable(self):
-        """Return True if this store is able to be listed."""
+        """Return True if this store is able to be listed.
+
+        Returns:
+            bool: True if the underlying transport supports listing.
+        """
         return self._transport.listable()
 
     def register_suffix(self, suffix):
-        """Register a suffix as being expected in this store."""
+        """Register a suffix as being expected in this store.
+
+        Args:
+            suffix: The suffix string to register.
+
+        Raises:
+            ValueError: If the suffix is 'gz' (reserved) or contains invalid characters.
+        """
         self._check_fileid(suffix.encode("utf-8"))
         if suffix == "gz":
             raise ValueError('You cannot register the "gz" suffix.')
         self._suffixes.add(suffix)
 
     def total_size(self):
-        """Return (count, bytes).
+        """Return the total count and size of all files in the store.
 
         This is the (compressed) size stored on disk, not the size of
-        the content.
+        the content after decompression.
+
+        Returns:
+            Tuple[int, int]: A tuple of (file_count, total_bytes).
         """
         total = 0
         count = 0
