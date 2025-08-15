@@ -7885,6 +7885,18 @@ class cmd_reconfigure(Command):
         stacked_on=None,
         unstacked=None,
     ):
+        """Execute the reconfigure command.
+
+        Args:
+            location: Location to reconfigure.
+            bind_to: Bind branch to this location.
+            force: Force reconfiguration even with uncommitted changes.
+            tree_type: Type of working tree to use.
+            repository_type: Type of repository to use.
+            repository_trees: Whether repository should have working trees.
+            stacked_on: Create a stacked branch on this location.
+            unstacked: Reconfigure branch to be unstacked.
+        """
         from . import reconfigure
 
         directory = controldir.ControlDir.open(location)
@@ -7983,6 +7995,16 @@ class cmd_switch(Command):
         directory=".",
         store=False,
     ):
+        """Execute the switch command.
+
+        Args:
+            to_location: Branch location to switch to.
+            force: Switch even if local commits will be lost.
+            create_branch: Create target branch before switching.
+            revision: Switch to this specific revision.
+            directory: Directory containing working tree.
+            store: Store and restore uncommitted changes.
+        """
         from . import switch
 
         tree_location = directory
