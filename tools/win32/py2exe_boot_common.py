@@ -1,3 +1,4 @@
+"""Common py2exe boot script - executed for all target types."""
 # Common py2exe boot script - executed for all target types.
 
 # In the standard py2exe boot script, it setup stderr so that anything written

@@ -1,3 +1,4 @@
+"""Smart client for Breezy smart server protocol."""
 # Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify

@@ -845,6 +845,7 @@ class LocalGitDir(GitDir):
         return LocalGitRepository
 
     def __repr__(self):
+        """Return string representation of LocalGitDir."""
         return f"<{self.__class__.__name__} at {self.root_transport.base!r}>"
 
     _gitrepository_class = property(_get_gitrepository_class)

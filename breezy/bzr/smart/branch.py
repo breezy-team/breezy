@@ -149,6 +149,11 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
         return None
 
     def do_body(self, body_bytes):
+        """Process body data for tag setting request.
+
+        Args:
+            body_bytes: Bytes containing tag data.
+        """
         with (
             self._branch.repository.lock_write(token=self._repo_token),
             self._branch.lock_write(token=self._branch_token),

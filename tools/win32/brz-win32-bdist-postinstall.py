@@ -1,3 +1,9 @@
+"""Post-installation script for Windows Breezy package.
+
+This script will be executed after installation of breezy package
+and before installer exits.
+(c) Canonical Ltd, 2006, written by Alexander Belchenko for brz project.
+"""
 # (c) Canonical Ltd, 2006
 # written by Alexander Belchenko for brz project
 #
