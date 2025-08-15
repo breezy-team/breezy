@@ -4886,6 +4886,14 @@ class cmd_upgrade(Command):
     ]
 
     def run(self, url=".", format=None, clean=False, dry_run=False):
+        """Execute the upgrade command.
+
+        Args:
+            url: Location to upgrade.
+            format: New format to upgrade to.
+            clean: Remove backup directory if successful.
+            dry_run: Show what would be done without doing it.
+        """
         from .upgrade import upgrade
 
         exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
@@ -4921,6 +4929,14 @@ class cmd_whoami(Command):
 
     @display_command
     def run(self, email=False, branch=False, name=None, directory=None):
+        """Execute the whoami command.
+
+        Args:
+            email: Show only email address.
+            branch: Set identity for current branch instead of globally.
+            name: User name to set.
+            directory: Directory to operate on.
+        """
         if name is None:
             if directory is None:
                 # use branch if we're inside one; otherwise global config
@@ -4981,6 +4997,12 @@ class cmd_nick(Command):
     takes_options = ["directory"]
 
     def run(self, nickname=None, directory="."):
+        """Execute the nick command.
+
+        Args:
+            nickname: New nickname to set for the branch.
+            directory: Directory containing the branch.
+        """
         branch = Branch.open_containing(directory)[0]
         if nickname is None:
             self.printme(branch)
@@ -5024,6 +5046,12 @@ class cmd_alias(Command):
     ]
 
     def run(self, name=None, remove=False):
+        """Execute the alias command.
+
+        Args:
+            name: Alias name to show/set, or name=value to set.
+            remove: Remove the specified alias.
+        """
         if remove:
             self.remove_alias(name)
         elif name is None:
@@ -5274,6 +5302,29 @@ class cmd_selftest(Command):
         lsprof_tests=False,
         sync=False,
     ):
+        """Execute the selftest command.
+
+        Args:
+            testspecs_list: Specific tests to run.
+            verbose: Show detailed test output.
+            one: Stop after first test failure.
+            transport: Transport to use for tests.
+            benchmark: Run performance benchmarks.
+            lsprof_timed: Profile timed tests.
+            first: Run tests in order until failure.
+            list_only: List tests without running them.
+            randomize: Random seed for test ordering.
+            exclude: Tests to exclude from running.
+            strict: Fail on any test issues.
+            load_list: Load test list from file.
+            debugflag: Enable debug flags.
+            starting_with: Run tests starting with this pattern.
+            subunit1: Output in subunit v1 format.
+            subunit2: Output in subunit v2 format.
+            parallel: Number of parallel test processes.
+            lsprof_tests: Profile individual tests.
+            sync: Force synchronous test execution.
+        """
         # During selftest, disallow proxying, as it can cause severe
         # performance penalties and is only needed for thread
         # safety. The selftest command is assumed to not use threads
@@ -5387,6 +5438,11 @@ class cmd_version(Command):
 
     @display_command
     def run(self, short=False):
+        """Execute the version command.
+
+        Args:
+            short: Print just the version number.
+        """
         from .version import show_version
 
         if short:
@@ -5402,6 +5458,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
+        """Execute the rocks command."""
         self.outf.write(gettext("It sure does!\n"))
 
 
@@ -5414,6 +5471,12 @@ class cmd_find_merge_base(Command):
 
     @display_command
     def run(self, branch, other):
+        """Execute the find-merge-base command.
+
+        Args:
+            branch: First branch to compare.
+            other: Second branch to compare.
+        """
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
         self.enter_context(branch1.lock_read())
