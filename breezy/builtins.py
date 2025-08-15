@@ -6635,6 +6635,16 @@ class cmd_annotate(Command):
         show_ids=False,
         directory=None,
     ):
+        """Execute the annotate command.
+
+        Args:
+            filename: File to show annotations for.
+            all: Show annotations on all lines.
+            long: Show commit date in annotations.
+            revision: Specific revision to annotate.
+            show_ids: Show revision IDs.
+            directory: Directory containing the branch.
+        """
         from .annotate import annotate_file_tree
 
         wt, branch, relpath = _open_directory_or_containing_tree_or_branch(
@@ -6669,6 +6679,13 @@ class cmd_re_sign(Command):
     takes_options = ["directory", "revision"]
 
     def run(self, revision_id_list=None, revision=None, directory="."):
+        """Execute the re-sign command.
+
+        Args:
+            revision_id_list: Specific revision IDs to sign.
+            revision: Revision specification to sign.
+            directory: Directory containing the branch.
+        """
         from .workingtree import WorkingTree
 
         if revision_id_list is not None and revision is not None:
@@ -6735,6 +6752,12 @@ class cmd_bind(Command):
     takes_options = ["directory"]
 
     def run(self, location=None, directory="."):
+        """Execute the bind command.
+
+        Args:
+            location: Master branch location to bind to.
+            directory: Directory containing the branch to bind.
+        """
         b, relpath = Branch.open_containing(directory)
         if location is None:
             try:
@@ -6780,6 +6803,11 @@ class cmd_unbind(Command):
     takes_options = ["directory"]
 
     def run(self, directory="."):
+        """Execute the unbind command.
+
+        Args:
+            directory: Directory containing the branch to unbind.
+        """
         b, relpath = Branch.open_containing(directory)
         if not b.unbind():
             raise errors.CommandError(gettext("Local branch is not bound"))
@@ -6830,6 +6858,17 @@ class cmd_uncommit(Command):
         local=False,
         keep_tags=False,
     ):
+        """Execute the uncommit command.
+
+        Args:
+            location: Branch location to uncommit from.
+            dry_run: Show what would be done without doing it.
+            verbose: Show detailed information.
+            revision: Uncommit to this revision.
+            force: Force uncommit even with pending changes.
+            local: Only uncommit locally in bound branch.
+            keep_tags: Keep tags pointing to uncommitted revisions.
+        """
         if location is None:
             location = "."
         control, relpath = controldir.ControlDir.open_containing(location)
