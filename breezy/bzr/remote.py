@@ -4189,6 +4189,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return b"\n".join(parts)
 
     def autopack(self):
+        """Automatically pack the repository if needed."""
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b"PackRepository.autopack", path)
@@ -4256,6 +4257,12 @@ class RemoteStreamSink(vf_repository.StreamSink):
         return result
 
     def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from source repository.
+
+        Args:
+            source: Source repository to get missing keys from.
+            missing_keys: Keys that are missing and need to be inserted.
+        """
         if (
             isinstance(source, RemoteStreamSource)
             and source.from_repository._client._medium
@@ -4405,6 +4412,14 @@ class RemoteStreamSource(vf_repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):
+        """Get a stream of revision data matching the search.
+
+        Args:
+            search: Search specification for revisions.
+
+        Returns:
+            Stream of revision data.
+        """
         """Get a stream of repository data based on the search criteria.
 
         Retrieves repository data (revisions, inventories, texts) that match
@@ -4612,6 +4627,14 @@ class RemoteStreamSource(vf_repository.StreamSource):
                 yield kind, stream
 
     def missing_parents_rev_handler(self, substream):
+        """Handle revisions with missing parents in substream.
+
+        Args:
+            substream: Substream containing revision data.
+
+        Yields:
+            Content with missing parent handling.
+        """
         for content in substream:
             revision_bytes = content.get_bytes_as("fulltext")
             revision = self.from_revision_serialiser.read_revision_from_string(
@@ -4665,13 +4688,33 @@ class RemoteBranchFormat(branch.BranchFormat):
                 ) from e
 
     def get_format_description(self):
+        """Get a description of the repository format.
+
+        Returns:
+            str: Description of the repository format.
+        """
         self._ensure_real()
         return "Remote: " + self._custom_format.get_format_description()
 
     def network_name(self):
+        """Get the network name for this repository format.
+
+        Returns:
+            bytes: The network name.
+        """
         return self._network_name
 
     def open(self, a_controldir, name=None, ignore_fallbacks=False):
+        """Open a branch in the given control directory.
+
+        Args:
+            a_controldir: Control directory to open branch in.
+            name: Name of colocated branch.
+            ignore_fallbacks: Whether to ignore fallback branches.
+
+        Returns:
+            RemoteBranch: The opened branch.
+        """
         return a_controldir.open_branch(name=name, ignore_fallbacks=ignore_fallbacks)
 
     def _vfs_initialize(
@@ -4708,6 +4751,17 @@ class RemoteBranchFormat(branch.BranchFormat):
     def initialize(
         self, a_controldir, name=None, repository=None, append_revisions_only=None
     ):
+        """Initialize a new branch in the control directory.
+
+        Args:
+            a_controldir: Control directory to initialize branch in.
+            name: Name for colocated branch.
+            repository: Repository to use for the branch.
+            append_revisions_only: Whether branch should be append-only.
+
+        Returns:
+            RemoteBranch: The newly initialized branch.
+        """
         if name is None:
             name = a_controldir._get_selected_branch()
         # 1) get the network name to use.
