@@ -62,16 +62,21 @@ def make_app(
 class RelpathSetter:
     """WSGI middleware to set 'breezy.relpath' in the environ.
 
-    Different servers can invoke a SmartWSGIApp in different ways.  This
-    middleware allows an adminstrator to configure how to the SmartWSGIApp will
+    Different servers can invoke a SmartWSGIApp in different ways. This
+    middleware allows an administrator to configure how the SmartWSGIApp will
     determine what path it should be serving for a given request for many common
     situations.
 
     For example, a request for "/some/prefix/repo/branch/.bzr/smart" received by
     a typical Apache and mod_fastcgi configuration will set `REQUEST_URI` to
-    "/some/prefix/repo/branch/.bzr/smart".  A RelpathSetter with
+    "/some/prefix/repo/branch/.bzr/smart". A RelpathSetter with
     prefix="/some/prefix/" and path_var="REQUEST_URI" will set that request's
     'breezy.relpath' variable to "repo/branch".
+
+    Attributes:
+        app: The WSGI application to wrap.
+        prefix (str): Prefix to strip from the path variable.
+        path_var (str): WSGI environ variable containing the request path.
     """
 
     def __init__(self, app, prefix="", path_var="REQUEST_URI"):
@@ -88,6 +93,18 @@ class RelpathSetter:
         self.path_var = path_var
 
     def __call__(self, environ, start_response):
+        """WSGI application callable for handling HTTP requests.
+
+        Processes HTTP requests and determines the appropriate bzr relpath
+        based on the configured prefix and path variable.
+
+        Args:
+            environ (dict): WSGI environment dictionary.
+            start_response (callable): WSGI start_response callable.
+
+        Returns:
+            list: Empty list for 404 responses, otherwise delegates to wrapped app.
+        """
         path = environ[self.path_var]
         suffix = "/.bzr/smart"
         if not (path.startswith(self.prefix) and path.endswith(suffix)):
@@ -98,7 +115,22 @@ class RelpathSetter:
 
 
 class SmartWSGIApp:
-    """A WSGI application for the bzr smart server."""
+    """A WSGI application for the bzr smart server.
+
+    This application handles bzr smart protocol requests over HTTP by:
+    1. Parsing the relpath from the HTTP request
+    2. Creating appropriate transport instances with chroot security
+    3. Processing smart protocol requests and generating responses
+    4. Handling path translation between client and server perspectives
+
+    The application uses a chroot server to ensure security by preventing
+    access to paths outside the configured backing transport root.
+
+    Attributes:
+        chroot_server: ChrootServer instance for security isolation.
+        backing_transport: The transport used for actual file operations.
+        root_client_path (str): Client path mapping to transport root.
+    """
 
     def __init__(self, backing_transport, root_client_path="/"):
         """Constructor.
@@ -125,7 +157,18 @@ class SmartWSGIApp:
         # self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
-        """WSGI application callable."""
+        """WSGI application callable for processing smart protocol requests.
+
+        Handles POST requests containing bzr smart protocol data, processes them
+        through the appropriate transport, and returns the response.
+
+        Args:
+            environ (dict): WSGI environment dictionary containing request data.
+            start_response (callable): WSGI start_response callable for setting response status/headers.
+
+        Returns:
+            list: List containing the response bytes, or empty list for non-POST requests.
+        """
         if environ["REQUEST_METHOD"] != "POST":
             start_response("405 Method not allowed", [("Allow", "POST")])
             return []
@@ -183,6 +226,20 @@ class SmartWSGIApp:
         return [response_data]
 
     def make_request(self, transport, write_func, request_bytes, rcp):
+        """Create and process a smart protocol request.
+
+        Creates a protocol handler for the incoming request bytes and processes
+        them using the appropriate transport.
+
+        Args:
+            transport: The transport to use for the request.
+            write_func (callable): Function to write response data to.
+            request_bytes (bytes): The raw request data from the client.
+            rcp: The root client path for path translation.
+
+        Returns:
+            The server protocol instance after processing the request.
+        """
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
             request_bytes
         )

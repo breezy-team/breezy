@@ -31,9 +31,27 @@ bool_text = {True: "yes", False: "no"}
 
 
 class Action:
-    """Represent an action."""
+    """Represent an action in a bundle patch.
+
+    An action describes a change to be applied to a file or directory,
+    such as adding, removing, modifying, or renaming. Actions contain
+    a name, parameters, and optional properties that provide additional
+    metadata about the change.
+
+    Attributes:
+        name (str): The type of action (e.g., 'added', 'removed', 'modified').
+        parameters (list): List of parameters for the action.
+        properties (list): List of (name, value) property tuples.
+    """
 
     def __init__(self, name, parameters=None, properties=None):
+        """Initialize an Action.
+
+        Args:
+            name (str): The type of action (e.g., 'added', 'removed', 'modified').
+            parameters (list, optional): List of parameters for the action.
+            properties (list, optional): List of (name, value) property tuples.
+        """
         self.name = name
         if parameters is None:
             self.parameters = []
@@ -45,19 +63,41 @@ class Action:
             self.properties = properties
 
     def add_utf8_property(self, name, value):
-        """Add a property whose value is currently utf8 to the action."""
+        """Add a property whose value is currently utf8 to the action.
+
+        Args:
+            name (str): The property name.
+            value (bytes): The UTF-8 encoded property value.
+        """
         self.properties.append((name, value.decode("utf8")))
 
     def add_property(self, name, value):
-        """Add a property to the action."""
+        """Add a property to the action.
+
+        Args:
+            name (str): The property name.
+            value: The property value.
+        """
         self.properties.append((name, value))
 
     def add_bool_property(self, name, value):
-        """Add a boolean property to the action."""
+        """Add a boolean property to the action.
+
+        Args:
+            name (str): The property name.
+            value (bool): The boolean property value.
+        """
         self.add_property(name, bool_text[value])
 
     def write(self, to_file):
-        """Write action as to a file."""
+        """Write action as to a file.
+
+        Formats and writes the action to the given file in bundle format,
+        handling line wrapping for long action descriptions.
+
+        Args:
+            to_file: File-like object to write the action to.
+        """
         p_texts = [" ".join([self.name] + self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
@@ -77,19 +117,49 @@ class Action:
 
 
 class BundleSerializerV08(BundleSerializer):
+    """Serializer for bundle format version 0.8.
+
+    This serializer handles reading and writing bundles in the 0.8 format,
+    which includes revision metadata, file changes, and checksums. It does
+    not support rich root repositories.
+
+    The 0.8 format includes:
+    - Revision metadata (message, committer, date, etc.)
+    - File changes as unified diffs or binary diffs
+    - Testament and inventory checksums for verification
+    - Support for renamed and moved files
+    """
+
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
-        :param f: The file to read from
-        :return: A list of bundles
+        Args:
+            f: The file to read from.
+
+        Returns:
+            A list of bundles.
         """
         return BundleReader(f).info
 
     def check_compatible(self):
+        """Check if the source repository is compatible with v0.8 format.
+
+        Raises:
+            IncompatibleBundleFormat: If the source supports rich root,
+                which is not compatible with bundle format 0.8.
+        """
         if self.source.supports_rich_root():
             raise errors.IncompatibleBundleFormat("0.8", repr(self.source))
 
     def write(self, source, revision_ids, forced_bases, f):
+        """Write the bundles to the supplied files.
+
+        Args:
+            source: A source for revision information.
+            revision_ids: The list of revision ids to serialize.
+            forced_bases: A dict of revision -> base that overrides default.
+            f: The file to output to.
+        """
         """Write the bundless to the supplied files.
 
         :param source: A source for revision information
@@ -108,7 +178,17 @@ class BundleSerializerV08(BundleSerializer):
                 self._write_revisions(pb)
 
     def write_bundle(self, repository, revision_id, base_revision_id, out):
-        """Helper function for translating write_bundle to write."""
+        """Helper function for translating write_bundle to write.
+
+        Args:
+            repository: The repository containing the revisions.
+            revision_id: The revision to create a bundle for.
+            base_revision_id: The base revision for the bundle.
+            out: File to write the bundle to.
+
+        Returns:
+            list: The list of revision IDs included in the bundle.
+        """
         forced_bases = {revision_id: base_revision_id}
         if base_revision_id is NULL_REVISION:
             base_revision_id = None
@@ -120,7 +200,10 @@ class BundleSerializerV08(BundleSerializer):
         return revision_ids
 
     def _write_main_header(self):
-        """Write the header for the changes."""
+        """Write the header for the changes.
+
+        Writes the bundle format version header and initial comment marker.
+        """
         f = self.to_file
         f.write(_get_bundle_header("0.8"))
         f.write(b"#\n")
@@ -128,11 +211,18 @@ class BundleSerializerV08(BundleSerializer):
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
         r"""Write out meta information, with proper indenting, etc.
 
-        :param trailing_space_when_empty: To work around a bug in earlier
-            bundle readers, when writing an empty property, we use "prop: \n"
-            rather than writing "prop:\n".
-            If this parameter is True, and value is the empty string, we will
-            write an extra space.
+        Args:
+            key (str): The metadata key to write.
+            value: The value to write (str, bytes, or list).
+            indent (int): Indentation level (must be >= 1).
+            trailing_space_when_empty (bool): To work around a bug in earlier
+                bundle readers, when writing an empty property, we use "prop: \n"
+                rather than writing "prop:\n".
+                If this parameter is True, and value is the empty string, we will
+                write an extra space.
+
+        Raises:
+            ValueError: If indent is less than 1.
         """
         if indent < 1:
             raise ValueError("indentation must be greater than 0")
@@ -163,7 +253,11 @@ class BundleSerializerV08(BundleSerializer):
                 f.write(b"\n")
 
     def _write_revisions(self, pb):
-        """Write the information for all of the revisions."""
+        """Write the information for all of the revisions.
+
+        Args:
+            pb: Progress bar for tracking serialization progress.
+        """
         # Optimize for the case of revisions in order
         last_rev_id = None
         last_rev_tree = None
@@ -198,11 +292,29 @@ class BundleSerializerV08(BundleSerializer):
             last_rev_tree = base_tree
 
     def _testament_sha1(self, revision_id):
+        """Calculate the testament SHA1 for a revision.
+
+        Args:
+            revision_id: The revision ID to calculate the testament for.
+
+        Returns:
+            bytes: The SHA1 hash of the strict testament.
+        """
         return StrictTestament.from_revision(self.source, revision_id).as_sha1()
 
     def _write_revision(
         self, rev, rev_tree, base_rev, base_tree, explicit_base, force_binary
     ):
+        """Write out the information for a revision.
+
+        Args:
+            rev: The revision object.
+            rev_tree: The revision tree.
+            base_rev: The base revision ID.
+            base_tree: The base revision tree.
+            explicit_base (bool): Whether the base was explicitly specified.
+            force_binary (bool): Whether to force binary diffs.
+        """
         """Write out the information for a revision."""
 
         def w(key, value):
@@ -231,6 +343,13 @@ class BundleSerializerV08(BundleSerializer):
         self.to_file.write(b"\n")
 
     def _write_action(self, name, parameters, properties=None):
+        """Write an action header to the bundle.
+
+        Args:
+            name (str): The action name.
+            parameters (list): List of action parameters.
+            properties (list, optional): List of action properties.
+        """
         if properties is None:
             properties = []
         p_texts = ["{}:{}".format(*v) for v in properties]
@@ -240,7 +359,14 @@ class BundleSerializerV08(BundleSerializer):
         self.to_file.write(b"\n")
 
     def _write_delta(self, new_tree, old_tree, default_revision_id, force_binary):
-        """Write out the changes between the trees."""
+        """Write out the changes between the trees.
+
+        Args:
+            new_tree: The new tree state.
+            old_tree: The old tree state.
+            default_revision_id: The default revision ID for changes.
+            force_binary (bool): Whether to force binary diffs.
+        """
         DEVNULL = "/dev/null"
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
@@ -345,11 +471,24 @@ class BundleSerializerV08(BundleSerializer):
 
 
 class BundleReader:
-    """This class reads in a bundle from a file, and returns
-    a Bundle object, which can then be applied against a tree.
+    """This class reads in a bundle from a file, and returns a Bundle object.
+
+    The BundleReader parses bundle format 0.8 files, extracting revision
+    metadata, file changes, and checksums. The resulting Bundle object
+    can then be applied against a tree to recreate the bundled changes.
+
+    Attributes:
+        from_file: Iterator over the input file lines.
+        _next_line: The next line to be processed (used for lookahead).
+        info: The BundleInfo object containing parsed bundle data.
     """
 
     def __init__(self, from_file):
+        """Read in the bundle from the file.
+
+        Args:
+            from_file: A file-like object (must have iterator support).
+        """
         """Read in the bundle from the file.
 
         :param from_file: A file-like object (must have iterator support).
@@ -367,9 +506,19 @@ class BundleReader:
         self._validate()
 
     def _get_info(self):
+        """Create and return a BundleInfo08 instance.
+
+        Returns:
+            BundleInfo08: A new bundle info object for format 0.8.
+        """
         return BundleInfo08()
 
     def _read(self):
+        """Read and parse the entire bundle file.
+
+        Processes the bundle by reading revision headers, patches,
+        and footers in sequence.
+        """
         next(self._next())
         while self._next_line is not None:
             if not self._read_revision_header():
@@ -380,16 +529,23 @@ class BundleReader:
             self._read_footer()
 
     def _validate(self):
-        """Make sure that the information read in makes sense
-        and passes appropriate checksums.
+        """Make sure that the information read in makes sense and passes appropriate checksums.
+
+        Validates the parsed bundle data and fills in missing information
+        to complete the bundle info structure.
         """
         # Fill in all the missing blanks for the revisions
         # and generate the real_revisions list.
         self.info.complete_info()
 
     def _next(self):
-        """Yield the next line, but secretly
-        keep 1 extra line for peeking.
+        """Yield the next line, but secretly keep 1 extra line for peeking.
+
+        Provides lookahead capability by maintaining one line in reserve
+        for the parser to examine without consuming it.
+
+        Yields:
+            bytes: The next line from the input file.
         """
         for line in self.from_file:
             last = self._next_line
@@ -403,6 +559,14 @@ class BundleReader:
         yield last
 
     def _read_revision_header(self):
+        """Read and parse a revision header section.
+
+        Reads the metadata for a single revision from the bundle,
+        including message, committer, date, and other properties.
+
+        Returns:
+            bool: True if a revision header was found and parsed, False otherwise.
+        """
         found_something = False
         self.info.revisions.append(RevisionInfo(None))
         for line in self._next():
@@ -420,7 +584,18 @@ class BundleReader:
         return found_something
 
     def _read_next_entry(self, line, indent=1):
-        """Read in a key-value pair."""
+        """Read in a key-value pair.
+
+        Args:
+            line (bytes): The line to parse.
+            indent (int): Expected indentation level.
+
+        Returns:
+            tuple: (key, value) pair, or (None, None) for blank lines.
+
+        Raises:
+            MalformedHeader: If the line format is invalid.
+        """
         if not line.startswith(b"#"):
             raise errors.MalformedHeader("Bzr header did not start with #")
         line = line[1:-1].decode("utf-8")  # Remove the '#' and '\n'
@@ -449,6 +624,14 @@ class BundleReader:
         return key, value
 
     def _handle_next(self, line):
+        """Process a metadata line and update the current revision info.
+
+        Args:
+            line (bytes): The metadata line to process.
+
+        Raises:
+            MalformedHeader: If the key is duplicated or unknown.
+        """
         if line is None:
             return
         key, value = self._read_next_entry(line, indent=1)
@@ -473,11 +656,19 @@ class BundleReader:
             raise errors.MalformedHeader(f'Unknown Key: "{key}"')
 
     def _read_many(self, indent):
-        """If a line ends with no entry, that means that it should be
+        """Read multiple lines of values for a multi-valued key.
+
+        If a line ends with no entry, that means that it should be
         followed with multiple lines of values.
 
         This detects the end of the list, because it will be a line that
         does not start properly indented.
+
+        Args:
+            indent (int): Expected indentation level.
+
+        Returns:
+            list: List of values read.
         """
         values = []
         start = b"#" + (b" " * indent)
@@ -492,6 +683,14 @@ class BundleReader:
         return values
 
     def _read_one_patch(self):
+        """Read in one patch, return the complete patch, along with the next line.
+
+        Returns:
+            tuple: (action, lines, do_continue) where:
+                - action: The action string or None
+                - lines: List of patch lines
+                - do_continue: Boolean indicating if more patches follow
+        """
         """Read in one patch, return the complete patch, along with
         the next line.
 
@@ -529,6 +728,11 @@ class BundleReader:
         return action, lines, False
 
     def _read_patches(self):
+        """Read all patches for the current revision.
+
+        Processes all file change patches until the next revision header
+        or end of file is reached.
+        """
         do_continue = True
         revision_actions = []
         while do_continue:
@@ -540,6 +744,11 @@ class BundleReader:
         self.info.revisions[-1].tree_actions = revision_actions
 
     def _read_footer(self):
+        """Read the rest of the meta information.
+
+        Processes the revision footer containing checksums and other
+        metadata that appears after the patches.
+        """
         """Read the rest of the meta information.
 
         :param first_line:  The previous step iterates past what it
@@ -556,13 +765,44 @@ class BundleReader:
 
 
 class BundleInfo08(BundleInfo):
+    """Bundle info class for format version 0.8.
+
+    Extends the base BundleInfo class with specific handling for
+    the 0.8 bundle format, including strict testament validation
+    and proper tree updating.
+    """
+
     def _update_tree(self, bundle_tree, revision_id):
+        """Update the bundle tree for a specific revision.
+
+        Args:
+            bundle_tree: The bundle tree to update.
+            revision_id: The revision ID being processed.
+        """
         bundle_tree.note_last_changed("", revision_id)
         BundleInfo._update_tree(self, bundle_tree, revision_id)
 
     def _testament_sha1_from_revision(self, repository, revision_id):
+        """Get the testament SHA1 for a revision from the repository.
+
+        Args:
+            repository: The repository containing the revision.
+            revision_id: The revision ID to get the testament for.
+
+        Returns:
+            bytes: The SHA1 hash of the strict testament.
+        """
         testament = StrictTestament.from_revision(repository, revision_id)
         return testament.as_sha1()
 
     def _testament(self, revision, tree):
+        """Create a testament for the given revision and tree.
+
+        Args:
+            revision: The revision object.
+            tree: The tree object.
+
+        Returns:
+            StrictTestament: The testament for the revision.
+        """
         return StrictTestament(revision, tree)
