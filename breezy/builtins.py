@@ -2221,6 +2221,13 @@ class cmd_update(Command):
     aliases = ["up"]
 
     def run(self, dir=None, revision=None, show_base=None):
+        """Execute the update command.
+
+        Args:
+            dir: Directory containing the working tree to update.
+            revision: Specific revision to update to.
+            show_base: Show base revision text in conflicts.
+        """
         from .workingtree import WorkingTree
 
         if revision is not None and len(revision) != 1:
@@ -2348,6 +2355,12 @@ class cmd_info(Command):
 
     @display_command
     def run(self, location=None, verbose=False):
+        """Execute the info command.
+
+        Args:
+            location: Location to show information about.
+            verbose: Show more detailed information.
+        """
         noise_level = get_verbosity_level() if verbose else 0
         from .info import show_bzrdir_info
 
@@ -2386,6 +2399,14 @@ class cmd_remove(Command):
     encoding_type = "replace"
 
     def run(self, file_list, verbose=False, new=False, file_deletion_strategy="safe"):
+        """Execute the remove command.
+
+        Args:
+            file_list: Files or directories to remove.
+            verbose: Show detailed output.
+            new: Only remove files that have never been committed.
+            file_deletion_strategy: How to handle file deletion (safe/keep/no_backup).
+        """
         from .workingtree import WorkingTree
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -2450,6 +2471,12 @@ class cmd_reconcile(Command):
     ]
 
     def run(self, branch=".", canonicalize_chks=False):
+        """Execute the reconcile command.
+
+        Args:
+            branch: Branch to reconcile.
+            canonicalize_chks: Ensure CHKs are in canonical form.
+        """
         from .reconcile import reconcile
 
         dir = controldir.ControlDir.open(branch)
@@ -2466,6 +2493,11 @@ class cmd_revision_history(Command):
 
     @display_command
     def run(self, location="."):
+        """Execute the revision-history command.
+
+        Args:
+            location: Branch location to show history for.
+        """
         branch = Branch.open_containing(location)[0]
         self.enter_context(branch.lock_read())
         graph = branch.repository.get_graph()
@@ -2489,6 +2521,11 @@ class cmd_ancestry(Command):
 
     @display_command
     def run(self, location="."):
+        """Execute the ancestry command.
+
+        Args:
+            location: Location to show ancestry for.
+        """
         from .workingtree import WorkingTree
 
         try:
@@ -2567,6 +2604,15 @@ class cmd_init(Command):
         create_prefix=False,
         no_tree=False,
     ):
+        """Execute the init command.
+
+        Args:
+            location: Directory to create branch in.
+            format: Specific format to use for the branch.
+            append_revisions_only: Never change revnos or existing log.
+            create_prefix: Create parent directories if needed.
+            no_tree: Create a branch without a working tree.
+        """
         if format is None:
             format = controldir.format_registry.make_controldir("default")
         if location is None:
@@ -2702,6 +2748,13 @@ class cmd_init_shared_repository(Command):
     aliases = ["init-shared-repo", "init-repo"]
 
     def run(self, location, format=None, no_trees=False):
+        """Execute the init-shared-repository command.
+
+        Args:
+            location: Directory to create shared repository in.
+            format: Specific format to use for the repository.
+            no_trees: Branches will default to not having working trees.
+        """
         if format is None:
             format = controldir.format_registry.make_controldir("default")
 
