@@ -3919,6 +3919,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
+        """Set whether this repository should make working trees.
+
+        Args:
+            new_value: True to make working trees, False otherwise.
+        """
         new_value_str = b"True" if new_value else b"False"
         path = self.controldir._path_for_remote_call(self._client)
         try:
@@ -3943,6 +3948,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.signatures
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision with the given GPG strategy.
+
+        Args:
+            revision_id: The revision ID to sign.
+            gpg_strategy: GPG strategy to use for signing.
+        """
         with self.lock_write():
             testament = _mod_testament.Testament.from_revision(self, revision_id)
             plaintext = testament.as_short_text()
@@ -3985,6 +3996,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             yield serializer.read_revision_from_string(b"".join(chunks))
 
     def iter_revisions(self, revision_ids):
+        """Iterate over revision objects for the given revision IDs.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+
+        Yields:
+            Revision: Revision objects for each ID.
+        """
         for rev_id in revision_ids:
             if not rev_id or not isinstance(rev_id, bytes):
                 raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
@@ -4008,6 +4027,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 yield from self._real_repository.iter_revisions(revision_ids)
 
     def supports_rich_root(self):
+        """Check if this repository supports rich root trees.
+
+        Returns:
+            bool: True if rich root is supported.
+        """
         return self._format.rich_root_data
 
     @property
@@ -4019,11 +4043,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._format._inventory_serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """Store a revision signature.
+
+        Args:
+            gpg_strategy: GPG strategy to use.
+            plaintext: Plaintext to sign.
+            revision_id: Revision ID for the signature.
+        """
         with self.lock_write():
             signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
+        """Add signature text for a revision.
+
+        Args:
+            revision_id: The revision ID to add signature for.
+            signature: The signature text to add.
+        """
         if self._real_repository:
             # If there is a real repository the write group will
             # be in the real repository as well, so use that:
@@ -4043,6 +4080,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._write_group_tokens = [token.decode("utf-8") for token in response[1:]]
 
     def has_signature_for_revision_id(self, revision_id):
+        """Check if a signature exists for the given revision.
+
+        Args:
+            revision_id: The revision ID to check.
+
+        Returns:
+            bool: True if signature exists.
+        """
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(
@@ -4061,6 +4106,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return False
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
+        """Verify the signature for a revision.
+
+        Args:
+            revision_id: The revision ID to verify.
+            gpg_strategy: GPG strategy to use for verification.
+
+        Returns:
+            Tuple of (status, key) for signature verification.
+        """
         with self.lock_read():
             if not self.has_signature_for_revision_id(revision_id):
                 return gpg.SIGNATURE_NOT_SIGNED, None
@@ -4074,18 +4128,40 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return (status, key)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get item keys introduced by the given revisions.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+            _files_pb: Progress bar for files.
+
+        Returns:
+            Dictionary mapping file IDs to keys.
+        """
         self._ensure_real()
         return self._real_repository.item_keys_introduced_by(
             revision_ids, _files_pb=_files_pb
         )
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
+        """Find revisions with inconsistent parent information.
+
+        Args:
+            revisions_iterator: Iterator over revisions to check.
+
+        Returns:
+            List of inconsistent revision IDs.
+        """
         self._ensure_real()
         return self._real_repository._find_inconsistent_revision_parents(
             revisions_iterator
         )
 
     def _check_for_inconsistent_revision_parents(self):
+        """Check for inconsistent revision parents in the repository.
+
+        Returns:
+            List of inconsistent revision parent issues.
+        """
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
 
