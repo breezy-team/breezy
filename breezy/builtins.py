@@ -6038,6 +6038,14 @@ class cmd_remerge(Command):
     ]
 
     def run(self, file_list=None, merge_type=None, show_base=False, reprocess=False):
+        """Execute the remerge command.
+
+        Args:
+            file_list: Specific files to remerge.
+            merge_type: Merge algorithm to use.
+            show_base: Show base revision text in conflicts.
+            reprocess: Reprocess conflicts to minimize.
+        """
         from .conflicts import restore
         from .workingtree import WorkingTree
 
@@ -6167,6 +6175,14 @@ class cmd_revert(Command):
     takes_args = ["file*"]
 
     def run(self, revision=None, no_backup=False, file_list=None, forget_merges=None):
+        """Execute the revert command.
+
+        Args:
+            revision: Specific revision to revert to.
+            no_backup: Don't save backups of reverted files.
+            file_list: Specific files to revert.
+            forget_merges: Remove pending merge marker without changing files.
+        """
         from .workingtree import WorkingTree
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -6189,6 +6205,7 @@ class cmd_assert_fail(Command):
     hidden = True
 
     def run(self):
+        """Execute the assert-fail command."""
         raise AssertionError("always fails")
 
 
@@ -6205,6 +6222,12 @@ class cmd_help(Command):
 
     @display_command
     def run(self, topic=None, long=False):
+        """Execute the help command.
+
+        Args:
+            topic: Help topic to show.
+            long: Show help on all commands.
+        """
         import breezy.help
 
         if topic is None and long:
@@ -6223,6 +6246,11 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
+        """Execute the shell-complete command.
+
+        Args:
+            context: Completion context to process.
+        """
         from . import shellcomplete
 
         shellcomplete.shellcomplete(context)
@@ -6315,6 +6343,26 @@ class cmd_missing(Command):
         my_revision=None,
         directory=".",
     ):
+        """Execute the missing command.
+
+        Args:
+            other_branch: Other branch to compare with.
+            reverse: Reverse the order of revisions.
+            mine_only: Display changes in this branch only.
+            theirs_only: Display changes in other branch only.
+            log_format: Log format to use.
+            long: Use long log format.
+            short: Use short log format.
+            line: Use line log format.
+            show_ids: Show revision and file IDs.
+            verbose: Show extra information.
+            this: Show changes in this branch.
+            other: Show changes in other branch.
+            include_merged: Show merged revisions.
+            revision: Show missing revisions up to this revision.
+            my_revision: Show missing revisions from this revision.
+            directory: Directory containing the branch.
+        """
         from .missing import find_unmerged, iter_log_revisions
 
         def message(s):
@@ -6469,6 +6517,12 @@ class cmd_pack(Command):
     ]
 
     def run(self, branch_or_repo=".", clean_obsolete_packs=False):
+        """Execute the pack command.
+
+        Args:
+            branch_or_repo: Branch or repository to pack.
+            clean_obsolete_packs: Delete obsolete packs to save disk space.
+        """
         dir = controldir.ControlDir.open_containing(branch_or_repo)[0]
         try:
             branch = dir.open_branch()
@@ -6501,6 +6555,11 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
+        """Execute the plugins command.
+
+        Args:
+            verbose: Show plugin paths and detailed information.
+        """
         from . import plugin
 
         # Don't give writelines a generator as some codecs don't like that
@@ -6519,6 +6578,14 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=".", revision=None, long=False, strict=False):
+        """Execute the testament command.
+
+        Args:
+            branch: Branch to show testament for.
+            revision: Specific revision to show testament for.
+            long: Produce long-format testament.
+            strict: Produce strict-format testament.
+        """
         from .bzr.testament import StrictTestament, Testament
 
         testament_class = StrictTestament if strict is True else Testament
