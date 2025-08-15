@@ -3555,6 +3555,7 @@ class Store:
     mutable_section_class = MutableSection
 
     def __init__(self):
+        """Initialize a new configuration store."""
         # Which sections need to be saved (by section id). We use a dict here
         # so the dirty sections can be shared by multiple callers.
         self.dirty_sections = {}
@@ -4067,6 +4068,11 @@ class GlobalStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        """Initialize the global configuration store.
+
+        Args:
+            possible_transports: Optional transport instances to use.
+        """
         path, kind = bedding._config_dir()
         t = transport.get_transport_from_path(
             path, possible_transports=possible_transports
@@ -4082,6 +4088,11 @@ class LocationStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        """Initialize the location configuration store.
+
+        Args:
+            possible_transports: Optional transport instances to use.
+        """
         t = transport.get_transport_from_path(
             bedding.config_dir(), possible_transports=possible_transports
         )
@@ -4096,6 +4107,11 @@ class BranchStore(TransportIniFileStore):
     """
 
     def __init__(self, branch):
+        """Initialize the branch configuration store.
+
+        Args:
+            branch: The branch instance to store configuration for.
+        """
         super().__init__(branch.control_transport, "branch.conf")
         self.branch = branch
         self.id = "branch"
@@ -4122,6 +4138,11 @@ class SectionMatcher:
     """
 
     def __init__(self, store):
+        """Initialize a section matcher.
+
+        Args:
+            store: The configuration store to match sections from.
+        """
         self.store = store
 
     def get_sections(self):
@@ -4241,6 +4262,12 @@ class StartingPathMatcher(SectionMatcher):
     # related too. -- vila 2012-01-04
 
     def __init__(self, store, location):
+        """Initialize a path matcher for the given location.
+
+        Args:
+            store: The configuration store to search.
+            location: The path or URL to match sections for.
+        """
         super().__init__(store)
         if location.startswith("file://"):
             location = urlutils.local_path_from_url(location)
@@ -4337,6 +4364,14 @@ class LocationMatcher(SectionMatcher):
         return matching_sections
 
     def get_sections(self):
+        """Get configuration sections sorted by specificity.
+
+        Returns sections ordered from most specific (longest path match) to
+        least specific, respecting ignore_parents directives.
+
+        Yields:
+            Tuples of (store, section) for matching sections.
+        """
         # Override the default implementation as we want to change the order
         # We want the longest (aka more specific) locations first
         sections = sorted(
@@ -4682,6 +4717,7 @@ class GlobalStack(Stack):
     """
 
     def __init__(self):
+        """Initialize the global configuration stack."""
         gstore = self.get_shared_store(GlobalStore())
         super().__init__(
             [self._get_overrides, NameMatcher(gstore, "DEFAULT").get_sections],
@@ -4748,6 +4784,11 @@ class BranchStack(Stack):
     """
 
     def __init__(self, branch):
+        """Initialize the branch configuration stack.
+
+        Args:
+            branch: The branch instance to configure.
+        """
         lstore = self.get_shared_store(LocationStore())
         bstore = branch._get_config_store()
         gstore = self.get_shared_store(GlobalStore())
@@ -4763,18 +4804,42 @@ class BranchStack(Stack):
         self.branch = branch
 
     def lock_write(self, token=None):
+        """Acquire a write lock on the branch.
+
+        Args:
+            token: Optional lock token.
+
+        Returns:
+            Lock token from the branch.
+        """
         return self.branch.lock_write(token)
 
     def unlock(self):
+        """Release the branch lock.
+
+        Returns:
+            Result of branch unlock operation.
+        """
         return self.branch.unlock()
 
     def set(self, name, value):
+        """Set a configuration option within a write lock.
+
+        Args:
+            name: The option name.
+            value: The option value.
+        """
         with self.lock_write():
             super().set(name, value)
             # Unlocking the branch will trigger a store.save_changes() so the
             # last unlock saves all the changes.
 
     def remove(self, name):
+        """Remove a configuration option within a write lock.
+
+        Args:
+            name: The option name to remove.
+        """
         with self.lock_write():
             super().remove(name)
             # Unlocking the branch will trigger a store.save_changes() so the
@@ -4789,6 +4854,11 @@ class RemoteControlStack(Stack):
     # control.conf and is used only for stack options.
 
     def __init__(self, bzrdir):
+        """Initialize the remote control stack.
+
+        Args:
+            bzrdir: The control directory to configure.
+        """
         cstore = bzrdir._get_config_store()
         super().__init__([NameMatcher(cstore, None).get_sections], cstore)
         self.controldir = bzrdir
@@ -4802,23 +4872,52 @@ class BranchOnlyStack(Stack):
     # -- vila 2011-12-16
 
     def __init__(self, branch):
+        """Initialize the branch-only configuration stack.
+
+        Args:
+            branch: The branch instance to configure.
+        """
         bstore = branch._get_config_store()
         super().__init__([NameMatcher(bstore, None).get_sections], bstore)
         self.branch = branch
 
     def lock_write(self, token=None):
+        """Acquire a write lock on the branch.
+
+        Args:
+            token: Optional lock token.
+
+        Returns:
+            Lock token from the branch.
+        """
         return self.branch.lock_write(token)
 
     def unlock(self):
+        """Release the branch lock.
+
+        Returns:
+            Result of branch unlock operation.
+        """
         return self.branch.unlock()
 
     def set(self, name, value):
+        """Set a configuration option within a write lock.
+
+        Args:
+            name: The option name.
+            value: The option value.
+        """
         with self.lock_write():
             super().set(name, value)
             # Force a write to persistent storage
             self.store.save_changes()
 
     def remove(self, name):
+        """Remove a configuration option within a write lock.
+
+        Args:
+            name: The option name to remove.
+        """
         with self.lock_write():
             super().remove(name)
             # Force a write to persistent storage
@@ -4868,6 +4967,18 @@ class cmd_config(commands.Command):
 
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None, remove=False):
+        """Execute the config command.
+
+        Args:
+            name: Configuration option name or NAME=value to set.
+            all: Display all matching options.
+            directory: Branch directory to operate on.
+            scope: Configuration scope to use.
+            remove: Remove the specified option.
+
+        Returns:
+            Exit code (0 for success).
+        """
         from .directory_service import directories
 
         if directory is None:

@@ -595,6 +595,13 @@ class cmd_repair_workingtree(Command):
     hidden = True
 
     def run(self, revision=None, directory=".", force=False):
+        """Execute the repair-workingtree command.
+
+        Args:
+            revision: Specific revision to reset the tree to.
+            directory: Directory containing the working tree.
+            force: Reset even if tree doesn't appear corrupted.
+        """
         from .workingtree import WorkingTree
 
         tree, _ = WorkingTree.open_containing(directory)
@@ -647,6 +654,13 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location=".", revision=None):
+        """Execute the revno command.
+
+        Args:
+            tree: Show revision number of working tree.
+            location: Branch location to query.
+            revision: Show revno of specific revision.
+        """
         from .workingtree import WorkingTree
 
         if revision is not None and tree:
@@ -702,6 +716,14 @@ class cmd_revision_info(Command):
 
     @display_command
     def run(self, revision=None, directory=".", tree=False, revision_info_list=None):
+        """Execute the revision-info command.
+
+        Args:
+            revision: Revision specification.
+            directory: Branch directory to examine.
+            tree: Show revision info for working tree.
+            revision_info_list: List of revision identifiers.
+        """
         from .workingtree import WorkingTree
 
         try:
@@ -951,6 +973,11 @@ class cmd_relpath(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the relpath command.
+
+        Args:
+            filename: File path to show relative to root.
+        """
         from .workingtree import WorkingTree
 
         # TODO: jam 20050106 Can relpath return a munged path if
@@ -995,6 +1022,15 @@ class cmd_inventory(Command):
         include_root=False,
         file_list=None,
     ):
+        """Execute the inventory command.
+
+        Args:
+            revision: Specific revision to show inventory for.
+            show_ids: Display internal file IDs.
+            kind: Filter by entry type (file, directory, symlink).
+            include_root: Include the tree root entry.
+            file_list: Specific files to show inventory for.
+        """
         from .workingtree import WorkingTree
 
         if kind and kind not in ["file", "directory", "symlink"]:
@@ -1056,6 +1092,11 @@ class cmd_cp(Command):
     encoding_type = "replace"
 
     def run(self, names_list):
+        """Execute the cp command.
+
+        Args:
+            names_list: List of source files and destination.
+        """
         from .workingtree import WorkingTree
 
         if names_list is None:
@@ -1159,6 +1200,14 @@ class cmd_mv(Command):
     encoding_type = "replace"
 
     def run(self, names_list, after=False, auto=False, dry_run=False):
+        """Execute the mv command.
+
+        Args:
+            names_list: List of source files and destination.
+            after: Record move that has already occurred.
+            auto: Automatically guess renames.
+            dry_run: Show what would be done without making changes.
+        """
         from .workingtree import WorkingTree
 
         if auto:
@@ -1363,6 +1412,19 @@ class cmd_pull(Command):
         show_base=False,
         overwrite_tags=False,
     ):
+        """Execute the pull command.
+
+        Args:
+            location: Branch location to pull from.
+            remember: Remember the location as the default.
+            overwrite: Ignore differences and overwrite unconditionally.
+            revision: Pull only up to this revision.
+            verbose: Show logs of pulled revisions.
+            directory: Branch directory to pull into.
+            local: Perform a local pull in a bound branch.
+            show_base: Show base revision text in conflicts.
+            overwrite_tags: Overwrite tags only.
+        """
         from . import mergeable as _mod_mergeable
         from .workingtree import WorkingTree
 
