@@ -237,6 +237,28 @@ class cmd_propose_merge(Command):
         delete_source_after_merge=None,
         revision=None,
     ):
+        """Execute the mp-propose command.
+
+        Args:
+            submit_branch: Target branch URL for the proposal.
+            directory: Working directory path.
+            forge: Specific forge to use.
+            reviewers: List of reviewers to assign.
+            name: Name for the merge proposal.
+            no_allow_lossy: Whether to disallow lossy operations.
+            description: Description for the merge proposal.
+            labels: Labels to apply to the proposal.
+            prerequisite: Prerequisite branch URL.
+            commit_message: Commit message for merge.
+            wip: Whether proposal is work-in-progress.
+            allow_collaboration: Whether to allow collaboration.
+            allow_empty: Whether to allow empty proposals.
+            overwrite: Whether to overwrite existing proposal.
+            open: Whether to open proposal in browser.
+            auto: Whether to use automatic settings.
+            delete_source_after_merge: Whether to delete source after merge.
+            revision: Specific revision to propose.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -323,6 +345,12 @@ class cmd_find_merge_proposal(Command):
     aliases = ["find-proposal"]
 
     def run(self, directory=".", submit_branch=None):
+        """Execute the mp-find-proposal command.
+
+        Args:
+            directory: Working directory path.
+            submit_branch: Target branch URL to find proposals for.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -371,6 +399,14 @@ class cmd_my_merge_proposals(Command):
     ]
 
     def run(self, status="open", verbose=False, forge=None, base_url=None):
+        """Execute the mp-list-proposals command.
+
+        Args:
+            status: Status filter for proposals (open, closed, etc.).
+            verbose: Whether to show verbose output.
+            forge: Specific forge to query.
+            base_url: Base URL filter for proposals.
+        """
         for instance in _mod_forge.iter_forge_instances(forge=forge):
             if base_url is not None and instance.base_url != base_url:
                 continue
@@ -406,6 +442,12 @@ class cmd_land_merge_proposal(Command):
     takes_options = [Option("message", help="Commit message to use.", type=str)]
 
     def run(self, url, message=None):
+        """Execute the mp-merge command.
+
+        Args:
+            url: URL of the merge proposal to merge.
+            message: Optional commit message for the merge.
+        """
         proposal = _mod_forge.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
 
@@ -471,6 +513,12 @@ class cmd_web_open(Command):
         raise errors.CommandError(f"Unable to get web URL for {location}")
 
     def run(self, location=None, dry_run=False):
+        """Execute the web-open command.
+
+        Args:
+            location: Branch location to open (defaults to current directory).
+            dry_run: Whether to only show URL without opening browser.
+        """
         if location is None:
             location = "."
         web_url = self._get_web_url(location)
@@ -488,6 +536,7 @@ class cmd_forges(Command):
     hidden = True
 
     def run(self):
+        """Execute the forge-whoami command to show current user information."""
         for instance in _mod_forge.iter_forge_instances():
             current_user = instance.get_current_user()
             if current_user is not None:
