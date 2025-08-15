@@ -2951,6 +2951,20 @@ class cmd_diff(Command):
         context=None,
         color="auto",
     ):
+        """Execute the diff command.
+
+        Args:
+            revision: Revisions to compare.
+            file_list: Specific files to diff.
+            diff_options: Options to pass to diff.
+            prefix: Set prefix for old and new in diff output.
+            old: Branch/tree to compare from.
+            new: Branch/tree to compare to.
+            using: Use this command to compare files.
+            format: Output format for the diff.
+            context: Number of context lines.
+            color: Use color output.
+        """
         from .diff import get_trees_and_branches_to_diff_locked, show_diff_trees
 
         if prefix == "0":
@@ -3034,6 +3048,12 @@ class cmd_deleted(Command):
 
     @display_command
     def run(self, show_ids=False, directory="."):
+        """Execute the deleted command.
+
+        Args:
+            show_ids: Show file IDs.
+            directory: Directory to check for deleted files.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -3059,6 +3079,12 @@ class cmd_modified(Command):
 
     @display_command
     def run(self, null=False, directory="."):
+        """Execute the modified command.
+
+        Args:
+            null: Use null separators.
+            directory: Directory to check for modified files.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -3082,6 +3108,12 @@ class cmd_added(Command):
 
     @display_command
     def run(self, null=False, directory="."):
+        """Execute the added command.
+
+        Args:
+            null: Use null separators.
+            directory: Directory to check for added files.
+        """
         from .workingtree import WorkingTree
 
         wt = WorkingTree.open_containing(directory)[0]
