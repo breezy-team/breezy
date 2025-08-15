@@ -26,17 +26,37 @@ from ... import missing as _mod_missing
 from ...commands import Command
 from ...i18n import gettext
 from ...option import ListOption, Option, RegistryOption
-from ...trace import note, warning
+from ...trace import mutter, note, warning
 
 
 def branch_name(branch):
+    """Get a suitable name for a branch.
+
+    Args:
+        branch: The branch object to get the name from.
+
+    Returns:
+        str: The branch name if available, otherwise the basename of the branch URL.
+    """
     if branch.name:
         return branch.name
     return urlutils.basename(branch.user_url)
 
 
 def _check_already_merged(branch, target):
-    # TODO(jelmer): Check entire ancestry rather than just last revision?
+    """Check if a branch is already merged into the target.
+
+    Args:
+        branch: The source branch to check.
+        target: The target branch to check against.
+
+    Raises:
+        CommandError: If all changes from branch are already in target.
+
+    Note:
+        Currently only checks if the last revisions match.
+        TODO(jelmer): Check entire ancestry rather than just last revision?
+    """
     if branch.last_revision() == target.last_revision():
         raise errors.CommandError(
             gettext("All local changes are already present in target.")
@@ -108,10 +128,14 @@ class cmd_publish_derived(Command):
 def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=None):
     """Generate a text description of the unmerged revisions in branch.
 
-    :param branch: The proposed branch
-    :param target: Target branch
-    :param prerequisite_branch: Optional prerequisite branch
-    :return: A string
+    Args:
+        local_branch: The local branch containing the changes.
+        remote_branch: The remote branch that was pushed.
+        target: Target branch to merge into.
+        prerequisite_branch: Optional prerequisite branch that must be merged first.
+
+    Returns:
+        str: A formatted log of unmerged revisions.
     """
     log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
@@ -386,7 +410,15 @@ class cmd_web_open(Command):
     takes_args = ["location?"]
 
     def _possible_locations(self, location):
-        """Yield possible external locations for the branch at 'location'."""
+        """Yield possible external locations for the branch at 'location'.
+
+        Args:
+            location: The location to find possible external URLs for.
+
+        Yields:
+            str: Possible branch URLs including the original location,
+                 public branch URL, and push location.
+        """
         yield location
         try:
             branch = _mod_branch.Branch.open_containing(location)[0]
@@ -400,6 +432,17 @@ class cmd_web_open(Command):
             yield branch_url
 
     def _get_web_url(self, location):
+        """Get the web URL for a branch location.
+
+        Args:
+            location: The location to get the web URL for.
+
+        Returns:
+            str: The web URL for the branch.
+
+        Raises:
+            CommandError: If unable to determine the web URL for the location.
+        """
         for branch_url in self._possible_locations(location):
             try:
                 branch = _mod_branch.Branch.open_containing(branch_url)[0]

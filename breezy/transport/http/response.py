@@ -54,9 +54,24 @@ class ResponseFile:
         """
 
     def __enter__(self):
+        """Enter the runtime context for the ResponseFile.
+
+        Returns:
+            ResponseFile: This object for use in with statements.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context for the ResponseFile.
+
+        Args:
+            exc_type: The exception type if an exception occurred.
+            exc_val: The exception value if an exception occurred.
+            exc_tb: The exception traceback if an exception occurred.
+
+        Returns:
+            bool: False to propagate any exceptions that occurred.
+        """
         return False  # propogate exceptions.
 
     def read(self, size=None):
@@ -70,16 +85,36 @@ class ResponseFile:
         return data
 
     def readline(self):
+        """Read a single line from the current position in the file.
+
+        Returns:
+            bytes: A line of data including the newline character, or an empty
+                bytes object if at EOF.
+        """
         data = self._file.readline()
         self._pos += len(data)
         return data
 
     def readlines(self, size=None):
+        """Read all remaining lines from the current position.
+
+        Args:
+            size: Optional hint for the number of bytes to read. If provided,
+                reading may stop after approximately this many bytes.
+
+        Returns:
+            list[bytes]: A list of lines including newline characters.
+        """
         data = self._file.readlines()
         self._pos += sum(map(len, data))
         return data
 
     def __iter__(self):
+        """Iterate over the lines in the file.
+
+        Yields:
+            bytes: Each line in the file including newline characters.
+        """
         while True:
             line = self.readline()
             if not line:
@@ -87,9 +122,28 @@ class ResponseFile:
             yield line
 
     def tell(self):
+        """Return the current position in the file.
+
+        Returns:
+            int: The current byte position in the file.
+        """
         return self._pos
 
     def seek(self, offset, whence=os.SEEK_SET):
+        """Seek to a new position in the file.
+
+        Only forward seeking is supported. Attempting to seek backwards will
+        raise an AssertionError.
+
+        Args:
+            offset: The number of bytes to seek.
+            whence: How to interpret the offset. Only SEEK_SET (absolute) and
+                SEEK_CUR (relative to current position) are supported.
+
+        Raises:
+            AssertionError: If attempting to seek backwards or using an
+                unsupported whence value.
+        """
         if whence == os.SEEK_SET:
             if offset < self._pos:
                 raise AssertionError(
@@ -150,7 +204,14 @@ class RangeFile(ResponseFile):
         self.set_range(0, -1)
 
     def set_range(self, start, size):
-        """Change the range mapping."""
+        """Change the range mapping.
+
+        Updates the current range being read from the file.
+
+        Args:
+            start: The starting byte position of the range.
+            size: The size of the range in bytes. Use -1 for unknown size.
+        """
         self._start = start
         self._size = size
         # Set the new _pos since that's what we want to expose
@@ -170,7 +231,17 @@ class RangeFile(ResponseFile):
         self.read_range_definition()
 
     def read_boundary(self):
-        """Read the boundary headers defining a new range."""
+        """Read the boundary headers defining a new range.
+
+        Reads and validates the boundary line from a multipart response.
+        Handles additional CRLFs that may precede the boundary as per RFC2616.
+
+        Raises:
+            HttpBoundaryMissing: If the expected boundary is not found (possibly
+                due to a timeout).
+            InvalidHttpResponse: If the boundary line doesn't match the expected
+                format.
+        """
         boundary_line = b"\r\n"
         while boundary_line == b"\r\n":
             # RFC2616 19.2 Additional CRLFs may precede the first boundary
@@ -198,6 +269,17 @@ class RangeFile(ResponseFile):
                 )
 
     def _unquote_boundary(self, b):
+        """Unquote a boundary string that may be incorrectly quoted.
+
+        Works around a bug where IIS 6 and 7 incorrectly wrap boundary strings
+        in angle brackets (<>), which email_utils.unquote() handles incorrectly.
+
+        Args:
+            b: The boundary line as bytes.
+
+        Returns:
+            bytes: The unquoted boundary line.
+        """
         return (
             b[:2]
             + email_utils.unquote(b[2:-2].decode("ascii")).encode("ascii")
@@ -222,7 +304,17 @@ class RangeFile(ResponseFile):
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
-        """Helper to set the new range from its description in the headers."""
+        """Helper to set the new range from its description in the headers.
+
+        Parses a Content-Range header and updates the current range accordingly.
+
+        Args:
+            content_range: The Content-Range header value (e.g., "bytes 200-1023/1024").
+
+        Raises:
+            InvalidHttpRange: If the header is malformed, contains an unsupported
+                range type, has invalid values, or specifies a range with size <= 0.
+        """
         try:
             rtype, values = content_range.split()
         except ValueError as e:
@@ -255,7 +347,14 @@ class RangeFile(ResponseFile):
     def _checked_read(self, size):
         """Read the file checking for short reads.
 
-        The data read is discarded along the way.
+        The data read is discarded along the way. Used internally for seeking
+        forward by discarding unwanted bytes.
+
+        Args:
+            size: The number of bytes to read and discard.
+
+        Raises:
+            ShortReadvError: If unable to read the requested number of bytes.
         """
         pos = self._pos
         remaining = size
@@ -267,6 +366,13 @@ class RangeFile(ResponseFile):
         self._pos += size
 
     def _seek_to_next_range(self):
+        """Seek to the next range in a multipart response.
+
+        Reads the boundary and range definition headers for the next part.
+
+        Raises:
+            InvalidRange: If no boundary is set (not a multipart response).
+        """
         # We will cross range boundaries
         if self._boundary is None:
             # If we don't have a boundary, we can't find another range
@@ -321,6 +427,23 @@ class RangeFile(ResponseFile):
         return data
 
     def seek(self, offset, whence=0):
+        """Seek to a new position in the file.
+
+        Supports seeking within and across range boundaries in multipart responses.
+        Only forward seeking is supported.
+
+        Args:
+            offset: The number of bytes to seek.
+            whence: How to interpret the offset:
+                0 (SEEK_SET): Absolute position
+                1 (SEEK_CUR): Relative to current position
+                2 (SEEK_END): Relative to end (only if size is known)
+
+        Raises:
+            InvalidRange: If attempting to seek backwards, beyond known boundaries,
+                or from end when size is unknown.
+            ValueError: If whence has an invalid value.
+        """
         start_pos = self._pos
         if whence == 0:
             final_pos = offset
@@ -363,6 +486,11 @@ class RangeFile(ResponseFile):
             self._checked_read(size)
 
     def tell(self):
+        """Return the current position in the file.
+
+        Returns:
+            int: The current byte position in the file.
+        """
         return self._pos
 
 

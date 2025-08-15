@@ -32,6 +32,14 @@ _serializer_handles_escaping = hasattr(
 
 
 def copy_inventory(inv: inventory.Inventory) -> inventory.Inventory:
+    """Create a deep copy of an inventory.
+    
+    Args:
+        inv: The inventory to copy.
+    
+    Returns:
+        inventory.Inventory: A new inventory with all entries copied.
+    """
     entries = inv.iter_entries_by_dir()
     inv = inventory.Inventory(None, inv.revision_id)
     for _path, inv_entry in entries:
@@ -50,6 +58,15 @@ class CommitHandler(processor.CommitHandler):
         verbose: bool = False,
         prune_empty_dirs: bool = True,
     ) -> None:
+        """Initialize a CommitHandler for processing fast-import commits.
+        
+        Args:
+            command: The commit command to process.
+            cache_mgr: Cache manager for storing inventories and blobs.
+            rev_store: Revision store for saving revisions and inventories.
+            verbose: Whether to output verbose progress information.
+            prune_empty_dirs: Whether to remove directories that become empty.
+        """
         super().__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
@@ -71,28 +88,56 @@ class CommitHandler(processor.CommitHandler):
         self._paths_deleted_this_commit: set[str] = set()
 
     def mutter(self, msg, *args):
-        """Output a mutter but add context."""
+        """Output a mutter message with command context.
+        
+        Args:
+            msg: The message format string.
+            *args: Arguments to format into the message.
+        """
         msg = f"{msg} ({self.command.id})"
         mutter(msg, *args)
 
     def debug(self, msg, *args):
-        """Output a mutter if the appropriate -D option was given."""
+        """Output a debug message if fast-import debugging is enabled.
+        
+        Args:
+            msg: The message format string.
+            *args: Arguments to format into the message.
+        """
         if debug.debug_flag_enabled("fast-import"):
             msg = f"{msg} ({self.command.id})"
             mutter(msg, *args)
 
     def note(self, msg, *args):
-        """Output a note but add context."""
+        """Output a note message with command context.
+        
+        Args:
+            msg: The message format string.
+            *args: Arguments to format into the message.
+        """
         msg = f"{msg} ({self.command.id})"
         note(msg, *args)
 
     def warning(self, msg, *args) -> None:
-        """Output a warning but add context."""
+        """Output a warning message with command context.
+        
+        Args:
+            msg: The message format string.
+            *args: Arguments to format into the message.
+        """
         msg = f"{msg} ({self.command.id})"
         warning(msg, *args)
 
     def pre_process_files(self) -> None:
-        """Prepare for committing."""
+        """Prepare for committing by setting up revision and inventory state.
+        
+        This method:
+        - Generates the revision ID
+        - Tracks heads and determines parent revisions
+        - Builds the revision object
+        - Initializes inventory tracking structures
+        - Sets up the basis inventory and root entry
+        """
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.data_for_commit: dict[bytes, bytes] = {}
@@ -158,10 +203,22 @@ class CommitHandler(processor.CommitHandler):
             self._add_entry((old_path, "", root_id, root_ie))
 
     def _init_inventory(self) -> inventory.Inventory:
+        """Initialize a new inventory for the revision.
+        
+        Returns:
+            inventory.Inventory: A new empty inventory with the revision ID set.
+        """
         return self.rev_store.init_inventory(self.revision_id)
 
     def get_inventory(self, revision_id: revision.RevisionID) -> inventory.Inventory:
-        """Get the inventory for a revision id."""
+        """Get the inventory for a revision ID, using cache when possible.
+        
+        Args:
+            revision_id: The revision ID to get the inventory for.
+        
+        Returns:
+            inventory.Inventory: The inventory for the given revision.
+        """
         try:
             inv = self.cache_mgr.inventories[revision_id]
         except KeyError:
@@ -173,24 +230,53 @@ class CommitHandler(processor.CommitHandler):
         return inv
 
     def _get_data(self, file_id: inventory.FileId) -> bytes:
-        """Get the data bytes for a file-id."""
+        """Get the file content data for a file ID.
+        
+        Args:
+            file_id: The file ID to get data for.
+        
+        Returns:
+            bytes: The file content.
+        """
         return self.data_for_commit[file_id]
 
     def _get_lines(self, file_id: inventory.FileId) -> None:
-        """Get the lines for a file-id."""
+        """Get the lines for a file ID.
+        
+        Args:
+            file_id: The file ID to get lines for.
+        
+        Returns:
+            list: Lines of the file content.
+        """
         return osutils.split_lines(self._get_data(file_id))
 
     def _get_per_file_parents(
         self, file_id: inventory.FileId
     ) -> list[inventory.FileId]:
-        """Get the lines for a file-id."""
+        """Get the parent file IDs for per-file versioning.
+        
+        Args:
+            file_id: The file ID to get parents for.
+        
+        Returns:
+            list[inventory.FileId]: List of parent file IDs.
+        """
         return self.per_file_parents_for_commit[file_id]
 
     def _get_inventories(self, revision_ids):
-        """Get the inventories for revision-ids.
-
-        This is a callback used by the RepositoryStore to
-        speed up inventory reconstruction.
+        """Get inventories for multiple revision IDs.
+        
+        This is a callback used by the RepositoryStore to speed up inventory
+        reconstruction. It attempts to use cached inventories when available.
+        
+        Args:
+            revision_ids: List of revision IDs to get inventories for.
+        
+        Returns:
+            tuple: (present, inventories) where present is a list of revision IDs
+                that were successfully loaded, and inventories is the list of
+                corresponding inventory objects.
         """
         present = []
         inventories = []
@@ -214,10 +300,21 @@ class CommitHandler(processor.CommitHandler):
         return present, inventories
 
     def bzr_file_id_and_new(self, path: str) -> tuple[inventory.FileId, bool]:
-        """Get a Bazaar file identifier and new flag for a path.
-
-        :return: file_id, is_new where
-          is_new = True if the file_id is newly created
+        """Get or create a Bazaar file ID for a path.
+        
+        Attempts to find an existing file ID for the path in:
+        1. Files modified in this commit
+        2. The basis inventory
+        3. Other parent inventories (for merges)
+        
+        If not found, generates a new file ID.
+        
+        Args:
+            path: The file path to get an ID for.
+        
+        Returns:
+            tuple: (file_id, is_new) where is_new is True if the file_id
+                was newly created.
         """
         if path not in self._paths_deleted_this_commit:
             # Try file-ids renamed in this commit
@@ -250,10 +347,26 @@ class CommitHandler(processor.CommitHandler):
         return file_id, True
 
     def bzr_file_id(self, path) -> inventory.FileId:
-        """Get a Bazaar file identifier for a path."""
+        """Get a Bazaar file ID for a path.
+        
+        Args:
+            path: The file path to get an ID for.
+        
+        Returns:
+            inventory.FileId: The file ID for the path.
+        """
         return self.bzr_file_id_and_new(path)[0]
 
     def _utf8_decode(self, field, value) -> str:
+        """Decode a UTF-8 value with error handling.
+        
+        Args:
+            field: The field name (for error messages).
+            value: The bytes value to decode.
+        
+        Returns:
+            str: The decoded string, with invalid characters replaced if necessary.
+        """
         try:
             return value.decode("utf-8")
         except UnicodeDecodeError:
@@ -263,6 +376,14 @@ class CommitHandler(processor.CommitHandler):
             return value.decode("utf-8", "replace")
 
     def _decode_path(self, path) -> str:
+        """Decode a file path from UTF-8 with error handling.
+        
+        Args:
+            path: The path bytes to decode.
+        
+        Returns:
+            str: The decoded path string.
+        """
         try:
             return path.decode("utf-8")
         except UnicodeDecodeError:
@@ -272,7 +393,16 @@ class CommitHandler(processor.CommitHandler):
             return path.decode("utf-8", "replace")
 
     def _format_name_email(self, section: str, name: str, email: str) -> str:
-        """Format name & email as a string."""
+        """Format name and email into a standard string representation.
+        
+        Args:
+            section: The section type (e.g., "author", "committer").
+            name: The person's name.
+            email: The person's email address.
+        
+        Returns:
+            str: Formatted string as "Name <email>" or just "Name" if no email.
+        """
         name = self._utf8_decode(f"{section} name", name)
         email = self._utf8_decode(f"{section} email", email)
 
@@ -282,9 +412,13 @@ class CommitHandler(processor.CommitHandler):
             return name
 
     def gen_revision_id(self) -> revision.RevisionID:
-        """Generate a revision id.
-
-        Subclasses may override this to produce deterministic ids say.
+        """Generate a unique revision ID for this commit.
+        
+        Uses the committer information and timestamp to generate a revision ID.
+        Subclasses may override this to produce deterministic IDs.
+        
+        Returns:
+            revision.RevisionID: The generated revision ID.
         """
         committer = self.command.committer
         # Perhaps 'who' being the person running the import is ok? If so,
@@ -294,6 +428,17 @@ class CommitHandler(processor.CommitHandler):
         return generate_ids.gen_revision_id(who, timestamp)
 
     def build_revision(self):
+        """Build the revision object for this commit.
+        
+        Creates a Revision object with all metadata including:
+        - Committer information
+        - Commit message
+        - Revision properties
+        - Parent revision IDs
+        
+        Returns:
+            revision.Revision: The constructed revision object.
+        """
         rev_props = self._legal_revision_properties(self.command.properties)
         if "branch-nick" not in rev_props:
             rev_props["branch-nick"] = self.cache_mgr.branch_mapper.git_to_bzr(
@@ -323,7 +468,17 @@ class CommitHandler(processor.CommitHandler):
         )
 
     def _legal_revision_properties(self, props: dict[str, str]) -> dict[str, str]:
-        """Clean-up any revision properties we can't handle."""
+        """Clean up revision properties to ensure they are valid.
+        
+        Currently converts None values to empty strings since None is not
+        allowed in revision properties.
+        
+        Args:
+            props: The properties dictionary to clean.
+        
+        Returns:
+            dict[str, str]: The cleaned properties dictionary.
+        """
         # For now, we just check for None because that's not allowed in 2.0rc1
         result = {}
         if props is not None:
@@ -336,6 +491,14 @@ class CommitHandler(processor.CommitHandler):
         return result
 
     def _save_author_info(self, rev_props: dict[str, str]) -> None:
+        """Save author information to revision properties.
+        
+        Handles single authors, multiple authors, and the case where the
+        author is the same as the committer.
+        
+        Args:
+            rev_props: The revision properties dictionary to update.
+        """
         author = self.command.author
         if author is None:
             return
@@ -359,7 +522,18 @@ class CommitHandler(processor.CommitHandler):
         data: Optional[bytes],
         inv: inventory.Inventory,
     ) -> None:
-        """Add to or change an item in the inventory."""
+        """Add or modify an item in the inventory.
+        
+        Creates the appropriate inventory entry type based on the kind of item
+        and records the change. Handles files, directories, and symlinks.
+        
+        Args:
+            path: The path of the item.
+            kind: The type of item ("file", "directory", "symlink").
+            is_executable: Whether the item is executable (files only).
+            data: The content data (files/symlinks) or None (directories).
+            inv: The inventory to modify.
+        """
         # If we've already added this, warn the user that we're ignoring it.
         # In the future, it might be nice to double check that the new data
         # is the same as the old but, frankly, exporters should be fixed
@@ -433,7 +607,18 @@ class CommitHandler(processor.CommitHandler):
     def _ensure_directory(
         self, path: str, inv: inventory.Inventory
     ) -> tuple[str, inventory.FileId]:
-        """Ensure that the containing directory exists for 'path'."""
+        """Ensure that the containing directory exists for a path.
+        
+        Creates any missing parent directories recursively.
+        
+        Args:
+            path: The path whose parent directory should exist.
+            inv: The inventory to check/modify.
+        
+        Returns:
+            tuple: (basename, parent_id) where basename is the last component
+                of the path and parent_id is the file ID of the parent directory.
+        """
         dirname, basename = osutils.split(path)
         if dirname == "":
             # the root node doesn't get updated
@@ -469,8 +654,19 @@ class CommitHandler(processor.CommitHandler):
         self, inv: inventory.Inventory, dirname: str
     ) -> inventory.InventoryEntry:
         """Get the inventory entry for a directory.
-
-        Raises KeyError if dirname is not a directory in inv.
+        
+        Checks the directory cache first, then looks up in the inventory.
+        Only returns entries that are actually directories.
+        
+        Args:
+            inv: The inventory to search in.
+            dirname: The directory path to look up.
+        
+        Returns:
+            inventory.InventoryEntry: The directory entry.
+        
+        Raises:
+            KeyError: If dirname is not a directory in inv.
         """
         result = self.directory_entries.get(dirname)
         if result is None:
@@ -492,6 +688,15 @@ class CommitHandler(processor.CommitHandler):
         return result
 
     def _delete_item(self, path: str, inv: inventory.Inventory) -> None:
+        """Delete an item from the inventory.
+        
+        Handles deletion of items that were added in this commit as well as
+        existing items.
+        
+        Args:
+            path: The path to delete.
+            inv: The inventory to delete from.
+        """
         newly_added = self._new_file_ids.get(path)
         if newly_added:
             # We've only just added this path earlier in this commit.
@@ -513,6 +718,16 @@ class CommitHandler(processor.CommitHandler):
     def _copy_item(
         self, src_path: str, dest_path: str, inv: inventory.Inventory
     ) -> None:
+        """Copy an item to a new location in the inventory.
+        
+        Creates a new entry at the destination with the same content as the
+        source. Handles files and symlinks, with a warning for unsupported types.
+        
+        Args:
+            src_path: The source path to copy from.
+            dest_path: The destination path to copy to.
+            inv: The inventory to operate on.
+        """
         newly_changed = self._new_file_ids.get(src_path) or self._modified_file_ids.get(
             src_path
         )
@@ -553,6 +768,16 @@ class CommitHandler(processor.CommitHandler):
     def _rename_item(
         self, old_path: str, new_path: str, inv: inventory.Inventory
     ) -> None:
+        """Rename an item in the inventory.
+        
+        Moves an item from old_path to new_path, handling cases where the item
+        was added or modified in this commit.
+        
+        Args:
+            old_path: The current path of the item.
+            new_path: The new path for the item.
+            inv: The inventory to operate on.
+        """
         existing = self._new_file_ids.get(old_path) or self._modified_file_ids.get(
             old_path
         )
@@ -582,6 +807,13 @@ class CommitHandler(processor.CommitHandler):
         self.data_for_commit[file_id] = b"".join(lines)
 
     def _delete_all_items(self, inv: inventory.Inventory) -> None:
+        """Delete all items from the inventory.
+        
+        Used for the deleteall command which removes everything except the root.
+        
+        Args:
+            inv: The inventory to clear.
+        """
         if len(inv) == 0:
             return
         for path, ie in inv.iter_entries_by_dir():
@@ -589,6 +821,14 @@ class CommitHandler(processor.CommitHandler):
                 self.record_delete(path, ie)
 
     def _warn_unless_in_merges(self, fileid: inventory.FileId, path: str) -> None:
+        """Warn if a file ID is not found in any parent inventory.
+        
+        Used to detect potential issues with file deletions.
+        
+        Args:
+            fileid: The file ID to check.
+            path: The path (for the warning message).
+        """
         if len(self.parents) <= 1:
             return
         for parent in self.parents[1:]:
@@ -597,7 +837,11 @@ class CommitHandler(processor.CommitHandler):
         self.warning("ignoring delete of %s as not in parent inventories", path)
 
     def post_process_files(self) -> None:
-        """Save the revision."""
+        """Save the revision after all file operations are complete.
+        
+        Generates the final inventory delta, applies it to create the new
+        inventory, and saves everything to the revision store.
+        """
         delta = self._get_final_delta()
         inv = self.rev_store.load_using_delta(
             self.revision,
@@ -612,10 +856,13 @@ class CommitHandler(processor.CommitHandler):
         # print "committed %s" % self.revision_id
 
     def _get_final_delta(self):
-        """Generate the final delta.
-
-        Smart post-processing of changes, e.g. pruning of directories
-        that would become empty, goes here.
+        """Generate the final inventory delta for this commit.
+        
+        Includes smart post-processing like pruning directories that would
+        become empty after the changes are applied.
+        
+        Returns:
+            InventoryDelta: The complete delta for this commit.
         """
         delta: list[
             tuple[
@@ -647,6 +894,15 @@ class CommitHandler(processor.CommitHandler):
     def _empty_after_delta(
         self, delta, candidates
     ) -> list[tuple[str, inventory.FileId]]:
+        """Find directories that will be empty after applying a delta.
+        
+        Args:
+            delta: The inventory delta to test.
+            candidates: Set of directory paths that might become empty.
+        
+        Returns:
+            list: Tuples of (path, file_id) for directories that will be empty.
+        """
         # self.mutter("delta so far is:\n%s" % "\n".join([str(de) for de in delta]))
         # self.mutter("candidates for deletion are:\n%s" % "\n".join([c for c in candidates]))
         new_inv = self._get_proposed_inventory(delta)
@@ -665,6 +921,17 @@ class CommitHandler(processor.CommitHandler):
         return result
 
     def _get_proposed_inventory(self, delta) -> inventory.Inventory:
+        """Create a test inventory by applying a delta.
+        
+        Used to check what the inventory would look like after applying changes,
+        without actually committing them.
+        
+        Args:
+            delta: The inventory delta to apply.
+        
+        Returns:
+            inventory.Inventory: The inventory after applying the delta.
+        """
         if len(self.parents):
             # new_inv = self.basis_inventory._get_mutable_inventory()
             # Note that this will create unreferenced chk pages if we end up
@@ -687,6 +954,19 @@ class CommitHandler(processor.CommitHandler):
             Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
         ],
     ) -> None:
+        """Add an entry to the delta, handling entry combination.
+        
+        Combines multiple operations on the same file ID intelligently:
+        - rename + modify => single combined operation
+        - add + delete => no operation
+        - etc.
+        
+        Also tracks directories that might become empty and calculates
+        per-file parents.
+        
+        Args:
+            entry: The delta entry tuple (old_path, new_path, file_id, ie).
+        """
         # We need to combine the data if multiple entries have the same file-id.
         # For example, a rename followed by a modification looks like:
         #
@@ -772,13 +1052,33 @@ class CommitHandler(processor.CommitHandler):
             self.per_file_parents_for_commit[file_id] = per_file_parents
 
     def record_new(self, path: str, ie: inventory.InventoryEntry) -> None:
+        """Record the addition of a new inventory entry.
+        
+        Args:
+            path: The path where the entry is being added.
+            ie: The inventory entry to add.
+        """
         self._add_entry((None, path, ie.file_id, ie))
 
     def record_changed(self, path: str, ie: inventory.InventoryEntry) -> None:
+        """Record a modification to an existing inventory entry.
+        
+        Args:
+            path: The path of the modified entry.
+            ie: The modified inventory entry.
+        """
         self._add_entry((path, path, ie.file_id, ie))
         self._modified_file_ids[path] = ie.file_id
 
     def record_delete(self, path: str, ie: inventory.InventoryEntry) -> None:
+        """Record the deletion of an inventory entry.
+        
+        For directories, recursively deletes all children.
+        
+        Args:
+            path: The path being deleted.
+            ie: The inventory entry being deleted.
+        """
         self._add_entry((path, None, ie.file_id, None))
         self._paths_deleted_this_commit.add(path)
         if ie.kind == "directory":
@@ -802,6 +1102,17 @@ class CommitHandler(processor.CommitHandler):
         file_id: inventory.FileId,
         old_ie: inventory.InventoryEntry,
     ) -> None:
+        """Record the renaming of an inventory entry.
+        
+        Creates a new inventory entry with updated path information while
+        preserving the file ID.
+        
+        Args:
+            old_path: The current path of the entry.
+            new_path: The new path for the entry.
+            file_id: The file ID of the entry.
+            old_ie: The current inventory entry.
+        """
         new_basename, new_parent_id = self._ensure_directory(
             new_path, self.basis_inventory
         )
@@ -817,7 +1128,17 @@ class CommitHandler(processor.CommitHandler):
     def _rename_pending_change(
         self, old_path: str, new_path: str, file_id: inventory.FileId
     ) -> None:
-        """Instead of adding/modifying old-path, add new-path instead."""
+        """Rename a change that was already recorded in this commit.
+        
+        Instead of adding/modifying old-path, changes it to add new-path instead.
+        This handles the case where a file is modified then renamed in the same
+        commit.
+        
+        Args:
+            old_path: The originally recorded path.
+            new_path: The new path to use instead.
+            file_id: The file ID of the entry.
+        """
         # note: delta entries look like (old, new, file-id, ie)
         old_ie = self._delta_entries_by_fileid[file_id][3]
 
@@ -860,6 +1181,11 @@ class CommitHandler(processor.CommitHandler):
         self.record_new(new_path, ie)
 
     def modify_handler(self, filecmd) -> None:
+        """Handle a modify file command.
+        
+        Args:
+            filecmd: The file modification command to process.
+        """
         (kind, executable) = mode_to_kind(filecmd.mode)
         if filecmd.dataref is not None:
             if kind == "directory":
@@ -875,21 +1201,41 @@ class CommitHandler(processor.CommitHandler):
         self._modify_item(decoded_path, kind, executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd) -> None:
+        """Handle a delete file command.
+        
+        Args:
+            filecmd: The file deletion command to process.
+        """
         self.debug("deleting %s", filecmd.path)
         self._delete_item(self._decode_path(filecmd.path), self.basis_inventory)
 
     def copy_handler(self, filecmd) -> None:
+        """Handle a copy file command.
+        
+        Args:
+            filecmd: The file copy command to process.
+        """
         src_path = self._decode_path(filecmd.src_path)
         dest_path = self._decode_path(filecmd.dest_path)
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd) -> None:
+        """Handle a rename file command.
+        
+        Args:
+            filecmd: The file rename command to process.
+        """
         old_path = self._decode_path(filecmd.old_path)
         new_path = self._decode_path(filecmd.new_path)
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.basis_inventory)
 
     def deleteall_handler(self, filecmd) -> None:
+        """Handle a deleteall command that removes all files and directories.
+        
+        Args:
+            filecmd: The deleteall command to process.
+        """
         self.debug("deleting all files (and also all directories)")
         self._delete_all_items(self.basis_inventory)
