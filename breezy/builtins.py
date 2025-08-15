@@ -5623,6 +5623,22 @@ class cmd_merge(Command):
         preview=False,
         interactive=False,
     ):
+        """Execute the merge command.
+
+        Args:
+            location: Branch to merge from.
+            revision: Specific revision to merge.
+            force: Force merge even with conflicts.
+            merge_type: Merge algorithm to use.
+            show_base: Show base revision in conflicts.
+            reprocess: Reprocess conflicts to minimize.
+            remember: Remember location as default for future merges.
+            uncommitted: Merge uncommitted changes from other branch.
+            pull: Pull changes instead of merging.
+            directory: Working tree directory.
+            preview: Show what would be merged without doing it.
+            interactive: Interactively select changes to merge.
+        """
         from . import mergeable as _mod_mergeable
         from .workingtree import WorkingTree
 
