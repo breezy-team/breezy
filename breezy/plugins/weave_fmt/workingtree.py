@@ -33,16 +33,16 @@ from ...workingtree import WorkingTreeFormat
 
 def get_conflicted_stem(path):
     """Extract the base filename from a conflict file path.
-    
+
     Conflict files have special suffixes like .THIS, .OTHER, .BASE etc.
     This function removes those suffixes to get the original filename.
-    
+
     Args:
         path: File path that may have a conflict suffix
-        
+
     Returns:
         str: The path without conflict suffix, or None if no suffix found
-        
+
     Example:
         >>> get_conflicted_stem('file.txt.THIS')
         'file.txt'
@@ -77,7 +77,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     def get_format_description(self):
         """Get a human-readable description of this format.
-        
+
         Returns:
             str: "Working tree format 2"
         """
@@ -89,9 +89,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         This is a workaround that ensures remote directories can later be
         updated and dealt with locally, since BzrDirFormat6 and BzrDirFormat5
         cannot represent directories with no working tree. (See bug #43064).
-        
+
         Creates an empty inventory and pending-merges file.
-        
+
         Args:
             transport: Transport to create files on
             file_mode: Unix file mode for created files
@@ -145,7 +145,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     def __init__(self):
         """Initialize the working tree format.
-        
+
         Sets up format 2 to work with BzrDirFormat6 control directories.
         """
         super().__init__()
@@ -184,10 +184,10 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def __init__(self, basedir, *args, **kwargs):
         """Initialize a format 2 working tree.
-        
+
         Format 2 working trees require that self._inventory always exists,
         so this constructor ensures the inventory is loaded if not already present.
-        
+
         Args:
             basedir: Base directory of the working tree
             *args: Additional positional arguments for parent class
@@ -205,7 +205,7 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _get_check_refs(self):
         """Get references needed to check the integrity of this tree.
-        
+
         Returns:
             list: A list of (ref_type, ref_id) tuples, where ref_type is 'trees'
                 and ref_id is the last revision of this tree
@@ -231,14 +231,14 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def unlock(self):
         """Unlock the working tree.
-        
+
         Since format 2 shares control files with the branch, this reverses
         the locking order used in lock_tree_write(). If this is the last
         lock reference, it also:
         - Performs implementation cleanup
         - Flushes any modified inventory
         - Writes dirty hash cache
-        
+
         Returns:
             The result of unlocking the control files
         """
@@ -259,10 +259,10 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _iter_conflicts(self):
         """Iterate over files in conflict.
-        
+
         Identifies files that have conflict markers by looking for files
         with conflict suffixes (.THIS, .OTHER, etc.).
-        
+
         Yields:
             str: Base filenames (without suffixes) of conflicted files
         """
@@ -277,11 +277,11 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def conflicts(self):
         """Get the list of conflicts in the working tree.
-        
+
         Detects conflicts by looking for files with conflict suffixes.
         Determines whether each conflict is a text conflict (all files exist
         and are regular files) or a contents conflict.
-        
+
         Returns:
             ConflictList: List of Conflict objects representing current conflicts
         """
@@ -314,13 +314,13 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def set_conflicts(self, arg):
         """Set the list of conflicts.
-        
+
         Format 2 does not support explicitly setting conflicts - they are
         detected by the presence of conflict marker files.
-        
+
         Args:
             arg: New conflict list (unused)
-            
+
         Raises:
             UnsupportedOperation: Always raised as format 2 doesn't support this
         """
@@ -328,13 +328,13 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def add_conflicts(self, arg):
         """Add conflicts to the working tree.
-        
+
         Format 2 does not support explicitly adding conflicts - they are
         detected by the presence of conflict marker files.
-        
+
         Args:
             arg: Conflicts to add (unused)
-            
+
         Raises:
             UnsupportedOperation: Always raised as format 2 doesn't support this
         """

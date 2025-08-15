@@ -30,7 +30,16 @@ from .request import (
 
 
 class SmartServerBranchRequest(SmartServerRequest):
-    """Base class for handling common branch request logic."""
+    """Base class for handling common branch request logic.
+
+    This class provides the basic infrastructure for handling smart server
+    requests that operate on branches. It handles path resolution, branch
+    opening, and ensures that branch references are properly rejected.
+
+    Attributes:
+        transport: The transport used to access the branch.
+        root_client_path: The root path from the client's perspective.
+    """
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
@@ -52,8 +61,14 @@ class SmartServerBranchRequest(SmartServerRequest):
 
 
 class SmartServerLockedBranchRequest(SmartServerBranchRequest):
-    """Base class for handling common branch request logic for requests that
-    need a write lock.
+    """Base class for handling common branch request logic for requests that need a write lock.
+
+    This class extends SmartServerBranchRequest to provide automatic write lock
+    acquisition and release for operations that modify branch state. It ensures
+    that both branch and repository locks are properly managed.
+
+    The locking is performed using context managers to guarantee proper cleanup
+    even if exceptions occur during request processing.
     """
 
     def do_with_branch(self, branch, branch_token, repo_token, *args):
@@ -72,8 +87,25 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 
 
 class SmartServerBranchBreakLock(SmartServerBranchRequest):
+    """Request handler for breaking branch locks.
+
+    This handler allows clients to forcibly break a lock on a branch,
+    useful when a lock is held by a dead process.
+    """
+
     def do_with_branch(self, branch):
-        """Break a branch lock."""
+        """Break a branch lock.
+
+        Args:
+            branch: The branch whose lock should be broken.
+
+        Returns:
+            SuccessfulSmartServerResponse: Always returns success after breaking the lock.
+
+        Note:
+            This operation forcibly breaks the lock, which may cause data loss
+            if another process is actively using the branch.
+        """
         branch.break_lock()
         return SuccessfulSmartServerResponse(
             (b"ok",),
@@ -81,6 +113,12 @@ class SmartServerBranchBreakLock(SmartServerBranchRequest):
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
+    """Request handler for retrieving branch configuration files.
+
+    Returns the raw content of the branch.conf file from the branch's
+    control directory.
+    """
+
     def do_with_branch(self, branch):
         """Return the content of branch.conf.
 
@@ -120,21 +158,63 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
 
 
 class SmartServerBranchGetParent(SmartServerBranchRequest):
+    """Request handler for retrieving a branch's parent location.
+
+    Returns the parent branch URL that this branch was created from,
+    or an empty string if no parent is set.
+    """
+
     def do_with_branch(self, branch):
-        """Return the parent of branch."""
+        """Return the parent of branch.
+
+        Args:
+            branch: The branch to query for parent location.
+
+        Returns:
+            SuccessfulSmartServerResponse: Contains the UTF-8 encoded parent URL,
+                or an empty string if no parent is set.
+        """
         parent = branch._get_parent_location() or ""
         return SuccessfulSmartServerResponse((parent.encode("utf-8"),))
 
 
 class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
+    """Request handler for retrieving branch tags as raw bytes.
+
+    Returns the serialized tag dictionary for the branch.
+    """
+
     def do_with_branch(self, branch):
-        """Return the _get_tags_bytes for a branch."""
+        """Return the _get_tags_bytes for a branch.
+
+        Args:
+            branch: The branch to retrieve tags from.
+
+        Returns:
+            SuccessfulSmartServerResponse: Contains the serialized tag dictionary
+                as raw bytes.
+        """
         bytes = branch._get_tags_bytes()
         return SuccessfulSmartServerResponse((bytes,))
 
 
 class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
+    """Request handler for setting branch tags from raw bytes.
+
+    Updates the branch's tag dictionary with the provided serialized data.
+    Requires a write lock on the branch.
+
+    New in 1.18.
+    """
+
     def __init__(self, backing_transport, root_client_path="/", jail_root=None):
+        """Initialize the SmartServerBranchSetTagsBytes handler.
+
+        Args:
+            backing_transport: The transport for accessing the branch.
+            root_client_path: The root path from client's perspective (default: "/").
+            jail_root: Optional root directory to restrict access to.
+        """
         SmartServerLockedBranchRequest.__init__(
             self, backing_transport, root_client_path, jail_root
         )
@@ -152,10 +232,22 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         self.locked = True
 
     def do_body(self, bytes):
+        """Process the body containing serialized tags.
+
+        Args:
+            bytes: The serialized tag data to set on the branch.
+
+        Returns:
+            SuccessfulSmartServerResponse indicating completion.
+        """
         self.branch._set_tags_bytes(bytes)
         return SuccessfulSmartServerResponse(())
 
     def do_end(self):
+        """Clean up after tag setting operation.
+
+        Ensures the branch lock is properly released if it was acquired.
+        """
         # TODO: this request shouldn't have to do this housekeeping manually.
         # Some of this logic probably belongs in a base class.
         if not self.locked:
@@ -170,6 +262,14 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
 
 
 class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
+    """Request handler for determining which branch heads need fetching.
+
+    Returns two lists of revision IDs: those that must be fetched and
+    those that should be fetched if present.
+
+    New in 2.4.
+    """
+
     def do_with_branch(self, branch):
         """Return the heads-to-fetch for a Branch as two bencoded lists.
 
@@ -182,12 +282,36 @@ class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
+    """Request handler for retrieving the stacked-on branch URL.
+
+    Returns the URL of the branch that this branch is stacked on,
+    allowing for more efficient storage by sharing history.
+    """
+
     def do_with_branch(self, branch):
+        """Return the URL of the branch this branch is stacked on.
+
+        Args:
+            branch: The branch to query for stacking information.
+
+        Returns:
+            SuccessfulSmartServerResponse: Contains "ok" status and the ASCII-encoded
+                stacked-on URL.
+
+        Raises:
+            Implicitly raises NotStacked error if branch is not stacked.
+        """
         stacked_on_url = branch.get_stacked_on_url()
         return SuccessfulSmartServerResponse((b"ok", stacked_on_url.encode("ascii")))
 
 
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
+    """Request handler for retrieving the complete revision history.
+
+    Returns the list of all revision IDs in the branch's ancestry,
+    from oldest to newest.
+    """
+
     def do_with_branch(self, branch):
         r"""Get the revision history for the branch.
 
@@ -206,6 +330,11 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
+    """Request handler for retrieving the last revision information.
+
+    Returns the revision number and revision ID of the branch tip.
+    """
+
     def do_with_branch(self, branch):
         """Return branch.last_revision_info().
 
@@ -218,6 +347,14 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
+    """Request handler for converting revision IDs to revision numbers.
+
+    Maps a revision ID to its corresponding dotted revision number
+    in the branch's history.
+
+    New in 2.5.
+    """
+
     def do_with_branch(self, branch, revid):
         """Return branch.revision_id_to_revno().
 
@@ -239,11 +376,28 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
 
 
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
-    """Base class for handling common branch request logic for requests that
-    update the branch tip.
+    """Base class for handling common branch request logic for requests that update the branch tip.
+
+    This class provides a common framework for operations that modify the branch tip,
+    including proper error handling for tip change rejections. It ensures that
+    TipChangeRejected exceptions are properly caught and converted to appropriate
+    response objects.
+
+    Subclasses should implement do_tip_change_with_locked_branch() to perform
+    the actual tip modification.
     """
 
     def do_with_locked_branch(self, branch, *args):
+        """Execute tip change operation with proper error handling.
+
+        Args:
+            branch: The locked branch to operate on.
+            *args: Additional arguments passed to the tip change method.
+
+        Returns:
+            SmartServerResponse: Result from the tip change operation, or
+                FailedSmartServerResponse if TipChangeRejected is raised.
+        """
         try:
             return self.do_tip_change_with_locked_branch(branch, *args)
         except errors.TipChangeRejected as e:
@@ -254,9 +408,24 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
 
 
 class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
-    """Set an option in the branch configuration."""
+    """Set an option in the branch configuration.
+
+    Updates a single configuration option in the branch's configuration file.
+    Requires a write lock on the branch.
+    """
 
     def do_with_locked_branch(self, branch, value, name, section):
+        """Set a configuration option value.
+
+        Args:
+            branch: The branch to update.
+            value: The value to set (as bytes, will be decoded).
+            name: The option name (as bytes, will be decoded).
+            section: The configuration section (as bytes, will be decoded), or empty for default.
+
+        Returns:
+            SuccessfulSmartServerResponse indicating completion.
+        """
         if not section:
             section = None
         branch._get_config().set_option(
@@ -268,12 +437,26 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
 
 
 class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest):
-    """Set an option in the branch configuration.
+    """Set an option in the branch configuration using a dictionary.
+
+    Updates a configuration option that stores dictionary values.
+    The dictionary is bencoded for transmission.
 
     New in 2.2.
     """
 
     def do_with_locked_branch(self, branch, value_dict, name, section):
+        """Set a dictionary configuration option.
+
+        Args:
+            branch: The branch to update.
+            value_dict: Bencoded dictionary of values to set.
+            name: The option name (as bytes, will be decoded).
+            section: The configuration section (as bytes, will be decoded), or empty for default.
+
+        Returns:
+            SuccessfulSmartServerResponse indicating completion.
+        """
         utf8_dict = bencode.bdecode(value_dict)
         value_dict = {}
         for key, value in utf8_dict.items():
@@ -284,7 +467,23 @@ class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
+    """Request handler for setting the branch tip revision.
+
+    Updates the branch to point to a specific revision as its tip.
+    The revision must already exist in the repository.
+    """
+
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
+        """Set the last revision of the branch.
+
+        Args:
+            branch: The branch to update.
+            new_last_revision_id: The revision ID to set as the tip.
+
+        Returns:
+            SuccessfulSmartServerResponse on success.
+            FailedSmartServerResponse if the revision doesn't exist.
+        """
         if new_last_revision_id == b"null:":
             branch.set_last_revision_info(0, new_last_revision_id)
         else:
@@ -297,6 +496,14 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
 
 class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
+    """Request handler for setting branch tip with advanced options.
+
+    Provides more control over tip changes, including handling of
+    divergent branches and descendant relationships.
+
+    New in 1.6.
+    """
+
     def do_tip_change_with_locked_branch(
         self, branch, new_last_revision_id, allow_divergence, allow_overwrite_descendant
     ):
@@ -344,13 +551,27 @@ class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
 
 
 class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
-    """Branch.set_last_revision_info.  Sets the revno and the revision ID of
-    the specified branch.
+    """Request handler for setting both revision number and revision ID.
+
+    Sets the revno and the revision ID of the specified branch. This allows
+    direct control over both the revision number and ID, useful for operations
+    that need to set specific revision numbers.
 
     New in breezy 1.4.
     """
 
     def do_tip_change_with_locked_branch(self, branch, new_revno, new_last_revision_id):
+        """Set the branch tip to a specific revision number and ID.
+
+        Args:
+            branch: The branch to update.
+            new_revno: The revision number to set (as bytes, will be converted to int).
+            new_last_revision_id: The revision ID to set as the tip.
+
+        Returns:
+            SuccessfulSmartServerResponse: On success.
+            FailedSmartServerResponse: If the revision doesn't exist.
+        """
         try:
             branch.set_last_revision_info(int(new_revno), new_last_revision_id)
         except errors.NoSuchRevision:
@@ -359,18 +580,48 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
 
 
 class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
-    """Set the parent location for a branch.
+    """Request handler for setting a branch's parent location.
+
+    Updates the parent branch URL, which is typically the location from which
+    this branch was originally created. The parent location is used for
+    operations like 'bzr missing' and 'bzr merge'.
 
     Takes a location to set, which must be utf8 encoded.
     """
 
     def do_with_locked_branch(self, branch, location):
+        """Set the parent location for the branch.
+
+        Args:
+            branch: The branch to update.
+            location: The parent location URL (UTF-8 encoded bytes).
+
+        Returns:
+            SuccessfulSmartServerResponse: Empty response on success.
+        """
         branch._set_parent_location(location.decode("utf-8"))
         return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
+    """Request handler for acquiring a write lock on a branch.
+
+    Acquires write locks on both the branch and its repository,
+    returning tokens that can be used to reacquire the locks.
+    """
+
     def do_with_branch(self, branch, branch_token=b"", repo_token=b""):
+        """Acquire a write lock on the branch.
+
+        Args:
+            branch: The branch to lock.
+            branch_token: Optional token to reacquire an existing branch lock.
+            repo_token: Optional token to reacquire an existing repository lock.
+
+        Returns:
+            SuccessfulSmartServerResponse with lock tokens on success.
+            FailedSmartServerResponse on lock contention or other errors.
+        """
         if branch_token == b"":
             branch_token = None
         if repo_token == b"":
@@ -402,7 +653,24 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
+    """Request handler for releasing branch locks.
+
+    Releases write locks on both the branch and its repository
+    using the provided tokens.
+    """
+
     def do_with_branch(self, branch, branch_token, repo_token):
+        """Release locks on the branch.
+
+        Args:
+            branch: The branch to unlock.
+            branch_token: Token for the branch lock to release.
+            repo_token: Token for the repository lock to release.
+
+        Returns:
+            SuccessfulSmartServerResponse on success.
+            FailedSmartServerResponse if tokens don't match.
+        """
         try:
             with branch.repository.lock_write(token=repo_token):
                 branch.lock_write(token=branch_token)
@@ -416,12 +684,24 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
-    """Get the physical lock status for a branch.
+    """Request handler for checking if a branch has a physical lock.
+
+    Returns whether the branch is currently locked at the OS/filesystem level.
+    This is useful for determining if another process has an active lock on
+    the branch.
 
     New in 2.5.
     """
 
     def do_with_branch(self, branch):
+        """Check the physical lock status of the branch.
+
+        Args:
+            branch: The branch to check.
+
+        Returns:
+            SuccessfulSmartServerResponse: Contains "yes" if locked, "no" if not.
+        """
         if branch.get_physical_lock_status():
             return SuccessfulSmartServerResponse((b"yes",))
         else:
@@ -429,12 +709,26 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestGetAllReferenceInfo(SmartServerBranchRequest):
-    """Get the reference information.
+    """Request handler for retrieving all reference information from a branch.
+
+    Returns information about all references stored in the branch, including
+    file IDs and their associated reference data. The response is bencoded
+    for efficient transmission.
 
     New in 3.1.
     """
 
     def do_with_branch(self, branch):
+        """Retrieve all reference information from the branch.
+
+        Args:
+            branch: The branch to query.
+
+        Returns:
+            SuccessfulSmartServerResponse: Contains "ok" status and bencoded
+                reference data. The data is a list of tuples containing
+                (key, file_id, reference_path) where reference_path may be empty.
+        """
         all_reference_info = branch._get_all_reference_info()
         content = bencode.bencode(
             [

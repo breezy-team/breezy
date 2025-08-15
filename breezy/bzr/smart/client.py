@@ -21,6 +21,20 @@ from . import message, protocol
 
 
 class _SmartClient:
+    """Smart client for communicating with a Bazaar smart server.
+
+    This class provides the low-level interface for making RPC calls to a
+    Bazaar smart server. It handles protocol negotiation, request encoding,
+    and response decoding.
+
+    The client supports multiple protocol versions and will automatically
+    negotiate the best version supported by both client and server.
+
+    Attributes:
+        _medium: The SmartClientMedium used for communication.
+        _headers: Dictionary of headers to send with each request.
+    """
+
     def __init__(self, medium, headers=None):
         """Constructor.
 
@@ -33,6 +47,11 @@ class _SmartClient:
             self._headers = dict(headers)
 
     def __repr__(self):
+        """Return a string representation of the SmartClient.
+
+        Returns:
+            String representation showing the class name and medium.
+        """
         return f"{self.__class__.__name__}({self._medium!r})"
 
     def _call_and_read_response(
@@ -44,6 +63,24 @@ class _SmartClient:
         body_stream=None,
         expect_response_body=True,
     ):
+        """Internal method to send a request and read the response.
+
+        This creates a _SmartClientRequest object to handle the actual
+        communication, including retries and protocol version negotiation.
+
+        Args:
+            method: The remote method name to call (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional body bytes to send with the request.
+            readv_body: Optional readv array for the request body.
+            body_stream: Optional stream object for the request body.
+            expect_response_body: Whether to expect a response body.
+
+        Returns:
+            Tuple of (response_tuple, response_handler) where response_tuple
+            contains the response status and arguments, and response_handler
+            can be used to read the response body if present.
+        """
         request = _SmartClientRequest(
             self,
             method,
@@ -100,12 +137,45 @@ class _SmartClient:
         return (response, response_handler)
 
     def call_with_body_readv_array(self, args, body):
+        """Call a method with a readv array body.
+
+        This is used for requests that need to send multiple byte ranges
+        as the request body, typically for optimized bulk data transfers.
+
+        Args:
+            args: Tuple where first element is the method name and remaining
+                elements are method arguments (all byte strings).
+            body: A readv array specifying byte ranges to send.
+
+        Returns:
+            Tuple of (response, response_handler) where response contains
+            the response status and arguments, and response_handler can be
+            used to read the response body.
+        """
         response, response_handler = self._call_and_read_response(
             args[0], args[1:], readv_body=body, expect_response_body=True
         )
         return (response, response_handler)
 
     def call_with_body_stream(self, args, stream):
+        """Call a method with a streaming body.
+
+        This is used for requests that need to send large amounts of data
+        without loading it all into memory at once.
+
+        Args:
+            args: Tuple where first element is the method name and remaining
+                elements are method arguments (all byte strings).
+            stream: A file-like object to stream as the request body.
+
+        Returns:
+            Tuple of (response, response_handler) where response contains
+            the response status and arguments.
+
+        Note:
+            Streaming requests cannot be retried if the connection fails
+            after streaming has begun.
+        """
         response, response_handler = self._call_and_read_response(
             args[0], args[1:], body_stream=stream, expect_response_body=False
         )
@@ -144,6 +214,17 @@ class _SmartClientRequest:
         body_stream=None,
         expect_response_body=True,
     ):
+        """Initialize a SmartClientRequest.
+
+        Args:
+            client: The _SmartClient that owns this request.
+            method: The remote method name to call (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional body bytes to send with the request.
+            readv_body: Optional readv array for the request body.
+            body_stream: Optional stream object for the request body.
+            expect_response_body: Whether to expect a response body.
+        """
         self.client = client
         self.method = method
         self.args = args
@@ -185,6 +266,11 @@ class _SmartClientRequest:
         return False
 
     def _run_call_hooks(self):
+        """Run any registered call hooks.
+
+        This method executes all hooks registered for 'call' events,
+        passing them information about the current request.
+        """
         if not _SmartClient.hooks["call"]:
             return
         params = CallHookParams(
@@ -333,7 +419,17 @@ class _SmartClientRequest:
 
 
 class SmartClientHooks(hooks.Hooks):
+    """Hook management for smart client operations.
+
+    This class defines the hooks available for smart client operations,
+    allowing extensions to monitor or modify client behavior.
+    """
+
     def __init__(self):
+        """Initialize the SmartClientHooks.
+
+        Registers the available hook points for smart client operations.
+        """
         hooks.Hooks.__init__(self, "breezy.bzr.smart.client", "_SmartClient.hooks")
         self.add_hook(
             "call",
@@ -349,7 +445,30 @@ _SmartClient.hooks = SmartClientHooks()  # type: ignore
 
 
 class CallHookParams:
+    """Parameters passed to smart client call hooks.
+
+    This class encapsulates all the information about a smart client
+    request that is passed to registered hooks. Hooks can inspect but
+    not modify these parameters.
+
+    Attributes:
+        method: The method name being called (byte string).
+        args: Tuple of arguments for the method (byte strings).
+        body: Optional request body bytes.
+        readv_body: Optional readv array for the request.
+        medium: The SmartClientMedium being used.
+    """
+
     def __init__(self, method, args, body, readv_body, medium):
+        """Initialize CallHookParams.
+
+        Args:
+            method: The method name being called (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional request body bytes.
+            readv_body: Optional readv array for the request.
+            medium: The SmartClientMedium being used.
+        """
         self.method = method
         self.args = args
         self.body = body
@@ -357,13 +476,35 @@ class CallHookParams:
         self.medium = medium
 
     def __repr__(self):
+        """Return a string representation of the CallHookParams.
+
+        Returns:
+            String representation showing non-None attributes.
+        """
         attrs = {k: v for k, v in self.__dict__.items() if v is not None}
         return f"<{self.__class__.__name__} {attrs!r}>"
 
     def __eq__(self, other):
+        """Check equality with another CallHookParams instance.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if both objects have the same attributes, False otherwise.
+            NotImplemented if other is not a CallHookParams instance.
+        """
         if not isinstance(other, type(self)):
             return NotImplemented
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
+        """Check inequality with another CallHookParams instance.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if objects are not equal, False if they are equal.
+        """
         return not self == other
