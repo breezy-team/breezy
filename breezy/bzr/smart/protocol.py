@@ -1171,6 +1171,14 @@ class SmartClientRequestProtocolOne(
         self._headers = dict(headers)
 
     def call(self, *args):
+        """Execute remote call with given arguments.
+
+        Args:
+            *args: Arguments to pass to the remote method.
+
+        Returns:
+            Response from the remote call.
+        """
         if debug.debug_flag_enabled("hpss"):
             mutter("hpss call:   %s", repr(args)[1:-1])
             if getattr(self._request._medium, "base", None) is not None:
@@ -1483,6 +1491,12 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     request_marker = REQUEST_VERSION_THREE
 
     def __init__(self, message_handler, expect_version_marker=False):
+        """Initialize ProtocolThreeDecoder.
+
+        Args:
+            message_handler: Handler for processing decoded messages.
+            expect_version_marker: Whether to expect protocol version marker.
+        """
         _StatefulDecoder.__init__(self)
         self._has_dispatched = False
         # Initial state

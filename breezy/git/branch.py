@@ -1030,6 +1030,11 @@ class GitBranch(ForeignBranch):
         self.repository._write_git_config(cs)
 
     def break_lock(self):
+        """Break any existing locks on the branch.
+
+        Raises:
+            NotImplementedError: This operation is not supported for Git branches.
+        """
         raise NotImplementedError(self.break_lock)
 
     def lock_read(self):

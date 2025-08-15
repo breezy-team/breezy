@@ -3465,6 +3465,12 @@ class MutableSection(Section):
     """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):
+        """Initialize MutableSection with ID and options.
+
+        Args:
+            section_id: Unique identifier for the section.
+            options: Dictionary-like object containing section options.
+        """
         super().__init__(section_id, options)
         self.reset_changes()
 
