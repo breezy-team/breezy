@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""Performance timing tool for graph operations.
+
+This tool benchmarks different graph implementations (KnownGraph vs Graph)
+by timing head-finding operations on various revision combinations. It's used
+to measure and compare the performance of graph algorithms in Breezy.
+"""
+
 import optparse
 import random
 import sys
@@ -35,6 +42,15 @@ print(f"Found {len(parent_map)} nodes, loaded in {end - begin:.3f}s")
 
 
 def all_heads_comp(g, combinations):
+    """Compute heads for all given combinations using a graph.
+
+    Args:
+        g: Graph object to use for head computation.
+        combinations: List of revision ID tuples to find heads for.
+
+    Returns:
+        List of head results for each combination.
+    """
     h = []
     with ui.ui_factory.nested_progress_bar() as pb:
         for idx, combo in enumerate(combinations):
@@ -55,7 +71,7 @@ combinations = []
 # Times for 500 'merge parents' from bzr.dev
 #   25.6s   vs   45.0s  :(
 
-for _revision_id, parent_ids in parent_map.iteritems():
+for _revision_id, parent_ids in parent_map.items():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
 # The largest portion of the graph that has to be walked for a heads() check
@@ -68,6 +84,15 @@ print(f"      {len(combinations)} combinations")
 
 
 def combi_graph(graph_klass, comb):
+    """Run head computation benchmark with a specific graph class.
+
+    Args:
+        graph_klass: Graph class to instantiate for testing.
+        comb: List of revision combinations to test.
+
+    Returns:
+        Dict with elapsed time, graph instance, and heads results.
+    """
     # DEBUG
     graph._counters[1] = 0
     graph._counters[2] = 0
@@ -83,6 +108,12 @@ def combi_graph(graph_klass, comb):
 
 
 def report(name, g):
+    """Print performance report for a graph benchmark.
+
+    Args:
+        name: Name of the graph implementation being reported.
+        g: Result dict from combi_graph containing timing data.
+    """
     print(f"{name}: {g['elapsed']:.3f}s")
     counters_used = False
     for c in graph._counters:
@@ -97,13 +128,21 @@ report("Known", known_python)
 
 
 def _simple_graph(parent_map):
+    """Create a simple Graph instance from a parent map.
+
+    Args:
+        parent_map: Dictionary mapping revision IDs to their parent IDs.
+
+    Returns:
+        Graph instance using DictParentsProvider.
+    """
     return graph.Graph(graph.DictParentsProvider(parent_map))
 
 
 if opts.quick:
-    print(f"ratio: {known_python['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")
+    print(f"ratio: {known_python['elapsed']:.3f}s")
 else:
     orig = combi_graph(_simple_graph, combinations)
     report("Orig", orig)
 
-    print(f"ratio: {orig['elapsed'] / known_pyrex['elapsed']:.1f}:1 faster")
+    print(f"ratio: {orig['elapsed'] / known_python['elapsed']:.1f}:1 faster")

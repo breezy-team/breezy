@@ -2,6 +2,15 @@
 # Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
+"""Check NEWS file bug references against Launchpad status.
+
+This tool reads a NEWS file, extracts bug numbers mentioned in it, and checks
+their status in Launchpad. It reports bugs that are mentioned in NEWS but are
+not marked as 'Fix Released' in Launchpad.
+
+Requires launchpadlib, lazr.restfulclient, and hydrazine packages.
+"""
+
 import getopt
 import importlib.util
 import re
@@ -41,6 +50,13 @@ if len(args) == 1:
 
 
 def report_notmarked(bug, task, section):
+    """Report a bug that was mentioned in NEWS but not marked as fixed.
+
+    Args:
+        bug: Launchpad bug object.
+        task: Launchpad bug task object.
+        section: NEWS section text where the bug was mentioned.
+    """
     print()
     print("Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id,))
     print(f"Launchpad title: {bug.title}")
@@ -84,6 +100,11 @@ def read_news_bugnos(path):
 
 
 def print_bug_url(bugno):
+    """Print a URL for a Launchpad bug.
+
+    Args:
+        bugno: Bug number to create URL for.
+    """
     print(f"<URL:http://pad.lv/{bugno}>")
 
 
