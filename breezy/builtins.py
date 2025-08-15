@@ -6990,6 +6990,13 @@ class cmd_break_lock(Command):
     ]
 
     def run(self, location=None, config=False, force=False):
+        """Execute the break-lock command.
+
+        Args:
+            location: Location of the lock to break.
+            config: Location is directory where config lock is.
+            force: Don't ask for confirmation before breaking lock.
+        """
         if location is None:
             location = "."
         if force:
@@ -7014,6 +7021,7 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
+        """Execute the wait-until-signalled command."""
         self.outf.write("running\n")
         self.outf.flush()
         sys.stdin.readline()
@@ -7068,6 +7076,17 @@ class cmd_serve(Command):
         protocol=None,
         client_timeout=None,
     ):
+        """Execute the serve command.
+
+        Args:
+            listen: Address/interface to listen on.
+            port: Port number to listen on.
+            inet: Serve on stdin/stdout for inetd.
+            directory: Directory to serve from.
+            allow_writes: Allow write access to served data.
+            protocol: Protocol to use for serving.
+            client_timeout: Client idle timeout in seconds.
+        """
         from . import location, transport
 
         if directory is None:
@@ -7102,6 +7121,12 @@ class cmd_join(Command):
     ]
 
     def run(self, tree, reference=False):
+        """Execute the join command.
+
+        Args:
+            tree: Subtree to join into the containing tree.
+            reference: Join by reference.
+        """
         from .mutabletree import BadReferenceTarget
         from .workingtree import WorkingTree
 
@@ -7151,6 +7176,11 @@ class cmd_split(Command):
     takes_args = ["tree"]
 
     def run(self, tree):
+        """Execute the split command.
+
+        Args:
+            tree: Subdirectory to convert into independent tree.
+        """
         from .workingtree import WorkingTree
 
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -7225,6 +7255,18 @@ class cmd_merge_directive(Command):
         message=None,
         directory=".",
     ):
+        """Execute the send command.
+
+        Args:
+            submit_branch: Branch to submit changes to.
+            public_branch: Public location of this branch.
+            patch_type: Type of patch to send (plain/diff/bundle).
+            sign: Sign the merge directive with GPG.
+            revision: Revision range to send.
+            mail_to: Email address to send directive to.
+            message: Message to use when committing merge.
+            directory: Directory containing the branch.
+        """
         from . import merge_directive
         from .revision import NULL_REVISION
 
