@@ -3418,6 +3418,12 @@ class Section:
     """
 
     def __init__(self, section_id, options):
+        """Initialize Section with ID and options.
+
+        Args:
+            section_id: Unique identifier for the section.
+            options: Dictionary-like object containing section options.
+        """
         self.id = section_id
         # We re-use the dict-like object received
         self.options = options

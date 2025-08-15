@@ -95,6 +95,18 @@ class cmd_publish_derived(Command):
         directory=".",
         revision=None,
     ):
+        """Execute the mp-push command.
+
+        Args:
+            submit_branch: Target branch URL for pushing.
+            owner: Owner of the target branch.
+            name: Name for the new branch.
+            project: Project to create branch in.
+            no_allow_lossy: Whether to disallow lossy push.
+            overwrite: Whether to overwrite existing branch.
+            directory: Working directory path.
+            revision: Specific revision to push.
+        """
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:

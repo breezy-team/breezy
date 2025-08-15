@@ -1234,6 +1234,11 @@ class ProxyHandler(urllib.request.ProxyHandler):
     _debuglevel = DEBUG
 
     def __init__(self, proxies=None):
+        """Initialize ProxyHandler with proxy configuration.
+
+        Args:
+            proxies: Dictionary of proxy settings by protocol.
+        """
         urllib.request.ProxyHandler.__init__(self, proxies)
         # First, let's get rid of urllib.request implementation
         for type, proxy in self.proxies.items():
@@ -1323,6 +1328,12 @@ class ProxyHandler(urllib.request.ProxyHandler):
         return None
 
     def set_proxy(self, request, type):
+        """Set proxy for request if not bypassed.
+
+        Args:
+            request: HTTP request object.
+            type: Protocol type (http, https, etc.).
+        """
         host = request.host
         if self.proxy_bypass(host):
             return request

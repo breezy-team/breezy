@@ -1001,6 +1001,11 @@ class GitBranch(ForeignBranch):
         return self._get_related_merge_branch(cs)
 
     def set_parent(self, location):
+        """Set parent branch location.
+
+        Args:
+            location: URL of the parent branch.
+        """
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
         this_url = urlutils.strip_segment_parameters(self.user_url)
