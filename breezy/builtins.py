@@ -1631,6 +1631,24 @@ class cmd_push(Command):
         overwrite_tags=False,
         lossy=False,
     ):
+        """Execute the push command.
+
+        Args:
+            location: Branch location to push to.
+            remember: Remember location as the default.
+            overwrite: Ignore differences and overwrite unconditionally.
+            create_prefix: Create the path leading to the branch.
+            verbose: Display pushed revisions.
+            revision: Push only up to this revision.
+            use_existing_dir: Use existing directory at destination.
+            directory: Branch directory to push from.
+            stacked_on: Create a stacked branch referring to another branch.
+            stacked: Create a stacked branch referring to the parent.
+            strict: Refuse to push with uncommitted changes.
+            no_tree: Don't create a working tree at destination.
+            overwrite_tags: Overwrite tags only.
+            lossy: Allow lossy push for foreign formats.
+        """
         from .location import location_to_url
         from .push import _show_push_branch
 
@@ -1786,6 +1804,23 @@ class cmd_branch(Command):
         no_recurse_nested=False,
         colocated_branch=None,
     ):
+        """Execute the branch command.
+
+        Args:
+            from_location: Source branch location.
+            to_location: Destination for the new branch.
+            revision: Specific revision to branch from.
+            hardlink: Hard-link working tree files where possible.
+            stacked: Create a stacked branch referring to source.
+            standalone: Do not reference the source branch.
+            no_tree: Create a branch without a working tree.
+            use_existing_dir: Use existing directory at destination.
+            switch: Switch the containing directory to the new branch.
+            bind: Bind new branch to source location.
+            files_from: Get file contents from this tree.
+            no_recurse_nested: Do not check out nested trees.
+            colocated_branch: Name of colocated branch to create.
+        """
         from breezy import switch as _mod_switch
 
         from .workingtree import WorkingTree
@@ -1932,6 +1967,12 @@ class cmd_branches(Command):
     ]
 
     def run(self, location=".", recursive=False):
+        """Execute the branches command.
+
+        Args:
+            location: Location to list branches from.
+            recursive: Recursively scan for branches.
+        """
         if recursive:
             t = transport.get_transport(location, purpose="read")
             if not t.listable():
@@ -2016,6 +2057,16 @@ class cmd_checkout(Command):
         files_from=None,
         hardlink=False,
     ):
+        """Execute the checkout command.
+
+        Args:
+            branch_location: Branch to check out from.
+            to_location: Directory to create checkout in.
+            revision: Specific revision to check out.
+            lightweight: Create a lightweight checkout.
+            files_from: Get file contents from this tree.
+            hardlink: Hard-link working tree files where possible.
+        """
         from .workingtree import WorkingTree
 
         if branch_location is None:
@@ -2066,6 +2117,14 @@ class cmd_clone(Command):
     def run(
         self, from_location, to_location=None, revision=None, no_recurse_nested=False
     ):
+        """Execute the clone command.
+
+        Args:
+            from_location: Source control directory to clone.
+            to_location: Destination for the clone.
+            revision: Specific revision to clone at.
+            no_recurse_nested: Do not check out nested trees.
+        """
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location
         )
@@ -2099,6 +2158,11 @@ class cmd_renames(Command):
 
     @display_command
     def run(self, dir="."):
+        """Execute the renames command.
+
+        Args:
+            dir: Directory to show renames in.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(dir)[0]
