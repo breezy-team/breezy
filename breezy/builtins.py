@@ -7461,6 +7461,23 @@ class cmd_send(Command):
         strict=None,
         **kwargs,
     ):
+        """Execute the bundle-revisions command.
+
+        Args:
+            submit_branch: Branch to bundle revisions to.
+            public_branch: Public location of this branch.
+            no_bundle: Don't include bundle in output.
+            no_patch: Don't include patch in output.
+            revision: Revision range to bundle.
+            remember: Remember submit location.
+            output: Output file for the bundle.
+            format: Bundle format to use.
+            mail_to: Email address for the bundle.
+            message: Message for the bundle.
+            body: Body text for the bundle.
+            strict: Strict validation mode.
+            **kwargs: Additional keyword arguments.
+        """
         from .send import send
 
         return send(
@@ -7555,6 +7572,20 @@ class cmd_bundle_revisions(cmd_send):
         strict=None,
         **kwargs,
     ):
+        """Execute the bundle command.
+
+        Args:
+            submit_branch: Branch to bundle revisions to.
+            public_branch: Public location of this branch.
+            no_bundle: Don't include bundle in output.
+            no_patch: Don't include patch in output.
+            revision: Revision range to bundle.
+            remember: Remember submit location.
+            output: Output file for the bundle.
+            format: Bundle format to use.
+            strict: Strict validation mode.
+            **kwargs: Additional keyword arguments.
+        """
         if output is None:
             output = "-"
         from .send import send
@@ -7622,6 +7653,15 @@ class cmd_tag(Command):
         force=None,
         revision=None,
     ):
+        """Execute the tag command.
+
+        Args:
+            tag_name: Name of the tag to create or delete.
+            delete: Delete the specified tag.
+            directory: Branch directory to tag in.
+            force: Replace existing tag.
+            revision: Revision to tag.
+        """
         branch, relpath = Branch.open_containing(directory)
         self.enter_context(branch.lock_write())
         if delete:
@@ -7682,6 +7722,14 @@ class cmd_tags(Command):
 
     @display_command
     def run(self, directory=".", sort=None, show_ids=False, revision=None):
+        """Execute the tags command.
+
+        Args:
+            directory: Branch directory to list tags from.
+            sort: Sort method for tags.
+            show_ids: Show revision IDs for tags.
+            revision: Show tags for specific revision.
+        """
         from .tag import tag_sort_methods
 
         branch, relpath = Branch.open_containing(directory)
