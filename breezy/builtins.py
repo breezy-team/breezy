@@ -5277,6 +5277,7 @@ class cmd_selftest(Command):
     encoding_type = "replace"
 
     def __init__(self):
+        """Initialize the selftest command."""
         Command.__init__(self)
         self.additional_selftest_args = {}
 
@@ -8181,6 +8182,15 @@ class cmd_view(Command):
         name=None,
         switch=None,
     ):
+        """Execute the view command.
+
+        Args:
+            file_list: Files to include in view.
+            all: Show all files in view.
+            delete: Delete the named view.
+            name: Name of view to create or modify.
+            switch: Name of view to switch to.
+        """
         from . import views
         from .workingtree import WorkingTree
 
@@ -8259,6 +8269,7 @@ class cmd_hooks(Command):
     hidden = True
 
     def run(self):
+        """Execute the hooks command."""
         for hook_key in sorted(hooks.known_hooks.keys()):
             some_hooks = hooks.known_hooks_key_to_object(hook_key)
             self.outf.write(f"{type(some_hooks).__name__}:\n")
@@ -8296,6 +8307,13 @@ class cmd_remove_branch(Command):
     aliases = ["rmbranch"]
 
     def run(self, directory=None, location=None, force=False):
+        """Execute the remove-branch command.
+
+        Args:
+            directory: Directory containing the branch.
+            location: Location of branch to remove.
+            force: Remove branch even if it is the active branch.
+        """
         br = open_nearby_branch(near=directory, location=location)
         if not force and br.controldir.has_workingtree():
             try:
@@ -8379,6 +8397,18 @@ class cmd_shelve(Command):
         destroy=False,
         directory=None,
     ):
+        """Execute the shelve command.
+
+        Args:
+            revision: Revision to shelve changes to.
+            all: Shelve all changes.
+            file_list: List of files to shelve.
+            message: Message to use for shelve.
+            writer: Method to use for writing diffs.
+            list: List shelved changes.
+            destroy: Destroy removed changes instead of shelving them.
+            directory: Directory containing working tree.
+        """
         if list:
             return self.run_for_list(directory=directory)
         from .shelf_ui import Shelver
@@ -8461,6 +8491,13 @@ class cmd_unshelve(Command):
     _see_also = ["shelve"]
 
     def run(self, shelf_id=None, action="apply", directory="."):
+        """Execute the unshelve command.
+
+        Args:
+            shelf_id: ID of shelf to unshelve.
+            action: Action to perform with shelved changes.
+            directory: Directory containing working tree.
+        """
         from .shelf_ui import Unshelver
 
         unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
@@ -8507,6 +8544,16 @@ class cmd_clean_tree(Command):
         force=False,
         directory=".",
     ):
+        """Execute the clean-tree command.
+
+        Args:
+            unknown: Delete files unknown to brz.
+            ignored: Delete ignored files.
+            detritus: Delete backup and temporary files.
+            dry_run: Show files to delete instead of deleting them.
+            force: Do not prompt before deleting.
+            directory: Directory containing working tree.
+        """
         from .clean_tree import clean_tree
 
         if not (unknown or ignored or detritus):
@@ -8542,6 +8589,14 @@ class cmd_reference(Command):
     ]
 
     def run(self, path=None, directory=".", location=None, force_unversioned=False):
+        """Execute the reference command.
+
+        Args:
+            path: Path to set or query reference for.
+            directory: Directory containing working tree.
+            location: Branch location to set as reference.
+            force_unversioned: Set reference even if path is not versioned.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -8600,6 +8655,12 @@ class cmd_export_pot(Command):
     ]
 
     def run(self, plugin=None, include_duplicates=False):
+        """Execute the export-pot command.
+
+        Args:
+            plugin: Export help text from named command.
+            include_duplicates: Output multiple copies of the same msgid string.
+        """
         from .export_pot import export_pot
 
         export_pot(self.outf, plugin, include_duplicates)
@@ -8622,6 +8683,12 @@ class cmd_import(Command):
     takes_args = ["source", "tree?"]
 
     def run(self, source, tree=None):
+        """Execute the import command.
+
+        Args:
+            source: Source directory, tarball or zip file to import.
+            tree: Target tree directory.
+        """
         from .upstream_import import do_import
 
         do_import(source, tree)
@@ -8636,6 +8703,11 @@ class cmd_link_tree(Command):
     takes_args = ["location"]
 
     def run(self, location):
+        """Execute the link-tree command.
+
+        Args:
+            location: Location of source tree to link from.
+        """
         from .transform import link_tree
         from .workingtree import WorkingTree
 
@@ -8657,6 +8729,12 @@ class cmd_fetch_ghosts(Command):
     takes_options = [Option("no-fix", help="Skip additional synchonization.")]
 
     def run(self, branch=None, no_fix=False):
+        """Execute the fetch-ghosts command.
+
+        Args:
+            branch: Branch to fetch ghosts from.
+            no_fix: Skip additional synchronization.
+        """
         from .fetch_ghosts import GhostFetcher
 
         installed, failed = GhostFetcher.from_cmdline(branch).run()
@@ -8796,6 +8874,27 @@ class cmd_grep(Command):
         color=None,
         diff=False,
     ):
+        """Execute the grep command.
+
+        Args:
+            verbose: Verbose output.
+            ignore_case: Ignore case distinctions.
+            no_recursive: Don't recurse into subdirectories.
+            from_root: Search from repository root.
+            null: Use null separator between output lines.
+            levels: Number of levels to search.
+            line_number: Show 1-based line number.
+            path_list: List of paths to search.
+            revision: Revision to search in.
+            pattern: Pattern to search for.
+            include: Include file patterns.
+            exclude: Exclude file patterns.
+            fixed_string: Treat pattern as fixed string.
+            files_with_matches: Show only files with matches.
+            files_without_match: Show only files without matches.
+            color: Use colored output.
+            diff: Show diffs for matches.
+        """
         import re
 
         from breezy import terminal
@@ -8924,6 +9023,13 @@ class cmd_patch(Command):
     ]
 
     def run(self, filename=None, strip=None, silent=False):
+        """Execute the patch command.
+
+        Args:
+            filename: Patch file to apply.
+            strip: Number of path components to strip.
+            silent: Suppress chatter.
+        """
         from .workingtree import WorkingTree, patch_tree
 
         wt = WorkingTree.open_containing(".")[0]
@@ -8955,6 +9061,11 @@ class cmd_resolve_location(Command):
     hidden = True
 
     def run(self, location):
+        """Execute the resolve-location command.
+
+        Args:
+            location: Location to expand to full URL.
+        """
         from .location import location_to_url
 
         url = location_to_url(location)
