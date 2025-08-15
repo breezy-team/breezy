@@ -2395,6 +2395,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return RemoteStreamSink(self)
 
     def _get_source(self, to_format):
+        """Get a source for converting to the specified format.
+
+        Args:
+            to_format: Target format for conversion.
+
+        Returns:
+            Source object for format conversion.
+        """
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
@@ -2412,12 +2420,28 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return graph.Graph(self.texts)
 
     def has_revision(self, revision_id):
+        """Check if a revision is present in this repository.
+
+        Args:
+            revision_id: The revision ID to check.
+
+        Returns:
+            bool: True if the revision is present.
+        """
         """True if this repository has a copy of the revision."""
         # Copy of breezy.repository.Repository.has_revision
         with self.lock_read():
             return revision_id in self.has_revisions((revision_id,))
 
     def has_revisions(self, revision_ids):
+        """Check which revisions are present in this repository.
+
+        Args:
+            revision_ids: Iterable of revision IDs to check.
+
+        Returns:
+            Set of revision IDs that are present.
+        """
         """Probe to find out the presence of multiple revisions.
 
         :param revision_ids: An iterable of revision_ids.
@@ -3265,6 +3289,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.get_transaction()
 
     def clone(self, a_controldir, revision_id=None):
+        """Clone this repository to a target control directory.
+
+        Args:
+            a_controldir: Target control directory.
+            revision_id: Revision to clone up to.
+        """
         with self.lock_read():
             dest_repo = self._create_sprouting_repo(
                 a_controldir, shared=self.is_shared()
@@ -3380,10 +3410,26 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def create_bundle(self, target, base, fileobj, format=None):
+        """Create a bundle for the given target and base.
+
+        Args:
+            target: Target revision ID.
+            base: Base revision ID.
+            fileobj: File object to write bundle to.
+            format: Bundle format to use.
+        """
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
     def fileids_altered_by_revision_ids(self, revision_ids):
+        """Get file IDs altered by the given revision IDs.
+
+        Args:
+            revision_ids: List of revision IDs to check.
+
+        Returns:
+            Set of file IDs that were altered.
+        """
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
@@ -3612,6 +3658,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return revision_graph
 
     def get_signature_text(self, revision_id):
+        """Get the signature text for a revision.
+
+        Args:
+            revision_id: The revision ID to get signature for.
+
+        Returns:
+            bytes: The signature text.
+        """
         with self.lock_read():
             path = self.controldir._path_for_remote_call(self._client)
             try:
@@ -3634,6 +3688,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 return response_handler.read_body_bytes()
 
     def _get_inventory_xml(self, revision_id):
+        """Get the inventory XML for a revision.
+
+        Args:
+            revision_id: The revision ID to get inventory for.
+
+        Returns:
+            str: The inventory XML.
+        """
         with self.lock_read():
             # This call is used by older working tree formats,
             # which stored a serialized basis inventory.
@@ -3641,6 +3703,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository.
+
+        Args:
+            other: Other repository to reconcile with.
+            thorough: Whether to perform thorough reconciliation.
+
+        Returns:
+            ReconcileResult: Result of the reconciliation.
+        """
         from ..reconcile import ReconcileResult
 
         with self.lock_write():
@@ -3672,6 +3743,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return result
 
     def all_revision_ids(self):
+        """Get all revision IDs in this repository.
+
+        Returns:
+            Set of all revision IDs in the repository.
+        """
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response_tuple, response_handler = self._call_expecting_body(
@@ -3704,22 +3780,53 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     def get_revision_delta(self, revision_id):
+        """Get the delta for a revision.
+
+        Args:
+            revision_id: The revision ID to get delta for.
+
+        Returns:
+            TreeDelta: The delta for the revision.
+        """
         with self.lock_read():
             r = self.get_revision(revision_id)
             return list(self.get_revision_deltas([r]))[0]
 
     def revision_trees(self, revision_ids):
+        """Get revision trees for the given revision IDs.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+
+        Yields:
+            RevisionTree: Trees for each revision ID.
+        """
         with self.lock_read():
             inventories = self.iter_inventories(revision_ids)
             for inv in inventories:
                 yield RemoteInventoryTree(self, inv, inv.revision_id)
 
     def get_revision_reconcile(self, revision_id):
+        """Get revision reconcile information.
+
+        Args:
+            revision_id: The revision ID to reconcile.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_repository.get_revision_reconcile(revision_id)
 
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        """Check the repository for consistency.
+
+        Args:
+            revision_ids: Specific revision IDs to check.
+            callback_refs: Callback references for progress.
+            check_repo: Whether to check the repository structure.
+
+        Returns:
+            CheckResult: Result of the consistency check.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_repository.check(
@@ -3729,6 +3836,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             )
 
     def copy_content_into(self, destination, revision_id=None):
+        """Copy content from this repository into destination.
+
+        Args:
+            destination: Destination repository.
+            revision_id: Specific revision to copy up to.
+        """
         """Make a complete copy of the content in self into destination.
 
         This is a destructive operation! Do not use it on existing
