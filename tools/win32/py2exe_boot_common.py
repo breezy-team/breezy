@@ -11,12 +11,32 @@ import sys
 if sys.frozen == "windows_exe":
 
     class Blackhole:
+        """A null output stream that discards all written data.
+
+        This class provides a file-like interface that silently discards
+        any data written to it. Used to suppress stdout/stderr output in
+        py2exe-compiled executables to prevent unwanted dialog boxes.
+
+        Attributes:
+            softspace (int): Required for file-like compatibility, set to 0.
+        """
+
         softspace = 0
 
         def write(self, text):
+            """Write text to the blackhole (discards the data).
+
+            Args:
+                text (str): The text to be discarded.
+            """
             pass
 
         def flush(self):
+            """Flush the output stream (no-op for blackhole).
+
+            This method is required for file-like compatibility but
+            performs no operation since there's nothing to flush.
+            """
             pass
 
     sys.stdout = Blackhole()
@@ -41,6 +61,20 @@ import linecache
 
 
 def fake_getline(filename, lineno, module_globals=None):
+    """Replacement for linecache.getline that always returns empty string.
+
+    This function replaces the standard linecache.getline to prevent
+    py2exe from attempting to read source files that may be on network
+    drives or removable media, which could cause unwanted prompts.
+
+    Args:
+        filename (str): The filename to read from (ignored).
+        lineno (int): The line number to read (ignored).
+        module_globals (dict, optional): Module globals (ignored).
+
+    Returns:
+        str: Always returns an empty string.
+    """
     return ""
 
 
