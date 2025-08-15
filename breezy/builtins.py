@@ -3455,6 +3455,32 @@ class cmd_log(Command):
         match_bugs=None,
         omit_merges=False,
     ):
+        """Execute the log command.
+
+        Args:
+            file_list: Files to show log for.
+            timezone: Timezone for displaying dates.
+            verbose: Show extra information.
+            show_ids: Show revision and file IDs.
+            forward: Show from oldest to newest.
+            revision: Show logs for these revisions.
+            change: Show log including and since this change.
+            log_format: Format to use for log output.
+            levels: Number of levels to display.
+            message: Show revisions matching this regex.
+            limit: Limit output to first N revisions.
+            show_diff: Show changes as patches.
+            include_merged: Show merged revisions.
+            authors: Show revisions by these authors.
+            exclude_common_ancestry: Exclude common ancestry.
+            signatures: Validate revision signatures.
+            match: Generic search term.
+            match_message: Search commit messages.
+            match_committer: Search committer names.
+            match_author: Search author names.
+            match_bugs: Search for bug references.
+            omit_merges: Skip merge commits.
+        """
         from .log import Logger, _get_info_for_log_files, make_log_request_dict
 
         direction = (forward and "forward") or "reverse"
@@ -3697,6 +3723,11 @@ class cmd_touching_revisions(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the touching-revisions command.
+
+        Args:
+            filename: File to show touching revisions for.
+        """
         from .workingtree import WorkingTree
 
         tree, relpath = WorkingTree.open_containing(filename)
@@ -3752,6 +3783,22 @@ class cmd_ls(Command):
         path=None,
         directory=None,
     ):
+        """Execute the ls command.
+
+        Args:
+            revision: List files as of this revision.
+            verbose: Show detailed file information.
+            recursive: Recurse into subdirectories.
+            from_root: Print paths relative to branch root.
+            unknown: Show unknown files.
+            versioned: Show versioned files.
+            ignored: Show ignored files.
+            null: Use null separators.
+            kind: Show only files of this kind.
+            show_ids: Show file IDs.
+            path: Path to list files in.
+            directory: Branch directory to use.
+        """
         from . import views
         from .workingtree import WorkingTree
 
@@ -3850,6 +3897,11 @@ class cmd_unknowns(Command):
 
     @display_command
     def run(self, directory="."):
+        """Execute the unknowns command.
+
+        Args:
+            directory: Directory to list unknown files from.
+        """
         from .workingtree import WorkingTree
 
         for f in WorkingTree.open_containing(directory)[0].unknowns():
@@ -3939,6 +3991,13 @@ class cmd_ignore(Command):
     ]
 
     def run(self, name_pattern_list=None, default_rules=None, directory="."):
+        """Execute the ignore command.
+
+        Args:
+            name_pattern_list: Patterns to add to ignore list.
+            default_rules: Show default ignore rules.
+            directory: Directory to add ignore rules to.
+        """
         from breezy import ignores
 
         from . import globbing, lazy_regex
@@ -4016,6 +4075,11 @@ class cmd_ignored(Command):
 
     @display_command
     def run(self, directory="."):
+        """Execute the ignored command.
+
+        Args:
+            directory: Directory to list ignored files from.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -4040,6 +4104,12 @@ class cmd_lookup_revision(Command):
 
     @display_command
     def run(self, revno, directory="."):
+        """Execute the lookup-revision command.
+
+        Args:
+            revno: Revision number to look up.
+            directory: Directory containing the branch.
+        """
         from .workingtree import WorkingTree
 
         try:
