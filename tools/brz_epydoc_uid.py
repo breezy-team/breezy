@@ -26,6 +26,11 @@ _ScopeReplacer = breezy.lazy_import.ScopeReplacer
 
 class ObjectUID(_ObjectUID):
     def __init__(self, obj):
+        """Initialize ObjectUID with object.
+
+        Args:
+            obj: Object to create UID for.
+        """
         if isinstance(obj, _ScopeReplacer):
             # The isinstance will trigger a replacement if it is a real
             # _BrzScopeReplacer, but the local object won't know about it, so

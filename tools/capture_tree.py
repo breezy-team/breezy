@@ -18,6 +18,11 @@ from breezy.selftest.treeshape import capture_tree_contents
 
 
 def main(argv):
+    """Main entry point for tree capture utility.
+
+    Args:
+        argv: Command line arguments.
+    """
     # a lame reimplementation of pformat that splits multi-line
     # strings into concatenated string literals.
     print("[")

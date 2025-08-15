@@ -58,6 +58,13 @@ def stack_finish(this, cost):
 
 
 def log_stack_info(out_file, sorted=True, hide_fast=True):
+    """Log stack information to output file.
+
+    Args:
+        out_file: File object to write output to.
+        sorted: Whether to sort the output.
+        hide_fast: Whether to hide fast imports.
+    """
     # Find all of the roots with import = 0
     out_file.write("%5s %5s %-40s @ %s:%s\n" % ("cum", "local", "name", "file", "line"))
     todo = [(value[-1], key) for key, value in _info.items() if value[0] == 0]

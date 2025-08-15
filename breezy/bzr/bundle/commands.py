@@ -36,6 +36,12 @@ class cmd_bundle_info(Command):
     encoding_type = "exact"
 
     def run(self, location, verbose=False):
+        """Execute the bundle-info command.
+
+        Args:
+            location: Location of the bundle file.
+            verbose: Whether to show verbose output.
+        """
         from breezy import merge_directive, osutils
         from breezy.bzr.bundle.serializer import read_bundle
         from breezy.i18n import gettext
