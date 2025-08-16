@@ -4851,29 +4851,58 @@ class RemoteBranchFormat(branch.BranchFormat):
         return remote_branch
 
     def make_tags(self, branch):
+        """Create tags for the given branch.
+
+        Args:
+            branch: Branch to create tags for.
+
+        Returns:
+            Tags object for the branch.
+        """
         self._ensure_real()
         return self._custom_format.make_tags(branch)
 
     def supports_tags(self):
+        """Check if this format supports tags.
+
+        Returns:
+            bool: True if tags are supported.
+        """
         # Remote branches might support tags, but we won't know until we
         # access the real remote branch.
         self._ensure_real()
         return self._custom_format.supports_tags()
 
     def supports_stacking(self):
+        """Check if this format supports stacking.
+
+        Returns:
+            bool: True if stacking is supported.
+        """
         self._ensure_real()
         return self._custom_format.supports_stacking()
 
     def supports_set_append_revisions_only(self):
+        """Check if this format supports setting append_revisions_only.
+
+        Returns:
+            bool: True if append_revisions_only can be set.
+        """
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
     @property
     def supports_reference_locations(self):
+        """Check if this format supports reference locations."""
         self._ensure_real()
         return self._custom_format.supports_reference_locations
 
     def stores_revno(self):
+        """Check if this format stores revision numbers.
+
+        Returns:
+            bool: True if revision numbers are stored.
+        """
         return True
 
     def _use_default_local_heads_to_fetch(self):
@@ -4904,6 +4933,11 @@ class RemoteBranchStore(_mod_config.IniFileStore):
         self._real_store = None
 
     def external_url(self):
+        """Get the external URL for this configuration.
+
+        Returns:
+            str: The external URL for branch.conf.
+        """
         return urlutils.join(self.branch.user_url, "branch.conf")
 
     def _load_content(self):
@@ -4952,6 +4986,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @property
     def control_transport(self) -> _mod_transport.Transport:
+        """Get the control transport for this branch."""
         return self._transport  # type: ignore
 
     def __init__(
