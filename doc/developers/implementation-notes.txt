@@ -4,13 +4,13 @@ Implementation notes
 .. toctree::
    :hidden:
 
-   btree_index_prefetch
+   bzrformats/btree_index_prefetch
    last-modified
    content-filtering
    lca_tree_merging
 
 
-* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How Breezy decides
+* `BTree Index Prefetch <bzrformats/btree_index_prefetch.html>`_ |--| How Breezy decides
   to pre-read extra nodes in the btree index.
 
 * `Computing last_modified values <last-modified.html>`_ for inventory
