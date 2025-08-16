@@ -5104,12 +5104,25 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self.conf_store
 
     def store_uncommitted(self, creator):
+        """Store uncommitted changes.
+
+        Args:
+            creator: Creator function for uncommitted content.
+        """
         self._ensure_real()
         if self._real_branch is None:
             raise AssertionError
         return self._real_branch.store_uncommitted(creator)
 
     def get_unshelver(self, tree):
+        """Get an unshelver for the given tree.
+
+        Args:
+            tree: Working tree to get unshelver for.
+
+        Returns:
+            Unshelver object.
+        """
         self._ensure_real()
         if self._real_branch is None:
             raise AssertionError
@@ -5835,6 +5848,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
+        """Set the push location for this branch.
+
+        Args:
+            location: Push location URL to set.
+        """
         self._set_config_location("push_location", location)
 
     def heads_to_fetch(self):
