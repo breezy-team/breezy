@@ -4652,6 +4652,12 @@ class RemoteBranchLockableFiles(LockableFiles):
     """
 
     def __init__(self, bzrdir, _client):
+        """Initialize RemoteBranchLockableFiles.
+
+        Args:
+            bzrdir: The branch directory.
+            _client: Smart protocol client.
+        """
         self.controldir = bzrdir
         self._client = _client
         self._need_find_modes = True
@@ -4674,6 +4680,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._network_name = network_name
 
     def __eq__(self, other):
+        """Check equality with another RemoteBranchFormat."""
         return isinstance(other, RemoteBranchFormat) and self.__dict__ == other.__dict__
 
     def _ensure_real(self):
@@ -5083,6 +5090,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     _transport = property(_get_real_transport)
 
     def __str__(self):
+        """Return string representation of this branch."""
         return f"{self.__class__.__name__}({self.base})"
 
     __repr__ = __str__

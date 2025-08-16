@@ -1,3 +1,5 @@
+"""Tests for the stats plugin functionality."""
+
 from ...revision import Revision
 from ...tests import TestCase, TestCaseWithTransport
 from .cmds import collapse_by_person, get_revisions_and_committers
