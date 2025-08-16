@@ -1756,6 +1756,11 @@ class _ProtocolThreeEncoder:
 
 class ProtocolThreeResponder(_ProtocolThreeEncoder):
     def __init__(self, write_func):
+        """Initialize ProtocolThreeResponder.
+
+        Args:
+            write_func: Function to write response bytes.
+        """
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
         self._headers = {b"Software version": breezy.__version__.encode("utf-8")}
@@ -1916,6 +1921,11 @@ def _iter_with_errors(iterable):
 
 class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
     def __init__(self, medium_request):
+        """Initialize ProtocolThreeRequester.
+
+        Args:
+            medium_request: Medium request to use for communication.
+        """
         _ProtocolThreeEncoder.__init__(self, medium_request.accept_bytes)
         self._medium_request = medium_request
         self._headers = {}

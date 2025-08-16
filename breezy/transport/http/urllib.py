@@ -1425,6 +1425,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
     # - auth_header: the header sent in the request
 
     def __init__(self):
+        """Initialize the authentication handler."""
         # We want to know when we enter into an try/fail cycle of
         # authentications so we initialize to None to indicate that we aren't
         # in such a cycle by default.
@@ -2072,6 +2073,15 @@ class Opener:
         report_activity=None,
         ca_certs=None,
     ):
+        """Initialize the opener.
+
+        Args:
+            connection: Connection handler class.
+            redirect: Redirect handler class.
+            error: Error processor class.
+            report_activity: Activity reporting callback.
+            ca_certs: CA certificates for SSL verification.
+        """
         self._opener = urllib.request.build_opener(
             connection(report_activity=report_activity, ca_certs=ca_certs),
             redirect,
@@ -2883,6 +2893,11 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
     def __init__(self, client_medium):
+        """Initialize SmartClientHTTPMediumRequest.
+
+        Args:
+            client_medium: The client medium to use.
+        """
         medium.SmartClientMediumRequest.__init__(self, client_medium)
         self._buffer = b""
 

@@ -4673,6 +4673,11 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 class RemoteBranchFormat(branch.BranchFormat):
     def __init__(self, network_name=None):
+        """Initialize RemoteBranchFormat.
+
+        Args:
+            network_name: Network name for the branch format.
+        """
         super().__init__()
         self._matchingcontroldir = RemoteBzrDirFormat()
         self._matchingcontroldir.set_branch_format(self)
@@ -4927,6 +4932,11 @@ class RemoteBranchStore(_mod_config.IniFileStore):
     """
 
     def __init__(self, branch):
+        """Initialize RemoteBranchStore.
+
+        Args:
+            branch: The branch to store configuration for.
+        """
         super().__init__()
         self.branch = branch
         self.id = "branch"
@@ -5994,6 +6004,11 @@ class RemoteBranchConfig(RemoteConfig):
     """A RemoteConfig for Branches."""
 
     def __init__(self, branch):
+        """Initialize RemoteBranchConfig.
+
+        Args:
+            branch: The branch to configure.
+        """
         self._branch = branch
 
     def _get_configobj(self):
@@ -6087,6 +6102,11 @@ class RemoteBzrDirConfig(RemoteConfig):
     """A RemoteConfig for BzrDirs."""
 
     def __init__(self, bzrdir):
+        """Initialize RemoteBzrDirConfig.
+
+        Args:
+            bzrdir: The BzrDir to configure.
+        """
         self._bzrdir = bzrdir
 
     def _get_configobj(self):
