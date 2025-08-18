@@ -5209,6 +5209,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @property
     def control_files(self):
+        """Get the control files for this branch."""
         # Defer actually creating RemoteBranchLockableFiles until its needed,
         # because it triggers an _ensure_real that we otherwise might not need.
         if self._control_files is None:
@@ -5348,6 +5349,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
 
     def set_stacked_on_url(self, url):
+        """Set the stacked-on URL for this branch.
+
+        Args:
+            url: URL of the branch to stack on.
+
+        Raises:
+            UnstackableBranchFormat: If format doesn't support stacking.
+        """
         if not self._format.supports_stacking():
             raise UnstackableBranchFormat(self._format, self.user_url)
         with self.lock_write():
@@ -5468,6 +5477,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return branch_token, repo_token
 
     def lock_write(self, token=None):
+        """Acquire a write lock on this branch.
+
+        Args:
+            token: Optional lock token to use.
+
+        Returns:
+            Lock token for the acquired lock.
+        """
         if not self._lock_mode:
             self._note_lock("w")
             # Lock the branch and repo in one remote call.
@@ -5515,6 +5532,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release the lock on this branch."""
         try:
             self._lock_count -= 1
             if not self._lock_count:
@@ -5566,6 +5584,15 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._leave_lock = False
 
     def get_rev_id(self, revno, history=None):
+        """Get the revision ID for a given revision number.
+
+        Args:
+            revno: Revision number to look up.
+            history: Optional history to use.
+
+        Returns:
+            bytes: The revision ID.
+        """
         if revno == 0:
             return _mod_revision.NULL_REVISION
         with self.lock_read():
@@ -5797,6 +5824,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 raise errors.UnexpectedSmartServerResponse(response)
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information.
+
+        Args:
+            revno: Revision number.
+            revision_id: Revision ID.
+        """
         with self.lock_write():
             # XXX: These should be returned by the set_last_revision_info verb
             old_revno, old_revid = self.last_revision_info()
