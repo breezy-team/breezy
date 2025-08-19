@@ -1881,12 +1881,30 @@ class DigestAuthHandler(AbstractAuthHandler):
     handler_order = 490
 
     def auth_params_reusable(self, auth):
+        """Check if authentication parameters are reusable.
+
+        Args:
+            auth: Authentication dictionary containing auth parameters.
+
+        Returns:
+            bool: True if the auth scheme is 'digest', indicating previous
+                successful authentication with reusable parameters.
+        """
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
         # available, no further checks are needed.
         return auth.get("scheme", None) == "digest"
 
     def auth_match(self, header, auth):
+        """Check if authentication header matches this handler's scheme.
+
+        Args:
+            header: WWW-Authenticate header value.
+            auth: Authentication dictionary to update with parsed values.
+
+        Returns:
+            bool: True if the header scheme matches 'digest' and can be handled.
+        """
         scheme, raw_auth = self._parse_auth_header(header)
         if scheme != self.scheme:
             return False
@@ -1931,6 +1949,15 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
+        """Build the Authorization header for digest authentication.
+
+        Args:
+            auth: Authentication dictionary with user credentials and parameters.
+            request: The HTTP request object.
+
+        Returns:
+            Tuple of (header_name, header_value) for the Authorization header.
+        """
         uri = urlparse(request.selector).path
 
         A1 = f"{auth['user']}:{auth['realm']}:{auth['password']}".encode()
@@ -1988,12 +2015,40 @@ class HTTPAuthHandler(AbstractAuthHandler):
         request.auth = auth
 
     def build_password_prompt(self, auth):
+        """Build a password prompt for the authentication realm.
+
+        Args:
+            auth: Authentication dictionary containing realm info.
+
+        Returns:
+            Formatted password prompt string.
+        """
         return self._build_password_prompt(auth)
 
     def build_username_prompt(self, auth):
+        """Build a username prompt for the authentication realm.
+
+        Args:
+            auth: Authentication dictionary containing realm info.
+
+        Returns:
+            Formatted username prompt string.
+        """
         return self._build_username_prompt(auth)
 
     def http_error_401(self, req, fp, code, msg, headers):
+        """Handle HTTP 401 Unauthorized error.
+
+        Args:
+            req: The request that resulted in 401.
+            fp: File pointer to the error response.
+            code: HTTP status code (401).
+            msg: Error message.
+            headers: Response headers.
+
+        Returns:
+            Result of auth_required processing.
+        """
         return self.auth_required(req, headers)
 
 
@@ -2020,16 +2075,44 @@ class ProxyAuthHandler(AbstractAuthHandler):
         request.proxy_auth = auth
 
     def build_password_prompt(self, auth):
+        """Build a password prompt for proxy authentication.
+
+        Args:
+            auth: Authentication dictionary containing realm info.
+
+        Returns:
+            Formatted password prompt string prefixed with 'Proxy '.
+        """
         prompt = self._build_password_prompt(auth)
         prompt = "Proxy " + prompt
         return prompt
 
     def build_username_prompt(self, auth):
+        """Build a username prompt for proxy authentication.
+
+        Args:
+            auth: Authentication dictionary containing realm info.
+
+        Returns:
+            Formatted username prompt string prefixed with 'Proxy '.
+        """
         prompt = self._build_username_prompt(auth)
         prompt = "Proxy " + prompt
         return prompt
 
     def http_error_407(self, req, fp, code, msg, headers):
+        """Handle HTTP 407 Proxy Authentication Required error.
+
+        Args:
+            req: The request that resulted in 407.
+            fp: File pointer to the error response.
+            code: HTTP status code (407).
+            msg: Error message.
+            headers: Response headers.
+
+        Returns:
+            Result of auth_required processing.
+        """
         return self.auth_required(req, headers)
 
 
@@ -2089,6 +2172,15 @@ class HTTPErrorProcessor(urllib.request.HTTPErrorProcessor):
     """
 
     def http_response(self, request, response):
+        """Process HTTP response and handle errors.
+
+        Args:
+            request: The HTTP request that generated this response.
+            response: The HTTP response object.
+
+        Returns:
+            The response object, possibly modified by error handling.
+        """
         code, msg, hdrs = response.code, response.msg, response.info()
 
         if code not in self.accepted_errors:
@@ -2102,6 +2194,19 @@ class HTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
     """Translate common errors into Breezy Exceptions."""
 
     def http_error_default(self, req, fp, code, msg, hdrs):
+        """Handle default HTTP errors by translating to Breezy exceptions.
+
+        Args:
+            req: The request that resulted in an error.
+            fp: File pointer to the error response.
+            code: HTTP status code.
+            msg: Error message.
+            hdrs: Response headers.
+
+        Raises:
+            TransportError: For 403 Forbidden errors.
+            InvalidHttpResponse: For other error codes.
+        """
         if code == 403:
             raise errors.TransportError(
                 "Server refuses to fulfill the request (403 Forbidden) for {}".format(
@@ -2136,11 +2241,11 @@ class Opener:
         """Initialize the opener.
 
         Args:
-            connection: Connection handler class.
-            redirect: Redirect handler class.
-            error: Error processor class.
-            report_activity: Activity reporting callback.
-            ca_certs: CA certificates for SSL verification.
+            connection: Connection handler class to use.
+            redirect: Redirect handler class to use.
+            error: Error processor class to use.
+            report_activity: Optional callback for reporting activity.
+            ca_certs: Path to CA certificates file.
         """
         self._opener = urllib.request.build_opener(
             connection(report_activity=report_activity, ca_certs=ca_certs),
@@ -2207,6 +2312,22 @@ class HttpTransport(ConnectedTransport):
             )
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+        """Make an HTTP request with the specified method.
+
+        Args:
+            method: HTTP method (GET, POST, etc).
+            url: URL to request.
+            fields: Form fields to encode as URL parameters.
+            headers: Additional HTTP headers.
+            **urlopen_kw: Additional keyword arguments (body, retries).
+
+        Returns:
+            The HTTP response object.
+
+        Raises:
+            ValueError: If both body and fields are provided.
+            NotImplementedError: If unknown urlopen_kw arguments are provided.
+        """
         body = urlopen_kw.pop("body", None)
         if fields is not None:
             data = urlencode(fields).encode()
@@ -2310,6 +2431,14 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
+                """Read data from the response.
+
+                Args:
+                    amt: Number of bytes to read. If None, reads all data.
+
+                Returns:
+                    The data read from the response.
+                """
                 if amt is None and debug.debug_flag_enabled("evil"):
                     mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
@@ -2908,12 +3037,30 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         self._http_transport_ref = weakref.ref(http_transport)
 
     def get_request(self):
+        """Create a new smart request for this medium.
+
+        Returns:
+            SmartClientHTTPMediumRequest: A new request object.
+        """
         return SmartClientHTTPMediumRequest(self)
 
     def should_probe(self):
+        """Check if this medium should probe for smart server support.
+
+        Returns:
+            bool: Always True for HTTP mediums.
+        """
         return True
 
     def remote_path_from_transport(self, transport):
+        """Get the remote path from a transport URL.
+
+        Args:
+            transport: The transport whose path to extract.
+
+        Returns:
+            The unquoted relative URL path, with optional 'bzr+' prefix stripped.
+        """
         # Strip the optional 'bzr+' prefix from transport so it will have the
         # same scheme as self.
         transport_base = transport.base
