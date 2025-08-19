@@ -1732,6 +1732,14 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         return f"Negotiate {auth['negotiate_response']}"
 
     def auth_params_reusable(self, auth):
+        """Check if authentication parameters are reusable.
+
+        Args:
+            auth: Authentication dictionary.
+
+        Returns:
+            bool: True if parameters can be reused.
+        """
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
         # available, no further checks are needed.
@@ -1749,11 +1757,28 @@ class BasicAuthHandler(AbstractAuthHandler):
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
+        """Build basic authentication header.
+
+        Args:
+            auth: Authentication dictionary with user and password.
+            request: Request object.
+
+        Returns:
+            str: Basic authentication header value.
+        """
         raw = f"{auth['user']}:{auth['password']}"
         auth_header = "Basic " + base64.b64encode(raw.encode("utf-8")).decode("ascii")
         return auth_header
 
     def extract_realm(self, header_value):
+        """Extract realm from authentication header.
+
+        Args:
+            header_value: Authentication header value.
+
+        Returns:
+            tuple: (match object, realm string).
+        """
         match = self.auth_regexp.search(header_value)
         realm = None
         if match:
@@ -1761,6 +1786,15 @@ class BasicAuthHandler(AbstractAuthHandler):
         return match, realm
 
     def auth_match(self, header, auth):
+        """Check if basic authentication matches the header.
+
+        Args:
+            header: Authentication header from server.
+            auth: Authentication dictionary.
+
+        Returns:
+            bool: True if authentication matches.
+        """
         scheme, raw_auth = self._parse_auth_header(header)
         if scheme != self.scheme:
             return False
