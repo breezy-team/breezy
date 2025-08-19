@@ -1846,6 +1846,19 @@ class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions between Git branches.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Args:
+            stop_revision: Revision to fetch up to.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Raises:
+            NotImplementedError: Always, as this must be implemented by subclasses.
+        """
         raise NotImplementedError(self.fetch)
 
 
@@ -1865,6 +1878,15 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @classmethod
     def is_compatible(self, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is LocalGitBranch and target is RemoteGitBranch.
+        """
         from .remote import RemoteGitBranch
 
         return isinstance(source, LocalGitBranch) and isinstance(
@@ -1931,6 +1953,15 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     @classmethod
     def is_compatible(self, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is any GitBranch and target is LocalGitBranch.
+        """
         return isinstance(source, GitBranch) and isinstance(target, LocalGitBranch)
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
@@ -2304,6 +2335,20 @@ class InterToGitBranch(branch.GenericInterBranch):
         _stop_revno=None,
         tag_selector=None,
     ):
+        """Pull changes from the Bazaar source to the Git target branch.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to pull up to.
+            local: If True, only update the working tree.
+            possible_transports: Reusable transports for accessing branches.
+            run_hooks: Whether to run pre/post pull hooks.
+            _stop_revno: Internal - revision number for stop_revision.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitBranchPullResult: Result of the pull operation.
+        """
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -2343,6 +2388,22 @@ class InterToGitBranch(branch.GenericInterBranch):
         _stop_revno=None,
         tag_selector=None,
     ):
+        """Push changes from the Bazaar source to the Git target branch.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to push up to.
+            lossy: Whether to allow lossy conversion.
+            _override_hook_source_branch: Internal - override source branch for hooks.
+            _stop_revno: Internal - revision number for stop_revision.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitBranchPushResult: Result of the push operation.
+
+        Raises:
+            NoRoundtrippingSupport: If lossy=False and round-tripping is not supported.
+        """
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
