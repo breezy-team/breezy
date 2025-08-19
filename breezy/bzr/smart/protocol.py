@@ -2029,6 +2029,15 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._medium_request.finished_writing()
 
     def call_with_body_stream(self, args, stream):
+        """Make a remote call with a body stream.
+
+        Args:
+            args: Arguments for the remote call.
+            stream: Body stream to send with the call.
+
+        Returns:
+            Response from the remote call.
+        """
         if debug.debug_flag_enabled("hpss"):
             mutter("hpss call w/body stream: %r", args)
             path = getattr(self._medium_request._medium, "_path", None)

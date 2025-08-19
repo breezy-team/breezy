@@ -1314,10 +1314,24 @@ class LocalGitBranch(GitBranch):
         return revno, last_revid
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information.
+
+        Args:
+            revno: Revision number.
+            revision_id: Revision ID.
+        """
         self.set_last_revision(revision_id)
         self._last_revision_info_cache = revno, revision_id
 
     def set_last_revision(self, revid):
+        """Set the last revision for this branch.
+
+        Args:
+            revid: Revision ID to set as last revision.
+
+        Raises:
+            InvalidRevisionId: If revision ID is invalid.
+        """
         if not revid or not isinstance(revid, bytes):
             raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
@@ -1591,6 +1605,17 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return True
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions from source branch.
+
+        Args:
+            stop_revision: Revision to stop fetching at.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+        """
         self.fetch_objects(
             stop_revision, fetch_tags=fetch_tags, limit=limit, lossy=lossy
         )
@@ -1599,6 +1624,15 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def fetch_objects(
         self, stop_revision, fetch_tags, limit=None, lossy=False, tag_selector=None
     ):
+        """Fetch objects from source to target repository.
+
+        Args:
+            stop_revision: Revision to stop fetching at.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+            tag_selector: Function to select tags to fetch.
+        """
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
             c = self.source.get_config_stack()
