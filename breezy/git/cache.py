@@ -1025,10 +1025,6 @@ class TdbGitShaMap(GitShaMap):
         """
         self.db.transaction_cancel()
 
-    def __repr__(self):
-        """Return string representation of TdbGitShaMap."""
-        return f"{self.__class__.__name__}({self.path!r})"
-
     def lookup_commit(self, revid):
         """Retrieve a Git commit SHA by Bazaar revision ID from TDB.
 

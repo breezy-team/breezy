@@ -1075,7 +1075,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
             self.state_accept = self._state_accept_reading_trailer
 
     def _state_accept_reading_trailer(self):
-        """State function: Read and validate the "done\n" trailer.
+        r"""State function: Read and validate the "done\n" trailer.
 
         Accumulates data until "done\n" is found, then completes decoding.
         Any data after "done\n" is stored as unused_data.

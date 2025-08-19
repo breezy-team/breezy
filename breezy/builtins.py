@@ -8750,7 +8750,7 @@ class cmd_fetch_ghosts(Command):  # noqa: D101
             cmd_reconcile().run(".")
 
 
-class cmd_grep(Command):  # noqa: D101
+class cmd_grep(Command):
     r"""Print lines matching PATTERN for specified files and revisions.
 
     This command searches the specified files and revisions for a given
@@ -9005,7 +9005,7 @@ class cmd_grep(Command):  # noqa: D101
             grep.versioned_grep(opts)
 
 
-class cmd_patch(Command):  # noqa: D101
+class cmd_patch(Command):
     """Apply a named patch to the current tree."""
 
     takes_args = ["filename?"]
