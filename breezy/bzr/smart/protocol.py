@@ -1778,6 +1778,12 @@ class _ProtocolThreeEncoder:
 
 
 class ProtocolThreeResponder(_ProtocolThreeEncoder):
+    """Responder for version 3 of the smart protocol.
+
+    Handles sending responses using protocol version 3 encoding
+    with support for success/error status and body streaming.
+    """
+
     def __init__(self, write_func):
         """Initialize ProtocolThreeResponder.
 

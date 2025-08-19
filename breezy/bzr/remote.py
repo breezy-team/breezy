@@ -4680,6 +4680,8 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+    """Branch format for remote branches accessed via smart protocol."""
+
     def __init__(self, network_name=None):
         """Initialize RemoteBranchFormat.
 
