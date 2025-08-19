@@ -1811,6 +1811,14 @@ class BasicAuthHandler(AbstractAuthHandler):
         return match is not None
 
     def auth_params_reusable(self, auth):
+        """Check if basic authentication parameters are reusable.
+
+        Args:
+            auth: Authentication dictionary.
+
+        Returns:
+            bool: True if parameters can be reused.
+        """
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
         # available, no further checks are needed.
@@ -2915,6 +2923,18 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         return urlutils.unquote(rel_url)
 
     def send_http_smart_request(self, bytes):
+        """Send HTTP smart request.
+
+        Args:
+            bytes: Request bytes to send.
+
+        Returns:
+            File-like object containing response body.
+
+        Raises:
+            UnexpectedHttpStatus: If status code is not 200.
+            InvalidHttpResponse: If the response is invalid.
+        """
         try:
             # Get back the http_transport hold by the weak reference
             t = self._http_transport_ref()
