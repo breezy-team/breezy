@@ -1146,6 +1146,14 @@ class GitBranch(ForeignBranch):
         return self.repository.lookup_bzr_revision_id(revid, mapping=self.mapping)
 
     def get_unshelver(self, tree):
+        """Get an unshelver for the given tree.
+
+        Args:
+            tree: Working tree to get unshelver for.
+
+        Raises:
+            StoringUncommittedNotSupported: Git branches don't support shelving.
+        """
         raise errors.StoringUncommittedNotSupported(self)
 
     def _clear_cached_state(self):
@@ -1265,6 +1273,7 @@ class LocalGitBranch(GitBranch):
         self._ref_lock.unlock()
 
     def break_lock(self):
+        """Break any existing lock on this Git branch."""
         self.repository._git.refs.unlock_ref(self.ref)
 
     def _gen_revision_history(self):
@@ -1332,6 +1341,11 @@ class LocalGitBranch(GitBranch):
     head = property(_get_head, _set_head)
 
     def get_push_location(self):
+        """Get the push location for this branch.
+
+        Returns:
+            str: The push location URL or None.
+        """
         """See Branch.get_push_location."""
         push_loc = self.get_config_stack().get("push_location")
         if push_loc is not None:
@@ -1340,6 +1354,11 @@ class LocalGitBranch(GitBranch):
         return self._get_related_push_branch(cs)
 
     def set_push_location(self, location):
+        """Set the push location for this branch.
+
+        Args:
+            location: Push location URL to set.
+        """
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
             "push_location", location, store=config.STORE_LOCATION
@@ -1354,6 +1373,14 @@ class LocalGitBranch(GitBranch):
         return True
 
     def store_uncommitted(self, creator):
+        """Store uncommitted changes.
+
+        Args:
+            creator: Creator function for uncommitted content.
+
+        Raises:
+            StoringUncommittedNotSupported: Git branches don't support this.
+        """
         """Store uncommitted changes.
 
         Args:
