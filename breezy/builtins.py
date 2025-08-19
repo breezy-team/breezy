@@ -301,7 +301,7 @@ def _open_directory_or_containing_tree_or_branch(filename, directory):
 # opens the branch?)
 
 
-class cmd_status(Command):
+class cmd_status(Command):  # noqa: D101
     __doc__ = """Display status summary.
 
     This reports on versioned and unknown files, reporting them
@@ -434,7 +434,7 @@ class cmd_status(Command):
         )
 
 
-class cmd_cat_revision(Command):
+class cmd_cat_revision(Command):  # noqa: D101
     __doc__ = """Write out metadata for a revision.
 
     The revision to print can either be specified by a specific
@@ -509,7 +509,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, rev_id)
 
 
-class cmd_remove_tree(Command):
+class cmd_remove_tree(Command):  # noqa: D101
     __doc__ = """Remove the working tree from a given branch/checkout.
 
     Since a lightweight checkout is little more than a working tree
@@ -569,7 +569,7 @@ class cmd_remove_tree(Command):
             d.destroy_workingtree()
 
 
-class cmd_repair_workingtree(Command):
+class cmd_repair_workingtree(Command):  # noqa: D101
     __doc__ = """Reset the working tree state file.
 
     This is not meant to be used normally, but more as a way to recover from
@@ -639,7 +639,7 @@ class cmd_repair_workingtree(Command):
             ) from exc
 
 
-class cmd_revno(Command):
+class cmd_revno(Command):  # noqa: D101
     __doc__ = """Show current revision number.
 
     This is equal to the number of revisions on this branch.
@@ -699,7 +699,7 @@ class cmd_revno(Command):
         self.outf.write(revno + "\n")
 
 
-class cmd_revision_info(Command):
+class cmd_revision_info(Command):  # noqa: D101
     __doc__ = """Show revision number and revision id for a given revision identifier.
     """
     hidden = True
@@ -766,7 +766,7 @@ class cmd_revision_info(Command):
             self.outf.write("%*s %s\n" % (maxlen, revno, revid.decode("utf-8")))
 
 
-class cmd_add(Command):
+class cmd_add(Command):  # noqa: D101
     __doc__ = """Add specified files or directories.
 
     In non-recursive mode, all the named items are added, regardless
@@ -895,7 +895,7 @@ class cmd_add(Command):
                     )
 
 
-class cmd_mkdir(Command):
+class cmd_mkdir(Command):  # noqa: D101
     __doc__ = """Create a new versioned directory.
 
     This is equivalent to creating the directory and then adding it.
@@ -965,7 +965,7 @@ class cmd_mkdir(Command):
                 self.outf.write(gettext("added %s\n") % dir)
 
 
-class cmd_relpath(Command):
+class cmd_relpath(Command):  # noqa: D101
     __doc__ = """Show path of a file relative to root"""
 
     takes_args = ["filename"]
@@ -987,7 +987,7 @@ class cmd_relpath(Command):
         self.outf.write("\n")
 
 
-class cmd_inventory(Command):
+class cmd_inventory(Command):  # noqa: D101
     __doc__ = """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
@@ -1071,7 +1071,7 @@ class cmd_inventory(Command):
                 self.outf.write("\n")
 
 
-class cmd_cp(Command):
+class cmd_cp(Command):  # noqa: D101
     __doc__ = """Copy a file.
 
     :Usage:
@@ -1165,7 +1165,7 @@ class cmd_cp(Command):
             tree.copy_one(src, dst)
 
 
-class cmd_mv(Command):
+class cmd_mv(Command):  # noqa: D101
     __doc__ = """Move or rename a file.
 
     :Usage:
@@ -1347,7 +1347,7 @@ class cmd_mv(Command):
                 self.outf.write(f"{src} => {dest}\n")
 
 
-class cmd_pull(Command):
+class cmd_pull(Command):  # noqa: D101
     __doc__ = """Turn this branch into a mirror of another branch.
 
     By default, this command only works on branches that have not diverged.
@@ -1530,7 +1530,7 @@ class cmd_pull(Command):
             return 0
 
 
-class cmd_push(Command):
+class cmd_push(Command):  # noqa: D101
     __doc__ = """Update a mirror of this branch.
 
     The target branch will not have its working tree populated because this
@@ -1738,7 +1738,7 @@ class cmd_push(Command):
         )
 
 
-class cmd_branch(Command):
+class cmd_branch(Command):  # noqa: D101
     __doc__ = """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
@@ -1949,7 +1949,7 @@ class cmd_branch(Command):
             )
 
 
-class cmd_branches(Command):
+class cmd_branches(Command):  # noqa: D101
     __doc__ = """List the branches available at the current location.
 
     This command will print the names of all the branches at the current
@@ -2010,7 +2010,7 @@ class cmd_branches(Command):
                 self.outf.write(f"{prefix} {name}\n")
 
 
-class cmd_checkout(Command):
+class cmd_checkout(Command):  # noqa: D101
     __doc__ = """Create a new checkout of an existing branch.
 
     If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree
@@ -2104,7 +2104,7 @@ class cmd_checkout(Command):
         )
 
 
-class cmd_clone(Command):
+class cmd_clone(Command):  # noqa: D101
     __doc__ = """Clone a control directory.
     """
 
@@ -2147,7 +2147,7 @@ class cmd_clone(Command):
         note(gettext("Created new control directory."))
 
 
-class cmd_renames(Command):
+class cmd_renames(Command):  # noqa: D101
     __doc__ = """Show list of renamed files.
     """
     # TODO: Option to show renames between two historical versions.
@@ -2182,7 +2182,7 @@ class cmd_renames(Command):
             self.outf.write(f"{old_name} => {new_name}\n")
 
 
-class cmd_update(Command):
+class cmd_update(Command):  # noqa: D101
     __doc__ = """Update a working tree to a new revision.
 
     This will perform a merge of the destination revision (the tip of the
@@ -2320,7 +2320,7 @@ class cmd_update(Command):
             return 0
 
 
-class cmd_info(Command):
+class cmd_info(Command):  # noqa: D101
     __doc__ = """Show information about a working tree, branch or repository.
 
     This command will show all known locations and formats associated to the
@@ -2371,7 +2371,7 @@ class cmd_info(Command):
         )
 
 
-class cmd_remove(Command):
+class cmd_remove(Command):  # noqa: D101
     __doc__ = """Remove files or directories.
 
     This makes Breezy stop tracking changes to the specified files. Breezy will
@@ -2441,7 +2441,7 @@ class cmd_remove(Command):
         )
 
 
-class cmd_reconcile(Command):
+class cmd_reconcile(Command):  # noqa: D101
     __doc__ = """Reconcile brz metadata in a branch.
 
     This can correct data mismatches that may have been caused by
@@ -2483,7 +2483,7 @@ class cmd_reconcile(Command):
         reconcile(dir, canonicalize_chks=canonicalize_chks)
 
 
-class cmd_revision_history(Command):
+class cmd_revision_history(Command):  # noqa: D101
     __doc__ = """Display the list of revision ids on a branch."""
 
     _see_also = ["log"]
@@ -2511,7 +2511,7 @@ class cmd_revision_history(Command):
             self.outf.write("\n")
 
 
-class cmd_ancestry(Command):
+class cmd_ancestry(Command):  # noqa: D101
     __doc__ = """List all revisions merged into this branch."""
 
     _see_also = ["log", "revision-history"]
@@ -2546,7 +2546,7 @@ class cmd_ancestry(Command):
             self.outf.write(revision_id.decode("utf-8") + "\n")
 
 
-class cmd_init(Command):
+class cmd_init(Command):  # noqa: D101
     __doc__ = """Make a directory into a versioned branch.
 
     Use this to create an empty branch, or before importing an
@@ -2697,7 +2697,7 @@ class cmd_init(Command):
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
-class cmd_init_shared_repository(Command):
+class cmd_init_shared_repository(Command):  # noqa: D101
     __doc__ = """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
@@ -2788,7 +2788,7 @@ class cmd_init_shared_repository(Command):
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
-class cmd_diff(Command):
+class cmd_diff(Command):  # noqa: D101
     __doc__ = """Show differences in the working tree, between revisions or branches.
 
     If no arguments are given, all changes for the current tree are listed.
@@ -3034,7 +3034,7 @@ class cmd_diff(Command):
         )
 
 
-class cmd_deleted(Command):
+class cmd_deleted(Command):  # noqa: D101
     __doc__ = """List files deleted in the working tree.
     """
     # TODO: Show files deleted since a previous revision, or
@@ -3069,7 +3069,7 @@ class cmd_deleted(Command):
             self.outf.write("\n")
 
 
-class cmd_modified(Command):
+class cmd_modified(Command):  # noqa: D101
     __doc__ = """List files modified in working tree.
     """
 
@@ -3098,7 +3098,7 @@ class cmd_modified(Command):
                 self.outf.write(osutils.quotefn(change.path[1]) + "\n")
 
 
-class cmd_added(Command):
+class cmd_added(Command):  # noqa: D101
     __doc__ = """List files added in working tree.
     """
 
@@ -3133,7 +3133,7 @@ class cmd_added(Command):
                 self.outf.write(osutils.quotefn(path) + "\n")
 
 
-class cmd_root(Command):
+class cmd_root(Command):  # noqa: D101
     __doc__ = """Show the tree root directory.
 
     The root is the nearest enclosing directory with a control
@@ -3188,7 +3188,7 @@ def _parse_levels(s):
         raise errors.CommandError(msg) from exc
 
 
-class cmd_log(Command):
+class cmd_log(Command):  # noqa: D101
     __doc__ = """Show historical log for a branch or subset of a branch.
 
     log is brz's default tool for exploring the history of a branch.
@@ -3712,7 +3712,7 @@ def get_log_format(long=False, short=False, line=False, default="long"):
     return log_format
 
 
-class cmd_touching_revisions(Command):
+class cmd_touching_revisions(Command):  # noqa: D101
     __doc__ = """Return revision-ids which affected a particular file.
 
     A more user-friendly interface is "brz log FILE".
@@ -3739,7 +3739,7 @@ class cmd_touching_revisions(Command):
                 self.outf.write("%6d %s\n" % (revno, what))
 
 
-class cmd_ls(Command):
+class cmd_ls(Command):  # noqa: D101
     __doc__ = """List files in a tree.
     """
 
@@ -3887,7 +3887,7 @@ class cmd_ls(Command):
                     self.outf.write(outstring + "\n")
 
 
-class cmd_unknowns(Command):
+class cmd_unknowns(Command):  # noqa: D101
     __doc__ = """List unknown files.
     """
 
@@ -3908,7 +3908,7 @@ class cmd_unknowns(Command):
             self.outf.write(osutils.quotefn(f) + "\n")
 
 
-class cmd_ignore(Command):
+class cmd_ignore(Command):  # noqa: D101
     __doc__ = """Ignore specified files or patterns.
 
     See ``brz help patterns`` for details on the syntax of patterns.
@@ -4058,7 +4058,7 @@ class cmd_ignore(Command):
             )
 
 
-class cmd_ignored(Command):
+class cmd_ignored(Command):  # noqa: D101
     __doc__ = """List ignored files and the patterns that matched them.
 
     List all the ignored files and the ignore pattern that caused the file to
@@ -4092,7 +4092,7 @@ class cmd_ignored(Command):
             self.outf.write("%-50s %s\n" % (path, pat))
 
 
-class cmd_lookup_revision(Command):
+class cmd_lookup_revision(Command):  # noqa: D101
     __doc__ = """Lookup the revision-id from a revision-number
 
     :Examples:
@@ -4122,7 +4122,7 @@ class cmd_lookup_revision(Command):
         self.outf.write(f"{revid.decode('utf-8')}\n")
 
 
-class cmd_export(Command):
+class cmd_export(Command):  # noqa: D101
     __doc__ = """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
@@ -4259,7 +4259,7 @@ class cmd_export(Command):
             ) from exc
 
 
-class cmd_cat(Command):
+class cmd_cat(Command):  # noqa: D101
     __doc__ = """Write the contents of a file as of a given revision to standard output.
 
     If no revision is nominated, the last revision is used.
@@ -4356,7 +4356,7 @@ class cmd_cat(Command):
         self.cleanup_now()
 
 
-class cmd_local_time_offset(Command):
+class cmd_local_time_offset(Command):  # noqa: D101
     __doc__ = """Show the offset in seconds from GMT to local time."""
     hidden = True
 
@@ -4366,7 +4366,7 @@ class cmd_local_time_offset(Command):
         self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
-class cmd_commit(Command):
+class cmd_commit(Command):  # noqa: D101
     __doc__ = """Commit changes into a new revision.
 
     An explanatory message needs to be given for each commit. This is
@@ -4755,7 +4755,7 @@ class cmd_commit(Command):
             raise
 
 
-class cmd_check(Command):
+class cmd_check(Command):  # noqa: D101
     __doc__ = """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
@@ -4833,7 +4833,7 @@ class cmd_check(Command):
         check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
-class cmd_upgrade(Command):
+class cmd_upgrade(Command):  # noqa: D101
     __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
     When the default format has changed after a major new release of
@@ -4905,7 +4905,7 @@ class cmd_upgrade(Command):
                 return 3
 
 
-class cmd_whoami(Command):
+class cmd_whoami(Command):  # noqa: D101
     __doc__ = """Show or set brz user id.
 
     :Examples:
@@ -4981,7 +4981,7 @@ class cmd_whoami(Command):
         c.set("email", name)
 
 
-class cmd_nick(Command):
+class cmd_nick(Command):  # noqa: D101
     __doc__ = """Print or set the branch nickname.
 
     If unset, the colocated branch name is used for colocated branches, and
@@ -5019,7 +5019,7 @@ class cmd_nick(Command):
         self.outf.write(f"{branch.nick}\n")
 
 
-class cmd_alias(Command):
+class cmd_alias(Command):  # noqa: D101
     __doc__ = """Set/unset and display aliases.
 
     :Examples:
@@ -5150,7 +5150,7 @@ def get_transport_type(typestring):
     raise errors.CommandError(msg)
 
 
-class cmd_selftest(Command):
+class cmd_selftest(Command):  # noqa: D101
     __doc__ = """Run internal test suite.
 
     If arguments are given, they are regular expressions that say which tests
@@ -5429,7 +5429,7 @@ class cmd_selftest(Command):
             os.fdatasync = lambda filedes: None
 
 
-class cmd_version(Command):
+class cmd_version(Command):  # noqa: D101
     __doc__ = """Show version of brz."""
 
     encoding_type = "replace"
@@ -5452,7 +5452,7 @@ class cmd_version(Command):
             show_version(to_file=self.outf)
 
 
-class cmd_rocks(Command):
+class cmd_rocks(Command):  # noqa: D101
     __doc__ = """Statement of optimism."""
 
     hidden = True
@@ -5463,7 +5463,7 @@ class cmd_rocks(Command):
         self.outf.write(gettext("It sure does!\n"))
 
 
-class cmd_find_merge_base(Command):
+class cmd_find_merge_base(Command):  # noqa: D101
     __doc__ = """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
@@ -5493,7 +5493,7 @@ class cmd_find_merge_base(Command):
         )
 
 
-class cmd_merge(Command):
+class cmd_merge(Command):  # noqa: D101
     __doc__ = """Perform a three-way merge.
 
     The source of the merge can be specified either in the form of a branch,
@@ -6009,7 +6009,7 @@ class cmd_merge(Command):
         return stored_location
 
 
-class cmd_remerge(Command):
+class cmd_remerge(Command):  # noqa: D101
     __doc__ = """Redo a merge.
 
     Use this if you want to try a different merge technique while resolving
@@ -6111,7 +6111,7 @@ class cmd_remerge(Command):
             return 0
 
 
-class cmd_revert(Command):
+class cmd_revert(Command):  # noqa: D101
     __doc__ = """\
     Set files in the working tree back to the contents of a previous revision.
 
@@ -6199,7 +6199,7 @@ class cmd_revert(Command):
         tree.revert(file_list, rev_tree, not no_backup, None, report_changes=True)
 
 
-class cmd_assert_fail(Command):
+class cmd_assert_fail(Command):  # noqa: D101
     __doc__ = """Test reporting of assertion failures"""
     # intended just for use in testing
 
@@ -6210,7 +6210,7 @@ class cmd_assert_fail(Command):
         raise AssertionError("always fails")
 
 
-class cmd_help(Command):
+class cmd_help(Command):  # noqa: D101
     __doc__ = """Show help on a command or other topic.
     """
 
@@ -6236,7 +6236,7 @@ class cmd_help(Command):
         breezy.help.help(topic)
 
 
-class cmd_shell_complete(Command):
+class cmd_shell_complete(Command):  # noqa: D101
     __doc__ = """Show appropriate completions for context.
 
     For a list of all available commands, say 'brz shell-complete'.
@@ -6257,7 +6257,7 @@ class cmd_shell_complete(Command):
         shellcomplete.shellcomplete(context)
 
 
-class cmd_missing(Command):
+class cmd_missing(Command):  # noqa: D101
     __doc__ = """Show unmerged/unpulled revisions between two branches.
 
     OTHER_BRANCH may be local or remote.
@@ -6492,7 +6492,7 @@ class cmd_missing(Command):
         return status_code
 
 
-class cmd_pack(Command):
+class cmd_pack(Command):  # noqa: D101
     __doc__ = """Compress the data within a repository.
 
     This operation compresses the data within a bazaar repository. As
@@ -6533,7 +6533,7 @@ class cmd_pack(Command):
         repository.pack(clean_obsolete_packs=clean_obsolete_packs)
 
 
-class cmd_plugins(Command):
+class cmd_plugins(Command):  # noqa: D101
     __doc__ = """List the installed plugins.
 
     This command displays the list of installed plugins including
@@ -6567,7 +6567,7 @@ class cmd_plugins(Command):
         self.outf.writelines(list(plugin.describe_plugins(show_paths=verbose)))
 
 
-class cmd_testament(Command):
+class cmd_testament(Command):  # noqa: D101
     __doc__ = """Show testament (signing-form) of a revision."""
     takes_options = [
         "revision",
@@ -6603,7 +6603,7 @@ class cmd_testament(Command):
             self.outf.write(t.as_short_text())
 
 
-class cmd_annotate(Command):
+class cmd_annotate(Command):  # noqa: D101
     __doc__ = """Show the origin of each line in a file.
 
     This prints out the given file with an annotation on the left side
@@ -6671,7 +6671,7 @@ class cmd_annotate(Command):
             )
 
 
-class cmd_re_sign(Command):
+class cmd_re_sign(Command):  # noqa: D101
     __doc__ = """Create a digital signature for an existing revision."""
     # TODO be able to replace existing ones.
 
@@ -6736,7 +6736,7 @@ class cmd_re_sign(Command):
                 )
 
 
-class cmd_bind(Command):
+class cmd_bind(Command):  # noqa: D101
     __doc__ = """Convert the current branch into a checkout of the supplied branch.
     If no branch is supplied, rebind to the last bound location.
 
@@ -6793,7 +6793,7 @@ class cmd_bind(Command):
             b.nick = b_other.nick
 
 
-class cmd_unbind(Command):
+class cmd_unbind(Command):  # noqa: D101
     __doc__ = """Convert the current checkout into a regular branch.
 
     After unbinding, the local branch is considered independent and subsequent
@@ -6814,7 +6814,7 @@ class cmd_unbind(Command):
             raise errors.CommandError(gettext("Local branch is not bound"))
 
 
-class cmd_uncommit(Command):
+class cmd_uncommit(Command):  # noqa: D101
     __doc__ = """Remove the last committed revision.
 
     --verbose will print out what is being removed.
@@ -6966,7 +6966,7 @@ class cmd_uncommit(Command):
             )
 
 
-class cmd_break_lock(Command):
+class cmd_break_lock(Command):  # noqa: D101
     __doc__ = """Break a dead lock.
 
     This command breaks a lock on a repository, branch, working directory or
@@ -7013,7 +7013,7 @@ class cmd_break_lock(Command):
                 control.break_lock()
 
 
-class cmd_wait_until_signalled(Command):
+class cmd_wait_until_signalled(Command):  # noqa: D101
     __doc__ = """Test helper for test_start_and_stop_brz_subprocess_send_signal.
 
     This just prints a line to signal when it is ready, then blocks on stdin.
@@ -7028,7 +7028,7 @@ class cmd_wait_until_signalled(Command):
         sys.stdin.readline()
 
 
-class cmd_serve(Command):
+class cmd_serve(Command):  # noqa: D101
     __doc__ = """Run the brz server."""
 
     aliases = ["server"]
@@ -7101,7 +7101,7 @@ class cmd_serve(Command):
         protocol(t, listen, port, inet, client_timeout)
 
 
-class cmd_join(Command):
+class cmd_join(Command):  # noqa: D101
     __doc__ = """Combine a tree into its containing tree.
 
     This command requires the target tree to be in a rich-root format.
@@ -7161,7 +7161,7 @@ class cmd_join(Command):
                 ) from exc
 
 
-class cmd_split(Command):
+class cmd_split(Command):  # noqa: D101
     __doc__ = """Split a subdirectory of a tree into a separate tree.
 
     This command will produce a target tree in a format that supports
@@ -7193,7 +7193,7 @@ class cmd_split(Command):
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base) from exc
 
 
-class cmd_merge_directive(Command):
+class cmd_merge_directive(Command):  # noqa: D101
     __doc__ = """Generate a merge directive for auto-merge tools.
 
     A directive requests a merge to be performed, and also provides all the
@@ -7336,7 +7336,7 @@ class cmd_merge_directive(Command):
             s.send_email(message)
 
 
-class cmd_send(Command):
+class cmd_send(Command):  # noqa: D101
     __doc__ = """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -7499,7 +7499,7 @@ class cmd_send(Command):
         )
 
 
-class cmd_bundle_revisions(cmd_send):
+class cmd_bundle_revisions(cmd_send):  # noqa: D101
     __doc__ = """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -7609,7 +7609,7 @@ class cmd_bundle_revisions(cmd_send):
         )
 
 
-class cmd_tag(Command):
+class cmd_tag(Command):  # noqa: D101
     __doc__ = """Create, remove or modify a tag naming a revision.
 
     Tags give human-meaningful names to revisions.  Commands that take a -r
@@ -7702,7 +7702,7 @@ class cmd_tag(Command):
                     note(gettext("Updated tag %s.") % tag_name)
 
 
-class cmd_tags(Command):
+class cmd_tags(Command):  # noqa: D101
     __doc__ = """List tags.
 
     This command shows a table of tag names and the revisions they reference.
@@ -7808,7 +7808,7 @@ class cmd_tags(Command):
         return found
 
 
-class cmd_reconfigure(Command):
+class cmd_reconfigure(Command):  # noqa: D101
     __doc__ = """Reconfigure the type of a brz directory.
 
     A target configuration must be specified.
@@ -7951,7 +7951,7 @@ class cmd_reconfigure(Command):
             reconfiguration = None
 
 
-class cmd_switch(Command):
+class cmd_switch(Command):  # noqa: D101
     __doc__ = """Set the branch of a checkout and update.
 
     For lightweight checkouts, this changes the branch being referenced.
@@ -8090,7 +8090,7 @@ class cmd_switch(Command):
             )
 
 
-class cmd_view(Command):
+class cmd_view(Command):  # noqa: D101
     __doc__ = """Manage filtered views.
 
     Views provide a mask over the tree so that users can focus on
@@ -8263,7 +8263,7 @@ class cmd_view(Command):
                 self.outf.write(gettext("'{0}' view is: {1}\n").format(name, view_str))
 
 
-class cmd_hooks(Command):
+class cmd_hooks(Command):  # noqa: D101
     __doc__ = """Show hooks."""
 
     hidden = True
@@ -8283,7 +8283,7 @@ class cmd_hooks(Command):
                     self.outf.write(gettext("    <no hooks installed>\n"))
 
 
-class cmd_remove_branch(Command):
+class cmd_remove_branch(Command):  # noqa: D101
     __doc__ = """Remove a branch.
 
     This will remove the branch from the specified location but
@@ -8330,7 +8330,7 @@ class cmd_remove_branch(Command):
         br.controldir.destroy_branch(br.name)
 
 
-class cmd_shelve(Command):
+class cmd_shelve(Command):  # noqa: D101
     __doc__ = """Temporarily set aside some changes from the current tree.
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
@@ -8464,7 +8464,7 @@ class cmd_shelve(Command):
         return 1
 
 
-class cmd_unshelve(Command):
+class cmd_unshelve(Command):  # noqa: D101
     __doc__ = """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
@@ -8507,7 +8507,7 @@ class cmd_unshelve(Command):
             unshelver.tree.unlock()
 
 
-class cmd_clean_tree(Command):
+class cmd_clean_tree(Command):  # noqa: D101
     __doc__ = """Remove unwanted files from working tree.
 
     By default, only unknown files, not ignored files, are deleted.  Versioned
@@ -8570,7 +8570,7 @@ class cmd_clean_tree(Command):
         )
 
 
-class cmd_reference(Command):
+class cmd_reference(Command):  # noqa: D101
     __doc__ = """list, view and set branch locations for nested trees.
 
     If no arguments are provided, lists the branch locations for nested trees.
@@ -8636,7 +8636,7 @@ class cmd_reference(Command):
             self.outf.write(f"{path} {location}\n")
 
 
-class cmd_export_pot(Command):
+class cmd_export_pot(Command):  # noqa: D101
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
@@ -8666,7 +8666,7 @@ class cmd_export_pot(Command):
         export_pot(self.outf, plugin, include_duplicates)
 
 
-class cmd_import(Command):
+class cmd_import(Command):  # noqa: D101
     __doc__ = """Import sources from a directory, tarball or zip file
 
     This command will import a directory, tarball or zip file into a bzr
@@ -8694,7 +8694,7 @@ class cmd_import(Command):
         do_import(source, tree)
 
 
-class cmd_link_tree(Command):
+class cmd_link_tree(Command):  # noqa: D101
     __doc__ = """Hardlink matching files to another tree.
 
     Only files with identical content and execute bit will be linked.
@@ -8717,7 +8717,7 @@ class cmd_link_tree(Command):
             link_tree(target_tree, source_tree)
 
 
-class cmd_fetch_ghosts(Command):
+class cmd_fetch_ghosts(Command):  # noqa: D101
     __doc__ = """Attempt to retrieve ghosts from another branch.
 
     If the other branch is not supplied, the last-pulled branch is used.
@@ -8750,7 +8750,7 @@ class cmd_fetch_ghosts(Command):
             cmd_reconcile().run(".")
 
 
-class cmd_grep(Command):
+class cmd_grep(Command):  # noqa: D101
     r"""Print lines matching PATTERN for specified files and revisions.
 
     This command searches the specified files and revisions for a given
@@ -9005,7 +9005,7 @@ class cmd_grep(Command):
             grep.versioned_grep(opts)
 
 
-class cmd_patch(Command):
+class cmd_patch(Command):  # noqa: D101
     """Apply a named patch to the current tree."""
 
     takes_args = ["filename?"]
@@ -9049,7 +9049,7 @@ class cmd_patch(Command):
         self.outf.write(b.getvalue().decode("utf-8", "replace"))
 
 
-class cmd_resolve_location(Command):
+class cmd_resolve_location(Command):  # noqa: D101
     __doc__ = """Expand a location to a full URL.
 
     :Examples:
