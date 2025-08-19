@@ -5565,6 +5565,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.repository.unlock()
 
     def break_lock(self):
+        """Break any existing lock on this branch."""
         try:
             response = self._call(b"Branch.break_lock", self._remote_path())
         except errors.UnknownSmartMethod:
@@ -5574,11 +5575,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def leave_lock_in_place(self):
+        """Leave the lock in place when unlocking."""
         if not self._lock_token:
             raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        """Don't leave the lock in place when unlocking."""
         if not self._lock_token:
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
@@ -5742,6 +5745,17 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_parent_location(url)
 
     def pull(self, source, overwrite=False, stop_revision=None, **kwargs):
+        """Pull changes from another branch.
+
+        Args:
+            source: Source branch to pull from.
+            overwrite: Whether to overwrite diverged history.
+            stop_revision: Revision to stop pulling at.
+            **kwargs: Additional arguments.
+
+        Returns:
+            PullResult: Result of the pull operation.
+        """
         with self.lock_write():
             self._clear_cached_state_of_remote_branch_only()
             self._ensure_real()
@@ -5761,6 +5775,18 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         lossy=False,
         tag_selector=None,
     ):
+        """Push changes to another branch.
+
+        Args:
+            target: Target branch to push to.
+            overwrite: Whether to overwrite diverged history.
+            stop_revision: Revision to stop pushing at.
+            lossy: Whether lossy push is allowed.
+            tag_selector: Tag selection function.
+
+        Returns:
+            PushResult: Result of the push operation.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
