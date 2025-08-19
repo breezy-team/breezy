@@ -52,7 +52,7 @@ class IESafeHtmlTranslator(html4css1.HTMLTranslator):
     """
 
     def starttag(self, node, tagname, suffix="\n", empty=0, **attributes):
-        """Generate an HTML start tag with IE-safe modifications.
+        r"""Generate an HTML start tag with IE-safe modifications.
 
         This method generates HTML start tags while applying workarounds for
         Internet Explorer bugs. Specifically, it modifies 'tags' IDs and names

@@ -25,6 +25,8 @@ _ScopeReplacer = breezy.lazy_import.ScopeReplacer
 
 
 class ObjectUID(_ObjectUID):
+    """Wrapper for epydoc ObjectUID to handle lazy imports."""
+
     def __init__(self, obj):
         """Initialize ObjectUID with object.
 

@@ -13,7 +13,8 @@ LaTeX/PDF generation by:
 Without these modifications, images in LaTeX output are often oversized and
 extend beyond page boundaries.
 
-Copyright (C) 2009 Colin D Bennett"""
+Copyright (C) 2009 Colin D Bennett
+"""
 #
 # Modify reStructuredText 'image' directives by adding a percentage 'width'
 # attribute so that the images are scaled to fit on the page when the document

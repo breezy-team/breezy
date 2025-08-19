@@ -31,6 +31,8 @@ configuration information, these tracker types can return an instance capable
 of converting bug IDs into URLs.
 """
 
+from . import errors, registry, urlutils
+
 
 class MalformedBugIdentifier(errors.BzrError):
     """Exception raised when a bug identifier cannot be parsed."""
