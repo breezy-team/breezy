@@ -1672,6 +1672,11 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self._set_in_buffer(None)
 
     def next_read_size(self):
+        """Get the size of the next read operation.
+
+        Returns:
+            int: Number of bytes to read next, or 0 if done.
+        """
         if self.state_accept == self._state_accept_reading_unused:
             return 0
         elif self.decoding_failed:
@@ -1790,6 +1795,14 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         mutter("%12s: [%s] %s%s%s" % (action, self._thread_id, t, message, extra))
 
     def send_error(self, exception):
+        """Send an error response.
+
+        Args:
+            exception: Exception to send as error response.
+
+        Raises:
+            AssertionError: If response was already sent.
+        """
         if self.response_sent:
             raise AssertionError(
                 f"send_error({exception}) called, but response already sent."
@@ -1810,6 +1823,14 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_end()
 
     def send_response(self, response):
+        """Send a response.
+
+        Args:
+            response: Response object to send.
+
+        Raises:
+            AssertionError: If response was already sent.
+        """
         if self.response_sent:
             raise AssertionError(
                 f"send_response({response!r}) called, but response already sent."
@@ -1938,9 +1959,22 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self.body_stream_started = None
 
     def set_headers(self, headers):
+        """Set request headers.
+
+        Args:
+            headers: Dictionary of headers to set.
+        """
         self._headers = headers.copy()
 
     def call(self, *args):
+        """Make a remote call.
+
+        Args:
+            *args: Arguments for the remote call.
+
+        Returns:
+            Response from the remote call.
+        """
         if debug.debug_flag_enabled("hpss"):
             mutter("hpss call:   %s", repr(args)[1:-1])
             base = getattr(self._medium_request._medium, "base", None)

@@ -1676,6 +1676,15 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     requires_username = False
 
     def auth_match(self, header, auth):
+        """Check if authentication matches the header.
+
+        Args:
+            header: Authentication header from server.
+            auth: Authentication dictionary.
+
+        Returns:
+            bool: True if authentication matches.
+        """
         scheme, raw_auth = self._parse_auth_header(header)
         if scheme != self.scheme:
             return False
@@ -1711,6 +1720,15 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         return kerberos.authGSSClientResponse(vc)
 
     def build_auth_header(self, auth, request):
+        """Build authentication header for request.
+
+        Args:
+            auth: Authentication dictionary.
+            request: Request object.
+
+        Returns:
+            str: Authentication header value.
+        """
         return f"Negotiate {auth['negotiate_response']}"
 
     def auth_params_reusable(self, auth):
