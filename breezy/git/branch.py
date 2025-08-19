@@ -1668,6 +1668,12 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return head, refs
 
     def update_references(self, revid=None):
+        """Update Git submodule references in the target branch.
+
+        Args:
+            revid: Revision ID to update references for. If None, uses the
+                target branch's last revision.
+        """
         if revid is None:
             revid = self.target.last_revision()
         tree = self.target.repository.revision_tree(revid)
@@ -1741,15 +1747,27 @@ class InterFromGitBranch(branch.GenericInterBranch):
         local=False,
         tag_selector=None,
     ):
-        """See Branch.pull.
+        """Pull changes from the source branch to the target branch.
 
-        :param _hook_master: Private parameter - set the branch to
-            be supplied as the master to pull hooks.
-        :param run_hooks: Private parameter - if false, this branch
-            is being called because it's the master of the primary branch,
-            so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
-            supplied as the target_branch to pull hooks.
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to pull up to.
+            possible_transports: Reusable transports for accessing branches.
+            _hook_master: Private parameter - set the branch to
+                be supplied as the master to pull hooks.
+            run_hooks: Private parameter - if false, this branch
+                is being called because it's the master of the primary branch,
+                so it should not run its hooks.
+            _override_hook_target: Private parameter - set the branch to be
+                supplied as the target_branch to pull hooks.
+            local: If True, only update the working tree.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            PullResult: Result of the pull operation.
+
+        Raises:
+            LocalRequiresBoundBranch: If local=True but branch is not bound.
         """
         # This type of branch can't be bound.
         bound_location = self.target.get_bound_location()
@@ -1790,6 +1808,17 @@ class InterFromGitBranch(branch.GenericInterBranch):
             )
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
+        """Perform the basic push operation between branches.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches. Can be True,
+                False, or a set of aspects to overwrite ('history', 'tags').
+            stop_revision: Revision to push up to.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            BranchPushResult: Result of the push operation.
+        """
         if overwrite is True:
             overwrite = {"history", "tags"}
         elif not overwrite:
@@ -1825,6 +1854,11 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        """Get the branch formats to test for compatibility.
+
+        Returns:
+            List of tuples containing (source_format, target_format) pairs.
+        """
         from .remote import RemoteGitBranchFormat
 
         return [(LocalGitBranchFormat(), RemoteGitBranchFormat())]
@@ -1900,6 +1934,20 @@ class InterGitLocalGitBranch(InterGitBranch):
         return isinstance(source, GitBranch) and isinstance(target, LocalGitBranch)
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions from source to target branch.
+
+        Args:
+            stop_revision: Revision to fetch up to. If None, fetches all revisions.
+            fetch_tags: Whether to fetch tags. If None, uses branch configuration.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+
+        Raises:
+            LossyPushToSameVCS: If lossy=True for Git to Git fetch.
+        """
         if lossy:
             raise errors.LossyPushToSameVCS(
                 source_branch=self.source, target_branch=self.target
@@ -1940,6 +1988,15 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
+        """Update references from source to target repository.
+
+        Args:
+            stop_revision: Revision to update up to. If None, updates all refs.
+
+        Returns:
+            Tuple of (refs, stop_revision) where refs is a mapping of reference
+            names to revision IDs.
+        """
         interrepo = _mod_repository.InterRepository.get(
             self.source.repository, self.target.repository
         )
@@ -1972,6 +2029,23 @@ class InterGitLocalGitBranch(InterGitBranch):
         local=False,
         tag_selector=None,
     ):
+        """Pull changes from the source Git branch to the target Git branch.
+
+        Args:
+            stop_revision: Revision to pull up to.
+            overwrite: Whether to overwrite diverged branches. Can be True,
+                False, or a set of aspects to overwrite ('history', 'tags').
+            possible_transports: Reusable transports for accessing branches.
+            run_hooks: Whether to run pre/post pull hooks.
+            local: If True, only update the working tree.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitPullResult: Result of the pull operation.
+
+        Raises:
+            LocalRequiresBoundBranch: If local=True (Git branches can't be bound).
+        """
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -2086,6 +2160,12 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        """Get the branch formats to test for compatibility.
+
+        Returns:
+            List of tuples containing (source_format, target_format) pairs
+            for testing Bazaar to Git branch conversion.
+        """
         try:
             default_format = branch.format_registry.get_default()
         except AttributeError:
@@ -2111,6 +2191,20 @@ class InterToGitBranch(branch.GenericInterBranch):
         return not isinstance(source, GitBranch) and isinstance(target, GitBranch)
 
     def _get_new_refs(self, stop_revision=None, fetch_tags=None, stop_revno=None):
+        """Get new references to be set in the target Git repository.
+
+        Args:
+            stop_revision: Revision to update up to. If None, uses last revision.
+            fetch_tags: Whether to include tags in the refs.
+            stop_revno: Revision number corresponding to stop_revision.
+
+        Returns:
+            Dict mapping reference names to (old_sha, new_revision_id) tuples.
+
+        Raises:
+            ObjectNotLocked: If the source branch is not locked.
+            TypeError: If stop_revision is not bytes.
+        """
         if not self.source.is_locked():
             raise errors.ObjectNotLocked(self.source)
         if stop_revision is None:
@@ -2152,6 +2246,17 @@ class InterToGitBranch(branch.GenericInterBranch):
         return refs, main_ref, (stop_revno, stop_revision)
 
     def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+        """Fetch revisions from Bazaar source to Git target.
+
+        Args:
+            stop_revision: Revision to fetch up to. If None, fetches all revisions.
+            fetch_tags: Whether to fetch tags. If None, uses branch configuration.
+            lossy: Whether to allow lossy conversion.
+            limit: Maximum number of revisions to fetch.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+        """
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # Default to True for local fetches to match remote behavior
