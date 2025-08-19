@@ -63,7 +63,7 @@ def _check_already_merged(branch, target):
         )
 
 
-class cmd_publish_derived(Command):
+class cmd_publish_derived(Command):  # noqa: D101
     __doc__ = """Publish a derived branch.
 
     Try to create a public copy of a local branch on a hosting site,
@@ -173,7 +173,7 @@ def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=
     return to_file.getvalue()
 
 
-class cmd_propose_merge(Command):
+class cmd_propose_merge(Command):  # noqa: D101
     __doc__ = """Propose a branch for merging.
 
     This command creates a merge proposal for the local
@@ -335,7 +335,7 @@ class cmd_propose_merge(Command):
                     note(gettext("Auto merge enabled"))
 
 
-class cmd_find_merge_proposal(Command):
+class cmd_find_merge_proposal(Command):  # noqa: D101
     __doc__ = """Find a merge proposal.
 
     """
@@ -372,7 +372,7 @@ class cmd_find_merge_proposal(Command):
             self.outf.write(gettext("Merge proposal: %s\n") % mp.url)
 
 
-class cmd_my_merge_proposals(Command):
+class cmd_my_merge_proposals(Command):  # noqa: D101
     __doc__ = """List all merge proposals owned by the logged-in user.
 
     """
@@ -435,7 +435,7 @@ class cmd_my_merge_proposals(Command):
                 warning("Skipping %s, login required.", instance)
 
 
-class cmd_land_merge_proposal(Command):
+class cmd_land_merge_proposal(Command):  # noqa: D101
     __doc__ = """Land a merge proposal."""
 
     takes_args = ["url"]
@@ -452,7 +452,7 @@ class cmd_land_merge_proposal(Command):
         proposal.merge(commit_message=message)
 
 
-class cmd_web_open(Command):
+class cmd_web_open(Command):  # noqa: D101
     __doc__ = """Open a branch page in your web browser."""
 
     takes_options = [
@@ -530,7 +530,7 @@ class cmd_web_open(Command):
             webbrowser.open(web_url)
 
 
-class cmd_forges(Command):
+class cmd_forges(Command):  # noqa: D101
     __doc__ = """List all known hosting sites and user details."""
 
     hidden = True

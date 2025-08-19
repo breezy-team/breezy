@@ -1588,6 +1588,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
 
 class RemoteInventoryTree(InventoryRevisionTree):
+    """Inventory-based revision tree accessed via smart protocol."""
+
     def __init__(self, repository, inv, revision_id):
         """Initialize a RemoteInventoryTree.
 
@@ -4248,6 +4250,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
+    """Stream sink for remote repositories.
+
+    Handles streaming data insertion into remote repositories via
+    the smart protocol.
+    """
+
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()

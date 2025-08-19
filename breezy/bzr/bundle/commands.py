@@ -27,7 +27,7 @@ from ... import errors
 from ...commands import Command
 
 
-class cmd_bundle_info(Command):
+class cmd_bundle_info(Command):  # noqa: D101
     __doc__ = """Output interesting stats about a bundle"""
 
     hidden = True

@@ -2452,6 +2452,7 @@ class HttpTransport(ConnectedTransport):
         return Urllib3LikeResponse(response)
 
     def disconnect(self):
+        """Disconnect the current HTTP connection if one exists."""
         connection = self._get_connection()
         if connection is not None:
             connection.close()

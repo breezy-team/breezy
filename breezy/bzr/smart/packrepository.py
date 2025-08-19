@@ -21,6 +21,8 @@ from .request import SuccessfulSmartServerResponse
 
 
 class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
+    """Smart server request to trigger repository autopack."""
+
     def do_repository_request(self, repository):
         """Perform autopack operation on repository.
 

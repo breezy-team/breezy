@@ -1487,6 +1487,12 @@ def build_server_protocol_three(
 
 
 class ProtocolThreeDecoder(_StatefulDecoder):
+    """Decoder for version 3 of the smart protocol.
+
+    Handles decoding of protocol version 3 messages including
+    headers, body chunks, and error handling.
+    """
+
     response_marker = RESPONSE_VERSION_THREE
     request_marker = REQUEST_VERSION_THREE
 
@@ -1693,6 +1699,12 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 
 
 class _ProtocolThreeEncoder:
+    """Encoder for version 3 of the smart protocol.
+
+    Handles encoding and buffering of protocol version 3 messages
+    with support for chunked bodies and structured responses.
+    """
+
     response_marker = request_marker = MESSAGE_VERSION_THREE
     BUFFER_SIZE = 1024 * 1024  # 1 MiB buffer before flushing
 
@@ -1947,6 +1959,12 @@ def _iter_with_errors(iterable):
 
 
 class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
+    """Requester for version 3 of the smart protocol.
+
+    Handles making requests using protocol version 3 encoding
+    with support for protocol negotiation and error handling.
+    """
+
     def __init__(self, medium_request):
         """Initialize ProtocolThreeRequester.
 

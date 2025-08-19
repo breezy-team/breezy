@@ -247,6 +247,12 @@ class Conflict(BaseConflict):
 
 
 class ConflictList(BaseConflictList):
+    """List of conflicts in a working tree.
+
+    This class manages a collection of Conflict objects and provides
+    methods for serializing/deserializing them to/from stanza format.
+    """
+
     @staticmethod
     def from_stanzas(stanzas):
         """Produce a new ConflictList from an iterable of stanzas.
