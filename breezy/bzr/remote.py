@@ -5799,9 +5799,19 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             )
 
     def peek_lock_mode(self):
+        """Get the current lock mode without acquiring a lock.
+
+        Returns:
+            str: The lock mode ('r', 'w') or None.
+        """
         return self._lock_mode
 
     def is_locked(self):
+        """Check if the branch is currently locked.
+
+        Returns:
+            bool: True if the branch is locked.
+        """
         return self._lock_count >= 1
 
     def revision_id_to_dotted_revno(self, revision_id):
@@ -5889,6 +5899,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None, other_branch=None):
+        """Generate revision history to the specified revision.
+
+        Args:
+            revision_id: Target revision ID.
+            last_rev: Last known revision.
+            other_branch: Other branch for reference.
+        """
         with self.lock_write():
             medium = self._client._medium
             if not medium._is_remote_before((1, 6)):
@@ -5925,6 +5942,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._set_config_location("push_location", location)
 
     def heads_to_fetch(self):
+        """Get the heads to fetch for this branch.
+
+        Returns:
+            Set of revision IDs to fetch.
+        """
         if self._format._use_default_local_heads_to_fetch():
             # We recognise this format, and its heads-to-fetch implementation
             # is the default one (tip + tags).  In this case it's cheaper to

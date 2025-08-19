@@ -1512,6 +1512,11 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         self.request_handler = self.message_handler = message_handler
 
     def accept_bytes(self, bytes):
+        """Accept and process incoming bytes.
+
+        Args:
+            bytes: Bytes to process.
+        """
         self._number_needed_bytes = None
         try:
             _StatefulDecoder.accept_bytes(self, bytes)
@@ -1653,6 +1658,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             raise SmartMessageHandlerError(sys.exc_info()) from e
 
     def done(self):
+        """Mark decoding as complete and process unused data."""
         self.unused_data = self._get_in_buffer()
         self._set_in_buffer(None)
         self.state_accept = self._state_accept_reading_unused
