@@ -53,6 +53,11 @@ from ..tree import (
 
 
 class InventoryTreeChange(TreeChange):
+    """Represents a change between two inventory trees.
+
+    Extends TreeChange with file_id and parent_id tracking for inventory-based trees.
+    """
+
     __slots__ = TreeChange.__slots__ + ["file_id", "parent_id"]
 
     def __init__(
@@ -67,6 +72,19 @@ class InventoryTreeChange(TreeChange):
         executable,
         copied=False,
     ):
+        """Initialize an InventoryTreeChange.
+
+        Args:
+            file_id: The file ID of the changed item.
+            path: Tuple of (old_path, new_path).
+            changed_content: Whether content changed.
+            versioned: Tuple of (old_versioned, new_versioned).
+            parent_id: Tuple of (old_parent_id, new_parent_id).
+            name: Tuple of (old_name, new_name).
+            kind: Tuple of (old_kind, new_kind).
+            executable: Tuple of (old_executable, new_executable).
+            copied: Whether this represents a copy (default False).
+        """
         self.file_id = file_id
         self.parent_id = parent_id
         super().__init__(
@@ -80,6 +98,7 @@ class InventoryTreeChange(TreeChange):
         )
 
     def __repr__(self):
+        """Return string representation of the change."""
         return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
@@ -96,6 +115,7 @@ class InventoryTreeChange(TreeChange):
         )
 
     def __eq__(self, other):
+        """Check equality with another change object."""
         if isinstance(other, TreeChange):
             return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
@@ -103,18 +123,34 @@ class InventoryTreeChange(TreeChange):
         return False
 
     def __lt__(self, other):
+        """Compare with another change object for ordering."""
         return self._as_tuple() < other._as_tuple()
 
     def meta_modified(self):
+        """Check if metadata (permissions) was modified.
+
+        Returns:
+            bool: True if executable bit changed.
+        """
         if self.versioned == (True, True):
             return self.executable[0] != self.executable[1]
         return False
 
     def is_reparented(self):
+        """Check if the item was reparented.
+
+        Returns:
+            bool: True if parent changed.
+        """
         return self.parent_id[0] != self.parent_id[1]
 
     @property
     def renamed(self):
+        """Check if the item was renamed.
+
+        Returns:
+            bool: True if renamed (name or parent changed), not copied.
+        """
         return (
             not self.copied
             and None not in self.name
@@ -123,6 +159,11 @@ class InventoryTreeChange(TreeChange):
         )
 
     def discard_new(self):
+        """Create a change object with new state discarded.
+
+        Returns:
+            InventoryTreeChange: Change with new values set to None.
+        """
         return self.__class__(
             self.file_id,
             (self.path[0], None),
@@ -156,10 +197,23 @@ class InventoryTree(Tree):
     """
 
     def supports_symlinks(self):
+        """Check if this tree supports symbolic links.
+
+        Returns:
+            bool: True (inventory trees support symlinks).
+        """
         return True
 
     @classmethod
     def is_special_path(cls, path):
+        """Check if a path is a special bzr path.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if path starts with ".bzr".
+        """
         return path.startswith(".bzr")
 
     def _get_root_inventory(self):
@@ -236,6 +290,14 @@ class InventoryTree(Tree):
             return self._path2inv_file_id(path)[1]
 
     def is_versioned(self, path):
+        """Check if a path is versioned.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if path has a file ID.
+        """
         return self.path2id(path) is not None
 
     def _path2ie(self, path):
@@ -297,9 +359,19 @@ class InventoryTree(Tree):
             raise errors.NoSuchId(self, file_id) from e
 
     def all_file_ids(self):
+        """Get all file IDs in the tree.
+
+        Returns:
+            set: All file IDs in the inventory.
+        """
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
     def all_versioned_paths(self):
+        """Get all versioned paths in the tree.
+
+        Returns:
+            set: All paths that are versioned.
+        """
         return {path for path, entry in self.iter_entries_by_dir()}
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
@@ -417,6 +489,14 @@ class InventoryTree(Tree):
         return last_revision
 
     def preview_transform(self, pb=None):
+        """Get a transform preview for this tree.
+
+        Args:
+            pb: Optional progress bar.
+
+        Returns:
+            TransformPreview: A preview of tree transformations.
+        """
         from .transform import TransformPreview
 
         return TransformPreview(self, pb=pb)
@@ -500,6 +580,11 @@ def _find_children_across_trees(specified_ids, trees):
 
 
 class MutableInventoryTree(MutableTree, InventoryTree):
+    """An inventory tree that can be modified.
+
+    Combines MutableTree interface with inventory-based implementation.
+    """
+
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -647,6 +732,14 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         self.set_parent_trees([(new_revid, rev_tree)])
 
     def transform(self, pb=None):
+        """Get a tree transform for this tree.
+
+        Args:
+            pb: Optional progress bar.
+
+        Returns:
+            InventoryTreeTransform: Transform object for modifying the tree.
+        """
         from .transform import InventoryTreeTransform
 
         return InventoryTreeTransform(self, pb=pb)
@@ -725,6 +818,11 @@ class _SmartAddHelper:
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
+        """Get the inventory delta accumulated by this helper.
+
+        Returns:
+            list: List of inventory changes.
+        """
         # GZ 2016-06-05: Returning view would probably be fine but currently
         # Inventory.apply_delta is documented as requiring a list of changes.
         return list(self._invdelta.values())
@@ -816,6 +914,13 @@ class _SmartAddHelper:
             prev_dir = path
 
     def __init__(self, tree, action, conflicts_related=None):
+        """Initialize a smart add helper.
+
+        Args:
+            tree: The mutable tree to add files to.
+            action: AddAction instance or None for default.
+            conflicts_related: Set of conflict-related paths to skip.
+        """
         self.tree = tree
         if action is None:
             self.action = add.AddAction()
@@ -830,6 +935,12 @@ class _SmartAddHelper:
             self.conflicts_related = conflicts_related
 
     def add(self, file_list, recurse=True):
+        """Add files to the tree.
+
+        Args:
+            file_list: List of file paths to add.
+            recurse: Whether to recurse into directories.
+        """
         if not file_list:
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/
@@ -972,7 +1083,19 @@ class _SmartAddHelper:
 
 
 class InventoryRevisionTree(RevisionTree, InventoryTree):
+    """A revision tree based on an inventory.
+
+    Represents a historical tree state using an inventory object.
+    """
+
     def __init__(self, repository, inv, revision_id):
+        """Initialize an InventoryRevisionTree.
+
+        Args:
+            repository: The repository containing the revision.
+            inv: The inventory for this revision.
+            revision_id: The ID of the revision.
+        """
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
 
@@ -985,6 +1108,17 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return last_revision
 
     def get_file_mtime(self, path):
+        """Get modification time of a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            float: Timestamp of the revision containing the file.
+
+        Raises:
+            FileTimestampUnavailable: If revision not found.
+        """
         ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
@@ -993,27 +1127,78 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, path):
+        """Get the size of a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            int: Size of the file in bytes.
+        """
         return self._path2ie(path).text_size
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file.
+
+        Args:
+            path: Path to the file.
+            stat_value: Ignored for revision trees.
+
+        Returns:
+            str: SHA1 hash or None if not a file.
+        """
         ie = self._path2ie(path)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, path):
+        """Get the revision ID that last modified a file.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            str: Revision ID.
+        """
         return self._path2ie(path).revision
 
     def is_executable(self, path):
+        """Check if a file is executable.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if file is executable, False otherwise.
+        """
         ie = self._path2ie(path)
         if ie.kind != "file":
             return False
         return ie.executable
 
     def has_filename(self, filename):
+        """Check if a filename exists in the tree.
+
+        Args:
+            filename: Path to check.
+
+        Returns:
+            bool: True if file exists.
+        """
         return bool(self.path2id(filename))
 
     def reference_parent(self, path, branch=None, possible_transports=None):
+        """Get the parent branch for a tree reference.
+
+        Args:
+            path: Path to the tree reference.
+            branch: Optional branch to get reference from.
+            possible_transports: Transports to reuse.
+
+        Returns:
+            Branch: Parent branch or None.
+        """
         if branch is not None:
             file_id = self.path2id(path)
             parent_url = branch.get_reference_info(file_id)[0]
@@ -1029,11 +1214,31 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         )
 
     def get_reference_info(self, path, branch=None):
+        """Get reference info for a tree reference.
+
+        Args:
+            path: Path to the reference.
+            branch: Branch to query.
+
+        Returns:
+            str: Reference URL.
+        """
         return branch.get_reference_info(self.path2id(path))[0]
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
     ):
+        """List files in the tree.
+
+        Args:
+            include_root: Whether to include the root directory.
+            from_dir: Start from this subdirectory.
+            recursive: Whether to recurse into subdirectories.
+            recurse_nested: Whether to recurse into nested trees.
+
+        Yields:
+            tuple: (path, status, kind, entry).
+        """
         # The only files returned by this are those from the version
         if from_dir is None:
             from_dir_id = None
@@ -1063,6 +1268,18 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 yield path, "V", entry.kind, entry
 
     def iter_child_entries(self, path):
+        """Iterate child entries of a directory.
+
+        Args:
+            path: Path to the directory.
+
+        Yields:
+            InventoryEntry: Child entries.
+
+        Raises:
+            NoSuchFile: If path doesn't exist.
+            NotADirectory: If path is not a directory.
+        """
         inv, ie = self._path2inv_ie(path)
         if ie is None:
             raise _mod_transport.NoSuchFile(path)
@@ -1071,6 +1288,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return inv.iter_sorted_children(ie.file_id)
 
     def get_symlink_target(self, path):
+        """Get the target of a symbolic link.
+
+        Args:
+            path: Path to the symlink.
+
+        Returns:
+            str: Target path or None if not a symlink.
+        """
         # Inventories store symlink targets in unicode
         ie = self._path2ie(path)
         if ie.kind != "symlink":
@@ -1078,6 +1303,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return ie.symlink_target
 
     def get_reference_revision(self, path):
+        """Get the reference revision for a tree reference.
+
+        Args:
+            path: Path to the tree reference.
+
+        Returns:
+            str: Reference revision ID.
+        """
         return self._path2ie(path).reference_revision
 
     def _get_nested_tree(self, path, file_id, reference_revision):
@@ -1100,10 +1333,26 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revtree
 
     def get_nested_tree(self, path):
+        """Get the nested tree at a path.
+
+        Args:
+            path: Path to the nested tree.
+
+        Returns:
+            Tree: The nested tree object.
+        """
         nested_revid = self.get_reference_revision(path)
         return self._get_nested_tree(path, None, nested_revid)
 
     def kind(self, path):
+        """Get the kind of an entry.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            str: Kind (file, directory, symlink, tree-reference).
+        """
         return self._path2ie(path).kind
 
     def path_content_summary(self, path):
@@ -1126,6 +1375,15 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return entry.kind, entry.executable, None
 
     def walkdirs(self, prefix=""):
+        """Walk directories in the tree.
+
+        Args:
+            prefix: Start from this prefix path.
+
+        Yields:
+            tuple: (dirpath, dirblock) where dirblock contains
+                  (path, name, kind, stat, kind) tuples.
+        """
         _directory = "directory"
         inv, top_id = self._path2inv_file_id(prefix)
         pending = [] if top_id is None else [(prefix, top_id)]
@@ -1166,6 +1424,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return [(key[-1], line) for key, line in annotations]
 
     def __eq__(self, other):
+        """Check equality with another tree."""
         if self is other:
             return True
         if isinstance(other, InventoryRevisionTree):
@@ -1173,9 +1432,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return False
 
     def __ne__(self, other):
+        """Check inequality with another tree."""
         return not (self == other)
 
     def __hash__(self):
+        """Inventory trees are not hashable."""
         raise ValueError("not hashable")
 
 
@@ -1184,6 +1445,15 @@ class InterInventoryTree(InterTree):
 
     @classmethod
     def is_compatible(kls, source, target):
+        """Check if this InterTree can handle the source and target trees.
+
+        Args:
+            source: Source tree.
+            target: Target tree.
+
+        Returns:
+            bool: True if both are InventoryTree instances.
+        """
         # The default implementation is naive and uses the public API, so
         # it works for all trees.
         return isinstance(source, InventoryTree) and isinstance(target, InventoryTree)
@@ -1615,6 +1885,15 @@ class InterCHKRevisionTree(InterInventoryTree):
 
     @staticmethod
     def is_compatible(source, target):
+        """Check if trees are compatible for CHK optimization.
+
+        Args:
+            source: Source tree.
+            target: Target tree.
+
+        Returns:
+            bool: True if both are RevisionTrees with CHK inventories.
+        """
         if isinstance(source, RevisionTree) and isinstance(target, RevisionTree):
             try:
                 # Only CHK inventories have id_to_entry attribute
@@ -1634,6 +1913,19 @@ class InterCHKRevisionTree(InterInventoryTree):
         require_versioned=True,
         want_unversioned=False,
     ):
+        """Iterate changes between trees using CHK optimization.
+
+        Args:
+            include_unchanged: Whether to include unchanged files.
+            specific_files: Limit to these files.
+            pb: Progress bar.
+            extra_trees: Additional trees for lookups.
+            require_versioned: Whether to require versioned files.
+            want_unversioned: Whether to include unversioned files.
+
+        Yields:
+            InventoryTreeChange: Changes between the trees.
+        """
         if extra_trees is None:
             extra_trees = []
         lookup_trees = [self.source]

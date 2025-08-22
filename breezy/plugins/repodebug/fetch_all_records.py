@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Command to fetch all records from one repository to another."""
 
 from ... import errors, urlutils
 from ...commands import Command
@@ -22,6 +23,15 @@ from ...option import Option
 
 
 class cmd_fetch_all_records(Command):
+    """Fetch all records from another repository.
+
+    This inserts every key from SOURCE_REPO into the target repository.  Unlike
+    regular fetches this doesn't assume any relationship between keys (e.g.
+    that text X may be assumed to be present if inventory Y is present), so it
+    can be used to repair repositories where invariants about those
+    relationships have somehow been violated.
+    """
+
     __doc__ = """Fetch all records from another repository.
 
     This inserts every key from SOURCE_REPO into the target repository.  Unlike
@@ -41,6 +51,13 @@ class cmd_fetch_all_records(Command):
     ]
 
     def run(self, source_repo, directory=".", dry_run=False):
+        """Execute the fetch-all-records command.
+
+        Args:
+            source_repo: URL or path to the source repository.
+            directory: Target directory containing the repository to update.
+            dry_run: If True, show what would be done without actually doing it.
+        """
         try:
             source = ControlDir.open(source_repo).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):

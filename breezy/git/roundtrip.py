@@ -63,10 +63,16 @@ class CommitSupplement:
     explicit_parent_ids = None
 
     def __init__(self) -> None:
+        """Initialize a new CommitSupplement."""
         self.properties: dict[str, bytes] = {}
         self.verifiers: dict[str, Any] = {}
 
     def __nonzero__(self) -> bool:
+        """Check if this supplement contains any data.
+
+        Returns:
+            bool: True if any supplemental data is present, False otherwise.
+        """
         return bool(self.revision_id or self.properties or self.explicit_parent_ids)
 
 
@@ -133,6 +139,19 @@ def extract_bzr_metadata(message):
 
 
 def inject_bzr_metadata(message, commit_supplement, encoding):
+    """Inject Bazaar metadata into a commit message.
+
+    Args:
+        message: The original commit message.
+        commit_supplement: CommitSupplement object containing metadata to inject.
+        encoding: Character encoding to use.
+
+    Returns:
+        bytes: The commit message with injected metadata.
+
+    Raises:
+        TypeError: If roundtrip data is not bytes.
+    """
     if not commit_supplement:
         return message
     rt_data = generate_roundtripping_metadata(commit_supplement, encoding)

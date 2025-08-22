@@ -83,24 +83,61 @@ def _get_transport_modules():
 
 
 class UnusableRedirect(errors.BzrError):
+    """Exception raised when a redirect cannot be followed.
+
+    This is raised when a transport receives a redirect response but cannot
+    handle the redirection for some reason (e.g., protocol mismatch).
+    """
+
     _fmt = "Unable to follow redirect from %(source)s to %(target)s: %(reason)s."
 
     def __init__(self, source, target, reason):
+        """Initialize UnusableRedirect exception.
+
+        Args:
+            source: The original URL that was redirected.
+            target: The target URL of the redirection.
+            reason: Human-readable reason why the redirect cannot be used.
+        """
         super().__init__(source=source, target=target, reason=reason)
 
 
 class UnsupportedProtocol(errors.PathError):
+    """Exception raised when a URL uses an unsupported protocol.
+
+    This is raised when trying to create a transport for a URL scheme
+    that has no registered transport implementation.
+    """
+
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
     def __init__(self, url, extra=""):
+        """Initialize UnsupportedProtocol exception.
+
+        Args:
+            url: The URL with the unsupported protocol.
+            extra: Additional error information.
+        """
         errors.PathError.__init__(self, url, extra=extra)
 
 
 class NoSuchFile(errors.PathError):
+    """Exception raised when a file or directory does not exist.
+
+    This is the standard exception raised by transports when attempting
+    to access a non-existent file or directory.
+    """
+
     _fmt = "No such file: %(path)r%(extra)s"
 
 
 class FileExists(errors.PathError):
+    """Exception raised when trying to create a file that already exists.
+
+    This is raised by transports when attempting to create a file or
+    directory that already exists and the operation requires exclusivity.
+    """
+
     _fmt = "File exists: %(path)r%(extra)s"
 
 
@@ -120,12 +157,31 @@ class TransportListRegistry(registry.Registry):
     """
 
     def register_transport_provider(self, key, obj):
+        """Register a transport provider object for a protocol.
+
+        Args:
+            key: Protocol prefix (e.g., 'http://').
+            obj: Transport class or factory object.
+        """
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
+        """Register a transport provider with lazy loading.
+
+        Args:
+            key: Protocol prefix (e.g., 'http://').
+            module_name: Name of the module containing the transport class.
+            member_name: Name of the transport class within the module.
+        """
         self.get(key).insert(0, registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None):
+        """Register a transport protocol.
+
+        Args:
+            key: Protocol prefix (e.g., 'http://').
+            help: Optional help text describing the transport.
+        """
         self.register(key, [], help)
 
 
@@ -133,6 +189,14 @@ transport_list_registry = TransportListRegistry()
 
 
 def register_transport_proto(prefix, help=None, info=None, register_netloc=False):
+    """Register a transport protocol prefix.
+
+    Args:
+        prefix: Protocol prefix (e.g., 'http://').
+        help: Optional help text.
+        info: Additional protocol information (unused).
+        register_netloc: Whether to register for URL parsing with netloc.
+    """
     transport_list_registry.register_transport(prefix, help)
     if register_netloc:
         if not prefix.endswith("://"):
@@ -141,12 +205,25 @@ def register_transport_proto(prefix, help=None, info=None, register_netloc=False
 
 
 def register_lazy_transport(prefix, module, classname):
+    """Register a transport with lazy class loading.
+
+    Args:
+        prefix: Protocol prefix (e.g., 'http://').
+        module: Module name containing the transport class.
+        classname: Name of the transport class.
+    """
     if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
 
 
 def register_transport(prefix, klass):
+    """Register a transport class for a protocol prefix.
+
+    Args:
+        prefix: Protocol prefix (e.g., 'http://').
+        klass: Transport class to register.
+    """
     if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)
@@ -217,15 +294,22 @@ class LateReadError:
     """
 
     def __init__(self, path):
+        """Initialize LateReadError.
+
+        Args:
+            path: Path that will trigger the read error.
+        """
         self._path = path
 
     def close(self):
         """A no-op - do nothing."""
 
     def __enter__(self):
+        """Context manager entry."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
         # If there was an error raised, prefer the original one
         try:
             self.close()
@@ -239,12 +323,19 @@ class LateReadError:
         raise errors.ReadError(self._path)
 
     def __iter__(self):
+        """Iterator protocol - raises ReadError."""
         self._fail()
 
     def read(self, count=-1):
+        """Read method - raises ReadError.
+
+        Args:
+            count: Number of bytes to read (ignored).
+        """
         self._fail()
 
     def readlines(self):
+        """Read lines method - raises ReadError."""
         self._fail()
 
 
@@ -260,13 +351,20 @@ class FileStream:
         """A hook point for subclasses that need to take action on close."""
 
     def __enter__(self):
+        """Context manager entry."""
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
+        """Context manager exit."""
         self.close()
         return False
 
     def close(self, want_fdatasync=False):
+        """Close the file stream.
+
+        Args:
+            want_fdatasync: Whether to force data synchronization.
+        """
         if want_fdatasync:
             with contextlib.suppress(errors.TransportNotPossible):
                 self.fdatasync()
@@ -289,6 +387,13 @@ class FileFileStream(FileStream):
     """
 
     def __init__(self, transport, relpath, file_handle):
+        """Initialize FileFileStream.
+
+        Args:
+            transport: Transport instance.
+            relpath: Relative path to the file.
+            file_handle: File-like object for operations.
+        """
         FileStream.__init__(self, transport, relpath)
         self.file_handle = file_handle
 
@@ -305,6 +410,15 @@ class FileFileStream(FileStream):
         osutils.fdatasync(fileno)
 
     def write(self, bytes):
+        """Write bytes to the file.
+
+        Args:
+            bytes: Data to write.
+
+        Returns:
+            Number of bytes written.
+        """
+
         class F:
             def __init__(self, f):
                 self.f = f
@@ -317,6 +431,7 @@ class FileFileStream(FileStream):
         return len(bytes)
 
     def flush(self):
+        """Flush any buffered data."""
         self.file_handle.flush()
 
 
@@ -327,10 +442,19 @@ class AppendBasedFileStream(FileStream):
     """
 
     def write(self, bytes):
+        """Write bytes by appending to the file.
+
+        Args:
+            bytes: Data to write.
+
+        Returns:
+            Number of bytes written.
+        """
         self.transport.append_bytes(self.relpath, bytes)
         return len(bytes)
 
     def flush(self):
+        """Flush any buffered data (no-op for append-based streams)."""
         pass
 
 
@@ -338,6 +462,7 @@ class TransportHooks(hooks.Hooks):
     """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
+        """Initialize TransportHooks."""
         super().__init__()
         self.add_hook(
             "post_connect",
@@ -371,6 +496,11 @@ class Transport:
     base: str
 
     def __init__(self, base):
+        """Initialize a Transport.
+
+        Args:
+            base: Base URL for the transport; should always end in a slash.
+        """
         super().__init__()
         self.base = base
         (self._raw_base, self._segment_parameters) = urlutils.split_segment_parameters(
@@ -1062,6 +1192,7 @@ class Transport:
         self.rmdir(relpath)
 
     def __repr__(self):
+        """Return string representation of the transport."""
         return f"<{self.__module__}.{self.__class__.__name__} url={self.base}>"
 
     def stat(self, relpath):
@@ -1164,6 +1295,11 @@ class Transport:
         return None
 
     def disconnect(self):
+        """Disconnect the transport.
+
+        This is primarily for ConnectedTransport subclasses, but is implemented
+        as a no-op in the base Transport class for convenience.
+        """
         # This is really needed for ConnectedTransport only, but it's easier to
         # have Transport do nothing than testing that the disconnect should be
         # asked to ConnectedTransport only.

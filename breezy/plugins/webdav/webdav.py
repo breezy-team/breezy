@@ -37,6 +37,11 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
     """Handle a multi-status DAV response."""
 
     def __init__(self):
+        """Initialize the DAV response handler.
+
+        Sets up initial state for XML parsing including element stack,
+        character data tracking, and URL for error reporting.
+        """
         self.url = None
         self.elt_stack = None
         self.chars = None
@@ -48,16 +53,38 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         self.url = url
 
     def startDocument(self):
+        """Initialize parsing state at document start.
+
+        Resets the element stack and character data for a new document.
+        Called by SAX parser when starting to parse an XML document.
+        """
         self.elt_stack = []
         self.chars = None
         self.expected_content_handled = False
 
     def endDocument(self):
+        """Validate document parsing at document end.
+
+        Ensures expected content was properly handled during parsing.
+        Called by SAX parser when finishing XML document parsing.
+
+        Raises:
+            InvalidHttpResponse: If expected content was not handled.
+        """
         self._validate_handling()
         if not self.expected_content_handled:
             raise errors.InvalidHttpResponse(self.url, msg="Unknown xml response")
 
     def startElement(self, name, attrs):
+        """Handle the start of an XML element.
+
+        Tracks element nesting by pushing element name onto stack.
+        Initializes character data collection if needed.
+
+        Args:
+            name: The element name (may include namespace prefix).
+            attrs: Dictionary of element attributes.
+        """
         self.elt_stack.append(self._strip_ns(name))
         # The following is incorrect in the general case where elements are
         # intermixed with chars in a higher level element. That's not the case
@@ -68,15 +95,34 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
             self.chars = None
 
     def endElement(self, name):
+        """Handle the end of an XML element.
+
+        Clears character data and removes element from stack.
+
+        Args:
+            name: The element name that is ending.
+        """
         self.chars = None
         self.chars_wanted = False
         self.elt_stack.pop()
 
     def characters(self, chrs):
+        """Accumulate character data within an element.
+
+        Only collects characters when chars_wanted is True.
+
+        Args:
+            chrs: Character data from the XML parser.
+        """
         if self.chars_wanted:
             self.chars += chrs
 
     def _current_element(self):
+        """Get the name of the current element being parsed.
+
+        Returns:
+            str: The name of the element at the top of the stack.
+        """
         return self.elt_stack[-1]
 
     def _strip_ns(self, name):
@@ -109,27 +155,59 @@ class DavStatHandler(DavResponseHandler):
     """
 
     def __init__(self):
+        """Initialize the DAV stat handler.
+
+        Sets up state for parsing PROPFIND responses to extract
+        file/directory metadata.
+        """
         DavResponseHandler.__init__(self)
         # Flags defining the context for the actions
         self._response_seen = False
         self._init_response_attrs()
 
     def _init_response_attrs(self):
+        """Initialize attributes for a single response element.
+
+        Resets all metadata attributes to their default values.
+        Used when starting to parse a new response element.
+        """
         self.href = None
         self.length = -1
         self.executable = None
         self.is_dir = False
 
     def _validate_handling(self):
+        """Validate that expected content was handled.
+
+        Marks content as handled if an href element was found,
+        which is the minimum expected content for a valid response.
+        """
         if self.href is not None:
             self.expected_content_handled = True
 
     def startElement(self, name, attrs):
+        """Handle start of element, determining if character data is needed.
+
+        Enables character collection for specific elements that contain
+        metadata values we need to extract.
+
+        Args:
+            name: The element name (may include namespace prefix).
+            attrs: Dictionary of element attributes.
+        """
         sname = self._strip_ns(name)
         self.chars_wanted = sname in ("href", "getcontentlength", "executable")
         DavResponseHandler.startElement(self, name, attrs)
 
     def endElement(self, name):
+        """Process element end, extracting metadata from specific elements.
+
+        Extracts href, content length, executable status, and directory
+        indicators from their respective elements.
+
+        Args:
+            name: The element name that is ending.
+        """
         if self._response_seen:
             self._additional_response_starting(name)
 
@@ -158,6 +236,11 @@ class DavStatHandler(DavResponseHandler):
             raise errors.InvalidHttpResponse(self.url, msg=f"Unexpected {name} element")
 
     def _href_end(self):
+        """Check if we're at the end of an href element.
+
+        Returns:
+            bool: True if current position is end of href element.
+        """
         stack = self.elt_stack
         return (
             len(stack) == 3
@@ -167,6 +250,11 @@ class DavStatHandler(DavResponseHandler):
         )
 
     def _getcontentlength_end(self):
+        """Check if we're at the end of a getcontentlength element.
+
+        Returns:
+            bool: True if current position is end of getcontentlength element.
+        """
         stack = self.elt_stack
         return (
             len(stack) == 5
@@ -178,6 +266,11 @@ class DavStatHandler(DavResponseHandler):
         )
 
     def _executable_end(self):
+        """Check if we're at the end of an executable element.
+
+        Returns:
+            bool: True if current position is end of executable element.
+        """
         stack = self.elt_stack
         return (
             len(stack) == 5
@@ -189,6 +282,13 @@ class DavStatHandler(DavResponseHandler):
         )
 
     def _collection_end(self):
+        """Check if we're at the end of a collection element.
+
+        The presence of a collection element indicates this is a directory.
+
+        Returns:
+            bool: True if current position is end of collection element.
+        """
         stack = self.elt_stack
         return (
             len(stack) == 6
@@ -205,6 +305,16 @@ class _DAVStat:
     """The stat info as it can be acquired with DAV."""
 
     def __init__(self, size, is_dir, is_exec):
+        """Initialize DAV stat information.
+
+        Creates a stat-like object with limited information available
+        from WebDAV PROPFIND responses.
+
+        Args:
+            size: File size in bytes (-1 for directories).
+            is_dir: True if this represents a directory.
+            is_exec: True if the file is executable.
+        """
         self.st_size = size
         # We build a mode considering that:
 
@@ -249,14 +359,28 @@ class DavListDirHandler(DavStatHandler):
     """Handle a PROPPFIND depth 1 DAV response for a directory."""
 
     def __init__(self):
+        """Initialize the directory listing handler.
+
+        Extends DavStatHandler to collect multiple response elements
+        for directory contents.
+        """
         DavStatHandler.__init__(self)
         self.dir_content = None
 
     def _validate_handling(self):
+        """Validate that directory content was successfully parsed.
+
+        Marks content as handled if any directory entries were found.
+        """
         if self.dir_content is not None:
             self.expected_content_handled = True
 
     def _make_response_tuple(self):
+        """Create a tuple representing a directory entry.
+
+        Returns:
+            tuple: (href, is_dir, length, is_exec) for the current entry.
+        """
         is_exec = self.executable == "T"
         return (self.href, self.is_dir, self.length, is_exec)
 
@@ -324,6 +448,9 @@ class DavResponse(urllib.Response):
     def begin(self):
         """Begin to read the response from the server.
 
+        Overrides httplib behavior to prevent premature connection closing
+        for certain status codes that WebDAV uses.
+
         httplib incorrectly close the connection far too easily. Let's try to
         workaround that (as urllib does, but for more cases...).
         """
@@ -334,10 +461,14 @@ class DavResponse(urllib.Response):
 
 # Takes DavResponse into account:
 class DavHTTPConnection(urllib.HTTPConnection):
+    """HTTP connection class that uses DavResponse for WebDAV support."""
+
     response_class = DavResponse
 
 
 class DavHTTPSConnection(urllib.HTTPSConnection):
+    """HTTPS connection class that uses DavResponse for WebDAV support."""
+
     response_class = DavResponse
 
 
@@ -350,9 +481,25 @@ class DavConnectionHandler(urllib.ConnectionHandler):
     """
 
     def http_request(self, request):
+        """Handle HTTP requests using WebDAV-aware connection class.
+
+        Args:
+            request: The HTTP request to process.
+
+        Returns:
+            The processed request with WebDAV connection captured.
+        """
         return self.capture_connection(request, DavHTTPConnection)
 
     def https_request(self, request):
+        """Handle HTTPS requests using WebDAV-aware connection class.
+
+        Args:
+            request: The HTTPS request to process.
+
+        Returns:
+            The processed request with WebDAV connection captured.
+        """
         return self.capture_connection(request, DavHTTPSConnection)
 
 
@@ -360,6 +507,12 @@ class DavOpener(urllib.Opener):
     """Dav specific needs regarding HTTP(S)."""
 
     def __init__(self, report_activity=None, ca_certs=None):
+        """Initialize WebDAV-specific HTTP(S) opener.
+
+        Args:
+            report_activity: Optional callback for activity reporting.
+            ca_certs: Optional path to CA certificates for SSL verification.
+        """
         super().__init__(
             connection=DavConnectionHandler,
             report_activity=report_activity,
@@ -384,10 +537,26 @@ class HttpDavTransport(urllib.HttpTransport):
     _opener_class = DavOpener
 
     def is_readonly(self):
-        """See Transport.is_readonly."""
+        """Check if transport is read-only.
+
+        WebDAV transports support writing, so always returns False.
+
+        Returns:
+            bool: Always False for WebDAV transports.
+        """
         return False
 
     def _raise_http_error(self, url, response, info=None):
+        """Raise an HTTP error with contextual information.
+
+        Args:
+            url: The URL that caused the error.
+            response: The HTTP response object.
+            info: Optional additional error information.
+
+        Raises:
+            InvalidHttpResponse: Always raised with formatted error message.
+        """
         msg = "" if info is None else ": " + info
         raise errors.InvalidHttpResponse(
             url, "Unable to handle http code %d%s" % (response.status, msg)
@@ -460,6 +629,23 @@ class HttpDavTransport(urllib.HttpTransport):
     def put_file_non_atomic(
         self, relpath, f, mode=None, create_parent_dir=False, dir_mode=False
     ):
+        """Write a file non-atomically to the WebDAV server.
+
+        This is a convenience method that reads the entire file into memory
+        and delegates to put_bytes_non_atomic. Unlike put_file, this doesn't
+        use a temporary file for atomicity.
+
+        Args:
+            relpath: Path to write to, relative to transport base.
+            f: File-like object to read data from.
+            mode: Optional file mode (ignored for WebDAV).
+            create_parent_dir: If True, create parent directories as needed.
+            dir_mode: Mode for created parent directories (ignored for WebDAV).
+
+        Raises:
+            NoSuchFile: If parent directories are missing and create_parent_dir is False.
+            InvalidHttpResponse: For unexpected HTTP status codes.
+        """
         # Implementing put_bytes_non_atomic rather than put_file_non_atomic
         # because to do a put request, we must read all of the file into
         # RAM anyway. Better to do that than to have the contents, put
@@ -492,6 +678,12 @@ class HttpDavTransport(urllib.HttpTransport):
         }
 
         def bare_put_file_non_atomic():
+            """Perform the actual PUT request without parent directory creation.
+
+            Raises:
+                NoSuchFile: If parent directories are missing.
+                InvalidHttpResponse: For unexpected HTTP status codes.
+            """
             response = self.request("PUT", abspath, body=bytes, headers=headers)
             code = response.status
 
@@ -515,11 +707,19 @@ class HttpDavTransport(urllib.HttpTransport):
                 raise
 
     def _put_bytes_ranged(self, relpath, bytes, at):
-        """Append the file-like object part to the end of the location.
+        """Upload bytes to a specific position in a file using Content-Range.
 
-        :param relpath: Location to put the contents, relative to base.
-        :param bytes:   A string of bytes to upload
-        :param at:      The position in the file to add the bytes
+        Uses HTTP Content-Range header to write bytes at a specific offset,
+        enabling partial file updates without rewriting the entire file.
+
+        Args:
+            relpath: Location to put the contents, relative to base.
+            bytes: A string of bytes to upload.
+            at: The position in the file to add the bytes.
+
+        Raises:
+            NoSuchFile: If the file or parent directories don't exist.
+            InvalidHttpResponse: For unexpected HTTP status codes.
         """
         # Acquire just the needed data
         # TODO: jam 20060908 Why are we creating a StringIO to hold the
@@ -637,6 +837,13 @@ class HttpDavTransport(urllib.HttpTransport):
         Note that when a non-empty dir requires to be deleted, a conforming DAV
         server will delete the dir and all its content. That does not normally
         happen in bzr.
+
+        Args:
+            rel_path: Path to delete, relative to transport base.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+            InvalidHttpResponse: For unexpected HTTP status codes.
         """
         abs_path = self._remote_path(rel_path)
 
@@ -668,7 +875,18 @@ class HttpDavTransport(urllib.HttpTransport):
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
-        :param relpaths: A list/generator of entries to be copied.
+        WebDAV can be a target for copies. This implementation delegates
+        to the base Transport implementation which handles the actual
+        copying logic.
+
+        Args:
+            relpaths: A list/generator of entries to be copied.
+            other: The target transport.
+            mode: Optional file mode for created files.
+            pb: Optional progress bar.
+
+        Returns:
+            The result of Transport.copy_to().
         """
         # DavTransport can be a target. So our simple implementation
         # just returns the Transport implementation. (Which just does
@@ -678,14 +896,45 @@ class HttpDavTransport(urllib.HttpTransport):
         return transport.Transport.copy_to(self, relpaths, other, mode=mode, pb=pb)
 
     def listable(self):
-        """See Transport.listable."""
+        """Check if transport supports directory listing.
+
+        WebDAV supports PROPFIND for directory listings.
+
+        Returns:
+            bool: Always True for WebDAV transports.
+        """
         return True
 
     def list_dir(self, relpath):
-        """Return a list of all files at the given location."""
+        """Return a list of all files at the given location.
+
+        Uses PROPFIND with depth 1 to get immediate children only.
+
+        Args:
+            relpath: Directory path relative to transport base.
+
+        Returns:
+            list: Names of entries in the directory.
+
+        Raises:
+            NoSuchFile: If the directory doesn't exist.
+        """
         return [elt[0] for elt in self._list_tree(relpath, 1)]
 
     def _list_tree(self, relpath, depth):
+        """List directory tree using WebDAV PROPFIND.
+
+        Args:
+            relpath: Directory path relative to transport base.
+            depth: PROPFIND depth (1 for immediate children, "Infinity" for recursive).
+
+        Returns:
+            list: Tuples of (name, is_dir, size, is_exec) for each entry.
+
+        Raises:
+            NoSuchFile: If the directory doesn't exist.
+            InvalidHttpResponse: For unexpected HTTP status codes.
+        """
         abspath = self._remote_path(relpath)
         propfind = b"""<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
@@ -716,7 +965,15 @@ class HttpDavTransport(urllib.HttpTransport):
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive access.
-        :return: A lock object, which should be passed to Transport.unlock().
+
+        WebDAV locking is not fully implemented. Returns a bogus lock
+        similar to FTP transport behavior.
+
+        Args:
+            relpath: Path to lock, relative to transport base.
+
+        Returns:
+            A lock object, which should be passed to Transport.unlock().
         """
         # We follow the same path as FTP, which just returns a BogusLock
         # object. We don't explicitly support locking a specific file.
@@ -728,7 +985,18 @@ class HttpDavTransport(urllib.HttpTransport):
         return self.lock_read(relpath)
 
     def rmdir(self, relpath):
-        """See Transport.rmdir."""
+        """Remove an empty directory.
+
+        Ensures directory is empty before deletion to match expected
+        transport behavior (unlike raw WebDAV which deletes non-empty dirs).
+
+        Args:
+            relpath: Directory path relative to transport base.
+
+        Raises:
+            DirectoryNotEmpty: If directory contains any entries.
+            NoSuchFile: If directory doesn't exist.
+        """
         content = self.list_dir(relpath)
         if len(content) > 0:
             raise errors.DirectoryNotEmpty(self._remote_path(relpath))
@@ -766,7 +1034,14 @@ class HttpDavTransport(urllib.HttpTransport):
         return _extract_stat_info(abspath, response)
 
     def iter_files_recursive(self):
-        """Walk the relative paths of all files in this transport."""
+        """Walk the relative paths of all files in this transport.
+
+        Uses a single PROPFIND request with infinite depth to get
+        the entire tree, then filters out directories.
+
+        Yields:
+            str: Relative paths of all files (not directories) in the transport.
+        """
         # We get the whole tree with a single request
         tree = self._list_tree(".", "Infinity")
         # Now filter out the directories
@@ -775,11 +1050,32 @@ class HttpDavTransport(urllib.HttpTransport):
                 yield name
 
     def append_file(self, relpath, f, mode=None):
-        """See Transport.append_file."""
+        """Append file contents to an existing file.
+
+        Args:
+            relpath: Path to append to, relative to transport base.
+            f: File-like object to read data from.
+            mode: Optional file mode (ignored for WebDAV).
+
+        Returns:
+            int: The position in the file where the content was appended.
+        """
         return self.append_bytes(relpath, f.read(), mode=mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
-        """See Transport.append_bytes."""
+        """Append bytes to an existing file.
+
+        Uses Content-Range headers if the server supports them,
+        otherwise falls back to GET/modify/PUT approach.
+
+        Args:
+            relpath: Path to append to, relative to transport base.
+            bytes: Byte string to append.
+            mode: Optional file mode (ignored for WebDAV).
+
+        Returns:
+            int: The position in the file where bytes were appended.
+        """
         if self._range_hint is not None:
             # TODO: We reuse the _range_hint handled by bzr core,
             # unless someone can show me a server implementing
@@ -794,9 +1090,18 @@ class HttpDavTransport(urllib.HttpTransport):
         return before
 
     def _append_by_head_put(self, relpath, bytes):
-        """Append without getting the whole file.
+        """Append bytes using HEAD to get file size then ranged PUT.
 
-        When the server allows it, a 'Content-Range' header can be specified.
+        More efficient than GET/PUT as it avoids downloading the entire file.
+        Uses HEAD request to determine current file size, then uses
+        Content-Range to append at the end.
+
+        Args:
+            relpath: Path to append to, relative to transport base.
+            bytes: Byte string to append.
+
+        Returns:
+            int: The size of the file before appending.
         """
         response = self._head(relpath)
         code = response.status
@@ -822,6 +1127,18 @@ class HttpDavTransport(urllib.HttpTransport):
         return relpath_size
 
     def _append_by_get_put(self, relpath, bytes):
+        """Append bytes by downloading, modifying, and re-uploading the file.
+
+        Fallback method when Content-Range is not supported. Less efficient
+        as it requires downloading the entire file.
+
+        Args:
+            relpath: Path to append to, relative to transport base.
+            bytes: Byte string to append.
+
+        Returns:
+            int: The size of the file before appending.
+        """
         # So we need to GET the file first, append to it and finally PUT back
         # the result.
         full_data = StringIO()
@@ -842,13 +1159,26 @@ class HttpDavTransport(urllib.HttpTransport):
         return before
 
     def get_smart_medium(self):
+        """Get a smart client medium for this transport.
+
+        WebDAV doesn't support smart server protocol.
+
+        Raises:
+            NoSmartMedium: Always, as WebDAV has no smart server support.
+        """
         # smart server and webdav are exclusive. There is really no point to
         # use webdav if a smart server is available
         raise errors.NoSmartMedium(self)
 
 
 def get_test_permutations():
-    """Return the permutations to be used in testing."""
+    """Return the permutations to be used in testing.
+
+    Provides transport and server combinations for the test suite.
+
+    Returns:
+        list: Tuples of (transport_class, server_class) for testing.
+    """
     from .tests import dav_server
 
     return [

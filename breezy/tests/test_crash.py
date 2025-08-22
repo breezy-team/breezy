@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for crash reporting functionality."""
 
 import os
 import sys
@@ -26,9 +27,12 @@ from . import features
 
 
 class TestApportReporting(tests.TestCaseInTempDir):
+    """Tests for Apport-based crash reporting."""
+
     _test_needs_features = [features.apport]
 
     def test_apport_report(self):
+        """Test that crash reports are properly generated via Apport."""
         crash_dir = osutils.joinpath((self.test_base_dir, "crash"))
         os.mkdir(crash_dir)
         self.overrideEnv("APPORT_CRASH_DIR", crash_dir)
@@ -71,12 +75,14 @@ class TestNonApportReporting(tests.TestCase):
     """
 
     def setup_fake_plugins(self):
+        """Set up fake plugins for testing crash reports."""
         fake = plugin.PlugIn("fake_plugin", plugin)
         fake.version_info = lambda: (1, 2, 3)
         fake_plugins = {"fake_plugin": fake}
         self.overrideAttr(breezy.get_global_state(), "plugins", fake_plugins)
 
     def test_report_bug_legacy(self):
+        """Test legacy crash reporting without Apport."""
         self.setup_fake_plugins()
         err_file = StringIO()
         try:

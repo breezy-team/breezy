@@ -176,6 +176,11 @@ class MockTransport(transport.Transport):
         return False
 
     def __init__(self, url=None):
+        """Initialize MockTransport.
+
+        Args:
+            url: Transport URL, defaults to http://example.com.
+        """
         if url is None:
             url = "http://example.com"
         super().__init__(url)
@@ -195,6 +200,12 @@ class InstrumentedTransportStore(TransportStore):
         self._calls.append(("_add", filename, file))
 
     def __init__(self, transport, prefixed=False):
+        """Initialize InstrumentedTransportStore.
+
+        Args:
+            transport: Transport to use.
+            prefixed: Whether to use prefixed storage.
+        """
         super().__init__(transport, prefixed)
         self._calls = []
 

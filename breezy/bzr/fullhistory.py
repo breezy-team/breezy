@@ -27,6 +27,16 @@ class FullHistoryBzrBranch(BzrBranch):
     """Bzr branch which contains the full revision history."""
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information for the branch.
+
+        Args:
+            revno: The revision number.
+            revision_id: The revision ID.
+
+        Raises:
+            InvalidRevisionId: If the revision_id is invalid.
+            AssertionError: If the computed history length doesn't match revno.
+        """
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         with self.lock_write():
@@ -162,6 +172,11 @@ class BzrBranchFormat5(BranchFormatMetadir):
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def supports_tags(self):
+        """Check if this branch format supports tags.
+
+        Returns:
+            bool: False, as format 5 doesn't support tags.
+        """
         return False
 
     supports_reference_locations = False

@@ -24,7 +24,10 @@ from . import _register_directory
 
 
 class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
+    """Test cases for directory service branch opening."""
+
     def test_directory_open_branch(self):
+        """Test that opening an lp: branch redirects to the real location."""
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch("target")
 

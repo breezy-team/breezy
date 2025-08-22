@@ -129,6 +129,13 @@ class SmartTCPServer:
         self._fully_stopped = threading.Event()
 
     def _backing_urls(self):
+        """Get the URLs that the backing transport can be accessed through.
+
+        Returns:
+            list: A list of URLs through which the backing transport can be accessed.
+                This includes the transport's base URL and its external URL if available.
+                These URLs represent different ways to access the same location.
+        """
         # There are three interesting urls:
         # The URL the server can be contacted on. (e.g. bzr://host/)
         # The URL that a commit done on the same machine as the server will
@@ -150,6 +157,12 @@ class SmartTCPServer:
         return urls
 
     def run_server_started_hooks(self, backing_urls=None):
+        """Execute all registered server_started hooks.
+
+        Args:
+            backing_urls (list, optional): List of URLs for the backing transport.
+                If None, will be computed from _backing_urls().
+        """
         if backing_urls is None:
             backing_urls = self._backing_urls()
         for hook in SmartTCPServer.hooks["server_started"]:
@@ -158,12 +171,23 @@ class SmartTCPServer:
             hook(backing_urls, self)
 
     def run_server_stopped_hooks(self, backing_urls=None):
+        """Execute all registered server_stopped hooks.
+
+        Args:
+            backing_urls (list, optional): List of URLs for the backing transport.
+                If None, will be computed from _backing_urls().
+        """
         if backing_urls is None:
             backing_urls = self._backing_urls()
         for hook in SmartTCPServer.hooks["server_stopped"]:
             hook(backing_urls, self.get_url())
 
     def _stop_gracefully(self):
+        """Request the server to stop gracefully.
+
+        This method sets flags to indicate graceful shutdown and notifies
+        all active connection handlers to stop gracefully.
+        """
         trace.note(gettext("Requested to stop gracefully"))
         self._should_terminate = True
         self._gracefully_stopping = True
@@ -171,6 +195,11 @@ class SmartTCPServer:
             handler._stop_gracefully()
 
     def _wait_for_clients_to_disconnect(self):
+        """Wait for all active client connections to finish.
+
+        This method polls active connections and logs progress messages
+        while waiting for all clients to disconnect during graceful shutdown.
+        """
         self._poll_active_connections()
         if not self._active_connections:
             return
@@ -190,6 +219,15 @@ class SmartTCPServer:
             self._poll_active_connections(self._SHUTDOWN_POLL_TIMEOUT)
 
     def serve(self, thread_name_suffix=""):
+        """Start serving connections on the server socket.
+
+        This is the main server loop that accepts connections and spawns
+        handler threads for each client.
+
+        Args:
+            thread_name_suffix (str): Suffix to append to thread names for
+                better identification in debugging.
+        """
         # Note: There is a temptation to do
         #       signals.register_on_hangup(id(self), self._stop_gracefully)
         #       However, that creates a temporary object which is a bound
@@ -251,6 +289,14 @@ class SmartTCPServer:
         return f"bzr://{self._sockname[0]}:{self._sockname[1]}/"
 
     def _make_handler(self, conn):
+        """Create a handler for a client connection.
+
+        Args:
+            conn: The socket connection from the client.
+
+        Returns:
+            SmartServerSocketStreamMedium: A medium instance to handle the connection.
+        """
         return medium.SmartServerSocketStreamMedium(
             conn,
             self.backing_transport,
@@ -276,6 +322,15 @@ class SmartTCPServer:
         self._active_connections = still_active
 
     def serve_conn(self, conn, thread_name_suffix):
+        """Serve a single client connection in a new thread.
+
+        Args:
+            conn: The socket connection from the client.
+            thread_name_suffix (str): Suffix for the thread name.
+
+        Returns:
+            threading.Thread: The thread handling this connection.
+        """
         # For WIN32, where the timeout value from the listening socket
         # propagates to the newly accepted socket.
         conn.setblocking(True)
@@ -290,6 +345,11 @@ class SmartTCPServer:
         return connection_thread
 
     def start_background_thread(self, thread_name_suffix=""):
+        """Start the server in a background thread.
+
+        Args:
+            thread_name_suffix (str): Suffix to append to the thread name.
+        """
         self._started.clear()
         self._server_thread = threading.Thread(
             None,
@@ -302,6 +362,11 @@ class SmartTCPServer:
         self._started.wait()
 
     def stop_background_thread(self):
+        """Stop the background server thread.
+
+        This method signals the server to terminate, closes the server socket,
+        and waits for the server thread to finish.
+        """
         self._stopped.clear()
         # tell the main loop to quit on the next iteration.
         self._should_terminate = True
@@ -380,6 +445,13 @@ def _local_path_for_transport(transport):
 
     This essentially recovers the --directory argument the user passed to "bzr
     serve" from the transport passed to serve_bzr.
+
+    Args:
+        transport: A transport object to extract the local path from.
+
+    Returns:
+        str or None: The local filesystem path if the transport represents
+            a local location, None otherwise.
     """
     try:
         base_url = transport.external_url()
@@ -396,9 +468,29 @@ def _local_path_for_transport(transport):
 
 
 class BzrServerFactory:
-    """Helper class for serve_bzr."""
+    """Helper class for serve_bzr.
+
+    This factory encapsulates the setup and teardown logic for creating
+    a smart server. It handles transport decoration, server creation,
+    and global state management.
+
+    Attributes:
+        cleanups (list): List of cleanup functions to call on teardown.
+        base_path (str): The base filesystem path being served.
+        backing_transport: The decorated transport used by the server.
+        userdir_expander (callable): Function to expand user directories.
+        get_base_path (callable): Function to get base path from transport.
+    """
 
     def __init__(self, userdir_expander=None, get_base_path=None):
+        """Initialize the BzrServerFactory.
+
+        Args:
+            userdir_expander (callable, optional): Function to expand user
+                directories. Defaults to os.path.expanduser.
+            get_base_path (callable, optional): Function to extract base path
+                from a transport. Defaults to _local_path_for_transport.
+        """
         self.cleanups = []
         self.base_path = None
         self.backing_transport = None
@@ -420,6 +512,13 @@ class BzrServerFactory:
 
         e.g. if base_path is /home, and the expanded path is /home/joe, then
         the translated path is joe.
+
+        Args:
+            path (str): The path to expand, possibly containing ~.
+
+        Returns:
+            str: The expanded path relative to base_path, or the original
+                path if expansion is not applicable.
         """
         result = path
         if path.startswith("~"):
@@ -431,10 +530,26 @@ class BzrServerFactory:
         return result
 
     def _make_expand_userdirs_filter(self, transport):
+        """Create a PathFilteringServer that expands user directories.
+
+        Args:
+            transport: The transport to wrap with the filter.
+
+        Returns:
+            PathFilteringServer: A server that filters paths through
+                _expand_userdirs.
+        """
         return pathfilter.PathFilteringServer(transport, self._expand_userdirs)
 
     def _make_backing_transport(self, transport):
-        """Chroot transport, and decorate with userdir expander."""
+        """Create the backing transport with chroot and userdir expansion.
+
+        This method sets up a chroot server and optionally decorates it with
+        a path filter for expanding user directories.
+
+        Args:
+            transport: The base transport to decorate.
+        """
         self.base_path = self.get_base_path(transport)
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
@@ -450,9 +565,22 @@ class BzrServerFactory:
         self.transport = transport
 
     def _get_stdin_stdout(self):
+        """Get the stdin and stdout file objects for pipe communication.
+
+        Returns:
+            tuple: A pair of (stdin, stdout) binary file objects.
+        """
         return sys.stdin.buffer, sys.stdout.buffer
 
     def _make_smart_server(self, host, port, inet, timeout):
+        """Create the appropriate smart server based on the connection type.
+
+        Args:
+            host (str): The hostname or IP to bind to (ignored for inet mode).
+            port (int): The port to bind to (ignored for inet mode).
+            inet (bool): If True, use stdin/stdout for communication.
+            timeout (float): Client connection timeout in seconds.
+        """
         if timeout is None:
             c = config.GlobalStack()
             timeout = c.get("serve.client_timeout")
@@ -472,6 +600,13 @@ class BzrServerFactory:
         self.smart_server = smart_server
 
     def _change_globals(self):
+        """Modify global state for the duration of the server.
+
+        This method:
+        - Sets up a silent UI factory to prevent output to clients
+        - Sets lockdir timeout to 0 for immediate failure
+        - Installs SIGHUP handler for graceful shutdown
+        """
         from breezy import lockdir, ui
 
         # For the duration of this server, no UI output is permitted. note
@@ -482,6 +617,7 @@ class BzrServerFactory:
         old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
 
         def restore_default_ui_factory_and_lockdir_timeout():
+            """Restore the original UI factory and lockdir timeout."""
             ui.ui_factory = old_factory
             lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
@@ -491,16 +627,30 @@ class BzrServerFactory:
         orig = signals.install_sighup_handler()
 
         def restore_signals():
+            """Restore the original SIGHUP handler."""
             signals.restore_sighup_handler(orig)
 
         self.cleanups.append(restore_signals)
 
     def set_up(self, transport, host, port, inet, timeout):
+        """Set up the server with all necessary components.
+
+        Args:
+            transport: The base transport to serve.
+            host (str): The hostname or IP to bind to.
+            port (int): The port to bind to.
+            inet (bool): If True, use stdin/stdout for communication.
+            timeout (float): Client connection timeout in seconds.
+        """
         self._make_backing_transport(transport)
         self._make_smart_server(host, port, inet, timeout)
         self._change_globals()
 
     def tear_down(self):
+        """Clean up all resources created during set_up.
+
+        Executes all registered cleanup functions in reverse order.
+        """
         for cleanup in reversed(self.cleanups):
             cleanup()
 
@@ -511,6 +661,22 @@ def serve_bzr(transport, host=None, port=None, inet=False, timeout=None):
     It creates a TCP or pipe smart server on 'transport, and runs it.  The
     transport will be decorated with a chroot and pathfilter (using
     os.path.expanduser).
+
+    Args:
+        transport: The transport to serve. This will be wrapped with chroot
+            and path filtering.
+        host (str, optional): The hostname or IP address to bind to. Defaults
+            to BZR_DEFAULT_INTERFACE if not specified. Ignored in inet mode.
+        port (int, optional): The port number to bind to. Defaults to
+            BZR_DEFAULT_PORT if not specified. Ignored in inet mode.
+        inet (bool, optional): If True, communicate over stdin/stdout instead
+            of TCP. Defaults to False.
+        timeout (float, optional): Timeout in seconds for client connections.
+            If None, uses the value from configuration.
+
+    Raises:
+        Any exception raised during server operation, unless caught by
+        a server_exception hook.
     """
     bzr_server = BzrServerFactory()
     try:

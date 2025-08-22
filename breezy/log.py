@@ -1481,6 +1481,17 @@ class LogRevision:
         diff=None,
         signature=None,
     ):
+        """Initialize a log revision.
+
+        Args:
+            rev: The revision object.
+            revno: Revision number.
+            merge_depth: Depth of merge for this revision.
+            delta: Delta showing changes in this revision.
+            tags: Tags associated with this revision.
+            diff: Diff text for this revision.
+            signature: Digital signature for this revision.
+        """
         self.rev = rev
         if revno is None:
             self.revno = None
@@ -1615,12 +1626,28 @@ class LogFormatter:
         return ""
 
     def short_committer(self, rev):
+        """Return a short form of the committer name.
+
+        Args:
+            rev: Revision object.
+
+        Returns:
+            Short committer name, preferring the name over email address.
+        """
         name, address = config.parse_username(rev.committer)
         if name:
             return name
         return address
 
     def short_author(self, rev):
+        """Return a short form of the author name.
+
+        Args:
+            rev: Revision object.
+
+        Returns:
+            Short author name.
+        """
         return self.authors(rev, "first", short=True, sep=", ")
 
     def authors(self, rev, who, short=False, sep=None):
@@ -1721,6 +1748,13 @@ class LogFormatter:
         return lines
 
     def show_diff(self, to_file, diff, indent):
+        """Show a diff with proper indentation and encoding.
+
+        Args:
+            to_file: File-like object to write to.
+            diff: Diff content to display.
+            indent: Indentation string to prefix each line.
+        """
         encoding = get_terminal_encoding()
         for l in diff.rstrip().split(b"\n"):
             to_file.write(indent + l.decode(encoding, "ignore") + "\n")
@@ -1731,6 +1765,12 @@ _LONG_SEP = "-" * 60
 
 
 class LongLogFormatter(LogFormatter):
+    """Detailed log formatter showing full revision information.
+
+    This formatter shows comprehensive information about each revision
+    including full commit messages, timestamps, and optional diffs.
+    """
+
     supports_merge_revisions = True
     preferred_levels = 1
     supports_delta = True
@@ -1739,6 +1779,12 @@ class LongLogFormatter(LogFormatter):
     supports_signatures = True
 
     def __init__(self, *args, **kwargs):
+        """Initialize the long log formatter.
+
+        Args:
+            *args: Positional arguments passed to parent.
+            **kwargs: Keyword arguments passed to parent.
+        """
         super().__init__(*args, **kwargs)
         if self.show_timezone == "original":
             self.date_string = self._date_string_original_timezone
@@ -1835,6 +1881,12 @@ class LongLogFormatter(LogFormatter):
 
 
 class ShortLogFormatter(LogFormatter):
+    """Compact log formatter showing essential revision information.
+
+    This formatter shows a condensed view of revisions with revision
+    numbers, short commit messages, and author information.
+    """
+
     supports_merge_revisions = True
     preferred_levels = 1
     supports_delta = True
@@ -1842,10 +1894,21 @@ class ShortLogFormatter(LogFormatter):
     supports_diff = True
 
     def __init__(self, *args, **kwargs):
+        """Initialize the short log formatter.
+
+        Args:
+            *args: Positional arguments passed to parent.
+            **kwargs: Keyword arguments passed to parent.
+        """
         super().__init__(*args, **kwargs)
         self.revno_width_by_depth = {}
 
     def log_revision(self, revision):
+        """Log a revision in short format.
+
+        Args:
+            revision: LogRevision object to format and display.
+        """
         # We need two indents: one per depth and one for the information
         # relative to that indent. Most mainline revnos are 5 chars or
         # less while dotted revnos are typically 11 chars or less. Once
@@ -1918,11 +1981,24 @@ class ShortLogFormatter(LogFormatter):
 
 
 class LineLogFormatter(LogFormatter):
+    """Single-line log formatter showing minimal revision information.
+
+    This formatter displays each revision on a single line with
+    essential information like revision number, date, author, and
+    a truncated commit message.
+    """
+
     supports_merge_revisions = True
     preferred_levels = 1
     supports_tags = True
 
     def __init__(self, *args, **kwargs):
+        """Initialize the line log formatter.
+
+        Args:
+            *args: Positional arguments passed to parent.
+            **kwargs: Keyword arguments passed to parent.
+        """
         super().__init__(*args, **kwargs)
         width = terminal_width()
         if width is not None:
@@ -1931,11 +2007,28 @@ class LineLogFormatter(LogFormatter):
         self._max_chars = width
 
     def truncate(self, str, max_len):
+        """Truncate a string to a maximum length.
+
+        Args:
+            str: String to truncate.
+            max_len: Maximum allowed length.
+
+        Returns:
+            Truncated string with '...' suffix if truncated.
+        """
         if max_len is None or len(str) <= max_len:
             return str
         return str[: max_len - 3] + "..."
 
     def date_string(self, rev):
+        """Format the date for a revision.
+
+        Args:
+            rev: Revision object.
+
+        Returns:
+            Formatted date string.
+        """
         return format_date(
             rev.timestamp,
             rev.timezone or 0,
@@ -1945,12 +2038,25 @@ class LineLogFormatter(LogFormatter):
         )
 
     def message(self, rev):
+        """Get the first line of the revision message.
+
+        Args:
+            rev: Revision object.
+
+        Returns:
+            First line of the commit message.
+        """
         if not rev.message:
             return "(no message)"
         else:
             return rev.message
 
     def log_revision(self, revision):
+        """Log a revision in single-line format.
+
+        Args:
+            revision: LogRevision object to format and display.
+        """
         indent = "  " * revision.merge_depth
         self.to_file.write(
             self.log_string(
@@ -1989,6 +2095,12 @@ class LineLogFormatter(LogFormatter):
 
 
 class GnuChangelogLogFormatter(LogFormatter):
+    """GNU ChangeLog style log formatter.
+
+    This formatter produces output similar to GNU ChangeLog format,
+    with dates, authors, and change descriptions.
+    """
+
     supports_merge_revisions = True
     supports_delta = True
 
@@ -2028,6 +2140,15 @@ class GnuChangelogLogFormatter(LogFormatter):
 
 
 def line_log(rev, max_chars):
+    """Format a revision as a single line.
+
+    Args:
+        rev: Revision object to format.
+        max_chars: Maximum characters for the line.
+
+    Returns:
+        Single-line string representation of the revision.
+    """
     lf = LineLogFormatter(None)
     return lf.log_string(None, rev, max_chars)
 
@@ -2044,6 +2165,14 @@ class LogFormatterRegistry(registry.Registry):
         return self.get(name)(*args, **kwargs)
 
     def get_default(self, branch):
+        """Get the default log formatter for a branch.
+
+        Args:
+            branch: Branch to get the default formatter for.
+
+        Returns:
+            Default log formatter instance.
+        """
         c = branch.get_config_stack()
         return self.get(c.get("log_format"))
 
@@ -2064,6 +2193,12 @@ log_formatter_registry.register(
 
 
 def register_formatter(name, formatter):
+    """Register a log formatter.
+
+    Args:
+        name: Name to register the formatter under.
+        formatter: Log formatter class or factory.
+    """
     log_formatter_registry.register(name, formatter)
 
 
@@ -2080,10 +2215,26 @@ def log_formatter(name, *args, **kwargs):
 
 
 def author_list_all(rev):
+    """Return all authors of a revision.
+
+    Args:
+        rev: Revision object.
+
+    Returns:
+        List of all apparent authors.
+    """
     return rev.get_apparent_authors()[:]
 
 
 def author_list_first(rev):
+    """Return the first author of a revision.
+
+    Args:
+        rev: Revision object.
+
+    Returns:
+        List containing the first author, or empty list if none.
+    """
     lst = rev.get_apparent_authors()
     try:
         return [lst[0]]
@@ -2092,6 +2243,14 @@ def author_list_first(rev):
 
 
 def author_list_committer(rev):
+    """Return the committer as the author.
+
+    Args:
+        rev: Revision object.
+
+    Returns:
+        List containing the committer as author.
+    """
     return [rev.committer]
 
 

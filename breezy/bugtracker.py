@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import errors, registry, urlutils
+"""Bug tracker integration and shorthand bug identifier support.
 
-"""Provides a shorthand for referring to bugs on a variety of bug trackers.
+Provides a shorthand for referring to bugs on a variety of bug trackers.
 
 'commit --fixes' stores references to bugs as a <bug_url> -> <bug_status>
 mapping in the properties for that revision.
@@ -31,52 +31,99 @@ configuration information, these tracker types can return an instance capable
 of converting bug IDs into URLs.
 """
 
+from . import errors, registry, urlutils
+
 
 class MalformedBugIdentifier(errors.BzrError):
+    """Exception raised when a bug identifier cannot be parsed."""
+
     _fmt = (
         "Did not understand bug identifier %(bug_id)s: %(reason)s. "
         'See "brz help bugs" for more information on this feature.'
     )
 
     def __init__(self, bug_id, reason):
+        """Initialize the exception.
+
+        Args:
+            bug_id: The malformed bug identifier.
+            reason: Description of why the identifier is malformed.
+        """
         self.bug_id = bug_id
         self.reason = reason
 
 
 class InvalidBugTrackerURL(errors.BzrError):
+    """Exception raised when a bug tracker URL template is invalid."""
+
     _fmt = 'The URL for bug tracker "%(abbreviation)s" doesn\'t contain {id}: %(url)s'
 
     def __init__(self, abbreviation, url):
+        """Initialize the exception.
+
+        Args:
+            abbreviation: The bug tracker abbreviation.
+            url: The invalid URL template.
+        """
         self.abbreviation = abbreviation
         self.url = url
 
 
 class UnknownBugTrackerAbbreviation(errors.BzrError):
+    """Exception raised when a bug tracker abbreviation is not recognized."""
+
     _fmt = "Cannot find registered bug tracker called %(abbreviation)s on %(branch)s"
 
     def __init__(self, abbreviation, branch):
+        """Initialize the exception.
+
+        Args:
+            abbreviation: The unrecognized bug tracker abbreviation.
+            branch: The branch where the lookup was attempted.
+        """
         self.abbreviation = abbreviation
         self.branch = branch
 
 
 class InvalidLineInBugsProperty(errors.BzrError):
+    """Exception raised when a line in the bugs property is malformed."""
+
     _fmt = "Invalid line in bugs property: '%(line)s'"
 
     def __init__(self, line):
+        """Initialize the exception.
+
+        Args:
+            line: The invalid line from the bugs property.
+        """
         self.line = line
 
 
 class InvalidBugUrl(errors.BzrError):
+    """Exception raised when a bug URL is malformed."""
+
     _fmt = "Invalid bug URL: %(url)s"
 
     def __init__(self, url):
+        """Initialize the exception.
+
+        Args:
+            url: The invalid bug URL.
+        """
         self.url = url
 
 
 class InvalidBugStatus(errors.BzrError):
+    """Exception raised when a bug status is not recognized."""
+
     _fmt = "Invalid bug status: '%(status)s'"
 
     def __init__(self, status):
+        """Initialize the exception.
+
+        Args:
+            status: The invalid bug status.
+        """
         self.status = status
 
 
@@ -105,6 +152,14 @@ class TrackerRegistry(registry.Registry):
         raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name, branch)
 
     def help_topic(self, topic):
+        """Return help text for bug tracker topics.
+
+        Args:
+            topic: The help topic requested.
+
+        Returns:
+            Help text for the topic.
+        """
         return _bugs_help
 
 
@@ -134,6 +189,14 @@ class IntegerBugTracker(BugTracker):
     """A bug tracker that only allows integer bug IDs."""
 
     def check_bug_id(self, bug_id):
+        """Check that the bug_id is a valid integer.
+
+        Args:
+            bug_id: Bug identifier to validate.
+
+        Raises:
+            MalformedBugIdentifier: If the bug_id is not an integer.
+        """
         try:
             int(bug_id)
         except ValueError as exc:
@@ -149,6 +212,12 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
+        """Initialize the unique integer bug tracker.
+
+        Args:
+            abbreviated_bugtracker_name: Short name for this tracker.
+            base_url: Base URL where bug IDs are appended.
+        """
         self.abbreviation = abbreviated_bugtracker_name
         self.base_url = base_url
 
@@ -172,6 +241,12 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
+        """Initialize the project integer bug tracker.
+
+        Args:
+            abbreviated_bugtracker_name: Short name for this tracker.
+            base_url: Base URL template with {project} and {id} placeholders.
+        """
         self.abbreviation = abbreviated_bugtracker_name
         self._base_url = base_url
 
@@ -182,6 +257,14 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         return self
 
     def check_bug_id(self, bug_id):
+        """Check that the bug_id has valid project/id format.
+
+        Args:
+            bug_id: Bug identifier in project/id format.
+
+        Raises:
+            MalformedBugIdentifier: If the bug_id format is invalid.
+        """
         try:
             (project, bug_id) = bug_id.rsplit("/", 1)
         except ValueError as exc:
@@ -233,6 +316,15 @@ class URLParametrizedBugTracker(BugTracker):
     """
 
     def get(self, abbreviation, branch):
+        """Get a bug tracker instance for the given abbreviation.
+
+        Args:
+            abbreviation: Bug tracker abbreviation to look up.
+            branch: Branch to get configuration from.
+
+        Returns:
+            Bug tracker instance if found, None otherwise.
+        """
         config = branch.get_config()
         url = config.get_user_option(
             f"{self.type_name}_{abbreviation}_url", expand=False
@@ -243,6 +335,12 @@ class URLParametrizedBugTracker(BugTracker):
         return self
 
     def __init__(self, type_name, bug_area):
+        """Initialize the URL parametrized bug tracker.
+
+        Args:
+            type_name: Type name for configuration lookup.
+            bug_area: Path component to append for bug URLs.
+        """
         self.type_name = type_name
         self._bug_area = bug_area
 
@@ -275,9 +373,19 @@ class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):
+        """Initialize the generic bug tracker."""
         super().__init__("bugtracker", None)
 
     def get(self, abbreviation, branch):
+        """Get a generic bug tracker instance for the given abbreviation.
+
+        Args:
+            abbreviation: Bug tracker abbreviation to look up.
+            branch: Branch to get configuration from.
+
+        Returns:
+            Bug tracker instance if configured, None otherwise.
+        """
         self._abbreviation = abbreviation
         return super().get(abbreviation, branch)
 

@@ -47,6 +47,15 @@ BANNED_FILENAMES = [".git"]
 
 
 def get_object_store(repo, mapping=None):
+    """Get an object store for the given repository.
+
+    Args:
+        repo: The repository to get an object store for.
+        mapping: Optional mapping to use for Git/Bazaar conversion.
+
+    Returns:
+        An object store instance.
+    """
     git = getattr(repo, "_git", None)
     if git is not None:
         git.object_store.unlock = lambda: None
@@ -60,7 +69,15 @@ MAX_TREE_CACHE_SIZE = 50 * 1024 * 1024
 
 
 class LRUTreeCache:
+    """LRU cache for revision trees."""
+
     def __init__(self, repository):
+        """Initialize LRUTreeCache.
+
+        Args:
+            repository: The repository to cache trees from.
+        """
+
         def approx_tree_size(tree):
             # Very rough estimate, 250 per inventory entry
             return len(tree.root_inventory) * 250
@@ -73,6 +90,14 @@ class LRUTreeCache:
         )
 
     def revision_tree(self, revid):
+        """Get a revision tree, using cache if available.
+
+        Args:
+            revid: The revision ID to get the tree for.
+
+        Returns:
+            The revision tree.
+        """
         try:
             tree = self._cache[revid]
         except KeyError:
@@ -81,6 +106,14 @@ class LRUTreeCache:
         return tree
 
     def iter_revision_trees(self, revids):
+        """Iterate over revision trees for the given revision IDs.
+
+        Args:
+            revids: Sequence of revision IDs to get trees for.
+
+        Returns:
+            Generator yielding revision trees in the same order as revids.
+        """
         trees = {}
         todo = []
         for revid in revids:
@@ -102,9 +135,22 @@ class LRUTreeCache:
         return (trees[r] for r in revids)
 
     def revision_trees(self, revids):
+        """Get a list of revision trees for the given revision IDs.
+
+        Args:
+            revids: Sequence of revision IDs to get trees for.
+
+        Returns:
+            List of revision trees in the same order as revids.
+        """
         return list(self.iter_revision_trees(revids))
 
     def add(self, tree):
+        """Add a tree to the cache.
+
+        Args:
+            tree: The revision tree to cache.
+        """
         self._cache[tree.get_revision_id()] = tree
 
 
@@ -380,6 +426,12 @@ class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
     def __init__(self, repository, mapping=None):
+        """Initialize BazaarObjectStore.
+
+        Args:
+            repository: The Bazaar repository to wrap.
+            mapping: Optional mapping for Git/Bazaar conversion.
+        """
         self.repository = repository
         self._map_updated = False
         self._locked = None
@@ -442,6 +494,11 @@ class BazaarObjectStore(BaseObjectStore):
             self.commit_write_group()
 
     def __iter__(self):
+        """Iterate over all object IDs in the store.
+
+        Returns:
+            Iterator over object SHA1s.
+        """
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
@@ -549,6 +606,20 @@ class BazaarObjectStore(BaseObjectStore):
         allow_missing: bool = False,
         convert_ofs_delta: bool = True,
     ) -> Iterator[ShaFile]:
+        """Iterate over unpacked objects (not supported in this implementation).
+
+        Args:
+            shas: SHA1s to iterate over.
+            include_comp: Whether to include compressed objects.
+            allow_missing: If True, missing objects don't raise KeyError.
+            convert_ofs_delta: Whether to convert offset deltas.
+
+        Yields:
+            ShaFile objects (none in this implementation).
+
+        Raises:
+            KeyError: If shas is not empty and allow_missing is False.
+        """
         # We don't store unpacked objects, so...
         if not allow_missing and shas:
             raise KeyError(shas.pop())
@@ -655,6 +726,14 @@ class BazaarObjectStore(BaseObjectStore):
         return (obj.type_num, obj.as_raw_string())
 
     def __contains__(self, sha):
+        """Check if the object store contains the given SHA.
+
+        Args:
+            sha: The SHA1 to check for.
+
+        Returns:
+            True if the SHA is in the store, False otherwise.
+        """
         # See if sha is in map
         try:
             for type, type_data in self.lookup_git_sha(sha):
@@ -675,26 +754,50 @@ class BazaarObjectStore(BaseObjectStore):
             return False
 
     def lock_read(self):
+        """Acquire a read lock on this object store.
+
+        Returns:
+            LogicalLockResult that can be used to unlock.
+        """
         self._locked = "r"
         self._map_updated = False
         self.repository.lock_read()
         return LogicalLockResult(self.unlock)
 
     def lock_write(self):
+        """Acquire a write lock on this object store.
+
+        Returns:
+            LogicalLockResult that can be used to unlock.
+        """
         self._locked = "r"
         self._map_updated = False
         self.repository.lock_write()
         return LogicalLockResult(self.unlock)
 
     def is_locked(self):
+        """Check if this object store is currently locked.
+
+        Returns:
+            True if locked, False otherwise.
+        """
         return self._locked is not None
 
     def unlock(self):
+        """Release any locks held on this object store."""
         self._locked = None
         self._map_updated = False
         self.repository.unlock()
 
     def lookup_git_shas(self, shas: Iterable[ObjectID]) -> dict[ObjectID, list]:
+        """Lookup multiple Git SHA1s in the object store.
+
+        Args:
+            shas: Iterable of Git SHA1s to lookup.
+
+        Returns:
+            Dictionary mapping SHA1s to lists of (type, type_data) tuples.
+        """
         ret: dict[ObjectID, list] = {}
         for sha in shas:
             if sha == ZERO_SHA:
@@ -711,9 +814,28 @@ class BazaarObjectStore(BaseObjectStore):
         return ret
 
     def lookup_git_sha(self, sha):
+        """Lookup a single Git SHA1 in the object store.
+
+        Args:
+            sha: Git SHA1 to lookup.
+
+        Returns:
+            List of (type, type_data) tuples for this SHA1.
+        """
         return self.lookup_git_shas([sha])[sha]
 
     def __getitem__(self, sha):
+        """Get a Git object by its SHA1.
+
+        Args:
+            sha: SHA1 of the object to retrieve.
+
+        Returns:
+            The Git object (Commit, Tree, or Blob).
+
+        Raises:
+            KeyError: If the object is not found.
+        """
         with self.repository.lock_read():
             for kind, type_data in self.lookup_git_sha(sha):
                 # convert object to git object
@@ -777,6 +899,19 @@ class BazaarObjectStore(BaseObjectStore):
     def generate_lossy_pack_data(
         self, have, want, shallow=None, progress=None, get_tagged=None, ofs_delta=False
     ):
+        """Generate pack data with potential data loss.
+
+        Args:
+            have: Object IDs already available.
+            want: Object IDs that are wanted.
+            shallow: Optional shallow commit list.
+            progress: Optional progress callback.
+            get_tagged: Optional function to get tagged objects.
+            ofs_delta: Whether to use offset deltas.
+
+        Returns:
+            Generator yielding pack data.
+        """
         # We need to generate the actual objects here, not just find their IDs
         # because self[oid] would reconstruct them with the wrong lossy setting
         objects = []
@@ -897,6 +1032,11 @@ class BazaarObjectStore(BaseObjectStore):
                             seen.add(obj.id)
 
     def add_thin_pack(self):
+        """Add a thin pack to the object store.
+
+        Returns:
+            A thin pack handler for adding objects.
+        """
         import os
         import tempfile
 

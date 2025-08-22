@@ -14,6 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for committing merge results.
+
+This module tests the behavior of committing after performing a merge,
+including handling of merge parents, file conflicts, and special file types.
+"""
 
 import os
 
@@ -102,6 +107,7 @@ class TestCommitMerge(TestCaseWithTransport):
         check.check_dwim(by.base, False, True, True)
 
     def test_merge_with_symlink(self):
+        """Test committing a merge that includes symlinks."""
         self.requireFeature(SymlinkFeature(self.test_dir))
         tree_a = self.make_branch_and_tree("tree_a")
         os.symlink("target", osutils.pathjoin("tree_a", "link"))

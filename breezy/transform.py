@@ -1,3 +1,9 @@
+"""Tree transformation functionality for Breezy.
+
+This module provides classes and functions for transforming trees by creating,
+moving, renaming, and deleting files and directories. The main class is
+TreeTransform which allows atomic application of multiple changes to a tree.
+"""
 # Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -43,39 +49,70 @@ ROOT_PARENT = "root-parent"
 
 
 class NoFinalPath(BzrError):
+    """Error raised when a transform has no final path for a trans_id."""
+
     _fmt = "No final name for trans_id %(trans_id)r\nroot trans-id: %(root_trans_id)r\n"
 
     def __init__(self, trans_id, transform):
+        """Initialize NoFinalPath error.
+
+        Args:
+            trans_id: The transform ID with no final path.
+            transform: The transform object.
+        """
         self.trans_id = trans_id
         self.root_trans_id = transform.root
 
 
 class ReusingTransform(BzrError):
+    """Error raised when attempting to reuse an already applied transform."""
+
     _fmt = "Attempt to reuse a transform that has already been applied."
 
 
 class MalformedTransform(InternalBzrError):
+    """Error raised when a tree transform is malformed."""
+
     _fmt = "Tree transform is malformed %(conflicts)r"
 
 
 class CantMoveRoot(BzrError):
+    """Error raised when attempting to move the root directory."""
+
     _fmt = "Moving the root directory is not supported at this time"
 
 
 class ImmortalLimbo(BzrError):
+    """Error raised when unable to delete transform temporary directory."""
+
     _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
     Please examine %(limbo_dir)s to see if it contains any files you wish to
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
+        """Initialize ImmortalLimbo error.
+
+        Args:
+            limbo_dir: The temporary directory that could not be deleted.
+        """
         BzrError.__init__(self)
         self.limbo_dir = limbo_dir
 
 
 class TransformRenameFailed(BzrError):
+    """Error raised when a transform rename operation fails."""
+
     _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
 
     def __init__(self, from_path, to_path, why, errno):
+        """Initialize TransformRenameFailed error.
+
+        Args:
+            from_path: Source path of the failed rename.
+            to_path: Destination path of the failed rename.
+            why: Human-readable reason for the failure.
+            errno: System error number.
+        """
         self.from_path = from_path
         self.to_path = to_path
         self.why = why
@@ -83,13 +120,35 @@ class TransformRenameFailed(BzrError):
 
 
 def unique_add(map, key, value):
+    """Add a key-value pair to a map, ensuring the key is unique.
+
+    Args:
+        map: Dictionary to add to.
+        key: Key to add.
+        value: Value to associate with key.
+
+    Raises:
+        DuplicateKey: If key already exists in the map.
+    """
     if key in map:
         raise DuplicateKey(key=key)
     map[key] = value
 
 
 class _TransformResults:
+    """Container for tree transformation results.
+
+    Stores information about which paths were modified and how many
+    renames were performed during a tree transformation.
+    """
+
     def __init__(self, modified_paths, rename_count):
+        """Initialize transform results.
+
+        Args:
+            modified_paths: Set of paths that were modified.
+            rename_count: Number of rename operations performed.
+        """
         object.__init__(self)
         self.modified_paths = modified_paths
         self.rename_count = rename_count
@@ -133,6 +192,12 @@ class TreeTransform:
     """
 
     def __init__(self, tree, pb=None):
+        """Initialize a TreeTransform.
+
+        Args:
+            tree: The tree to transform.
+            pb: Optional progress bar.
+        """
         self._tree = tree
         # A progress bar
         self._pb = pb
@@ -175,9 +240,28 @@ class TreeTransform:
         raise NotImplementedError(self.iter_tree_children)
 
     def canonical_path(self, path):
+        """Return the canonical form of a path.
+
+        Args:
+            path: Path to canonicalize.
+
+        Returns:
+            Canonical path.
+        """
         return path
 
     def tree_kind(self, trans_id):
+        """Get the kind of file in the tree.
+
+        Args:
+            trans_id: Transform ID to get kind for.
+
+        Returns:
+            File kind string.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self.tree_kind)
 
     def by_parent(self):
@@ -332,6 +416,17 @@ class TreeTransform:
         return self._tree_id_paths.get(trans_id)
 
     def final_is_versioned(self, trans_id):
+        """Check if a transform entry will be versioned after changes.
+
+        Args:
+            trans_id: Transform ID to check.
+
+        Returns:
+            bool: True if the entry will be versioned.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self.final_is_versioned)
 
     def final_parent(self, trans_id):
@@ -359,6 +454,14 @@ class TreeTransform:
         return (trans_id in self._new_name) or (trans_id in self._new_parent)
 
     def new_contents(self, trans_id):
+        """Check if a transform entry has new contents scheduled.
+
+        Args:
+            trans_id: Transform ID to check.
+
+        Returns:
+            bool: True if new contents are scheduled for this entry.
+        """
         return trans_id in self._new_contents
 
     def find_raw_conflicts(self):
@@ -497,6 +600,15 @@ class TreeTransform:
         raise NotImplementedError(self.create_symlink)
 
     def create_tree_reference(self, reference_revision, trans_id):
+        """Schedule creation of a tree reference.
+
+        Args:
+            reference_revision: Revision ID for the tree reference.
+            trans_id: Transform ID where the reference will be created.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self.create_tree_reference)
 
     def create_hardlink(self, path, trans_id):
@@ -513,20 +625,38 @@ class TreeTransform:
 
 
 class OrphaningError(errors.BzrError):
+    """Error raised when orphaning files fails.
+
+    This is an internal error that should only occur due to bugs.
+    """
+
     # Only bugs could lead to such exception being seen by the user
     internal_error = True
     _fmt = "Error while orphaning %s in %s directory"
 
     def __init__(self, orphan, parent):
+        """Initialize OrphaningError.
+
+        Args:
+            orphan: The file/directory being orphaned.
+            parent: The parent directory.
+        """
         errors.BzrError.__init__(self)
         self.orphan = orphan
         self.parent = parent
 
 
 class OrphaningForbidden(OrphaningError):
+    """Error raised when orphaning policy forbids creating orphans."""
+
     _fmt = "Policy: %s doesn't allow creating orphans."
 
     def __init__(self, policy):
+        """Initialize OrphaningForbidden error.
+
+        Args:
+            policy: The policy that forbids orphaning.
+        """
         errors.BzrError.__init__(self)
         self.policy = policy
 
@@ -604,6 +734,11 @@ class FinalPaths:
     """
 
     def __init__(self, transform):
+        """Initialize FinalPaths with a transform.
+
+        Args:
+            transform: TreeTransform instance to calculate paths for.
+        """
         object.__init__(self)
         self._known_paths = {}
         self.transform = transform
@@ -625,6 +760,14 @@ class FinalPaths:
         return self._known_paths[trans_id]
 
     def get_paths(self, trans_ids):
+        """Get paths for multiple transform IDs.
+
+        Args:
+            trans_ids: Iterable of transform IDs.
+
+        Returns:
+            List of (path, trans_id) tuples.
+        """
         return [(self.get_path(t), t) for t in trans_ids]
 
 
@@ -927,11 +1070,38 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
 
 
 def resolve_duplicate_id(tt, path_tree, c_type, old_trans_id, trans_id):
+    """Resolve duplicate file ID conflicts by unversioning one copy.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        old_trans_id: Transform ID of existing entry.
+        trans_id: Transform ID of new entry.
+
+    Yields:
+        Tuple of (conflict_type, description, old_trans_id, trans_id).
+    """
     tt.unversion_file(old_trans_id)
     yield (c_type, "Unversioned existing file", old_trans_id, trans_id)
 
 
 def resolve_duplicate(tt, path_tree, c_type, last_trans_id, trans_id, name):
+    """Resolve duplicate filename conflicts by moving one file.
+
+    Files that were renamed take precedence over files that weren't.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        last_trans_id: Transform ID of one entry.
+        trans_id: Transform ID of other entry.
+        name: The conflicting filename.
+
+    Yields:
+        Tuple of (conflict_type, description, existing_file, new_file).
+    """
     # files that were renamed take precedence
     final_parent = tt.final_parent(last_trans_id)
     if tt.path_changed(last_trans_id):
@@ -954,6 +1124,20 @@ def resolve_duplicate(tt, path_tree, c_type, last_trans_id, trans_id, name):
 
 
 def resolve_parent_loop(tt, path_tree, c_type, cur):
+    """Resolve parent loop conflicts by cancelling a move.
+
+    Breaks circular parent references by undoing one of the operations
+    that caused the loop.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        cur: Transform ID in the parent loop.
+
+    Yields:
+        Tuple of (conflict_type, description, trans_id, parent_trans_id).
+    """
     # break the loop by undoing one of the ops that caused the loop
     while not tt.path_changed(cur):
         cur = tt.final_parent(cur)
@@ -967,6 +1151,20 @@ def resolve_parent_loop(tt, path_tree, c_type, cur):
 
 
 def resolve_missing_parent(tt, path_tree, c_type, trans_id):
+    """Resolve missing parent conflicts by creating the parent or cancelling deletion.
+
+    If a parent directory is being deleted but has children, either orphan
+    the children or cancel the deletion. If a parent doesn't exist, create it.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        trans_id: Transform ID with missing parent.
+
+    Yields:
+        Tuples describing conflict resolutions.
+    """
     if trans_id in tt._removed_contents:
         cancel_deletion = True
         orphans = tt._get_potential_orphans(trans_id)
@@ -1019,6 +1217,17 @@ def resolve_missing_parent(tt, path_tree, c_type, trans_id):
 
 
 def resolve_unversioned_parent(tt, path_tree, c_type, trans_id):
+    """Resolve unversioned parent conflicts by versioning the parent.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        trans_id: Transform ID of unversioned parent.
+
+    Yields:
+        Tuple of (conflict_type, description, trans_id) if parent was versioned.
+    """
     file_id = tt.inactive_file_id(trans_id)
     # special-case the other tree root (move its children instead)
     if path_tree and path_tree.path2id("") == file_id:
@@ -1029,6 +1238,20 @@ def resolve_unversioned_parent(tt, path_tree, c_type, trans_id):
 
 
 def resolve_non_directory_parent(tt, path_tree, c_type, parent_id):
+    """Resolve non-directory parent conflicts by creating a directory.
+
+    When a file needs to be a directory (because it has children), create
+    a new directory and move the children there.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        parent_id: Transform ID of non-directory parent.
+
+    Yields:
+        Tuple of (conflict_type, description, new_parent_id).
+    """
     parent_parent = tt.final_parent(parent_id)
     parent_name = tt.final_name(parent_id)
     # TODO(jelmer): Make this code transform-specific
@@ -1046,6 +1269,17 @@ def resolve_non_directory_parent(tt, path_tree, c_type, parent_id):
 
 
 def resolve_versioning_no_contents(tt, path_tree, c_type, trans_id):
+    """Resolve versioning-no-contents conflicts by cancelling versioning.
+
+    Args:
+        tt: TreeTransform instance.
+        path_tree: Tree to get paths from.
+        c_type: Conflict type string.
+        trans_id: Transform ID being versioned without contents.
+
+    Returns:
+        Empty list (no new conflicts generated).
+    """
     tt.cancel_versioning(trans_id)
     return []
 
@@ -1081,6 +1315,7 @@ class _FileMover:
     """Moves and deletes files for TreeTransform, tracking operations."""
 
     def __init__(self):
+        """Initialize a new FileMover to track file operations."""
         self.past_renames = []
         self.pending_deletions = []
 
@@ -1150,6 +1385,11 @@ class PreviewTree:
     """Preview tree."""
 
     def __init__(self, transform):
+        """Initialize PreviewTree with a transform.
+
+        Args:
+            transform: TreeTransform instance to preview.
+        """
         self._transform = transform
         self._parent_ids = []
         self.__by_parent = None
@@ -1158,9 +1398,19 @@ class PreviewTree:
         self._final_name_cache = {}
 
     def supports_setting_file_ids(self):
+        """Check if this tree supports setting file IDs.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self.supports_setting_file_ids)
 
     def supports_symlinks(self):
+        """Check if this tree supports symbolic links.
+
+        Returns:
+            bool: True if symlinks are supported.
+        """
         return self._transform._tree.supports_symlinks()
 
     @property
@@ -1170,22 +1420,51 @@ class PreviewTree:
         return self.__by_parent
 
     def get_parent_ids(self):
+        """Get the parent revision IDs for this tree.
+
+        Returns:
+            List of parent revision IDs.
+        """
         return self._parent_ids
 
     def set_parent_ids(self, parent_ids):
+        """Set the parent revision IDs for this tree.
+
+        Args:
+            parent_ids: List of parent revision IDs.
+        """
         self._parent_ids = parent_ids
 
     def get_revision_tree(self, revision_id):
+        """Get a revision tree for the given revision ID.
+
+        Args:
+            revision_id: Revision ID to retrieve.
+
+        Returns:
+            RevisionTree for the given revision.
+        """
         return self._transform._tree.get_revision_tree(revision_id)
 
     def is_locked(self):
+        """Check if this tree is locked.
+
+        Returns:
+            bool: Always False for preview trees.
+        """
         return False
 
     def lock_read(self):
+        """Acquire a read lock on the tree.
+
+        Returns:
+            LogicalLockResult that can be used to unlock.
+        """
         # Perhaps in theory, this should lock the TreeTransform?
         return lock.LogicalLockResult(self.unlock)
 
     def unlock(self):
+        """Release any locks on the tree."""
         pass
 
     def _path2trans_id(self, path):
@@ -1227,9 +1506,25 @@ class PreviewTree:
         return children
 
     def get_file_with_stat(self, path):
+        """Get file content and stat information.
+
+        Args:
+            path: Path to the file.
+
+        Returns:
+            Tuple of (file_object, stat_value). stat_value is always None.
+        """
         return self.get_file(path), None
 
     def is_executable(self, path):
+        """Check if a file is marked as executable.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if the file is executable.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             return False
@@ -1244,6 +1539,14 @@ class PreviewTree:
                 return False
 
     def has_filename(self, path):
+        """Check if a path exists in the tree.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if the path exists.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id in self._transform._new_contents:
             return True
@@ -1253,6 +1556,18 @@ class PreviewTree:
             return self._transform._tree.has_filename(path)
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA1 hash of a file's contents.
+
+        Args:
+            path: Path to the file.
+            stat_value: Optional stat value (unused).
+
+        Returns:
+            str: SHA1 hash of the file.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
@@ -1264,6 +1579,18 @@ class PreviewTree:
                 return osutils.sha_file(fileobj)
 
     def get_file_verifier(self, path, stat_value=None):
+        """Get a verifier for a file's contents.
+
+        Args:
+            path: Path to the file.
+            stat_value: Optional stat value (unused).
+
+        Returns:
+            Tuple of (verifier_kind, verifier_data).
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
@@ -1275,12 +1602,34 @@ class PreviewTree:
                 return ("SHA1", osutils.sha_file(fileobj))
 
     def kind(self, path):
+        """Get the kind of entry at a path.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            str: Entry kind ('file', 'directory', 'symlink', etc).
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, path):
+        """Get the stored kind of entry at a path.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            str: Stored entry kind.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
@@ -1318,6 +1667,17 @@ class PreviewTree:
             return None
 
     def get_reference_revision(self, path):
+        """Get the reference revision for a tree reference.
+
+        Args:
+            path: Path to the tree reference.
+
+        Returns:
+            str: Revision ID of the tree reference.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
@@ -1327,6 +1687,14 @@ class PreviewTree:
         return reference_revision
 
     def tree_kind(self, trans_id):
+        """Get the kind of a transform entry in the base tree.
+
+        Args:
+            trans_id: Transform ID to check.
+
+        Returns:
+            str: Entry kind or None if not in tree.
+        """
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             return None

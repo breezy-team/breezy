@@ -315,6 +315,27 @@ class cmd_fast_import(Command):
         format=None,
         user_map=None,
     ):
+        """Execute the fast-import command.
+
+        Args:
+            source: The source file or '-' for stdin.
+            destination: The destination directory for the import.
+            verbose: Whether to enable verbose output.
+            info: Path to file containing caching hints.
+            trees: Whether to update all working trees.
+            count: Number of revisions to import before exiting.
+            checkpoint: Checkpoint frequency.
+            autopack: Pack frequency.
+            inv_cache: Number of inventories to cache.
+            mode: The import algorithm to use.
+            import_marks: File to import marks from.
+            export_marks: File to export marks to.
+            format: Repository format to use.
+            user_map: Path to user mapping file.
+
+        Returns:
+            The result of the import operation.
+        """
         load_fastimport()
         from .helpers import open_destination_directory
         from .processors import generic_processor
@@ -535,6 +556,26 @@ class cmd_fast_export(Command):
         no_tags=False,
         baseline=False,
     ):
+        """Execute the fast-export command.
+
+        Args:
+            source: The source branch to export.
+            destination: The destination file or '-' for stdout.
+            verbose: Whether to enable verbose output.
+            git_branch: Name of the git branch to create.
+            checkpoint: Checkpoint frequency.
+            marks: File for import/export marks.
+            import_marks: File to import marks from.
+            export_marks: File to export marks to.
+            revision: Revision specification to export.
+            plain: Whether to exclude metadata for interoperability.
+            rewrite_tag_names: Whether to replace invalid characters in tags.
+            no_tags: Whether to skip exporting tags.
+            baseline: Whether to export an absolute baseline commit.
+
+        Returns:
+            The result of the export operation.
+        """
         load_fastimport()
         from ...branch import Branch
         from . import exporter

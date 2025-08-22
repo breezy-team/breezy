@@ -1,3 +1,9 @@
+"""Remote bzr operations using the smart protocol.
+
+This module provides classes for working with remote bzr repositories,
+branches, and control directories over the smart protocol.
+"""
+
 # Copyright (C) 2006-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -97,18 +103,58 @@ class _RpcHelper:
     """Mixin class that helps with issuing RPCs."""
 
     def _call(self, method, *args, **err_context):
+        """Make a remote procedure call to the smart server.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            *args: Arguments to pass to the remote method.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            The result of the remote procedure call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_expecting_body(self, method, *args, **err_context):
+        """Make a remote procedure call expecting a response body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            *args: Arguments to pass to the remote method.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            Tuple of (response_args, response_body) from the remote call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_expecting_body(method, *args)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, **err_context)
 
     def _call_with_body_bytes(self, method, args, body_bytes, **err_context):
+        """Make a remote procedure call with a request body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            args: Arguments to pass to the remote method.
+            body_bytes: The body data to send with the request.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            The result of the remote procedure call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_with_body_bytes(method, args, body_bytes)
         except errors.ErrorFromSmartServer as err:
@@ -117,6 +163,20 @@ class _RpcHelper:
     def _call_with_body_bytes_expecting_body(
         self, method, args, body_bytes, **err_context
     ):
+        """Make a remote procedure call with request body, expecting response body.
+
+        Args:
+            method: The name of the method to call on the smart server.
+            args: Arguments to pass to the remote method.
+            body_bytes: The body data to send with the request.
+            **err_context: Additional context for error translation.
+
+        Returns:
+            Tuple of (response_args, response_body) from the remote call.
+
+        Raises:
+            Various errors as translated from ErrorFromSmartServer.
+        """
         try:
             return self._client.call_with_body_bytes_expecting_body(
                 method, args, body_bytes
@@ -147,6 +207,11 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
     colocated_branches = False
 
     def __init__(self):
+        """Initialize a RemoteBzrDirFormat instance.
+
+        Creates a new remote bzrdir format that can be used to access
+        bzr directories over a smart server connection.
+        """
         _mod_bzrdir.BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
@@ -155,9 +220,20 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         self._network_name = None
 
     def __repr__(self):
+        """Return a string representation of this format.
+
+        Returns:
+            A string showing the class name and network name.
+        """
         return f"{self.__class__.__name__}(_network_name={self._network_name!r})"
 
     def get_format_description(self):
+        """Get a human-readable description of this format.
+
+        Returns:
+            A string describing the format, prefixed with 'Remote: ' if
+            a network name is available, otherwise 'bzr remote bzrdir'.
+        """
         if self._network_name:
             try:
                 real_format = controldir.network_format_registry.get(self._network_name)
@@ -168,15 +244,39 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return "bzr remote bzrdir"
 
     def get_format_string(self):
+        """Get the format string for this format.
+
+        Raises:
+            NotImplementedError: Remote formats don't have format strings.
+        """
         raise NotImplementedError(self.get_format_string)
 
     def network_name(self):
+        """Get the network name for this format.
+
+        Returns:
+            The network name string if set.
+
+        Raises:
+            AssertionError: If no network name has been set.
+        """
         if self._network_name:
             return self._network_name
         else:
             raise AssertionError("No network name set.")
 
     def initialize_on_transport(self, transport):
+        """Initialize a new bzrdir on the given transport.
+
+        Args:
+            transport: The transport to initialize the bzrdir on.
+
+        Returns:
+            A RemoteBzrDir instance representing the newly initialized directory.
+
+        Raises:
+            SmartProtocolError: If the server returns an unexpected response.
+        """
         try:
             # hand off the request to the smart server
             client_medium = transport.get_smart_medium()
@@ -197,6 +297,18 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return RemoteBzrDir(transport, format)
 
     def parse_NoneTrueFalse(self, arg):
+        """Parse a bytes argument into None, True, or False.
+
+        Args:
+            arg: Bytes object that should be empty, b'True', or b'False'.
+
+        Returns:
+            None if arg is empty/falsy, True if arg is b'True',
+            False if arg is b'False'.
+
+        Raises:
+            AssertionError: If arg is not a recognized value.
+        """
         if not arg:
             return None
         if arg == b"False":
@@ -206,6 +318,15 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         raise AssertionError(f"invalid arg {arg!r}")
 
     def _serialize_NoneTrueFalse(self, arg):
+        """Serialize None, True, or False into bytes format.
+
+        Args:
+            arg: None, True, or False value to serialize.
+
+        Returns:
+            b'False' if arg is False, b'True' if arg is truthy,
+            empty bytes if arg is None.
+        """
         if arg is False:
             return b"False"
         if arg:
@@ -213,6 +334,14 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return b""
 
     def _serialize_NoneString(self, arg):
+        """Serialize a None or string value into bytes format.
+
+        Args:
+            arg: None or bytes/string value to serialize.
+
+        Returns:
+            The original arg if truthy, otherwise empty bytes.
+        """
         return arg or b""
 
     def initialize_on_transport_ex(
@@ -227,6 +356,22 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         make_working_trees=None,
         shared_repo=False,
     ):
+        """Initialize a bzrdir with advanced options.
+
+        Args:
+            transport: The transport to initialize on.
+            use_existing_dir: If True, use an existing directory.
+            create_prefix: If True, create parent directories as needed.
+            force_new_repo: If True, force creation of a new repository.
+            stacked_on: URL to stack the new branch on.
+            stack_on_pwd: Path to stack on relative to pwd.
+            repo_format_name: Name of repository format to use.
+            make_working_trees: Whether repository should make working trees.
+            shared_repo: If True, create a shared repository.
+
+        Returns:
+            Tuple of (repository, bzrdir, require_stacking, repository_policy).
+        """
         try:
             # hand off the request to the smart server
             client_medium = transport.get_smart_medium()
@@ -294,6 +439,24 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         make_working_trees,
         shared_repo,
     ):
+        """Make the RPC call to initialize a bzrdir with extended options.
+
+        Args:
+            client: The smart client to use for the RPC call.
+            path: Path on the server to initialize.
+            transport: The transport being used.
+            use_existing_dir: Whether to use an existing directory.
+            create_prefix: Whether to create parent directories.
+            force_new_repo: Whether to force creation of a new repository.
+            stacked_on: URL to stack on.
+            stack_on_pwd: Path to stack on relative to pwd.
+            repo_format_name: Repository format name to use.
+            make_working_trees: Whether repository should make working trees.
+            shared_repo: Whether to create a shared repository.
+
+        Returns:
+            Tuple of (repository, bzrdir, require_stacking, repository_policy).
+        """
         args = []
         args.append(self._serialize_NoneTrueFalse(use_existing_dir))
         args.append(self._serialize_NoneTrueFalse(create_prefix))
@@ -388,14 +551,39 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
+        """Open a bzrdir on the given transport.
+
+        Args:
+            transport: The transport to open the bzrdir on.
+
+        Returns:
+            A RemoteBzrDir instance.
+        """
         return RemoteBzrDir(transport, self)
 
     def __eq__(self, other):
+        """Check if this format is equal to another format.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if the formats are equivalent, False otherwise.
+        """
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
 
     def __return_repository_format(self):
+        """Return the repository format for this bzrdir format.
+
+        Always returns a RemoteRepositoryFormat object, but if a specific
+        bzr repository format has been requested, configures the
+        RemoteRepositoryFormat to use that for initialization.
+
+        Returns:
+            A RemoteRepositoryFormat instance.
+        """
         # Always return a RemoteRepositoryFormat object, but if a specific bzr
         # repository format has been asked for, tell the RemoteRepositoryFormat
         # that it should use that for init() etc.
@@ -412,6 +600,12 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
         return result
 
     def get_branch_format(self):
+        """Get the branch format for this bzrdir format.
+
+        Returns:
+            A RemoteBranchFormat instance, wrapping the underlying format
+            if necessary.
+        """
         result = _mod_bzrdir.BzrDirMetaFormat1.get_branch_format(self)
         if not isinstance(result, RemoteBranchFormat):
             new_result = RemoteBranchFormat()
@@ -433,35 +627,84 @@ class RemoteControlStore(_mod_config.IniFileStore):
     """
 
     def __init__(self, bzrdir):
+        """Initialize a RemoteControlStore.
+
+        Args:
+            bzrdir: The bzrdir this store is associated with.
+        """
         super().__init__()
         self.controldir = bzrdir
         self._real_store = None
 
     def lock_write(self, token=None):
+        """Lock the store for writing.
+
+        Args:
+            token: Optional lock token for resuming an existing lock.
+
+        Returns:
+            A lock token that can be used to resume the lock later.
+        """
         self._ensure_real()
         return self._real_store.lock_write(token)
 
     def unlock(self):
+        """Unlock the store.
+
+        Returns:
+            The result of unlocking the underlying store.
+        """
         self._ensure_real()
         return self._real_store.unlock()
 
     def save(self):
+        """Save the configuration store.
+
+        Ensures the store is locked during the save operation.
+        """
         with self.lock_write():
             # We need to be able to override the undecorated implementation
             self.save_without_locking()
 
     def save_without_locking(self):
+        """Save the configuration store without acquiring a lock.
+
+        Should only be called when the store is already locked.
+        """
         super().save()
 
     def _ensure_real(self):
+        """Ensure that the real (local) control store is available.
+
+        This method makes sure that the control directory has been realized
+        as a local object and creates the real control store if it doesn't
+        already exist.
+        """
         self.controldir._ensure_real()
         if self._real_store is None:
             self._real_store = _mod_config.ControlStore(self.controldir)
 
     def external_url(self):
+        """Get the external URL for this configuration store.
+
+        Returns:
+            The URL where the control.conf file can be accessed.
+        """
         return urlutils.join(self.branch.user_url, "control.conf")
 
     def _load_content(self):
+        """Load the configuration content from the remote server.
+
+        This method attempts to load configuration content using the smart
+        server protocol. If the smart server doesn't support the required
+        method, it falls back to using the local VFS-based store.
+
+        Returns:
+            The raw bytes of the configuration content.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         path = self.controldir._path_for_remote_call(self.controldir._client)
         try:
             response, handler = self.controldir._call_expecting_body(
@@ -475,6 +718,22 @@ class RemoteControlStore(_mod_config.IniFileStore):
         return handler.read_body_bytes()
 
     def _save_content(self, content):
+        """Save configuration content to the remote server.
+
+        Currently this method falls back to using the local VFS-based store
+        because the smart server protocol doesn't support writing to control
+        directories yet.
+
+        Args:
+            content: The raw bytes of configuration content to save.
+
+        Returns:
+            The result of saving the content via the real store.
+
+        Note:
+            This is a known limitation - ideally this should use an HPSS call
+            but it's not currently possible to write lock control directories.
+        """
         # FIXME JRV 2011-11-22: Ideally this should use a
         # HPSS call too, but at the moment it is not possible
         # to write lock control directories.
@@ -487,10 +746,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
 
     @property
     def user_transport(self):
+        """Get the user transport for this bzrdir.
+
+        Returns:
+            The root transport.
+        """
         return self.root_transport
 
     @property
     def control_transport(self):
+        """Get the control transport for this bzrdir.
+
+        Returns:
+            The control transport.
+        """
         return self.transport
 
     def __init__(self, transport, format, _client=None, _force_probe=False):
@@ -519,9 +788,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         self._probe_bzrdir()
 
     def __repr__(self):
+        """Return a string representation of this RemoteBzrDir.
+
+        Returns:
+            A string showing the class name and client.
+        """
         return f"{self.__class__.__name__}({self._client!r})"
 
     def _probe_bzrdir(self):
+        """Probe the remote bzrdir to determine its capabilities.
+
+        Uses the appropriate RPC method based on the server's capabilities.
+        """
         medium = self._client._medium
         path = self._path_for_remote_call(self._client)
         if medium._is_remote_before((2, 1)):
@@ -535,6 +813,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._rpc_open(path)
 
     def _rpc_open_2_1(self, path):
+        """Open a bzrdir using the BzrDir.open_2.1 RPC method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Raises:
+            NotBranchError: If the path is not a branch.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         response = self._call(b"BzrDir.open_2.1", path)
         if response == (b"no",):
             raise errors.NotBranchError(path=self.root_transport.base)
@@ -549,6 +836,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def _rpc_open(self, path):
+        """Open a bzrdir using the legacy BzrDir.open RPC method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Raises:
+            NotBranchError: If the path is not a branch.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         response = self._call(b"BzrDir.open", path)
         if response not in [(b"yes",), (b"no",)]:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -573,15 +869,33 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             self._format._network_name = self._real_bzrdir._format.network_name()
 
     def _translate_error(self, err, **context):
+        """Translate an ErrorFromSmartServer into a more specific error.
+
+        Args:
+            err: The ErrorFromSmartServer to translate.
+            **context: Additional context for error translation.
+        """
         _translate_error(err, bzrdir=self, **context)
 
     def break_lock(self):
+        """Break any existing locks on this bzrdir.
+
+        Clears the branch cache to prevent aliasing problems.
+        """
         # Prevent aliasing problems in the next_open_branch_result cache.
         # See create_branch for rationale.
         self._next_open_branch_result = None
         return _mod_bzrdir.BzrDir.break_lock(self)
 
     def _vfs_checkout_metadir(self):
+        """Get checkout metadir using VFS fallback.
+
+        This method is used when the remote server doesn't support the
+        smart protocol for retrieving checkout metadir information.
+
+        Returns:
+            The checkout metadir format from the real bzrdir.
+        """
         self._ensure_real()
         return self._real_bzrdir.checkout_metadir()
 
@@ -623,10 +937,29 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return format
 
     def _vfs_cloning_metadir(self, require_stacking=False):
+        """Get cloning metadir using VFS fallback.
+
+        Args:
+            require_stacking: Whether the cloned directory must support stacking.
+
+        Returns:
+            The cloning metadir format from the real bzrdir.
+        """
         self._ensure_real()
         return self._real_bzrdir.cloning_metadir(require_stacking=require_stacking)
 
     def cloning_metadir(self, require_stacking=False):
+        """Get the controldir format for cloning this bzrdir.
+
+        Args:
+            require_stacking: Whether the cloned directory must support stacking.
+
+        Returns:
+            A controldir format suitable for cloning this directory.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
@@ -687,6 +1020,23 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return format
 
     def create_repository(self, shared=False):
+        """Create a new repository in this bzrdir.
+
+        Creates a new repository using the repository format associated
+        with this bzrdir format. The repository can optionally be shared.
+
+        Args:
+            shared: If True, create a shared repository that can be used
+                   by multiple branches. Defaults to False.
+
+        Returns:
+            A Repository object (either RemoteRepository or the result
+            of opening the created repository).
+
+        Note:
+            Delegates to the format object to handle format-specific
+            initialization details.
+        """
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         result = self._format.repository_format.initialize(self, shared)
@@ -708,6 +1058,29 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise SmartProtocolError(f"unexpected response code {response}")
 
     def create_branch(self, name=None, repository=None, append_revisions_only=None):
+        """Create a new branch in this bzrdir.
+
+        Creates a new branch using the branch format associated with
+        this bzrdir format. Optionally associates it with a specific
+        repository.
+
+        Args:
+            name: Name of the branch to create. If None, uses the default
+                 branch name. Non-empty names raise NoColocatedBranchSupport.
+            repository: Optional repository to associate with the branch.
+                       If None, the default repository will be used.
+            append_revisions_only: If True, the branch will only allow
+                                  appending new revisions (no rebasing).
+
+        Returns:
+            A Branch object (either RemoteBranch or a wrapped branch).
+
+        Raises:
+            NoColocatedBranchSupport: If a non-empty branch name is provided.
+
+        Note:
+            The result is cached to optimize subsequent open_branch() calls.
+        """
         if name is None:
             name = self._get_selected_branch()
         if name != "":
@@ -759,6 +1132,17 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     def create_workingtree(
         self, revision_id=None, from_branch=None, accelerator_tree=None, hardlink=False
     ):
+        """Create a working tree at this location.
+
+        Args:
+            revision_id: Revision to check out.
+            from_branch: Branch to check out from.
+            accelerator_tree: Tree to use for acceleration.
+            hardlink: Use hardlinks when possible.
+
+        Raises:
+            NotLocalUrl: Remote locations cannot have working trees.
+        """
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self, name=None):
@@ -770,6 +1154,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return b._format
 
     def branch_names(self):
+        """Get the names of all branches in this bzrdir.
+
+        Retrieves a list of branch names present in this bzrdir.
+        For most repository formats, this will just be the default
+        branch, but some formats support multiple named branches.
+
+        Returns:
+            A list of branch names as strings.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+
+        Note:
+            Falls back to VFS if the server doesn't support the smart method.
+        """
         path = self._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(b"BzrDir.get_branches", path)
@@ -786,6 +1185,26 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return ret
 
     def get_branches(self, possible_transports=None, ignore_fallbacks=False):
+        """Get all branches in this bzrdir as a dictionary.
+
+        Retrieves all branches in this bzrdir, returning them as a
+        dictionary mapping branch names to branch objects.
+
+        Args:
+            possible_transports: Optional list of transport objects that
+                               can be used for efficiency.
+            ignore_fallbacks: If True, don't open fallback repositories
+                            for the branches.
+
+        Returns:
+            A dictionary mapping branch names (strings) to Branch objects.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+
+        Note:
+            Falls back to VFS if the server doesn't support the smart method.
+        """
         path = self._path_for_remote_call(self._client)
         try:
             response, handler = self._call_expecting_body(b"BzrDir.get_branches", path)
@@ -908,6 +1327,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         ignore_fallbacks=False,
         possible_transports=None,
     ):
+        """Open the branch at this location.
+
+        Args:
+            name: Name of colocated branch to open.
+            unsupported: Allow opening unsupported branches.
+            ignore_fallbacks: Ignore fallback repositories.
+            possible_transports: Transports to reuse.
+
+        Returns:
+            RemoteBranch: The opened branch.
+
+        Raises:
+            NoColocatedBranchSupport: When requesting colocated branch.
+            NotImplementedError: When unsupported flag is used.
+        """
         if name is None:
             name = self._get_selected_branch()
         if name != "":
@@ -929,6 +1363,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         )
 
     def _open_repo_v1(self, path):
+        """Open repository using the legacy v1 find_repository method.
+
+        This is a fallback method for older servers that don't support
+        external references.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, repository) from the remote call.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repository"
         response = self._call(verb, path)
         if response[0] != b"ok":
@@ -941,6 +1389,17 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, repo
 
     def _open_repo_v2(self, path):
+        """Open repository using the v2 find_repositoryV2 method.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, repository) from the remote call.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repositoryV2"
         response = self._call(verb, path)
         if response[0] != b"ok":
@@ -951,6 +1410,20 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, repo
 
     def _open_repo_v3(self, path):
+        """Open repository using the v3 find_repositoryV3 method.
+
+        This is the most recent method that supports all repository features.
+
+        Args:
+            path: Path to the bzrdir on the remote server.
+
+        Returns:
+            Tuple of (response, None) from the remote call.
+
+        Raises:
+            UnknownSmartMethod: If the server doesn't support v3 method.
+            UnexpectedSmartServerResponse: If the server response is malformed.
+        """
         verb = b"BzrDir.find_repositoryV3"
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
@@ -965,6 +1438,19 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return response, None
 
     def open_repository(self):
+        """Open the repository in this bzrdir.
+
+        Tries different versions of the repository opening protocol
+        until one succeeds.
+
+        Returns:
+            A RemoteRepository instance.
+
+        Raises:
+            NoRepositoryPresent: If no repository is present in this bzrdir.
+            UnknownSmartMethod: If no supported repository method is available.
+            SmartProtocolError: If the response format is incorrect.
+        """
         path = self._path_for_remote_call(self._client)
         response = None
         for probe in [self._open_repo_v3, self._open_repo_v2, self._open_repo_v1]:
@@ -993,6 +1479,14 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.NoRepositoryPresent(self)
 
     def has_workingtree(self):
+        """Check if this bzrdir has a working tree.
+
+        Returns:
+            True if a working tree is present, False otherwise.
+
+        Raises:
+            SmartProtocolError: If the server response is unexpected.
+        """
         if self._has_working_tree is None:
             path = self._path_for_remote_call(self._client)
             try:
@@ -1007,6 +1501,15 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return self._has_working_tree
 
     def open_workingtree(self, recommend_upgrade=True):
+        """Open the working tree in this bzrdir.
+
+        Args:
+            recommend_upgrade: Whether to recommend upgrading (ignored).
+
+        Raises:
+            NotLocalUrl: If this bzrdir has a working tree (remote working trees not supported).
+            NoWorkingTree: If this bzrdir doesn't have a working tree.
+        """
         if self.has_workingtree():
             raise errors.NotLocalUrl(self.root_transport)
         else:
@@ -1023,14 +1526,39 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return base_url
 
     def get_branch_transport(self, branch_format, name=None):
+        """Get the transport for accessing branch data.
+
+        Args:
+            branch_format: The branch format to get transport for.
+            name: Optional name of the branch.
+
+        Returns:
+            A transport for accessing the branch data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_branch_transport(branch_format, name=name)
 
     def get_repository_transport(self, repository_format):
+        """Get the transport for accessing repository data.
+
+        Args:
+            repository_format: The repository format to get transport for.
+
+        Returns:
+            A transport for accessing the repository data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_repository_transport(repository_format)
 
     def get_workingtree_transport(self, workingtree_format):
+        """Get the transport for accessing working tree data.
+
+        Args:
+            workingtree_format: The working tree format to get transport for.
+
+        Returns:
+            A transport for accessing the working tree data.
+        """
         self._ensure_real()
         return self._real_bzrdir.get_workingtree_transport(workingtree_format)
 
@@ -1043,14 +1571,33 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return False
 
     def _get_config(self):
+        """Get the configuration for this bzrdir.
+
+        Returns:
+            A RemoteBzrDirConfig instance.
+        """
         return RemoteBzrDirConfig(self)
 
     def _get_config_store(self):
+        """Get the configuration store for this bzrdir.
+
+        Returns:
+            A RemoteControlStore instance.
+        """
         return RemoteControlStore(self)
 
 
 class RemoteInventoryTree(InventoryRevisionTree):
+    """Inventory-based revision tree accessed via smart protocol."""
+
     def __init__(self, repository, inv, revision_id):
+        """Initialize a RemoteInventoryTree.
+
+        Args:
+            repository: The repository containing the tree data.
+            inv: The inventory for this revision tree.
+            revision_id: The revision ID this tree represents.
+        """
         super().__init__(repository, inv, revision_id)
 
     def archive(
@@ -1062,6 +1609,16 @@ class RemoteInventoryTree(InventoryRevisionTree):
         force_mtime=None,
         recurse_nested=False,
     ):
+        """Create an archive of this tree.
+
+        Args:
+            format: Archive format to create.
+            name: Name/path of archive to create.
+            root: Root directory in archive.
+            subdir: Subdirectory to archive.
+            force_mtime: Force modification time for entries.
+            recurse_nested: Recurse into nested trees.
+        """
         if recurse_nested:
             # For now, just fall back to non-HPSS mode if nested trees are involved.
             return super().archive(
@@ -1134,6 +1691,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_ghosts = False
 
     def __init__(self):
+        """Initialize a RemoteRepositoryFormat.
+
+        Sets up the format with default values for various capability flags
+        that will be determined by probing the remote repository.
+        """
         _mod_repository.RepositoryFormat.__init__(self)
         self._custom_format = None
         self._network_name = None
@@ -1147,15 +1709,30 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._rich_root_data = None
 
     def __repr__(self):
+        """Return a string representation of this format.
+
+        Returns:
+            A string showing the class name and network name.
+        """
         return f"{self.__class__.__name__}(_network_name={self._network_name!r})"
 
     @property
     def fast_deltas(self):
+        """Whether this repository format supports fast deltas.
+
+        Returns:
+            True if fast deltas are supported.
+        """
         self._ensure_real()
         return self._custom_format.fast_deltas
 
     @property
     def rich_root_data(self):
+        """Whether this repository format supports rich root data.
+
+        Returns:
+            True if rich root data is supported.
+        """
         if self._rich_root_data is None:
             self._ensure_real()
             self._rich_root_data = self._custom_format.rich_root_data
@@ -1163,6 +1740,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_chks(self):
+        """Whether this repository format supports CHK inventories.
+
+        Returns:
+            True if CHK inventories are supported.
+        """
         if self._supports_chks is None:
             self._ensure_real()
             self._supports_chks = self._custom_format.supports_chks
@@ -1170,6 +1752,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_external_lookups(self):
+        """Whether this repository format supports external lookups.
+
+        Returns:
+            True if external lookups are supported.
+        """
         if self._supports_external_lookups is None:
             self._ensure_real()
             self._supports_external_lookups = (
@@ -1179,6 +1766,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_funky_characters(self):
+        """Whether this repository format supports funky characters in filenames.
+
+        Returns:
+            True if funky characters are supported.
+        """
         if self._supports_funky_characters is None:
             self._ensure_real()
             self._supports_funky_characters = (
@@ -1188,6 +1780,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_nesting_repositories(self):
+        """Whether this repository format supports nested repositories.
+
+        Returns:
+            True if nested repositories are supported.
+        """
         if self._supports_nesting_repositories is None:
             self._ensure_real()
             self._supports_nesting_repositories = (
@@ -1197,6 +1794,11 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def supports_tree_reference(self):
+        """Whether this repository format supports tree references.
+
+        Returns:
+            True if tree references are supported.
+        """
         if self._supports_tree_reference is None:
             self._ensure_real()
             self._supports_tree_reference = self._custom_format.supports_tree_reference
@@ -1204,6 +1806,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def revision_graph_can_have_wrong_parents(self):
+        """Whether the revision graph might have wrong parents.
+
+        This indicates if the repository format allows for revision graphs
+        where the parent relationships might be incorrect or incomplete.
+
+        Returns:
+            True if the revision graph can have wrong parents.
+        """
         if self._revision_graph_can_have_wrong_parents is None:
             self._ensure_real()
             self._revision_graph_can_have_wrong_parents = (
@@ -1238,6 +1848,15 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             return result
 
     def initialize(self, a_controldir, shared=False):
+        """Initialize a repository in the given control directory.
+
+        Args:
+            a_controldir: The control directory to initialize the repository in.
+            shared: Whether to create a shared repository.
+
+        Returns:
+            A RemoteRepository instance representing the new repository.
+        """
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_controldir, RemoteBzrDir):
             return self._vfs_initialize(a_controldir, shared)
@@ -1275,11 +1894,30 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             return remote_repo
 
     def open(self, a_controldir):
+        """Open the repository in the given control directory.
+
+        Args:
+            a_controldir: The control directory containing the repository.
+
+        Returns:
+            A RemoteRepository instance.
+
+        Raises:
+            AssertionError: If a_controldir is not a RemoteBzrDir.
+        """
         if not isinstance(a_controldir, RemoteBzrDir):
             raise AssertionError(f"{a_controldir!r} is not a RemoteBzrDir")
         return a_controldir.open_repository()
 
     def _ensure_real(self):
+        """Ensure that a real (local) repository format is available.
+
+        This method makes sure we have access to the underlying concrete
+        repository format by looking it up in the network format registry.
+
+        Raises:
+            UnknownFormatError: If the network name is not recognized.
+        """
         if self._custom_format is None:
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
@@ -1292,27 +1930,60 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def _fetch_order(self):
+        """The order preference for fetching data.
+
+        Returns:
+            The fetch order from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._fetch_order
 
     @property
     def _fetch_uses_deltas(self):
+        """Whether fetching uses delta compression.
+
+        Returns:
+            True if the format uses deltas for fetching.
+        """
         self._ensure_real()
         return self._custom_format._fetch_uses_deltas
 
     @property
     def _fetch_reconcile(self):
+        """Whether fetching requires reconciliation.
+
+        Returns:
+            True if the format requires reconciliation during fetch.
+        """
         self._ensure_real()
         return self._custom_format._fetch_reconcile
 
     def get_format_description(self):
+        """Get a human-readable description of this repository format.
+
+        Returns:
+            A string describing the format, prefixed with 'Remote: '.
+        """
         self._ensure_real()
         return "Remote: " + self._custom_format.get_format_description()
 
     def __eq__(self, other):
+        """Check if this format is equal to another format.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if both objects are instances of the same class.
+        """
         return self.__class__ is other.__class__
 
     def network_name(self):
+        """Get the network name for this repository format.
+
+        Returns:
+            The network name string for this format.
+        """
         if self._network_name:
             return self._network_name
         self._creating_repo._ensure_real()
@@ -1320,16 +1991,31 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
 
     @property
     def pack_compresses(self):
+        """Whether this format compresses pack data.
+
+        Returns:
+            True if the format compresses pack data.
+        """
         self._ensure_real()
         return self._custom_format.pack_compresses
 
     @property
     def _revision_serializer(self):
+        """Get the revision serializer for this format.
+
+        Returns:
+            The revision serializer from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._revision_serializer
 
     @property
     def _inventory_serializer(self):
+        """Get the inventory serializer for this format.
+
+        Returns:
+            The inventory serializer from the underlying format.
+        """
         self._ensure_real()
         return self._custom_format._inventory_serializer
 
@@ -1396,16 +2082,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
     @property
     def user_transport(self):
+        """Get the user transport for this repository."""
         return self.controldir.user_transport
 
     @property
     def control_transport(self):
+        """Get the control transport for this repository."""
         # XXX: Normally you shouldn't directly get at the remote repository
         # transport, but I'm not sure it's worth making this method
         # optional -- mbp 2010-04-21
         return self.controldir.get_repository_transport(None)
 
     def __str__(self):
+        """Return string representation of this repository."""
         return f"{self.__class__.__name__}({self.base})"
 
     __repr__ = __str__
@@ -1487,6 +2176,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self.refresh_data()
 
     def resume_write_group(self, tokens):
+        """Resume a write group with the given tokens.
+
+        Continues a write group operation that was previously suspended,
+        using the provided tokens to restore the write group state.
+
+        Args:
+            tokens: List of tokens representing the suspended write group state.
+                   Each token is a string identifier for a write group component.
+
+        Returns:
+            None
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server response is malformed.
+            UnknownSmartMethod: If the server doesn't support this operation,
+                               in which case the operation falls back to VFS.
+        """
         if self._real_repository:
             return self._real_repository.resume_write_group(tokens)
         path = self.controldir._path_for_remote_call(self._client)
@@ -1505,6 +2211,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._write_group_tokens = tokens
 
     def suspend_write_group(self):
+        """Suspend the current write group and return its tokens.
+
+        Temporarily halts a write group operation and returns tokens that
+        can be used later to resume the write group with resume_write_group().
+
+        Returns:
+            List of tokens representing the suspended write group state.
+            Each token is a string identifier for a write group component.
+            Returns an empty list if no write group is active.
+        """
         if self._real_repository:
             return self._real_repository.suspend_write_group()
         ret = self._write_group_tokens or []
@@ -1512,12 +2228,49 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return ret
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
+        """Return inventories from the ancestry that are not present.
+
+        This method identifies inventory objects that are referenced by
+        the repository's revision history but are not actually stored
+        in the repository.
+
+        Args:
+            check_for_missing_texts: If True, also verify that the text
+                                   objects referenced by inventories are present.
+                                   Defaults to True.
+
+        Returns:
+            A collection of inventory keys that are missing from the repository.
+            The exact type depends on the underlying repository implementation.
+
+        Note:
+            This method requires VFS access and will trigger _ensure_real().
+        """
         self._ensure_real()
         return self._real_repository.get_missing_parent_inventories(
             check_for_missing_texts=check_for_missing_texts
         )
 
     def _get_rev_id_for_revno_vfs(self, revno, known_pair):
+        """VFS fallback for getting revision ID from revision number.
+
+        This is a private fallback method used when the smart server
+        doesn't support the Repository.get_rev_id_for_revno RPC or
+        when working with older server versions.
+
+        Args:
+            revno: The revision number to look up.
+            known_pair: A (revno, revid) pair representing a known point
+                       in the revision history for optimization.
+
+        Returns:
+            Same as get_rev_id_for_revno(): A tuple (found, result) where
+            found is a boolean and result is either the revision_id (if found)
+            or a (revno, revid) pair of a known point (if not found).
+
+        Note:
+            This method requires VFS access and will trigger _ensure_real().
+        """
         self._ensure_real()
         return self._real_repository.get_rev_id_for_revno(revno, known_pair)
 
@@ -1644,20 +2397,53 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return RemoteStreamSink(self)
 
     def _get_source(self, to_format):
+        """Get a source for converting to the specified format.
+
+        Args:
+            to_format: Target format for conversion.
+
+        Returns:
+            Source object for format conversion.
+        """
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
     def get_file_graph(self):
+        """Get a graph of file text relationships.
+
+        Creates a graph object that can be used to traverse the relationships
+        between different versions of file texts in the repository.
+
+        Returns:
+            A Graph object representing file text relationships, with the
+            repository's text store as the parent provider.
+        """
         with self.lock_read():
             return graph.Graph(self.texts)
 
     def has_revision(self, revision_id):
+        """Check if a revision is present in this repository.
+
+        Args:
+            revision_id: The revision ID to check.
+
+        Returns:
+            bool: True if the revision is present.
+        """
         """True if this repository has a copy of the revision."""
         # Copy of breezy.repository.Repository.has_revision
         with self.lock_read():
             return revision_id in self.has_revisions((revision_id,))
 
     def has_revisions(self, revision_ids):
+        """Check which revisions are present in this repository.
+
+        Args:
+            revision_ids: Iterable of revision IDs to check.
+
+        Returns:
+            Set of revision IDs that are present.
+        """
         """Probe to find out the presence of multiple revisions.
 
         :param revision_ids: An iterable of revision_ids.
@@ -1682,6 +2468,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
 
     def has_same_location(self, other):
+        """Check if this repository has the same location as another.
+
+        Compares this repository with another to determine if they refer
+        to the same physical location, taking into account both the class
+        type and the transport base URL.
+
+        Args:
+            other: Another repository object to compare with.
+
+        Returns:
+            True if both repositories have the same class and transport base,
+            False otherwise.
+
+        Note:
+            TODO: Move to RepositoryBase and unify with the regular Repository
+            one; unfortunately the tests rely on slightly different behaviour at
+            present -- mbp 20090710
+        """
         # TODO: Move to RepositoryBase and unify with the regular Repository
         # one; unfortunately the tests rely on slightly different behaviour at
         # present -- mbp 20090710
@@ -1762,6 +2566,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return self._real_repository.is_in_write_group()
 
     def is_locked(self):
+        """Check if the repository is locked.
+
+        Returns:
+            True if the repository has any active locks, False otherwise.
+        """
         return self._lock_count >= 1
 
     def is_shared(self):
@@ -1773,9 +2582,23 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return response[0] == b"yes"
 
     def is_write_locked(self):
+        """Check if the repository is write locked.
+
+        Returns:
+            True if the repository is locked for writing, False otherwise.
+        """
         return self._lock_mode == "w"
 
     def _warn_if_deprecated(self, branch=None):
+        """Warn if this repository format is deprecated.
+
+        Args:
+            branch: Optional branch to check for deprecation.
+
+        Note:
+            For remote repositories, deprecation checking is delegated
+            to the real repository or done remotely.
+        """
         # If we have a real repository, the check will be done there, if we
         # don't the check will be done remotely.
         pass
@@ -1812,6 +2635,27 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             raise errors.UnexpectedSmartServerResponse(response)
 
     def lock_write(self, token=None, _skip_rpc=False):
+        """Lock the repository for write operations.
+
+        Acquires a write lock on the repository, optionally using a provided
+        token to resume a previous lock state.
+
+        Args:
+            token: Optional lock token to resume a previous lock state.
+                  If None, a new write lock will be acquired.
+            _skip_rpc: Private parameter to skip the RPC call for testing.
+                      Should not be used by regular code.
+
+        Returns:
+            A RepositoryWriteLockResult containing the unlock method and
+            the lock token (if any).
+
+        Raises:
+            ReadOnlyError: If attempting to acquire write lock while already
+                          read-locked.
+            TokenMismatch: If the provided token doesn't match the expected token.
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         if not self._lock_mode:
             self._note_lock("w")
             if _skip_rpc:
@@ -1844,11 +2688,28 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return RepositoryWriteLockResult(self.unlock, self._lock_token or None)
 
     def leave_lock_in_place(self):
+        """Configure the repository to leave the lock in place on unlock.
+
+        This prevents the lock from being automatically released when
+        unlock() is called, which is useful for operations that need
+        to maintain locks across multiple method calls.
+
+        Raises:
+            NotImplementedError: If the repository doesn't have a lock token.
+        """
         if not self._lock_token:
             raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        """Configure the repository to release the lock on unlock.
+
+        This restores the default behavior where the lock is automatically
+        released when unlock() is called.
+
+        Raises:
+            NotImplementedError: If the repository doesn't have a lock token.
+        """
         if not self._lock_token:
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
@@ -1943,6 +2804,19 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release any locks held on this repository.
+
+        Decrements the lock count and releases the actual lock when
+        the count reaches zero. For write locks, this may involve
+        calling the server to release the remote lock.
+
+        Returns:
+            None
+
+        Raises:
+            LockNotHeld: If no lock is currently held.
+            LockBroken: If the lock has been broken by another process.
+        """
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
         self._lock_count -= 1
@@ -1977,6 +2851,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             repo.unlock()
 
     def break_lock(self):
+        """Break any existing locks on this repository.
+
+        Raises:
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         # should hand off to the network
         path = self.controldir._path_for_remote_call(self._client)
         try:
@@ -2037,6 +2916,18 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     # These methods are just thin shims to the VFS object for now.
 
     def revision_tree(self, revision_id):
+        """Get the revision tree for a specific revision.
+
+        Creates a revision tree object representing the state of files
+        and directories at a particular revision.
+
+        Args:
+            revision_id: The revision ID to create a tree for.
+
+        Returns:
+            An InventoryRevisionTree for the specified revision.
+            For NULL_REVISION, returns an empty tree.
+        """
         with self.lock_read():
             if revision_id == _mod_revision.NULL_REVISION:
                 return InventoryRevisionTree(
@@ -2046,6 +2937,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 return list(self.revision_trees([revision_id]))[0]
 
     def get_serializer_format(self):
+        """Get the serializer format for this repository."""
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(
@@ -2144,6 +3036,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return _mod_repository.InterRepository._assert_same_model(self, repository)
 
     def add_inventory(self, revid, inv, parents):
+        """Add an inventory to the repository.
+
+        Args:
+            revid: Revision ID for the inventory.
+            inv: Inventory to add.
+            parents: Parent inventories.
+        """
         self._ensure_real()
         return self._real_repository.add_inventory(revid, inv, parents)
 
@@ -2156,6 +3055,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         basis_inv=None,
         propagate_caches=False,
     ):
+        """Add an inventory by delta to the repository.
+
+        Args:
+            basis_revision_id: Revision ID of basis inventory.
+            delta: Inventory delta to apply.
+            new_revision_id: Revision ID for new inventory.
+            parents: Parent revision IDs.
+            basis_inv: Optional basis inventory.
+            propagate_caches: Whether to propagate caches.
+        """
         self._ensure_real()
         return self._real_repository.add_inventory_by_delta(
             basis_revision_id,
@@ -2167,6 +3076,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def add_revision(self, revision_id, rev, inv=None):
+        """Add a revision to the repository.
+
+        Args:
+            revision_id: The revision ID to add.
+            rev: The revision object to add.
+            inv: Optional inventory for the revision.
+        """
         _mod_revision.check_not_reserved_id(revision_id)
         key = (revision_id,)
         # check inventory present
@@ -2204,6 +3120,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def get_inventory(self, revision_id):
+        """Get the inventory for a specific revision.
+
+        Retrieves the inventory object that describes the file and directory
+        structure for a given revision.
+
+        Args:
+            revision_id: The revision ID to get the inventory for.
+
+        Returns:
+            An Inventory object for the specified revision.
+
+        Raises:
+            NoSuchRevision: If the revision_id is not present in the repository.
+        """
         with self.lock_read():
             return list(self.iter_inventories([revision_id]))[0]
 
@@ -2338,14 +3268,35 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 yield None, missing.pop()
 
     def get_revision(self, revision_id):
+        """Get a single revision object by its ID.
+
+        Retrieves the revision metadata including the author, committer,
+        timestamp, commit message, and parent relationships.
+
+        Args:
+            revision_id: The revision ID to retrieve.
+
+        Returns:
+            A Revision object containing the revision metadata.
+
+        Raises:
+            NoSuchRevision: If the revision_id is not present in the repository.
+        """
         with self.lock_read():
             return self.get_revisions([revision_id])[0]
 
     def get_transaction(self):
+        """Get the current transaction for this repository."""
         self._ensure_real()
         return self._real_repository.get_transaction()
 
     def clone(self, a_controldir, revision_id=None):
+        """Clone this repository to a target control directory.
+
+        Args:
+            a_controldir: Target control directory.
+            revision_id: Revision to clone up to.
+        """
         with self.lock_read():
             dest_repo = self._create_sprouting_repo(
                 a_controldir, shared=self.is_shared()
@@ -2421,6 +3372,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def fetch(
         self, source, revision_id=None, find_ghosts=False, fetch_spec=None, lossy=False
     ):
+        """Fetch revisions from another repository.
+
+        Args:
+            source: Source repository to fetch from.
+            revision_id: Specific revision to fetch.
+            find_ghosts: Whether to find ghost revisions.
+            fetch_spec: Specification of what to fetch.
+            lossy: Whether lossy fetch is allowed.
+        """
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
@@ -2452,10 +3412,26 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         )
 
     def create_bundle(self, target, base, fileobj, format=None):
+        """Create a bundle for the given target and base.
+
+        Args:
+            target: Target revision ID.
+            base: Base revision ID.
+            fileobj: File object to write bundle to.
+            format: Bundle format to use.
+        """
         self._ensure_real()
         self._real_repository.create_bundle(target, base, fileobj, format)
 
     def fileids_altered_by_revision_ids(self, revision_ids):
+        """Get file IDs altered by the given revision IDs.
+
+        Args:
+            revision_ids: List of revision IDs to check.
+
+        Returns:
+            Set of file IDs that were altered.
+        """
         self._ensure_real()
         return self._real_repository.fileids_altered_by_revision_ids(revision_ids)
 
@@ -2684,6 +3660,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return revision_graph
 
     def get_signature_text(self, revision_id):
+        """Get the signature text for a revision.
+
+        Args:
+            revision_id: The revision ID to get signature for.
+
+        Returns:
+            bytes: The signature text.
+        """
         with self.lock_read():
             path = self.controldir._path_for_remote_call(self._client)
             try:
@@ -2706,6 +3690,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 return response_handler.read_body_bytes()
 
     def _get_inventory_xml(self, revision_id):
+        """Get the inventory XML for a revision.
+
+        Args:
+            revision_id: The revision ID to get inventory for.
+
+        Returns:
+            str: The inventory XML.
+        """
         with self.lock_read():
             # This call is used by older working tree formats,
             # which stored a serialized basis inventory.
@@ -2713,6 +3705,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository.
+
+        Args:
+            other: Other repository to reconcile with.
+            thorough: Whether to perform thorough reconciliation.
+
+        Returns:
+            ReconcileResult: Result of the reconciliation.
+        """
         from ..reconcile import ReconcileResult
 
         with self.lock_write():
@@ -2744,6 +3745,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return result
 
     def all_revision_ids(self):
+        """Get all revision IDs in this repository.
+
+        Returns:
+            Set of all revision IDs in the repository.
+        """
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response_tuple, response_handler = self._call_expecting_body(
@@ -2776,22 +3782,53 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     def get_revision_delta(self, revision_id):
+        """Get the delta for a revision.
+
+        Args:
+            revision_id: The revision ID to get delta for.
+
+        Returns:
+            TreeDelta: The delta for the revision.
+        """
         with self.lock_read():
             r = self.get_revision(revision_id)
             return list(self.get_revision_deltas([r]))[0]
 
     def revision_trees(self, revision_ids):
+        """Get revision trees for the given revision IDs.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+
+        Yields:
+            RevisionTree: Trees for each revision ID.
+        """
         with self.lock_read():
             inventories = self.iter_inventories(revision_ids)
             for inv in inventories:
                 yield RemoteInventoryTree(self, inv, inv.revision_id)
 
     def get_revision_reconcile(self, revision_id):
+        """Get revision reconcile information.
+
+        Args:
+            revision_id: The revision ID to reconcile.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_repository.get_revision_reconcile(revision_id)
 
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        """Check the repository for consistency.
+
+        Args:
+            revision_ids: Specific revision IDs to check.
+            callback_refs: Callback references for progress.
+            check_repo: Whether to check the repository structure.
+
+        Returns:
+            CheckResult: Result of the consistency check.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_repository.check(
@@ -2801,6 +3838,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             )
 
     def copy_content_into(self, destination, revision_id=None):
+        """Copy content from this repository into destination.
+
+        Args:
+            destination: Destination repository.
+            revision_id: Specific revision to copy up to.
+        """
         """Make a complete copy of the content in self into destination.
 
         This is a destructive operation! Do not use it on existing
@@ -2878,6 +3921,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
+        """Set whether this repository should make working trees.
+
+        Args:
+            new_value: True to make working trees, False otherwise.
+        """
         new_value_str = b"True" if new_value else b"False"
         path = self.controldir._path_for_remote_call(self._client)
         try:
@@ -2902,6 +3950,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._real_repository.signatures
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision with the given GPG strategy.
+
+        Args:
+            revision_id: The revision ID to sign.
+            gpg_strategy: GPG strategy to use for signing.
+        """
         with self.lock_write():
             testament = _mod_testament.Testament.from_revision(self, revision_id)
             plaintext = testament.as_short_text()
@@ -2944,6 +3998,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             yield serializer.read_revision_from_string(b"".join(chunks))
 
     def iter_revisions(self, revision_ids):
+        """Iterate over revision objects for the given revision IDs.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+
+        Yields:
+            Revision: Revision objects for each ID.
+        """
         for rev_id in revision_ids:
             if not rev_id or not isinstance(rev_id, bytes):
                 raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
@@ -2967,6 +4029,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 yield from self._real_repository.iter_revisions(revision_ids)
 
     def supports_rich_root(self):
+        """Check if this repository supports rich root trees.
+
+        Returns:
+            bool: True if rich root is supported.
+        """
         return self._format.rich_root_data
 
     @property
@@ -2978,11 +4045,24 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._format._inventory_serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """Store a revision signature.
+
+        Args:
+            gpg_strategy: GPG strategy to use.
+            plaintext: Plaintext to sign.
+            revision_id: Revision ID for the signature.
+        """
         with self.lock_write():
             signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
+        """Add signature text for a revision.
+
+        Args:
+            revision_id: The revision ID to add signature for.
+            signature: The signature text to add.
+        """
         if self._real_repository:
             # If there is a real repository the write group will
             # be in the real repository as well, so use that:
@@ -3002,6 +4082,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._write_group_tokens = [token.decode("utf-8") for token in response[1:]]
 
     def has_signature_for_revision_id(self, revision_id):
+        """Check if a signature exists for the given revision.
+
+        Args:
+            revision_id: The revision ID to check.
+
+        Returns:
+            bool: True if signature exists.
+        """
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(
@@ -3020,6 +4108,15 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return False
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
+        """Verify the signature for a revision.
+
+        Args:
+            revision_id: The revision ID to verify.
+            gpg_strategy: GPG strategy to use for verification.
+
+        Returns:
+            Tuple of (status, key) for signature verification.
+        """
         with self.lock_read():
             if not self.has_signature_for_revision_id(revision_id):
                 return gpg.SIGNATURE_NOT_SIGNED, None
@@ -3033,18 +4130,40 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             return (status, key)
 
     def item_keys_introduced_by(self, revision_ids, _files_pb=None):
+        """Get item keys introduced by the given revisions.
+
+        Args:
+            revision_ids: Iterable of revision IDs.
+            _files_pb: Progress bar for files.
+
+        Returns:
+            Dictionary mapping file IDs to keys.
+        """
         self._ensure_real()
         return self._real_repository.item_keys_introduced_by(
             revision_ids, _files_pb=_files_pb
         )
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
+        """Find revisions with inconsistent parent information.
+
+        Args:
+            revisions_iterator: Iterator over revisions to check.
+
+        Returns:
+            List of inconsistent revision IDs.
+        """
         self._ensure_real()
         return self._real_repository._find_inconsistent_revision_parents(
             revisions_iterator
         )
 
     def _check_for_inconsistent_revision_parents(self):
+        """Check for inconsistent revision parents in the repository.
+
+        Returns:
+            List of inconsistent revision parent issues.
+        """
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
 
@@ -3072,6 +4191,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return b"\n".join(parts)
 
     def autopack(self):
+        """Automatically pack the repository if needed."""
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b"PackRepository.autopack", path)
@@ -3130,6 +4250,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
 
 class RemoteStreamSink(vf_repository.StreamSink):
+    """Stream sink for remote repositories.
+
+    Handles streaming data insertion into remote repositories via
+    the smart protocol.
+    """
+
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
@@ -3139,6 +4265,12 @@ class RemoteStreamSink(vf_repository.StreamSink):
         return result
 
     def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from source repository.
+
+        Args:
+            source: Source repository to get missing keys from.
+            missing_keys: Keys that are missing and need to be inserted.
+        """
         if (
             isinstance(source, RemoteStreamSource)
             and source.from_repository._client._medium
@@ -3152,6 +4284,27 @@ class RemoteStreamSink(vf_repository.StreamSink):
         return self.insert_stream_without_locking(stream, self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
+        """Insert a stream of repository data into the target repository.
+
+        This method efficiently transfers repository data by streaming it
+        to the remote repository, using the most appropriate protocol
+        version available.
+
+        Args:
+            stream: An iterator of (substream_type, substream) tuples containing
+                   the repository data to transfer.
+            src_format: The format of the source repository.
+            resume_tokens: List of tokens from a previous partial transfer
+                          that can be used to resume the operation.
+
+        Returns:
+            List of resume tokens if the transfer is incomplete, or empty list
+            if the transfer completed successfully.
+
+        Raises:
+            UnknownSmartMethod: If the server doesn't support streaming methods.
+            UnexpectedSmartServerResponse: If the server returns an unexpected response.
+        """
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
         candidate_calls = [(b"Repository.insert_stream_1.19", (1, 19))]
@@ -3267,6 +4420,32 @@ class RemoteStreamSource(vf_repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):
+        """Get a stream of revision data matching the search.
+
+        Args:
+            search: Search specification for revisions.
+
+        Returns:
+            Stream of revision data.
+        """
+        """Get a stream of repository data based on the search criteria.
+
+        Retrieves repository data (revisions, inventories, texts) that match
+        the search criteria, returning it as a stream suitable for transfer
+        to another repository.
+
+        Args:
+            search: A search object defining which revisions and associated
+                   data should be included in the stream.
+
+        Returns:
+            An iterator of (substream_type, substream) tuples containing
+            the requested repository data.
+
+        Note:
+            For repositories with fallback repositories and topological
+            fetch order, this delegates to the VFS implementation.
+        """
         if (
             self.from_repository._fallback_repositories
             and self.to_format._fetch_order == "topological"
@@ -3291,6 +4470,24 @@ class RemoteStreamSource(vf_repository.StreamSource):
         return real_source.get_stream_for_missing_keys(missing_keys)
 
     def get_stream_for_missing_keys(self, missing_keys):
+        """Get a stream containing data for the specified missing keys.
+
+        Retrieves repository data for keys that are known to be missing
+        from the target repository, optimizing the transfer by only
+        sending the required data.
+
+        Args:
+            missing_keys: An iterable of (key_type, key_id) tuples representing
+                         the specific data items that need to be transferred.
+
+        Returns:
+            An iterator of (substream_type, substream) tuples containing
+            the data for the missing keys.
+
+        Note:
+            Falls back to VFS implementation for non-RemoteRepository sources
+            or when the server doesn't support the required protocol version.
+        """
         if not isinstance(self.from_repository, RemoteRepository):
             return self._get_real_stream_for_missing_keys(missing_keys)
         client = self.from_repository._client
@@ -3438,6 +4635,14 @@ class RemoteStreamSource(vf_repository.StreamSource):
                 yield kind, stream
 
     def missing_parents_rev_handler(self, substream):
+        """Handle revisions with missing parents in substream.
+
+        Args:
+            substream: Substream containing revision data.
+
+        Yields:
+            Content with missing parent handling.
+        """
         for content in substream:
             revision_bytes = content.get_bytes_as("fulltext")
             revision = self.from_revision_serialiser.read_revision_from_string(
@@ -3455,6 +4660,12 @@ class RemoteBranchLockableFiles(LockableFiles):
     """
 
     def __init__(self, bzrdir, _client):
+        """Initialize RemoteBranchLockableFiles.
+
+        Args:
+            bzrdir: The branch directory.
+            _client: Smart protocol client.
+        """
         self.controldir = bzrdir
         self._client = _client
         self._need_find_modes = True
@@ -3469,7 +4680,14 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+    """Branch format for remote branches accessed via smart protocol."""
+
     def __init__(self, network_name=None):
+        """Initialize RemoteBranchFormat.
+
+        Args:
+            network_name: Network name for the branch format.
+        """
         super().__init__()
         self._matchingcontroldir = RemoteBzrDirFormat()
         self._matchingcontroldir.set_branch_format(self)
@@ -3477,6 +4695,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._network_name = network_name
 
     def __eq__(self, other):
+        """Check equality with another RemoteBranchFormat."""
         return isinstance(other, RemoteBranchFormat) and self.__dict__ == other.__dict__
 
     def _ensure_real(self):
@@ -3491,13 +4710,33 @@ class RemoteBranchFormat(branch.BranchFormat):
                 ) from e
 
     def get_format_description(self):
+        """Get a description of the repository format.
+
+        Returns:
+            str: Description of the repository format.
+        """
         self._ensure_real()
         return "Remote: " + self._custom_format.get_format_description()
 
     def network_name(self):
+        """Get the network name for this repository format.
+
+        Returns:
+            bytes: The network name.
+        """
         return self._network_name
 
     def open(self, a_controldir, name=None, ignore_fallbacks=False):
+        """Open a branch in the given control directory.
+
+        Args:
+            a_controldir: Control directory to open branch in.
+            name: Name of colocated branch.
+            ignore_fallbacks: Whether to ignore fallback branches.
+
+        Returns:
+            RemoteBranch: The opened branch.
+        """
         return a_controldir.open_branch(name=name, ignore_fallbacks=ignore_fallbacks)
 
     def _vfs_initialize(
@@ -3534,6 +4773,17 @@ class RemoteBranchFormat(branch.BranchFormat):
     def initialize(
         self, a_controldir, name=None, repository=None, append_revisions_only=None
     ):
+        """Initialize a new branch in the control directory.
+
+        Args:
+            a_controldir: Control directory to initialize branch in.
+            name: Name for colocated branch.
+            repository: Repository to use for the branch.
+            append_revisions_only: Whether branch should be append-only.
+
+        Returns:
+            RemoteBranch: The newly initialized branch.
+        """
         if name is None:
             name = a_controldir._get_selected_branch()
         # 1) get the network name to use.
@@ -3616,29 +4866,58 @@ class RemoteBranchFormat(branch.BranchFormat):
         return remote_branch
 
     def make_tags(self, branch):
+        """Create tags for the given branch.
+
+        Args:
+            branch: Branch to create tags for.
+
+        Returns:
+            Tags object for the branch.
+        """
         self._ensure_real()
         return self._custom_format.make_tags(branch)
 
     def supports_tags(self):
+        """Check if this format supports tags.
+
+        Returns:
+            bool: True if tags are supported.
+        """
         # Remote branches might support tags, but we won't know until we
         # access the real remote branch.
         self._ensure_real()
         return self._custom_format.supports_tags()
 
     def supports_stacking(self):
+        """Check if this format supports stacking.
+
+        Returns:
+            bool: True if stacking is supported.
+        """
         self._ensure_real()
         return self._custom_format.supports_stacking()
 
     def supports_set_append_revisions_only(self):
+        """Check if this format supports setting append_revisions_only.
+
+        Returns:
+            bool: True if append_revisions_only can be set.
+        """
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
     @property
     def supports_reference_locations(self):
+        """Check if this format supports reference locations."""
         self._ensure_real()
         return self._custom_format.supports_reference_locations
 
     def stores_revno(self):
+        """Check if this format stores revision numbers.
+
+        Returns:
+            bool: True if revision numbers are stored.
+        """
         return True
 
     def _use_default_local_heads_to_fetch(self):
@@ -3663,12 +4942,22 @@ class RemoteBranchStore(_mod_config.IniFileStore):
     """
 
     def __init__(self, branch):
+        """Initialize RemoteBranchStore.
+
+        Args:
+            branch: The branch to store configuration for.
+        """
         super().__init__()
         self.branch = branch
         self.id = "branch"
         self._real_store = None
 
     def external_url(self):
+        """Get the external URL for this configuration.
+
+        Returns:
+            str: The external URL for branch.conf.
+        """
         return urlutils.join(self.branch.user_url, "branch.conf")
 
     def _load_content(self):
@@ -3717,6 +5006,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @property
     def control_transport(self) -> _mod_transport.Transport:
+        """Get the control transport for this branch."""
         return self._transport  # type: ignore
 
     def __init__(
@@ -3834,12 +5124,25 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self.conf_store
 
     def store_uncommitted(self, creator):
+        """Store uncommitted changes.
+
+        Args:
+            creator: Creator function for uncommitted content.
+        """
         self._ensure_real()
         if self._real_branch is None:
             raise AssertionError
         return self._real_branch.store_uncommitted(creator)
 
     def get_unshelver(self, tree):
+        """Get an unshelver for the given tree.
+
+        Args:
+            tree: Working tree to get unshelver for.
+
+        Returns:
+            Unshelver object.
+        """
         self._ensure_real()
         if self._real_branch is None:
             raise AssertionError
@@ -3855,6 +5158,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     _transport = property(_get_real_transport)
 
     def __str__(self):
+        """Return string representation of this branch."""
         return f"{self.__class__.__name__}({self.base})"
 
     __repr__ = __str__
@@ -3915,6 +5219,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @property
     def control_files(self):
+        """Get the control files for this branch."""
         # Defer actually creating RemoteBranchLockableFiles until its needed,
         # because it triggers an _ensure_real that we otherwise might not need.
         if self._control_files is None:
@@ -4054,6 +5359,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
 
     def set_stacked_on_url(self, url):
+        """Set the stacked-on URL for this branch.
+
+        Args:
+            url: URL of the branch to stack on.
+
+        Raises:
+            UnstackableBranchFormat: If format doesn't support stacking.
+        """
         if not self._format.supports_stacking():
             raise UnstackableBranchFormat(self._format, self.user_url)
         with self.lock_write():
@@ -4174,6 +5487,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return branch_token, repo_token
 
     def lock_write(self, token=None):
+        """Acquire a write lock on this branch.
+
+        Args:
+            token: Optional lock token to use.
+
+        Returns:
+            Lock token for the acquired lock.
+        """
         if not self._lock_mode:
             self._note_lock("w")
             # Lock the branch and repo in one remote call.
@@ -4221,6 +5542,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release the lock on this branch."""
         try:
             self._lock_count -= 1
             if not self._lock_count:
@@ -4253,6 +5575,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.repository.unlock()
 
     def break_lock(self):
+        """Break any existing lock on this branch."""
         try:
             response = self._call(b"Branch.break_lock", self._remote_path())
         except errors.UnknownSmartMethod:
@@ -4262,16 +5585,27 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
 
     def leave_lock_in_place(self):
+        """Leave the lock in place when unlocking."""
         if not self._lock_token:
             raise NotImplementedError(self.leave_lock_in_place)
         self._leave_lock = True
 
     def dont_leave_lock_in_place(self):
+        """Don't leave the lock in place when unlocking."""
         if not self._lock_token:
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
     def get_rev_id(self, revno, history=None):
+        """Get the revision ID for a given revision number.
+
+        Args:
+            revno: Revision number to look up.
+            history: Optional history to use.
+
+        Returns:
+            bytes: The revision ID.
+        """
         if revno == 0:
             return _mod_revision.NULL_REVISION
         with self.lock_read():
@@ -4421,6 +5755,17 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_parent_location(url)
 
     def pull(self, source, overwrite=False, stop_revision=None, **kwargs):
+        """Pull changes from another branch.
+
+        Args:
+            source: Source branch to pull from.
+            overwrite: Whether to overwrite diverged history.
+            stop_revision: Revision to stop pulling at.
+            **kwargs: Additional arguments.
+
+        Returns:
+            PullResult: Result of the pull operation.
+        """
         with self.lock_write():
             self._clear_cached_state_of_remote_branch_only()
             self._ensure_real()
@@ -4440,6 +5785,18 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         lossy=False,
         tag_selector=None,
     ):
+        """Push changes to another branch.
+
+        Args:
+            target: Target branch to push to.
+            overwrite: Whether to overwrite diverged history.
+            stop_revision: Revision to stop pushing at.
+            lossy: Whether lossy push is allowed.
+            tag_selector: Tag selection function.
+
+        Returns:
+            PushResult: Result of the push operation.
+        """
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
@@ -4452,9 +5809,19 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             )
 
     def peek_lock_mode(self):
+        """Get the current lock mode without acquiring a lock.
+
+        Returns:
+            str: The lock mode ('r', 'w') or None.
+        """
         return self._lock_mode
 
     def is_locked(self):
+        """Check if the branch is currently locked.
+
+        Returns:
+            bool: True if the branch is locked.
+        """
         return self._lock_count >= 1
 
     def revision_id_to_dotted_revno(self, revision_id):
@@ -4503,6 +5870,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 raise errors.UnexpectedSmartServerResponse(response)
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information.
+
+        Args:
+            revno: Revision number.
+            revision_id: Revision ID.
+        """
         with self.lock_write():
             # XXX: These should be returned by the set_last_revision_info verb
             old_revno, old_revid = self.last_revision_info()
@@ -4536,6 +5909,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 raise errors.UnexpectedSmartServerResponse(response)
 
     def generate_revision_history(self, revision_id, last_rev=None, other_branch=None):
+        """Generate revision history to the specified revision.
+
+        Args:
+            revision_id: Target revision ID.
+            last_rev: Last known revision.
+            other_branch: Other branch for reference.
+        """
         with self.lock_write():
             medium = self._client._medium
             if not medium._is_remote_before((1, 6)):
@@ -4564,9 +5944,19 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
+        """Set the push location for this branch.
+
+        Args:
+            location: Push location URL to set.
+        """
         self._set_config_location("push_location", location)
 
     def heads_to_fetch(self):
+        """Get the heads to fetch for this branch.
+
+        Returns:
+            Set of revision IDs to fetch.
+        """
         if self._format._use_default_local_heads_to_fetch():
             # We recognise this format, and its heads-to-fetch implementation
             # is the default one (tip + tags).  In this case it's cheaper to
@@ -4705,6 +6095,11 @@ class RemoteBranchConfig(RemoteConfig):
     """A RemoteConfig for Branches."""
 
     def __init__(self, branch):
+        """Initialize RemoteBranchConfig.
+
+        Args:
+            branch: The branch to configure.
+        """
         self._branch = branch
 
     def _get_configobj(self):
@@ -4798,6 +6193,11 @@ class RemoteBzrDirConfig(RemoteConfig):
     """A RemoteConfig for BzrDirs."""
 
     def __init__(self, bzrdir):
+        """Initialize RemoteBzrDirConfig.
+
+        Args:
+            bzrdir: The BzrDir to configure.
+        """
         self._bzrdir = bzrdir
 
     def _get_configobj(self):
@@ -4898,6 +6298,16 @@ error_translators.register(
 
 
 def _translate_nobranch_error(err, find, get_path):
+    """Translate a 'nobranch' error from the smart server.
+
+    Args:
+        err: The ErrorFromSmartServer to translate.
+        find: Function to find context objects.
+        get_path: Function to get the path.
+
+    Returns:
+        A NotBranchError with appropriate path and detail.
+    """
     extra = err.error_args[0].decode("utf-8") if len(err.error_args) >= 1 else None
     return errors.NotBranchError(path=find("bzrdir").root_transport.base, detail=extra)
 

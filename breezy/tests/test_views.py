@@ -14,16 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for view-related error handling."""
+
 from ..views import FileOutsideView, NoSuchView, ViewsNotSupported
 from . import TestCase
 
 
 class TestErrors(TestCase):
+    """Test view-related error exceptions."""
+
     def test_no_such_view(self):
+        """Test NoSuchView error message formatting."""
         err = NoSuchView("foo")
         self.assertEqual("No such view: foo.", str(err))
 
     def test_views_not_supported(self):
+        """Test ViewsNotSupported error message formatting."""
         err = ViewsNotSupported("atree")
         err_str = str(err)
         self.assertStartsWith(err_str, "Views are not supported by ")
@@ -32,6 +38,7 @@ class TestErrors(TestCase):
         )
 
     def test_file_outside_view(self):
+        """Test FileOutsideView error message formatting."""
         err = FileOutsideView("baz", ["foo", "bar"])
         self.assertEqual(
             'Specified file "baz" is outside the current view: foo, bar', str(err)

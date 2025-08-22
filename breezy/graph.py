@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Graph algorithms and revision graph utilities.
+
+This module provides classes and functions for working with revision graphs,
+including finding ancestors, common ancestors, and performing topological sorting
+of revisions.
+"""
+
 import contextlib
 
 from . import debug, errors, osutils, trace
@@ -48,9 +55,15 @@ class DictParentsProvider:
     """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
+        """Initialize DictParentsProvider with ancestry dictionary.
+
+        Args:
+            ancestry: Dictionary mapping keys to their parent keys.
+        """
         self.ancestry = ancestry
 
     def __repr__(self):
+        """Return string representation of DictParentsProvider."""
         return f"DictParentsProvider({self.ancestry!r})"
 
     # Note: DictParentsProvider does not implement get_cached_parent_map
@@ -71,9 +84,15 @@ class StackedParentsProvider:
     """
 
     def __init__(self, parent_providers):
+        """Initialize StackedParentsProvider with a list of providers.
+
+        Args:
+            parent_providers: List of parents providers to stack.
+        """
         self._parent_providers = parent_providers
 
     def __repr__(self):
+        """Return string representation of StackedParentsProvider."""
         return f"{self.__class__.__name__}({self._parent_providers!r})"
 
     def get_parent_map(self, keys):
@@ -147,6 +166,7 @@ class CachingParentsProvider:
         self.enable_cache(True)
 
     def __repr__(self):
+        """Return string representation of CachingParentsProvider."""
         return f"{self.__class__.__name__}({self._real_provider!r})"
 
     def enable_cache(self, cache_misses=True):
@@ -217,12 +237,26 @@ class CallableToParentsProviderAdapter:
     """
 
     def __init__(self, a_callable):
+        """Initialize adapter with a callable.
+
+        Args:
+            a_callable: Callable that accepts keys and returns parent map.
+        """
         self.callable = a_callable
 
     def __repr__(self):
+        """Return string representation of CallableToParentsProviderAdapter."""
         return f"{self.__class__.__name__}({self.callable!r})"
 
     def get_parent_map(self, keys):
+        """Get parent map by calling the underlying callable.
+
+        Args:
+            keys: Keys to get parent map for.
+
+        Returns:
+            Dictionary mapping keys to their parents.
+        """
         return self.callable(keys)
 
 
@@ -251,6 +285,7 @@ class Graph:
         self._parents_provider = parents_provider
 
     def __repr__(self):
+        """Return string representation of Graph."""
         return f"Graph({self._parents_provider!r})"
 
     def find_lca(self, *revisions):
@@ -1055,6 +1090,15 @@ class Graph:
             pending = next_pending
 
     def iter_lefthand_ancestry(self, start_key, stop_keys=None):
+        """Iterate over the lefthand ancestry of start_key.
+
+        Args:
+            start_key: Key to start the ancestry walk from.
+            stop_keys: Optional set of keys to stop at.
+
+        Yields:
+            Keys in lefthand ancestry order.
+        """
         if stop_keys is None:
             stop_keys = ()
         next_key = start_key
@@ -1307,6 +1351,11 @@ class HeadsCache:
     """A cache of results for graph heads calls."""
 
     def __init__(self, graph):
+        """Initialize HeadsCache with a graph.
+
+        Args:
+            graph: Graph object to cache heads calls for.
+        """
         self.graph = graph
         self._heads = {}
 
@@ -1335,6 +1384,11 @@ class FrozenHeadsCache:
     """Cache heads() calls, assuming the caller won't modify them."""
 
     def __init__(self, graph):
+        """Initialize FrozenHeadsCache with a graph.
+
+        Args:
+            graph: Graph object to cache heads calls for.
+        """
         self.graph = graph
         self._heads = {}
 
@@ -1631,9 +1685,19 @@ class GraphThunkIdsToKeys:
     """Forwards calls about 'ids' to be about keys internally."""
 
     def __init__(self, graph):
+        """Initialize GraphThunkIdsToKeys with a graph.
+
+        Args:
+            graph: Graph object to forward calls to.
+        """
         self._graph = graph
 
     def topo_sort(self):
+        """Perform topological sort and return revision ids.
+
+        Returns:
+            List of revision ids in topological order.
+        """
         return [r for (r,) in self._graph.topo_sort()]
 
     def heads(self, ids):
@@ -1643,12 +1707,26 @@ class GraphThunkIdsToKeys:
         return {h[0] for h in head_keys}
 
     def merge_sort(self, tip_revision):
+        """Perform merge sort starting from tip_revision.
+
+        Args:
+            tip_revision: Revision id to start merge sort from.
+
+        Returns:
+            List of merge sorted nodes.
+        """
         nodes = self._graph.merge_sort((tip_revision,))
         for node in nodes:
             node.key = node.key[0]
         return nodes
 
     def add_node(self, revision, parents):
+        """Add a node to the graph.
+
+        Args:
+            revision: Revision id to add.
+            parents: List of parent revision ids.
+        """
         self._graph.add_node((revision,), [(p,) for p in parents])
 
 

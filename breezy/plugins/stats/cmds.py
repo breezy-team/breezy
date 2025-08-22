@@ -21,8 +21,9 @@ from .classify import classify_delta
 
 
 def collapse_by_person(revisions, canonical_committer):
-    """The committers list is sorted by email, fix it up by person.
+    """Collapse revisions by person, combining entries for the same person.
 
+    The committers list is sorted by email, fix it up by person.
     Some people commit with a similar username, but different email
     address. Which makes it hard to sort out when they have multiple
     entries. Email is actually more stable, though, since people
@@ -30,6 +31,15 @@ def collapse_by_person(revisions, canonical_committer):
 
     So take the most common username for each email address, and
     combine them into one new list.
+
+    Args:
+        revisions: Iterable of revision objects to process.
+        canonical_committer: Dictionary mapping (username, email) tuples
+            to canonical committer identities.
+
+    Returns:
+        List of tuples in format (commit_count, revisions_list, emails_dict,
+        fullnames_dict) sorted by commit count in descending order.
     """
     # Map from canonical committer to
     # {committer: ([rev_list], {email: count}, {fname:count})}
@@ -51,6 +61,14 @@ def collapse_by_person(revisions, canonical_committer):
     ]
 
     def key_fn(item):
+        """Generate sort key for committer statistics items.
+
+        Args:
+            item: Tuple of (commit_count, revisions_list, emails_dict, fullnames_dict).
+
+        Returns:
+            Tuple for sorting by commit count and then by fullname keys.
+        """
         return item[0], list(item[2].keys())
 
     res.sort(reverse=True, key=key_fn)
@@ -58,10 +76,21 @@ def collapse_by_person(revisions, canonical_committer):
 
 
 def collapse_email_and_users(email_users, combo_count):
-    """Combine the mapping of User Name to email and email to User Name.
+    """Combine mappings of usernames to emails and emails to usernames.
 
     If a given User Name is used for multiple emails, try to map it all to one
-    entry.
+    entry. This function resolves identity conflicts by creating canonical
+    mappings for each unique person based on both username and email patterns.
+
+    Args:
+        email_users: Dictionary mapping email addresses to sets of usernames
+            that have used that email.
+        combo_count: Dictionary mapping (username, email) tuples to their
+            occurrence counts.
+
+    Returns:
+        Dictionary mapping (username, email) tuples to their canonical
+        (username, email) representation.
     """
     id_to_combos = {}
     username_to_id = {}
@@ -69,6 +98,16 @@ def collapse_email_and_users(email_users, combo_count):
     id_counter = 0
 
     def collapse_ids(old_id, new_id, new_combos):
+        """Collapse two identity IDs into one, updating all mappings.
+
+        Merges the identity represented by old_id into new_id, updating
+        all internal mappings to maintain consistency.
+
+        Args:
+            old_id: Identity ID to be collapsed.
+            new_id: Target identity ID to merge into.
+            new_combos: Set of (username, email) combos for the new identity.
+        """
         old_combos = id_to_combos.pop(old_id)
         new_combos.update(old_combos)
         for old_user, old_email in old_combos:
@@ -135,7 +174,22 @@ def collapse_email_and_users(email_users, combo_count):
 
 
 def get_revisions_and_committers(a_repo, revids):
-    """Get the Revision information, and the best-match for committer."""
+    """Get revision information and canonical committer mappings.
+
+    Retrieves revision objects from the repository and builds a mapping
+    to resolve committer identity conflicts by finding the canonical
+    representation for each person.
+
+    Args:
+        a_repo: Repository object to fetch revisions from.
+        revids: Iterable of revision IDs to process.
+
+    Returns:
+        Tuple containing:
+            - Generator of revision objects
+            - Dictionary mapping (username, email) tuples to canonical
+              committer identities
+    """
     email_users = {}  # user@email.com => User Name
     combo_count = {}
     with ui.ui_factory.nested_progress_bar() as pb:
@@ -157,7 +211,19 @@ def get_revisions_and_committers(a_repo, revids):
 
 
 def get_info(a_repo, revision):
-    """Get all of the information for a particular revision."""
+    """Get comprehensive statistics information for a particular revision.
+
+    Retrieves the complete ancestry of a revision and generates committer
+    statistics by collapsing multiple identities for the same person.
+
+    Args:
+        a_repo: Repository object to analyze.
+        revision: Revision ID to analyze ancestry for.
+
+    Returns:
+        List of tuples containing statistics grouped by person in format
+        (commit_count, revisions_list, emails_dict, fullnames_dict).
+    """
     with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         trace.note("getting ancestry")
         graph = a_repo.get_graph()
@@ -172,9 +238,20 @@ def get_info(a_repo, revision):
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
-    """Get only the info for new revisions between the two revisions.
+    """Get statistics for new revisions between two revision points.
 
-    This lets us figure out what has actually changed between 2 revisions.
+    This lets us figure out what has actually changed between 2 revisions
+    by analyzing only the revisions that were added between the start
+    and end points.
+
+    Args:
+        a_repo: Repository object to analyze.
+        start_rev: Starting revision ID for comparison.
+        end_rev: Ending revision ID for comparison.
+
+    Returns:
+        List of tuples containing statistics for the differential revisions
+        in format (commit_count, revisions_list, emails_dict, fullnames_dict).
     """
     with ui.ui_factory.nested_progress_bar(), a_repo.lock_read():
         graph = a_repo.get_graph()
@@ -186,7 +263,20 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
 
 def display_info(info, to_file, gather_class_stats=None):
-    """Write out the information."""
+    """Display committer statistics information in a formatted output.
+
+    Writes detailed statistics about committers including commit counts,
+    alternative names, email addresses, and optionally contribution
+    classifications.
+
+    Args:
+        info: List of tuples containing committer statistics in format
+            (commit_count, revisions_list, emails_dict, fullnames_dict).
+        to_file: File-like object to write output to.
+        gather_class_stats: Optional callable that takes a revision list
+            and returns (classes_dict, total_count) for contribution
+            classification statistics.
+    """
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(
@@ -227,7 +317,21 @@ def display_info(info, to_file, gather_class_stats=None):
 
 
 class cmd_committer_statistics(commands.Command):
-    """Generate statistics for LOCATION."""
+    """Generate statistics for LOCATION.
+
+    This command analyzes a Breezy repository to provide detailed statistics
+    about committers, including commit counts, alternate names/emails used,
+    and optionally the types of contributions made (code, documentation, etc.).
+
+    The statistics can be generated for the entire history or for a specific
+    revision range, helping to understand contributor patterns and activity.
+
+    Attributes:
+        aliases: Alternative command names 'stats' and 'committer-stats'.
+        takes_args: Accepts optional location argument.
+        takes_options: Accepts revision range and show-class options.
+        encoding_type: Uses 'replace' encoding for output.
+    """
 
     aliases = ["stats", "committer-stats"]
     takes_args = ["location?"]
@@ -239,6 +343,16 @@ class cmd_committer_statistics(commands.Command):
     encoding_type = "replace"
 
     def run(self, location=".", revision=None, show_class=False):
+        """Execute the committer statistics command.
+
+        Args:
+            location: Path to the branch or working tree to analyze.
+                Defaults to current directory.
+            revision: Optional revision range to analyze. Can be a single
+                revision or a range of two revisions.
+            show_class: Whether to show contribution class statistics
+                (code, documentation, art, translation).
+        """
         alternate_rev = None
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
@@ -262,6 +376,14 @@ class cmd_committer_statistics(commands.Command):
         if show_class:
 
             def fetch_class_stats(revs):
+                """Fetch contribution class statistics for revisions.
+
+                Args:
+                    revs: List of revision objects to analyze.
+
+                Returns:
+                    Tuple of (classes_dict, total_count) for contribution statistics.
+                """
                 return gather_class_stats(a_branch.repository, revs)
         else:
             fetch_class_stats = None
@@ -269,7 +391,18 @@ class cmd_committer_statistics(commands.Command):
 
 
 class cmd_ancestor_growth(commands.Command):
-    """Figure out the ancestor graph for LOCATION."""
+    """Figure out the ancestor graph for LOCATION.
+
+    This hidden command analyzes the growth of ancestors in the revision
+    history, tracking how the number of ancestors changes over time.
+    It outputs revision numbers paired with their ancestor counts,
+    useful for understanding repository complexity and merge patterns.
+
+    Attributes:
+        takes_args: Accepts optional location argument.
+        encoding_type: Uses 'replace' encoding for output.
+        hidden: Command is hidden from normal help output.
+    """
 
     takes_args = ["location?"]
 
@@ -278,6 +411,15 @@ class cmd_ancestor_growth(commands.Command):
     hidden = True
 
     def run(self, location="."):
+        """Execute the ancestor growth analysis command.
+
+        Analyzes the growth of ancestors over the revision history,
+        outputting revision numbers and ancestor counts.
+
+        Args:
+            location: Path to the branch or working tree to analyze.
+                Defaults to current directory.
+        """
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
@@ -300,6 +442,20 @@ class cmd_ancestor_growth(commands.Command):
 
 
 def gather_class_stats(repository, revs):
+    """Gather statistics about contribution classes from revisions.
+
+    Analyzes revision deltas to classify contributions into categories
+    such as code, documentation, art, and translation changes.
+
+    Args:
+        repository: Repository object to analyze.
+        revs: List of revision objects to classify.
+
+    Returns:
+        Tuple containing:
+            - Dictionary mapping class names to occurrence counts
+            - Total number of classified contributions
+    """
     ret = {}
     total = 0
     with ui.ui_factory.nested_progress_bar() as pb, repository.lock_read():
@@ -314,14 +470,40 @@ def gather_class_stats(repository, revs):
 
 
 def classify_key(item):
-    """Sort key for item of (author, count) from classify_delta."""
+    """Generate sort key for contribution classification items.
+
+    Creates a sort key that orders items by count (descending) and then
+    by name (ascending) for consistent sorting of classification results.
+
+    Args:
+        item: Tuple of (classification_name, count).
+
+    Returns:
+        Tuple suitable for use as a sort key.
+    """
     return -item[1], item[0]
 
 
 def display_credits(credits, to_file):
+    """Display contributor credits organized by contribution type.
+
+    Outputs credits information grouped into sections for different
+    types of contributions (code, documentation, art, translations).
+
+    Args:
+        credits: Tuple containing four lists:
+            (coders, documenters, artists, translators).
+        to_file: File-like object to write output to.
+    """
     (coders, documenters, artists, translators) = credits
 
     def print_section(name, lst):
+        """Print a credits section with contributors.
+
+        Args:
+            name: Section name to display.
+            lst: List of contributor names.
+        """
         if len(lst) == 0:
             return
         to_file.write(f"{name}:\n")
@@ -338,7 +520,16 @@ def display_credits(credits, to_file):
 def find_credits(repository, revid):
     """Find the credits of the contributors to a revision.
 
-    :return: tuple with (authors, documenters, artists, translators)
+    Analyzes the complete ancestry of a revision to determine contributor
+    credits organized by the type of contribution they made.
+
+    Args:
+        repository: Repository object to analyze.
+        revid: Revision ID to analyze ancestry for.
+
+    Returns:
+        Tuple containing four lists:
+            (coders, documenters, artists, translators)
     """
     ret = {"documentation": {}, "code": {}, "art": {}, "translation": {}, None: {}}
     with repository.lock_read():
@@ -363,6 +554,14 @@ def find_credits(repository, revid):
                         ret[c][author] += 1
 
     def sort_class(name):
+        """Sort contributors by contribution count for a specific class.
+
+        Args:
+            name: Classification name to sort contributors for.
+
+        Returns:
+            List of contributor names sorted by contribution count.
+        """
         return [author for author, _ in sorted(ret[name].items(), key=classify_key)]
 
     return (
@@ -374,7 +573,19 @@ def find_credits(repository, revid):
 
 
 class cmd_credits(commands.Command):
-    """Determine credits for LOCATION."""
+    """Determine credits for LOCATION.
+
+    This command analyzes a repository to generate contributor credits
+    organized by the type of contributions made. It classifies changes
+    into categories like code, documentation, art, and translations,
+    then lists contributors in each category based on their contribution
+    frequency.
+
+    Attributes:
+        takes_args: Accepts optional location argument.
+        takes_options: Accepts revision option to analyze specific revision.
+        encoding_type: Uses 'replace' encoding for output.
+    """
 
     takes_args = ["location?"]
     takes_options = ["revision"]
@@ -382,6 +593,17 @@ class cmd_credits(commands.Command):
     encoding_type = "replace"
 
     def run(self, location=".", revision=None):
+        """Execute the credits analysis command.
+
+        Analyzes the repository to determine credits for contributors
+        organized by type of contribution.
+
+        Args:
+            location: Path to the branch or working tree to analyze.
+                Defaults to current directory.
+            revision: Optional specific revision to analyze credits for.
+                If not provided, uses the last revision.
+        """
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:

@@ -129,14 +129,7 @@ ignore = [
     "ANN204",
     "ANN205",
     "ANN206",
-    "D100",  # Missing docstring in public module
-    "D101",  # Missing docstring in public class
-    "D103",  # Missing docstring in public function
-    "D105",  # Missing docstring in magic method
-    "D102",  # Missing docstring in public method
     "D205",  # 1 blank line required between summary line and description
-    "D106",  # Missing docstring in public nested class
-    "D107",  # Missing docstring in __init__
     "D417",  # Missing argument descriptions in the docstring
     "F821",  # undefined-name
     "E501",  # line too long
@@ -183,6 +176,12 @@ unfixable = ["ANN204"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
+# Ignore docstring requirements for test files
+"breezy/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/bzr/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/*/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/**/test_*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/**/*_test.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -229,6 +229,18 @@ def tree_files_for_add(file_list):
 
 
 def _get_one_revision(command_name, revisions):
+    """Get exactly one revision from a revision list.
+
+    Args:
+        command_name: Name of the command for error messages.
+        revisions: List of revisions or None.
+
+    Returns:
+        The single revision from the list, or None if revisions is None.
+
+    Raises:
+        CommandError: If revisions list doesn't contain exactly one revision.
+    """
     if revisions is None:
         return None
     if len(revisions) != 1:
@@ -289,7 +301,7 @@ def _open_directory_or_containing_tree_or_branch(filename, directory):
 # opens the branch?)
 
 
-class cmd_status(Command):
+class cmd_status(Command):  # noqa: D101
     __doc__ = """Display status summary.
 
     This reports on versioned and unknown files, reporting them
@@ -376,6 +388,18 @@ class cmd_status(Command):
         verbose=False,
         no_classify=False,
     ):
+        """Display status of files in the working tree.
+
+        Args:
+            show_ids: Show file ids in output.
+            file_list: List of files to show status for.
+            revision: Show status relative to a revision or revision range.
+            short: Use short status indicators.
+            versioned: Only show versioned files.
+            no_pending: Don't show pending merges.
+            verbose: Show detailed status information.
+            no_classify: Don't mark object type using indicators.
+        """
         from .status import show_tree_status
         from .workingtree import WorkingTree
 
@@ -410,7 +434,7 @@ class cmd_status(Command):
         )
 
 
-class cmd_cat_revision(Command):
+class cmd_cat_revision(Command):  # noqa: D101
     __doc__ = """Write out metadata for a revision.
 
     The revision to print can either be specified by a specific
@@ -424,6 +448,12 @@ class cmd_cat_revision(Command):
     encoding = "strict"
 
     def print_revision(self, revisions, revid):
+        """Print revision metadata to output.
+
+        Args:
+            revisions: Revision store to get revision from.
+            revid: Revision ID to print.
+        """
         stream = revisions.get_record_stream([(revid,)], "unordered", True)
         record = next(stream)
         if record.storage_kind == "absent":
@@ -433,6 +463,13 @@ class cmd_cat_revision(Command):
 
     @display_command
     def run(self, revision_id=None, revision=None, directory="."):
+        """Write out metadata for a revision.
+
+        Args:
+            revision_id: Specific revision identifier to print.
+            revision: Revision specification to use instead of revision_id.
+            directory: Directory containing the repository.
+        """
         if revision_id is not None and revision is not None:
             raise errors.CommandError(
                 gettext("You can only supply one of revision_id or --revision")
@@ -472,7 +509,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, rev_id)
 
 
-class cmd_remove_tree(Command):
+class cmd_remove_tree(Command):  # noqa: D101
     __doc__ = """Remove the working tree from a given branch/checkout.
 
     Since a lightweight checkout is little more than a working tree
@@ -491,6 +528,17 @@ class cmd_remove_tree(Command):
     ]
 
     def run(self, location_list, force=False):
+        """Execute the remove-tree command.
+
+        Args:
+            location_list: List of locations to remove working trees from.
+                          If empty, defaults to current directory.
+            force: If True, remove working tree even if it has uncommitted
+                  or shelved changes.
+
+        Raises:
+            CommandError: If working tree cannot be safely removed.
+        """
         if not location_list:
             location_list = ["."]
 
@@ -521,7 +569,7 @@ class cmd_remove_tree(Command):
             d.destroy_workingtree()
 
 
-class cmd_repair_workingtree(Command):
+class cmd_repair_workingtree(Command):  # noqa: D101
     __doc__ = """Reset the working tree state file.
 
     This is not meant to be used normally, but more as a way to recover from
@@ -547,6 +595,13 @@ class cmd_repair_workingtree(Command):
     hidden = True
 
     def run(self, revision=None, directory=".", force=False):
+        """Execute the repair-workingtree command.
+
+        Args:
+            revision: Specific revision to reset the tree to.
+            directory: Directory containing the working tree.
+            force: Reset even if tree doesn't appear corrupted.
+        """
         from .workingtree import WorkingTree
 
         tree, _ = WorkingTree.open_containing(directory)
@@ -584,7 +639,7 @@ class cmd_repair_workingtree(Command):
             ) from exc
 
 
-class cmd_revno(Command):
+class cmd_revno(Command):  # noqa: D101
     __doc__ = """Show current revision number.
 
     This is equal to the number of revisions on this branch.
@@ -599,6 +654,13 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location=".", revision=None):
+        """Execute the revno command.
+
+        Args:
+            tree: Show revision number of working tree.
+            location: Branch location to query.
+            revision: Show revno of specific revision.
+        """
         from .workingtree import WorkingTree
 
         if revision is not None and tree:
@@ -637,7 +699,7 @@ class cmd_revno(Command):
         self.outf.write(revno + "\n")
 
 
-class cmd_revision_info(Command):
+class cmd_revision_info(Command):  # noqa: D101
     __doc__ = """Show revision number and revision id for a given revision identifier.
     """
     hidden = True
@@ -654,6 +716,14 @@ class cmd_revision_info(Command):
 
     @display_command
     def run(self, revision=None, directory=".", tree=False, revision_info_list=None):
+        """Execute the revision-info command.
+
+        Args:
+            revision: Revision specification.
+            directory: Branch directory to examine.
+            tree: Show revision info for working tree.
+            revision_info_list: List of revision identifiers.
+        """
         from .workingtree import WorkingTree
 
         try:
@@ -696,7 +766,7 @@ class cmd_revision_info(Command):
             self.outf.write("%*s %s\n" % (maxlen, revno, revid.decode("utf-8")))
 
 
-class cmd_add(Command):
+class cmd_add(Command):  # noqa: D101
     __doc__ = """Add specified files or directories.
 
     In non-recursive mode, all the named items are added, regardless
@@ -765,6 +835,21 @@ class cmd_add(Command):
         verbose=False,
         file_ids_from=None,
     ):
+        """Execute the add command to add files to version control.
+
+        Args:
+            file_list: List of files/directories to add. If empty, adds
+                      all files in current directory recursively.
+            no_recurse: If True, don't recursively add directory contents.
+            dry_run: If True, show what would be done without making changes.
+            verbose: If True, show additional information during operation.
+            file_ids_from: Tree to lookup file ids from for compatibility.
+
+        Note:
+            Files larger than add.maximum_file_size configuration option
+            will be skipped in recursive mode, but explicitly named files
+            are never skipped due to size.
+        """
         import breezy.add
 
         from .workingtree import WorkingTree
@@ -810,7 +895,7 @@ class cmd_add(Command):
                     )
 
 
-class cmd_mkdir(Command):
+class cmd_mkdir(Command):  # noqa: D101
     __doc__ = """Create a new versioned directory.
 
     This is equivalent to creating the directory and then adding it.
@@ -828,6 +913,16 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_with_parents(cls, wt, relpath):
+        """Add a file and its parent directories to version control.
+
+        Args:
+            wt: Working tree to add the file to.
+            relpath: Relative path of the file to add.
+
+        Note:
+            If the file is already versioned, this method does nothing.
+            Parent directories are recursively added if not already versioned.
+        """
         if wt.is_versioned(relpath):
             return
         cls.add_file_with_parents(wt, osutils.dirname(relpath))
@@ -835,9 +930,26 @@ class cmd_mkdir(Command):
 
     @classmethod
     def add_file_single(cls, wt, relpath):
+        """Add a single file to version control.
+
+        Args:
+            wt: Working tree to add the file to.
+            relpath: Relative path of the file to add.
+        """
         wt.add([relpath])
 
     def run(self, dir_list, parents=False):
+        """Execute the mkdir command to create versioned directories.
+
+        Args:
+            dir_list: List of directory names to create and add to version control.
+            parents: If True, create parent directories as needed and don't error
+                    if directories already exist.
+
+        Note:
+            This is equivalent to creating the directory with mkdir and then
+            adding it to version control.
+        """
         from .workingtree import WorkingTree
 
         add_file = self.add_file_with_parents if parents else self.add_file_single
@@ -853,7 +965,7 @@ class cmd_mkdir(Command):
                 self.outf.write(gettext("added %s\n") % dir)
 
 
-class cmd_relpath(Command):
+class cmd_relpath(Command):  # noqa: D101
     __doc__ = """Show path of a file relative to root"""
 
     takes_args = ["filename"]
@@ -861,6 +973,11 @@ class cmd_relpath(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the relpath command.
+
+        Args:
+            filename: File path to show relative to root.
+        """
         from .workingtree import WorkingTree
 
         # TODO: jam 20050106 Can relpath return a munged path if
@@ -870,7 +987,7 @@ class cmd_relpath(Command):
         self.outf.write("\n")
 
 
-class cmd_inventory(Command):
+class cmd_inventory(Command):  # noqa: D101
     __doc__ = """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
@@ -905,6 +1022,15 @@ class cmd_inventory(Command):
         include_root=False,
         file_list=None,
     ):
+        """Execute the inventory command.
+
+        Args:
+            revision: Specific revision to show inventory for.
+            show_ids: Display internal file IDs.
+            kind: Filter by entry type (file, directory, symlink).
+            include_root: Include the tree root entry.
+            file_list: Specific files to show inventory for.
+        """
         from .workingtree import WorkingTree
 
         if kind and kind not in ["file", "directory", "symlink"]:
@@ -945,7 +1071,7 @@ class cmd_inventory(Command):
                 self.outf.write("\n")
 
 
-class cmd_cp(Command):
+class cmd_cp(Command):  # noqa: D101
     __doc__ = """Copy a file.
 
     :Usage:
@@ -966,6 +1092,11 @@ class cmd_cp(Command):
     encoding_type = "replace"
 
     def run(self, names_list):
+        """Execute the cp command.
+
+        Args:
+            names_list: List of source files and destination.
+        """
         from .workingtree import WorkingTree
 
         if names_list is None:
@@ -1034,7 +1165,7 @@ class cmd_cp(Command):
             tree.copy_one(src, dst)
 
 
-class cmd_mv(Command):
+class cmd_mv(Command):  # noqa: D101
     __doc__ = """Move or rename a file.
 
     :Usage:
@@ -1069,6 +1200,14 @@ class cmd_mv(Command):
     encoding_type = "replace"
 
     def run(self, names_list, after=False, auto=False, dry_run=False):
+        """Execute the mv command.
+
+        Args:
+            names_list: List of source files and destination.
+            after: Record move that has already occurred.
+            auto: Automatically guess renames.
+            dry_run: Show what would be done without making changes.
+        """
         from .workingtree import WorkingTree
 
         if auto:
@@ -1089,6 +1228,23 @@ class cmd_mv(Command):
         self._run(tree, names_list, rel_names, after)
 
     def run_auto(self, names_list, after, dry_run):
+        """Automatically detect and perform file renames.
+
+        Args:
+            names_list: Optional list of paths to consider for rename detection.
+                       If specified, must contain exactly one path.
+            after: If True, record that files have already been renamed.
+                  Cannot be used with --auto.
+            dry_run: If True, show what would be renamed without making changes.
+
+        Raises:
+            CommandError: If more than one path specified with --auto or if
+                         --after is used with --auto.
+
+        Note:
+            This method uses heuristics to detect file renames that have already
+            happened in the filesystem but haven't been recorded in version control.
+        """
         from .rename_map import RenameMap
         from .workingtree import WorkingTree
 
@@ -1191,7 +1347,7 @@ class cmd_mv(Command):
                 self.outf.write(f"{src} => {dest}\n")
 
 
-class cmd_pull(Command):
+class cmd_pull(Command):  # noqa: D101
     __doc__ = """Turn this branch into a mirror of another branch.
 
     By default, this command only works on branches that have not diverged.
@@ -1256,6 +1412,19 @@ class cmd_pull(Command):
         show_base=False,
         overwrite_tags=False,
     ):
+        """Execute the pull command.
+
+        Args:
+            location: Branch location to pull from.
+            remember: Remember the location as the default.
+            overwrite: Ignore differences and overwrite unconditionally.
+            revision: Pull only up to this revision.
+            verbose: Show logs of pulled revisions.
+            directory: Branch directory to pull into.
+            local: Perform a local pull in a bound branch.
+            show_base: Show base revision text in conflicts.
+            overwrite_tags: Overwrite tags only.
+        """
         from . import mergeable as _mod_mergeable
         from .workingtree import WorkingTree
 
@@ -1361,7 +1530,7 @@ class cmd_pull(Command):
             return 0
 
 
-class cmd_push(Command):
+class cmd_push(Command):  # noqa: D101
     __doc__ = """Update a mirror of this branch.
 
     The target branch will not have its working tree populated because this
@@ -1462,6 +1631,24 @@ class cmd_push(Command):
         overwrite_tags=False,
         lossy=False,
     ):
+        """Execute the push command.
+
+        Args:
+            location: Branch location to push to.
+            remember: Remember location as the default.
+            overwrite: Ignore differences and overwrite unconditionally.
+            create_prefix: Create the path leading to the branch.
+            verbose: Display pushed revisions.
+            revision: Push only up to this revision.
+            use_existing_dir: Use existing directory at destination.
+            directory: Branch directory to push from.
+            stacked_on: Create a stacked branch referring to another branch.
+            stacked: Create a stacked branch referring to the parent.
+            strict: Refuse to push with uncommitted changes.
+            no_tree: Don't create a working tree at destination.
+            overwrite_tags: Overwrite tags only.
+            lossy: Allow lossy push for foreign formats.
+        """
         from .location import location_to_url
         from .push import _show_push_branch
 
@@ -1551,7 +1738,7 @@ class cmd_push(Command):
         )
 
 
-class cmd_branch(Command):
+class cmd_branch(Command):  # noqa: D101
     __doc__ = """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
@@ -1617,6 +1804,23 @@ class cmd_branch(Command):
         no_recurse_nested=False,
         colocated_branch=None,
     ):
+        """Execute the branch command.
+
+        Args:
+            from_location: Source branch location.
+            to_location: Destination for the new branch.
+            revision: Specific revision to branch from.
+            hardlink: Hard-link working tree files where possible.
+            stacked: Create a stacked branch referring to source.
+            standalone: Do not reference the source branch.
+            no_tree: Create a branch without a working tree.
+            use_existing_dir: Use existing directory at destination.
+            switch: Switch the containing directory to the new branch.
+            bind: Bind new branch to source location.
+            files_from: Get file contents from this tree.
+            no_recurse_nested: Do not check out nested trees.
+            colocated_branch: Name of colocated branch to create.
+        """
         from breezy import switch as _mod_switch
 
         from .workingtree import WorkingTree
@@ -1745,7 +1949,7 @@ class cmd_branch(Command):
             )
 
 
-class cmd_branches(Command):
+class cmd_branches(Command):  # noqa: D101
     __doc__ = """List the branches available at the current location.
 
     This command will print the names of all the branches at the current
@@ -1763,6 +1967,12 @@ class cmd_branches(Command):
     ]
 
     def run(self, location=".", recursive=False):
+        """Execute the branches command.
+
+        Args:
+            location: Location to list branches from.
+            recursive: Recursively scan for branches.
+        """
         if recursive:
             t = transport.get_transport(location, purpose="read")
             if not t.listable():
@@ -1800,7 +2010,7 @@ class cmd_branches(Command):
                 self.outf.write(f"{prefix} {name}\n")
 
 
-class cmd_checkout(Command):
+class cmd_checkout(Command):  # noqa: D101
     __doc__ = """Create a new checkout of an existing branch.
 
     If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree
@@ -1847,6 +2057,16 @@ class cmd_checkout(Command):
         files_from=None,
         hardlink=False,
     ):
+        """Execute the checkout command.
+
+        Args:
+            branch_location: Branch to check out from.
+            to_location: Directory to create checkout in.
+            revision: Specific revision to check out.
+            lightweight: Create a lightweight checkout.
+            files_from: Get file contents from this tree.
+            hardlink: Hard-link working tree files where possible.
+        """
         from .workingtree import WorkingTree
 
         if branch_location is None:
@@ -1884,7 +2104,7 @@ class cmd_checkout(Command):
         )
 
 
-class cmd_clone(Command):
+class cmd_clone(Command):  # noqa: D101
     __doc__ = """Clone a control directory.
     """
 
@@ -1897,6 +2117,14 @@ class cmd_clone(Command):
     def run(
         self, from_location, to_location=None, revision=None, no_recurse_nested=False
     ):
+        """Execute the clone command.
+
+        Args:
+            from_location: Source control directory to clone.
+            to_location: Destination for the clone.
+            revision: Specific revision to clone at.
+            no_recurse_nested: Do not check out nested trees.
+        """
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location
         )
@@ -1919,7 +2147,7 @@ class cmd_clone(Command):
         note(gettext("Created new control directory."))
 
 
-class cmd_renames(Command):
+class cmd_renames(Command):  # noqa: D101
     __doc__ = """Show list of renamed files.
     """
     # TODO: Option to show renames between two historical versions.
@@ -1930,6 +2158,11 @@ class cmd_renames(Command):
 
     @display_command
     def run(self, dir="."):
+        """Execute the renames command.
+
+        Args:
+            dir: Directory to show renames in.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(dir)[0]
@@ -1949,7 +2182,7 @@ class cmd_renames(Command):
             self.outf.write(f"{old_name} => {new_name}\n")
 
 
-class cmd_update(Command):
+class cmd_update(Command):  # noqa: D101
     __doc__ = """Update a working tree to a new revision.
 
     This will perform a merge of the destination revision (the tip of the
@@ -1988,6 +2221,13 @@ class cmd_update(Command):
     aliases = ["up"]
 
     def run(self, dir=None, revision=None, show_base=None):
+        """Execute the update command.
+
+        Args:
+            dir: Directory containing the working tree to update.
+            revision: Specific revision to update to.
+            show_base: Show base revision text in conflicts.
+        """
         from .workingtree import WorkingTree
 
         if revision is not None and len(revision) != 1:
@@ -2080,7 +2320,7 @@ class cmd_update(Command):
             return 0
 
 
-class cmd_info(Command):
+class cmd_info(Command):  # noqa: D101
     __doc__ = """Show information about a working tree, branch or repository.
 
     This command will show all known locations and formats associated to the
@@ -2115,6 +2355,12 @@ class cmd_info(Command):
 
     @display_command
     def run(self, location=None, verbose=False):
+        """Execute the info command.
+
+        Args:
+            location: Location to show information about.
+            verbose: Show more detailed information.
+        """
         noise_level = get_verbosity_level() if verbose else 0
         from .info import show_bzrdir_info
 
@@ -2125,7 +2371,7 @@ class cmd_info(Command):
         )
 
 
-class cmd_remove(Command):
+class cmd_remove(Command):  # noqa: D101
     __doc__ = """Remove files or directories.
 
     This makes Breezy stop tracking changes to the specified files. Breezy will
@@ -2153,6 +2399,14 @@ class cmd_remove(Command):
     encoding_type = "replace"
 
     def run(self, file_list, verbose=False, new=False, file_deletion_strategy="safe"):
+        """Execute the remove command.
+
+        Args:
+            file_list: Files or directories to remove.
+            verbose: Show detailed output.
+            new: Only remove files that have never been committed.
+            file_deletion_strategy: How to handle file deletion (safe/keep/no_backup).
+        """
         from .workingtree import WorkingTree
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -2187,7 +2441,7 @@ class cmd_remove(Command):
         )
 
 
-class cmd_reconcile(Command):
+class cmd_reconcile(Command):  # noqa: D101
     __doc__ = """Reconcile brz metadata in a branch.
 
     This can correct data mismatches that may have been caused by
@@ -2217,13 +2471,19 @@ class cmd_reconcile(Command):
     ]
 
     def run(self, branch=".", canonicalize_chks=False):
+        """Execute the reconcile command.
+
+        Args:
+            branch: Branch to reconcile.
+            canonicalize_chks: Ensure CHKs are in canonical form.
+        """
         from .reconcile import reconcile
 
         dir = controldir.ControlDir.open(branch)
         reconcile(dir, canonicalize_chks=canonicalize_chks)
 
 
-class cmd_revision_history(Command):
+class cmd_revision_history(Command):  # noqa: D101
     __doc__ = """Display the list of revision ids on a branch."""
 
     _see_also = ["log"]
@@ -2233,6 +2493,11 @@ class cmd_revision_history(Command):
 
     @display_command
     def run(self, location="."):
+        """Execute the revision-history command.
+
+        Args:
+            location: Branch location to show history for.
+        """
         branch = Branch.open_containing(location)[0]
         self.enter_context(branch.lock_read())
         graph = branch.repository.get_graph()
@@ -2246,7 +2511,7 @@ class cmd_revision_history(Command):
             self.outf.write("\n")
 
 
-class cmd_ancestry(Command):
+class cmd_ancestry(Command):  # noqa: D101
     __doc__ = """List all revisions merged into this branch."""
 
     _see_also = ["log", "revision-history"]
@@ -2256,6 +2521,11 @@ class cmd_ancestry(Command):
 
     @display_command
     def run(self, location="."):
+        """Execute the ancestry command.
+
+        Args:
+            location: Location to show ancestry for.
+        """
         from .workingtree import WorkingTree
 
         try:
@@ -2276,7 +2546,7 @@ class cmd_ancestry(Command):
             self.outf.write(revision_id.decode("utf-8") + "\n")
 
 
-class cmd_init(Command):
+class cmd_init(Command):  # noqa: D101
     __doc__ = """Make a directory into a versioned branch.
 
     Use this to create an empty branch, or before importing an
@@ -2334,6 +2604,15 @@ class cmd_init(Command):
         create_prefix=False,
         no_tree=False,
     ):
+        """Execute the init command.
+
+        Args:
+            location: Directory to create branch in.
+            format: Specific format to use for the branch.
+            append_revisions_only: Never change revnos or existing log.
+            create_prefix: Create parent directories if needed.
+            no_tree: Create a branch without a working tree.
+        """
         if format is None:
             format = controldir.format_registry.make_controldir("default")
         if location is None:
@@ -2418,7 +2697,7 @@ class cmd_init(Command):
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
-class cmd_init_shared_repository(Command):
+class cmd_init_shared_repository(Command):  # noqa: D101
     __doc__ = """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
@@ -2469,6 +2748,13 @@ class cmd_init_shared_repository(Command):
     aliases = ["init-shared-repo", "init-repo"]
 
     def run(self, location, format=None, no_trees=False):
+        """Execute the init-shared-repository command.
+
+        Args:
+            location: Directory to create shared repository in.
+            format: Specific format to use for the repository.
+            no_trees: Branches will default to not having working trees.
+        """
         if format is None:
             format = controldir.format_registry.make_controldir("default")
 
@@ -2502,7 +2788,7 @@ class cmd_init_shared_repository(Command):
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
 
 
-class cmd_diff(Command):
+class cmd_diff(Command):  # noqa: D101
     __doc__ = """Show differences in the working tree, between revisions or branches.
 
     If no arguments are given, all changes for the current tree are listed.
@@ -2665,6 +2951,20 @@ class cmd_diff(Command):
         context=None,
         color="auto",
     ):
+        """Execute the diff command.
+
+        Args:
+            revision: Revisions to compare.
+            file_list: Specific files to diff.
+            diff_options: Options to pass to diff.
+            prefix: Set prefix for old and new in diff output.
+            old: Branch/tree to compare from.
+            new: Branch/tree to compare to.
+            using: Use this command to compare files.
+            format: Output format for the diff.
+            context: Number of context lines.
+            color: Use color output.
+        """
         from .diff import get_trees_and_branches_to_diff_locked, show_diff_trees
 
         if prefix == "0":
@@ -2734,7 +3034,7 @@ class cmd_diff(Command):
         )
 
 
-class cmd_deleted(Command):
+class cmd_deleted(Command):  # noqa: D101
     __doc__ = """List files deleted in the working tree.
     """
     # TODO: Show files deleted since a previous revision, or
@@ -2748,6 +3048,12 @@ class cmd_deleted(Command):
 
     @display_command
     def run(self, show_ids=False, directory="."):
+        """Execute the deleted command.
+
+        Args:
+            show_ids: Show file IDs.
+            directory: Directory to check for deleted files.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -2763,7 +3069,7 @@ class cmd_deleted(Command):
             self.outf.write("\n")
 
 
-class cmd_modified(Command):
+class cmd_modified(Command):  # noqa: D101
     __doc__ = """List files modified in working tree.
     """
 
@@ -2773,6 +3079,12 @@ class cmd_modified(Command):
 
     @display_command
     def run(self, null=False, directory="."):
+        """Execute the modified command.
+
+        Args:
+            null: Use null separators.
+            directory: Directory to check for modified files.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -2786,7 +3098,7 @@ class cmd_modified(Command):
                 self.outf.write(osutils.quotefn(change.path[1]) + "\n")
 
 
-class cmd_added(Command):
+class cmd_added(Command):  # noqa: D101
     __doc__ = """List files added in working tree.
     """
 
@@ -2796,6 +3108,12 @@ class cmd_added(Command):
 
     @display_command
     def run(self, null=False, directory="."):
+        """Execute the added command.
+
+        Args:
+            null: Use null separators.
+            directory: Directory to check for added files.
+        """
         from .workingtree import WorkingTree
 
         wt = WorkingTree.open_containing(directory)[0]
@@ -2815,7 +3133,7 @@ class cmd_added(Command):
                 self.outf.write(osutils.quotefn(path) + "\n")
 
 
-class cmd_root(Command):
+class cmd_root(Command):  # noqa: D101
     __doc__ = """Show the tree root directory.
 
     The root is the nearest enclosing directory with a control
@@ -2833,6 +3151,17 @@ class cmd_root(Command):
 
 
 def _parse_limit(limitstring):
+    """Parse a limit string into an integer.
+
+    Args:
+        limitstring: String representation of a limit value.
+
+    Returns:
+        Integer value of the limit.
+
+    Raises:
+        CommandError: If limitstring cannot be parsed as an integer.
+    """
     try:
         return int(limitstring)
     except ValueError as exc:
@@ -2841,6 +3170,17 @@ def _parse_limit(limitstring):
 
 
 def _parse_levels(s):
+    """Parse a levels string into an integer.
+
+    Args:
+        s: String representation of a levels value.
+
+    Returns:
+        Integer value of the levels.
+
+    Raises:
+        CommandError: If s cannot be parsed as an integer.
+    """
     try:
         return int(s)
     except ValueError as exc:
@@ -2848,7 +3188,7 @@ def _parse_levels(s):
         raise errors.CommandError(msg) from exc
 
 
-class cmd_log(Command):
+class cmd_log(Command):  # noqa: D101
     __doc__ = """Show historical log for a branch or subset of a branch.
 
     log is brz's default tool for exploring the history of a branch.
@@ -3115,6 +3455,32 @@ class cmd_log(Command):
         match_bugs=None,
         omit_merges=False,
     ):
+        """Execute the log command.
+
+        Args:
+            file_list: Files to show log for.
+            timezone: Timezone for displaying dates.
+            verbose: Show extra information.
+            show_ids: Show revision and file IDs.
+            forward: Show from oldest to newest.
+            revision: Show logs for these revisions.
+            change: Show log including and since this change.
+            log_format: Format to use for log output.
+            levels: Number of levels to display.
+            message: Show revisions matching this regex.
+            limit: Limit output to first N revisions.
+            show_diff: Show changes as patches.
+            include_merged: Show merged revisions.
+            authors: Show revisions by these authors.
+            exclude_common_ancestry: Exclude common ancestry.
+            signatures: Validate revision signatures.
+            match: Generic search term.
+            match_message: Search commit messages.
+            match_committer: Search committer names.
+            match_author: Search author names.
+            match_bugs: Search for bug references.
+            omit_merges: Skip merge commits.
+        """
         from .log import Logger, _get_info_for_log_files, make_log_request_dict
 
         direction = (forward and "forward") or "reverse"
@@ -3304,6 +3670,15 @@ def _get_revision_range(revisionspec_list, branch, command_name):
 
 
 def _revision_range_to_revid_range(revision_range):
+    """Convert a revision range to a revision ID range.
+
+    Args:
+        revision_range: Tuple of (start_revision, end_revision), where each
+            revision may be None or a revision object with rev_id attribute.
+
+    Returns:
+        Tuple of (start_rev_id, end_rev_id) where each may be None.
+    """
     rev_id1 = None
     rev_id2 = None
     if revision_range[0] is not None:
@@ -3314,6 +3689,19 @@ def _revision_range_to_revid_range(revision_range):
 
 
 def get_log_format(long=False, short=False, line=False, default="long"):
+    """Determine log format based on boolean flags.
+
+    Args:
+        long: If True, use 'long' format.
+        short: If True, use 'short' format.
+        line: If True, use 'line' format.
+        default: Default format to use if no flags are set.
+
+    Returns:
+        String indicating the selected log format. Format flags are
+        processed in order: long, short, then line. Later flags override
+        earlier ones.
+    """
     log_format = default
     if long:
         log_format = "long"
@@ -3324,7 +3712,7 @@ def get_log_format(long=False, short=False, line=False, default="long"):
     return log_format
 
 
-class cmd_touching_revisions(Command):
+class cmd_touching_revisions(Command):  # noqa: D101
     __doc__ = """Return revision-ids which affected a particular file.
 
     A more user-friendly interface is "brz log FILE".
@@ -3335,6 +3723,11 @@ class cmd_touching_revisions(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the touching-revisions command.
+
+        Args:
+            filename: File to show touching revisions for.
+        """
         from .workingtree import WorkingTree
 
         tree, relpath = WorkingTree.open_containing(filename)
@@ -3346,7 +3739,7 @@ class cmd_touching_revisions(Command):
                 self.outf.write("%6d %s\n" % (revno, what))
 
 
-class cmd_ls(Command):
+class cmd_ls(Command):  # noqa: D101
     __doc__ = """List files in a tree.
     """
 
@@ -3390,6 +3783,22 @@ class cmd_ls(Command):
         path=None,
         directory=None,
     ):
+        """Execute the ls command.
+
+        Args:
+            revision: List files as of this revision.
+            verbose: Show detailed file information.
+            recursive: Recurse into subdirectories.
+            from_root: Print paths relative to branch root.
+            unknown: Show unknown files.
+            versioned: Show versioned files.
+            ignored: Show ignored files.
+            null: Use null separators.
+            kind: Show only files of this kind.
+            show_ids: Show file IDs.
+            path: Path to list files in.
+            directory: Branch directory to use.
+        """
         from . import views
         from .workingtree import WorkingTree
 
@@ -3478,7 +3887,7 @@ class cmd_ls(Command):
                     self.outf.write(outstring + "\n")
 
 
-class cmd_unknowns(Command):
+class cmd_unknowns(Command):  # noqa: D101
     __doc__ = """List unknown files.
     """
 
@@ -3488,13 +3897,18 @@ class cmd_unknowns(Command):
 
     @display_command
     def run(self, directory="."):
+        """Execute the unknowns command.
+
+        Args:
+            directory: Directory to list unknown files from.
+        """
         from .workingtree import WorkingTree
 
         for f in WorkingTree.open_containing(directory)[0].unknowns():
             self.outf.write(osutils.quotefn(f) + "\n")
 
 
-class cmd_ignore(Command):
+class cmd_ignore(Command):  # noqa: D101
     __doc__ = """Ignore specified files or patterns.
 
     See ``brz help patterns`` for details on the syntax of patterns.
@@ -3577,6 +3991,13 @@ class cmd_ignore(Command):
     ]
 
     def run(self, name_pattern_list=None, default_rules=None, directory="."):
+        """Execute the ignore command.
+
+        Args:
+            name_pattern_list: Patterns to add to ignore list.
+            default_rules: Show default ignore rules.
+            directory: Directory to add ignore rules to.
+        """
         from breezy import ignores
 
         from . import globbing, lazy_regex
@@ -3637,7 +4058,7 @@ class cmd_ignore(Command):
             )
 
 
-class cmd_ignored(Command):
+class cmd_ignored(Command):  # noqa: D101
     __doc__ = """List ignored files and the patterns that matched them.
 
     List all the ignored files and the ignore pattern that caused the file to
@@ -3654,6 +4075,11 @@ class cmd_ignored(Command):
 
     @display_command
     def run(self, directory="."):
+        """Execute the ignored command.
+
+        Args:
+            directory: Directory to list ignored files from.
+        """
         from .workingtree import WorkingTree
 
         tree = WorkingTree.open_containing(directory)[0]
@@ -3666,7 +4092,7 @@ class cmd_ignored(Command):
             self.outf.write("%-50s %s\n" % (path, pat))
 
 
-class cmd_lookup_revision(Command):
+class cmd_lookup_revision(Command):  # noqa: D101
     __doc__ = """Lookup the revision-id from a revision-number
 
     :Examples:
@@ -3678,6 +4104,12 @@ class cmd_lookup_revision(Command):
 
     @display_command
     def run(self, revno, directory="."):
+        """Execute the lookup-revision command.
+
+        Args:
+            revno: Revision number to look up.
+            directory: Directory containing the branch.
+        """
         from .workingtree import WorkingTree
 
         try:
@@ -3690,7 +4122,7 @@ class cmd_lookup_revision(Command):
         self.outf.write(f"{revid.decode('utf-8')}\n")
 
 
-class cmd_export(Command):
+class cmd_export(Command):  # noqa: D101
     __doc__ = """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
@@ -3757,6 +4189,20 @@ class cmd_export(Command):
         directory=".",
         recurse_nested=False,
     ):
+        """Execute the export command.
+
+        Args:
+            dest: Destination directory or archive file.
+            branch_or_subdir: Branch or subdirectory to export from.
+            revision: Specific revision to export.
+            format: Export format (tar, tgz, tbz2, zip, dir).
+            root: Root directory name inside archive.
+            filters: Apply content filters during export.
+            per_file_timestamps: Set file timestamps to last change.
+            uncommitted: Export working tree instead of last revision.
+            directory: Directory containing the branch.
+            recurse_nested: Include nested tree contents.
+        """
         from .export import export, get_root_name, guess_format
 
         if branch_or_subdir is None:
@@ -3813,7 +4259,7 @@ class cmd_export(Command):
             ) from exc
 
 
-class cmd_cat(Command):
+class cmd_cat(Command):  # noqa: D101
     __doc__ = """Write the contents of a file as of a given revision to standard output.
 
     If no revision is nominated, the last revision is used.
@@ -3843,6 +4289,15 @@ class cmd_cat(Command):
         filters=False,
         directory=None,
     ):
+        """Execute the cat command.
+
+        Args:
+            filename: File to display contents of.
+            revision: Specific revision to get file from.
+            name_from_revision: Use path name from the old tree.
+            filters: Apply content filters to display.
+            directory: Directory containing the branch.
+        """
         if revision is not None and len(revision) != 1:
             raise errors.CommandError(
                 gettext("brz cat --revision takes exactly one revision specifier")
@@ -3901,16 +4356,17 @@ class cmd_cat(Command):
         self.cleanup_now()
 
 
-class cmd_local_time_offset(Command):
+class cmd_local_time_offset(Command):  # noqa: D101
     __doc__ = """Show the offset in seconds from GMT to local time."""
     hidden = True
 
     @display_command
     def run(self):
+        """Execute the local-time-offset command."""
         self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
-class cmd_commit(Command):
+class cmd_commit(Command):  # noqa: D101
     __doc__ = """Commit changes into a new revision.
 
     An explanatory message needs to be given for each commit. This is
@@ -4034,6 +4490,23 @@ class cmd_commit(Command):
     aliases = ["ci", "checkin"]
 
     def _iter_bug_urls(self, bugs, branch, status):
+        """Iterate over bug URLs from bug identifiers.
+
+        Args:
+            bugs: List of bug identifiers in format 'tracker:id' or just 'id'.
+            branch: Branch object to get bug tracker configuration from.
+            status: Bug status (e.g., FIXED, RELATED) to associate with URLs.
+
+        Yields:
+            Tuples of (bug_url, status) for each bug.
+
+        Raises:
+            CommandError: If bug format is invalid or tracker is unknown.
+
+        Note:
+            If no tracker is specified in bug ID, uses the default bug tracker
+            from branch configuration.
+        """
         default_bugtracker = None
         # Configure the properties for bug fixing attributes.
         for bug in bugs:
@@ -4094,6 +4567,24 @@ class cmd_commit(Command):
         commit_time=None,
         lossy=False,
     ):
+        """Execute the commit command.
+
+        Args:
+            message: Commit message to use.
+            file: File containing the commit message.
+            verbose: Show commit progress details.
+            selected_list: Specific files to commit.
+            unchanged: Commit even if nothing changed.
+            strict: Fail if there are unknown files.
+            local: Make a local commit in a bound branch.
+            fixes: Mark bugs as fixed by this commit.
+            bugs: Associate with bugs without marking as fixed.
+            author: Author of the commit.
+            show_diff: Show diff of changes being committed.
+            exclude: Files to exclude from the commit.
+            commit_time: Set specific commit timestamp.
+            lossy: Allow lossy commits to foreign branches.
+        """
         import itertools
 
         from .commit import PointlessCommit
@@ -4264,7 +4755,7 @@ class cmd_commit(Command):
             raise
 
 
-class cmd_check(Command):
+class cmd_check(Command):  # noqa: D101
     __doc__ = """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
@@ -4324,6 +4815,15 @@ class cmd_check(Command):
     ]
 
     def run(self, path=None, verbose=False, branch=False, repo=False, tree=False):
+        """Execute the check command.
+
+        Args:
+            path: Path to check.
+            verbose: Show detailed checking information.
+            branch: Check the branch only.
+            repo: Check the repository only.
+            tree: Check the working tree only.
+        """
         from .check import check_dwim
 
         if path is None:
@@ -4333,7 +4833,7 @@ class cmd_check(Command):
         check_dwim(path, verbose, do_branch=branch, do_repo=repo, do_tree=tree)
 
 
-class cmd_upgrade(Command):
+class cmd_upgrade(Command):  # noqa: D101
     __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
     When the default format has changed after a major new release of
@@ -4386,6 +4886,14 @@ class cmd_upgrade(Command):
     ]
 
     def run(self, url=".", format=None, clean=False, dry_run=False):
+        """Execute the upgrade command.
+
+        Args:
+            url: Location to upgrade.
+            format: New format to upgrade to.
+            clean: Remove backup directory if successful.
+            dry_run: Show what would be done without doing it.
+        """
         from .upgrade import upgrade
 
         exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
@@ -4397,7 +4905,7 @@ class cmd_upgrade(Command):
                 return 3
 
 
-class cmd_whoami(Command):
+class cmd_whoami(Command):  # noqa: D101
     __doc__ = """Show or set brz user id.
 
     :Examples:
@@ -4421,6 +4929,14 @@ class cmd_whoami(Command):
 
     @display_command
     def run(self, email=False, branch=False, name=None, directory=None):
+        """Execute the whoami command.
+
+        Args:
+            email: Show only email address.
+            branch: Set identity for current branch instead of globally.
+            name: User name to set.
+            directory: Directory to operate on.
+        """
         if name is None:
             if directory is None:
                 # use branch if we're inside one; otherwise global config
@@ -4465,7 +4981,7 @@ class cmd_whoami(Command):
         c.set("email", name)
 
 
-class cmd_nick(Command):
+class cmd_nick(Command):  # noqa: D101
     __doc__ = """Print or set the branch nickname.
 
     If unset, the colocated branch name is used for colocated branches, and
@@ -4481,6 +4997,12 @@ class cmd_nick(Command):
     takes_options = ["directory"]
 
     def run(self, nickname=None, directory="."):
+        """Execute the nick command.
+
+        Args:
+            nickname: New nickname to set for the branch.
+            directory: Directory containing the branch.
+        """
         branch = Branch.open_containing(directory)[0]
         if nickname is None:
             self.printme(branch)
@@ -4489,10 +5011,15 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
+        """Print the branch nickname to output.
+
+        Args:
+            branch: Branch object whose nickname should be printed.
+        """
         self.outf.write(f"{branch.nick}\n")
 
 
-class cmd_alias(Command):
+class cmd_alias(Command):  # noqa: D101
     __doc__ = """Set/unset and display aliases.
 
     :Examples:
@@ -4519,6 +5046,12 @@ class cmd_alias(Command):
     ]
 
     def run(self, name=None, remove=False):
+        """Execute the alias command.
+
+        Args:
+            name: Alias name to show/set, or name=value to set.
+            remove: Remove the specified alias.
+        """
         if remove:
             self.remove_alias(name)
         elif name is None:
@@ -4531,6 +5064,17 @@ class cmd_alias(Command):
                 self.set_alias(name[:equal_pos], name[equal_pos + 1 :])
 
     def remove_alias(self, alias_name):
+        """Remove an alias from the global configuration.
+
+        Args:
+            alias_name: Name of the alias to remove.
+
+        Raises:
+            CommandError: If alias_name is None.
+
+        Note:
+            If the alias doesn't exist, the operation will still succeed.
+        """
         if alias_name is None:
             raise errors.CommandError(
                 gettext("brz alias --remove expects an alias to remove.")
@@ -4549,6 +5093,14 @@ class cmd_alias(Command):
 
     @display_command
     def print_alias(self, alias_name):
+        """Print a specific alias definition.
+
+        Args:
+            alias_name: Name of the alias to display.
+
+        Note:
+            If the alias doesn't exist, prints 'not found' message.
+        """
         from .commands import get_alias
 
         alias = get_alias(alias_name)
@@ -4564,7 +5116,22 @@ class cmd_alias(Command):
 
 
 def get_transport_type(typestring):
-    """Parse and return a transport specifier."""
+    """Parse and return a transport specifier.
+
+    Args:
+        typestring: String identifier for the transport type.
+                   Supported values: 'sftp', 'memory', 'fakenfs'.
+
+    Returns:
+        Transport server class corresponding to the specified type.
+
+    Raises:
+        CommandError: If typestring is not a known transport type.
+
+    Note:
+        This function is primarily used for testing purposes to specify
+        alternative transport implementations.
+    """
     if typestring == "sftp":
         from .tests import stub_sftp
 
@@ -4583,7 +5150,7 @@ def get_transport_type(typestring):
     raise errors.CommandError(msg)
 
 
-class cmd_selftest(Command):
+class cmd_selftest(Command):  # noqa: D101
     __doc__ = """Run internal test suite.
 
     If arguments are given, they are regular expressions that say which tests
@@ -4710,6 +5277,7 @@ class cmd_selftest(Command):
     encoding_type = "replace"
 
     def __init__(self):
+        """Initialize the selftest command."""
         Command.__init__(self)
         self.additional_selftest_args = {}
 
@@ -4735,6 +5303,29 @@ class cmd_selftest(Command):
         lsprof_tests=False,
         sync=False,
     ):
+        """Execute the selftest command.
+
+        Args:
+            testspecs_list: Specific tests to run.
+            verbose: Show detailed test output.
+            one: Stop after first test failure.
+            transport: Transport to use for tests.
+            benchmark: Run performance benchmarks.
+            lsprof_timed: Profile timed tests.
+            first: Run tests in order until failure.
+            list_only: List tests without running them.
+            randomize: Random seed for test ordering.
+            exclude: Tests to exclude from running.
+            strict: Fail on any test issues.
+            load_list: Load test list from file.
+            debugflag: Enable debug flags.
+            starting_with: Run tests starting with this pattern.
+            subunit1: Output in subunit v1 format.
+            subunit2: Output in subunit v2 format.
+            parallel: Number of parallel test processes.
+            lsprof_tests: Profile individual tests.
+            sync: Force synchronous test execution.
+        """
         # During selftest, disallow proxying, as it can cause severe
         # performance penalties and is only needed for thread
         # safety. The selftest command is assumed to not use threads
@@ -4838,7 +5429,7 @@ class cmd_selftest(Command):
             os.fdatasync = lambda filedes: None
 
 
-class cmd_version(Command):
+class cmd_version(Command):  # noqa: D101
     __doc__ = """Show version of brz."""
 
     encoding_type = "replace"
@@ -4848,6 +5439,11 @@ class cmd_version(Command):
 
     @display_command
     def run(self, short=False):
+        """Execute the version command.
+
+        Args:
+            short: Print just the version number.
+        """
         from .version import show_version
 
         if short:
@@ -4856,17 +5452,18 @@ class cmd_version(Command):
             show_version(to_file=self.outf)
 
 
-class cmd_rocks(Command):
+class cmd_rocks(Command):  # noqa: D101
     __doc__ = """Statement of optimism."""
 
     hidden = True
 
     @display_command
     def run(self):
+        """Execute the rocks command."""
         self.outf.write(gettext("It sure does!\n"))
 
 
-class cmd_find_merge_base(Command):
+class cmd_find_merge_base(Command):  # noqa: D101
     __doc__ = """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
@@ -4875,6 +5472,12 @@ class cmd_find_merge_base(Command):
 
     @display_command
     def run(self, branch, other):
+        """Execute the find-merge-base command.
+
+        Args:
+            branch: First branch to compare.
+            other: Second branch to compare.
+        """
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
         self.enter_context(branch1.lock_read())
@@ -4890,7 +5493,7 @@ class cmd_find_merge_base(Command):
         )
 
 
-class cmd_merge(Command):
+class cmd_merge(Command):  # noqa: D101
     __doc__ = """Perform a three-way merge.
 
     The source of the merge can be specified either in the form of a branch,
@@ -5021,6 +5624,22 @@ class cmd_merge(Command):
         preview=False,
         interactive=False,
     ):
+        """Execute the merge command.
+
+        Args:
+            location: Branch to merge from.
+            revision: Specific revision to merge.
+            force: Force merge even with conflicts.
+            merge_type: Merge algorithm to use.
+            show_base: Show base revision in conflicts.
+            reprocess: Reprocess conflicts to minimize.
+            remember: Remember location as default for future merges.
+            uncommitted: Merge uncommitted changes from other branch.
+            pull: Pull changes instead of merging.
+            directory: Working tree directory.
+            preview: Show what would be merged without doing it.
+            interactive: Interactively select changes to merge.
+        """
         from . import mergeable as _mod_mergeable
         from .workingtree import WorkingTree
 
@@ -5125,6 +5744,18 @@ class cmd_merge(Command):
             return self._do_merge(merger, change_reporter, allow_pending, verified)
 
     def _get_preview(self, merger):
+        """Generate a preview tree showing the merge result.
+
+        Args:
+            merger: Merger object to create preview from.
+
+        Returns:
+            Preview tree object showing what the merge would produce.
+
+        Note:
+            The preview transform is managed by the context manager and
+            will be cleaned up automatically.
+        """
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
         self.enter_context(tt)
@@ -5132,6 +5763,16 @@ class cmd_merge(Command):
         return result_tree
 
     def _do_preview(self, merger):
+        """Display a diff preview of the merge without applying it.
+
+        Args:
+            merger: Merger object to preview.
+
+        Note:
+            Shows the differences between the current tree and what the
+            merge would produce, allowing users to review changes before
+            committing to the merge.
+        """
         from .diff import show_diff_trees
 
         result_tree = self._get_preview(merger)
@@ -5146,6 +5787,20 @@ class cmd_merge(Command):
         )
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
+        """Perform the actual merge operation.
+
+        Args:
+            merger: Merger object to execute.
+            change_reporter: Reporter for merge progress.
+            allow_pending: If True, mark merge as pending if not committed.
+            verified: Verification status from bundle/merge directive.
+
+        Returns:
+            0 if merge succeeded without conflicts, 1 if conflicts occurred.
+
+        Note:
+            If verified is 'failed', a warning is issued but merge continues.
+        """
         merger.change_reporter = change_reporter
         conflict_count = len(merger.do_merge())
         if allow_pending:
@@ -5181,6 +5836,22 @@ class cmd_merge(Command):
             shelver.finalize()
 
     def sanity_check_merger(self, merger):
+        """Validate merger configuration for compatibility.
+
+        Args:
+            merger: Merger object to validate.
+
+        Raises:
+            CommandError: If merger configuration is invalid, such as:
+                - show_base used with incompatible merge type
+                - reprocess requested for merge type that doesn't support it
+                - both conflict reduction and show base requested
+                - file merge plan required but not supported by tree format
+
+        Note:
+            This method modifies merger.reprocess if not explicitly set,
+            choosing appropriate default based on merger capabilities.
+        """
         if merger.show_base and merger.merge_type is not _mod_merge.Merge3Merger:
             raise errors.CommandError(
                 gettext("Show-base is not supported for this merge type. %s")
@@ -5338,7 +6009,7 @@ class cmd_merge(Command):
         return stored_location
 
 
-class cmd_remerge(Command):
+class cmd_remerge(Command):  # noqa: D101
     __doc__ = """Redo a merge.
 
     Use this if you want to try a different merge technique while resolving
@@ -5368,6 +6039,14 @@ class cmd_remerge(Command):
     ]
 
     def run(self, file_list=None, merge_type=None, show_base=False, reprocess=False):
+        """Execute the remerge command.
+
+        Args:
+            file_list: Specific files to remerge.
+            merge_type: Merge algorithm to use.
+            show_base: Show base revision text in conflicts.
+            reprocess: Reprocess conflicts to minimize.
+        """
         from .conflicts import restore
         from .workingtree import WorkingTree
 
@@ -5432,7 +6111,7 @@ class cmd_remerge(Command):
             return 0
 
 
-class cmd_revert(Command):
+class cmd_revert(Command):  # noqa: D101
     __doc__ = """\
     Set files in the working tree back to the contents of a previous revision.
 
@@ -5497,6 +6176,14 @@ class cmd_revert(Command):
     takes_args = ["file*"]
 
     def run(self, revision=None, no_backup=False, file_list=None, forget_merges=None):
+        """Execute the revert command.
+
+        Args:
+            revision: Specific revision to revert to.
+            no_backup: Don't save backups of reverted files.
+            file_list: Specific files to revert.
+            forget_merges: Remove pending merge marker without changing files.
+        """
         from .workingtree import WorkingTree
 
         tree, file_list = WorkingTree.open_containing_paths(file_list)
@@ -5512,17 +6199,18 @@ class cmd_revert(Command):
         tree.revert(file_list, rev_tree, not no_backup, None, report_changes=True)
 
 
-class cmd_assert_fail(Command):
+class cmd_assert_fail(Command):  # noqa: D101
     __doc__ = """Test reporting of assertion failures"""
     # intended just for use in testing
 
     hidden = True
 
     def run(self):
+        """Execute the assert-fail command."""
         raise AssertionError("always fails")
 
 
-class cmd_help(Command):
+class cmd_help(Command):  # noqa: D101
     __doc__ = """Show help on a command or other topic.
     """
 
@@ -5535,6 +6223,12 @@ class cmd_help(Command):
 
     @display_command
     def run(self, topic=None, long=False):
+        """Execute the help command.
+
+        Args:
+            topic: Help topic to show.
+            long: Show help on all commands.
+        """
         import breezy.help
 
         if topic is None and long:
@@ -5542,7 +6236,7 @@ class cmd_help(Command):
         breezy.help.help(topic)
 
 
-class cmd_shell_complete(Command):
+class cmd_shell_complete(Command):  # noqa: D101
     __doc__ = """Show appropriate completions for context.
 
     For a list of all available commands, say 'brz shell-complete'.
@@ -5553,12 +6247,17 @@ class cmd_shell_complete(Command):
 
     @display_command
     def run(self, context=None):
+        """Execute the shell-complete command.
+
+        Args:
+            context: Completion context to process.
+        """
         from . import shellcomplete
 
         shellcomplete.shellcomplete(context)
 
 
-class cmd_missing(Command):
+class cmd_missing(Command):  # noqa: D101
     __doc__ = """Show unmerged/unpulled revisions between two branches.
 
     OTHER_BRANCH may be local or remote.
@@ -5645,9 +6344,34 @@ class cmd_missing(Command):
         my_revision=None,
         directory=".",
     ):
+        """Execute the missing command.
+
+        Args:
+            other_branch: Other branch to compare with.
+            reverse: Reverse the order of revisions.
+            mine_only: Display changes in this branch only.
+            theirs_only: Display changes in other branch only.
+            log_format: Log format to use.
+            long: Use long log format.
+            short: Use short log format.
+            line: Use line log format.
+            show_ids: Show revision and file IDs.
+            verbose: Show extra information.
+            this: Show changes in this branch.
+            other: Show changes in other branch.
+            include_merged: Show merged revisions.
+            revision: Show missing revisions up to this revision.
+            my_revision: Show missing revisions from this revision.
+            directory: Directory containing the branch.
+        """
         from .missing import find_unmerged, iter_log_revisions
 
         def message(s):
+            """Write message to output if not in quiet mode.
+
+            Args:
+                s: String message to write.
+            """
             if not is_quiet():
                 self.outf.write(s)
 
@@ -5768,7 +6492,7 @@ class cmd_missing(Command):
         return status_code
 
 
-class cmd_pack(Command):
+class cmd_pack(Command):  # noqa: D101
     __doc__ = """Compress the data within a repository.
 
     This operation compresses the data within a bazaar repository. As
@@ -5794,6 +6518,12 @@ class cmd_pack(Command):
     ]
 
     def run(self, branch_or_repo=".", clean_obsolete_packs=False):
+        """Execute the pack command.
+
+        Args:
+            branch_or_repo: Branch or repository to pack.
+            clean_obsolete_packs: Delete obsolete packs to save disk space.
+        """
         dir = controldir.ControlDir.open_containing(branch_or_repo)[0]
         try:
             branch = dir.open_branch()
@@ -5803,7 +6533,7 @@ class cmd_pack(Command):
         repository.pack(clean_obsolete_packs=clean_obsolete_packs)
 
 
-class cmd_plugins(Command):
+class cmd_plugins(Command):  # noqa: D101
     __doc__ = """List the installed plugins.
 
     This command displays the list of installed plugins including
@@ -5826,13 +6556,18 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
+        """Execute the plugins command.
+
+        Args:
+            verbose: Show plugin paths and detailed information.
+        """
         from . import plugin
 
         # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(list(plugin.describe_plugins(show_paths=verbose)))
 
 
-class cmd_testament(Command):
+class cmd_testament(Command):  # noqa: D101
     __doc__ = """Show testament (signing-form) of a revision."""
     takes_options = [
         "revision",
@@ -5844,6 +6579,14 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=".", revision=None, long=False, strict=False):
+        """Execute the testament command.
+
+        Args:
+            branch: Branch to show testament for.
+            revision: Specific revision to show testament for.
+            long: Produce long-format testament.
+            strict: Produce strict-format testament.
+        """
         from .bzr.testament import StrictTestament, Testament
 
         testament_class = StrictTestament if strict is True else Testament
@@ -5860,7 +6603,7 @@ class cmd_testament(Command):
             self.outf.write(t.as_short_text())
 
 
-class cmd_annotate(Command):
+class cmd_annotate(Command):  # noqa: D101
     __doc__ = """Show the origin of each line in a file.
 
     This prints out the given file with an annotation on the left side
@@ -5893,6 +6636,16 @@ class cmd_annotate(Command):
         show_ids=False,
         directory=None,
     ):
+        """Execute the annotate command.
+
+        Args:
+            filename: File to show annotations for.
+            all: Show annotations on all lines.
+            long: Show commit date in annotations.
+            revision: Specific revision to annotate.
+            show_ids: Show revision IDs.
+            directory: Directory containing the branch.
+        """
         from .annotate import annotate_file_tree
 
         wt, branch, relpath = _open_directory_or_containing_tree_or_branch(
@@ -5918,7 +6671,7 @@ class cmd_annotate(Command):
             )
 
 
-class cmd_re_sign(Command):
+class cmd_re_sign(Command):  # noqa: D101
     __doc__ = """Create a digital signature for an existing revision."""
     # TODO be able to replace existing ones.
 
@@ -5927,6 +6680,13 @@ class cmd_re_sign(Command):
     takes_options = ["directory", "revision"]
 
     def run(self, revision_id_list=None, revision=None, directory="."):
+        """Execute the re-sign command.
+
+        Args:
+            revision_id_list: Specific revision IDs to sign.
+            revision: Revision specification to sign.
+            directory: Directory containing the branch.
+        """
         from .workingtree import WorkingTree
 
         if revision_id_list is not None and revision is not None:
@@ -5976,7 +6736,7 @@ class cmd_re_sign(Command):
                 )
 
 
-class cmd_bind(Command):
+class cmd_bind(Command):  # noqa: D101
     __doc__ = """Convert the current branch into a checkout of the supplied branch.
     If no branch is supplied, rebind to the last bound location.
 
@@ -5993,6 +6753,12 @@ class cmd_bind(Command):
     takes_options = ["directory"]
 
     def run(self, location=None, directory="."):
+        """Execute the bind command.
+
+        Args:
+            location: Master branch location to bind to.
+            directory: Directory containing the branch to bind.
+        """
         b, relpath = Branch.open_containing(directory)
         if location is None:
             try:
@@ -6027,7 +6793,7 @@ class cmd_bind(Command):
             b.nick = b_other.nick
 
 
-class cmd_unbind(Command):
+class cmd_unbind(Command):  # noqa: D101
     __doc__ = """Convert the current checkout into a regular branch.
 
     After unbinding, the local branch is considered independent and subsequent
@@ -6038,12 +6804,17 @@ class cmd_unbind(Command):
     takes_options = ["directory"]
 
     def run(self, directory="."):
+        """Execute the unbind command.
+
+        Args:
+            directory: Directory containing the branch to unbind.
+        """
         b, relpath = Branch.open_containing(directory)
         if not b.unbind():
             raise errors.CommandError(gettext("Local branch is not bound"))
 
 
-class cmd_uncommit(Command):
+class cmd_uncommit(Command):  # noqa: D101
     __doc__ = """Remove the last committed revision.
 
     --verbose will print out what is being removed.
@@ -6088,6 +6859,17 @@ class cmd_uncommit(Command):
         local=False,
         keep_tags=False,
     ):
+        """Execute the uncommit command.
+
+        Args:
+            location: Branch location to uncommit from.
+            dry_run: Show what would be done without doing it.
+            verbose: Show detailed information.
+            revision: Uncommit to this revision.
+            force: Force uncommit even with pending changes.
+            local: Only uncommit locally in bound branch.
+            keep_tags: Keep tags pointing to uncommitted revisions.
+        """
         if location is None:
             location = "."
         control, relpath = controldir.ControlDir.open_containing(location)
@@ -6184,7 +6966,7 @@ class cmd_uncommit(Command):
             )
 
 
-class cmd_break_lock(Command):
+class cmd_break_lock(Command):  # noqa: D101
     __doc__ = """Break a dead lock.
 
     This command breaks a lock on a repository, branch, working directory or
@@ -6209,6 +6991,13 @@ class cmd_break_lock(Command):
     ]
 
     def run(self, location=None, config=False, force=False):
+        """Execute the break-lock command.
+
+        Args:
+            location: Location of the lock to break.
+            config: Location is directory where config lock is.
+            force: Don't ask for confirmation before breaking lock.
+        """
         if location is None:
             location = "."
         if force:
@@ -6224,7 +7013,7 @@ class cmd_break_lock(Command):
                 control.break_lock()
 
 
-class cmd_wait_until_signalled(Command):
+class cmd_wait_until_signalled(Command):  # noqa: D101
     __doc__ = """Test helper for test_start_and_stop_brz_subprocess_send_signal.
 
     This just prints a line to signal when it is ready, then blocks on stdin.
@@ -6233,12 +7022,13 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
+        """Execute the wait-until-signalled command."""
         self.outf.write("running\n")
         self.outf.flush()
         sys.stdin.readline()
 
 
-class cmd_serve(Command):
+class cmd_serve(Command):  # noqa: D101
     __doc__ = """Run the brz server."""
 
     aliases = ["server"]
@@ -6287,6 +7077,17 @@ class cmd_serve(Command):
         protocol=None,
         client_timeout=None,
     ):
+        """Execute the serve command.
+
+        Args:
+            listen: Address/interface to listen on.
+            port: Port number to listen on.
+            inet: Serve on stdin/stdout for inetd.
+            directory: Directory to serve from.
+            allow_writes: Allow write access to served data.
+            protocol: Protocol to use for serving.
+            client_timeout: Client idle timeout in seconds.
+        """
         from . import location, transport
 
         if directory is None:
@@ -6300,7 +7101,7 @@ class cmd_serve(Command):
         protocol(t, listen, port, inet, client_timeout)
 
 
-class cmd_join(Command):
+class cmd_join(Command):  # noqa: D101
     __doc__ = """Combine a tree into its containing tree.
 
     This command requires the target tree to be in a rich-root format.
@@ -6321,6 +7122,12 @@ class cmd_join(Command):
     ]
 
     def run(self, tree, reference=False):
+        """Execute the join command.
+
+        Args:
+            tree: Subtree to join into the containing tree.
+            reference: Join by reference.
+        """
         from .mutabletree import BadReferenceTarget
         from .workingtree import WorkingTree
 
@@ -6354,7 +7161,7 @@ class cmd_join(Command):
                 ) from exc
 
 
-class cmd_split(Command):
+class cmd_split(Command):  # noqa: D101
     __doc__ = """Split a subdirectory of a tree into a separate tree.
 
     This command will produce a target tree in a format that supports
@@ -6370,6 +7177,11 @@ class cmd_split(Command):
     takes_args = ["tree"]
 
     def run(self, tree):
+        """Execute the split command.
+
+        Args:
+            tree: Subdirectory to convert into independent tree.
+        """
         from .workingtree import WorkingTree
 
         containing_tree, subdir = WorkingTree.open_containing(tree)
@@ -6381,7 +7193,7 @@ class cmd_split(Command):
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base) from exc
 
 
-class cmd_merge_directive(Command):
+class cmd_merge_directive(Command):  # noqa: D101
     __doc__ = """Generate a merge directive for auto-merge tools.
 
     A directive requests a merge to be performed, and also provides all the
@@ -6444,6 +7256,18 @@ class cmd_merge_directive(Command):
         message=None,
         directory=".",
     ):
+        """Execute the send command.
+
+        Args:
+            submit_branch: Branch to submit changes to.
+            public_branch: Public location of this branch.
+            patch_type: Type of patch to send (plain/diff/bundle).
+            sign: Sign the merge directive with GPG.
+            revision: Revision range to send.
+            mail_to: Email address to send directive to.
+            message: Message to use when committing merge.
+            directory: Directory containing the branch.
+        """
         from . import merge_directive
         from .revision import NULL_REVISION
 
@@ -6512,7 +7336,7 @@ class cmd_merge_directive(Command):
             s.send_email(message)
 
 
-class cmd_send(Command):
+class cmd_send(Command):  # noqa: D101
     __doc__ = """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -6638,6 +7462,23 @@ class cmd_send(Command):
         strict=None,
         **kwargs,
     ):
+        """Execute the bundle-revisions command.
+
+        Args:
+            submit_branch: Branch to bundle revisions to.
+            public_branch: Public location of this branch.
+            no_bundle: Don't include bundle in output.
+            no_patch: Don't include patch in output.
+            revision: Revision range to bundle.
+            remember: Remember submit location.
+            output: Output file for the bundle.
+            format: Bundle format to use.
+            mail_to: Email address for the bundle.
+            message: Message for the bundle.
+            body: Body text for the bundle.
+            strict: Strict validation mode.
+            **kwargs: Additional keyword arguments.
+        """
         from .send import send
 
         return send(
@@ -6658,7 +7499,7 @@ class cmd_send(Command):
         )
 
 
-class cmd_bundle_revisions(cmd_send):
+class cmd_bundle_revisions(cmd_send):  # noqa: D101
     __doc__ = """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -6732,6 +7573,20 @@ class cmd_bundle_revisions(cmd_send):
         strict=None,
         **kwargs,
     ):
+        """Execute the bundle command.
+
+        Args:
+            submit_branch: Branch to bundle revisions to.
+            public_branch: Public location of this branch.
+            no_bundle: Don't include bundle in output.
+            no_patch: Don't include patch in output.
+            revision: Revision range to bundle.
+            remember: Remember submit location.
+            output: Output file for the bundle.
+            format: Bundle format to use.
+            strict: Strict validation mode.
+            **kwargs: Additional keyword arguments.
+        """
         if output is None:
             output = "-"
         from .send import send
@@ -6754,7 +7609,7 @@ class cmd_bundle_revisions(cmd_send):
         )
 
 
-class cmd_tag(Command):
+class cmd_tag(Command):  # noqa: D101
     __doc__ = """Create, remove or modify a tag naming a revision.
 
     Tags give human-meaningful names to revisions.  Commands that take a -r
@@ -6799,6 +7654,15 @@ class cmd_tag(Command):
         force=None,
         revision=None,
     ):
+        """Execute the tag command.
+
+        Args:
+            tag_name: Name of the tag to create or delete.
+            delete: Delete the specified tag.
+            directory: Branch directory to tag in.
+            force: Replace existing tag.
+            revision: Revision to tag.
+        """
         branch, relpath = Branch.open_containing(directory)
         self.enter_context(branch.lock_write())
         if delete:
@@ -6838,7 +7702,7 @@ class cmd_tag(Command):
                     note(gettext("Updated tag %s.") % tag_name)
 
 
-class cmd_tags(Command):
+class cmd_tags(Command):  # noqa: D101
     __doc__ = """List tags.
 
     This command shows a table of tag names and the revisions they reference.
@@ -6859,6 +7723,14 @@ class cmd_tags(Command):
 
     @display_command
     def run(self, directory=".", sort=None, show_ids=False, revision=None):
+        """Execute the tags command.
+
+        Args:
+            directory: Branch directory to list tags from.
+            sort: Sort method for tags.
+            show_ids: Show revision IDs for tags.
+            revision: Show tags for specific revision.
+        """
         from .tag import tag_sort_methods
 
         branch, relpath = Branch.open_containing(directory)
@@ -6897,6 +7769,20 @@ class cmd_tags(Command):
             self.outf.write("%-20s %s\n" % (tag, revspec))
 
     def _tags_for_range(self, branch, revision):
+        """Get tags within a specified revision range.
+
+        Args:
+            branch: Branch object to get tags from.
+            revision: Revision specification defining the range.
+
+        Returns:
+            List of (tag_name, revision_id) tuples for tags that point to
+            revisions within the specified range.
+
+        Note:
+            Returns empty list if the range is invalid (e.g., if the start
+            revision is an ancestor of the end revision).
+        """
         rev1, rev2 = _get_revision_range(revision, branch, self.name())
         revid1, revid2 = rev1.rev_id, rev2.rev_id
         # _get_revision_range will always set revid2 if it's not specified.
@@ -6922,7 +7808,7 @@ class cmd_tags(Command):
         return found
 
 
-class cmd_reconfigure(Command):
+class cmd_reconfigure(Command):  # noqa: D101
     __doc__ = """Reconfigure the type of a brz directory.
 
     A target configuration must be specified.
@@ -7000,6 +7886,18 @@ class cmd_reconfigure(Command):
         stacked_on=None,
         unstacked=None,
     ):
+        """Execute the reconfigure command.
+
+        Args:
+            location: Location to reconfigure.
+            bind_to: Bind branch to this location.
+            force: Force reconfiguration even with uncommitted changes.
+            tree_type: Type of working tree to use.
+            repository_type: Type of repository to use.
+            repository_trees: Whether repository should have working trees.
+            stacked_on: Create a stacked branch on this location.
+            unstacked: Reconfigure branch to be unstacked.
+        """
         from . import reconfigure
 
         directory = controldir.ControlDir.open(location)
@@ -7053,7 +7951,7 @@ class cmd_reconfigure(Command):
             reconfiguration = None
 
 
-class cmd_switch(Command):
+class cmd_switch(Command):  # noqa: D101
     __doc__ = """Set the branch of a checkout and update.
 
     For lightweight checkouts, this changes the branch being referenced.
@@ -7098,6 +7996,16 @@ class cmd_switch(Command):
         directory=".",
         store=False,
     ):
+        """Execute the switch command.
+
+        Args:
+            to_location: Branch location to switch to.
+            force: Switch even if local commits will be lost.
+            create_branch: Create target branch before switching.
+            revision: Switch to this specific revision.
+            directory: Directory containing working tree.
+            store: Store and restore uncommitted changes.
+        """
         from . import switch
 
         tree_location = directory
@@ -7182,7 +8090,7 @@ class cmd_switch(Command):
             )
 
 
-class cmd_view(Command):
+class cmd_view(Command):  # noqa: D101
     __doc__ = """Manage filtered views.
 
     Views provide a mask over the tree so that users can focus on
@@ -7274,6 +8182,15 @@ class cmd_view(Command):
         name=None,
         switch=None,
     ):
+        """Execute the view command.
+
+        Args:
+            file_list: Files to include in view.
+            all: Show all files in view.
+            delete: Delete the named view.
+            name: Name of view to create or modify.
+            switch: Name of view to switch to.
+        """
         from . import views
         from .workingtree import WorkingTree
 
@@ -7346,12 +8263,13 @@ class cmd_view(Command):
                 self.outf.write(gettext("'{0}' view is: {1}\n").format(name, view_str))
 
 
-class cmd_hooks(Command):
+class cmd_hooks(Command):  # noqa: D101
     __doc__ = """Show hooks."""
 
     hidden = True
 
     def run(self):
+        """Execute the hooks command."""
         for hook_key in sorted(hooks.known_hooks.keys()):
             some_hooks = hooks.known_hooks_key_to_object(hook_key)
             self.outf.write(f"{type(some_hooks).__name__}:\n")
@@ -7365,7 +8283,7 @@ class cmd_hooks(Command):
                     self.outf.write(gettext("    <no hooks installed>\n"))
 
 
-class cmd_remove_branch(Command):
+class cmd_remove_branch(Command):  # noqa: D101
     __doc__ = """Remove a branch.
 
     This will remove the branch from the specified location but
@@ -7389,6 +8307,13 @@ class cmd_remove_branch(Command):
     aliases = ["rmbranch"]
 
     def run(self, directory=None, location=None, force=False):
+        """Execute the remove-branch command.
+
+        Args:
+            directory: Directory containing the branch.
+            location: Location of branch to remove.
+            force: Remove branch even if it is the active branch.
+        """
         br = open_nearby_branch(near=directory, location=location)
         if not force and br.controldir.has_workingtree():
             try:
@@ -7405,7 +8330,7 @@ class cmd_remove_branch(Command):
         br.controldir.destroy_branch(br.name)
 
 
-class cmd_shelve(Command):
+class cmd_shelve(Command):  # noqa: D101
     __doc__ = """Temporarily set aside some changes from the current tree.
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
@@ -7472,6 +8397,18 @@ class cmd_shelve(Command):
         destroy=False,
         directory=None,
     ):
+        """Execute the shelve command.
+
+        Args:
+            revision: Revision to shelve changes to.
+            all: Shelve all changes.
+            file_list: List of files to shelve.
+            message: Message to use for shelve.
+            writer: Method to use for writing diffs.
+            list: List shelved changes.
+            destroy: Destroy removed changes instead of shelving them.
+            directory: Directory containing working tree.
+        """
         if list:
             return self.run_for_list(directory=directory)
         from .shelf_ui import Shelver
@@ -7496,6 +8433,18 @@ class cmd_shelve(Command):
             return 0
 
     def run_for_list(self, directory=None):
+        """List all shelved changes in the working tree.
+
+        Args:
+            directory: Directory containing the working tree to list shelves for.
+                      Defaults to current directory.
+
+        Returns:
+            0 on success.
+
+        Note:
+            Displays shelf ID, number of hunks, and message for each shelf.
+        """
         from .workingtree import WorkingTree
 
         if directory is None:
@@ -7515,7 +8464,7 @@ class cmd_shelve(Command):
         return 1
 
 
-class cmd_unshelve(Command):
+class cmd_unshelve(Command):  # noqa: D101
     __doc__ = """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
@@ -7542,6 +8491,13 @@ class cmd_unshelve(Command):
     _see_also = ["shelve"]
 
     def run(self, shelf_id=None, action="apply", directory="."):
+        """Execute the unshelve command.
+
+        Args:
+            shelf_id: ID of shelf to unshelve.
+            action: Action to perform with shelved changes.
+            directory: Directory containing working tree.
+        """
         from .shelf_ui import Unshelver
 
         unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
@@ -7551,7 +8507,7 @@ class cmd_unshelve(Command):
             unshelver.tree.unlock()
 
 
-class cmd_clean_tree(Command):
+class cmd_clean_tree(Command):  # noqa: D101
     __doc__ = """Remove unwanted files from working tree.
 
     By default, only unknown files, not ignored files, are deleted.  Versioned
@@ -7588,6 +8544,16 @@ class cmd_clean_tree(Command):
         force=False,
         directory=".",
     ):
+        """Execute the clean-tree command.
+
+        Args:
+            unknown: Delete files unknown to brz.
+            ignored: Delete ignored files.
+            detritus: Delete backup and temporary files.
+            dry_run: Show files to delete instead of deleting them.
+            force: Do not prompt before deleting.
+            directory: Directory containing working tree.
+        """
         from .clean_tree import clean_tree
 
         if not (unknown or ignored or detritus):
@@ -7604,7 +8570,7 @@ class cmd_clean_tree(Command):
         )
 
 
-class cmd_reference(Command):
+class cmd_reference(Command):  # noqa: D101
     __doc__ = """list, view and set branch locations for nested trees.
 
     If no arguments are provided, lists the branch locations for nested trees.
@@ -7623,6 +8589,14 @@ class cmd_reference(Command):
     ]
 
     def run(self, path=None, directory=".", location=None, force_unversioned=False):
+        """Execute the reference command.
+
+        Args:
+            path: Path to set or query reference for.
+            directory: Directory containing working tree.
+            location: Branch location to set as reference.
+            force_unversioned: Set reference even if path is not versioned.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -7645,6 +8619,16 @@ class cmd_reference(Command):
                 tree.set_reference_info(path, location)
 
     def _display_reference_info(self, tree, branch, info):
+        """Display reference information for nested trees.
+
+        Args:
+            tree: Tree object containing the references.
+            branch: Branch object (currently unused).
+            info: List of (path, location) tuples representing nested tree references.
+
+        Note:
+            Outputs sorted list of paths and their corresponding branch locations.
+        """
         ref_list = []
         for path, location in info:
             ref_list.append((path, location))
@@ -7652,7 +8636,7 @@ class cmd_reference(Command):
             self.outf.write(f"{path} {location}\n")
 
 
-class cmd_export_pot(Command):
+class cmd_export_pot(Command):  # noqa: D101
     __doc__ = """Export command helps and error messages in po format."""
 
     hidden = True
@@ -7671,12 +8655,18 @@ class cmd_export_pot(Command):
     ]
 
     def run(self, plugin=None, include_duplicates=False):
+        """Execute the export-pot command.
+
+        Args:
+            plugin: Export help text from named command.
+            include_duplicates: Output multiple copies of the same msgid string.
+        """
         from .export_pot import export_pot
 
         export_pot(self.outf, plugin, include_duplicates)
 
 
-class cmd_import(Command):
+class cmd_import(Command):  # noqa: D101
     __doc__ = """Import sources from a directory, tarball or zip file
 
     This command will import a directory, tarball or zip file into a bzr
@@ -7693,12 +8683,18 @@ class cmd_import(Command):
     takes_args = ["source", "tree?"]
 
     def run(self, source, tree=None):
+        """Execute the import command.
+
+        Args:
+            source: Source directory, tarball or zip file to import.
+            tree: Target tree directory.
+        """
         from .upstream_import import do_import
 
         do_import(source, tree)
 
 
-class cmd_link_tree(Command):
+class cmd_link_tree(Command):  # noqa: D101
     __doc__ = """Hardlink matching files to another tree.
 
     Only files with identical content and execute bit will be linked.
@@ -7707,6 +8703,11 @@ class cmd_link_tree(Command):
     takes_args = ["location"]
 
     def run(self, location):
+        """Execute the link-tree command.
+
+        Args:
+            location: Location of source tree to link from.
+        """
         from .transform import link_tree
         from .workingtree import WorkingTree
 
@@ -7716,7 +8717,7 @@ class cmd_link_tree(Command):
             link_tree(target_tree, source_tree)
 
 
-class cmd_fetch_ghosts(Command):
+class cmd_fetch_ghosts(Command):  # noqa: D101
     __doc__ = """Attempt to retrieve ghosts from another branch.
 
     If the other branch is not supplied, the last-pulled branch is used.
@@ -7728,6 +8729,12 @@ class cmd_fetch_ghosts(Command):
     takes_options = [Option("no-fix", help="Skip additional synchonization.")]
 
     def run(self, branch=None, no_fix=False):
+        """Execute the fetch-ghosts command.
+
+        Args:
+            branch: Branch to fetch ghosts from.
+            no_fix: Skip additional synchronization.
+        """
         from .fetch_ghosts import GhostFetcher
 
         installed, failed = GhostFetcher.from_cmdline(branch).run()
@@ -7867,6 +8874,27 @@ class cmd_grep(Command):
         color=None,
         diff=False,
     ):
+        """Execute the grep command.
+
+        Args:
+            verbose: Verbose output.
+            ignore_case: Ignore case distinctions.
+            no_recursive: Don't recurse into subdirectories.
+            from_root: Search from repository root.
+            null: Use null separator between output lines.
+            levels: Number of levels to search.
+            line_number: Show 1-based line number.
+            path_list: List of paths to search.
+            revision: Revision to search in.
+            pattern: Pattern to search for.
+            include: Include file patterns.
+            exclude: Exclude file patterns.
+            fixed_string: Treat pattern as fixed string.
+            files_with_matches: Show only files with matches.
+            files_without_match: Show only files without matches.
+            color: Use colored output.
+            diff: Show diffs for matches.
+        """
         import re
 
         from breezy import terminal
@@ -7995,6 +9023,13 @@ class cmd_patch(Command):
     ]
 
     def run(self, filename=None, strip=None, silent=False):
+        """Execute the patch command.
+
+        Args:
+            filename: Patch file to apply.
+            strip: Number of path components to strip.
+            silent: Suppress chatter.
+        """
         from .workingtree import WorkingTree, patch_tree
 
         wt = WorkingTree.open_containing(".")[0]
@@ -8014,7 +9049,7 @@ class cmd_patch(Command):
         self.outf.write(b.getvalue().decode("utf-8", "replace"))
 
 
-class cmd_resolve_location(Command):
+class cmd_resolve_location(Command):  # noqa: D101
     __doc__ = """Expand a location to a full URL.
 
     :Examples:
@@ -8026,6 +9061,11 @@ class cmd_resolve_location(Command):
     hidden = True
 
     def run(self, location):
+        """Execute the resolve-location command.
+
+        Args:
+            location: Location to expand to full URL.
+        """
         from .location import location_to_url
 
         url = location_to_url(location)
@@ -8034,6 +9074,16 @@ class cmd_resolve_location(Command):
 
 
 def _register_lazy_builtins():
+    """Register lazy builtin commands from other modules.
+
+    This function registers commands that are implemented in separate modules
+    to be loaded on demand. Called at startup and should be only called once.
+
+    Note:
+        This lazy loading approach helps reduce startup time by deferring
+        the import of command implementation modules until they are actually
+        needed.
+    """
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
     for name, aliases, module_name in [

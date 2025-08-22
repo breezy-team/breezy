@@ -1,23 +1,3 @@
-# Copyright (C) 2005-2014, 2016 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
-#            and others
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-__docformat__ = "google"
-
 """Configuration that affects the behaviour of Breezy.
 
 Currently this configuration resides in ~/.config/breezy/breezy.conf
@@ -75,6 +55,26 @@ ll=log --line -r-10..-1
 h=help
 up=pull
 """
+
+# Copyright (C) 2005-2014, 2016 Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com>
+#            and others
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+__docformat__ = "google"
 
 import os
 import sys
@@ -155,75 +155,149 @@ STORE_GLOBAL = 4
 
 
 class OptionExpansionLoop(errors.BzrError):
+    """Error raised when circular references are detected during option expansion."""
+
     _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
 
     def __init__(self, string, refs):
+        """Initialize OptionExpansionLoop error.
+
+        Args:
+            string: The string being expanded when loop was detected.
+            refs: List of references forming the expansion loop.
+        """
         self.string = string
         self.refs = "->".join(refs)
 
 
 class ExpandingUnknownOption(errors.BzrError):
+    """Error raised when an undefined option is referenced during expansion."""
+
     _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
 
     def __init__(self, name, string):
+        """Initialize ExpandingUnknownOption error.
+
+        Args:
+            name: Name of the undefined option.
+            string: The string being expanded when error occurred.
+        """
         self.name = name
         self.string = string
 
 
 class IllegalOptionName(errors.BzrError):
+    """Error raised when an option name contains illegal characters."""
+
     _fmt = 'Option "%(name)s" is not allowed.'
 
     def __init__(self, name):
+        """Initialize IllegalOptionName error.
+
+        Args:
+            name: The illegal option name.
+        """
         self.name = name
 
 
 class ConfigContentError(errors.BzrError):
+    """Error raised when a config file has encoding issues."""
+
     _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
 
     def __init__(self, filename):
+        """Initialize ConfigContentError.
+
+        Args:
+            filename: Path to the config file with encoding issues.
+        """
         self.filename = filename
 
 
 class ParseConfigError(errors.BzrError):
+    """Error raised when a config file cannot be parsed."""
+
     _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
 
     def __init__(self, errors, filename):
+        """Initialize ParseConfigError.
+
+        Args:
+            errors: List of parsing errors encountered.
+            filename: Path to the config file that failed to parse.
+        """
         self.filename = filename
         self.errors = "\n".join(e.msg for e in errors)
 
 
 class ConfigOptionValueError(errors.BzrError):
+    """Error raised when a config option has an invalid value."""
+
     _fmt = 'Bad value "%(value)s" for option "%(name)s".\nSee ``brz help %(name)s``'
 
     def __init__(self, name, value):
+        """Initialize ConfigOptionValueError.
+
+        Args:
+            name: Name of the config option.
+            value: The invalid value that was provided.
+        """
         errors.BzrError.__init__(self, name=name, value=value)
 
 
 class NoEmailInUsername(errors.BzrError):
+    """Error raised when username doesn't contain a valid email address."""
+
     _fmt = "%(username)r does not seem to contain a reasonable email address"
 
     def __init__(self, username):
+        """Initialize NoEmailInUsername error.
+
+        Args:
+            username: The username that lacks a valid email address.
+        """
         self.username = username
 
 
 class NoSuchConfig(errors.BzrError):
+    """Error raised when a requested configuration doesn't exist."""
+
     _fmt = 'The "%(config_id)s" configuration does not exist.'
 
     def __init__(self, config_id):
+        """Initialize NoSuchConfig error.
+
+        Args:
+            config_id: The ID of the non-existent configuration.
+        """
         errors.BzrError.__init__(self, config_id=config_id)
 
 
 class NoSuchConfigOption(errors.BzrError):
+    """Error raised when a requested config option doesn't exist."""
+
     _fmt = 'The "%(option_name)s" configuration option does not exist.'
 
     def __init__(self, option_name):
+        """Initialize NoSuchConfigOption error.
+
+        Args:
+            option_name: Name of the non-existent option.
+        """
         errors.BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(errors.BzrError):
+    """Error raised when a requested alias doesn't exist."""
+
     _fmt = 'The alias "%(alias_name)s" does not exist.'
 
     def __init__(self, alias_name):
+        """Initialize NoSuchAlias error.
+
+        Args:
+            alias_name: Name of the non-existent alias.
+        """
         errors.BzrError.__init__(self, alias_name=alias_name)
 
 
@@ -259,22 +333,56 @@ def _has_triplequote_bug():
 
 
 class ConfigObj(configobj.ConfigObj):
+    """Extended ConfigObj with Breezy-specific functionality."""
+
     def __init__(self, infile=None, **kwargs):
+        """Initialize ConfigObj with Breezy-specific defaults.
+
+        Args:
+            infile: Input file or file-like object to read from.
+            **kwargs: Additional keyword arguments passed to parent.
+        """
         # We define our own interpolation mechanism calling it option expansion
         super().__init__(infile=infile, interpolation=False, **kwargs)
 
     if _has_triplequote_bug():
 
         def _get_triple_quote(self, value):
+            """Work around ConfigObj triple quote bug.
+
+            Args:
+                value: The value to determine triple quote style for.
+
+            Returns:
+                The corrected triple quote string.
+            """
             quot = super()._get_triple_quote(value)
             if quot == configobj.tdquot:
                 return configobj.tsquot
             return configobj.tdquot
 
     def get_bool(self, section, key) -> bool:
+        """Get a boolean value from a specific section and key.
+
+        Args:
+            section: Section name to look in.
+            key: Key name to retrieve.
+
+        Returns:
+            Boolean value from the config.
+        """
         return cast("bool", self[section].as_bool(key))
 
     def get_value(self, section, name):
+        """Get a value from a specific section and name.
+
+        Args:
+            section: Section name to look in.
+            name: Name of the configuration option.
+
+        Returns:
+            The configuration value.
+        """
         # Try [] for the old DEFAULT section.
         if section == "DEFAULT":
             try:
@@ -288,6 +396,7 @@ class Config:
     """A configuration policy - what username, editor, gpg needs etc."""
 
     def __init__(self):
+        """Initialize base configuration."""
         super().__init__()
 
     def config_id(self):
@@ -295,6 +404,15 @@ class Config:
         raise NotImplementedError(self.config_id)
 
     def get_change_editor(self, old_tree, new_tree):
+        """Get a change editor for comparing two trees.
+
+        Args:
+            old_tree: The old tree to compare.
+            new_tree: The new tree to compare.
+
+        Returns:
+            A DiffFromTool instance or None if no editor is configured.
+        """
         from breezy import diff
 
         cmd = self._get_change_editor()
@@ -424,6 +542,16 @@ class Config:
         return result
 
     def _expand_option(self, name, env, _ref_stack):
+        """Expand a single option reference during option expansion.
+
+        Args:
+            name: The name of the option to expand.
+            env: An optional environment dict with additional option values.
+            _ref_stack: Private stack tracking option references to detect loops.
+
+        Returns:
+            The expanded value for the option.
+        """
         if env is not None and name in env:
             # Special case, values provided in env takes precedence over
             # anything else
@@ -546,18 +674,49 @@ class Config:
         return bedding.default_email()
 
     def get_alias(self, value):
+        """Get an alias for the given value.
+
+        Args:
+            value: The value to find an alias for.
+
+        Returns:
+            The alias or None if not found.
+        """
         return self._get_alias(value)
 
     def _get_alias(self, value):
+        """Template method to provide an alias value.
+
+        Args:
+            value: The value to find an alias for.
+
+        Returns:
+            The alias string or None if not found.
+        """
         pass
 
     def get_nickname(self):
+        """Get the nickname for this location.
+
+        Returns:
+            The nickname string or None if not configured.
+        """
         return self._get_nickname()
 
     def _get_nickname(self):
+        """Get the nickname for this configuration.
+
+        Returns:
+            None in the base implementation.
+        """
         return None
 
     def get_bzr_remote_path(self):
+        """Get the path for bzr on the remote machine.
+
+        Returns:
+            The remote path string or None if not configured.
+        """
         try:
             return os.environ["BZR_REMOTE_PATH"]
         except KeyError:
@@ -579,6 +738,11 @@ class Config:
         return not (warnings is None or warning not in warnings)
 
     def get_merge_tools(self):
+        """Get all configured merge tools from the configuration.
+
+        Returns:
+            A dict mapping tool names to their configured command lines.
+        """
         tools = {}
         for oname, _value, _section, _conf_id, _parser in self._get_options():
             if oname.startswith("bzr.mergetool."):
@@ -588,6 +752,14 @@ class Config:
         return tools
 
     def find_merge_tool(self, name):
+        """Find command line for a named merge tool.
+
+        Args:
+            name: Name of the merge tool to find.
+
+        Returns:
+            The command line string for the tool, or None if not found.
+        """
         from .mergetools import known_merge_tools
 
         # We fake a defaults mechanism here by checking if the given name can
@@ -716,6 +888,12 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
+        """Create configuration content from a string.
+
+        Args:
+            str_or_unicode: String or unicode content for the configuration.
+            save: Whether to save the configuration to disk immediately.
+        """
         if isinstance(str_or_unicode, str):
             str_or_unicode = str_or_unicode.encode("utf-8")
         self._content = BytesIO(str_or_unicode)
@@ -725,6 +903,15 @@ class IniBasedConfig(Config):
             self._write_config_file()
 
     def _get_parser(self):
+        """Get or create the ConfigObj parser for this configuration.
+
+        Returns:
+            ConfigObj instance for parsing the configuration file.
+
+        Raises:
+            ParseConfigError: If the config file cannot be parsed.
+            ConfigContentError: If the config file has encoding issues.
+        """
         if self._parser is not None:
             return self._parser
         if self._content is not None:
@@ -825,6 +1012,11 @@ class IniBasedConfig(Config):
         return POLICY_NONE
 
     def _get_change_editor(self):
+        """Get the configured change editor command.
+
+        Returns:
+            The change editor command string, or None if not configured.
+        """
         return self.get_user_option("change_editor", expand=False)
 
     def _get_signature_checking(self):
@@ -885,12 +1077,25 @@ class IniBasedConfig(Config):
         return self._get_user_option("post_commit")
 
     def _get_alias(self, value):
+        """Get the alias command for the given alias name.
+
+        Args:
+            value: The alias name to look up.
+
+        Returns:
+            The alias command string, or None if not found.
+        """
         try:
             return self._get_parser().get_value("ALIASES", value)
         except KeyError:
             pass
 
     def _get_nickname(self):
+        """Get the configured nickname for this configuration.
+
+        Returns:
+            The nickname string, or None if not configured.
+        """
         return self.get_user_option("nickname")
 
     def remove_user_option(self, option_name, section_name=None):
@@ -913,6 +1118,11 @@ class IniBasedConfig(Config):
             hook(self, option_name)
 
     def _write_config_file(self):
+        """Write the configuration file to disk atomically.
+
+        Raises:
+            AssertionError: If no file name is configured.
+        """
         if self.file_name is None:
             raise AssertionError("We cannot save, self.file_name is None")
         from . import atomicfile
@@ -954,6 +1164,11 @@ class LockableConfig(IniBasedConfig):
     lock_name = "lock"
 
     def __init__(self, file_name):
+        """Initialize a lockable configuration.
+
+        Args:
+            file_name: Path to the configuration file.
+        """
         super().__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         # FIXME: It doesn't matter that we don't provide possible_transports
@@ -965,6 +1180,12 @@ class LockableConfig(IniBasedConfig):
         self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
+        """Create configuration content from string with proper locking.
+
+        Args:
+            unicode_bytes: String content for the configuration.
+            save: Whether to save the configuration to disk immediately.
+        """
         super()._create_from_string(unicode_bytes, False)
         if save:
             # We need to handle the saving here (as opposed to IniBasedConfig)
@@ -983,16 +1204,29 @@ class LockableConfig(IniBasedConfig):
         return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
+        """Release the write lock on the configuration directory."""
         self._lock.unlock()
 
     def break_lock(self):
+        """Forcibly break the lock on the configuration directory."""
         self._lock.break_lock()
 
     def remove_user_option(self, option_name, section_name=None):
+        """Remove a user option with write locking.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section the option is in, defaults to None.
+        """
         with self.lock_write():
             super().remove_user_option(option_name, section_name)
 
     def _write_config_file(self):
+        """Write the configuration file to disk with lock validation.
+
+        Raises:
+            ObjectNotLocked: If no write lock is held.
+        """
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a
             # missing call to lock_write() by one of the callers.
@@ -1004,9 +1238,15 @@ class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
     def __init__(self):
+        """Initialize global configuration with default config path."""
         super().__init__(file_name=bedding.config_path())
 
     def config_id(self):
+        """Return the unique identifier for global configuration.
+
+        Returns:
+            The string "breezy" identifying global config.
+        """
         return "breezy"
 
     @classmethod
@@ -1050,6 +1290,13 @@ class GlobalConfig(LockableConfig):
             self._write_config_file()
 
     def _set_option(self, option, value, section):
+        """Set an option value in the specified section and save.
+
+        Args:
+            option: Name of the option to set.
+            value: Value to set for the option.
+            section: Section name where the option should be stored.
+        """
         self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
@@ -1070,6 +1317,12 @@ class GlobalConfig(LockableConfig):
         yield (name, parser[name], self.config_id())
 
     def remove_user_option(self, option_name, section_name=None):
+        """Remove a user option from the global configuration.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section the option is in, defaults to DEFAULT.
+        """
         if section_name is None:
             # We need to force the default section.
             section_name = "DEFAULT"
@@ -1137,6 +1390,11 @@ class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
+        """Initialize location configuration for a specific location.
+
+        Args:
+            location: The location to configure. File URLs are converted to local paths.
+        """
         super().__init__(file_name=bedding.locations_config_path())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
@@ -1146,6 +1404,11 @@ class LocationConfig(LockableConfig):
         self.location = location
 
     def config_id(self):
+        """Return the unique identifier for locations configuration.
+
+        Returns:
+            The string "locations" identifying location config.
+        """
         return "locations"
 
     @classmethod
@@ -1206,7 +1469,13 @@ class LocationConfig(LockableConfig):
         return _policy_value[policy_name]
 
     def _set_option_policy(self, section, option_name, option_policy):
-        """Set the policy for the given option name in the given section."""
+        """Set the policy for the given option name in the given section.
+
+        Args:
+            section: The configuration section name.
+            option_name: Name of the option to set policy for.
+            option_policy: The policy value to set.
+        """
         policy_key = option_name + ":policy"
         policy_name = _policy_name[option_policy]
         if policy_name is not None:
@@ -1245,6 +1514,11 @@ class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
     def __init__(self, branch):
+        """Initialize branch configuration.
+
+        Args:
+            branch: The branch to configure.
+        """
         super().__init__()
         self._location_config = None
         self._branch_data_config = None
@@ -1257,15 +1531,30 @@ class BranchConfig(Config):
         )
 
     def config_id(self):
+        """Return the configuration ID for branch configuration.
+
+        Returns:
+            String identifier "branch".
+        """
         return "branch"
 
     def _get_branch_data_config(self):
+        """Get the branch data configuration.
+
+        Returns:
+            TreeConfig instance for this branch.
+        """
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
             self._branch_data_config.config_id = self.config_id
         return self._branch_data_config
 
     def _get_location_config(self):
+        """Get the location configuration for this branch.
+
+        Returns:
+            LocationConfig instance for the branch's base location.
+        """
         if self._location_config is None:
             if self.branch.base is None:
                 self.branch.base = "memory://"
@@ -1273,6 +1562,11 @@ class BranchConfig(Config):
         return self._location_config
 
     def _get_global_config(self):
+        """Get the global configuration.
+
+        Returns:
+            GlobalConfig instance.
+        """
         if self._global_config is None:
             self._global_config = GlobalConfig()
         return self._global_config
@@ -1313,6 +1607,11 @@ class BranchConfig(Config):
         return self._get_best_value("_get_user_id")
 
     def _get_change_editor(self):
+        """Get the best change editor configuration from available sources.
+
+        Returns:
+            The configured change editor command string, or None if not configured.
+        """
         return self._get_best_value("_get_change_editor")
 
     def _get_signature_checking(self):
@@ -1337,6 +1636,14 @@ class BranchConfig(Config):
             yield from source()._get_sections(name)
 
     def _get_options(self, sections=None):
+        """Get options from location and branch configurations.
+
+        Args:
+            sections: List of sections to search, defaults to all sections.
+
+        Yields:
+            Tuples of (name, value, section, config_id) for each option.
+        """
         # First the locations options
         yield from self._get_location_config()._get_options()
         # Then the branch options
@@ -1359,6 +1666,14 @@ class BranchConfig(Config):
         yield from self._get_global_config()._get_options()
 
     def set_user_option(self, name, value, store=STORE_BRANCH, warn_masked=False):
+        """Set a user option in the appropriate configuration store.
+
+        Args:
+            name: Option name to set.
+            value: Value to set for the option.
+            store: Configuration store to use (branch, global, or location).
+            warn_masked: Whether to warn if the option is masked by location config.
+        """
         if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
         elif store == STORE_GLOBAL:
@@ -1387,6 +1702,12 @@ class BranchConfig(Config):
                         )
 
     def remove_user_option(self, option_name, section_name=None):
+        """Remove a user option from the branch data configuration.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section the option is in, defaults to None.
+        """
         self._get_branch_data_config().remove_option(option_name, section_name)
 
     def _post_commit(self):
@@ -1394,6 +1715,11 @@ class BranchConfig(Config):
         return self._get_safe_value("_post_commit")
 
     def _get_nickname(self):
+        """Get the nickname for this branch configuration.
+
+        Returns:
+            The explicit nickname if configured, branch name, or derived from base URL.
+        """
         value = self._get_explicit_nickname()
         if value is not None:
             return value
@@ -1406,6 +1732,11 @@ class BranchConfig(Config):
         return self._get_explicit_nickname() is not None
 
     def _get_explicit_nickname(self):
+        """Get the explicitly configured nickname from config sources.
+
+        Returns:
+            The explicitly configured nickname, or None if not set.
+        """
         return self._get_best_value("_get_nickname")
 
     def _log_format(self):
@@ -1455,15 +1786,38 @@ class TreeConfig(IniBasedConfig):
     # -- mbp 20080507
 
     def __init__(self, branch):
+        """Initialize tree configuration for a branch.
+
+        Args:
+            branch: The branch to get configuration from.
+        """
         self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):
+        """Get the configuration parser.
+
+        Args:
+            file: Optional file to parse, if None use branch config.
+
+        Returns:
+            ConfigObj parser instance.
+        """
         if file is not None:
             return IniBasedConfig._get_parser(file)
         return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
+        """Get a configuration option from the tree config.
+
+        Args:
+            name: The name of the option to retrieve.
+            section: The section to look in, defaults to None.
+            default: Default value if option is not found.
+
+        Returns:
+            The option value or default if not found.
+        """
         with self.branch.lock_read():
             return self._config.get_option(name, section, default)
 
@@ -1475,6 +1829,12 @@ class TreeConfig(IniBasedConfig):
             self._config.set_option(value, name, section)
 
     def remove_option(self, option_name, section_name=None):
+        """Remove a configuration option from the tree config.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section to remove from, defaults to None.
+        """
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
         with self.branch.lock_write():
@@ -1492,6 +1852,11 @@ class AuthenticationConfig:
     """
 
     def __init__(self, _file=None):
+        """Initialize authentication configuration.
+
+        Args:
+            _file: Optional file path or content for testing, defaults to system path.
+        """
         self._config = None  # The ConfigObj
         if _file is None:
             self._input = self._filename = bedding.authentication_config_path()
@@ -1502,6 +1867,15 @@ class AuthenticationConfig:
             self._input = _file
 
     def _get_config(self):
+        """Get or create the configuration object.
+
+        Returns:
+            ConfigObj instance for the authentication configuration.
+
+        Raises:
+            ParseConfigError: If the config file cannot be parsed.
+            ConfigContentError: If the config file has encoding issues.
+        """
         if self._config is not None:
             return self._config
         try:
@@ -1802,6 +2176,18 @@ class AuthenticationConfig:
         return password
 
     def decode_password(self, credentials, encoding):
+        """Decode the password for the provided credentials.
+
+        Args:
+            credentials: Dictionary containing credential information.
+            encoding: The encoding method used for the password.
+
+        Returns:
+            Updated credentials dict with decoded password.
+
+        Raises:
+            ValueError: If the encoding is not recognized.
+        """
         try:
             cs = credential_store_registry.get_credential_store(encoding)
         except KeyError as e:
@@ -1826,6 +2212,14 @@ class CredentialStoreRegistry(registry.Registry):
     """
 
     def get_credential_store(self, encoding=None):
+        """Get a credential store by encoding name.
+
+        Args:
+            encoding: The name of the credential store encoding.
+
+        Returns:
+            A credential store instance.
+        """
         cs = self.get(encoding)
         if callable(cs):
             cs = cs()
@@ -1927,7 +2321,7 @@ class CredentialStore:
 
 
 class PlainTextCredentialStore(CredentialStore):
-    __doc__ = """Plain text credential store for the authentication.conf file"""
+    """Plain text credential store for the authentication.conf file."""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1941,7 +2335,7 @@ credential_store_registry.default_key = "plain"
 
 
 class Base64CredentialStore(CredentialStore):
-    __doc__ = """Base64 credential store for the authentication.conf file"""
+    """Base64 credential store for the authentication.conf file."""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1958,7 +2352,14 @@ credential_store_registry.register(
 
 
 class BzrDirConfig:
+    """Configuration manager for a Breezy control directory."""
+
     def __init__(self, bzrdir):
+        """Initialize BzrDirConfig.
+
+        Args:
+            bzrdir: The control directory to manage config for.
+        """
         self._bzrdir = bzrdir
         self._config = bzrdir._get_config()
 
@@ -2002,6 +2403,12 @@ class TransportConfig:
     """
 
     def __init__(self, transport, filename):
+        """Initialize transport-based configuration.
+
+        Args:
+            transport: Transport instance for accessing the config file.
+            filename: Name of the configuration file.
+        """
         self._transport = transport
         self._filename = filename
 
@@ -2045,6 +2452,12 @@ class TransportConfig:
         self._set_configobj(configobj)
 
     def remove_option(self, option_name, section_name=None):
+        """Remove an option from the configuration.
+
+        Args:
+            option_name: The name of the option to remove.
+            section_name: The section to remove from, defaults to None.
+        """
         configobj = self._get_configobj()
         if section_name is None:
             del configobj[option_name]
@@ -2055,6 +2468,11 @@ class TransportConfig:
         self._set_configobj(configobj)
 
     def _get_config_file(self):
+        """Get the configuration file content.
+
+        Returns:
+            File-like object containing the configuration data.
+        """
         try:
             f = BytesIO(self._transport.get_bytes(self._filename))
             for hook in OldConfigHooks["load"]:
@@ -2072,9 +2490,23 @@ class TransportConfig:
             return BytesIO()
 
     def _external_url(self):
+        """Get the external URL of the configuration file.
+
+        Returns:
+            String URL of the configuration file.
+        """
         return urlutils.join(self._transport.external_url(), self._filename)
 
     def _get_configobj(self):
+        """Parse the configuration file and return a ConfigObj.
+
+        Returns:
+            ConfigObj instance containing the parsed configuration.
+
+        Raises:
+            ParseConfigError: If the config file cannot be parsed.
+            ConfigContentError: If the config file has encoding issues.
+        """
         f = self._get_config_file()
         try:
             try:
@@ -2088,6 +2520,11 @@ class TransportConfig:
         return conf
 
     def _set_configobj(self, configobj):
+        """Save a ConfigObj to the configuration file.
+
+        Args:
+            configobj: ConfigObj instance to save.
+        """
         out_file = BytesIO()
         configobj.write(out_file)
         out_file.seek(0)
@@ -2186,9 +2623,26 @@ class Option:
 
     @property
     def help(self):
+        """Get the help text for this option.
+
+        Returns:
+            The help text string.
+        """
         return self._help
 
     def convert_from_unicode(self, store, unicode_value):
+        """Convert a unicode string to the appropriate option value.
+
+        Args:
+            store: The config store providing the value.
+            unicode_value: The unicode string value to convert.
+
+        Returns:
+            The converted value, or None if conversion failed.
+
+        Raises:
+            ConfigOptionValueError: If invalid='error' and conversion fails.
+        """
         if self.unquote and store is not None and unicode_value is not None:
             unicode_value = store.unquote(unicode_value)
         if self.from_unicode is None or unicode_value is None:
@@ -2210,6 +2664,11 @@ class Option:
         return converted
 
     def get_override(self):
+        """Get the override value from environment variables.
+
+        Returns:
+            The environment variable value if found, None otherwise.
+        """
         value = None
         for var in self.override_from_env:
             try:
@@ -2221,6 +2680,11 @@ class Option:
         return value
 
     def get_default(self):
+        """Get the default value for this option.
+
+        Returns:
+            The default value from environment variables or option definition.
+        """
         value = None
         for var in self.default_from_env:
             try:
@@ -2242,9 +2706,23 @@ class Option:
         return value
 
     def get_help_topic(self):
+        """Get the help topic name for this option.
+
+        Returns:
+            The name of this option for use as a help topic.
+        """
         return self.name
 
     def get_help_text(self, additional_see_also=None, plain=True):
+        """Get the formatted help text for this option.
+
+        Args:
+            additional_see_also: Additional see-also references.
+            plain: Whether to format as plain text.
+
+        Returns:
+            The formatted help text string.
+        """
         result = self.help
         from breezy import help_topics
 
@@ -2258,10 +2736,26 @@ class Option:
 
 
 def bool_from_store(unicode_str):
+    """Convert a string to a boolean value.
+
+    Args:
+        unicode_str: String representation of a boolean value.
+
+    Returns:
+        Boolean value parsed from the string.
+    """
     return ui.bool_from_string(unicode_str)
 
 
 def int_from_store(unicode_str):
+    """Convert a string to an integer value.
+
+    Args:
+        unicode_str: String representation of an integer.
+
+    Returns:
+        Integer value parsed from the string.
+    """
     return int(unicode_str)
 
 
@@ -2295,6 +2789,14 @@ def int_SI_from_store(unicode_str):
 
 
 def float_from_store(unicode_str):
+    """Convert a string to a float value.
+
+    Args:
+        unicode_str: String representation of a float.
+
+    Returns:
+        Float value parsed from the string.
+    """
     return float(unicode_str)
 
 
@@ -2306,6 +2808,8 @@ _list_converter_config = configobj.ConfigObj(
 
 
 class ListOption(Option):
+    """Option definition for list values."""
+
     def __init__(
         self, name, default=None, default_from_env=None, help=None, invalid=None
     ):
@@ -2325,6 +2829,17 @@ class ListOption(Option):
         )
 
     def from_unicode(self, unicode_str):
+        """Convert a unicode string to a list value.
+
+        Args:
+            unicode_str: Unicode string representation of a list.
+
+        Returns:
+            List of values parsed from the string.
+
+        Raises:
+            TypeError: If unicode_str is not a string.
+        """
         if not isinstance(unicode_str, str):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
@@ -2368,6 +2883,18 @@ class RegistryOption(Option):
         self.registry = registry
 
     def from_unicode(self, unicode_str):
+        """Convert a unicode string to a registry value.
+
+        Args:
+            unicode_str: String key to look up in the registry.
+
+        Returns:
+            The value from the registry for the given key.
+
+        Raises:
+            TypeError: If unicode_str is not a string.
+            ValueError: If the key is not found in the registry.
+        """
         if not isinstance(unicode_str, str):
             raise TypeError
         try:
@@ -2380,6 +2907,11 @@ class RegistryOption(Option):
 
     @property
     def help(self):
+        """Get extended help text including supported values.
+
+        Returns:
+            Help text with all supported registry values listed.
+        """
         ret = [self._help, "\n\nThe following values are supported:\n"]
         for key in self.registry.keys():
             ret.append(f" {key} - {self.registry.get_help(key)}\n")
@@ -2397,6 +2929,14 @@ for '{bar{baz}}' we will get '{baz}'
 
 
 def iter_option_refs(string):
+    """Iterate over option references in a string.
+
+    Args:
+        string: String that may contain option references.
+
+    Yields:
+        Tuples of (is_ref, chunk) where is_ref indicates if chunk is a reference.
+    """
     # Split isolate refs so every other chunk is a ref
     is_ref = False
     for chunk in _option_ref_re.split(string):
@@ -2878,17 +3418,39 @@ class Section:
     """
 
     def __init__(self, section_id, options):
+        """Initialize Section with ID and options.
+
+        Args:
+            section_id: Unique identifier for the section.
+            options: Dictionary-like object containing section options.
+        """
         self.id = section_id
         # We re-use the dict-like object received
         self.options = options
 
     def get(self, name, default=None, expand=True):
+        """Get an option value by name.
+
+        Args:
+            name: The name of the option to retrieve.
+            default: Default value if option is not found.
+            expand: Whether to expand option references (ignored in base class).
+
+        Returns:
+            The option value or default if not found.
+        """
         return self.options.get(name, default)
 
     def iter_option_names(self):
+        """Iterate over the names of all options in this section.
+
+        Yields:
+            Option names as strings.
+        """
         yield from self.options.keys()
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__} id={self.id}>"
 
@@ -2903,10 +3465,22 @@ class MutableSection(Section):
     """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):
+        """Initialize MutableSection with ID and options.
+
+        Args:
+            section_id: Unique identifier for the section.
+            options: Dictionary-like object containing section options.
+        """
         super().__init__(section_id, options)
         self.reset_changes()
 
     def set(self, name, value):
+        """Set an option value and track the change.
+
+        Args:
+            name: The name of the option to set.
+            value: The value to set for the option.
+        """
         if name not in self.options:
             # This is a new option
             self.orig[name] = _NewlyCreatedOption
@@ -2915,11 +3489,20 @@ class MutableSection(Section):
         self.options[name] = value
 
     def remove(self, name):
+        """Remove an option and track the change.
+
+        Args:
+            name: The name of the option to remove.
+        """
         if name not in self.orig and name in self.options:
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
     def reset_changes(self):
+        """Reset the change tracking for this section.
+
+        Clears the record of original values before modifications.
+        """
         self.orig = {}
 
     def apply_changes(self, dirty, store):
@@ -2972,6 +3555,7 @@ class Store:
     mutable_section_class = MutableSection
 
     def __init__(self):
+        """Initialize a new configuration store."""
         # Which sections need to be saved (by section id). We use a dict here
         # so the dirty sections can be shared by multiple callers.
         self.dirty_sections = {}
@@ -3024,6 +3608,11 @@ class Store:
         raise NotImplementedError(self.save)
 
     def _need_saving(self):
+        """Check if the store has changes that need to be saved.
+
+        Returns:
+            True if there are unsaved changes, False otherwise.
+        """
         return any(s.orig for s in self.dirty_sections.values())
 
     def apply_changes(self, dirty_sections):
@@ -3055,6 +3644,11 @@ class Store:
         raise NotImplementedError(self.save_changes)
 
     def external_url(self):
+        """Return the external URL for this store.
+
+        Returns:
+            A string representing the external URL of the store.
+        """
         raise NotImplementedError(self.external_url)
 
     def get_sections(self):
@@ -3073,6 +3667,7 @@ class Store:
         raise NotImplementedError(self.get_mutable_section)
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__}({self.external_url()})>"
 
@@ -3081,6 +3676,11 @@ class CommandLineStore(Store):
     """A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
+        """Initialize command line store.
+
+        Args:
+            opts: Optional dictionary of command line options.
+        """
         super().__init__()
         if opts is None:
             opts = {}
@@ -3088,10 +3688,16 @@ class CommandLineStore(Store):
         self.id = "cmdline"
 
     def _reset(self):
+        """Reset the command line options."""
         # The dict should be cleared but not replaced so it can be shared.
         self.options.clear()
 
     def _from_cmdline(self, overrides):
+        """Load configuration from command line overrides.
+
+        Args:
+            overrides: List of command line option overrides.
+        """
         # Reset before accepting new definitions
         self._reset()
         for over in overrides:
@@ -3105,11 +3711,21 @@ class CommandLineStore(Store):
             self.options[name] = value
 
     def external_url(self):
+        """Return the external URL for the command line store.
+
+        Returns:
+            The string 'cmdline' as the identifier for this store.
+        """
         # Not an url but it makes debugging easier and is never needed
         # otherwise
         return "cmdline"
 
     def get_sections(self):
+        """Get sections from the command line store.
+
+        Yields:
+            Tuples of (store, section) with command line options.
+        """
         yield self, self.readonly_section_class(None, self.options)
 
 
@@ -3126,9 +3742,18 @@ class IniFileStore(Store):
         self._config_obj = None
 
     def is_loaded(self):
+        """Check if the store has been loaded.
+
+        Returns:
+            True if the config object has been loaded, False otherwise.
+        """
         return self._config_obj is not None
 
     def unload(self):
+        """Unload the store and clear dirty sections.
+
+        Sets the config object to None and clears any dirty sections.
+        """
         self._config_obj = None
         self.dirty_sections = {}
 
@@ -3190,6 +3815,10 @@ class IniFileStore(Store):
         self._config_obj = new_config_obj
 
     def save_changes(self):
+        """Save any pending changes to persistent storage.
+
+        Only saves if the store is loaded and has changes that need saving.
+        """
         if not self.is_loaded():
             # Nothing to save
             return
@@ -3202,6 +3831,10 @@ class IniFileStore(Store):
         self.save()
 
     def save(self):
+        """Save the configuration to persistent storage.
+
+        Writes the config object to a file using the configured transport.
+        """
         if not self.is_loaded():
             # Nothing to save
             return
@@ -3229,6 +3862,14 @@ class IniFileStore(Store):
             yield (self, self.readonly_section_class(section_name, cobj[section_name]))
 
     def get_mutable_section(self, section_id=None):
+        """Get a mutable section for the given section ID.
+
+        Args:
+            section_id: The ID of the section to get, None for the default section.
+
+        Returns:
+            A MutableSection instance for the specified section.
+        """
         # We need a loaded store
         try:
             self.load()
@@ -3248,6 +3889,14 @@ class IniFileStore(Store):
         return mutable_section
 
     def quote(self, value):
+        """Quote a configuration value for storage.
+
+        Args:
+            value: The value to quote.
+
+        Returns:
+            The quoted value suitable for storage.
+        """
         try:
             # configobj conflates automagical list values and quoting
             self._config_obj.list_values = True
@@ -3256,6 +3905,14 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
+        """Unquote a configuration value from storage.
+
+        Args:
+            value: The quoted value from storage.
+
+        Returns:
+            The unquoted value.
+        """
         if value and isinstance(value, str):
             # _unquote doesn't handle None nor empty strings nor anything that
             # is not a string, really.
@@ -3263,6 +3920,11 @@ class IniFileStore(Store):
         return value
 
     def external_url(self):
+        """Return the external URL for this ini file store.
+
+        Returns:
+            A placeholder URL string for in-process stores.
+        """
         # Since an IniFileStore can be used without a file (at least in tests),
         # it's better to provide something than raising a NotImplementedError.
         # All daughter classes are supposed to provide an implementation
@@ -3290,6 +3952,14 @@ class TransportIniFileStore(IniFileStore):
         self.file_name = file_name
 
     def _load_content(self):
+        """Load the configuration file content from transport.
+
+        Returns:
+            Bytes content of the configuration file.
+
+        Raises:
+            PermissionDenied: If access to the file is denied.
+        """
         try:
             return self.transport.get_bytes(self.file_name)
         except errors.PermissionDenied:
@@ -3300,9 +3970,19 @@ class TransportIniFileStore(IniFileStore):
             raise
 
     def _save_content(self, content):
+        """Save configuration content to transport.
+
+        Args:
+            content: Bytes content to write to the configuration file.
+        """
         self.transport.put_bytes(self.file_name, content)
 
     def external_url(self):
+        """Return the external URL for this transport-based store.
+
+        Returns:
+            The full URL to the configuration file on the transport.
+        """
         # FIXME: external_url should really accepts an optional relpath
         # parameter (bug #750169) :-/ -- vila 2011-04-04
         # The following will do in the interim but maybe we don't want to
@@ -3348,17 +4028,27 @@ class LockableIniFileStore(TransportIniFileStore):
         return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
+        """Release the write lock on the configuration directory."""
         self._lock.unlock()
 
     def break_lock(self):
+        """Forcibly break the lock on the configuration directory."""
         self._lock.break_lock()
 
     def save(self):
+        """Save the configuration with proper locking.
+
+        Acquires a write lock before saving the configuration.
+        """
         with self.lock_write():
             # We need to be able to override the undecorated implementation
             self.save_without_locking()
 
     def save_without_locking(self):
+        """Save the configuration without acquiring a lock.
+
+        This assumes that proper locking has already been handled.
+        """
         super().save()
 
 
@@ -3378,6 +4068,11 @@ class GlobalStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        """Initialize the global configuration store.
+
+        Args:
+            possible_transports: Optional transport instances to use.
+        """
         path, kind = bedding._config_dir()
         t = transport.get_transport_from_path(
             path, possible_transports=possible_transports
@@ -3393,6 +4088,11 @@ class LocationStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        """Initialize the location configuration store.
+
+        Args:
+            possible_transports: Optional transport instances to use.
+        """
         t = transport.get_transport_from_path(
             bedding.config_dir(), possible_transports=possible_transports
         )
@@ -3407,13 +4107,25 @@ class BranchStore(TransportIniFileStore):
     """
 
     def __init__(self, branch):
+        """Initialize the branch configuration store.
+
+        Args:
+            branch: The branch instance to store configuration for.
+        """
         super().__init__(branch.control_transport, "branch.conf")
         self.branch = branch
         self.id = "branch"
 
 
 class ControlStore(LockableIniFileStore):
+    """Configuration store for control directory settings."""
+
     def __init__(self, bzrdir):
+        """Initialize ControlStore.
+
+        Args:
+            bzrdir: The control directory to manage config for.
+        """
         super().__init__(bzrdir.transport, "control.conf", lock_dir_name="branch_lock")
         self.id = "control"
 
@@ -3426,9 +4138,19 @@ class SectionMatcher:
     """
 
     def __init__(self, store):
+        """Initialize a section matcher.
+
+        Args:
+            store: The configuration store to match sections from.
+        """
         self.store = store
 
     def get_sections(self):
+        """Get sections from the store that match this matcher.
+
+        Yields:
+            Tuples of (store, section) for sections that match.
+        """
         # This is where we require loading the store so we can see all defined
         # sections.
         sections = self.store.get_sections()
@@ -3450,16 +4172,41 @@ class SectionMatcher:
 
 
 class NameMatcher(SectionMatcher):
+    """Matches configuration sections by exact name."""
+
     def __init__(self, store, section_id):
+        """Initialize NameMatcher.
+
+        Args:
+            store: The configuration store to search.
+            section_id: The section ID to match.
+        """
         super().__init__(store)
         self.section_id = section_id
 
     def match(self, section):
+        """Check if the section matches by exact name.
+
+        Args:
+            section: The section to check.
+
+        Returns:
+            True if the section ID matches exactly, False otherwise.
+        """
         return section.id == self.section_id
 
 
 class LocationSection(Section):
+    """A section that provides location-specific variable expansion."""
+
     def __init__(self, section, extra_path, branch_name=None):
+        """Initialize LocationSection.
+
+        Args:
+            section: The base section to extend.
+            extra_path: Additional path information for expansion.
+            branch_name: Optional branch name for expansion.
+        """
         super().__init__(section.id, section.options)
         self.extra_path = extra_path
         if branch_name is None:
@@ -3471,6 +4218,16 @@ class LocationSection(Section):
         }
 
     def get(self, name, default=None, expand=True):
+        """Get an option value with location-specific expansion.
+
+        Args:
+            name: The option name to retrieve.
+            default: Default value if option is not found.
+            expand: Whether to expand option references and apply policies.
+
+        Returns:
+            The option value with location-specific expansion applied.
+        """
         value = super().get(name, default)
         if value is not None and expand:
             policy_name = self.get(name + ":policy", None)
@@ -3505,6 +4262,12 @@ class StartingPathMatcher(SectionMatcher):
     # related too. -- vila 2012-01-04
 
     def __init__(self, store, location):
+        """Initialize a path matcher for the given location.
+
+        Args:
+            store: The configuration store to search.
+            location: The path or URL to match sections for.
+        """
         super().__init__(store)
         if location.startswith("file://"):
             location = urlutils.local_path_from_url(location)
@@ -3543,7 +4306,15 @@ class StartingPathMatcher(SectionMatcher):
 
 
 class LocationMatcher(SectionMatcher):
+    """Matches configuration sections by location pattern."""
+
     def __init__(self, store, location):
+        """Initialize LocationMatcher.
+
+        Args:
+            store: The configuration store to search.
+            location: The location path to match against.
+        """
         super().__init__(store)
         url, params = urlutils.split_segment_parameters(location)
         if location.startswith("file://"):
@@ -3593,6 +4364,14 @@ class LocationMatcher(SectionMatcher):
         return matching_sections
 
     def get_sections(self):
+        """Get configuration sections sorted by specificity.
+
+        Returns sections ordered from most specific (longest path match) to
+        least specific, respecting ignore_parents directives.
+
+        Yields:
+            Tuples of (store, section) for matching sections.
+        """
         # Override the default implementation as we want to change the order
         # We want the longest (aka more specific) locations first
         sections = sorted(
@@ -3808,6 +4587,7 @@ class Stack:
             hook(self, name)
 
     def __repr__(self):
+        """Return string representation of the section."""
         # Mostly for debugging use
         return f"<config.{self.__class__.__name__}({id(self)})>"
 
@@ -3898,6 +4678,12 @@ class _CompatibleStack(Stack):
     """
 
     def set(self, name, value):
+        """Set an option value and immediately save to persistent storage.
+
+        Args:
+            name: The name of the option to set.
+            value: The value to set for the option.
+        """
         # Force a reload
         self.store.unload()
         super().set(name, value)
@@ -3905,6 +4691,11 @@ class _CompatibleStack(Stack):
         self.store.save()
 
     def remove(self, name):
+        """Remove an option and immediately save to persistent storage.
+
+        Args:
+            name: The name of the option to remove.
+        """
         # Force a reload
         self.store.unload()
         super().remove(name)
@@ -3926,6 +4717,7 @@ class GlobalStack(Stack):
     """
 
     def __init__(self):
+        """Initialize the global configuration stack."""
         gstore = self.get_shared_store(GlobalStore())
         super().__init__(
             [self._get_overrides, NameMatcher(gstore, "DEFAULT").get_sections],
@@ -3992,6 +4784,11 @@ class BranchStack(Stack):
     """
 
     def __init__(self, branch):
+        """Initialize the branch configuration stack.
+
+        Args:
+            branch: The branch instance to configure.
+        """
         lstore = self.get_shared_store(LocationStore())
         bstore = branch._get_config_store()
         gstore = self.get_shared_store(GlobalStore())
@@ -4007,18 +4804,42 @@ class BranchStack(Stack):
         self.branch = branch
 
     def lock_write(self, token=None):
+        """Acquire a write lock on the branch.
+
+        Args:
+            token: Optional lock token.
+
+        Returns:
+            Lock token from the branch.
+        """
         return self.branch.lock_write(token)
 
     def unlock(self):
+        """Release the branch lock.
+
+        Returns:
+            Result of branch unlock operation.
+        """
         return self.branch.unlock()
 
     def set(self, name, value):
+        """Set a configuration option within a write lock.
+
+        Args:
+            name: The option name.
+            value: The option value.
+        """
         with self.lock_write():
             super().set(name, value)
             # Unlocking the branch will trigger a store.save_changes() so the
             # last unlock saves all the changes.
 
     def remove(self, name):
+        """Remove a configuration option within a write lock.
+
+        Args:
+            name: The option name to remove.
+        """
         with self.lock_write():
             super().remove(name)
             # Unlocking the branch will trigger a store.save_changes() so the
@@ -4033,6 +4854,11 @@ class RemoteControlStack(Stack):
     # control.conf and is used only for stack options.
 
     def __init__(self, bzrdir):
+        """Initialize the remote control stack.
+
+        Args:
+            bzrdir: The control directory to configure.
+        """
         cstore = bzrdir._get_config_store()
         super().__init__([NameMatcher(cstore, None).get_sections], cstore)
         self.controldir = bzrdir
@@ -4046,23 +4872,52 @@ class BranchOnlyStack(Stack):
     # -- vila 2011-12-16
 
     def __init__(self, branch):
+        """Initialize the branch-only configuration stack.
+
+        Args:
+            branch: The branch instance to configure.
+        """
         bstore = branch._get_config_store()
         super().__init__([NameMatcher(bstore, None).get_sections], bstore)
         self.branch = branch
 
     def lock_write(self, token=None):
+        """Acquire a write lock on the branch.
+
+        Args:
+            token: Optional lock token.
+
+        Returns:
+            Lock token from the branch.
+        """
         return self.branch.lock_write(token)
 
     def unlock(self):
+        """Release the branch lock.
+
+        Returns:
+            Result of branch unlock operation.
+        """
         return self.branch.unlock()
 
     def set(self, name, value):
+        """Set a configuration option within a write lock.
+
+        Args:
+            name: The option name.
+            value: The option value.
+        """
         with self.lock_write():
             super().set(name, value)
             # Force a write to persistent storage
             self.store.save_changes()
 
     def remove(self, name):
+        """Remove a configuration option within a write lock.
+
+        Args:
+            name: The option name to remove.
+        """
         with self.lock_write():
             super().remove(name)
             # Force a write to persistent storage
@@ -4070,7 +4925,7 @@ class BranchOnlyStack(Stack):
 
 
 class cmd_config(commands.Command):
-    __doc__ = """Display, set or remove a configuration option.
+    """Display, set or remove a configuration option.
 
     Display the active value for option NAME.
 
@@ -4112,6 +4967,18 @@ class cmd_config(commands.Command):
 
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None, remove=False):
+        """Execute the config command.
+
+        Args:
+            name: Configuration option name or NAME=value to set.
+            all: Display all matching options.
+            directory: Branch directory to operate on.
+            scope: Configuration scope to use.
+            remove: Remove the specified option.
+
+        Returns:
+            Exit code (0 for success).
+        """
         from .directory_service import directories
 
         if directory is None:

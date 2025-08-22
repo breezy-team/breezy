@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""RIO-Patch format handling for email-safe stanza representation.
+
+This module provides functions to convert between RIO stanzas and RIO-Patch format,
+which is designed to be emailed as part of a patch. The format resists common forms
+of damage such as newline conversion or removal of trailing whitespace.
+
+The RIO (restricted/reproducible/rfc822-like) format stores data as a series of
+stanzas containing fields identified by ASCII names with Unicode or string contents.
+"""
+
 # \subsection{\emph{rio} - simple text metaformat}
 #
 # \emph{r} stands for `restricted', `reproducible', or `rfc822-like'.

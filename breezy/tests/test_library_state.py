@@ -25,7 +25,10 @@ from . import fixtures
 
 # TODO: once sufficiently cleaned up this should be able to be TestCase.
 class TestLibraryState(tests.TestCaseWithTransport):
+    """Test cases for BzrLibraryState context management."""
+
     def test_ui_is_used(self):
+        """Test that the specified UI factory is used during library state context."""
         self.overrideAttr(breezy, "_global_state", None)
         ui = _mod_ui.SilentUIFactory()
         state = library_state.BzrLibraryState(
@@ -40,6 +43,7 @@ class TestLibraryState(tests.TestCaseWithTransport):
             self.assertEqual(orig_ui, _mod_ui.ui_factory)
 
     def test_trace_context(self):
+        """Test that trace context managers are properly entered and exited."""
         self.overrideAttr(breezy, "_global_state", None)
         tracer = fixtures.RecordingContextManager()
         ui = _mod_ui.SilentUIFactory()
@@ -52,6 +56,7 @@ class TestLibraryState(tests.TestCaseWithTransport):
             self.assertEqual(["__enter__", "__exit__"], tracer._calls)
 
     def test_ui_not_specified(self):
+        """Test behavior when UI factory is not specified in library state."""
         self.overrideAttr(breezy, "_global_state", None)
         state = library_state.BzrLibraryState(
             ui=None, trace=fixtures.RecordingContextManager()

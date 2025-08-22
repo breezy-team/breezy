@@ -24,6 +24,8 @@ from ..zlib_util import ZLibEstimator
 
 
 class TestZLibEstimator(tests.TestCase):
+    """Test cases for ZLibEstimator compression estimation."""
+
     def get_slightly_random_content(self, length, seed=b""):
         """We generate some hex-data that can be seeded.
 
@@ -41,6 +43,7 @@ class TestZLibEstimator(tests.TestCase):
         return b"".join(hex_content)[:length]
 
     def test_adding_content(self):
+        """Test adding content to ZLibEstimator until it reaches capacity."""
         ze = ZLibEstimator(32000)
         raw_data = self.get_slightly_random_content(60000)
         block_size = 1000
@@ -63,6 +66,7 @@ class TestZLibEstimator(tests.TestCase):
         )
 
     def test_adding_more_content(self):
+        """Test adding more content with a larger capacity target."""
         ze = ZLibEstimator(64000)
         raw_data = self.get_slightly_random_content(150000)
         block_size = 1000

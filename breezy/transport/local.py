@@ -25,6 +25,18 @@ from .. import osutils, transport, urlutils
 
 
 def file_stat(f, _lstat=os.lstat):
+    """Get stat information for a file.
+
+    Args:
+        f: Path to the file.
+        _lstat: Function to use for stat (defaults to os.lstat).
+
+    Returns:
+        Stat result object.
+
+    Raises:
+        NoSuchFile: If the file doesn't exist.
+    """
     try:
         return _lstat(f)
     except (FileNotFoundError, NotADirectoryError) as err:
@@ -32,6 +44,15 @@ def file_stat(f, _lstat=os.lstat):
 
 
 def file_kind(f, _lstat=os.lstat):
+    """Determine the kind of file (regular, directory, symlink, etc).
+
+    Args:
+        f: Path to the file.
+        _lstat: Function to use for stat (defaults to os.lstat).
+
+    Returns:
+        String describing the file kind ('file', 'directory', 'symlink', etc).
+    """
     stat_value = file_stat(f, _lstat)
     return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
@@ -43,12 +64,25 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
     """Special transport for testing Win32 [UNC] paths on non-windows."""
 
     def __init__(self, base):
+        """Initialize EmulatedWin32LocalTransport.
+
+        Args:
+            base: Base URL for the transport.
+        """
         if base[-1] != "/":
             base = base + "/"
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
+        """Return the absolute URL for a relative path.
+
+        Args:
+            relpath: Relative path from the transport base.
+
+        Returns:
+            Absolute URL using Win32 path conventions.
+        """
         path = osutils._win32_normpath(
             osutils.pathjoin(self._local_base, urlutils.unescape(relpath))
         )

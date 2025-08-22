@@ -116,19 +116,31 @@ _STREAM_MIN_BUFFER_SIZE = 5 * 1024 * 1024
 
 
 class KnitError(InternalBzrError):
+    """Base exception for errors related to knit file operations."""
+
     _fmt = "Knit error"
 
 
 class KnitCorrupt(KnitError):
+    """Raised when a knit file is found to be corrupt."""
+
     _fmt = "Knit %(filename)s corrupt: %(how)s"
 
     def __init__(self, filename, how):
+        """Initialize KnitCorrupt exception.
+
+        Args:
+            filename: The path to the corrupt knit file.
+            how: Description of how the file is corrupt.
+        """
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
 
 
 class SHA1KnitCorrupt(KnitCorrupt):
+    """Raised when SHA-1 checksum validation fails for knit content."""
+
     _fmt = (
         "Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
         "match expected sha-1. key %(key)s expected sha %(expected)s actual "
@@ -136,6 +148,15 @@ class SHA1KnitCorrupt(KnitCorrupt):
     )
 
     def __init__(self, filename, actual, expected, key, content):
+        """Initialize SHA1KnitCorrupt exception.
+
+        Args:
+            filename: The path to the corrupt knit file.
+            actual: The actual SHA-1 hash computed.
+            expected: The expected SHA-1 hash.
+            key: The key of the corrupt content.
+            content: The content that failed validation.
+        """
         KnitError.__init__(self)
         self.filename = filename
         self.actual = actual
@@ -145,29 +166,54 @@ class SHA1KnitCorrupt(KnitCorrupt):
 
 
 class KnitDataStreamIncompatible(KnitError):
-    # Not raised anymore, as we can convert data streams.  In future we may
-    # need it again for more exotic cases, so we're keeping it around for now.
+    """Raised when attempting to insert incompatible knit data streams.
+
+    Not raised anymore, as we can convert data streams. In future we may
+    need it again for more exotic cases, so we're keeping it around for now.
+    """
 
     _fmt = 'Cannot insert knit data stream of format "%(stream_format)s" into knit of format "%(target_format)s".'
 
     def __init__(self, stream_format, target_format):
+        """Initialize KnitDataStreamIncompatible exception.
+
+        Args:
+            stream_format: The format of the data stream being inserted.
+            target_format: The format of the target knit.
+        """
         self.stream_format = stream_format
         self.target_format = target_format
 
 
 class KnitDataStreamUnknown(KnitError):
-    # Indicates a data stream we don't know how to handle.
+    """Raised when encountering an unknown knit data stream format.
+
+    Indicates a data stream we don't know how to handle.
+    """
 
     _fmt = 'Cannot parse knit data stream of format "%(stream_format)s".'
 
     def __init__(self, stream_format):
+        """Initialize KnitDataStreamUnknown exception.
+
+        Args:
+            stream_format: The unknown format of the data stream.
+        """
         self.stream_format = stream_format
 
 
 class KnitHeaderError(KnitError):
+    """Raised when a knit file header is malformed or unexpected."""
+
     _fmt = 'Knit header error: %(badline)r unexpected for file "%(filename)s".'
 
     def __init__(self, badline, filename):
+        """Initialize KnitHeaderError exception.
+
+        Args:
+            badline: The malformed header line.
+            filename: The path to the knit file with the bad header.
+        """
         KnitError.__init__(self)
         self.badline = badline
         self.filename = filename
@@ -184,6 +230,12 @@ class KnitIndexUnknownMethod(KnitError):
     )
 
     def __init__(self, filename, options):
+        """Initialize KnitIndexUnknownMethod exception.
+
+        Args:
+            filename: The path to the knit index file.
+            options: The unknown options/methods found in the index.
+        """
         KnitError.__init__(self)
         self.filename = filename
         self.options = options
@@ -208,6 +260,18 @@ class FTAnnotatedToUnannotated(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Convert annotated fulltext knit records to unannotated format.
+
+        Args:
+            factory: The record factory containing the raw knit data.
+            target_storage_kind: The desired storage format for the output.
+
+        Returns:
+            The converted unannotated knit data as bytes.
+
+        Raises:
+            UnavailableRepresentation: If target format is not 'knit-ft-gz'.
+        """
         if target_storage_kind != "knit-ft-gz":
             raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind
@@ -223,6 +287,18 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Convert annotated delta knit records to unannotated format.
+
+        Args:
+            factory: The record factory containing the raw knit data.
+            target_storage_kind: The desired storage format for the output.
+
+        Returns:
+            The converted unannotated delta data as bytes.
+
+        Raises:
+            UnavailableRepresentation: If target format is not 'knit-delta-gz'.
+        """
         if target_storage_kind != "knit-delta-gz":
             raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind
@@ -239,6 +315,18 @@ class FTAnnotatedToFullText(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Convert annotated fulltext knit records to plain fulltext.
+
+        Args:
+            factory: The record factory containing the raw knit data.
+            target_storage_kind: The desired storage format ('fulltext', 'chunked', or 'lines').
+
+        Returns:
+            The converted fulltext data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If target format is not supported.
+        """
         annotated_compressed_bytes = factory._raw_record
         rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
         content, delta = self._annotate_factory.parse_record(
@@ -257,6 +345,19 @@ class DeltaAnnotatedToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Apply annotated delta to basis text and return fulltext.
+
+        Args:
+            factory: The record factory containing the raw delta data.
+            target_storage_kind: The desired storage format ('fulltext', 'chunked', or 'lines').
+
+        Returns:
+            The reconstructed fulltext data in the requested format.
+
+        Raises:
+            RevisionNotPresent: If the compression parent is not available.
+            UnavailableRepresentation: If target format is not supported.
+        """
         annotated_compressed_bytes = factory._raw_record
         rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1], plain=True)
@@ -286,6 +387,18 @@ class FTPlainToFullText(KnitAdapter):
     """An adapter from FT plain knits to unannotated ones."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Convert plain fulltext knit records to fulltext format.
+
+        Args:
+            factory: The record factory containing the raw knit data.
+            target_storage_kind: The desired storage format ('fulltext', 'chunked', or 'lines').
+
+        Returns:
+            The fulltext data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If target format is not supported.
+        """
         compressed_bytes = factory._raw_record
         rec, contents = self._data._parse_record_unchecked(compressed_bytes)
         content, delta = self._plain_factory.parse_record(
@@ -304,6 +417,19 @@ class DeltaPlainToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory, target_storage_kind):
+        """Apply plain delta to basis text and return fulltext.
+
+        Args:
+            factory: The record factory containing the raw delta data.
+            target_storage_kind: The desired storage format ('fulltext', 'chunked', or 'lines').
+
+        Returns:
+            The reconstructed fulltext data in the requested format.
+
+        Raises:
+            RevisionNotPresent: If the compression parent is not available.
+            UnavailableRepresentation: If target format is not supported.
+        """
         compressed_bytes = factory._raw_record
         rec, contents = self._data._parse_record_unchecked(compressed_bytes)
         self._plain_factory.parse_line_delta(contents, rec[1])
@@ -390,6 +516,17 @@ class KnitContentFactory(ContentFactory):
         self._network_bytes = network_bytes
 
     def get_bytes_as(self, storage_kind):
+        """Get the bytes for this content in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Returns:
+            The content bytes in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the format is not available.
+        """
         if storage_kind == self.storage_kind:
             if self._network_bytes is None:
                 self._create_network_bytes()
@@ -413,6 +550,14 @@ class KnitContentFactory(ContentFactory):
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over the bytes for this content in the specified format.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Returns:
+            An iterator over the content bytes.
+        """
         return iter(self.get_bytes_as(storage_kind))
 
 
@@ -444,6 +589,17 @@ class LazyKnitContentFactory(ContentFactory):
         self._first = first
 
     def get_bytes_as(self, storage_kind):
+        """Get the bytes for this lazy content in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Returns:
+            The content bytes in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the format is not available.
+        """
         if storage_kind == self.storage_kind:
             if self._first:
                 return self._generator._wire_bytes()
@@ -460,6 +616,17 @@ class LazyKnitContentFactory(ContentFactory):
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over the bytes for this lazy content in the specified format.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Returns:
+            An iterator over the content chunks.
+
+        Raises:
+            UnavailableRepresentation: If the format is not available.
+        """
         if storage_kind in ("chunked", "lines"):
             chunks = self._generator._get_one_work(self.key).text()
             return iter(chunks)
@@ -530,6 +697,7 @@ class KnitContent:
     """
 
     def __init__(self):
+        """Initialize KnitContent."""
         self._should_strip_eol = False
 
     def apply_delta(self, delta, new_version_id):
@@ -550,6 +718,14 @@ class KnitContent:
             yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
+        """Get the line delta between this content and new_lines.
+
+        Args:
+            new_lines: The target content to generate a delta to.
+
+        Returns:
+            A list of delta operations.
+        """
         return list(self.line_delta_iter(new_lines))
 
     @staticmethod
@@ -583,6 +759,11 @@ class AnnotatedKnitContent(KnitContent):
     """Annotated content."""
 
     def __init__(self, lines):
+        """Initialize AnnotatedKnitContent.
+
+        Args:
+            lines: An iterable of (origin, text) tuples representing annotated lines.
+        """
         KnitContent.__init__(self)
         self._lines = list(lines)
 
@@ -603,6 +784,14 @@ class AnnotatedKnitContent(KnitContent):
             offset = offset + (start - end) + count
 
     def text(self):
+        """Return the text content without annotations.
+
+        Returns:
+            A list of text lines.
+
+        Raises:
+            KnitCorrupt: If annotation information is missing.
+        """
         try:
             lines = [text for origin, text in self._lines]
         except ValueError as e:
@@ -617,6 +806,11 @@ class AnnotatedKnitContent(KnitContent):
         return lines
 
     def copy(self):
+        """Create a copy of this annotated content.
+
+        Returns:
+            A new AnnotatedKnitContent instance with the same lines.
+        """
         return AnnotatedKnitContent(self._lines)
 
 
@@ -629,6 +823,12 @@ class PlainKnitContent(KnitContent):
     """
 
     def __init__(self, lines, version_id):
+        """Initialize PlainKnitContent.
+
+        Args:
+            lines: A list of text lines.
+            version_id: The version identifier for this content.
+        """
         KnitContent.__init__(self)
         self._lines = lines
         self._version_id = version_id
@@ -647,9 +847,19 @@ class PlainKnitContent(KnitContent):
         self._version_id = new_version_id
 
     def copy(self):
+        """Create a copy of this plain content.
+
+        Returns:
+            A new PlainKnitContent instance with the same lines and version.
+        """
         return PlainKnitContent(self._lines[:], self._version_id)
 
     def text(self):
+        """Return the text content.
+
+        Returns:
+            A list of text lines, possibly with the final EOL stripped.
+        """
         lines = self._lines
         if self._should_strip_eol:
             lines = lines[:]
@@ -695,6 +905,15 @@ class KnitAnnotateFactory(_KnitFactory):
     annotated = True
 
     def make(self, lines, version_id):
+        """Create an AnnotatedKnitContent from lines and version_id.
+
+        Args:
+            lines: The text lines to annotate.
+            version_id: The version identifier to assign to all lines.
+
+        Returns:
+            An AnnotatedKnitContent instance.
+        """
         num_lines = len(lines)
         return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
 
@@ -790,6 +1009,15 @@ class KnitAnnotateFactory(_KnitFactory):
         return out
 
     def annotate(self, knit, key):
+        """Get annotated lines for a given key.
+
+        Args:
+            knit: The knit storage to read from.
+            key: The version key to annotate.
+
+        Returns:
+            A list of (origin, text) tuples for each line.
+        """
         content = knit._get_content(key)
         # adjust for the fact that serialised annotations are only key suffixes
         # for this factory.
@@ -812,6 +1040,15 @@ class KnitPlainFactory(_KnitFactory):
     annotated = False
 
     def make(self, lines, version_id):
+        """Create a PlainKnitContent from lines and version_id.
+
+        Args:
+            lines: The text lines.
+            version_id: The version identifier.
+
+        Returns:
+            A PlainKnitContent instance.
+        """
         return PlainKnitContent(lines, version_id)
 
     def parse_fulltext(self, content, version_id):
@@ -823,6 +1060,15 @@ class KnitPlainFactory(_KnitFactory):
         return self.make(content, version_id)
 
     def parse_line_delta_iter(self, lines, version_id):
+        """Parse line delta records into an iterator of delta operations.
+
+        Args:
+            lines: The delta lines to parse.
+            version_id: The version identifier (unused for plain content).
+
+        Yields:
+            Tuples of (start, end, count, lines) for each delta operation.
+        """
         cur = 0
         num_lines = len(lines)
         while cur < num_lines:
@@ -833,6 +1079,15 @@ class KnitPlainFactory(_KnitFactory):
             cur += c
 
     def parse_line_delta(self, lines, version_id):
+        """Parse line delta records into a list of delta operations.
+
+        Args:
+            lines: The delta lines to parse.
+            version_id: The version identifier (unused for plain content).
+
+        Returns:
+            A list of (start, end, count, lines) tuples.
+        """
         return list(self.parse_line_delta_iter(lines, version_id))
 
     def get_fulltext_content(self, lines):
@@ -853,9 +1108,25 @@ class KnitPlainFactory(_KnitFactory):
                 yield next(lines)
 
     def lower_fulltext(self, content):
+        """Convert a fulltext content record into a serializable form.
+
+        Args:
+            content: The PlainKnitContent to serialize.
+
+        Returns:
+            The text lines.
+        """
         return content.text()
 
     def lower_line_delta(self, delta):
+        """Convert a delta into a serializable form.
+
+        Args:
+            delta: The delta to serialize.
+
+        Returns:
+            A list of serialized delta lines.
+        """
         out = []
         for start, end, c, lines in delta:
             out.append(b"%d,%d,%d\n" % (start, end, c))
@@ -863,6 +1134,15 @@ class KnitPlainFactory(_KnitFactory):
         return out
 
     def annotate(self, knit, key):
+        """Get annotated lines for a given key using a KnitAnnotator.
+
+        Args:
+            knit: The knit storage to read from.
+            key: The version key to annotate.
+
+        Returns:
+            A list of (origin, text) tuples for each line.
+        """
         annotator = _KnitAnnotator(knit)
         return annotator.annotate_flat(key)
 
@@ -930,6 +1210,11 @@ def make_pack_factory(graph, delta, keylength):
 
 
 def cleanup_pack_knit(versioned_files):
+    """Clean up resources used by a pack knit versioned files instance.
+
+    Args:
+        versioned_files: The KnitVersionedFiles instance to clean up.
+    """
     versioned_files.stream.close()
     versioned_files.writer.end()
 
@@ -1000,6 +1285,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         self._reload_func = reload_func
 
     def __repr__(self):
+        """Return a string representation of this KnitVersionedFiles.
+
+        Returns:
+            A string showing the class name, index, and access objects.
+        """
         return f"{self.__class__.__name__}({self._index!r}, {self._access!r})"
 
     def without_fallbacks(self):
@@ -1203,6 +1493,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         return self._factory.annotate(self, key)
 
     def get_annotator(self):
+        """Get an annotator for this knit.
+
+        Returns:
+            A _KnitAnnotator instance for annotating content.
+        """
         return _KnitAnnotator(self)
 
     def check(self, progress_bar=None, keys=None):

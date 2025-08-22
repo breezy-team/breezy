@@ -80,6 +80,17 @@ VERSION_FORMAT = "%-50s%s"
 
 
 def main():
+    """Main function for Brz Windows post-installation setup.
+
+    Handles various post-installation tasks for Brz on Windows including:
+    - Updating start_brz.bat script paths
+    - Adding/removing Brz directory from system PATH
+    - Adding/removing shell context menu entries
+    - Checking for required MFC71.DLL library
+
+    Returns:
+        int: OK (0) on success, ERROR (1) on failure.
+    """
     import ctypes
     import getopt
     import locale
@@ -257,6 +268,14 @@ def main():
         abak = "C:\\autoexec.bak"
 
         def backup_autoexec_bat(name, backupname, dry_run):
+            """Create a backup copy of autoexec.bat file.
+
+            Args:
+                name (str): Path to the original autoexec.bat file.
+                backupname (str): Path where the backup should be created.
+                dry_run (bool): If True, only print what would be done without
+                    actually creating the backup.
+            """
             # backup autoexec.bat
             if os.path.isfile(name):
                 if not dry_run:

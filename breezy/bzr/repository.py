@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Bazaar repository implementation.
+
+This module provides the repository classes and formats for Bazaar's
+native storage format, including support for shared repositories and
+the meta-directory layout.
+"""
+
 import contextlib
 import itertools
 
@@ -34,6 +41,13 @@ class MetaDirRepository(Repository):
     _format: "RepositoryFormatMetaDir"
 
     def __init__(self, _format, a_bzrdir, control_files):
+        """Initialize a MetaDirRepository.
+
+        Args:
+            _format: The repository format.
+            a_bzrdir: The bzrdir containing this repository.
+            control_files: The control files for this repository.
+        """
         super().__init__(_format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
@@ -103,6 +117,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         return matching
 
     def __init__(self):
+        """Initialize a RepositoryFormatMetaDir."""
         RepositoryFormat.__init__(self)
         bzrdir.BzrFormat.__init__(self)
 
@@ -156,6 +171,13 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
     def check_support_status(
         self, allow_unsupported, recommend_upgrade=True, basedir=None
     ):
+        """Check the support status of this format.
+
+        Args:
+            allow_unsupported: Whether to allow unsupported formats.
+            recommend_upgrade: Whether to recommend upgrading.
+            basedir: The base directory for upgrade recommendations.
+        """
         RepositoryFormat.check_support_status(
             self,
             allow_unsupported=allow_unsupported,

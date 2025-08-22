@@ -62,6 +62,12 @@ class VersionedFileCheck(Check):
     # The Check object interacts with InventoryEntry.check, etc.
 
     def __init__(self, repository, check_repo=True):
+        """Initialize a VersionedFileCheck instance.
+
+        Args:
+            repository: The repository to check.
+            check_repo: Whether to check the repository (default True).
+        """
         self.repository = repository
         self.checked_rev_cnt = 0
         self.ghosts = set()
@@ -86,6 +92,12 @@ class VersionedFileCheck(Check):
         self.ancestors = {}
 
     def check(self, callback_refs=None, check_repo=True):
+        """Perform the check operation.
+
+        Args:
+            callback_refs: Dictionary of references to check callbacks for.
+            check_repo: Whether to check the repository (default True).
+        """
         if callback_refs is None:
             callback_refs = {}
         with (
@@ -182,6 +194,11 @@ class VersionedFileCheck(Check):
             self.revs_with_bad_parents_in_index = list(bad_revisions)
 
     def report_results(self, verbose):
+        """Report the results of the check operation.
+
+        Args:
+            verbose: Whether to include verbose output.
+        """
         if self.check_repo:
             self._report_repo_results(verbose)
         for result in self.other_results:

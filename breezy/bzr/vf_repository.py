@@ -111,6 +111,20 @@ class VersionedFileCommitBuilder(CommitBuilder):
         lossy=False,
         owns_transaction=True,
     ):
+        """Initialize the VersionedFileCommitBuilder.
+
+        Args:
+            repository: The repository to commit to.
+            parents: List of parent revision IDs.
+            config_stack: Configuration stack for the commit.
+            timestamp: Optional timestamp for the commit.
+            timezone: Optional timezone for the commit.
+            committer: Optional committer identity.
+            revprops: Optional revision properties.
+            revision_id: Optional specific revision ID to use.
+            lossy: Whether to allow lossy conversion.
+            owns_transaction: Whether this builder owns the write transaction.
+        """
         super().__init__(
             repository,
             parents,
@@ -725,10 +739,25 @@ class VersionedFileRepository(Repository):
             self.chk_bytes.add_fallback_versioned_files(repository.chk_bytes)
 
     def create_bundle(self, target, base, fileobj, format=None):
+        """Create a bundle containing the changes from base to target.
+
+        Args:
+            target: Target revision.
+            base: Base revision.
+            fileobj: File object to write the bundle to.
+            format: Optional bundle format to use.
+
+        Returns:
+            Result of writing the bundle.
+        """
         return serializer.write_bundle(self, target, base, fileobj, format)
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release the lock on the repository.
+
+        Also clears the inventory entry cache when fully unlocked.
+        """
         super().unlock()
         if self.control_files._lock_count == 0:
             self._inventory_entry_cache.clear()
@@ -1233,12 +1262,25 @@ class VersionedFileRepository(Repository):
             )
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision using GPG.
+
+        Args:
+            revision_id: The revision to sign.
+            gpg_strategy: The GPG strategy to use for signing.
+        """
         with self.lock_write():
             testament = Testament.from_revision(self, revision_id)
             plaintext = testament.as_short_text()
             self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """Store a GPG signature for a revision.
+
+        Args:
+            gpg_strategy: The GPG strategy to use for signing.
+            plaintext: The text to sign.
+            revision_id: The revision ID to associate the signature with.
+        """
         with self.lock_write():
             signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
             self.add_signature_text(revision_id, signature)
@@ -1618,6 +1660,11 @@ class VersionedFileRepository(Repository):
         return result
 
     def get_serializer_format(self):
+        """Get the format number of the inventory serializer.
+
+        Returns:
+            The inventory serializer's format number.
+        """
         return self._inventory_serializer.format_num
 
     def _get_inventory_xml(self, revision_id):
@@ -1798,6 +1845,13 @@ class MetaDirVersionedFileRepository(MetaDirRepository, VersionedFileRepository)
     """Repositories in a meta-dir, that work via versioned file objects."""
 
     def __init__(self, _format, a_controldir, control_files):
+        """Initialize a MetaDirVersionedFileRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory.
+            control_files: The control files for this repository.
+        """
         super().__init__(_format, a_controldir, control_files)
 
 
@@ -1817,6 +1871,11 @@ class StreamSink:
     """
 
     def __init__(self, target_repo):
+        """Initialize a StreamSink.
+
+        Args:
+            target_repo: The repository to insert streams into.
+        """
         self.target_repo = target_repo
 
     def insert_missing_keys(self, source, missing_keys):
@@ -2032,6 +2091,10 @@ class StreamSink:
             self.target_repo.add_revision(revision_id, rev)
 
     def finished(self):
+        """Finalize the stream insertion.
+
+        Reconciles the repository if required by the format.
+        """
         if self.target_repo._format._fetch_reconcile:
             self.target_repo.reconcile()
 
@@ -2092,6 +2155,14 @@ class StreamSource:
             return []
 
     def get_stream(self, search):
+        """Generate a stream of data for the given search.
+
+        Args:
+            search: Search object specifying what revisions to stream.
+
+        Yields:
+            Tuples of (stream_type, stream) for different data types.
+        """
         phase = "file"
         revs = search.get_keys()
         graph = self.from_repository.get_graph()
@@ -2138,6 +2209,14 @@ class StreamSource:
                 raise AssertionError(f"Unknown knit kind {knit_kind!r}")
 
     def get_stream_for_missing_keys(self, missing_keys):
+        """Generate a stream to satisfy missing keys.
+
+        Args:
+            missing_keys: Keys that were found to be missing.
+
+        Yields:
+            Tuples of (stream_type, stream) for the missing data.
+        """
         # missing keys can only occur when we are byte copying and not
         # translating (because translation means we don't send
         # unreconstructable deltas ever).
@@ -2189,6 +2268,11 @@ class StreamSource:
             yield substream_kind, stream
 
     def inventory_fetch_order(self):
+        """Determine the order for fetching inventories.
+
+        Returns:
+            'topological' for rich root upgrades, otherwise the target format's order.
+        """
         if self._rich_root_upgrade():
             return "topological"
         else:
@@ -2389,6 +2473,8 @@ class _VersionedFileChecker:
 
 
 class InterVersionedFileRepository(InterRepository):
+    """Inter-repository operations for versioned file repositories."""
+
     _walk_to_common_revisions_batch_size = 50
 
     supports_fetch_spec = True
@@ -2565,6 +2651,15 @@ class InterVersionedFileRepository(InterRepository):
 
     @classmethod
     def is_compatible(cls, source, target):
+        """Check if source and target repositories are compatible.
+
+        Args:
+            source: Source repository.
+            target: Target repository.
+
+        Returns:
+            True if both repositories support full versioned files.
+        """
         # The default implementation is compatible with everything
         return (
             source._format.supports_full_versioned_files
@@ -2573,12 +2668,23 @@ class InterVersionedFileRepository(InterRepository):
 
 
 class InterDifferingSerializer(InterVersionedFileRepository):
+    """Inter-repository operations when serializers differ."""
+
     @classmethod
     def _get_repo_format_to_test(cls):
         return None
 
     @staticmethod
     def is_compatible(source, target):
+        """Check compatibility when serializers differ.
+
+        Args:
+            source: Source repository.
+            target: Target repository.
+
+        Returns:
+            True if repositories are compatible despite differing serializers.
+        """
         if not source._format.supports_full_versioned_files:
             return False
         if not target._format.supports_full_versioned_files:
@@ -2939,6 +3045,15 @@ class InterSameDataRepository(InterVersionedFileRepository):
 
     @staticmethod
     def is_compatible(source, target):
+        """Check if repositories have the same data model.
+
+        Args:
+            source: Source repository.
+            target: Target repository.
+
+        Returns:
+            True if repositories have the same model and support versioned files.
+        """
         return (
             InterRepository._same_model(source, target)
             and source._format.supports_full_versioned_files

@@ -63,6 +63,11 @@ from .pack_repo import (
 
 
 class KnitPackRepository(PackRepository, KnitRepository):
+    """A repository that uses knit format with pack storage.
+
+    Combines the knit versioned file format with pack-based storage.
+    """
+
     def __init__(
         self,
         _format,
@@ -72,6 +77,16 @@ class KnitPackRepository(PackRepository, KnitRepository):
         _revision_serializer,
         _inventory_serializer,
     ):
+        """Initialize a KnitPackRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory.
+            control_files: Control files for the repository.
+            _commit_builder_class: Class to use for building commits.
+            _revision_serializer: Serializer for revisions.
+            _inventory_serializer: Serializer for inventories.
+        """
         PackRepository.__init__(
             self,
             _format,
@@ -391,6 +406,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return "Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)"
 
 
@@ -443,11 +459,17 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return (
             "Packs 5 rich-root (adds stacking support, requires bzr 1.6) (deprecated)"
         )
 
     def is_deprecated(self):
+        """Check if this format is deprecated.
+
+        Returns:
+            True, as this format is deprecated.
+        """
         return True
 
 
@@ -536,6 +558,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
 
 
@@ -607,6 +630,12 @@ class KnitPackStreamSource(StreamSource):
     """
 
     def __init__(self, from_repository, to_format):
+        """Initialize a KnitPackStreamSource.
+
+        Args:
+            from_repository: The source repository.
+            to_format: The target repository format.
+        """
         super().__init__(from_repository, to_format)
         self._text_keys = None
         self._text_fetch_order = "unordered"
@@ -666,6 +695,14 @@ class KnitPackStreamSource(StreamSource):
         return ("texts", text_stream)
 
     def get_stream(self, search):
+        """Get a stream of records for the given search.
+
+        Args:
+            search: Search object specifying what records to retrieve.
+
+        Yields:
+            Tuples of (stream_type, record_stream) for different data types.
+        """
         revision_ids = search.get_keys()
         yield from self._fetch_revision_texts(revision_ids)
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
@@ -679,6 +716,15 @@ class KnitPacker(Packer):
     def __init__(
         self, pack_collection, packs, suffix, revision_ids=None, reload_func=None
     ):
+        """Initialize a KnitPacker.
+
+        Args:
+            pack_collection: The pack collection to operate on.
+            packs: List of packs to process.
+            suffix: Suffix for the new pack name.
+            revision_ids: Optional list of revision IDs to pack.
+            reload_func: Optional function to reload pack data.
+        """
         super().__init__(
             pack_collection,
             packs,
@@ -1127,6 +1173,12 @@ class KnitReconcilePacker(KnitPacker):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize a KnitReconcilePacker.
+
+        Args:
+            *args: Arguments passed to parent class.
+            **kwargs: Keyword arguments passed to parent class.
+        """
         super().__init__(*args, **kwargs)
         self._data_changed = False
 

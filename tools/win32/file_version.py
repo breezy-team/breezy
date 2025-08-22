@@ -14,10 +14,14 @@ __docformat__ = "restructuredtext"
 
 
 class FileNotFound(Exception):
+    """Exception raised when specified file does not exist."""
+
     pass
 
 
 class VersionNotAvailable(Exception):
+    """Exception raised when file version information is not available."""
+
     pass
 
 

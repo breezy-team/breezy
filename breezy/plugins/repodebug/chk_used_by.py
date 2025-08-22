@@ -14,11 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Command to find inventories/revisions that reference a CHK."""
+
 from ... import controldir
 from ...commands import Command
 
 
 class cmd_chk_used_by(Command):
+    """Find the inventories/revisions that reference a CHK."""
+
     __doc__ = """Find the inventories/revisions that reference a CHK."""
 
     hidden = True
@@ -26,6 +30,12 @@ class cmd_chk_used_by(Command):
     takes_options = ["directory"]
 
     def run(self, key_list, directory="."):
+        """Execute the chk-used-by command.
+
+        Args:
+            key_list: List of CHK keys to search for.
+            directory: Directory containing the repository to search.
+        """
         key_list = [(k,) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)

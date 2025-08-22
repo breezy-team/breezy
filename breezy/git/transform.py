@@ -15,6 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Git-specific tree transformation implementations.
+
+This module provides Git-specific implementations of tree transformation
+classes, including specialized transform operations for Git repositories
+and preview trees that work with Git's object model.
+"""
+
 import errno
 import os
 import tempfile
@@ -80,6 +87,11 @@ class TreeTransformBase(TreeTransform):
 
     @property
     def mapping(self):
+        """Get the mapping used by the underlying tree.
+
+        Returns:
+            The mapping object from the underlying Git tree.
+        """
         return self._tree.mapping
 
     def finalize(self):
@@ -199,6 +211,14 @@ class TreeTransformBase(TreeTransform):
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def final_is_versioned(self, trans_id):
+        """Check if a transform ID will be versioned in the final tree.
+
+        Args:
+            trans_id: Transform ID to check.
+
+        Returns:
+            bool: True if the transform ID will be versioned in the final tree.
+        """
         if trans_id in self._versioned:
             return True
         if trans_id in self._removed_id:
@@ -744,6 +764,15 @@ class TreeTransformBase(TreeTransform):
         raise NotImplementedError(self.create_symlink)
 
     def create_tree_reference(self, target, trans_id):
+        """Create a tree reference (not implemented for Git transforms).
+
+        Args:
+            target: Target of the tree reference.
+            trans_id: Transform ID for the tree reference.
+
+        Raises:
+            NotImplementedError: Tree references are not supported.
+        """
         raise NotImplementedError(self.create_tree_reference)
 
     def create_hardlink(self, path, trans_id):
@@ -880,6 +909,13 @@ class DiskTreeTransform(TreeTransformBase):
         return osutils.pathjoin(self._limbodir, trans_id)
 
     def adjust_path(self, name, parent, trans_id):
+        """Adjust the path of a transform ID and handle limbo renaming.
+
+        Args:
+            name: New name for the path.
+            parent: New parent transform ID.
+            trans_id: Transform ID to adjust the path for.
+        """
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
         super().adjust_path(name, parent, trans_id)
@@ -1031,11 +1067,26 @@ class DiskTreeTransform(TreeTransformBase):
         osutils.delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
+        """Handle creation of an orphaned transform ID.
+
+        Args:
+            trans_id: Transform ID that has become orphaned.
+            parent_id: Parent transform ID that was removed.
+        """
         conf = self._tree.get_config_stack()
         handle_orphan = conf.get("transform.orphan_policy")
         handle_orphan(self, trans_id, parent_id)
 
     def final_entry(self, trans_id):
+        """Get the final directory entry for a transform ID.
+
+        Args:
+            trans_id: Transform ID to get the entry for.
+
+        Returns:
+            tuple: (entry, is_versioned) where entry is the directory entry
+                   and is_versioned indicates if it's versioned.
+        """
         is_versioned = self.final_is_versioned(trans_id)
         fp = FinalPaths(self)
         tree_path = fp.get_path(trans_id)
@@ -1097,6 +1148,15 @@ class DiskTreeTransform(TreeTransformBase):
                 return None, None
 
     def final_git_entry(self, trans_id):
+        """Get the final Git entry (blob and mode) for a transform ID.
+
+        Args:
+            trans_id: Transform ID to get the Git entry for.
+
+        Returns:
+            tuple: (blob, mode) where blob is the Git blob object and mode
+                   is the Git file mode, or (None, None) for directories.
+        """
         if trans_id in self._new_contents:
             path = self._limbo_name(trans_id)
             st = os.lstat(path)
@@ -1555,14 +1615,37 @@ class GitTransformPreview(GitTreeTransform):
     """
 
     def __init__(self, tree, pb=None, case_sensitive=True):
+        """Initialize a GitTreeTransform.
+
+        Args:
+            tree: The Git tree to transform.
+            pb: Optional progress bar (optional).
+            case_sensitive: Whether the target is case sensitive (optional).
+        """
         tree.lock_read()
         limbodir = tempfile.mkdtemp(prefix="git-limbo-")
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
+        """Return the canonical form of a path.
+
+        Args:
+            path: Path to canonicalize.
+
+        Returns:
+            str: The canonical path (unchanged for Git).
+        """
         return path
 
     def tree_kind(self, trans_id):
+        """Get the kind of file in the tree for a transform ID.
+
+        Args:
+            trans_id: Transform ID to get the kind for.
+
+        Returns:
+            str: The kind of file ('file', 'directory', 'symlink', etc.).
+        """
         path = self.tree_path(trans_id)
         if path is None:
             return None
@@ -1594,6 +1677,15 @@ class GitTransformPreview(GitTreeTransform):
             return
 
     def new_orphan(self, trans_id, parent_id):
+        """Handle creation of an orphaned transform ID (not implemented).
+
+        Args:
+            trans_id: Transform ID that has become orphaned.
+            parent_id: Parent transform ID that was removed.
+
+        Raises:
+            NotImplementedError: Orphan handling is not implemented.
+        """
         raise NotImplementedError(self.new_orphan)
 
 
@@ -1603,21 +1695,44 @@ class GitPreviewTree(PreviewTree, GitTree):
     supports_file_ids = False
 
     def __init__(self, transform):
+        """Initialize a GitPreviewTree.
+
+        Args:
+            transform: The tree transform to create a preview for.
+        """
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store
         self.mapping = transform._tree.mapping
         self._final_paths = FinalPaths(transform)
 
     def supports_setting_file_ids(self):
+        """Check if this tree supports setting file IDs.
+
+        Returns:
+            bool: False, as Git trees don't support file IDs.
+        """
         return False
 
     def supports_symlinks(self):
+        """Check if this tree supports symbolic links.
+
+        Returns:
+            bool: True if the transform supports creating symlinks.
+        """
         return self._transform._create_symlinks
 
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
 
     def walkdirs(self, prefix=""):
+        """Walk the directories in the preview tree.
+
+        Args:
+            prefix: Path prefix to filter results (optional).
+
+        Yields:
+            tuple: (path, children) for each directory.
+        """
         pending = [self._transform.root]
         while len(pending) > 0:
             parent_id = pending.pop()
@@ -1693,6 +1808,15 @@ class GitPreviewTree(PreviewTree, GitTree):
         return osutils.readlink(name)
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
+        """Iterate through annotations for a file.
+
+        Args:
+            path: Path to the file to annotate.
+            default_revision: Default revision for new lines (optional).
+
+        Returns:
+            Iterator over (revision_id, line) tuples, or None if file not found.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             return None
@@ -1710,6 +1834,14 @@ class GitPreviewTree(PreviewTree, GitTree):
         return annotate.reannotate([old_annotation], lines, default_revision)
 
     def path2id(self, path):
+        """Convert a path to a file ID.
+
+        Args:
+            path: Path as string or list of path components.
+
+        Returns:
+            bytes: File ID for the path, or None if not versioned.
+        """
         if isinstance(path, list):
             if path == []:
                 path = [""]
@@ -1736,6 +1868,11 @@ class GitPreviewTree(PreviewTree, GitTree):
         return osutils.split_lines(self.get_file_text(path))
 
     def extras(self):
+        """Iterate over extra (unversioned) files in the tree.
+
+        Yields:
+            str: Paths to unversioned files.
+        """
         possible_extras = {
             self._transform.trans_id_tree_path(p)
             for p in self._transform._tree.extras()
@@ -1747,6 +1884,14 @@ class GitPreviewTree(PreviewTree, GitTree):
                 yield self._final_paths._determine_path(trans_id)
 
     def path_content_summary(self, path):
+        """Get a summary of the content at a path.
+
+        Args:
+            path: Path to get the content summary for.
+
+        Returns:
+            tuple: (kind, size, executable, sha1) summary of the content.
+        """
         trans_id = self._path2trans_id(path)
         tt = self._transform
         tree_path = tt.tree_path(trans_id)
@@ -1792,6 +1937,14 @@ class GitPreviewTree(PreviewTree, GitTree):
         return statval.st_mtime
 
     def is_versioned(self, path):
+        """Check if a path is versioned in this tree.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            bool: True if the path is versioned.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             # It doesn't exist, so it's not versioned.
@@ -1804,6 +1957,18 @@ class GitPreviewTree(PreviewTree, GitTree):
         return self._transform._tree.is_versioned(orig_path)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        """Iterate over entries in the tree by directory.
+
+        Args:
+            specific_files: Specific files to iterate over (optional).
+            recurse_nested: Whether to recurse into nested trees (optional).
+
+        Yields:
+            tuple: (trans_id, path) for each entry.
+
+        Raises:
+            NotImplementedError: If recurse_nested is True.
+        """
         if recurse_nested:
             raise NotImplementedError("follow tree references not yet supported")
 
@@ -1835,6 +2000,14 @@ class GitPreviewTree(PreviewTree, GitTree):
                 yield trans_id, paths[trans_id][0]
 
     def revision_tree(self, revision_id):
+        """Get a revision tree for a specific revision.
+
+        Args:
+            revision_id: ID of the revision to get the tree for.
+
+        Returns:
+            Tree: The revision tree.
+        """
         return self._transform._tree.revision_tree(revision_id)
 
     def _stat_limbo_file(self, trans_id):
@@ -1842,6 +2015,15 @@ class GitPreviewTree(PreviewTree, GitTree):
         return os.lstat(name)
 
     def git_snapshot(self, want_unversioned=False):
+        """Create a Git snapshot of the current tree state.
+
+        Args:
+            want_unversioned: Whether to include unversioned files (optional).
+
+        Returns:
+            tuple: (tree_id, extra_files) where tree_id is the Git tree ID
+                   and extra_files is a set of unversioned file paths.
+        """
         extra = set()
         os = []
         for trans_id, path in self._list_files_by_dir():
@@ -1858,6 +2040,17 @@ class GitPreviewTree(PreviewTree, GitTree):
         return commit_tree(self.store, os), extra
 
     def iter_child_entries(self, path):
+        """Iterate over child entries in a directory.
+
+        Args:
+            path: Path to the directory.
+
+        Yields:
+            Directory entries for each child.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+        """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise _mod_transport.NoSuchFile(path)

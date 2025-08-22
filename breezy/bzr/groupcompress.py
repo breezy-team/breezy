@@ -99,9 +99,16 @@ def sort_gc_optimal(parent_map):
 
 
 class DecompressCorruption(errors.BzrError):
+    """Exception raised when repository file decompression fails."""
+
     _fmt = "Corruption while decompressing repository file%(orig_error)s"
 
     def __init__(self, orig_error=None):
+        """Initialize DecompressCorruption.
+
+        Args:
+            orig_error: The original error that caused the corruption.
+        """
         if orig_error is not None:
             self.orig_error = f", {orig_error}"
         else:
@@ -128,6 +135,7 @@ class GroupCompressBlock:
     GCB_KNOWN_HEADERS = (GCB_HEADER, GCB_LZ_HEADER)
 
     def __init__(self):
+        """Initialize a GroupCompressBlock."""
         # map by key? or just order in file?
         self._compressor_name = None
         self._z_content_chunks = None
@@ -138,6 +146,7 @@ class GroupCompressBlock:
         self._content_chunks = None
 
     def __len__(self):
+        """Return the maximum number of bytes this block will reference."""
         # This is the maximum number of bytes this object will reference if
         # everything is decompressed. However, if we decompress less than
         # everything... (this would cause some problems for LRUSizeCache)
@@ -258,6 +267,14 @@ class GroupCompressBlock:
 
     @classmethod
     def from_bytes(cls, bytes):
+        """Create a GroupCompressBlock from bytes.
+
+        Args:
+            bytes: The compressed block data.
+
+        Returns:
+            A new GroupCompressBlock instance.
+        """
         out = cls()
         header = bytes[:6]
         if header not in cls.GCB_KNOWN_HEADERS:
@@ -840,6 +857,16 @@ class _LazyGroupContentManager:
 
 
 def network_block_to_records(storage_kind, bytes, line_end):
+    """Convert a network block to records.
+
+    Args:
+        storage_kind: The type of storage (must be 'groupcompress-block').
+        bytes: The block data bytes.
+        line_end: Line ending marker.
+
+    Returns:
+        Generator yielding (key, data) tuples.
+    """
     if storage_kind != "groupcompress-block":
         raise ValueError(f"Unknown storage kind: {storage_kind}")
     manager = _LazyGroupContentManager.from_bytes(bytes)
@@ -1020,6 +1047,11 @@ class PyrexGroupCompressor:
         return self._block
 
     def flush_without_last(self):
+        """Flush the buffer after removing the last item.
+
+        Returns:
+            The flushed group compress block.
+        """
         self._pop_last()
         return self.flush()
 
@@ -1079,6 +1111,11 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
 
 
 def cleanup_pack_group(versioned_files):
+    """Clean up after packing a group of versioned files.
+
+    Args:
+        versioned_files: The versioned files to clean up.
+    """
     versioned_files.writer.end()
     versioned_files.stream.close()
 
@@ -1355,6 +1392,11 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         return ann.annotate_flat(key)
 
     def get_annotator(self):
+        """Get an annotator for this versioned file.
+
+        Returns:
+            A VersionedFileAnnotator instance.
+        """
         from .annotate import VersionedFileAnnotator
 
         return VersionedFileAnnotator(self)

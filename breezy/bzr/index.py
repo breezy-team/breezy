@@ -481,9 +481,11 @@ class GraphIndex:
         )
 
     def __ne__(self, other):
+        """Return True if self != other."""
         return not self.__eq__(other)
 
     def __lt__(self, other):
+        """Return True if self < other for ordering purposes."""
         # We don't really care about the order, just that there is an order.
         if not isinstance(other, GraphIndex) and not isinstance(
             other, InMemoryGraphIndex
@@ -492,9 +494,11 @@ class GraphIndex:
         return hash(self) < hash(other)
 
     def __hash__(self):
+        """Return hash value for the graph index."""
         return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
+        """Return string representation of the graph index."""
         return f"{self.__class__.__name__}({self._transport.abspath(self._name)!r})"
 
     def _buffer_all(self, stream=None):
@@ -1322,6 +1326,7 @@ class CombinedGraphIndex:
         self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
+        """Return string representation of the combined index."""
         return f"{self.__class__.__name__}({', '.join(map(repr, self._indices))})"
 
     def clear_cache(self):
@@ -1747,6 +1752,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
     def __lt__(self, other):
+        """Return True if self < other for ordering purposes."""
         # We don't really care about the order, just that there is an order.
         if not isinstance(other, GraphIndex) and not isinstance(
             other, InMemoryGraphIndex

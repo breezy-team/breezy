@@ -51,13 +51,22 @@ class PathFilteringServer(Server):
         return PathFilteringTransport(self, url)
 
     def get_url(self):
+        """Return the URL scheme for this server."""
         return self.scheme
 
     def start_server(self):
+        """Start the path filtering transport server.
+
+        Creates a unique scheme and registers the transport factory.
+        """
         self.scheme = "filtered-%d:///" % id(self)
         register_transport(self.scheme, self._factory)
 
     def stop_server(self):
+        """Stop the path filtering transport server.
+
+        Unregisters the transport factory.
+        """
         unregister_transport(self.scheme, self._factory)
 
 
@@ -68,6 +77,12 @@ class PathFilteringTransport(Transport):
     """
 
     def __init__(self, server, base):
+        """Initialize a PathFilteringTransport.
+
+        Args:
+            server: The PathFilteringServer instance.
+            base: Base URL for the transport.
+        """
         self.server = server
         if not base.endswith("/"):
             base += "/"
@@ -93,6 +108,14 @@ class PathFilteringTransport(Transport):
 
     # Transport methods
     def abspath(self, relpath):
+        """Return the absolute URL for a relative path.
+
+        Args:
+            relpath: Relative path to convert.
+
+        Returns:
+            Absolute URL without path filtering applied.
+        """
         # We do *not* want to filter at this point; e.g if the filter is
         # homedir expansion, self.base == 'this:///' and relpath == '~/foo',
         # then the abspath should be this:///~/foo (not this:///home/user/foo).
@@ -101,18 +124,46 @@ class PathFilteringTransport(Transport):
         return self.scheme + self._relpath_from_server_root(relpath)
 
     def append_file(self, relpath, f, mode=None):
+        """Append data to a file.
+
+        Args:
+            relpath: Relative path to the file.
+            f: File-like object or bytes to append.
+            mode: Optional file mode.
+
+        Returns:
+            Number of bytes appended.
+        """
         return self._call("append_file", relpath, f, mode)
 
     def _can_roundtrip_unix_modebits(self):
         return self.server.backing_transport._can_roundtrip_unix_modebits()
 
     def clone(self, relpath):
+        """Clone this transport with a new base path.
+
+        Args:
+            relpath: Relative path for the new base.
+
+        Returns:
+            New PathFilteringTransport instance.
+        """
         return self.__class__(self.server, self.abspath(relpath))
 
     def delete(self, relpath):
+        """Delete a file.
+
+        Args:
+            relpath: Relative path to the file to delete.
+        """
         return self._call("delete", relpath)
 
     def delete_tree(self, relpath):
+        """Delete a directory tree.
+
+        Args:
+            relpath: Relative path to the directory to delete.
+        """
         return self._call("delete_tree", relpath)
 
     def external_url(self):
@@ -124,46 +175,145 @@ class PathFilteringTransport(Transport):
         return self.server.backing_transport.external_url()
 
     def get(self, relpath):
+        """Get the contents of a file.
+
+        Args:
+            relpath: Relative path to the file.
+
+        Returns:
+            File-like object containing the file contents.
+        """
         return self._call("get", relpath)
 
     def has(self, relpath):
+        """Check if a file or directory exists.
+
+        Args:
+            relpath: Relative path to check.
+
+        Returns:
+            True if the path exists, False otherwise.
+        """
         return self._call("has", relpath)
 
     def is_readonly(self):
+        """Check if the transport is read-only.
+
+        Returns:
+            True if read-only, False otherwise.
+        """
         return self.server.backing_transport.is_readonly()
 
     def iter_files_recursive(self):
+        """Iterate over all files in the transport recursively.
+
+        Yields:
+            Relative paths of all files.
+        """
         backing_transport = self.server.backing_transport.clone(self._filter("."))
         return backing_transport.iter_files_recursive()
 
     def listable(self):
+        """Check if the transport supports directory listing.
+
+        Returns:
+            True if listable, False otherwise.
+        """
         return self.server.backing_transport.listable()
 
     def list_dir(self, relpath):
+        """List the contents of a directory.
+
+        Args:
+            relpath: Relative path to the directory.
+
+        Returns:
+            List of directory entry names.
+        """
         return self._call("list_dir", relpath)
 
     def lock_read(self, relpath):
+        """Acquire a read lock on a file.
+
+        Args:
+            relpath: Relative path to the file.
+
+        Returns:
+            Lock object.
+        """
         return self._call("lock_read", relpath)
 
     def lock_write(self, relpath):
+        """Acquire a write lock on a file.
+
+        Args:
+            relpath: Relative path to the file.
+
+        Returns:
+            Lock object.
+        """
         return self._call("lock_write", relpath)
 
     def mkdir(self, relpath, mode=None):
+        """Create a directory.
+
+        Args:
+            relpath: Relative path for the new directory.
+            mode: Optional file mode.
+        """
         return self._call("mkdir", relpath, mode)
 
     def open_write_stream(self, relpath, mode=None):
+        """Open a file for writing as a stream.
+
+        Args:
+            relpath: Relative path to the file.
+            mode: Optional file mode.
+
+        Returns:
+            Writable file-like object.
+        """
         return self._call("open_write_stream", relpath, mode)
 
     def put_file(self, relpath, f, mode=None):
+        """Write data to a file.
+
+        Args:
+            relpath: Relative path to the file.
+            f: File-like object or bytes to write.
+            mode: Optional file mode.
+
+        Returns:
+            Number of bytes written.
+        """
         return self._call("put_file", relpath, f, mode)
 
     def rename(self, rel_from, rel_to):
+        """Rename a file or directory.
+
+        Args:
+            rel_from: Current relative path.
+            rel_to: New relative path.
+        """
         return self._call("rename", rel_from, self._filter(rel_to))
 
     def rmdir(self, relpath):
+        """Remove an empty directory.
+
+        Args:
+            relpath: Relative path to the directory.
+        """
         return self._call("rmdir", relpath)
 
     def stat(self, relpath):
+        """Get file or directory statistics.
+
+        Args:
+            relpath: Relative path to the file or directory.
+
+        Returns:
+            Stat object with file information.
+        """
         return self._call("stat", relpath)
 
 

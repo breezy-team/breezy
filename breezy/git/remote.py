@@ -83,7 +83,21 @@ register_urlparse_netloc_protocol("git+ssh")
 
 
 class GitPushResult(PushResult):
+    """Push result for Git repositories.
+
+    Extends the base PushResult class to provide Git-specific functionality
+    for looking up revision numbers in Git branches.
+    """
+
     def _lookup_revno(self, revid):
+        """Look up revision number for a given revision ID.
+
+        Args:
+            revid: The revision ID to look up.
+
+        Returns:
+            The revision number if found, None if Git smart remote is not supported.
+        """
         try:
             return _quick_lookup_revno(self.source_branch, self.target_branch, revid)
         except GitSmartRemoteNotSupported:
@@ -91,16 +105,34 @@ class GitPushResult(PushResult):
 
     @property
     def old_revno(self):
+        """Get the old revision number.
+
+        Returns:
+            The revision number for the old revision ID.
+        """
         return self._lookup_revno(self.old_revid)
 
     @property
     def new_revno(self):
+        """Get the new revision number.
+
+        Returns:
+            The revision number for the new revision ID.
+        """
         return self._lookup_revno(self.new_revid)
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be
 # a full implementation of Transport
 def get_test_permutations():
+    """Get test permutations for GitSmartTransport.
+
+    GitSmartTransport is not intended to be a full implementation of Transport,
+    so no tests are run on it.
+
+    Returns:
+        Empty list indicating no test permutations.
+    """
     return []
 
 
@@ -118,20 +150,43 @@ def split_git_url(url):
 
 
 class RemoteGitError(BzrError):
+    """Error raised when remote Git server returns an error.
+
+    This exception is used to wrap generic error messages from remote Git servers
+    that don't match any specific error pattern.
+    """
+
     _fmt = "Remote server error: %(msg)s"
 
 
 class ProtectedBranchHookDeclined(BzrError):
+    """Error raised when a protected branch hook declines a push operation.
+
+    This exception is raised when a Git server's protected branch hook
+    prevents a push operation from completing.
+    """
+
     _fmt = "Protected branch hook declined"
 
 
 class HeadUpdateFailed(BzrError):
+    """Error raised when unable to update the remote HEAD branch.
+
+    This exception occurs when the remote Git repository's HEAD branch
+    cannot be updated, typically requiring explicit branch specification.
+    """
+
     _fmt = (
         "Unable to update remote HEAD branch. To update the master "
         "branch, specify the URL %(base_url)s,branch=master."
     )
 
     def __init__(self, base_url):
+        """Initialize HeadUpdateFailed exception.
+
+        Args:
+            base_url: The base URL of the repository where HEAD update failed.
+        """
         super().__init__()
         self.base_url = base_url
 
@@ -212,7 +267,20 @@ def parse_git_hangup(url, e):
 
 
 class GitSmartTransport(Transport):
+    """Git smart protocol transport.
+
+    This transport implements the Git smart protocol for communicating with
+    remote Git repositories. It is not intended to be a full implementation
+    of Transport and only supports Git-specific operations.
+    """
+
     def __init__(self, url, _client=None):
+        """Initialize GitSmartTransport.
+
+        Args:
+            url: The Git repository URL.
+            _client: Optional pre-configured Git client.
+        """
         Transport.__init__(self, url)
         (self._host, self._port, self._username, self._path) = split_git_url(url)
         if debug.debug_flag_enabled("transport"):
@@ -227,21 +295,64 @@ class GitSmartTransport(Transport):
         self._stripped_path = self._path.rsplit(",", 1)[0]
 
     def external_url(self):
+        """Get the external URL for this transport.
+
+        Returns:
+            The base URL of this transport.
+        """
         return self.base
 
     def has(self, relpath):
+        """Check if a relative path exists.
+
+        Git smart transport doesn't support file existence checks.
+
+        Args:
+            relpath: Relative path to check.
+
+        Returns:
+            Always False, as Git smart protocol doesn't support file checks.
+        """
         return False
 
     def _get_client(self):
+        """Get the Git client for this transport.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
+        """Get the repository path for Git operations.
+
+        Returns:
+            The stripped repository path without URL parameters.
+        """
         return self._stripped_path
 
     def get(self, path):
+        """Get a file from the transport.
+
+        Git smart transport doesn't support file retrieval.
+
+        Args:
+            path: Path to the file.
+
+        Raises:
+            NoSuchFile: Always raised as file access is not supported.
+        """
         raise NoSuchFile(path)
 
     def abspath(self, relpath):
+        """Return absolute URL for a relative path.
+
+        Args:
+            relpath: Relative path to convert.
+
+        Returns:
+            Absolute URL by joining base URL with relative path.
+        """
         return urlutils.join(self.base, relpath)
 
     def clone(self, offset=None):
@@ -252,9 +363,21 @@ class GitSmartTransport(Transport):
 
 
 class TCPGitSmartTransport(GitSmartTransport):
+    """TCP-based Git smart transport.
+
+    Implements Git smart protocol over TCP connections using the 'git://' scheme.
+    """
+
     _scheme = "git"
 
     def _get_client(self):
+        """Get a Git client for TCP connections.
+
+        Returns:
+            A Git client appropriate for TCP connections. Returns a cached client
+            if available, SubprocessGitClient for local connections, or
+            TCPGitClient for remote connections.
+        """
         if self._client is not None:
             ret = self._client
             self._client = None
@@ -268,26 +391,79 @@ class TCPGitSmartTransport(GitSmartTransport):
 
 
 class SSHSocketWrapper:
+    """Wrapper for SSH sockets to provide a file-like interface.
+
+    This class wraps an SSH socket to provide read/write methods compatible
+    with Git protocol expectations.
+    """
+
     def __init__(self, sock):
+        """Initialize SSH socket wrapper.
+
+        Args:
+            sock: The SSH socket to wrap.
+        """
         self.sock = sock
 
     def read(self, len=None):
+        """Read data from the SSH socket.
+
+        Args:
+            len: Maximum number of bytes to read.
+
+        Returns:
+            Data read from the socket.
+        """
         return self.sock.recv(len)
 
     def write(self, data):
+        """Write data to the SSH socket.
+
+        Args:
+            data: Data to write to the socket.
+
+        Returns:
+            Number of bytes written.
+        """
         return self.sock.write(data)
 
     def can_read(self):
+        """Check if data is available for reading.
+
+        Returns:
+            True if data is available for reading, False otherwise.
+        """
         return len(select.select([self.sock.fileno()], [], [], 0)[0]) > 0
 
 
 class DulwichSSHVendor(dulwich.client.SSHVendor):
+    """SSH vendor implementation for Dulwich using Breezy's SSH transport.
+
+    This class integrates Dulwich's SSH client with Breezy's SSH transport
+    infrastructure, providing a bridge between the two systems.
+    """
+
     def __init__(self):
+        """Initialize DulwichSSHVendor with Breezy's SSH vendor."""
         from ..transport import ssh
 
         self.bzr_ssh_vendor = ssh._get_ssh_vendor()
 
     def run_command(self, host, command, username=None, port=None):
+        """Run a command on a remote host via SSH.
+
+        Args:
+            host: Target hostname.
+            command: Command to execute on the remote host.
+            username: Optional username for SSH connection.
+            port: Optional port number for SSH connection.
+
+        Returns:
+            Socket wrapper for the SSH connection.
+
+        Raises:
+            AssertionError: If the connection type is not supported.
+        """
         connection = self.bzr_ssh_vendor.connect_ssh(
             username=username, password=None, port=port, host=host, command=command
         )
@@ -302,9 +478,21 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
 
 
 class SSHGitSmartTransport(GitSmartTransport):
+    """SSH-based Git smart transport.
+
+    Implements Git smart protocol over SSH connections using the 'git+ssh://' scheme.
+    """
+
     _scheme = "git+ssh"
 
     def _get_path(self):
+        """Get the repository path for SSH connections.
+
+        Handles SSH-specific path conventions, including home directory shortcuts.
+
+        Returns:
+            The repository path with SSH-specific transformations applied.
+        """
         path = self._stripped_path
         if path.startswith("/~/"):
             return path[3:]
@@ -333,28 +521,76 @@ class SSHGitSmartTransport(GitSmartTransport):
 
 
 class RemoteGitBranchFormat(GitBranchFormat):
+    """Branch format for remote Git branches.
+
+    This format represents Git branches accessed via remote protocols and
+    cannot be initialized locally.
+    """
+
     def get_format_description(self):
+        """Get a description of this branch format.
+
+        Returns:
+            Human-readable description of the format.
+        """
         return "Remote Git Branch"
 
     @property
     def _matchingcontroldir(self):
+        """Get the matching control directory format.
+
+        Returns:
+            RemoteGitControlDirFormat instance.
+        """
         return RemoteGitControlDirFormat()
 
     def initialize(
         self, a_controldir, name=None, repository=None, append_revisions_only=None
     ):
+        """Initialize a new branch.
+
+        Remote Git branches cannot be initialized.
+
+        Args:
+            a_controldir: Control directory for the branch.
+            name: Optional branch name.
+            repository: Optional repository instance.
+            append_revisions_only: Optional flag for append-only mode.
+
+        Raises:
+            UninitializableFormat: Always raised as remote branches cannot be initialized.
+        """
         raise UninitializableFormat(self)
 
 
 class DefaultProgressReporter:
+    """Default progress reporter for Git operations.
+
+    Parses Git progress messages and reports them through Breezy's progress
+    infrastructure. Also collects error messages for later processing.
+    """
+
     _GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
     _GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
 
     def __init__(self, pb):
+        """Initialize progress reporter.
+
+        Args:
+            pb: Progress bar instance to report progress to.
+        """
         self.pb = pb
         self.errors = []
 
     def progress(self, text):
+        """Process a progress message from Git.
+
+        Parses Git progress output and updates the progress bar accordingly.
+        Error messages are collected separately and displayed immediately.
+
+        Args:
+            text: Raw progress text from Git (bytes).
+        """
         text = text.rstrip(b"\r\n")
         text = text.decode("utf-8", "surrogateescape")
         if text.lower().startswith("error: "):
@@ -380,7 +616,22 @@ _LOCK_REF_ERROR_MATCHER = re.compile("cannot lock ref '(.*)': (.*)")
 
 
 class RemoteGitDir(GitDir):
+    """Control directory for remote Git repositories.
+
+    Provides access to remote Git repositories through various Git protocols
+    (SSH, HTTP, TCP). Handles Git-specific operations like fetch_pack and
+    send_pack while maintaining compatibility with Breezy's ControlDir interface.
+    """
+
     def __init__(self, transport, format, client, client_path):
+        """Initialize RemoteGitDir.
+
+        Args:
+            transport: Transport for accessing the remote repository.
+            format: The control directory format.
+            client: Git client for protocol operations.
+            client_path: Path to the repository on the remote server.
+        """
         self._format = format
         self.root_transport = transport
         self.transport = transport
@@ -392,6 +643,11 @@ class RemoteGitDir(GitDir):
 
     @property
     def _gitrepository_class(self):
+        """Get the Git repository class to use.
+
+        Returns:
+            RemoteGitRepository class for remote repositories.
+        """
         return RemoteGitRepository
 
     def archive(
@@ -405,6 +661,22 @@ class RemoteGitDir(GitDir):
         prefix=None,
         recurse_nested=False,
     ):
+        """Create an archive of the repository at a specific commit.
+
+        Args:
+            format: Archive format (e.g., 'tar', 'zip').
+            committish: Commit, tag, or ref to archive.
+            write_data: Callback to write archive data.
+            progress: Optional progress callback.
+            write_error: Optional error callback.
+            subdirs: Optional list of subdirectories to include.
+            prefix: Optional prefix for archive entries.
+            recurse_nested: Whether to recurse into nested repositories.
+
+        Raises:
+            NotImplementedError: If recurse_nested is True.
+            NoSuchExportFormat: If the archive format is not supported.
+        """
         if recurse_nested:
             raise NotImplementedError("recurse_nested is not yet supported")
         if progress is None:
@@ -439,6 +711,21 @@ class RemoteGitDir(GitDir):
                 pb.finished()
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+        """Fetch a pack from the remote repository.
+
+        Args:
+            determine_wants: Callback to determine which objects are wanted.
+            graph_walker: Graph walker for traversing object relationships.
+            pack_data: Callback to receive pack data.
+            progress: Optional progress reporter.
+
+        Returns:
+            FetchPackResult containing fetched data and refs.
+
+        Raises:
+            ConnectionResetError: If the connection is closed unexpectedly.
+            RemoteGitError: For various Git protocol errors.
+        """
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
@@ -461,6 +748,21 @@ class RemoteGitDir(GitDir):
                 pb.finished()
 
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
+        """Send a pack to the remote repository.
+
+        Args:
+            get_changed_refs: Callback to determine which refs to update.
+            generate_pack_data: Callback to generate pack data to send.
+            progress: Optional progress reporter.
+
+        Returns:
+            SendPackResult with status information for each ref.
+
+        Raises:
+            ConnectionResetError: If the connection is closed unexpectedly.
+            RemoteGitError: For various Git protocol errors.
+            LockContention: If a ref cannot be locked.
+        """
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress_reporter = DefaultProgressReporter(pb)
@@ -503,6 +805,20 @@ class RemoteGitDir(GitDir):
     def create_branch(
         self, name=None, repository=None, append_revisions_only=None, ref=None
     ):
+        """Create a new branch in the repository.
+
+        Args:
+            name: Name of the branch to create.
+            repository: Repository for the branch (unused).
+            append_revisions_only: Whether branch is append-only (unused).
+            ref: Specific ref to use for the branch.
+
+        Returns:
+            RemoteGitBranch instance for the new branch.
+
+        Raises:
+            AlreadyBranchError: If the branch already exists.
+        """
         refname = self._get_selected_ref(name, ref)
         if refname != b"HEAD" and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
@@ -513,6 +829,15 @@ class RemoteGitDir(GitDir):
         return RemoteGitBranch(self, repo, refname, sha)
 
     def destroy_branch(self, name=None):
+        """Destroy a branch on the remote repository.
+
+        Args:
+            name: Name of the branch to destroy. If None, uses the default branch.
+
+        Raises:
+            NotBranchError: If the branch doesn't exist.
+            RemoteGitError: If the server rejects the deletion.
+        """
         refname = self._get_selected_ref(name)
 
         def get_changed_refs(old_refs):
@@ -532,24 +857,61 @@ class RemoteGitDir(GitDir):
 
     @property
     def user_url(self):
+        """Get the user-visible URL for this repository.
+
+        Returns:
+            The control URL that users see.
+        """
         return self.control_url
 
     @property
     def user_transport(self):
+        """Get the user transport for this repository.
+
+        Returns:
+            The root transport instance.
+        """
         return self.root_transport
 
     @property
     def control_url(self):
+        """Get the control URL for this repository.
+
+        Returns:
+            The base URL of the control transport.
+        """
         return self.control_transport.base
 
     @property
     def control_transport(self):
+        """Get the control transport for this repository.
+
+        Returns:
+            The root transport instance.
+        """
         return self.root_transport
 
     def open_repository(self):
+        """Open the repository associated with this control directory.
+
+        Returns:
+            RemoteGitRepository instance for this repository.
+        """
         return RemoteGitRepository(self)
 
     def get_branch_reference(self, name=None):
+        """Get the reference URL for a symbolic branch reference.
+
+        Args:
+            name: Name of the branch to get reference for.
+
+        Returns:
+            URL with parameters indicating the target branch, or None if not
+            a symbolic reference.
+
+        Raises:
+            BranchReferenceLoop: If there's a circular reference.
+        """
         ref = self._get_selected_ref(name)
         try:
             ref_chain, unused_sha = self.get_refs_container().follow(ref)
@@ -580,6 +942,23 @@ class RemoteGitDir(GitDir):
         possible_transports=None,
         nascent_ok=False,
     ):
+        """Open a branch from the repository.
+
+        Args:
+            name: Name of the branch to open.
+            unsupported: Whether to allow unsupported branches (unused).
+            ignore_fallbacks: Whether to ignore fallback branches (unused).
+            ref: Specific ref to use for the branch.
+            possible_transports: List of possible transports (unused).
+            nascent_ok: Whether nascent branches are acceptable.
+
+        Returns:
+            RemoteGitBranch instance.
+
+        Raises:
+            BranchReferenceLoop: If there's a circular reference.
+            NotBranchError: If the branch doesn't exist and nascent_ok is False.
+        """
         repo = self.open_repository()
         ref = self._get_selected_ref(name, ref)
         try:
@@ -593,15 +972,45 @@ class RemoteGitDir(GitDir):
         return RemoteGitBranch(self, repo, ref_chain[-1], sha)
 
     def open_workingtree(self, recommend_upgrade=False):
+        """Open the working tree for this repository.
+
+        Remote repositories don't have working trees.
+
+        Args:
+            recommend_upgrade: Whether to recommend upgrade (unused).
+
+        Raises:
+            NotLocalUrl: Always raised as remote repos have no working trees.
+        """
         raise NotLocalUrl(self.transport.base)
 
     def has_workingtree(self):
+        """Check if this repository has a working tree.
+
+        Remote repositories never have working trees.
+
+        Returns:
+            Always False.
+        """
         return False
 
     def get_peeled(self, name):
+        """Get the peeled SHA for a ref.
+
+        Args:
+            name: Name of the ref to get peeled SHA for.
+
+        Returns:
+            The peeled SHA if available.
+        """
         return self.get_refs_container().get_peeled(name)
 
     def get_refs_container(self):
+        """Get the refs container for this repository.
+
+        Returns:
+            DictRefsContainer with all refs from the remote repository.
+        """
         if self._refs is not None:
             return self._refs
         result = self.fetch_pack(
@@ -755,16 +1164,50 @@ class RemoteGitDir(GitDir):
 
 
 class EmptyObjectStoreIterator(dict):
+    """Empty object store iterator for empty pack files.
+
+    Used when a fetch operation returns no objects, providing a compatible
+    interface that returns no objects when iterated.
+    """
+
     def iterobjects(self):
+        """Iterate over objects in the store.
+
+        Returns:
+            Empty list since this store contains no objects.
+        """
         return []
 
 
 class TemporaryPackIterator(Pack):
+    """Pack iterator for temporary pack files.
+
+    Handles pack files that may not have pre-generated indexes, creating
+    indexes on demand when needed.
+    """
+
     def __init__(self, path, resolve_ext_ref):
+        """Initialize TemporaryPackIterator.
+
+        Args:
+            path: Path to the pack file (without .pack extension).
+            resolve_ext_ref: Function to resolve external references.
+        """
         super().__init__(path, resolve_ext_ref=resolve_ext_ref)
         self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
 
     def _idx_load_or_generate(self, path):
+        """Load or generate pack index file.
+
+        If the index file doesn't exist, generates it from the pack data
+        with progress reporting.
+
+        Args:
+            path: Path to the index file.
+
+        Returns:
+            Loaded pack index.
+        """
         if not os.path.exists(path):
             with ui.ui_factory.nested_progress_bar() as pb:
 
@@ -775,6 +1218,10 @@ class TemporaryPackIterator(Pack):
         return load_pack_index(path)
 
     def __del__(self):
+        """Clean up temporary files when the object is destroyed.
+
+        Removes both the index and data files since they are temporary.
+        """
         if self._idx is not None:
             self._idx.close()
             os.remove(self._idx_path)
@@ -784,7 +1231,20 @@ class TemporaryPackIterator(Pack):
 
 
 class BzrGitHttpClient(dulwich.client.HttpGitClient):
+    """HTTP Git client integrated with Breezy's transport system.
+
+    Uses Breezy's HTTP transport for authentication and connection handling
+    while providing Git protocol functionality through Dulwich.
+    """
+
     def __init__(self, transport, *args, **kwargs):
+        """Initialize BzrGitHttpClient.
+
+        Args:
+            transport: Breezy transport instance for HTTP operations.
+            *args: Additional arguments for parent class.
+            **kwargs: Additional keyword arguments for parent class.
+        """
         self.transport = transport
         url = urlutils.URL.from_string(transport.external_url())
         url.user = url.quoted_user = None
@@ -803,6 +1263,23 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         subdirs=None,
         prefix=None,
     ):
+        """Create an archive from the repository.
+
+        HTTP transport doesn't support Git archive operations.
+
+        Args:
+            path: Repository path.
+            committish: Commit or ref to archive.
+            write_data: Callback to write archive data.
+            progress: Optional progress callback.
+            write_error: Optional error callback.
+            format: Archive format.
+            subdirs: Subdirectories to include.
+            prefix: Prefix for archive entries.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised as HTTP doesn't support archives.
+        """
         raise GitSmartRemoteNotSupported(self.archive, self)
 
     def _http_request(self, url, headers=None, data=None, allow_compression=False):
@@ -854,30 +1331,70 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
 
 def _git_url_and_path_from_transport(external_url):
+    """Extract Git URL and path from transport external URL.
+
+    Args:
+        external_url: External URL from transport.
+
+    Returns:
+        SplitResult with URL components.
+    """
     url = urlutils.strip_segment_parameters(external_url)
     return urlparse.urlsplit(url)
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):
-    """The .git directory control format."""
+    """Control directory format for remote Git repositories.
+
+    This format handles remote Git repositories accessed via various protocols
+    (HTTP, HTTPS, SSH, Git protocol). It does not support working trees since
+    remote repositories are accessed read-only or for push operations.
+    """
 
     supports_workingtrees = False
 
     @classmethod
     def _known_formats(self):
+        """Get known formats for remote Git control directories.
+
+        Returns:
+            Set containing this format instance.
+        """
         return {RemoteGitControlDirFormat()}
 
     def get_branch_format(self):
+        """Get the branch format for remote Git repositories.
+
+        Returns:
+            RemoteGitBranchFormat instance.
+        """
         return RemoteGitBranchFormat()
 
     @property
     def repository_format(self):
+        """Get the repository format.
+
+        Returns:
+            GitRepositoryFormat instance.
+        """
         return GitRepositoryFormat()
 
     def is_initializable(self):
+        """Check if this format can be initialized.
+
+        Remote repositories cannot be initialized locally.
+
+        Returns:
+            Always False.
+        """
         return False
 
     def is_supported(self):
+        """Check if this format is supported.
+
+        Returns:
+            Always True.
+        """
         return True
 
     def open(self, transport, _found=None):
@@ -896,12 +1413,38 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         return RemoteGitDir(transport, self, client, split_url.path)
 
     def get_format_description(self):
+        """Get a description of this format.
+
+        Returns:
+            Human-readable description.
+        """
         return "Remote Git Repository"
 
     def initialize_on_transport(self, transport):
+        """Initialize a new repository on transport.
+
+        Remote repositories cannot be initialized.
+
+        Args:
+            transport: Transport to initialize on.
+
+        Raises:
+            UninitializableFormat: Always raised.
+        """
         raise UninitializableFormat(self)
 
     def supports_transport(self, transport):
+        """Check if this format supports the given transport.
+
+        Args:
+            transport: Transport to check support for.
+
+        Returns:
+            True if transport uses supported Git protocols.
+
+        Raises:
+            NotBranchError: If transport is in-process.
+        """
         try:
             external_url = transport.external_url()
         except InProcessTransport as err:
@@ -915,6 +1458,13 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 
 class GitRemoteRevisionTree(RevisionTree):
+    """Revision tree for remote Git repositories.
+
+    Provides a limited interface for working with revision trees from remote
+    Git repositories. Many operations are not supported due to the remote nature
+    of the repository.
+    """
+
     def archive(
         self,
         format,
@@ -964,42 +1514,152 @@ class GitRemoteRevisionTree(RevisionTree):
         return osutils.file_iterator(f)
 
     def is_versioned(self, path):
+        """Check if a path is versioned in this tree.
+
+        Not supported for remote revision trees.
+
+        Args:
+            path: Path to check.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.is_versioned, self)
 
     def has_filename(self, path):
+        """Check if a filename exists in this tree.
+
+        Not supported for remote revision trees.
+
+        Args:
+            path: Path to check.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.has_filename, self)
 
     def get_file_text(self, path):
+        """Get the text content of a file in this tree.
+
+        Not supported for remote revision trees.
+
+        Args:
+            path: Path to the file.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """List files in this tree.
+
+        Not supported for remote revision trees.
+
+        Args:
+            include_root: Whether to include the root directory.
+            from_dir: Directory to start listing from.
+            recursive: Whether to list recursively.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.list_files, self)
 
 
 class RemoteGitRepository(GitRepository):
+    """Git repository accessed via remote protocols.
+
+    This repository implementation provides access to Git repositories over
+    network protocols like HTTP, SSH, and Git protocol. It has limited
+    functionality compared to local repositories due to protocol constraints.
+    """
+
     supports_random_access = False
 
     @property
     def user_url(self):
+        """Get the user-visible URL for this repository.
+
+        Returns:
+            The control URL.
+        """
         return self.control_url
 
     def get_parent_map(self, revids):
+        """Get parent map for revision IDs.
+
+        Not supported for remote repositories.
+
+        Args:
+            revids: Revision IDs to get parents for.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.get_parent_map, self)
 
     def archive(self, *args, **kwargs):
+        """Create an archive from the repository.
+
+        Delegates to the control directory's archive method.
+
+        Args:
+            *args: Arguments for archive creation.
+            **kwargs: Keyword arguments for archive creation.
+
+        Returns:
+            Archive data iterator.
+        """
         return self.controldir.archive(*args, **kwargs)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+        """Fetch a pack from the repository.
+
+        Delegates to the control directory's fetch_pack method.
+
+        Args:
+            determine_wants: Callback to determine wanted objects.
+            graph_walker: Graph walker for object traversal.
+            pack_data: Callback to receive pack data.
+            progress: Optional progress reporter.
+
+        Returns:
+            Fetch result.
+        """
         return self.controldir.fetch_pack(
             determine_wants, graph_walker, pack_data, progress
         )
 
     def send_pack(self, get_changed_refs, generate_pack_data):
+        """Send a pack to the repository.
+
+        Delegates to the control directory's send_pack method.
+
+        Args:
+            get_changed_refs: Callback to get changed refs.
+            generate_pack_data: Callback to generate pack data.
+
+        Returns:
+            Send result.
+        """
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)
 
     def fetch_objects(
         self, determine_wants, graph_walker, resolve_ext_ref, progress=None
     ):
+        """Fetch objects from the repository into a temporary pack.
+
+        Args:
+            determine_wants: Callback to determine wanted objects.
+            graph_walker: Graph walker for object traversal.
+            resolve_ext_ref: Function to resolve external references.
+            progress: Optional progress reporter.
+
+        Returns:
+            Object store iterator for the fetched objects.
+        """
         import tempfile
 
         fd, path = tempfile.mkstemp(suffix=".pack")
@@ -1014,6 +1674,21 @@ class RemoteGitRepository(GitRepository):
         return TemporaryPackIterator(path[: -len(".pack")], resolve_ext_ref)
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
+        """Look up Git SHA for a Breezy revision ID.
+
+        Note: This won't work for round-tripped Breezy revisions, but handles
+        basic cases.
+
+        Args:
+            bzr_revid: Breezy revision ID to look up.
+            mapping: Optional mapping to use.
+
+        Returns:
+            Tuple of (git_sha, mapping) for the revision.
+
+        Raises:
+            NoSuchRevision: If the revision ID cannot be found.
+        """
         # This won't work for any round-tripped bzr revisions, but it's a
         # start..
         try:
@@ -1022,31 +1697,94 @@ class RemoteGitRepository(GitRepository):
             raise NoSuchRevision(self, bzr_revid) from err
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
-        """Lookup a revision id."""
+        """Look up Breezy revision ID for a Git SHA.
+
+        Args:
+            foreign_revid: Git SHA to look up.
+            mapping: Optional mapping to use.
+
+        Returns:
+            Breezy revision ID for the Git SHA.
+        """
         if mapping is None:
             mapping = self.get_mapping()
         # Not really an easy way to parse foreign revids here..
         return mapping.revision_id_foreign_to_bzr(foreign_revid)
 
     def revision_tree(self, revid):
+        """Get revision tree for a revision ID.
+
+        Args:
+            revid: Revision ID to get tree for.
+
+        Returns:
+            GitRemoteRevisionTree for the revision.
+        """
         return GitRemoteRevisionTree(self, revid)
 
     def get_revisions(self, revids):
+        """Get revision objects for revision IDs.
+
+        Not supported for remote repositories.
+
+        Args:
+            revids: Revision IDs to get.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.get_revisions, self)
 
     def has_revisions(self, revids):
+        """Check if revisions exist in the repository.
+
+        Not supported for remote repositories.
+
+        Args:
+            revids: Revision IDs to check.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.get_revisions, self)
 
 
 class RemoteGitTagDict(GitTags):
+    """Tag dictionary for remote Git repositories.
+
+    Provides tag management functionality for remote Git repositories,
+    allowing creation and deletion of tags via Git protocol operations.
+    """
+
     def set_tag(self, name, revid):
+        """Set a tag to point to a revision.
+
+        Args:
+            name: Tag name.
+            revid: Revision ID to tag.
+        """
         sha = self.branch.lookup_bzr_revision_id(revid)[0]
         self._set_ref(name, sha)
 
     def delete_tag(self, name):
+        """Delete a tag.
+
+        Args:
+            name: Tag name to delete.
+        """
         self._set_ref(name, dulwich.client.ZERO_SHA)
 
     def _set_ref(self, name, sha):
+        """Set a Git reference to a specific SHA.
+
+        Args:
+            name: Tag name to set.
+            sha: SHA to set the tag to, or ZERO_SHA to delete.
+
+        Raises:
+            NoSuchTag: If trying to delete a non-existent tag.
+            RemoteGitError: If the server rejects the operation.
+        """
         ref = tag_name_to_ref(name)
 
         def get_changed_refs(old_refs):
@@ -1066,51 +1804,131 @@ class RemoteGitTagDict(GitTags):
 
 
 class RemoteGitBranch(GitBranch):
+    """Git branch accessed via remote protocols.
+
+    Represents a Git branch that exists on a remote repository. Provides
+    limited functionality due to the remote nature of the branch.
+    """
+
     def __init__(self, controldir, repository, ref, sha):
+        """Initialize RemoteGitBranch.
+
+        Args:
+            controldir: Control directory for the branch.
+            repository: Repository containing the branch.
+            ref: Git ref name for the branch.
+            sha: Current SHA of the branch head.
+        """
         self._sha = sha
         super().__init__(controldir, repository, ref, RemoteGitBranchFormat())
 
     def last_revision_info(self):
+        """Get information about the last revision.
+
+        Not supported for remote branches.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.last_revision_info, self)
 
     @property
     def user_url(self):
+        """Get the user-visible URL for this branch.
+
+        Returns:
+            The control URL.
+        """
         return self.control_url
 
     @property
     def control_url(self):
+        """Get the control URL for this branch.
+
+        Returns:
+            The base URL of the branch.
+        """
         return self.base
 
     def revision_id_to_revno(self, revision_id):
+        """Convert a revision ID to a revision number.
+
+        Not supported for remote branches.
+
+        Args:
+            revision_id: Revision ID to convert.
+
+        Raises:
+            GitSmartRemoteNotSupported: Always raised.
+        """
         raise GitSmartRemoteNotSupported(self.revision_id_to_revno, self)
 
     def last_revision(self):
+        """Get the last revision ID for this branch.
+
+        Returns:
+            The revision ID of the branch head.
+        """
         return self.lookup_foreign_revision_id(self.head)
 
     @property
     def head(self):
+        """Get the Git SHA of the branch head.
+
+        Returns:
+            The SHA of the current branch head.
+        """
         return self._sha
 
     def _synchronize_history(self, destination, revision_id):
-        """See Branch._synchronize_history()."""
+        """Synchronize revision history with destination branch.
+
+        Args:
+            destination: Destination branch to synchronize with.
+            revision_id: Revision ID to synchronize to, or None for last revision.
+        """
         if revision_id is None:
             revision_id = self.last_revision()
         destination.generate_revision_history(revision_id)
 
     def _get_parent_location(self):
+        """Get the parent location for this branch.
+
+        Remote branches don't have parent locations.
+
+        Returns:
+            Always None.
+        """
         return None
 
     def get_push_location(self):
+        """Get the push location for this branch.
+
+        Remote branches don't have push locations.
+
+        Returns:
+            Always None.
+        """
         return None
 
     def set_push_location(self, url):
+        """Set the push location for this branch.
+
+        Remote branches don't support setting push locations.
+
+        Args:
+            url: URL to set as push location (ignored).
+        """
         pass
 
     def _iter_tag_refs(self):
-        """Iterate over the tag refs.
+        """Iterate over tag references in the repository.
 
-        :param refs: Refs dictionary (name -> git sha1)
-        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        Yields tuples of (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        for each tag in the repository.
+
+        Yields:
+            Tuple of (ref_name, tag_name, peeled_sha, unpeeled_sha) for each tag.
         """
         refs = self.controldir.get_refs_container()
         for ref_name, unpeeled in refs.as_dict().items():
@@ -1127,9 +1945,27 @@ class RemoteGitBranch(GitBranch):
             yield (ref_name, tag_name, peeled, unpeeled)
 
     def set_last_revision_info(self, revno, revid):
+        """Set the last revision info for this branch.
+
+        Args:
+            revno: Revision number (unused).
+            revid: Revision ID to set as branch head.
+        """
         self.generate_revision_history(revid)
 
     def generate_revision_history(self, revision_id, last_rev=None, other_branch=None):
+        """Generate revision history up to a specific revision.
+
+        Updates the branch head to point to the specified revision.
+
+        Args:
+            revision_id: Revision ID to generate history to.
+            last_rev: Last revision (unused).
+            other_branch: Other branch for comparison (unused).
+
+        Raises:
+            RemoteGitError: If the server rejects the update.
+        """
         sha = self.lookup_bzr_revision_id(revision_id)[0]
 
         def get_changed_refs(old_refs):
@@ -1146,6 +1982,15 @@ class RemoteGitBranch(GitBranch):
 
 
 def remote_refs_dict_to_container(refs_dict, symrefs_dict=None):
+    """Convert remote refs dictionary to a refs container.
+
+    Args:
+        refs_dict: Dictionary of ref names to SHAs.
+        symrefs_dict: Optional dictionary of symbolic references.
+
+    Returns:
+        DictRefsContainer with refs and peeled refs organized.
+    """
     if symrefs_dict is None:
         symrefs_dict = {}
     base = {}
@@ -1163,6 +2008,12 @@ def remote_refs_dict_to_container(refs_dict, symrefs_dict=None):
 
 
 def update_refs_container(container, refs_dict):
+    """Update a refs container with new refs from a dictionary.
+
+    Args:
+        container: DictRefsContainer to update.
+        refs_dict: Dictionary of ref names to SHAs.
+    """
     peeled = {}
     base = {}
     for k, v in refs_dict.items():

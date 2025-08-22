@@ -14,13 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for Launchpad URI handling."""
 
 from ...tests import TestCase
 from . import uris
 
 
 class TestWebRootForServiceRoot(TestCase):
+    """Tests for web root service root conversion."""
+
     def test_simple(self):
+        """Test simple web root for service root conversion."""
         self.assertEqual(
             "https://launchpad.net",
             uris.web_root_for_service_root("https://api.launchpad.net/"),

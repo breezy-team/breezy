@@ -26,6 +26,7 @@ class RecordCounter:
     """
 
     def __init__(self):
+        """Initialize a new RecordCounter instance."""
         self.initialized = False
         self.current = 0
         self.key_count = 0
@@ -39,6 +40,11 @@ class RecordCounter:
         self.STEP = 7
 
     def is_initialized(self):
+        """Check if the counter has been initialized.
+
+        Returns:
+            bool: True if setup() has been called, False otherwise.
+        """
         return self.initialized
 
     def _estimate_max(self, key_count):

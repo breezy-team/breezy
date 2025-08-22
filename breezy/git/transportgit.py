@@ -164,6 +164,21 @@ class _RemoteGitFile:
 
 
 def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
+    """Create a GitFile-like object that works with transports.
+
+    Args:
+        transport: The transport to use for file operations.
+        filename: Name of the file to operate on.
+        mode: File open mode (default: "rb").
+        bufsize: Buffer size for file operations (default: -1).
+        mask: File permission mask (default: 0o644).
+
+    Returns:
+        A file-like object for Git operations.
+
+    Raises:
+        OSError: If unsupported modes are used (append, read/write, text).
+    """
     if "a" in mode:
         raise OSError("append mode not supported for Git files")
     if "+" in mode:
@@ -183,6 +198,13 @@ class TransportRefsContainer(RefsContainer):
     """Refs container that reads refs from a transport."""
 
     def __init__(self, transport, worktree_transport=None):
+        """Initialize the TransportRefsContainer.
+
+        Args:
+            transport: Transport for accessing refs.
+            worktree_transport: Optional separate transport for worktree operations.
+                              If None, uses the main transport.
+        """
         self.transport = transport
         if worktree_transport is None:
             worktree_transport = transport
@@ -191,6 +213,7 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
+        """Return string representation of the refs container."""
         return f"{self.__class__.__name__}({self.transport!r})"
 
     def _ensure_dir_exists(self, path):
@@ -211,6 +234,11 @@ class TransportRefsContainer(RefsContainer):
         return keys
 
     def allkeys(self):
+        """Get all reference names available in this container.
+
+        Returns:
+            Set of all reference names as bytes.
+        """
         keys = set()
         try:
             self.worktree_transport.get_bytes("HEAD")
@@ -414,18 +442,43 @@ class TransportRefsContainer(RefsContainer):
         return True
 
     def get(self, name, default=None):
+        """Get a reference value with optional default.
+
+        Args:
+            name: Reference name to look up.
+            default: Value to return if reference doesn't exist.
+
+        Returns:
+            Reference value or default if not found.
+        """
         try:
             return self[name]
         except KeyError:
             return default
 
     def unlock_ref(self, name):
+        """Unlock a reference.
+
+        Args:
+            name: Name of the reference to unlock.
+        """
         transport = self.worktree_transport if name == b"HEAD" else self.transport
         lockname = name + b".lock"
         with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(lockname))
 
     def lock_ref(self, name):
+        """Lock a reference for exclusive access.
+
+        Args:
+            name: Name of the reference to lock.
+
+        Returns:
+            LogicalLockResult that can be used to unlock the reference.
+
+        Raises:
+            LockContention: If the reference is already locked.
+        """
         transport = self.worktree_transport if name == b"HEAD" else self.transport
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
@@ -473,7 +526,20 @@ def read_gitfile(f):
 
 
 class TransportRepo(BaseRepo):
+    """Git repository implementation using Breezy transports.
+
+    This class provides a Git repository that works with Breezy's transport
+    abstraction, allowing access to Git repositories over various protocols.
+    """
+
     def __init__(self, transport, bare, refs_text=None) -> None:
+        """Initialize a TransportRepo.
+
+        Args:
+            transport: Transport to use for repository access.
+            bare: Whether this is a bare repository.
+            refs_text: Optional refs data as bytes for info/refs container.
+        """
         self.transport = transport
         self.bare = bare
         try:
@@ -524,9 +590,19 @@ class TransportRepo(BaseRepo):
         super().__init__(object_store, refs_container)
 
     def controldir(self):
+        """Return the control directory path.
+
+        Returns:
+            Local absolute path to the .git directory.
+        """
         return self._controltransport.local_abspath(".")
 
     def commondir(self):
+        """Return the common directory path.
+
+        Returns:
+            Local absolute path to the common Git directory.
+        """
         return self._commontransport.local_abspath(".")
 
     def close(self):
@@ -535,6 +611,11 @@ class TransportRepo(BaseRepo):
 
     @property
     def path(self):
+        """Return the repository root path.
+
+        Returns:
+            Local absolute path to the repository root.
+        """
         return self.transport.local_abspath(".")
 
     def _determine_file_mode(self):
@@ -587,6 +668,11 @@ class TransportRepo(BaseRepo):
         return not self.bare
 
     def get_config(self):
+        """Get the repository configuration.
+
+        Returns:
+            ConfigFile object with repository configuration.
+        """
         from dulwich.config import ConfigFile
 
         try:
@@ -596,6 +682,11 @@ class TransportRepo(BaseRepo):
             return ConfigFile()
 
     def get_config_stack(self):
+        """Get the stacked configuration including global and system configs.
+
+        Returns:
+            StackedConfig object with layered configuration.
+        """
         from dulwich.config import StackedConfig
 
         backends = []
@@ -609,10 +700,23 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
+        """Return string representation of the repository."""
         return f"<{self.__class__.__name__} for {self.transport!r}>"
 
     @classmethod
     def init(cls, transport, bare=False):
+        """Initialize a new Git repository.
+
+        Args:
+            transport: Transport where the repository should be created.
+            bare: Whether to create a bare repository.
+
+        Returns:
+            New TransportRepo instance.
+
+        Raises:
+            AlreadyControlDirError: If repository already exists.
+        """
         if not bare:
             try:
                 transport.mkdir(".git")
@@ -654,6 +758,15 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def from_config(cls, path, config):
+        """Create a TransportObjectStore from configuration.
+
+        Args:
+            path: Transport path to the object store.
+            config: Git configuration object.
+
+        Returns:
+            New TransportObjectStore instance with compression settings from config.
+        """
         try:
             default_compression_level = int(
                 config.get((b"core",), b"compression").decode()
@@ -675,15 +788,29 @@ class TransportObjectStore(PackBasedObjectStore):
         return cls(path, loose_compression_level, pack_compression_level)
 
     def __eq__(self, other):
+        """Check equality with another TransportObjectStore.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if both stores use the same transport.
+        """
         if not isinstance(other, TransportObjectStore):
             return False
         return self.transport == other.transport
 
     def __repr__(self):
+        """Return string representation of the object store."""
         return f"{self.__class__.__name__}({self.transport!r})"
 
     @property
     def alternates(self):
+        """Get alternate object stores.
+
+        Returns:
+            List of alternate TransportObjectStore instances.
+        """
         if self._alternates is not None:
             return self._alternates
         self._alternates = []
@@ -816,6 +943,14 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def init(cls, transport):
+        """Initialize a new object store.
+
+        Args:
+            transport: Transport where the object store should be created.
+
+        Returns:
+            New TransportObjectStore instance.
+        """
         with contextlib.suppress(FileExists):
             transport.mkdir("info")
         with contextlib.suppress(FileExists):

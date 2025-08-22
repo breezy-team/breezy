@@ -36,12 +36,22 @@ class ChrootServer(pathfilter.PathFilteringServer):
     """
 
     def __init__(self, backing_transport):
+        """Initialize the ChrootServer.
+
+        Args:
+            backing_transport: The underlying transport to use as the root.
+        """
         pathfilter.PathFilteringServer.__init__(self, backing_transport, None)
 
     def _factory(self, url):
         return ChrootTransport(self, url)
 
     def start_server(self):
+        """Start the chroot server and register its transport.
+
+        Creates a unique URL scheme for this server instance and registers
+        the transport factory with the transport registry.
+        """
         self.scheme = "chroot-%d:///" % id(self)
         register_transport(self.scheme, self._factory)
 

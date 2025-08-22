@@ -146,12 +146,20 @@ def _resolve(url, _lp_login=None):
 
 
 class LaunchpadDirectory:
+    """Directory service for looking up Launchpad URLs."""
+
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up."""
         return _resolve(url)
 
 
 def get_test_permutations():
-    # Since this transport doesn't do anything once opened, it's not subjected
-    # to the usual transport tests.
+    """Get the permutations for testing this module.
+
+    Since this transport doesn't do anything once opened, it's not subjected
+    to the usual transport tests.
+
+    Returns:
+        An empty list since no test permutations are needed.
+    """
     return []

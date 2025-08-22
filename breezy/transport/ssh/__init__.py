@@ -37,6 +37,15 @@ except ModuleNotFoundError:
 
 
 class StrangeHostname(errors.BzrError):
+    """Error raised when an SSH hostname looks suspicious.
+
+    This error is raised when the hostname starts with a dash, which could
+    potentially be interpreted as a command-line option by the SSH client.
+
+    Attributes:
+        hostname: The suspicious hostname that was rejected.
+    """
+
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
@@ -44,6 +53,10 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
     """Manager for manage SSH vendors."""
 
     def __init__(self):
+        """Initialize the SSH vendor manager.
+
+        Sets up the registry and initializes the vendor cache.
+        """
         super().__init__()
         self._cached_ssh_vendor = None
 
@@ -52,6 +65,19 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
         self._cached_ssh_vendor = None
 
     def _get_vendor_by_config(self):
+        """Get SSH vendor based on configuration.
+
+        Looks up the SSH vendor from the global configuration. If a vendor
+        name is specified but not registered, attempts to use it as an
+        executable path.
+
+        Returns:
+            SSHVendor: The configured SSH vendor, or None if not configured.
+
+        Raises:
+            UnknownSSH: If the configured vendor name is not found and cannot
+                be used as an executable path.
+        """
         vendor_name = config.GlobalStack().get("ssh")
         if vendor_name is not None:
             try:
@@ -65,7 +91,18 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
         return None
 
     def _get_ssh_version_string(self, args):
-        """Return SSH version string from the subprocess."""
+        """Return SSH version string from the subprocess.
+
+        Runs the given command and captures its output to determine
+        the SSH implementation version.
+
+        Args:
+            args: Command line arguments to execute (typically ['ssh', '-V']).
+
+        Returns:
+            str: Combined stdout and stderr output decoded using terminal encoding.
+                Returns empty string if the command fails.
+        """
         try:
             p = subprocess.Popen(
                 args,
@@ -82,8 +119,15 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
     def _get_vendor_by_version_string(self, version, progname):
         """Return the vendor or None based on output from the subprocess.
 
-        :param version: The output of 'ssh -V' like command.
-        :param args: Command line that was run.
+        Examines the version string to determine which SSH implementation
+        is being used (OpenSSH, SSH Corp, GNU lsh, or PuTTY plink).
+
+        Args:
+            version: The output of 'ssh -V' like command.
+            progname: The program name that was executed.
+
+        Returns:
+            SSHVendor: The appropriate vendor instance, or None if not recognized.
         """
         vendor = None
         if "OpenSSH" in version:
@@ -107,12 +151,27 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
         return vendor
 
     def _get_vendor_by_inspection(self):
-        """Return the vendor or None by checking for known SSH implementations."""
+        """Return the vendor or None by checking for known SSH implementations.
+
+        Runs 'ssh -V' to determine the SSH implementation in use.
+
+        Returns:
+            SSHVendor: The detected vendor, or None if not recognized.
+        """
         version = self._get_ssh_version_string(["ssh", "-V"])
         return self._get_vendor_by_version_string(version, "ssh")
 
     def _get_vendor_from_path(self, path):
-        """Return the vendor or None using the program at the given path."""
+        """Return the vendor or None using the program at the given path.
+
+        Runs the specified executable with '-V' to determine its type.
+
+        Args:
+            path: Path to the SSH executable.
+
+        Returns:
+            SSHVendor: The detected vendor, or None if not recognized.
+        """
         version = self._get_ssh_version_string([path, "-V"])
         return self._get_vendor_by_version_string(
             version, os.path.splitext(os.path.basename(path))[0]
@@ -145,6 +204,16 @@ register_lazy_ssh_vendor = _ssh_vendor_manager.register_lazy
 
 
 def _ignore_signals():
+    """Configure signal handling for SSH subprocesses.
+
+    Sets up signal handlers to ignore SIGINT and conditionally SIGQUIT.
+    This prevents the SSH subprocess from being interrupted by keyboard
+    interrupts intended for the parent process.
+
+    The function ignores:
+    - SIGINT: Always ignored to prevent Ctrl+C from affecting SSH
+    - SIGQUIT: Ignored if not already set to default (to respect breakin)
+    """
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
     # doesn't handle it itself.
     # <https://launchpad.net/products/bzr/+bug/41433/+index>
@@ -160,15 +229,46 @@ class SocketAsChannelAdapter:
     """Simple wrapper for a socket that pretends to be a paramiko Channel."""
 
     def __init__(self, sock):
+        """Initialize the adapter with a socket.
+
+        Args:
+            sock: A socket object to wrap.
+        """
         self.__socket = sock
 
     def get_name(self):
+        """Get the name of this channel adapter.
+
+        Returns:
+            str: A descriptive name for this adapter.
+        """
         return "bzr SocketAsChannelAdapter"
 
     def send(self, data):
+        """Send data through the socket.
+
+        Args:
+            data: Bytes to send.
+
+        Returns:
+            int: Number of bytes sent.
+        """
         return self.__socket.send(data)
 
     def recv(self, n):
+        """Receive data from the socket.
+
+        Args:
+            n: Maximum number of bytes to receive.
+
+        Returns:
+            bytes: Data received from the socket, or empty string if the
+                connection is closed.
+
+        Note:
+            Returns empty string instead of raising an exception when the
+            connection is closed, to match paramiko's expected behavior.
+        """
         try:
             return self.__socket.recv(n)
         except OSError as e:
@@ -184,6 +284,16 @@ class SocketAsChannelAdapter:
             raise
 
     def recv_ready(self):
+        """Check if data is available for reading.
+
+        Returns:
+            bool: Always returns True. Should ideally use poll() or select()
+                to check for actual data availability.
+
+        Note:
+            This is a simplified implementation that always returns True.
+            A proper implementation would check if data is actually available.
+        """
         # TODO: jam 20051215 this function is necessary to support the
         # pipelined() function. In reality, it probably should use
         # poll() or select() to actually return if there is data
@@ -191,6 +301,7 @@ class SocketAsChannelAdapter:
         return True
 
     def close(self):
+        """Close the underlying socket."""
         self.__socket.close()
 
 
@@ -226,6 +337,15 @@ class SSHVendor:
 
         This just unifies all the locations that try to raise ConnectionError,
         so that they format things properly.
+
+        Args:
+            host: The hostname that failed to connect.
+            port: The port number (optional).
+            orig_error: The original exception that caused the connection failure.
+            msg: Custom error message.
+
+        Raises:
+            SocketConnectionError: Always raises this error with the provided details.
         """
         raise errors.SocketConnectionError(
             host=host, port=port, msg=msg, orig_error=orig_error
@@ -236,6 +356,23 @@ class LoopbackVendor(SSHVendor):
     """SSH "vendor" that connects over a plain TCP socket, not SSH."""
 
     def connect_sftp(self, username, password, host, port):
+        """Connect to an SFTP server using a plain TCP socket.
+
+        This is a loopback implementation that bypasses SSH and connects
+        directly via TCP. Useful for testing or local connections.
+
+        Args:
+            username: SSH username (ignored in loopback).
+            password: SSH password (ignored in loopback).
+            host: Hostname to connect to.
+            port: Port number to connect to.
+
+        Returns:
+            SFTPClient: An SFTP client connected via TCP socket.
+
+        Raises:
+            SocketConnectionError: If connection fails.
+        """
         sock = socket.socket()
         try:
             sock.connect((host, port))
@@ -272,10 +409,29 @@ class SubprocessVendor(SSHVendor):
 
     @staticmethod
     def _check_hostname(arg):
+        """Check if hostname is safe to pass to subprocess.
+
+        Args:
+            arg: The hostname to check.
+
+        Raises:
+            StrangeHostname: If the hostname starts with a dash.
+        """
         if arg.startswith("-"):
             raise StrangeHostname(hostname=arg)
 
     def _connect(self, argv):
+        """Create and connect to an SSH subprocess.
+
+        Attempts to use socketpair for better performance (non-blocking reads),
+        falling back to pipes if socketpair is not available.
+
+        Args:
+            argv: Command line arguments for the SSH subprocess.
+
+        Returns:
+            SSHSubprocessConnection: A connection to the SSH subprocess.
+        """
         # Attempt to make a socketpair to use as stdin/stdout for the SSH
         # subprocess.  We prefer sockets to pipes because they support
         # non-blocking short reads, allowing us to optimistically read 64k (or
@@ -303,6 +459,20 @@ class SubprocessVendor(SSHVendor):
         return SSHSubprocessConnection(proc, sock=my_sock)
 
     def connect_sftp(self, username, password, host, port):
+        """Connect to an SFTP server using an SSH subprocess.
+
+        Args:
+            username: SSH username.
+            password: SSH password (not used by subprocess vendors).
+            host: Hostname to connect to.
+            port: Port number to connect to.
+
+        Returns:
+            SFTPClient: An SFTP client connected via SSH subprocess.
+
+        Raises:
+            SocketConnectionError: If connection fails.
+        """
         try:
             argv = self._get_vendor_specific_argv(
                 username, host, port, subsystem="sftp"
@@ -313,6 +483,21 @@ class SubprocessVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
+        """Connect to an SSH server and run a command.
+
+        Args:
+            username: SSH username.
+            password: SSH password (not used by subprocess vendors).
+            host: Hostname to connect to.
+            port: Port number to connect to.
+            command: Command to execute on the remote host.
+
+        Returns:
+            SSHSubprocessConnection: A connection to the SSH subprocess.
+
+        Raises:
+            SocketConnectionError: If connection fails.
+        """
         try:
             argv = self._get_vendor_specific_argv(username, host, port, command=command)
             return self._connect(argv)
@@ -337,6 +522,18 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
     def _get_vendor_specific_argv(
         self, username, host, port, subsystem=None, command=None
     ):
+        """Build OpenSSH command line arguments.
+
+        Args:
+            username: SSH username.
+            host: Hostname to connect to.
+            port: Port number (optional).
+            subsystem: SSH subsystem to invoke (e.g., 'sftp').
+            command: Command to execute (alternative to subsystem).
+
+        Returns:
+            list: Command line arguments for OpenSSH.
+        """
         args = [
             self.executable_path,
             "-oForwardX11=no",
@@ -366,6 +563,18 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
     def _get_vendor_specific_argv(
         self, username, host, port, subsystem=None, command=None
     ):
+        """Build SSH Corporation command line arguments.
+
+        Args:
+            username: SSH username.
+            host: Hostname to connect to.
+            port: Port number (optional).
+            subsystem: SSH subsystem to invoke (e.g., 'sftp').
+            command: Command to execute (alternative to subsystem).
+
+        Returns:
+            list: Command line arguments for SSH Corp's ssh.
+        """
         self._check_hostname(host)
         args = [self.executable_path, "-x"]
         if port is not None:
@@ -390,6 +599,18 @@ class LSHSubprocessVendor(SubprocessVendor):
     def _get_vendor_specific_argv(
         self, username, host, port, subsystem=None, command=None
     ):
+        """Build GNU lsh command line arguments.
+
+        Args:
+            username: SSH username.
+            host: Hostname to connect to.
+            port: Port number (optional).
+            subsystem: SSH subsystem to invoke (e.g., 'sftp').
+            command: Command to execute (alternative to subsystem).
+
+        Returns:
+            list: Command line arguments for GNU lsh.
+        """
         self._check_hostname(host)
         args = [self.executable_path]
         if port is not None:
@@ -414,6 +635,18 @@ class PLinkSubprocessVendor(SubprocessVendor):
     def _get_vendor_specific_argv(
         self, username, host, port, subsystem=None, command=None
     ):
+        """Build PuTTY plink command line arguments.
+
+        Args:
+            username: SSH username.
+            host: Hostname to connect to.
+            port: Port number (optional).
+            subsystem: SSH subsystem to invoke (e.g., 'sftp').
+            command: Command to execute (alternative to subsystem).
+
+        Returns:
+            list: Command line arguments for plink.
+        """
         self._check_hostname(host)
         args = [self.executable_path, "-x", "-a", "-ssh", "-2", "-batch"]
         if port is not None:
@@ -588,7 +821,15 @@ def save_host_keys():
 
 
 def os_specific_subprocess_params():
-    """Get O/S specific subprocess parameters."""
+    """Get O/S specific subprocess parameters.
+
+    Returns different parameters based on the operating system:
+    - Windows: Empty dict (no special handling)
+    - Unix-like: Dict with preexec_fn to ignore signals and close_fds=True
+
+    Returns:
+        dict: Subprocess parameters suitable for the current OS.
+    """
     if sys.platform == "win32":
         # setting the process group and closing fds is not supported on
         # win32
@@ -625,6 +866,14 @@ def _close_ssh_proc(proc, sock):
     If the pipes are already closed and/or the process has already been
     wait()ed on, that's ok, and no error is raised.  The goal is to do our best
     to clean up (whether or not a clean up was already tried).
+
+    Args:
+        proc: The subprocess.Popen instance to clean up.
+        sock: Optional socket to close (may be None).
+
+    Note:
+        Silently ignores OSError exceptions during cleanup to handle
+        already-closed resources gracefully.
     """
     funcs = []
     for closeable in (proc.stdin, proc.stdout, sock):
@@ -653,10 +902,20 @@ class SSHConnection:
 
         If kind == 'pipes', then io_object is a pair of file-like objects
         (read_from, write_to).
+
+        Returns:
+            tuple: A (kind, io_object) pair where:
+                - kind is either 'socket' or 'pipes'
+                - io_object is either a socket or (read_file, write_file) tuple
         """
         raise NotImplementedError(self.get_sock_or_pipes)
 
     def close(self):
+        """Close the SSH connection.
+
+        Subclasses must implement this method to properly close their
+        connection type.
+        """
         raise NotImplementedError(self.close)
 
 
@@ -687,21 +946,55 @@ class SSHSubprocessConnection(SSHConnection):
         _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
+        """Send data through the connection.
+
+        Uses either socket.send() or os.write() depending on the
+        connection type.
+
+        Args:
+            data: Bytes to send.
+
+        Returns:
+            int: Number of bytes sent.
+        """
         if self._sock is not None:
             return self._sock.send(data)
         else:
             return os.write(self.proc.stdin.fileno(), data)
 
     def recv(self, count):
+        """Receive data from the connection.
+
+        Uses either socket.recv() or os.read() depending on the
+        connection type.
+
+        Args:
+            count: Maximum number of bytes to receive.
+
+        Returns:
+            bytes: Data received from the connection.
+        """
         if self._sock is not None:
             return self._sock.recv(count)
         else:
             return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
+        """Close the SSH subprocess connection.
+
+        Delegates to _close_ssh_proc to handle cleanup of the subprocess
+        and any associated sockets or pipes.
+        """
         _close_ssh_proc(self.proc, self._sock)
 
     def get_sock_or_pipes(self):
+        """Get the underlying I/O objects for this connection.
+
+        Returns:
+            tuple: A (kind, io_object) pair where:
+                - If using socketpair: ('socket', socket_object)
+                - If using pipes: ('pipes', (stdout_pipe, stdin_pipe))
+        """
         if self._sock is not None:
             return "socket", self._sock
         else:

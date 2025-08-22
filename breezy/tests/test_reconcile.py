@@ -24,7 +24,10 @@ from ..reconcile import Reconciler, reconcile
 
 
 class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
+    """Test reconciliation behavior with shared repositories."""
+
     def test_reweave_empty(self):
+        """Test reconciling an empty shared repository setup."""
         # we want a repo capable format
         parent = bzrdir.BzrDirMetaFormat1().initialize(".")
         parent.create_repository(shared=True)
@@ -43,7 +46,10 @@ class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
 
 
 class TestReconciler(tests.TestCaseWithTransport):
+    """Test the Reconciler class functionality."""
+
     def test_reconciler_with_no_branch(self):
+        """Test reconciliation of a repository without a branch."""
         repo = self.make_repository("repo")
         reconciler = Reconciler(repo.controldir)
         result = reconciler.reconcile()
@@ -55,6 +61,7 @@ class TestReconciler(tests.TestCaseWithTransport):
         self.assertIs(None, result.fixed_branch_history)
 
     def test_reconciler_finds_branch(self):
+        """Test that reconciler properly identifies and processes branches."""
         a_branch = self.make_branch("a_branch")
         reconciler = Reconciler(a_branch.controldir)
         result = reconciler.reconcile()

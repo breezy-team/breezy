@@ -30,11 +30,31 @@ from .mapping import encode_git_path
 
 
 class GitFileLastChangeScanner:
+    """Scanner for finding the last change revision of files in Git repositories."""
+
     def __init__(self, repository):
+        """Initialize the scanner with a repository.
+
+        Args:
+            repository: The repository to scan.
+        """
         self.repository = repository
         self.store = self.repository._git.object_store
 
     def find_last_change_revision(self, path, commit_id):
+        """Find the last commit that changed a given path.
+
+        Args:
+            path: The path to check (as bytes).
+            commit_id: The commit to start searching from.
+
+        Returns:
+            tuple: (store, path, commit_id) of the last change.
+
+        Raises:
+            TypeError: If path is not bytes.
+            AssertionError: If the path doesn't exist in the commit.
+        """
         if not isinstance(path, bytes):
             raise TypeError(path)
         store = self.store
@@ -93,7 +113,14 @@ class GitFileLastChangeScanner:
 
 
 class GitFileParentProvider:
+    """Provider for file parent information in Git repositories."""
+
     def __init__(self, change_scanner):
+        """Initialize the parent provider.
+
+        Args:
+            change_scanner: GitFileLastChangeScanner instance to use.
+        """
         self.change_scanner = change_scanner
         self.store = self.change_scanner.repository._git.object_store
 
@@ -125,6 +152,17 @@ class GitFileParentProvider:
         )
 
     def get_parent_map(self, keys):
+        """Get parent map for given file keys.
+
+        Args:
+            keys: List of (file_id, text_revision) tuples.
+
+        Returns:
+            dict: Mapping from keys to their parent tuples.
+
+        Raises:
+            TypeError: If file_id or text_revision are not bytes.
+        """
         ret = {}
         for key in keys:
             (file_id, text_revision) = key

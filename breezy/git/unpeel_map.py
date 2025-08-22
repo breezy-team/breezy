@@ -31,16 +31,30 @@ class UnpeelMap:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty unpeel map."""
         self._map: dict[bytes, set[bytes]] = defaultdict(set)
         self._re_map: dict[bytes, set[bytes]] = {}
 
     def update(self, m):
+        """Update this unpeel map with entries from another map.
+
+        Args:
+            m: Dictionary mapping peeled SHA1s to sets of unpeeled SHA1s.
+        """
         for k, v in m.items():
             self._map[k].update(v)
             for i in v:
                 self._re_map[i] = k
 
     def load(self, f):
+        """Load unpeel map from a file.
+
+        Args:
+            f: File-like object to read from.
+
+        Raises:
+            AssertionError: If file format is invalid.
+        """
         firstline = f.readline()
         if firstline != b"unpeel map version 1\n":
             raise AssertionError(f"invalid format for unpeel map: {firstline!r}")
@@ -52,12 +66,22 @@ class UnpeelMap:
             self._re_map[v] = k
 
     def save(self, f):
+        """Save unpeel map to a file.
+
+        Args:
+            f: File-like object to write to.
+        """
         f.write(b"unpeel map version 1\n")
         for k, vs in self._map.items():
             for v in vs:
                 f.write(b"%s: %s\n" % (k, v))
 
     def save_in_repository(self, repository):
+        """Save unpeel map in a repository's control directory.
+
+        Args:
+            repository: Repository to save the map in.
+        """
         with BytesIO() as f:
             self.save(f)
             f.seek(0)

@@ -64,19 +64,33 @@ from ..transport import do_catching_redirections, local
 
 
 class MissingFeature(errors.BzrError):
+    """Error raised when a required feature is missing."""
+
     _fmt = (
         "Missing feature %(feature)s not provided by this "
         "version of Breezy or any plugin."
     )
 
     def __init__(self, feature):
+        """Initialize MissingFeature error.
+
+        Args:
+            feature: Name of the missing feature.
+        """
         self.feature = feature
 
 
 class FeatureAlreadyRegistered(errors.BzrError):
+    """Error raised when trying to register an already registered feature."""
+
     _fmt = "The feature %(feature)s has already been registered."
 
     def __init__(self, feature):
+        """Initialize FeatureAlreadyRegistered error.
+
+        Args:
+            feature: Name of the feature that's already registered.
+        """
         self.feature = feature
 
 
@@ -709,10 +723,20 @@ class BzrDir(controldir.ControlDir):
 
     @property
     def user_transport(self):
+        """Get the user transport for this bzr directory.
+
+        Returns:
+            The root transport connecting to the user directory.
+        """
         return self.root_transport
 
     @property
     def control_transport(self):
+        """Get the control transport for this bzr directory.
+
+        Returns:
+            The transport connecting to the .bzr control directory.
+        """
         return self.transport
 
     def _cloning_metadir(self):
@@ -840,6 +864,11 @@ class BzrDir(controldir.ControlDir):
         )
 
     def __repr__(self):
+        """Return string representation of the BzrDir object.
+
+        Returns:
+            String representation showing class name and URL.
+        """
         return f"<{self.__class__.__name__} at {self.user_url!r}>"
 
     def update_feature_flags(self, updated_flags):
@@ -907,6 +936,12 @@ class BzrDirMeta1(BzrDir):
         )
 
     def __init__(self, _transport, _format):
+        """Initialize a BzrDirMeta1 instance.
+
+        Args:
+            _transport: Transport for the BzrDir location.
+            _format: Format object for this BzrDir.
+        """
         super().__init__(_transport, _format)
         self.control_files = lockable_files.LockableFiles(
             self.control_transport,
@@ -987,6 +1022,7 @@ class BzrDirMeta1(BzrDir):
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
+        """Destroy the working tree metadata in the checkout directory."""
         self.transport.delete_tree("checkout")
 
     def find_branch_format(self, name=None):
@@ -1013,6 +1049,12 @@ class BzrDirMeta1(BzrDir):
         return format.get_reference(self, name=name)
 
     def set_branch_reference(self, target_branch, name=None):
+        """Set a branch reference to point to the given target branch.
+
+        Args:
+            target_branch: The branch to reference.
+            name: Optional name of the branch reference.
+        """
         format = _mod_bzrbranch.BranchReferenceFormat()
         if (
             self.control_url == target_branch.controldir.control_url
@@ -1220,6 +1262,10 @@ class BzrFormat:
     _present_features: set[str] = set()
 
     def __init__(self):
+        """Initialize a BzrFormat.
+
+        Creates an empty features dictionary.
+        """
         self.features = {}
 
     @classmethod
@@ -1242,6 +1288,16 @@ class BzrFormat:
     def check_support_status(
         self, allow_unsupported, recommend_upgrade=True, basedir=None
     ):
+        """Check if this format is supported by checking feature requirements.
+
+        Args:
+            allow_unsupported: Whether to allow unsupported features.
+            recommend_upgrade: Whether to recommend upgrading for missing features.
+            basedir: Base directory for the format check.
+
+        Raises:
+            MissingFeature: If a required feature is missing.
+        """
         for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
@@ -1261,6 +1317,18 @@ class BzrFormat:
 
     @classmethod
     def from_string(cls, text):
+        """Create a format instance from a format string.
+
+        Args:
+            text: The format string to parse.
+
+        Returns:
+            A new format instance with features parsed from the text.
+
+        Raises:
+            AssertionError: If the format header is invalid.
+            ParseFormatError: If the format text cannot be parsed.
+        """
         format_string = cls.get_format_string()
         if not text.startswith(format_string):
             raise AssertionError(f"Invalid format header {text!r} for {cls!r}")
@@ -1307,6 +1375,14 @@ class BzrFormat:
         return self.as_string()
 
     def __eq__(self, other):
+        """Check equality with another format object.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if the objects are equal, False otherwise.
+        """
         return self.__class__ is other.__class__ and self.features == other.features
 
     def _update_feature_flags(self, updated_flags):
@@ -1567,12 +1643,27 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         other_format.features = dict(self.features)
 
     def supports_transport(self, transport):
+        """Check if this format supports the given transport.
+
+        Args:
+            transport: The transport to check support for.
+
+        Returns:
+            True since bzr formats can be opened over all known transports.
+        """
         # bzr formats can be opened over all known transports
         return True
 
     def check_support_status(
         self, allow_unsupported, recommend_upgrade=True, basedir=None
     ):
+        """Check the support status of this format.
+
+        Args:
+            allow_unsupported: Whether to allow unsupported features.
+            recommend_upgrade: Whether to recommend upgrading for missing features.
+            basedir: Base directory for the format check.
+        """
         controldir.ControlDirFormat.check_support_status(
             self,
             allow_unsupported=allow_unsupported,
@@ -1630,12 +1721,24 @@ class BzrDirMetaFormat1(BzrDirFormat):
     colocated_branches = True
 
     def __init__(self):
+        """Initialize a BzrDirMetaFormat1 instance.
+
+        Sets up format instances for working tree, branch, and repository.
+        """
         BzrDirFormat.__init__(self)
         self._workingtree_format = None
         self._branch_format = None
         self._repository_format = None
 
     def __eq__(self, other):
+        """Check equality with another BzrDirMetaFormat1 object.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if the objects are equal, False otherwise.
+        """
         if other.__class__ is not self.__class__:
             return False
         if other.repository_format != self.repository_format:
@@ -1645,9 +1748,22 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return not other.features != self.features
 
     def __ne__(self, other):
+        """Check inequality with another BzrDirMetaFormat1 object.
+
+        Args:
+            other: Another format object to compare with.
+
+        Returns:
+            True if the objects are not equal, False otherwise.
+        """
         return not self == other
 
     def get_branch_format(self):
+        """Get the branch format for this bzrdir format.
+
+        Returns:
+            The branch format, defaulting to the registered default if none is set.
+        """
         if self._branch_format is None:
             from .branch import format_registry as branch_format_registry
 
@@ -1655,6 +1771,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
         return self._branch_format
 
     def set_branch_format(self, format):
+        """Set the branch format for this bzrdir format.
+
+        Args:
+            format: The branch format to use.
+        """
         self._branch_format = format
 
     def require_stacking(
@@ -1842,6 +1963,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
         self._workingtree_format = wt_format
 
     def __repr__(self):
+        """Return string representation of the BzrDirMetaFormat1.
+
+        Returns:
+            String representation showing the class name.
+        """
         return f"<{self.__class__.__name__!r}>"
 
     workingtree_format = property(__get_workingtree_format, __set_workingtree_format)

@@ -59,6 +59,14 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
     name_prefix = "changelog"
 
     def file_matches(self, params):
+        """Check if a file should be merged using the changelog merger.
+
+        Args:
+            params: Parameters containing file paths to check.
+
+        Returns:
+            True if the file should be handled by this merger, False otherwise.
+        """
         affected_files = self.affected_files
         if affected_files is None:
             config = self.merger.this_branch.get_config()
@@ -98,6 +106,8 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
 
 
 class EntryConflict(Exception):
+    """Raised when changelog entries cannot be merged automatically."""
+
     pass
 
 

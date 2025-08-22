@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Mail client implementations for sending emails with attachments.
+
+This module provides various mail client implementations that can be used to send
+email messages with attachments through different mail applications and services.
+Supported clients include Evolution, Mutt, Thunderbird, KMail, and others.
+"""
+
 import os
 import subprocess
 import sys
@@ -24,12 +31,19 @@ from . import email_message, errors, msgeditor, osutils, registry, urlutils
 
 
 class MailClientNotFound(errors.BzrError):
+    """Exception raised when no suitable mail client can be found."""
+
     _fmt = (
         "Unable to find mail client with the following names:"
         " %(mail_command_list_string)s"
     )
 
     def __init__(self, mail_command_list):
+        """Initialize the exception with the list of mail commands that were tried.
+
+        Args:
+            mail_command_list: List of mail client command names that were attempted.
+        """
         mail_command_list_string = ", ".join(mail_command_list)
         errors.BzrError.__init__(
             self,
@@ -39,10 +53,14 @@ class MailClientNotFound(errors.BzrError):
 
 
 class NoMessageSupplied(errors.BzrError):
+    """Exception raised when no message body is supplied for an email."""
+
     _fmt = "No message supplied."
 
 
 class NoMailAddressSpecified(errors.BzrError):
+    """Exception raised when no mail-to address is specified."""
+
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
@@ -50,6 +68,11 @@ class MailClient:
     """A mail client that can send messages with attachements."""
 
     def __init__(self, config):
+        """Initialize the mail client with configuration.
+
+        Args:
+            config: Configuration object containing mail settings.
+        """
         self.config = config
 
     def compose(
@@ -114,7 +137,11 @@ mail_client_registry = registry.Registry[str, type[MailClient], None]()
 
 
 class Editor(MailClient):
-    __doc__ = """DIY mail client that uses commit message editor"""
+    """DIY mail client that uses commit message editor.
+
+    This mail client opens the user's configured editor to compose the email
+    message body and then sends the email using the built-in email facilities.
+    """
 
     supports_body = True
 
@@ -156,6 +183,12 @@ mail_client_registry.register("editor", Editor, help=Editor.__doc__)
 
 
 class BodyExternalMailClient(MailClient):
+    """Base class for external mail clients that support message body text.
+
+    This class provides common functionality for mail clients that can handle
+    both email attachments and body text when composing messages.
+    """
+
     supports_body = True
 
     def _get_client_commands(self):
@@ -267,13 +300,21 @@ class BodyExternalMailClient(MailClient):
 
 
 class ExternalMailClient(BodyExternalMailClient):
-    __doc__ = """An external mail client."""
+    """An external mail client.
+
+    Base class for external mail clients that do not support message body text
+    in their command-line interface.
+    """
 
     supports_body = False
 
 
 class Evolution(BodyExternalMailClient):
-    __doc__ = """Evolution mail client."""
+    """Evolution mail client.
+
+    Integrates with the Evolution email client using mailto URLs with
+    parameters for subject, attachments, and body content.
+    """
 
     _client_commands = ["evolution"]
 
@@ -296,7 +337,11 @@ mail_client_registry.register("evolution", Evolution, help=Evolution.__doc__)
 
 
 class Mutt(BodyExternalMailClient):
-    __doc__ = """Mutt mail client."""
+    """Mutt mail client.
+
+    Integrates with the Mutt email client using command-line options
+    for composing messages with attachments and body text.
+    """
 
     _client_commands = ["mutt"]
 
@@ -325,13 +370,15 @@ mail_client_registry.register("mutt", Mutt, help=Mutt.__doc__)
 
 
 class Thunderbird(BodyExternalMailClient):
-    __doc__ = """Mozilla Thunderbird (or Icedove)
+    """Mozilla Thunderbird (or Icedove) mail client.
 
-    Note that Thunderbird 1.5 is buggy and does not support setting
-    "to" simultaneously with including a attachment.
+    Integrates with Mozilla Thunderbird or Icedove using the -compose command-line
+    option with URL-encoded parameters.
 
-    There is a workaround if no attachment is present, but we always need to
-    send attachments.
+    Note:
+        Thunderbird 1.5 is buggy and does not support setting "to" simultaneously
+        with including an attachment. There is a workaround if no attachment is
+        present, but we always need to send attachments.
     """
 
     _client_commands = [
@@ -363,7 +410,11 @@ mail_client_registry.register("thunderbird", Thunderbird, help=Thunderbird.__doc
 
 
 class KMail(ExternalMailClient):
-    __doc__ = """KDE mail client."""
+    """KDE mail client.
+
+    Integrates with KMail using command-line options for subject,
+    attachments, and recipient addresses.
+    """
 
     _client_commands = ["kmail"]
 
@@ -385,7 +436,11 @@ mail_client_registry.register("kmail", KMail, help=KMail.__doc__)
 
 
 class Claws(ExternalMailClient):
-    __doc__ = """Claws mail client."""
+    """Claws mail client.
+
+    Integrates with Claws Mail using mailto URLs and the --compose and
+    --attach command-line options.
+    """
 
     supports_body = True
 
@@ -437,7 +492,11 @@ mail_client_registry.register("claws", Claws, help=Claws.__doc__)
 
 
 class XDGEmail(BodyExternalMailClient):
-    __doc__ = """xdg-email attempts to invoke the preferred mail client"""
+    """XDG email integration.
+
+    Uses the xdg-email command to invoke the user's preferred mail client
+    as configured in their desktop environment.
+    """
 
     _client_commands = ["xdg-email"]
 
@@ -461,22 +520,27 @@ mail_client_registry.register("xdg-email", XDGEmail, help=XDGEmail.__doc__)
 
 
 class EmacsMail(ExternalMailClient):
-    __doc__ = """Call emacsclient to have a mail buffer.
+    """Emacs-based mail client integration.
 
-    This only work for emacs >= 22.1 due to recent -e/--eval support.
+    Uses emacsclient to invoke Emacs for composing email messages. This works
+    with all mail agents registered against `mail-user-agent` in Emacs.
 
-    The good news is that this implementation will work with all mail
-    agents registered against ``mail-user-agent``. So there is no need
-    to instantiate ExternalMailClient for each and every GNU Emacs
-    MUA.
+    Requirements:
+        - Emacs >= 22.1 (for -e/--eval support)
+        - Properly configured `mail-user-agent` in Emacs
 
-    Users just have to ensure that ``mail-user-agent`` is set according
-    to their tastes.
+    This implementation works with all GNU Emacs mail user agents without
+    needing separate client implementations for each one.
     """
 
     _client_commands = ["emacsclient"]
 
     def __init__(self, config):
+        """Initialize the Emacs mail client.
+
+        Args:
+            config: Configuration object containing mail settings.
+        """
         super().__init__(config)
         self.elisp_tmp_file = None
 
@@ -570,7 +634,11 @@ mail_client_registry.register("emacsclient", EmacsMail, help=EmacsMail.__doc__)
 
 
 class MAPIClient(BodyExternalMailClient):
-    __doc__ = """Default Windows mail client launched using MAPI."""
+    """Windows MAPI mail client integration.
+
+    Uses the Windows MAPI (Messaging Application Programming Interface)
+    to invoke the default mail client configured in Windows.
+    """
 
     def _compose(
         self, prompt, to, subject, attach_path, mime_subtype, extension, body=None
@@ -594,13 +662,16 @@ mail_client_registry.register("mapi", MAPIClient, help=MAPIClient.__doc__)
 
 
 class MailApp(BodyExternalMailClient):
-    __doc__ = """Use MacOS X's Mail.app for sending email messages.
+    """MacOS Mail.app integration.
 
-    Although it would be nice to use appscript, it's not installed
-    with the shipped Python installations.  We instead build an
-    AppleScript and invoke the script using osascript(1).  We don't
-    use the _encode_safe() routines as it's not clear what encoding
-    osascript expects the script to be in.
+    Integrates with macOS Mail.app by generating and executing AppleScript
+    code through osascript. This allows composing emails with attachments
+    and body text.
+
+    Note:
+        We use AppleScript instead of appscript because appscript is not
+        installed with the shipped Python installations. The AppleScript
+        is generated and executed using osascript(1).
     """
 
     _client_commands = ["osascript"]
@@ -663,8 +734,12 @@ mail_client_registry.register("mail.app", MailApp, help=MailApp.__doc__)
 
 
 class DefaultMail(MailClient):
-    __doc__ = """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
-    falls back to Editor"""
+    """Default mail handling with fallback strategy.
+
+    Attempts to use the platform's preferred mail client (XDGEmail on Unix-like
+    systems, MAPIClient on Windows), and falls back to the Editor client if
+    no external mail client is available.
+    """
 
     supports_body = True
 

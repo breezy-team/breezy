@@ -30,6 +30,16 @@ BRZ_EXE = None
 
 
 def brz():
+    """Get the appropriate brz executable name.
+
+    Attempts to find either 'brz' or 'brz.bat' in the system PATH.
+
+    Returns:
+        str: The name of the brz executable ('brz' or 'brz.bat').
+
+    Raises:
+        RuntimeError: If neither brz nor brz.bat can be found on the PATH.
+    """
     global BRZ_EXE
     if BRZ_EXE is not None:
         return BRZ_EXE
@@ -68,6 +78,14 @@ TARGET = None
 
 
 def get_target():
+    """Get the target directory path for the build.
+
+    Creates a target directory name based on the current brz version.
+    The directory follows the pattern TARGET_ROOT-{version}.
+
+    Returns:
+        str: Absolute path to the target build directory.
+    """
     global TARGET
     if TARGET is not None:
         return TARGET
@@ -88,11 +106,21 @@ def clean_target():
 
 
 def get_brz_dir():
+    """Get the brz source directory name.
+
+    Returns:
+        str: Directory name for the brz source, formatted as 'brz.{version}'.
+    """
     return "brz." + VERSIONS["brz"]
 
 
 def update_brz():
-    """Make sure we have the latest brz in play."""
+    """Ensure we have the latest brz source code.
+
+    Downloads or updates the brz source code from the configured version.
+    If the directory doesn't exist, it checks out the code from launchpad.
+    If it exists, it updates the existing checkout.
+    """
     brz_dir = get_brz_dir()
     if not os.path.isdir(brz_dir):
         brz_version = VERSIONS["brz"]
@@ -105,24 +133,65 @@ def update_brz():
 
 
 def create_target():
+    """Create the target build directory.
+
+    Checks out a copy of the brz source to the target directory
+    where the final build will be assembled.
+    """
     target = get_target()
     print(f"Creating target dir: {target}")
     call_or_fail([brz(), "co", get_brz_dir(), target])
 
 
 def get_plugin_trunk_dir(plugin_name):
+    """Get the trunk directory path for a plugin.
+
+    Args:
+        plugin_name (str): Name of the plugin.
+
+    Returns:
+        str: Directory path for the plugin trunk.
+    """
     return f"{plugin_name}/trunk"
 
 
 def get_plugin_release_dir(plugin_name):
+    """Get the release directory path for a plugin.
+
+    Args:
+        plugin_name (str): Name of the plugin.
+
+    Returns:
+        str: Directory path for the plugin release version.
+    """
     return f"{plugin_name}/{VERSIONS[plugin_name]}"
 
 
 def get_plugin_trunk_branch(plugin_name):
+    """Get the launchpad branch URL for a plugin's trunk.
+
+    Args:
+        plugin_name (str): Name of the plugin.
+
+    Returns:
+        str: Launchpad URL for the plugin's trunk branch.
+    """
     return f"lp:{plugin_name}"
 
 
 def update_plugin_trunk(plugin_name):
+    """Update or checkout the trunk version of a plugin.
+
+    Downloads the latest trunk version of the specified plugin from launchpad.
+    If the directory doesn't exist, it checks out the code.
+    If it exists, it updates the existing checkout.
+
+    Args:
+        plugin_name (str): Name of the plugin to update.
+
+    Returns:
+        str: Path to the trunk directory.
+    """
     trunk_dir = get_plugin_trunk_dir(plugin_name)
     if not os.path.isdir(trunk_dir):
         plugin_trunk = get_plugin_trunk_branch(plugin_name)
@@ -135,6 +204,17 @@ def update_plugin_trunk(plugin_name):
 
 
 def _plugin_tag_name(plugin_name):
+    """Get the tag name format for a plugin's release.
+
+    Different plugins use different tag naming conventions.
+    Some use '{plugin}-{version}' while others use 'release-{version}'.
+
+    Args:
+        plugin_name (str): Name of the plugin.
+
+    Returns:
+        str: The tag name for the plugin's configured version.
+    """
     if plugin_name in ("bzr-svn", "bzr-rewrite", "subvertpy"):
         return f"{plugin_name}-{VERSIONS[plugin_name]}"
     # bzrtools and qbzr use 'release-X.Y.Z'
@@ -142,6 +222,17 @@ def _plugin_tag_name(plugin_name):
 
 
 def update_plugin(plugin_name):
+    """Update or checkout a specific version of a plugin.
+
+    Downloads the tagged release version of the specified plugin.
+    First updates the trunk, then creates a checkout of the specific tagged version.
+
+    Args:
+        plugin_name (str): Name of the plugin to update.
+
+    Returns:
+        str: Path to the release directory.
+    """
     release_dir = get_plugin_release_dir(plugin_name)
     if not os.path.isdir(plugin_name):
         if plugin_name in ("bzr-svn", "bzr-rewrite"):
@@ -162,6 +253,14 @@ def update_plugin(plugin_name):
 
 
 def install_plugin(plugin_name):
+    """Install a plugin into the target build directory.
+
+    Updates the plugin to the correct version and then runs its setup.py
+    to install it into the target build directory.
+
+    Args:
+        plugin_name (str): Name of the plugin to install.
+    """
     release_dir = update_plugin(plugin_name)
     # at least bzrtools doesn't like you to call 'setup.py' unless you are in
     # that directory specifically, so we cd, rather than calling it from
@@ -174,6 +273,14 @@ def install_plugin(plugin_name):
 
 
 def update_tbzr():
+    """Update TortoiseBZR to the latest version.
+
+    Updates the TortoiseBZR installation located at the path specified
+    by the TBZR environment variable.
+
+    Raises:
+        ValueError: If the TBZR environment variable is not set.
+    """
     tbzr_loc = os.environ.get("TBZR", None)
     if tbzr_loc is None:
         raise ValueError("You must set TBZR to the location of tortoisebzr.")
@@ -182,6 +289,11 @@ def update_tbzr():
 
 
 def build_installer():
+    """Build the standalone Windows installer.
+
+    Runs the make command to build the installer in the target directory
+    using the configured Python interpreter.
+    """
     target = get_target()
     print()
     print()
@@ -191,6 +303,17 @@ def build_installer():
 
 
 def main(args):
+    """Main entry point for the build release script.
+
+    Orchestrates the complete build process:
+    1. Updates brz and TortoiseBZR
+    2. Cleans and creates target directory
+    3. Installs all configured plugins
+    4. Builds the final installer
+
+    Args:
+        args (list): Command line arguments (currently unused).
+    """
     import optparse
 
     p = optparse.OptionParser(usage="%prog [OPTIONS]")

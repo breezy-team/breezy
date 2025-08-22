@@ -1,3 +1,8 @@
+"""Breezy developer documentation build configuration file.
+
+This file is execfile()d with the current directory set to its containing dir.
+Created by sphinx-quickstart on Tue Jul 21 17:04:52 2009.
+"""
 #
 # Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.

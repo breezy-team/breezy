@@ -1,3 +1,9 @@
+"""Patch parsing and application functionality for Breezy.
+
+This module provides classes and functions for parsing unified diffs,
+applying patches to files, and handling patch-related operations.
+It supports both text and binary patch formats.
+"""
 # Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
@@ -29,29 +35,54 @@ class PatchSyntax(BzrError):
 
 
 class MalformedLine(PatchSyntax):
+    """Error raised when a patch contains a malformed line."""
+
     _fmt = "Malformed line.  %(desc)s\n%(line)r"
 
     def __init__(self, desc, line):
+        """Initialize MalformedLine error.
+
+        Args:
+            desc: Description of the malformed line.
+            line: The malformed line content.
+        """
         self.desc = desc
         self.line = line
 
 
 class PatchConflict(BzrError):
+    """Error raised when patch application encounters a conflict."""
+
     _fmt = (
         "Text contents mismatch at line %(line_no)d.  Original has "
         '"%(orig_line)s", but patch says it should be "%(patch_line)s"'
     )
 
     def __init__(self, line_no, orig_line, patch_line):
+        """Initialize PatchConflict error.
+
+        Args:
+            line_no: Line number where conflict occurred.
+            orig_line: Original line content.
+            patch_line: Expected line content from patch.
+        """
         self.line_no = line_no
         self.orig_line = orig_line.rstrip("\n")
         self.patch_line = patch_line.rstrip("\n")
 
 
 class MalformedHunkHeader(PatchSyntax):
+    """Error raised when a patch hunk header is malformed."""
+
     _fmt = "Malformed hunk header.  %(desc)s\n%(line)r"
 
     def __init__(self, desc, line):
+        """Initialize MalformedHunkHeader error.
+
+        Args:
+            desc: Description of the malformed header.
+            line: The malformed header line content.
+        """
         self.desc = desc
         self.line = line
 
@@ -67,6 +98,17 @@ from ._patch_rs import (  # noqa: F401
 
 
 def hunk_from_header(line):
+    """Parse a hunk header line and return a Hunk object.
+
+    Args:
+        line: The hunk header line to parse.
+
+    Returns:
+        A Hunk object created from the header.
+
+    Raises:
+        MalformedHunkHeader: If the header format is invalid.
+    """
     import re
 
     matches = re.match(rb"\@\@ ([^@]*) \@\@( (.*))?\n", line)
@@ -90,40 +132,99 @@ def hunk_from_header(line):
 
 
 class HunkLine:
+    """Base class for a line in a patch hunk."""
+
     def __init__(self, contents):
+        """Initialize a hunk line.
+
+        Args:
+            contents: The line contents as bytes.
+        """
         self.contents = contents
 
     def get_str(self, leadchar):
+        """Get string representation with a lead character.
+
+        Args:
+            leadchar: Character to prefix the line with.
+
+        Returns:
+            Formatted line as bytes.
+        """
         if False:
             return b"\n"
         terminator = b"\n" + NO_NL if not self.contents.endswith(b"\n") else b""
         return leadchar + self.contents + terminator
 
     def as_bytes(self):
+        """Return the line as bytes in patch format.
+
+        Returns:
+            The line formatted for a patch.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
 
 class ContextLine(HunkLine):
+    """A context line in a patch hunk (unchanged)."""
+
     def __init__(self, contents):
+        """Initialize a context line.
+
+        Args:
+            contents: The line contents as bytes.
+        """
         HunkLine.__init__(self, contents)
 
     def as_bytes(self):
+        """Return the context line as bytes in patch format.
+
+        Returns:
+            The line prefixed with a space character.
+        """
         return self.get_str(b" ")
 
 
 class InsertLine(HunkLine):
+    """An insert line in a patch hunk (addition)."""
+
     def __init__(self, contents):
+        """Initialize an insert line.
+
+        Args:
+            contents: The line contents as bytes.
+        """
         HunkLine.__init__(self, contents)
 
     def as_bytes(self):
+        """Return the insert line as bytes in patch format.
+
+        Returns:
+            The line prefixed with a plus character.
+        """
         return self.get_str(b"+")
 
 
 class RemoveLine(HunkLine):
+    """A remove line in a patch hunk (deletion)."""
+
     def __init__(self, contents):
+        """Initialize a remove line.
+
+        Args:
+            contents: The line contents as bytes.
+        """
         HunkLine.__init__(self, contents)
 
     def as_bytes(self):
+        """Return the remove line as bytes in patch format.
+
+        Returns:
+            The line prefixed with a minus character.
+        """
         return self.get_str(b"-")
 
 
@@ -132,6 +233,17 @@ __pychecker__ = "no-returnvalues"
 
 
 def parse_line(line):
+    """Parse a single line from a patch hunk.
+
+    Args:
+        line: The line to parse as bytes.
+
+    Returns:
+        A HunkLine subclass instance representing the line.
+
+    Raises:
+        MalformedLine: If the line format is unknown.
+    """
     if line.startswith(b"\n"):
         return ContextLine(line)
     elif line.startswith(b" "):
@@ -148,7 +260,18 @@ __pychecker__ = ""
 
 
 class Hunk:
+    """A patch hunk containing a set of line changes."""
+
     def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None) -> None:
+        """Initialize a patch hunk.
+
+        Args:
+            orig_pos: Starting position in original file.
+            orig_range: Number of lines in original file.
+            mod_pos: Starting position in modified file.
+            mod_range: Number of lines in modified file.
+            tail: Optional tail text from hunk header.
+        """
         self.orig_pos = orig_pos
         self.orig_range = orig_range
         self.mod_pos = mod_pos
@@ -157,6 +280,11 @@ class Hunk:
         self.lines: list[bytes] = []
 
     def get_header(self):
+        """Get the header line for this hunk.
+
+        Returns:
+            The hunk header as bytes.
+        """
         tail_str = b"" if self.tail is None else b" " + self.tail
         return b"@@ -%s +%s @@%s\n" % (
             self.range_str(self.orig_pos, self.orig_range),
@@ -179,6 +307,11 @@ class Hunk:
             return b"%i,%i" % (pos, range)
 
     def as_bytes(self):
+        """Return the complete hunk as bytes.
+
+        Returns:
+            The hunk header and all lines as bytes.
+        """
         lines = [self.get_header()]
         for line in self.lines:
             lines.append(line.as_bytes())
@@ -187,6 +320,14 @@ class Hunk:
     __bytes__ = as_bytes
 
     def shift_to_mod(self, pos):
+        """Shift a position from original to modified file coordinates.
+
+        Args:
+            pos: Position in the original file.
+
+        Returns:
+            Corresponding position shift in the modified file.
+        """
         if pos < self.orig_pos - 1:
             return 0
         elif pos > self.orig_pos + self.orig_range:
@@ -195,6 +336,14 @@ class Hunk:
             return self.shift_to_mod_lines(pos)
 
     def shift_to_mod_lines(self, pos):
+        """Calculate position shift by examining individual hunk lines.
+
+        Args:
+            pos: Position in the original file.
+
+        Returns:
+            Position shift in the modified file, or None if position is removed.
+        """
         position = self.orig_pos - 1
         shift = 0
         for line in self.lines:
@@ -250,22 +399,50 @@ def iter_hunks(iter_lines, allow_dirty=False):
 
 
 class BinaryPatch:
+    """A binary patch indicating files that differ but can't be shown."""
+
     def __init__(self, oldname, newname):
+        """Initialize a binary patch.
+
+        Args:
+            oldname: Name of the original file.
+            newname: Name of the new file.
+        """
         self.oldname = oldname
         self.newname = newname
 
     def as_bytes(self):
+        """Return the binary patch as bytes.
+
+        Returns:
+            A message indicating binary files differ.
+        """
         return b"Binary files %s and %s differ\n" % (self.oldname, self.newname)
 
 
 class Patch(BinaryPatch):
+    """A text patch containing hunks showing file differences."""
+
     def __init__(self, oldname, newname, oldts=None, newts=None) -> None:
+        """Initialize a text patch.
+
+        Args:
+            oldname: Name of the original file.
+            newname: Name of the new file.
+            oldts: Timestamp of the original file.
+            newts: Timestamp of the new file.
+        """
         BinaryPatch.__init__(self, oldname, newname)
         self.oldts = oldts
         self.newts = newts
         self.hunks: list[Hunk] = []
 
     def as_bytes(self):
+        """Return the complete patch as bytes.
+
+        Returns:
+            The patch header and all hunks as bytes.
+        """
         ret = self.get_header()
         ret += b"".join([h.as_bytes() for h in self.hunks])
         return ret
@@ -279,6 +456,11 @@ class Patch(BinaryPatch):
         return l
 
     def get_header(self):
+        """Get the patch header lines.
+
+        Returns:
+            Header lines showing old and new file names and timestamps.
+        """
         return self._headerline(b"---", self.oldname, self.oldts) + self._headerline(
             b"+++", self.newname, self.newts
         )
@@ -300,6 +482,14 @@ class Patch(BinaryPatch):
         return "%i inserts, %i removes in %i hunks" % self.stats_values()
 
     def pos_in_mod(self, position):
+        """Calculate position in modified file from original position.
+
+        Args:
+            position: Position in the original file.
+
+        Returns:
+            Corresponding position in the modified file, or None if removed.
+        """
         newpos = position
         for hunk in self.hunks:
             shift = hunk.shift_to_mod(position)
@@ -517,15 +707,37 @@ class AppliedPatches:
     """Context that provides access to a tree with patches applied."""
 
     def __init__(self, tree, patches, prefix=1):
+        """Initialize an AppliedPatches context.
+
+        Args:
+            tree: The tree to apply patches to.
+            patches: List of patches to apply.
+            prefix: Number of path segments to strip from patch paths.
+        """
         self.tree = tree
         self.patches = patches
         self.prefix = prefix
 
     def __enter__(self):
+        """Enter the context and return a tree with patches applied.
+
+        Returns:
+            A preview tree with the patches applied.
+        """
         self._tt = self.tree.preview_transform()
         apply_patches(self._tt, self.patches, prefix=self.prefix)
         return self._tt.get_preview_tree()
 
     def __exit__(self, exc_type, exc_value, exc_tb):
+        """Exit the context and clean up resources.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_value: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False to allow exceptions to propagate.
+        """
         self._tt.finalize()
         return False

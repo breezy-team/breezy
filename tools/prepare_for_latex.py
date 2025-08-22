@@ -1,4 +1,20 @@
 #!/usr/bin/python3
+
+"""Tool for preparing reStructuredText files for LaTeX conversion.
+
+This tool modifies reStructuredText files to make them more suitable for
+LaTeX/PDF generation by:
+
+1. Adding width and alignment attributes to image directives to prevent
+   images from being oversized in the PDF output
+2. Converting PNG image references to PDF when SVG alternatives are available
+3. Using Inkscape to convert SVG files to PDF for better LaTeX compatibility
+
+Without these modifications, images in LaTeX output are often oversized and
+extend beyond page boundaries.
+
+Copyright (C) 2009 Colin D Bennett
+"""
 #
 # Modify reStructuredText 'image' directives by adding a percentage 'width'
 # attribute so that the images are scaled to fit on the page when the document
@@ -40,12 +56,34 @@ DIRECTIVE_ELEMENT_PATTERN = re.compile("^\\s+:[^:]+:\\s+")
 
 
 class Converter:
+    """Converts reStructuredText files for LaTeX processing.
+
+    This class processes .txt files in a source directory and generates
+    modified versions in a destination directory with improved image handling
+    for LaTeX output.
+
+    Attributes:
+        srcdir: Source directory containing .txt files to process.
+        destdir: Destination directory for processed files.
+    """
+
     def __init__(self, srcdir, destdir):
+        """Initialize the converter with source and destination directories.
+
+        Args:
+            srcdir: Path to the source directory containing .txt files.
+            destdir: Path to the destination directory for processed files.
+        """
         self.srcdir = srcdir
         self.destdir = destdir
 
-    # Process .txt files in sourcedir, generating output in destdir.
     def process_files(self):
+        """Process all .txt files in the source directory.
+
+        Finds all .txt files in the source directory and processes each one,
+        generating modified versions in the destination directory with improved
+        image handling for LaTeX output.
+        """
         for filename in os.listdir(self.srcdir):
             # Process all text files in the current directory.
             if filename.endswith(".txt"):
@@ -54,6 +92,12 @@ class Converter:
                 self._process_file(inpath, outpath)
 
     def _process_file(self, inpath, outpath):
+        """Process a single reStructuredText file.
+
+        Args:
+            inpath: Path to the input .txt file.
+            outpath: Path where the processed file should be written.
+        """
         infile = open(inpath)
         outfile = open(outpath, "w")
         foundimg = False
@@ -87,17 +131,53 @@ class Converter:
 
 
 class ImageFixer:
+    """Handles image conversion and fixing for LaTeX compatibility.
+
+    This class is responsible for converting SVG images to PDF format
+    and handling image file operations needed for LaTeX processing.
+
+    Attributes:
+        srcdir: Source directory containing original images.
+        destdir: Destination directory for converted images.
+    """
+
     def __init__(self, srcdir, destdir):
+        """Initialize the image fixer with source and destination directories.
+
+        Args:
+            srcdir: Path to the source directory containing images.
+            destdir: Path to the destination directory for processed images.
+        """
         self.srcdir = srcdir
         self.destdir = destdir
 
     def substitute_pdf_image(self, match):
+        """Substitute an image reference with a PDF version if available.
+
+        Args:
+            match: Regular expression match object containing the image reference.
+
+        Returns:
+            str: The modified string with the new image reference.
+        """
         prefix = match.string[: match.start(1)]
         newname = self.convert_image_to_pdf(match.group(1))
         suffix = match.string[match.end(1) :]
         return prefix + newname + suffix
 
     def replace_extension(self, path, newext):
+        """Replace the file extension of a path with a new extension.
+
+        Args:
+            path: The original file path.
+            newext: The new extension to use (including the dot).
+
+        Returns:
+            str: The path with the new extension.
+
+        Raises:
+            Exception: If the file already has the target extension.
+        """
         if path.endswith(newext):
             raise Exception(
                 "File '" + path + "' already has extension '" + newext + "'"
@@ -108,11 +188,22 @@ class ImageFixer:
         else:
             return path[:dot] + newext
 
-    # Possibly use an SVG alternative to a PNG image, converting the SVG image
-    # to a PDF first.  Whether or not a conversion is made, the image to use is
-    # written to the destination directory and the path to use in the RST #
-    # source is returned.
     def convert_image_to_pdf(self, filename):
+        """Convert an image to PDF format if possible, or copy as-is.
+
+        For PNG images, this method checks if an SVG alternative exists and
+        converts it to PDF using Inkscape. If no SVG alternative exists, the
+        original image is copied to the destination directory.
+
+        Args:
+            filename: The filename of the image to process.
+
+        Returns:
+            str: The filename to use in the processed RST file.
+
+        Raises:
+            Exception: If SVG to PDF conversion fails.
+        """
         # Make the directory structure for the image in the destination dir.
         image_dirname = os.path.dirname(filename)
         if image_dirname:

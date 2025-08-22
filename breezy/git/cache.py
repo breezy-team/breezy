@@ -33,8 +33,13 @@ from ..transport import FileExists, NoSuchFile, get_transport_from_path
 
 
 def get_remote_cache_transport(repository):
-    """Retrieve the transport to use when accessing (unwritable) remote
-    repositories.
+    """Retrieve the transport to use when accessing (unwritable) remote repositories.
+
+    Args:
+        repository: Repository object to get cache transport for.
+
+    Returns:
+        Transport object for cache access.
     """
     uuid = getattr(repository, "uuid", None)
     if uuid is None:
@@ -50,7 +55,11 @@ _mapdbs = threading.local()
 
 
 def mapdbs():
-    """Get a cache for this thread's db connections."""
+    """Get a cache for this thread's database connections.
+
+    Returns:
+        dict: Dictionary cache for database connections in current thread.
+    """
     try:
         return _mapdbs.cache
     except AttributeError:
@@ -59,7 +68,11 @@ def mapdbs():
 
 
 class GitShaMap:
-    """Git<->Bzr revision id mapping database."""
+    """Abstract base class for Git SHA to Bazaar revision ID mapping databases.
+
+    This class defines the interface for mapping Git SHAs to Bazaar revision data
+    and vice versa.
+    """
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -74,82 +87,167 @@ class GitShaMap:
     def lookup_blob_id(self, file_id, revision):
         """Retrieve a Git blob SHA by file id.
 
-        :param file_id: File id of the file/symlink
-        :param revision: revision in which the file was last changed.
+        Args:
+            file_id: File id of the file/symlink.
+            revision: Revision in which the file was last changed.
+
+        Returns:
+            Git blob SHA as bytes.
         """
         raise NotImplementedError(self.lookup_blob_id)
 
     def lookup_tree_id(self, file_id, revision):
-        """Retrieve a Git tree SHA by file id."""
+        """Retrieve a Git tree SHA by file id.
+
+        Args:
+            file_id: File ID to look up.
+            revision: Revision to look up tree in.
+
+        Returns:
+            Git tree SHA as bytes.
+        """
         raise NotImplementedError(self.lookup_tree_id)
 
     def lookup_commit(self, revid):
-        """Retrieve a Git commit SHA by Bazaar revision id."""
+        """Retrieve a Git commit SHA by Bazaar revision id.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            Git commit SHA as bytes.
+        """
         raise NotImplementedError(self.lookup_commit)
 
     def revids(self):
-        """List the revision ids known."""
+        """List the revision ids known.
+
+        Returns:
+            Iterator of revision IDs.
+        """
         raise NotImplementedError(self.revids)
 
     def missing_revisions(self, revids):
-        """Return set of all the revisions that are not present."""
+        """Return set of all the revisions that are not present.
+
+        Args:
+            revids: Collection of revision IDs to check.
+
+        Returns:
+            set: Set of revision IDs that are missing from the cache.
+        """
         present_revids = set(self.revids())
         if not isinstance(revids, set):
             revids = set(revids)
         return revids - present_revids
 
     def sha1s(self):
-        """List the SHA1s."""
+        """List the SHA1s.
+
+        Returns:
+            Iterator of Git SHA1s as bytes.
+        """
         raise NotImplementedError(self.sha1s)
 
     def start_write_group(self):
-        """Start writing changes."""
+        """Start writing changes.
+
+        Begin a write transaction for batch updates.
+        """
 
     def commit_write_group(self):
-        """Commit any pending changes."""
+        """Commit any pending changes.
+
+        Commits all changes made since the last start_write_group call.
+        """
 
     def abort_write_group(self):
-        """Abort any pending changes."""
+        """Abort any pending changes.
+
+        Discards all changes made since the last start_write_group call.
+        """
 
 
 class ContentCache:
-    """Object that can cache Git objects."""
+    """Abstract base class for caching Git objects.
+
+    Provides an interface for storing and retrieving Git objects by their SHA.
+    """
 
     def add(self, object):
-        """Add an object."""
+        """Add an object to the cache.
+
+        Args:
+            object: Git object to add.
+        """
         raise NotImplementedError(self.add)
 
     def add_multi(self, objects):
-        """Add multiple objects."""
+        """Add multiple objects to the cache.
+
+        Args:
+            objects: Iterable of Git objects to add.
+        """
         for obj in objects:
             self.add(obj)
 
     def __getitem__(self, sha):
-        """Retrieve an item, by SHA."""
+        """Retrieve an item by SHA.
+
+        Args:
+            sha: Git SHA to retrieve.
+
+        Returns:
+            Git object corresponding to the SHA.
+
+        Raises:
+            KeyError: If the SHA is not found in cache.
+        """
         raise NotImplementedError(self.__getitem__)
 
 
 class BzrGitCacheFormat:
-    """Bazaar-Git Cache Format."""
+    """Abstract base class for Bazaar-Git cache formats.
+
+    Defines the interface for different storage formats of the Git SHA mapping cache.
+    """
 
     def get_format_string(self):
-        """Return a single-line unique format string for this cache format."""
+        """Return a single-line unique format string for this cache format.
+
+        Returns:
+            bytes: Format identification string.
+        """
         raise NotImplementedError(self.get_format_string)
 
     def open(self, transport):
-        """Open this format on a transport."""
+        """Open this format on a transport.
+
+        Args:
+            transport: Transport to open cache on.
+
+        Returns:
+            BzrGitCache instance.
+        """
         raise NotImplementedError(self.open)
 
     def initialize(self, transport):
-        """Create a new instance of this cache format at transport."""
+        """Create a new instance of this cache format at transport.
+
+        Args:
+            transport: Transport to initialize cache on.
+        """
         transport.put_bytes("format", self.get_format_string())
 
     @classmethod
     def from_transport(self, transport):
         """Open a cache file present on a transport, or initialize one.
 
-        :param transport: Transport to use
-        :return: A BzrGitCache instance
+        Args:
+            transport: Transport to use.
+
+        Returns:
+            BzrGitCache instance.
         """
         try:
             format_name = transport.get_bytes("format")
@@ -167,8 +265,11 @@ class BzrGitCacheFormat:
         use the users global cache directory if the repository has no
         transport associated with it.
 
-        :param repository: Repository to open the cache for
-        :return: A `BzrGitCache`
+        Args:
+            repository: Repository to open the cache for.
+
+        Returns:
+            BzrGitCache instance.
         """
         from ..transport.local import LocalTransport
 
@@ -192,7 +293,10 @@ class BzrGitCacheFormat:
 
 
 class CacheUpdater:
-    """Base class for objects that can update a bzr-git cache."""
+    """Abstract base class for objects that can update a bzr-git cache.
+
+    Provides interface for adding objects to the cache during revision processing.
+    """
 
     def add_object(self, obj, bzr_key_data, path):
         """Add an object.
@@ -205,31 +309,65 @@ class CacheUpdater:
         raise NotImplementedError(self.add_object)
 
     def finish(self):
+        """Complete the cache update operation.
+
+        Returns:
+            The commit object that was added.
+        """
         raise NotImplementedError(self.finish)
 
 
 class BzrGitCache:
-    """Caching backend."""
+    """Main caching backend for Git SHA to Bazaar mappings.
+
+    Combines an ID mapping database with a cache updater for managing
+    the cache lifecycle.
+    """
 
     def __init__(self, idmap, cache_updater_klass):
+        """Initialize BzrGitCache.
+
+        Args:
+            idmap: GitShaMap instance for storing mappings.
+            cache_updater_klass: Class to use for cache updates.
+        """
         self.idmap = idmap
         self._cache_updater_klass = cache_updater_klass
 
     def get_updater(self, rev):
-        """Update an object that implements the CacheUpdater interface for
-        updating this cache.
+        """Create an object that implements the CacheUpdater interface for updating this cache.
+
+        Args:
+            rev: Revision object to create updater for.
+
+        Returns:
+            CacheUpdater instance for the given revision.
         """
         return self._cache_updater_klass(self, rev)
 
 
 def DictBzrGitCache():
+    """Create a dictionary-based BzrGitCache for testing.
+
+    Returns:
+        BzrGitCache instance using in-memory dictionary storage.
+    """
     return BzrGitCache(DictGitShaMap(), DictCacheUpdater)
 
 
 class DictCacheUpdater(CacheUpdater):
-    """Cache updater for dict-based caches."""
+    """Cache updater for dictionary-based caches.
+
+    Used primarily for testing, stores cache data in memory dictionaries.
+    """
 
     def __init__(self, cache, rev):
+        """Initialize DictCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
@@ -237,6 +375,17 @@ class DictCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
+        """Add a Git object to the cache.
+
+        Args:
+            obj: Git object (commit, blob, or tree) or tuple of (type_name, hexsha).
+            bzr_key_data: Bazaar key data or testament SHA for commits.
+            path: Path of the object (optional, currently unused).
+
+        Raises:
+            TypeError: If hexsha is not bytes or bzr_key_data has wrong type.
+            AssertionError: If object type is not supported.
+        """
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
@@ -263,45 +412,128 @@ class DictCacheUpdater(CacheUpdater):
         self.cache.idmap._by_sha.setdefault(hexsha, {})[key] = entry
 
     def finish(self):
+        """Complete the cache update operation.
+
+        Returns:
+            The commit object that was added.
+
+        Raises:
+            AssertionError: If no commit object was added during the update.
+        """
         if self._commit is None:
             raise AssertionError("No commit object added")
         return self._commit
 
 
 class DictGitShaMap(GitShaMap):
-    """Git SHA map that uses a dictionary."""
+    """Git SHA map implementation using in-memory dictionaries.
+
+    Used primarily for testing, stores all mappings in memory dictionaries.
+    """
 
     def __init__(self):
+        """Initialize DictGitShaMap with empty dictionaries."""
         self._by_sha = {}
         self._by_fileid = {}
         self._by_revid = {}
 
     def lookup_blob_id(self, fileid, revision):
+        """Retrieve a Git blob SHA by file ID and revision.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up blob in.
+
+        Returns:
+            Git blob SHA as bytes.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
+        """Lookup a Git SHA in the database.
+
+        Args:
+            sha: Git object SHA as bytes.
+
+        Yields:
+            tuple: (type, type_data) tuples with type_data being:
+                - commit: (revid, tree_sha, verifiers)
+                - blob: (fileid, revid)
+                - tree: (fileid, revid)
+
+        Raises:
+            TypeError: If sha is not bytes.
+            KeyError: If SHA is not found in cache.
+        """
         if not isinstance(sha, bytes):
             raise TypeError(sha)
         yield from self._by_sha[sha].values()
 
     def lookup_tree_id(self, fileid, revision):
+        """Retrieve a Git tree SHA by file ID and revision.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up tree in.
+
+        Returns:
+            Git tree SHA as bytes.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         return self._by_fileid[revision][fileid]
 
     def lookup_commit(self, revid):
+        """Retrieve a Git commit SHA by Bazaar revision ID.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            Git commit SHA as bytes.
+
+        Raises:
+            KeyError: If the revision ID is not found.
+        """
         return self._by_revid[revid]
 
     def revids(self):
+        """List the revision IDs known in the cache.
+
+        Yields:
+            bytes: Bazaar revision IDs for all commits in the cache.
+        """
         for _key, entries in self._by_sha.items():
             for type, type_data in entries.values():
                 if type == "commit":
                     yield type_data[0]
 
     def sha1s(self):
+        """List the SHA1s stored in the cache.
+
+        Returns:
+            dict_keys: All Git SHA1s as bytes stored in the cache.
+        """
         return self._by_sha.keys()
 
 
 class SqliteCacheUpdater(CacheUpdater):
+    """Cache updater for SQLite-based caches.
+
+    Handles updates to SQLite database storage format.
+    """
+
     def __init__(self, cache, rev):
+        """Initialize SqliteCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.db = self.cache.idmap.db
         self.revid = rev.revision_id
@@ -310,6 +542,17 @@ class SqliteCacheUpdater(CacheUpdater):
         self._blobs = []
 
     def add_object(self, obj, bzr_key_data, path):
+        """Add a Git object to the SQLite cache.
+
+        Args:
+            obj: Git object (commit, blob, or tree) or tuple of (type_name, hexsha).
+            bzr_key_data: Bazaar key data or testament SHA for commits.
+            path: Path of the object (optional, currently unused).
+
+        Raises:
+            TypeError: If hexsha is not bytes or bzr_key_data has wrong type.
+            AssertionError: If object type is not supported.
+        """
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
@@ -332,6 +575,16 @@ class SqliteCacheUpdater(CacheUpdater):
             raise AssertionError
 
     def finish(self):
+        """Complete the SQLite cache update operation.
+
+        Writes all collected trees, blobs, and commit data to the SQLite database.
+
+        Returns:
+            The commit object that was added.
+
+        Raises:
+            AssertionError: If no commit object was added during the update.
+        """
         if self._commit is None:
             raise AssertionError("No commit object added")
         self.db.executemany(
@@ -349,14 +602,37 @@ class SqliteCacheUpdater(CacheUpdater):
 
 
 def SqliteBzrGitCache(p):
+    """Create a SQLite-based BzrGitCache.
+
+    Args:
+        p: Path to SQLite database file.
+
+    Returns:
+        BzrGitCache instance using SQLite storage.
+    """
     return BzrGitCache(SqliteGitShaMap(p), SqliteCacheUpdater)
 
 
 class SqliteGitCacheFormat(BzrGitCacheFormat):
+    """Cache format using SQLite database storage."""
+
     def get_format_string(self):
+        """Return the format string for SQLite cache format.
+
+        Returns:
+            bytes: Format identification string for SQLite cache.
+        """
         return b"bzr-git sha map version 1 using sqlite\n"
 
     def open(self, transport):
+        """Open a SQLite cache on the given transport.
+
+        Args:
+            transport: Transport to open cache on.
+
+        Returns:
+            BzrGitCache instance using SQLite storage.
+        """
         try:
             basepath = transport.local_abspath(".")
         except bzr_errors.NotLocalUrl:
@@ -365,9 +641,18 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
 
 
 class SqliteGitShaMap(GitShaMap):
-    """Bazaar GIT Sha map that uses a sqlite database for storage."""
+    """Git SHA map implementation using SQLite database for storage.
+
+    Uses SQLite database with separate tables for commits, blobs, and trees
+    to provide persistent storage of Git SHA to Bazaar mappings.
+    """
 
     def __init__(self, path=None):
+        """Initialize SqliteGitShaMap.
+
+        Args:
+            path: Path to SQLite database file. If None, uses in-memory database.
+        """
         import sqlite3
 
         self.path = path
@@ -411,9 +696,25 @@ class SqliteGitShaMap(GitShaMap):
             pass  # Column already exists.
 
     def __repr__(self):
+        """Return string representation of SqliteGitShaMap.
+
+        Returns:
+            str: String representation showing class name and database path.
+        """
         return f"{self.__class__.__name__}({self.path!r})"
 
     def lookup_commit(self, revid):
+        """Retrieve a Git commit SHA by Bazaar revision ID from SQLite.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            str: Git commit SHA as hex string.
+
+        Raises:
+            KeyError: If the revision ID is not found.
+        """
         cursor = self.db.execute("select sha1 from commits where revid = ?", (revid,))
         row = cursor.fetchone()
         if row is not None:
@@ -421,9 +722,25 @@ class SqliteGitShaMap(GitShaMap):
         raise KeyError
 
     def commit_write_group(self):
+        """Commit any pending SQLite database changes.
+
+        Commits the current SQLite transaction.
+        """
         self.db.commit()
 
     def lookup_blob_id(self, fileid, revision):
+        """Retrieve a Git blob SHA by file ID and revision from SQLite.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up blob in.
+
+        Returns:
+            str: Git blob SHA as hex string.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         row = self.db.execute(
             "select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)
         ).fetchone()
@@ -432,6 +749,18 @@ class SqliteGitShaMap(GitShaMap):
         raise KeyError(fileid)
 
     def lookup_tree_id(self, fileid, revision):
+        """Retrieve a Git tree SHA by file ID and revision from SQLite.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up tree in.
+
+        Returns:
+            str: Git tree SHA as hex string.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         row = self.db.execute(
             "select sha1 from trees where fileid = ? and revid = ?", (fileid, revision)
         ).fetchone()
@@ -473,20 +802,37 @@ class SqliteGitShaMap(GitShaMap):
             raise KeyError(sha)
 
     def revids(self):
-        """List the revision ids known."""
+        """List the revision IDs known in the SQLite cache.
+
+        Returns:
+            Generator[str, None, None]: Generator yielding revision ID strings.
+        """
         return (row for (row,) in self.db.execute("select revid from commits"))
 
     def sha1s(self):
-        """List the SHA1s."""
+        """List the SHA1s stored in the SQLite cache.
+
+        Yields:
+            bytes: All Git SHA1s as bytes from blobs, commits, and trees tables.
+        """
         for table in ("blobs", "commits", "trees"):
             for (sha,) in self.db.execute(f"select sha1 from {table}"):  # noqa: S608
                 yield sha.encode("ascii")
 
 
 class TdbCacheUpdater(CacheUpdater):
-    """Cache updater for tdb-based caches."""
+    """Cache updater for TDB-based caches.
+
+    Handles updates to Trivial Database (TDB) storage format.
+    """
 
     def __init__(self, cache, rev):
+        """Initialize TdbCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.db = cache.idmap.db
         self.revid = rev.revision_id
@@ -495,6 +841,17 @@ class TdbCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
+        """Add a Git object to the TDB cache.
+
+        Args:
+            obj: Git object (commit, blob, or tree) or tuple of (type_name, hexsha).
+            bzr_key_data: Bazaar key data or testament SHA for commits.
+            path: Path of the object (optional, currently unused).
+
+        Raises:
+            TypeError: If bzr_key_data has wrong type for commits.
+            AssertionError: If object type is not supported.
+        """
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
             sha = hex_to_sha(hexsha)
@@ -533,22 +890,57 @@ class TdbCacheUpdater(CacheUpdater):
                 self.db[key] = b"".join([oldval, entry])
 
     def finish(self):
+        """Complete the TDB cache update operation.
+
+        Returns:
+            The commit object that was added.
+
+        Raises:
+            AssertionError: If no commit object was added during the update.
+        """
         if self._commit is None:
             raise AssertionError("No commit object added")
         return self._commit
 
 
 def TdbBzrGitCache(p):
+    """Create a TDB-based BzrGitCache.
+
+    Args:
+        p: Path to TDB database file.
+
+    Returns:
+        BzrGitCache instance using TDB storage.
+    """
     return BzrGitCache(TdbGitShaMap(p), TdbCacheUpdater)
 
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
-    """Cache format for tdb-based caches."""
+    """Cache format using Trivial Database (TDB) storage.
+
+    Uses TDB for fast key-value storage of Git SHA mappings.
+    """
 
     def get_format_string(self):
+        """Return the format string for TDB cache format.
+
+        Returns:
+            bytes: Format identification string for TDB cache.
+        """
         return b"bzr-git sha map version 3 using tdb\n"
 
     def open(self, transport):
+        """Open a TDB cache on the given transport.
+
+        Args:
+            transport: Transport to open cache on.
+
+        Returns:
+            BzrGitCache instance using TDB storage.
+
+        Raises:
+            ModuleNotFoundError: If TDB module is not available.
+        """
         try:
             basepath = transport.local_abspath(".")
         except bzr_errors.NotLocalUrl:
@@ -576,6 +968,11 @@ class TdbGitShaMap(GitShaMap):
     TDB_HASH_SIZE = 50000
 
     def __init__(self, path=None):
+        """Initialize TdbGitShaMap.
+
+        Args:
+            path: Path to TDB database file. If None, uses in-memory storage.
+        """
         import tdb
 
         self.path = path
@@ -599,28 +996,65 @@ class TdbGitShaMap(GitShaMap):
             pass
         self.db[b"version"] = b"%d" % self.TDB_MAP_VERSION
 
+    def __repr__(self):
+        """Return string representation of TdbGitShaMap.
+
+        Returns:
+            str: String representation showing class name and database path.
+        """
+        return f"{self.__class__.__name__}({self.path!r})"
+
     def start_write_group(self):
-        """Start writing changes."""
+        """Start writing changes.
+
+        Begins a TDB transaction for batch updates.
+        """
         self.db.transaction_start()
 
     def commit_write_group(self):
-        """Commit any pending changes."""
+        """Commit any pending changes.
+
+        Commits the current TDB transaction.
+        """
         self.db.transaction_commit()
 
     def abort_write_group(self):
-        """Abort any pending changes."""
+        """Abort any pending changes.
+
+        Cancels the current TDB transaction.
+        """
         self.db.transaction_cancel()
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.path!r})"
-
     def lookup_commit(self, revid):
+        """Retrieve a Git commit SHA by Bazaar revision ID from TDB.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            str: Git commit SHA as hex string.
+
+        Raises:
+            KeyError: If the revision ID is not found.
+        """
         try:
             return sha_to_hex(self.db[b"commit\0" + revid][:20])
         except KeyError as err:
             raise KeyError(f"No cache entry for {revid!r}") from err
 
     def lookup_blob_id(self, fileid, revision):
+        """Retrieve a Git blob SHA by file ID and revision from TDB.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up blob in.
+
+        Returns:
+            str: Git blob SHA as hex string.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
 
     def lookup_git_sha(self, sha):
@@ -649,6 +1083,14 @@ class TdbGitShaMap(GitShaMap):
                 raise AssertionError(f"unknown type {type_name!r}")
 
     def missing_revisions(self, revids):
+        """Return set of all the revisions that are not present in TDB.
+
+        Args:
+            revids: Collection of revision IDs to check.
+
+        Returns:
+            set: Set of revision IDs that are missing from the TDB cache.
+        """
         ret = set()
         for revid in revids:
             if self.db.get(b"commit\0" + revid) is None:
@@ -656,26 +1098,54 @@ class TdbGitShaMap(GitShaMap):
         return ret
 
     def _keys(self):
+        """Get all keys from the TDB database.
+
+        Returns:
+            Iterator of database keys as bytes.
+        """
         return self.db.keys()
 
     def revids(self):
-        """List the revision ids known."""
+        """List the revision IDs known in the TDB cache.
+
+        Yields:
+            bytes: Bazaar revision IDs for all commits in the TDB cache.
+        """
         for key in self._keys():
             if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
-        """List the SHA1s."""
+        """List the SHA1s stored in the TDB cache.
+
+        Yields:
+            str: All Git SHA1s as hex strings from the TDB cache.
+        """
         for key in self._keys():
             if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 
 
 class VersionedFilesContentCache(ContentCache):
+    """Content cache using Bazaar's versioned files storage.
+
+    Stores Git objects using Bazaar's versioned file format.
+    """
+
     def __init__(self, vf):
+        """Initialize VersionedFilesContentCache.
+
+        Args:
+            vf: VersionedFiles instance to store objects in.
+        """
         self._vf = vf
 
     def add(self, obj):
+        """Add a Git object to the versioned files cache.
+
+        Args:
+            obj: Git object to add to the cache.
+        """
         self._vf.insert_record_stream(
             [
                 versionedfile.ChunkedContentFactory(
@@ -685,6 +1155,17 @@ class VersionedFilesContentCache(ContentCache):
         )
 
     def __getitem__(self, sha):
+        """Retrieve a Git object by SHA from versioned files cache.
+
+        Args:
+            sha: Git SHA to retrieve.
+
+        Returns:
+            Git object corresponding to the SHA.
+
+        Raises:
+            KeyError: If the SHA is not found in cache.
+        """
         stream = self._vf.get_record_stream([(sha,)], "unordered", True)
         entry = next(stream)
         if entry.storage_kind == "absent":
@@ -693,7 +1174,18 @@ class VersionedFilesContentCache(ContentCache):
 
 
 class IndexCacheUpdater(CacheUpdater):
+    """Cache updater for index-based caches.
+
+    Updates Bazaar BTree index-based cache storage.
+    """
+
     def __init__(self, cache, rev):
+        """Initialize IndexCacheUpdater.
+
+        Args:
+            cache: BzrGitCache instance.
+            rev: Revision object being processed.
+        """
         self.cache = cache
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
@@ -701,6 +1193,17 @@ class IndexCacheUpdater(CacheUpdater):
         self._entries = []
 
     def add_object(self, obj, bzr_key_data, path):
+        """Add a Git object to the index cache.
+
+        Args:
+            obj: Git object (commit, blob, or tree) or tuple of (type_name, hexsha).
+            bzr_key_data: Bazaar key data or testament SHA for commits.
+            path: Path of the object (optional, currently unused).
+
+        Raises:
+            TypeError: If bzr_key_data has wrong type for commits.
+            AssertionError: If object type is not supported.
+        """
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
@@ -727,20 +1230,47 @@ class IndexCacheUpdater(CacheUpdater):
             raise AssertionError
 
     def finish(self):
+        """Complete the index cache update operation.
+
+        Returns:
+            The commit object that was added.
+        """
         return self._commit
 
 
 class IndexBzrGitCache(BzrGitCache):
+    """BzrGitCache implementation using Bazaar index storage.
+
+    Uses Bazaar's BTree index format for storing SHA mappings.
+    """
+
     def __init__(self, transport=None):
+        """Initialize IndexBzrGitCache.
+
+        Args:
+            transport: Transport to use for index storage.
+        """
         shamap = IndexGitShaMap(transport.clone("index"))
         super().__init__(shamap, IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
+    """Cache format using Bazaar BTree index storage with Git object cache."""
+
     def get_format_string(self):
+        """Return the format string for index cache format.
+
+        Returns:
+            bytes: Format identification string for index-based cache with Git objects.
+        """
         return b"bzr-git sha map with git object cache version 1\n"
 
     def initialize(self, transport):
+        """Initialize an index-based cache format on the transport.
+
+        Args:
+            transport: Transport to initialize cache on.
+        """
         super().initialize(transport)
         transport.mkdir("index")
         transport.mkdir("objects")
@@ -749,6 +1279,14 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
         TransportObjectStore.init(transport.clone("objects"))
 
     def open(self, transport):
+        """Open an index-based cache on the given transport.
+
+        Args:
+            transport: Transport to open cache on.
+
+        Returns:
+            IndexBzrGitCache instance.
+        """
         return IndexBzrGitCache(transport)
 
 
@@ -764,6 +1302,11 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
+        """Initialize IndexGitShaMap.
+
+        Args:
+            transport: Transport for index storage. If None, uses in-memory storage.
+        """
         self._name = None
         if transport is None:
             self._transport = None
@@ -783,6 +1326,14 @@ class IndexGitShaMap(GitShaMap):
 
     @classmethod
     def from_repository(cls, repository):
+        """Create an IndexGitShaMap for a repository.
+
+        Args:
+            repository: Repository to create cache for.
+
+        Returns:
+            IndexGitShaMap instance for the repository.
+        """
         transport = getattr(repository, "_transport", None)
         if transport is not None:
             with contextlib.suppress(FileExists):
@@ -791,12 +1342,25 @@ class IndexGitShaMap(GitShaMap):
         return cls(get_transport_from_path(get_cache_dir()))
 
     def __repr__(self):
+        """Return string representation of IndexGitShaMap.
+
+        Returns:
+            str: String representation showing class name and transport base or empty.
+        """
         if self._transport is not None:
             return f"{self.__class__.__name__}({self._transport.base!r})"
         else:
             return f"{self.__class__.__name__}()"
 
     def repack(self):
+        """Repack the index by combining all index files into one.
+
+        Combines all existing index files into a single new index file and marks
+        old files for removal by renaming them with .old extension.
+
+        Raises:
+            BzrError: If a write group is already active.
+        """
         if self._builder is not None:
             raise bzr_errors.BzrError("builder already open")
         self.start_write_group()
@@ -813,12 +1377,22 @@ class IndexGitShaMap(GitShaMap):
             self._transport.rename(name, name + ".old")
 
     def start_write_group(self):
+        """Start a write group for batch index updates.
+
+        Raises:
+            BzrError: If a builder is already open.
+        """
         if self._builder is not None:
             raise bzr_errors.BzrError("builder already open")
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
         self._name = hashlib.sha1()  # noqa: S324
 
     def commit_write_group(self):
+        """Commit the current write group to a new index file.
+
+        Raises:
+            BzrError: If no builder is open.
+        """
         if self._builder is None:
             raise bzr_errors.BzrError("builder not open")
         stream = self._builder.finish()
@@ -830,12 +1404,26 @@ class IndexGitShaMap(GitShaMap):
         self._name = None
 
     def abort_write_group(self):
+        """Abort the current write group.
+
+        Raises:
+            BzrError: If no builder is open.
+        """
         if self._builder is None:
             raise bzr_errors.BzrError("builder not open")
         self._builder = None
         self._name = None
 
     def _add_node(self, key, value):
+        """Add a node to the index if it doesn't exist.
+
+        Args:
+            key: Index key tuple.
+            value: Value to store.
+
+        Returns:
+            bool: True if node already existed, False if it was added.
+        """
         try:
             self._get_entry(key)
         except KeyError:
@@ -845,6 +1433,17 @@ class IndexGitShaMap(GitShaMap):
             return True
 
     def _get_entry(self, key):
+        """Get an entry from the index by key.
+
+        Args:
+            key: Index key to look up.
+
+        Returns:
+            The value associated with the key.
+
+        Raises:
+            KeyError: If the key is not found in the index or builder.
+        """
         entries = self._index.iter_entries([key])
         try:
             return next(entries)[2]
@@ -858,6 +1457,14 @@ class IndexGitShaMap(GitShaMap):
                 raise KeyError from err
 
     def _iter_entries_prefix(self, prefix):
+        """Iterate entries matching a prefix.
+
+        Args:
+            prefix: Key prefix tuple to match.
+
+        Yields:
+            tuple: (key, value) pairs for matching entries.
+        """
         for entry in self._index.iter_entries_prefix([prefix]):
             yield (entry[1], entry[2])
         if self._builder is not None:
@@ -865,9 +1472,27 @@ class IndexGitShaMap(GitShaMap):
                 yield (entry[1], entry[2])
 
     def lookup_commit(self, revid):
+        """Retrieve a Git commit SHA by Bazaar revision ID from index.
+
+        Args:
+            revid: Bazaar revision ID to look up.
+
+        Returns:
+            str: First 40 characters of the commit SHA from the index entry.
+
+        Raises:
+            KeyError: If the revision ID is not found.
+        """
         return self._get_entry((b"commit", revid, b"X"))[:40]
 
     def _add_git_sha(self, hexsha, type, type_data):
+        """Add a Git SHA mapping to the index.
+
+        Args:
+            hexsha: Git SHA as bytes, or None for objects not in Git.
+            type: Object type (b"commit", b"blob", or b"tree").
+            type_data: Type-specific data tuple.
+        """
         if hexsha is not None:
             self._name.update(hexsha)
             if type == b"commit":
@@ -883,9 +1508,34 @@ class IndexGitShaMap(GitShaMap):
             self._name.update(type + b" ".join(type_data))
 
     def lookup_blob_id(self, fileid, revision):
+        """Retrieve a Git blob SHA by file ID and revision from index.
+
+        Args:
+            fileid: File ID to look up.
+            revision: Revision to look up blob in.
+
+        Returns:
+            bytes: Git blob SHA from the index entry.
+
+        Raises:
+            KeyError: If the file ID or revision is not found.
+        """
         return self._get_entry((b"blob", fileid, revision))
 
     def lookup_git_sha(self, sha):
+        """Lookup a Git SHA in the index.
+
+        Args:
+            sha: Git object SHA as bytes or hex string.
+
+        Yields:
+            tuple: (type, type_data) with type_data being:
+                - commit: (revid, tree_sha, verifiers)
+                - blob/tree: (fileid, revid)
+
+        Raises:
+            KeyError: If SHA is not found in index.
+        """
         if len(sha) == 20:
             sha = sha_to_hex(sha)
         value = self._get_entry((b"git", sha, b"X"))
@@ -900,12 +1550,23 @@ class IndexGitShaMap(GitShaMap):
             yield (data[0].decode("ascii"), tuple(data[1:]))
 
     def revids(self):
-        """List the revision ids known."""
+        """List the revision IDs known in the index.
+
+        Yields:
+            bytes: Bazaar revision IDs for all commits in the index.
+        """
         for key, _value in self._iter_entries_prefix((b"commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
-        """Return set of all the revisions that are not present."""
+        """Return set of all the revisions that are not present in index.
+
+        Args:
+            revids: Collection of revision IDs to check.
+
+        Returns:
+            set: Set of revision IDs that are missing from the index.
+        """
         missing_revids = set(revids)
         for _, key, _value in self._index.iter_entries(
             (b"commit", revid, b"X") for revid in revids
@@ -914,7 +1575,11 @@ class IndexGitShaMap(GitShaMap):
         return missing_revids
 
     def sha1s(self):
-        """List the SHA1s."""
+        """List the SHA1s stored in the index.
+
+        Yields:
+            bytes: All Git SHA1s as bytes from the index.
+        """
         for key, _value in self._iter_entries_prefix((b"git", None, None)):
             yield key[1]
 
@@ -928,6 +1593,11 @@ formats.register("default", IndexGitCacheFormat())
 
 
 def migrate_ancient_formats(repo_transport):
+    """Migrate older cache formats to the current directory structure.
+
+    Args:
+        repo_transport: Transport for the repository.
+    """
     # Migrate older cache formats
     repo_transport = remove_readonly_transport_decorator(repo_transport)
     has_sqlite = repo_transport.has("git.db")
@@ -949,6 +1619,17 @@ def migrate_ancient_formats(repo_transport):
 
 
 def remove_readonly_transport_decorator(transport):
+    """Remove read-only decorator from transport if present.
+
+    Args:
+        transport: Transport to remove decorator from.
+
+    Returns:
+        Transport without read-only decorator.
+
+    Raises:
+        ReadOnlyError: If transport cannot be made writable.
+    """
     if transport.is_readonly():
         try:
             return transport._decorated
@@ -964,7 +1645,11 @@ def from_repository(repository):
     this will use a local file in the users cache directory
     (typically ~/.cache/bazaar/git/)
 
-    :param repository: A repository object
+    Args:
+        repository: A repository object.
+
+    Returns:
+        BzrGitCache instance for the repository.
     """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:

@@ -31,6 +31,14 @@ from breezy import tests
 
 
 def make_new_test_id(test):
+    """Create new test ID for doctest.
+
+    Args:
+        test: Test object to create ID for.
+
+    Returns:
+        Lambda function that returns the new test ID.
+    """
     new_id = f"{__name__}.DocFileTest({test.id()})"
     return lambda: new_id
 

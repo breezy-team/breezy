@@ -26,24 +26,44 @@ from ... import missing as _mod_missing
 from ...commands import Command
 from ...i18n import gettext
 from ...option import ListOption, Option, RegistryOption
-from ...trace import note, warning
+from ...trace import mutter, note, warning
 
 
 def branch_name(branch):
+    """Get a suitable name for a branch.
+
+    Args:
+        branch: The branch object to get the name from.
+
+    Returns:
+        str: The branch name if available, otherwise the basename of the branch URL.
+    """
     if branch.name:
         return branch.name
     return urlutils.basename(branch.user_url)
 
 
 def _check_already_merged(branch, target):
-    # TODO(jelmer): Check entire ancestry rather than just last revision?
+    """Check if a branch is already merged into the target.
+
+    Args:
+        branch: The source branch to check.
+        target: The target branch to check against.
+
+    Raises:
+        CommandError: If all changes from branch are already in target.
+
+    Note:
+        Currently only checks if the last revisions match.
+        TODO(jelmer): Check entire ancestry rather than just last revision?
+    """
     if branch.last_revision() == target.last_revision():
         raise errors.CommandError(
             gettext("All local changes are already present in target.")
         )
 
 
-class cmd_publish_derived(Command):
+class cmd_publish_derived(Command):  # noqa: D101
     __doc__ = """Publish a derived branch.
 
     Try to create a public copy of a local branch on a hosting site,
@@ -75,6 +95,18 @@ class cmd_publish_derived(Command):
         directory=".",
         revision=None,
     ):
+        """Execute the mp-push command.
+
+        Args:
+            submit_branch: Target branch URL for pushing.
+            owner: Owner of the target branch.
+            name: Name for the new branch.
+            project: Project to create branch in.
+            no_allow_lossy: Whether to disallow lossy push.
+            overwrite: Whether to overwrite existing branch.
+            directory: Working directory path.
+            revision: Specific revision to push.
+        """
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:
@@ -108,10 +140,14 @@ class cmd_publish_derived(Command):
 def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=None):
     """Generate a text description of the unmerged revisions in branch.
 
-    :param branch: The proposed branch
-    :param target: Target branch
-    :param prerequisite_branch: Optional prerequisite branch
-    :return: A string
+    Args:
+        local_branch: The local branch containing the changes.
+        remote_branch: The remote branch that was pushed.
+        target: Target branch to merge into.
+        prerequisite_branch: Optional prerequisite branch that must be merged first.
+
+    Returns:
+        str: A formatted log of unmerged revisions.
     """
     log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
@@ -137,7 +173,7 @@ def summarize_unmerged(local_branch, remote_branch, target, prerequisite_branch=
     return to_file.getvalue()
 
 
-class cmd_propose_merge(Command):
+class cmd_propose_merge(Command):  # noqa: D101
     __doc__ = """Propose a branch for merging.
 
     This command creates a merge proposal for the local
@@ -201,6 +237,28 @@ class cmd_propose_merge(Command):
         delete_source_after_merge=None,
         revision=None,
     ):
+        """Execute the mp-propose command.
+
+        Args:
+            submit_branch: Target branch URL for the proposal.
+            directory: Working directory path.
+            forge: Specific forge to use.
+            reviewers: List of reviewers to assign.
+            name: Name for the merge proposal.
+            no_allow_lossy: Whether to disallow lossy operations.
+            description: Description for the merge proposal.
+            labels: Labels to apply to the proposal.
+            prerequisite: Prerequisite branch URL.
+            commit_message: Commit message for merge.
+            wip: Whether proposal is work-in-progress.
+            allow_collaboration: Whether to allow collaboration.
+            allow_empty: Whether to allow empty proposals.
+            overwrite: Whether to overwrite existing proposal.
+            open: Whether to open proposal in browser.
+            auto: Whether to use automatic settings.
+            delete_source_after_merge: Whether to delete source after merge.
+            revision: Specific revision to propose.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -277,7 +335,7 @@ class cmd_propose_merge(Command):
                     note(gettext("Auto merge enabled"))
 
 
-class cmd_find_merge_proposal(Command):
+class cmd_find_merge_proposal(Command):  # noqa: D101
     __doc__ = """Find a merge proposal.
 
     """
@@ -287,6 +345,12 @@ class cmd_find_merge_proposal(Command):
     aliases = ["find-proposal"]
 
     def run(self, directory=".", submit_branch=None):
+        """Execute the mp-find-proposal command.
+
+        Args:
+            directory: Working directory path.
+            submit_branch: Target branch URL to find proposals for.
+        """
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
@@ -308,7 +372,7 @@ class cmd_find_merge_proposal(Command):
             self.outf.write(gettext("Merge proposal: %s\n") % mp.url)
 
 
-class cmd_my_merge_proposals(Command):
+class cmd_my_merge_proposals(Command):  # noqa: D101
     __doc__ = """List all merge proposals owned by the logged-in user.
 
     """
@@ -335,6 +399,14 @@ class cmd_my_merge_proposals(Command):
     ]
 
     def run(self, status="open", verbose=False, forge=None, base_url=None):
+        """Execute the mp-list-proposals command.
+
+        Args:
+            status: Status filter for proposals (open, closed, etc.).
+            verbose: Whether to show verbose output.
+            forge: Specific forge to query.
+            base_url: Base URL filter for proposals.
+        """
         for instance in _mod_forge.iter_forge_instances(forge=forge):
             if base_url is not None and instance.base_url != base_url:
                 continue
@@ -363,18 +435,24 @@ class cmd_my_merge_proposals(Command):
                 warning("Skipping %s, login required.", instance)
 
 
-class cmd_land_merge_proposal(Command):
+class cmd_land_merge_proposal(Command):  # noqa: D101
     __doc__ = """Land a merge proposal."""
 
     takes_args = ["url"]
     takes_options = [Option("message", help="Commit message to use.", type=str)]
 
     def run(self, url, message=None):
+        """Execute the mp-merge command.
+
+        Args:
+            url: URL of the merge proposal to merge.
+            message: Optional commit message for the merge.
+        """
         proposal = _mod_forge.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
 
 
-class cmd_web_open(Command):
+class cmd_web_open(Command):  # noqa: D101
     __doc__ = """Open a branch page in your web browser."""
 
     takes_options = [
@@ -386,7 +464,15 @@ class cmd_web_open(Command):
     takes_args = ["location?"]
 
     def _possible_locations(self, location):
-        """Yield possible external locations for the branch at 'location'."""
+        """Yield possible external locations for the branch at 'location'.
+
+        Args:
+            location: The location to find possible external URLs for.
+
+        Yields:
+            str: Possible branch URLs including the original location,
+                 public branch URL, and push location.
+        """
         yield location
         try:
             branch = _mod_branch.Branch.open_containing(location)[0]
@@ -400,6 +486,17 @@ class cmd_web_open(Command):
             yield branch_url
 
     def _get_web_url(self, location):
+        """Get the web URL for a branch location.
+
+        Args:
+            location: The location to get the web URL for.
+
+        Returns:
+            str: The web URL for the branch.
+
+        Raises:
+            CommandError: If unable to determine the web URL for the location.
+        """
         for branch_url in self._possible_locations(location):
             try:
                 branch = _mod_branch.Branch.open_containing(branch_url)[0]
@@ -416,6 +513,12 @@ class cmd_web_open(Command):
         raise errors.CommandError(f"Unable to get web URL for {location}")
 
     def run(self, location=None, dry_run=False):
+        """Execute the web-open command.
+
+        Args:
+            location: Branch location to open (defaults to current directory).
+            dry_run: Whether to only show URL without opening browser.
+        """
         if location is None:
             location = "."
         web_url = self._get_web_url(location)
@@ -427,12 +530,13 @@ class cmd_web_open(Command):
             webbrowser.open(web_url)
 
 
-class cmd_forges(Command):
+class cmd_forges(Command):  # noqa: D101
     __doc__ = """List all known hosting sites and user details."""
 
     hidden = True
 
     def run(self):
+        """Execute the forge-whoami command to show current user information."""
         for instance in _mod_forge.iter_forge_instances():
             current_user = instance.get_current_user()
             if current_user is not None:

@@ -16,6 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Package Sphinx documentation into distributable formats.
+
+This tool processes Sphinx-built documentation from a _build directory and
+packages it for distribution. It copies HTML documentation, creates downloadable
+archives, and handles PDF files including quick reference cards.
+"""
+
 import os
 import sys
 import tarfile
@@ -69,6 +76,14 @@ def package_docs(section, src_build, dest_html, dest_downloads):
 
 
 def build_archive(src_dir, archive_name, archive_root, format):
+    """Build a tar archive from a source directory.
+
+    Args:
+        src_dir: Source directory to archive.
+        archive_name: Output path for the archive file.
+        archive_root: Root directory name inside the archive.
+        format: Compression format (e.g., 'bz2', 'gz').
+    """
     print(f"creating {archive_name} ...")
     tar = tarfile.open(archive_name, f"w:{format}")
     for relpath in os.listdir(src_dir):
@@ -79,6 +94,16 @@ def build_archive(src_dir, archive_name, archive_root, format):
 
 
 def main(argv):
+    """Main entry point for the documentation packaging tool.
+
+    Processes command line arguments and packages Sphinx documentation
+    from a source directory into a website build directory.
+
+    Args:
+        argv: Command line arguments list. Expected format:
+              [SOURCE-DIR, WEBSITE-BUILD-DIR]
+              where SOURCE-DIR contains a _build subdirectory.
+    """
     # Check usage. The first argument is the parent directory of
     # the Sphinx _build directory. It will typically be 'doc/xx'.
     # The second argument is the website build directory.

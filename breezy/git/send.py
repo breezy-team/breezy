@@ -110,10 +110,21 @@ class GitDiffTree(_mod_diff.DiffTree):
 
 
 def generate_patch_filename(num, summary):
+    """Generate a filename for a patch.
+
+    Args:
+        num: Patch number (will be zero-padded to 4 digits).
+        summary: Patch summary to include in filename.
+
+    Returns:
+        str: Filename in format NNNN-summary.patch.
+    """
     return "%04d-%s.patch" % (num, summary.replace("/", "_").rstrip("."))
 
 
 class GitMergeDirective(BaseMergeDirective):
+    """Git-style merge directive that generates git-am compatible patches."""
+
     multiple_output_files = True
 
     def __init__(
@@ -128,6 +139,19 @@ class GitMergeDirective(BaseMergeDirective):
         patches=None,
         local_target_branch=None,
     ):
+        """Initialize a GitMergeDirective.
+
+        Args:
+            revision_id: The revision ID to merge.
+            testament_sha1: SHA1 of the testament.
+            time: Time of creation.
+            timezone: Timezone offset.
+            target_branch: Target branch URL.
+            source_branch: Optional source branch URL.
+            message: Optional message.
+            patches: List of (summary, patch) tuples.
+            local_target_branch: Optional local target branch.
+        """
         super().__init__(
             revision_id=revision_id,
             testament_sha1=testament_sha1,
@@ -142,9 +166,19 @@ class GitMergeDirective(BaseMergeDirective):
         self.patches = patches
 
     def to_lines(self):
+        """Convert this directive to lines.
+
+        Returns:
+            List of lines including newlines.
+        """
         return self.patch.splitlines(True)
 
     def to_files(self):
+        """Generate files for this merge directive.
+
+        Yields:
+            tuple: (filename, lines) for each patch in the directive.
+        """
         return ((summary, patch.splitlines(True)) for (summary, patch) in self.patches)
 
     @classmethod
@@ -197,6 +231,21 @@ class GitMergeDirective(BaseMergeDirective):
         public_branch=None,
         message=None,
     ):
+        """Create a GitMergeDirective from repository objects.
+
+        Args:
+            repository: Source repository.
+            revision_id: Revision to create directive for.
+            time: Creation time.
+            timezone: Timezone offset.
+            target_branch: Target branch URL.
+            local_target_branch: Optional local target branch.
+            public_branch: Optional public branch URL.
+            message: Optional message.
+
+        Returns:
+            GitMergeDirective: New merge directive instance.
+        """
         patches = []
         submit_branch = _mod_branch.Branch.open(target_branch)
         with submit_branch.lock_read():
@@ -230,6 +279,25 @@ def send_git(
     base_revision_id,
     local_target_branch=None,
 ):
+    """Create a git-am style merge directive.
+
+    Args:
+        branch: Source branch.
+        revision_id: Revision to send.
+        submit_branch: Target branch URL.
+        public_branch: Public branch URL.
+        no_patch: Whether to exclude patches (not supported).
+        no_bundle: Whether to exclude bundle (not supported).
+        message: Optional message.
+        base_revision_id: Base revision ID (unused).
+        local_target_branch: Optional local target branch.
+
+    Returns:
+        GitMergeDirective: The merge directive.
+
+    Raises:
+        CommandError: If no_patch or no_bundle are True.
+    """
     if no_patch:
         raise errors.CommandError("no patch not supported for git-am style patches")
     if no_bundle:

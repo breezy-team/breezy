@@ -21,6 +21,13 @@ import re
 
 
 class BranchMapper:
+    """Maps git reference names to Bazaar branch names.
+
+    This class provides mapping between git reference naming conventions
+    and Bazaar branch naming conventions, handling special cases like
+    'master' to 'trunk' conversion.
+    """
+
     _GIT_TRUNK_RE = re.compile(b"(?:git-)*trunk")
 
     def git_to_bzr(self, ref_name):

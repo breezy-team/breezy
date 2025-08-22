@@ -27,12 +27,23 @@ from ...i18n import gettext
 
 
 class LaunchpadlibMissing(errors.DependencyNotPresent):
+    """Exception raised when launchpadlib is not available.
+
+    This exception is raised when the launchpadlib library is not installed
+    but is required for Launchpad API operations.
+    """
+
     _fmt = (
         "launchpadlib is required for Launchpad API access. "
         "Please install the launchpadlib package."
     )
 
     def __init__(self, e):
+        """Initialize the LaunchpadlibMissing exception.
+
+        Args:
+            e: The original exception that caused this dependency error.
+        """
         super().__init__("launchpadlib", e)
 
 
@@ -69,17 +80,43 @@ def check_launchpadlib_compatibility():
 
 
 class NoLaunchpadBranch(errors.BzrError):
+    """Exception raised when no Launchpad branch can be found for a given branch.
+
+    This exception is raised when attempting to find a Launchpad branch
+    corresponding to a local or remote branch, but no such branch exists
+    on Launchpad.
+    """
+
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
     def __init__(self, branch):
+        """Initialize the NoLaunchpadBranch exception.
+
+        Args:
+            branch: The branch object for which no Launchpad branch was found.
+        """
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
 def get_auth_engine(base_url):
+    """Get the authorization engine for Launchpad API access.
+
+    Args:
+        base_url: The base URL for the Launchpad service.
+
+    Returns:
+        Authorization engine instance for authenticating with Launchpad.
+    """
     return Launchpad.authorization_engine_factory(base_url, "breezy")
 
 
 def get_credential_store():
+    """Get the credential store for Launchpad API credentials.
+
+    Returns:
+        BreezyCredentialStore: A credential store instance for managing
+            Launchpad API credentials within Breezy.
+    """
     return BreezyCredentialStore()
     # return Launchpad.credential_store_factory()
 
@@ -88,6 +125,12 @@ class BreezyCredentialStore(CredentialStore):
     """Implementation of the launchpadlib CredentialStore API for Breezy."""
 
     def __init__(self, credential_save_failed=None):
+        """Initialize the BreezyCredentialStore.
+
+        Args:
+            credential_save_failed: Optional callback function to handle
+                credential save failures. Defaults to None.
+        """
         super().__init__(credential_save_failed)
         from ...config import AuthenticationConfig
 

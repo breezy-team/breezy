@@ -81,6 +81,7 @@ def _get_cache():
 
 
 def clear_cache():
+    """Clear the CHK map page cache."""
     _get_cache().clear()
 
 
@@ -667,6 +668,7 @@ class CHKMap:
             )
 
     def __len__(self) -> int:
+        """Return the number of items in the CHK map."""
         self._ensure_root()
         return len(self._root_node)
 
@@ -765,6 +767,7 @@ class Node:
         self._search_prefix = None
 
     def __repr__(self):
+        """Return string representation of the node."""
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + "...]"
@@ -831,6 +834,11 @@ class LeafNode(Node):
     __slots__ = ("_common_serialised_prefix",)
 
     def __init__(self, search_key_func=None):
+        """Initialize a LeafNode.
+
+        Args:
+            search_key_func: Function to generate search keys from regular keys.
+        """
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
@@ -840,6 +848,7 @@ class LeafNode(Node):
             self._search_key_func = search_key_func
 
     def __repr__(self):
+        """Return string representation of the leaf node."""
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + "...]"
@@ -1152,6 +1161,12 @@ class InternalNode(Node):
     __slots__ = ("_node_width",)
 
     def __init__(self, prefix=b"", search_key_func=None):
+        """Initialize an InternalNode.
+
+        Args:
+            prefix: The search key prefix for this node.
+            search_key_func: Function to generate search keys from regular keys.
+        """
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
@@ -1214,6 +1229,15 @@ class InternalNode(Node):
     def iteritems(
         self, store, key_filter: Optional[list[Key]] = None
     ) -> Generator[tuple[Key, bytes]]:
+        """Iterate over items in this node and its children.
+
+        Args:
+            store: CHK store to retrieve child nodes from.
+            key_filter: Optional list of keys to filter items.
+
+        Yields:
+            Tuples of (key, value) for items in this subtree.
+        """
         for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
             yield from node.iteritems(store, key_filter=node_filter)
 
@@ -1672,6 +1696,15 @@ class CHKMapDifference:
     """
 
     def __init__(self, store, new_root_keys, old_root_keys, search_key_func, pb=None):
+        """Initialize CHKMapDifference.
+
+        Args:
+            store: CHK store to retrieve nodes from.
+            new_root_keys: Keys of the new root nodes.
+            old_root_keys: Keys of the old root nodes.
+            search_key_func: Function to generate search keys.
+            pb: Optional progress bar.
+        """
         # TODO: Should we add a StaticTuple barrier here? It would be nice to
         #       force callers to use StaticTuple, because there will often be
         #       lots of keys passed in here. And even if we cast it locally,
@@ -1890,6 +1923,12 @@ class CHKMapDifference:
         return self._flush_new_queue()
 
     def process(self):
+        """Process the difference between old and new CHK maps.
+
+        Yields:
+            Tuples of (record, items) for pages and key-value pairs that
+            are in the new maps but not in the old maps.
+        """
         for record in self._read_all_roots():
             yield record, []
         for record, items in self._process_queues():

@@ -116,10 +116,27 @@ class MapTree:
             yield path, self.map_ie(ie)
 
     def path2id(self, path):
+        """Return the file id for a path.
+
+        Args:
+            path: The path to look up.
+
+        Returns:
+            The new file id for the path, or None if the path doesn't exist.
+        """
         file_id = self.oldtree.path2id(path)
         if file_id is None:
             return None
         return self.new_id(file_id)
 
     def id2path(self, file_id, recurse="down"):
+        """Return the path for a file id.
+
+        Args:
+            file_id: The file id to look up.
+            recurse: Direction to recurse when building the path.
+
+        Returns:
+            The path corresponding to the file id.
+        """
         return self.oldtree.id2path(self.old_id(file_id=file_id), recurse=recurse)

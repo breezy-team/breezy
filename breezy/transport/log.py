@@ -39,6 +39,12 @@ class TransportLogDecorator(decorator.TransportDecorator):
     """
 
     def __init__(self, *args, **kw):
+        """Initialize the TransportLogDecorator.
+
+        Args:
+            *args: Arguments passed to parent TransportDecorator.
+            **kw: Keyword arguments passed to parent TransportDecorator.
+        """
         super().__init__(*args, **kw)
 
         def _make_hook(hookname):
@@ -79,6 +85,11 @@ class TransportLogDecorator(decorator.TransportDecorator):
         return "log+"
 
     def iter_files_recursive(self):
+        """Iterate through all files recursively.
+
+        Returns:
+            Iterator of file paths beneath this transport.
+        """
         # needs special handling because it does not have a relpath parameter
         mutter(f"{'iter_files_recursive'} {self._decorated.base}")
         return self._call_and_log_result("iter_files_recursive", (), {})

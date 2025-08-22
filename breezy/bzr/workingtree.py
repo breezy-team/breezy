@@ -92,12 +92,19 @@ ERROR_PATH_NOT_FOUND = 3  # WindowsError errno code, equivalent to ENOENT
 
 
 class InventoryModified(errors.InternalBzrError):
+    """Error raised when trying to read a modified inventory."""
+
     _fmt = (
         "The current inventory for the tree %(tree)r has been modified,"
         " so a clean inventory cannot be read without data loss."
     )
 
     def __init__(self, tree):
+        """Initialize InventoryModified error.
+
+        Args:
+            tree: The working tree with the modified inventory.
+        """
         self.tree = tree
 
 
@@ -172,6 +179,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.case_sensitive = False
 
     def transform(self, pb=None):
+        """Get a tree transform for making changes to this working tree.
+
+        Args:
+            pb: Optional progress bar for the transformation.
+
+        Returns:
+            An InventoryTreeTransform instance for this tree.
+        """
         from .transform import InventoryTreeTransform
 
         return InventoryTreeTransform(self, pb=pb)
@@ -222,6 +237,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self.branch.break_lock()
 
     def is_locked(self):
+        """Check if the working tree is currently locked.
+
+        Returns:
+            True if the tree is locked, False otherwise.
+        """
         return self._control_files.is_locked()
 
     def _must_be_locked(self):
@@ -276,6 +296,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             raise
 
     def get_physical_lock_status(self):
+        """Get the physical lock status of the working tree.
+
+        Returns:
+            The physical lock status from the control files.
+        """
         return self._control_files.get_physical_lock_status()
 
     def _write_inventory(self, inv):
@@ -287,6 +312,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     def set_inventory(self, new_inventory_list):
+        """Set the inventory from a list of path/file_id/parent/kind tuples.
+
+        Args:
+            new_inventory_list: List of tuples containing (path, file_id, parent, kind).
+
+        Note:
+            This method should be deprecated in favor of taking a proper Inventory object.
+        """
         from .inventory import (
             Inventory,
             InventoryDirectory,
@@ -505,6 +538,17 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.apply_inventory_delta(inv_delta)
 
     def get_nested_tree(self, path):
+        """Get a nested working tree at the specified path.
+
+        Args:
+            path: Path to the nested tree relative to this tree.
+
+        Returns:
+            A WorkingTree instance for the nested tree.
+
+        Raises:
+            MissingNestedTree: If there's no working tree at the path.
+        """
         try:
             return WorkingTree.open(self.abspath(path))
         except errors.NotBranchError as e:
@@ -581,11 +625,21 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return inventory_serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
+        """Set the list of conflicts for this working tree.
+
+        Args:
+            conflicts: List of conflict objects to set.
+        """
         conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
         with self.lock_tree_write():
             self._put_rio("conflicts", conflict_list.to_stanzas(), CONFLICT_HEADER_1)
 
     def add_conflicts(self, new_conflicts):
+        """Add new conflicts to the existing list of conflicts.
+
+        Args:
+            new_conflicts: List of new conflict objects to add.
+        """
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
             conflict_set.update(set(new_conflicts))
@@ -594,6 +648,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             )
 
     def conflicts(self):
+        """Get the list of conflicts in this working tree.
+
+        Returns:
+            List of conflict objects.
+        """
         with self.lock_read():
             try:
                 confile = self._transport.get("conflicts")
@@ -684,6 +743,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return {ie.file_id for path, ie in self.iter_entries_by_dir()}
 
     def all_versioned_paths(self):
+        """Get all versioned paths in this working tree.
+
+        Returns:
+            Set of all versioned file paths.
+        """
         return {path for path, ie in self.iter_entries_by_dir()}
 
     def set_last_revision(self, new_revision):
@@ -807,6 +871,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def is_executable(self, path):
+        """Check if a file is executable.
+
+        Args:
+            path: Path to the file to check.
+
+        Returns:
+            True if the file is executable, False otherwise.
+        """
         if not self._supports_executable():
             ie = self._path2ie(path)
             return ie.executable
@@ -931,6 +1003,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         )
 
     def set_merge_modified(self, modified_hashes):
+        """Set the list of files modified by merge.
+
+        Args:
+            modified_hashes: Dictionary mapping paths to their SHA1 hashes.
+        """
+
         def iter_stanzas():
             for path, sha1 in modified_hashes.items():
                 file_id = self.path2id(path)
@@ -981,6 +1059,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
+        """Subsume another tree into this working tree.
+
+        Args:
+            other_tree: The tree to subsume into this one.
+
+        Raises:
+            BadSubsumeSource: If the trees have the same root or other issues.
+        """
         from .inventory import InventoryDirectory
 
         def add_children(inventory, other_inventory, entry):
@@ -1329,6 +1415,18 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return rename_tuples
 
     def iter_child_entries(self, path):
+        """Iterate over the child entries of a directory.
+
+        Args:
+            path: Path to the directory.
+
+        Returns:
+            Iterator of child inventory entries.
+
+        Raises:
+            NoSuchFile: If the path doesn't exist.
+            NotADirectory: If the path is not a directory.
+        """
         with self.lock_read():
             # TODO(jelmer): Should this perhaps examine the enties on disk?
             inv, ie = self._path2inv_ie(path)
@@ -1933,18 +2031,46 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     yield get_canonical_path(self, path, normalize)
 
     def get_reference_info(self, path, branch=None):
+        """Get reference information for a path.
+
+        Args:
+            path: Path to get reference info for.
+            branch: Optional branch parameter (unused).
+
+        Returns:
+            Reference information or None if path not versioned.
+        """
         file_id = self.path2id(path)
         if file_id is None:
             return None
         return self.branch.get_reference_info(file_id)[0]
 
     def set_reference_info(self, tree_path, branch_location):
+        """Set reference information for a tree path.
+
+        Args:
+            tree_path: Path in the tree to set reference for.
+            branch_location: Location of the referenced branch.
+
+        Raises:
+            NoSuchFile: If the tree path is not versioned.
+        """
         file_id = self.path2id(tree_path)
         if file_id is None:
             raise _mod_transport.NoSuchFile(tree_path)
         self.branch.set_reference_info(file_id, branch_location, tree_path)
 
     def reference_parent(self, path, branch=None, possible_transports=None):
+        """Get the parent of a reference at the given path.
+
+        Args:
+            path: Path to the reference.
+            branch: Optional branch parameter (unused).
+            possible_transports: Optional list of transports to use.
+
+        Returns:
+            The parent branch of the reference.
+        """
         return self.branch.reference_parent(
             self.path2id(path), path, possible_transports=possible_transports
         )
@@ -2157,6 +2283,21 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         show_base=False,
         tag_selector=None,
     ):
+        """Pull changes from a source branch into this working tree.
+
+        Args:
+            source: Source branch to pull from.
+            overwrite: Whether to overwrite local changes.
+            stop_revision: Revision to stop pulling at.
+            change_reporter: Reporter for changes made during pull.
+            possible_transports: List of transports to use.
+            local: Whether to pull only locally available revisions.
+            show_base: Whether to show base text in conflicts.
+            tag_selector: Selector for which tags to pull.
+
+        Returns:
+            Number of revisions pulled.
+        """
         from ..merge import merge_inner
 
         with self.lock_write(), source.lock_read():
@@ -2243,6 +2384,10 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """If this format allows setting the file id."""
 
     def __init__(self):
+        """Initialize a WorkingTreeFormatMetaDir.
+
+        Initializes both WorkingTreeFormat and BzrFormat base classes.
+        """
         WorkingTreeFormat.__init__(self)
         bzrdir.BzrFormat.__init__(self)
 
@@ -2264,6 +2409,13 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     def check_support_status(
         self, allow_unsupported, recommend_upgrade=True, basedir=None
     ):
+        """Check the support status of this working tree format.
+
+        Args:
+            allow_unsupported: Whether to allow unsupported features.
+            recommend_upgrade: Whether to recommend upgrading for missing features.
+            basedir: Base directory for the format check.
+        """
         WorkingTreeFormat.check_support_status(
             self,
             allow_unsupported=allow_unsupported,

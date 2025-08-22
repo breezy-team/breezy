@@ -1,3 +1,9 @@
+"""Branch management and operations for Breezy.
+
+This module provides the Branch class and related functionality for managing
+branches in Breezy version control. Branches represent lines of development
+with their own revision history and can be created, merged, and synchronized.
+"""
 # Copyright (C) 2005-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -41,21 +47,36 @@ if TYPE_CHECKING:
 
 
 class UnstackableBranchFormat(errors.BzrError):
+    """Error raised when trying to stack a branch with unsupported format."""
+
     _fmt = (
         "The branch '%(url)s'(%(format)s) is not a stackable format. "
         "You will need to upgrade the branch to permit branch stacking."
     )
 
     def __init__(self, format, url):
+        """Initialize with the problematic format and URL.
+
+        Args:
+            format: The branch format that doesn't support stacking.
+            url: URL of the branch.
+        """
         errors.BzrError.__init__(self)
         self.format = format
         self.url = url
 
 
 class BindingUnsupported(errors.UnsupportedOperation):
+    """Error raised when branch binding is not supported."""
+
     _fmt = "Branch at %(url)s does not support binding."
 
     def __init__(self, branch):
+        """Initialize with the branch that doesn't support binding.
+
+        Args:
+            branch: The branch that doesn't support binding.
+        """
         errors.BzrError.__init__(self)
         self.branch = branch
         self.url = branch.user_url
@@ -86,9 +107,15 @@ class Branch(ControlComponent):
 
     @property
     def user_transport(self) -> Transport:
+        """Get the user transport for this branch."""
         return self.controldir.user_transport
 
     def __init__(self, possible_transports: Optional[list[Transport]] = None) -> None:
+        """Initialize a branch.
+
+        Args:
+            possible_transports: Optional list of transports to use.
+        """
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -291,6 +318,7 @@ class Branch(ControlComponent):
     nick = property(_get_nick, _set_nick)
 
     def is_locked(self):
+        """Return True if this branch is locked."""
         raise NotImplementedError(self.is_locked)
 
     def _lefthand_history(self, revision_id, last_rev=None, other_branch=None):
@@ -334,6 +362,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self.lock_read)
 
     def unlock(self):
+        """Release the lock on this branch."""
         raise NotImplementedError(self.unlock)
 
     def peek_lock_mode(self):
@@ -341,6 +370,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self.peek_lock_mode)
 
     def get_physical_lock_status(self):
+        """Return the physical lock status."""
         raise NotImplementedError(self.get_physical_lock_status)
 
     def dotted_revno_to_revision_id(self, revno, _cache_reverse=False):
@@ -680,6 +710,11 @@ class Branch(ControlComponent):
         return self.get_config_stack().get("append_revisions_only")
 
     def set_append_revisions_only(self, enabled: bool) -> None:
+        """Set whether only appending revisions to history is allowed.
+
+        Args:
+            enabled: True to only allow appending revisions.
+        """
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set("append_revisions_only", enabled)
@@ -1248,6 +1283,11 @@ class Branch(ControlComponent):
         )
 
     def update_references(self, target):
+        """Update any references to point to the target branch.
+
+        Args:
+            target: Branch that references should point to.
+        """
         if not self._format.supports_reference_locations:
             return
         return InterBranch.get(self, target).update_references()
@@ -1420,6 +1460,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self.reconcile)
 
     def supports_tags(self):
+        """Return True if this branch supports tags."""
         return self._format.supports_tags()
 
     def automatic_tag_name(self, revision_id):
@@ -1520,9 +1561,11 @@ class BranchFormat(ControlComponentFormat):
     """
 
     def __eq__(self, other):
+        """Compare branch formats for equality."""
         return self.__class__ is other.__class__
 
     def __ne__(self, other):
+        """Compare branch formats for inequality."""
         return not (self == other)
 
     def get_reference(self, controldir, name=None):
@@ -1650,6 +1693,7 @@ class BranchFormat(ControlComponentFormat):
         return False  # by default
 
     def __str__(self):
+        """Return string representation of the branch format."""
         return self.get_format_description().rstrip()
 
     def supports_tags(self):
@@ -1830,9 +1874,11 @@ class ChangeBranchTipParams:
         self.new_revid = new_revid
 
     def __eq__(self, other):
+        """Check equality with another ChangeBranchTipParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of ChangeBranchTipParams."""
         return "<{} of {} from ({}, {}) to ({}, {})>".format(
             self.__class__.__name__,
             self.branch,
@@ -1879,9 +1925,11 @@ class BranchInitHookParams:
         self.branch = branch
 
     def __eq__(self, other):
+        """Check equality with another BranchInitHookParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of BranchInitHookParams."""
         return f"<{self.__class__.__name__} of {self.branch}>"
 
 
@@ -1912,9 +1960,11 @@ class SwitchHookParams:
         self.revision_id = revision_id
 
     def __eq__(self, other):
+        """Check equality with another SwitchHookParams object."""
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return string representation of SwitchHookParams."""
         return "<{} for {} to ({}, {})>".format(
             self.__class__.__name__, self.control_dir, self.to_branch, self.revision_id
         )
@@ -1924,6 +1974,11 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
+        """Initialize branch format registry.
+
+        Args:
+            other_registry: Optional existing registry to copy from.
+        """
         super().__init__(other_registry)
         self._default_format = None
         self._default_format_key = None
@@ -1966,6 +2021,7 @@ class BranchWriteLockResult(LogicalLockResult):
     """
 
     def __repr__(self):
+        """Return string representation of BranchWriteLockResult."""
         return f"BranchWriteLockResult({self.unlock!r}, {self.token!r})"
 
 
@@ -2011,6 +2067,7 @@ class PullResult(_Result):
     tag_updates: "TagUpdates"
 
     def report(self, to_file: TextIO) -> None:
+        """Report the result of a pull operation to a file."""
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
@@ -2056,6 +2113,7 @@ class BranchPushResult(_Result):
     local_branch: Optional[Branch]
 
     def report(self, to_file: TextIO) -> None:
+        """Report the result of a push operation to a file."""
         from .i18n import gettext, ngettext
 
         # TODO: This function gets passed a to_file, but then
@@ -2093,6 +2151,11 @@ class BranchCheckResult:
     """
 
     def __init__(self, branch):
+        """Initialize BranchCheckResult.
+
+        Args:
+            branch: The branch that was checked.
+        """
         self.branch = branch
         self.errors = []
 
@@ -2199,6 +2262,7 @@ class InterBranch(InterObject[Branch]):
 
     @classmethod
     def get(self, source: Branch, target: Branch) -> "InterBranch":
+        """Get appropriate InterBranch implementation for source and target branches."""
         return cast("InterBranch", super().get(source, target))
 
 
@@ -2216,6 +2280,7 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def is_compatible(klass, source, target):
+        """Check if this InterBranch implementation is compatible with the given branches."""
         # GenericBranch uses the public API, so always compatible
         return True
 
@@ -2225,6 +2290,7 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def unwrap_format(klass, format):
+        """Unwrap a branch format to get the underlying format."""
         from .bzr.remote import RemoteBranchFormat
 
         if isinstance(format, RemoteBranchFormat):
@@ -2252,6 +2318,7 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(self.target.tags, selector=tag_selector)
 
     def fetch(self, stop_revision=None, limit=None, lossy=False):
+        """Fetch revisions from source to target branch."""
         if self.target.base == self.source.base:
             return (0, [])
         from .bzr.fetch import FetchSpecFactory, TargetRepoKinds
@@ -2531,6 +2598,7 @@ class GenericInterBranch(InterBranch):
             return result
 
     def update_references(self):
+        """Update reference locations from source to target branch."""
         if not getattr(self.source._format, "supports_reference_locations", False):
             return
         reference_dict = self.source._get_all_reference_info()

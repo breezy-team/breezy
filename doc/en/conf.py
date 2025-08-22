@@ -1,3 +1,13 @@
+"""Sphinx configuration file for English Breezy documentation.
+
+This module configures Sphinx documentation generation for the English locale
+version of Breezy documentation. It sets up document structure, localization
+settings, and output formats for various documentation types including user
+guides, tutorials, and reference materials.
+
+The configuration inherits base settings from breezy.doc_generate.conf and
+provides locale-specific customizations for English documentation.
+"""
 #
 # Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
@@ -37,6 +47,16 @@ brz_titles = {
 
 
 def brz_title(s):
+    """Get localized title for documentation.
+
+    Args:
+        s (str): The title string to localize.
+
+    Returns:
+        str: The localized title if available, otherwise the original string.
+            For English locale, returns the original string since no translation
+            is needed.
+    """
     return brz_titles.get(s) or s
 
 

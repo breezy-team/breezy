@@ -136,11 +136,34 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
         with repository.lock_read():
             return self.do_readlocked_repository_request(repository, *args)
 
+    def do_readlocked_repository_request(self, repository, *args):
+        """Execute a repository request with read lock held.
+
+        This method should be overridden by subclasses to provide the actual
+        implementation for the specific smart server verb.
+
+        Args:
+            repository: The repository to operate on, guaranteed to be read-locked.
+            *args: Additional arguments passed from the client request.
+
+        Returns:
+            A SmartServerResponse indicating the result of the operation.
+        """
+        raise NotImplementedError()
+
 
 class SmartServerRepositoryBreakLock(SmartServerRepositoryRequest):
     """Break a repository lock."""
 
     def do_repository_request(self, repository):
+        """Break the repository lock.
+
+        Args:
+            repository: Repository to break the lock for.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok'.
+        """
         repository.break_lock()
         return SuccessfulSmartServerResponse((b"ok",))
 
@@ -191,6 +214,23 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         include_missing,
         max_size=65536,
     ):
+        """Expand requested revisions with additional parent data.
+
+        Starting from the requested revision IDs, this method performs a
+        breadth-first traversal to include parent revisions that the client
+        hasn't seen, up to a compressed size limit.
+
+        Args:
+            repo_graph: The repository graph to query for parent relationships.
+            revision_ids: Set of initially requested revision IDs.
+            client_seen_revs: Set of revision IDs the client already has.
+            include_missing: If True, include missing revisions in results.
+            max_size: Maximum compressed size in bytes for the response.
+
+        Returns:
+            Dict mapping revision IDs (or 'missing:' prefixed IDs) to their
+            parent lists, filtered to exclude revisions the client already has.
+        """
         result = {}
         queried_revs = set()
         estimator = zlib_util.ZLibEstimator(max_size)
@@ -244,6 +284,19 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         return result
 
     def _do_repository_request(self, body_bytes):
+        """Process the repository request with search state from body.
+
+        This method recreates the search state from the request body,
+        determines which revisions the client has already seen, and
+        expands the requested revisions with additional parent data.
+
+        Args:
+            body_bytes: Body bytes containing the serialized search state.
+
+        Returns:
+            SuccessfulSmartServerResponse with compressed parent map data,
+            or FailedSmartServerResponse if search recreation fails.
+        """
         repository = self._repository
         revision_ids = set(self._revision_ids)
         include_missing = b"include-missing:" in revision_ids
@@ -274,6 +327,11 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
+    """Get a revision graph from the repository.
+
+    Deprecated as of bzr 1.4, but supported for older clients.
+    """
+
     def do_readlocked_repository_request(self, repository, revision_id):
         """Return the result of repository.get_revision_graph(revision_id).
 
@@ -307,6 +365,11 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
 
 
 class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+    """Get the revision ID for a given revision number.
+
+    New in 1.17.
+    """
+
     def do_readlocked_repository_request(self, repository, revno, known_pair):
         """Find the revid for a given revno, given a known revno/revid pair.
 
@@ -335,6 +398,11 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
 
 
 class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
+    """Get the serializer format for the repository.
+
+    New in 2.5.0.
+    """
+
     def do_repository_request(self, repository):
         """Return the serializer format for this repository.
 
@@ -348,6 +416,8 @@ class SmartServerRepositoryGetSerializerFormat(SmartServerRepositoryRequest):
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
+    """Check if a specific revision exists in the repository."""
+
     def do_repository_request(self, repository, revision_id):
         """Return ok if a specific revision is in the repository at path.
 
@@ -363,6 +433,11 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
 
 class SmartServerRequestHasSignatureForRevisionId(SmartServerRepositoryRequest):
+    """Check if a signature exists for a specific revision.
+
+    Introduced in bzr 2.5.0.
+    """
+
     def do_repository_request(self, repository, revision_id):
         """Return ok if a signature is present for a revision.
 
@@ -384,6 +459,8 @@ class SmartServerRequestHasSignatureForRevisionId(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGatherStats(SmartServerRepositoryRequest):
+    """Gather statistics about the repository."""
+
     def do_repository_request(self, repository, revid, committers):
         """Return the result of repository.gather_stats().
 
@@ -442,6 +519,8 @@ class SmartServerRepositoryGetRevisionSignatureText(SmartServerRepositoryRequest
 
 
 class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
+    """Check if the repository is shared."""
+
     def do_repository_request(self, repository):
         """Return the result of repository.is_shared().
 
@@ -456,6 +535,11 @@ class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
+    """Check if the repository creates working trees.
+
+    Introduced in bzr 2.5.0.
+    """
+
     def do_repository_request(self, repository):
         """Return the result of repository.make_working_trees().
 
@@ -472,7 +556,19 @@ class SmartServerRepositoryMakeWorkingTrees(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
+    """Lock a repository for writing."""
+
     def do_repository_request(self, repository, token=b""):
+        """Lock the repository for write access.
+
+        Args:
+            repository: Repository to lock.
+            token: Optional lock token.
+
+        Returns:
+            SuccessfulSmartServerResponse with lock token,
+            or FailedSmartServerResponse on lock failure.
+        """
         # XXX: this probably should not have a token.
         if token == b"":
             token = None
@@ -493,6 +589,11 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
+    """Get a stream for inserting into a target repository format.
+
+    Supports streaming repository data for format conversion.
+    """
+
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for inserting into a to_format repository.
 
@@ -549,6 +650,19 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         return True
 
     def do_body(self, body_bytes):
+        """Handle the request body containing search criteria.
+
+        Processes the body bytes to recreate the search criteria, then
+        generates a stream of repository data matching that search.
+
+        Args:
+            body_bytes: Serialized search criteria from the client.
+
+        Returns:
+            SuccessfulSmartServerResponse with a body stream containing
+            the requested repository data, or FailedSmartServerResponse
+            if the search criteria is invalid.
+        """
         repository = self._repository
         repository.lock_read()
         try:
@@ -571,6 +685,21 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         )
 
     def body_stream(self, stream, repository):
+        """Convert a repository stream to bytes suitable for network transmission.
+
+        Takes a stream of repository records and converts it to a byte stream
+        that can be sent over the network. Handles unlocking the repository
+        when streaming is complete or encounters an error.
+
+        Args:
+            stream: A stream of repository records to transmit.
+            repository: The repository being streamed from (for unlocking).
+
+        Yields:
+            bytes: Chunks of data representing the repository stream.
+            May yield a FailedSmartServerResponse if RevisionNotPresent errors
+            occur during streaming.
+        """
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
             yield from byte_stream
@@ -598,7 +727,22 @@ class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
 
 
 def _stream_to_byte_stream(stream, src_format):
-    """Convert a record stream to a self delimited byte stream."""
+    """Convert a record stream to a self-delimited byte stream.
+
+    Converts a stream of repository records into a serialized byte stream
+    suitable for network transmission. The stream uses the pack container
+    format to delimit records and includes metadata about the source format.
+
+    Args:
+        stream: An iterable of (substream_type, substream) tuples containing
+            repository records to serialize.
+        src_format: The source repository format, used to identify the
+            network format name in the serialized stream.
+
+    Yields:
+        bytes: Chunks of the serialized byte stream, including pack headers,
+            format identification, and serialized record data.
+    """
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), b"")
@@ -638,15 +782,22 @@ class _ByteStreamDecoder:
     we have a little local state to seed each NetworkRecordStream instance,
     and gather the type that we'll be yielding.
 
-    :ivar byte_stream: The byte stream being decoded.
-    :ivar stream_decoder: A pack parser used to decode the bytestream
-    :ivar current_type: The current type, used to join adjacent records of the
-        same type into a single stream.
-    :ivar first_bytes: The first bytes to give the next NetworkRecordStream.
+    Attributes:
+        byte_stream: The byte stream being decoded.
+        stream_decoder: A pack parser used to decode the bytestream.
+        current_type: The current type, used to join adjacent records of the
+            same type into a single stream.
+        first_bytes: The first bytes to give the next NetworkRecordStream.
+        key_count: Count of keys processed, used for progress tracking.
     """
 
     def __init__(self, byte_stream, record_counter):
-        """Create a _ByteStreamDecoder."""
+        """Create a _ByteStreamDecoder.
+
+        Args:
+            byte_stream: An iterable of bytes chunks to decode.
+            record_counter: Optional counter for progress tracking.
+        """
         self.stream_decoder = pack.ContainerPushParser()
         self.current_type = None
         self.first_bytes = None
@@ -655,7 +806,14 @@ class _ByteStreamDecoder:
         self.key_count = 0
 
     def iter_stream_decoder(self):
-        """Iterate the contents of the pack from stream_decoder."""
+        """Iterate the contents of the pack from stream_decoder.
+
+        Processes bytes from the byte stream through the pack parser,
+        yielding decoded records as they become available.
+
+        Yields:
+            Tuple[List, bytes]: Pack records as (record_names, record_bytes) pairs.
+        """
         # dequeue pending items
         yield from self.stream_decoder.read_pending_records()
         # Pull bytes of the wire, decode them to records, yield those records.
@@ -664,6 +822,15 @@ class _ByteStreamDecoder:
             yield from self.stream_decoder.read_pending_records()
 
     def iter_substream_bytes(self):
+        """Iterate bytes for the current substream type.
+
+        Yields bytes that belong to the current substream type, handling
+        the transition between different substream types by updating internal
+        state when a type change is detected.
+
+        Yields:
+            bytes: Raw bytes for records of the current substream type.
+        """
         if self.first_bytes is not None:
             yield self.first_bytes
             # If we run out of pack records, single the outer layer to stop.
@@ -728,7 +895,11 @@ class _ByteStreamDecoder:
                     pb.update("Done", rc.max, rc.max)
 
     def seed_state(self):
-        """Prepare the _ByteStreamDecoder to decode from the pack stream."""
+        """Prepare the _ByteStreamDecoder to decode from the pack stream.
+
+        Initializes the pack record iterator and primes the decoder state
+        by consuming the first substream to set up proper iteration boundaries.
+        """
         # Set a single generator we can use to get data from the pack stream.
         self.iter_pack_records = self.iter_stream_decoder()
         # Seed the very first subiterator with content; after this each one
@@ -739,8 +910,18 @@ class _ByteStreamDecoder:
 def _byte_stream_to_stream(byte_stream, record_counter=None):
     """Convert a byte stream into a format and a stream.
 
-    :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
-    :return: (RepositoryFormat, stream_generator)
+    Takes a serialized byte stream (as created by _stream_to_byte_stream) and
+    converts it back into a repository format and record stream. The first
+    record in the byte stream identifies the source format.
+
+    Args:
+        byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
+        record_counter: Optional counter for progress tracking during decoding.
+
+    Returns:
+        Tuple[RepositoryFormat, Iterator]: A tuple containing the source
+            repository format and a generator yielding (substream_type, substream)
+            pairs for the decoded records.
     """
     decoder = _ByteStreamDecoder(byte_stream, record_counter)
     for bytes in byte_stream:
@@ -752,7 +933,19 @@ def _byte_stream_to_stream(byte_stream, record_counter=None):
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
+    """Unlock a repository."""
+
     def do_repository_request(self, repository, token):
+        """Unlock the repository.
+
+        Args:
+            repository: Repository to unlock.
+            token: Lock token for verification.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok',
+            or FailedSmartServerResponse on token mismatch.
+        """
         try:
             repository.lock_write(token=token)
         except errors.TokenMismatch:
@@ -769,6 +962,14 @@ class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository):
+        """Get the physical lock status of the repository.
+
+        Args:
+            repository: Repository to check lock status for.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'yes' if locked, 'no' if not.
+        """
         if repository.get_physical_lock_status():
             return SuccessfulSmartServerResponse((b"yes",))
         else:
@@ -776,7 +977,18 @@ class SmartServerRepositoryGetPhysicalLockStatus(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
+    """Set whether the repository should create working trees."""
+
     def do_repository_request(self, repository, str_bool_new_value):
+        """Set the make_working_trees flag for the repository.
+
+        Args:
+            repository: Repository to configure.
+            str_bool_new_value: 'True' or 'False' as bytes.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok'.
+        """
         new_value = str_bool_new_value == b"True"
         repository.set_make_working_trees(new_value)
         return SuccessfulSmartServerResponse((b"ok",))
@@ -795,6 +1007,15 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, compression):
+        """Create a tarball of the repository.
+
+        Args:
+            repository: Repository to create tarball from.
+            compression: Compression type ('', 'gz', or 'bz2').
+
+        Returns:
+            SuccessfulSmartServerResponse with tarball data.
+        """
         tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + "/.bzr"
@@ -853,6 +1074,16 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         self.do_insert_stream_request(repository, resume_tokens)
 
     def do_insert_stream_request(self, repository, resume_tokens):
+        """Set up streaming insert request processing.
+
+        Initializes the threading infrastructure to handle streaming
+        insertion of repository data. Creates a queue for receiving
+        stream chunks and starts a worker thread for processing.
+
+        Args:
+            repository: The target repository for the insert operation.
+            resume_tokens: Space-separated resume tokens for the write group.
+        """
         tokens = [token.decode("utf-8") for token in resume_tokens.split(b" ") if token]
         self.tokens = tokens
         self.repository = repository
@@ -861,9 +1092,23 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         self.insert_thread.start()
 
     def do_chunk(self, body_stream_chunk):
+        """Process a chunk of streaming body data.
+
+        Receives chunks of the repository stream data and queues them
+        for processing by the inserter thread.
+
+        Args:
+            body_stream_chunk: A chunk of bytes from the network stream.
+        """
         self.queue.put(body_stream_chunk)
 
     def _inserter_thread(self):
+        """Worker thread that processes the incoming stream data.
+
+        Runs in a separate thread to decode the byte stream into repository
+        records and insert them into the target repository. Handles exceptions
+        and sets result state for the main thread to check.
+        """
         try:
             src_format, stream = _byte_stream_to_stream(self.blocking_byte_stream())
             self.insert_result = self.repository._get_sink().insert_stream(
@@ -875,6 +1120,14 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             self.insert_ok = False
 
     def blocking_byte_stream(self):
+        """Generate bytes from the queue for stream processing.
+
+        Yields bytes chunks from the queue, blocking until data is available.
+        Terminates when StopIteration is received as a sentinel value.
+
+        Yields:
+            bytes: Chunks of stream data to be processed.
+        """
         while True:
             bytes = self.queue.get()
             if bytes is StopIteration:
@@ -883,6 +1136,17 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
                 yield bytes
 
     def do_end(self):
+        """Complete the stream insertion process.
+
+        Signals the end of streaming, waits for the inserter thread to complete,
+        and returns the final result. Handles both successful completion and
+        error cases, including missing basis records.
+
+        Returns:
+            SmartServerResponse: Either SuccessfulSmartServerResponse with 'ok'
+                or 'missing-basis' (with encoded missing keys), or re-raises
+                any exceptions from the inserter thread.
+        """
         self.queue.put(StopIteration)
         if self.insert_thread is not None:
             self.insert_thread.join()
@@ -954,10 +1218,14 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     ):
         """Add a revision signature text.
 
-        :param repository: Repository to operate on
-        :param lock_token: Lock token
-        :param revision_id: Revision for which to add signature
-        :param write_group_tokens: Write group tokens
+        Args:
+            repository: Repository to operate on.
+            lock_token: Lock token for write access.
+            revision_id: Revision for which to add signature.
+            *write_group_tokens: Write group tokens for resuming.
+
+        Returns:
+            None to indicate that a body is expected.
         """
         self._lock_token = lock_token
         self._revision_id = revision_id
@@ -969,8 +1237,11 @@ class SmartServerRepositoryAddSignatureText(SmartServerRepositoryRequest):
     def do_body(self, body_bytes):
         """Add a signature text.
 
-        :param body_bytes: GPG signature text
-        :return: SuccessfulSmartServerResponse with arguments 'ok' and
+        Args:
+            body_bytes: GPG signature text to add to the revision.
+
+        Returns:
+            SuccessfulSmartServerResponse with arguments 'ok' and
             the list of new write group tokens.
         """
         with self._repository.lock_write(token=self._lock_token):
@@ -992,7 +1263,16 @@ class SmartServerRepositoryStartWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token):
-        """Start a write group."""
+        """Start a write group.
+
+        Args:
+            repository: Repository to start write group in.
+            lock_token: Lock token for write access.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' and suspended write group tokens,
+            or FailedSmartServerResponse if the write group cannot be suspended.
+        """
         with repository.lock_write(token=lock_token):
             repository.start_write_group()
             try:
@@ -1009,7 +1289,17 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token, write_group_tokens):
-        """Commit a write group."""
+        """Commit a write group.
+
+        Args:
+            repository: Repository to commit write group in.
+            lock_token: Lock token for write access.
+            write_group_tokens: Tokens identifying the write group to commit.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' on successful commit,
+            or FailedSmartServerResponse if the write group cannot be resumed.
+        """
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
@@ -1040,7 +1330,17 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token, write_group_tokens):
-        """Abort a write group."""
+        """Abort a write group.
+
+        Args:
+            repository: Repository to abort write group in.
+            lock_token: Lock token for write access.
+            write_group_tokens: Tokens identifying the write group to abort.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' on successful abort,
+            or FailedSmartServerResponse if the write group cannot be resumed.
+        """
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
@@ -1065,7 +1365,17 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token, write_group_tokens):
-        """Abort a write group."""
+        """Check that a write group is still valid.
+
+        Args:
+            repository: Repository to check write group in.
+            lock_token: Lock token for write access.
+            write_group_tokens: Tokens identifying the write group to check.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' if the write group is valid,
+            or FailedSmartServerResponse if the write group cannot be resumed.
+        """
         with repository.lock_write(token=lock_token):
             try:
                 repository.resume_write_group(
@@ -1091,6 +1401,15 @@ class SmartServerRepositoryAllRevisionIds(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository):
+        """Retrieve all revision IDs from the repository.
+
+        Args:
+            repository: Repository to retrieve revision IDs from.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' and newline-separated
+            revision IDs in the body.
+        """
         revids = repository.all_revision_ids()
         return SuccessfulSmartServerResponse((b"ok",), b"\n".join(revids))
 
@@ -1102,6 +1421,16 @@ class SmartServerRepositoryReconcile(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token):
+        """Reconcile a repository.
+
+        Args:
+            repository: Repository to reconcile.
+            lock_token: Lock token for write access.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' and reconciler statistics,
+            or FailedSmartServerResponse if token locking is not supported.
+        """
         try:
             repository.lock_write(token=lock_token)
         except errors.TokenLockingNotSupported:
@@ -1124,6 +1453,16 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, lock_token, clean_obsolete_packs):
+        """Set up repository pack operation.
+
+        Args:
+            repository: Repository to pack.
+            lock_token: Lock token for write access.
+            clean_obsolete_packs: 'True' to clean obsolete packs, 'False' otherwise.
+
+        Returns:
+            None to indicate that a body is expected.
+        """
         self._repository = repository
         self._lock_token = lock_token
         if clean_obsolete_packs == b"True":
@@ -1133,6 +1472,14 @@ class SmartServerRepositoryPack(SmartServerRepositoryRequest):
         return None
 
     def do_body(self, body_bytes):
+        """Perform the repository pack operation.
+
+        Args:
+            body_bytes: Optional pack hints, one per line.
+
+        Returns:
+            SuccessfulSmartServerResponse with 'ok' after packing completes.
+        """
         hint = None if body_bytes == "" else body_bytes.splitlines()
         with self._repository.lock_write(token=self._lock_token):
             self._repository.pack(hint, self._clean_obsolete_packs)
@@ -1162,6 +1509,15 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
     """
 
     def body_stream(self, repository, desired_files):
+        """Stream file contents for the requested files.
+
+        Args:
+            repository: Repository to read files from.
+            desired_files: List of (file_id, revision_id) tuples to stream.
+
+        Yields:
+            bytes: Stream data including headers and compressed file contents.
+        """
         with self._repository.lock_read():
             text_keys = {}
             for i, key in enumerate(desired_files):
@@ -1189,12 +1545,29 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                     yield data
 
     def do_body(self, body_bytes):
+        r"""Process the request body containing desired file specifications.
+
+        Args:
+            body_bytes: Body containing file specifications, one per line,
+                as file_id\0revision_id pairs.
+
+        Returns:
+            SuccessfulSmartServerResponse with file content stream.
+        """
         desired_files = [tuple(l.split(b"\0")) for l in body_bytes.splitlines()]
         return SuccessfulSmartServerResponse(
             (b"ok",), body_stream=self.body_stream(self._repository, desired_files)
         )
 
     def do_repository_request(self, repository):
+        """Set up file iteration request.
+
+        Args:
+            repository: Repository to iterate files from.
+
+        Returns:
+            None to signal that a body is expected.
+        """
         # Signal that we want a body
         return None
 
@@ -1213,11 +1586,28 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository):
+        """Set up revision iteration request.
+
+        Args:
+            repository: Repository to iterate revisions from.
+
+        Returns:
+            None to signal that a body is expected.
+        """
         self._repository = repository
         # Signal there is a body
         return None
 
     def do_body(self, body_bytes):
+        """Process the request body containing revision IDs.
+
+        Args:
+            body_bytes: Newline-separated revision IDs to stream.
+
+        Returns:
+            SuccessfulSmartServerResponse with serializer format and
+            revision stream.
+        """
         revision_ids = body_bytes.split(b"\n")
         return SuccessfulSmartServerResponse(
             (b"ok", self._repository.get_serializer_format()),
@@ -1225,6 +1615,15 @@ class SmartServerRepositoryIterRevisions(SmartServerRepositoryRequest):
         )
 
     def body_stream(self, repository, revision_ids):
+        """Stream compressed revision data.
+
+        Args:
+            repository: Repository to read revisions from.
+            revision_ids: List of revision IDs to stream.
+
+        Yields:
+            bytes: Compressed revision data.
+        """
         with self._repository.lock_read():
             for record in repository.revisions.get_record_stream(
                 [(revid,) for revid in revision_ids], "unordered", True
@@ -1249,6 +1648,16 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
     """
 
     def _inventory_delta_stream(self, repository, ordering, revids):
+        """Generate inventory delta stream for the specified revisions.
+
+        Args:
+            repository: Repository to read inventories from.
+            ordering: Ordering method for the revisions ('topological', etc.).
+            revids: List of revision IDs to generate deltas for.
+
+        Yields:
+            ChunkedContentFactory: Inventory delta records.
+        """
         prev_inv = _mod_inventory.Inventory(
             root_id=None, revision_id=_mod_revision.NULL_REVISION
         )
@@ -1267,12 +1676,30 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):
+        """Create a byte stream from inventory deltas.
+
+        Args:
+            repository: Repository to read from.
+            ordering: Ordering method for the revisions.
+            revids: List of revision IDs to stream.
+
+        Returns:
+            Byte stream generator containing serialized inventory deltas.
+        """
         substream = self._inventory_delta_stream(repository, ordering, revids)
         return _stream_to_byte_stream(
             [("inventory-deltas", substream)], repository._format
         )
 
     def do_body(self, body_bytes):
+        """Process the request body containing revision IDs.
+
+        Args:
+            body_bytes: Newline-separated revision IDs.
+
+        Returns:
+            SuccessfulSmartServerResponse with inventory delta stream.
+        """
         return SuccessfulSmartServerResponse(
             (b"ok",),
             body_stream=self.body_stream(
@@ -1281,6 +1708,15 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
         )
 
     def do_repository_request(self, repository, ordering):
+        """Set up inventory delta streaming request.
+
+        Args:
+            repository: Repository to stream from.
+            ordering: Ordering method for revisions ('topological', 'unordered', etc.).
+
+        Returns:
+            None to signal that a body is expected.
+        """
         ordering = ordering.decode("ascii")
         if ordering == "unordered":
             # inventory deltas for a topologically sorted stream
@@ -1292,12 +1728,19 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest):
+    """Get a stream for missing keys in a repository."""
+
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for missing keys.
 
-        :param repository: The repository to stream from.
-        :param to_network_name: The network name of the format of the target
-            repository.
+        Args:
+            repository: The repository to stream from.
+            to_network_name: The network name of the format of the target
+                repository.
+
+        Returns:
+            None to signal that a body is expected, or FailedSmartServerResponse
+            if the target format is unknown.
         """
         try:
             self._to_format = network_format_registry.get(to_network_name)
@@ -1308,6 +1751,15 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         return None  # Signal that we want a body.
 
     def do_body(self, body_bytes):
+        r"""Process the request body containing missing key specifications.
+
+        Args:
+            body_bytes: Body containing missing keys, one per line,
+                as kind\trevision_id pairs.
+
+        Returns:
+            SuccessfulSmartServerResponse with stream for the missing keys.
+        """
         repository = self._repository
         repository.lock_read()
         try:
@@ -1328,6 +1780,15 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         )
 
     def body_stream(self, stream, repository):
+        """Stream repository data for missing keys.
+
+        Args:
+            stream: Stream of repository records for missing keys.
+            repository: Repository being streamed from (for unlocking).
+
+        Yields:
+            bytes: Stream data or FailedSmartServerResponse on error.
+        """
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
             yield from byte_stream
@@ -1341,16 +1802,24 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
 
 
 class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
+    """Create an archive of a specific revision."""
+
     def do_repository_request(
         self, repository, revision_id, format, name, root, subdir=None, force_mtime=None
     ):
         """Stream an archive file for a specific revision.
-        :param repository: The repository to stream from.
-        :param revision_id: Revision for which to export the tree
-        :param format: Format (tar, tgz, tbz2, etc)
-        :param name: Target file name
-        :param root: Name of root directory (or '')
-        :param subdir: Subdirectory to export, if not the root.
+
+        Args:
+            repository: The repository to stream from.
+            revision_id: Revision for which to export the tree.
+            format: Archive format (tar, tgz, tbz2, etc).
+            name: Target file name.
+            root: Name of root directory (or '').
+            subdir: Subdirectory to export, if not the root.
+            force_mtime: Optional forced modification time.
+
+        Returns:
+            SuccessfulSmartServerResponse with archive stream.
         """
         tree = repository.revision_tree(revision_id)
         if subdir is not None:
@@ -1371,21 +1840,40 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         )
 
     def body_stream(self, tree, format, name, root, subdir=None, force_mtime=None):
+        """Generate archive stream from tree.
+
+        Args:
+            tree: Tree to archive.
+            format: Archive format.
+            name: Archive name.
+            root: Root directory name.
+            subdir: Optional subdirectory to archive.
+            force_mtime: Optional forced modification time.
+
+        Returns:
+            Archive data stream.
+        """
         with tree.lock_read():
             return tree.archive(format, name, root, subdir, force_mtime)
 
 
 class SmartServerRepositoryAnnotateFileRevision(SmartServerRepositoryRequest):
+    """Get annotation data for a file in a specific revision."""
+
     def do_repository_request(
         self, repository, revision_id, tree_path, file_id=None, default_revision=None
     ):
-        """Stream an archive file for a specific revision.
+        """Get annotation data for a file in a specific revision.
 
-        :param repository: The repository to stream from.
-        :param revision_id: Revision for which to export the tree
-        :param tree_path: The path inside the tree
-        :param file_id: Optional file_id for the file
-        :param default_revision: Default revision
+        Args:
+            repository: The repository to read from.
+            revision_id: Revision to annotate from.
+            tree_path: The path inside the tree.
+            file_id: Optional file_id for the file (deprecated).
+            default_revision: Default revision for annotation.
+
+        Returns:
+            SuccessfulSmartServerResponse with encoded annotation data.
         """
         tree = repository.revision_tree(revision_id)
         with tree.lock_read():

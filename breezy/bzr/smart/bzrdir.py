@@ -30,7 +30,22 @@ from .request import (
 
 
 class SmartServerRequestOpenBzrDir(SmartServerRequest):
+    """Handle requests to check if a BzrDir exists at a given path.
+
+    This smart server request checks whether a BzrDir is present at the specified
+    path without opening it fully.
+    """
+
     def do(self, path):
+        """Check if a BzrDir exists at the specified path.
+
+        Args:
+            path: The path to check for a BzrDir.
+
+        Returns:
+            SuccessfulSmartServerResponse with "yes" if a BzrDir exists,
+            "no" otherwise.
+        """
         try:
             t = self.transport_from_client_path(path)
         except errors.PathNotChild:
@@ -52,6 +67,12 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
 
 
 class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
+    """Handle requests to check if a BzrDir exists and has a working tree.
+
+    This is version 2.1 of the OpenBzrDir request that additionally checks
+    if the BzrDir has a working tree.
+    """
+
     def do(self, path):
         """Is there a BzrDir present, and if so does it have a working tree?
 
@@ -77,6 +98,12 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
 
 
 class SmartServerRequestBzrDir(SmartServerRequest):
+    """Base class for smart server requests that operate on a BzrDir.
+
+    This class provides common functionality for opening a BzrDir and
+    delegating to subclass-specific request handlers.
+    """
+
     def do(self, path, *args):
         """Open a BzrDir at path, and return `self.do_bzrdir_request(*args)`."""
         try:
@@ -88,12 +115,28 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
+        """Convert a boolean value to bytes 'yes' or 'no'.
+
+        Args:
+            a_boolean: Boolean value to convert.
+
+        Returns:
+            b'yes' if True, b'no' if False.
+        """
         if a_boolean:
             return b"yes"
         else:
             return b"no"
 
     def _format_to_capabilities(self, repo_format):
+        """Convert repository format capabilities to yes/no byte strings.
+
+        Args:
+            repo_format: Repository format object to extract capabilities from.
+
+        Returns:
+            Tuple of (rich_root, tree_ref, external_lookup) as byte strings.
+        """
         rich_root = self._boolean_to_yes_no(repo_format.rich_root_data)
         tree_ref = self._boolean_to_yes_no(repo_format.supports_tree_reference)
         external_lookup = self._boolean_to_yes_no(repo_format.supports_external_lookups)
@@ -109,6 +152,11 @@ class SmartServerRequestBzrDir(SmartServerRequest):
 
 
 class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
+    """Handle requests to destroy a branch in a BzrDir.
+
+    New in version 2.5.0.
+    """
+
     def do_bzrdir_request(self, name=None):
         """Destroy the branch with the specified name.
 
@@ -125,6 +173,11 @@ class SmartServerBzrDirRequestDestroyBranch(SmartServerRequestBzrDir):
 
 
 class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
+    """Handle requests to check if a BzrDir has a working tree.
+
+    New in version 2.5.0.
+    """
+
     def do_bzrdir_request(self, name=None):
         """Check whether there is a working tree present.
 
@@ -140,6 +193,11 @@ class SmartServerBzrDirRequestHasWorkingTree(SmartServerRequestBzrDir):
 
 
 class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
+    """Handle requests to destroy a repository in a BzrDir.
+
+    New in version 2.5.0.
+    """
+
     def do_bzrdir_request(self, name=None):
         """Destroy the repository.
 
@@ -155,6 +213,12 @@ class SmartServerBzrDirRequestDestroyRepository(SmartServerRequestBzrDir):
 
 
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
+    """Handle requests for cloning metadata directory format information.
+
+    New in version 1.13. Returns the format that should be used when
+    cloning from this directory.
+    """
+
     def do_bzrdir_request(self, require_stacking):
         """Get the format that should be used when cloning from this dir.
 
@@ -204,6 +268,16 @@ class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
     """
 
     def do_bzrdir_request(self):
+        """Get the format to use for checkouts.
+
+        Returns:
+            SuccessfulSmartServerResponse with a 3-tuple of network names for
+            (control, repository, branch) directories, where '' signifies "not present".
+
+        Raises:
+            FailedSmartServerResponse with 'BranchReference' if this BzrDir contains
+            a branch reference.
+        """
         try:
             branch_ref = self._bzrdir.get_branch_reference()
         except errors.NotBranchError:
@@ -225,6 +299,11 @@ class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
+    """Handle requests to create a new branch in a BzrDir.
+
+    This is the initial version introduced in version 1.13.
+    """
+
     def do(self, path, network_name):
         """Create a branch in the bzr dir at path.
 
@@ -269,6 +348,11 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
+    """Handle requests to create a new repository in a BzrDir.
+
+    This is the initial version introduced in version 1.13.
+    """
+
     def do(self, path, network_name, shared):
         """Create a repository in the bzr dir at path.
 
@@ -302,6 +386,12 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
+    """Base class for requests to find a repository from a given path.
+
+    This class provides common functionality for finding repositories
+    and extracting their format information.
+    """
+
     def _find(self, path):
         """Try to find a repository from path upwards.
 
@@ -325,6 +415,13 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
+    """Version 1 of the find repository request.
+
+    This is the initial version introduced with the smart server.
+    Modern clients will try the V2 method that adds support for the
+    supports_external_lookups attribute.
+    """
+
     def do(self, path):
         """Try to find a repository from path upwards.
 
@@ -349,6 +446,12 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
 
 class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
+    """Version 2 of the find repository request.
+
+    This is the second edition introduced in bzr 1.3, which returns
+    information about the supports_external_lookups format attribute.
+    """
+
     def do(self, path):
         """Try to find a repository from path upwards.
 
@@ -374,6 +477,12 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
 
 class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
+    """Version 3 of the find repository request.
+
+    This is the third edition introduced in bzr 1.13, which returns
+    information about the network name of the repository format.
+    """
+
     def do(self, path):
         """Try to find a repository from path upwards.
 
@@ -405,6 +514,11 @@ class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
 
 
 class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
+    """Handle requests to get configuration file contents from a BzrDir.
+
+    Returns the raw configuration file bytes without UTF-8 decoding.
+    """
+
     def do_bzrdir_request(self):
         """Get the configuration bytes for a config file in bzrdir.
 
@@ -416,6 +530,12 @@ class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
 
 
 class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
+    """Handle requests to get all branches in a control directory.
+
+    Returns a bencoded dictionary with branch information, similar to
+    the return value of the open branch request.
+    """
+
     def do_bzrdir_request(self):
         """Get the branches in a control directory.
 
@@ -439,6 +559,11 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):
+    """Handle requests to initialize a new BzrDir at a given path.
+
+    Uses the server's default format for initialization.
+    """
+
     def do(self, path):
         """Initialize a bzrdir at path.
 
@@ -451,7 +576,26 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
 
 
 class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
+    """Handle extended BzrDir initialization requests.
+
+    New in version 1.16. Replaces BzrDirFormat.initialize_ex verb from 1.15.
+    Provides comprehensive initialization options including stacking,
+    repository formats, and working tree creation.
+    """
+
     def parse_NoneTrueFalse(self, arg):
+        """Parse a byte string argument to None, True, or False.
+
+        Args:
+            arg: Byte string argument to parse. Empty string maps to None,
+                b'True' maps to True, b'False' maps to False.
+
+        Returns:
+            None, True, or False based on the input.
+
+        Raises:
+            AssertionError: If the argument is not a valid value.
+        """
         if not arg:
             return None
         if arg == b"False":
@@ -461,14 +605,38 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         raise AssertionError(f"invalid arg {arg!r}")
 
     def parse_NoneBytestring(self, arg):
+        """Parse a byte string argument, returning None for empty strings.
+
+        Args:
+            arg: Byte string argument to parse.
+
+        Returns:
+            The argument itself if non-empty, None otherwise.
+        """
         return arg or None
 
     def parse_NoneString(self, arg):
+        """Parse a byte string argument to a Unicode string or None.
+
+        Args:
+            arg: Byte string argument to parse.
+
+        Returns:
+            The argument decoded as UTF-8 if non-empty, None otherwise.
+        """
         if not arg:
             return None
         return arg.decode("utf-8")
 
     def _serialize_NoneTrueFalse(self, arg):
+        """Serialize None, True, or False to appropriate byte strings.
+
+        Args:
+            arg: Value to serialize (None, True, or False).
+
+        Returns:
+            b'False' for False, b'' for None/falsy values, b'True' for True.
+        """
         if arg is False:
             return b"False"
         if not arg:
@@ -581,6 +749,11 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
+    """Handle requests to open a branch and return reference or format info.
+
+    This is the initial version of the open branch request.
+    """
+
     def do_bzrdir_request(self):
         """Open a branch at path and return the branch reference or branch."""
         try:
@@ -593,6 +766,11 @@ class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
+    """Version 2 of the open branch request.
+
+    Returns either branch format information or branch reference URL.
+    """
+
     def do_bzrdir_request(self):
         """Open a branch at path and return the reference or format."""
         try:
@@ -610,6 +788,12 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
 
 
 class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
+    """Version 3 of the open branch request.
+
+    Introduced in version 2.1. Enhanced error reporting compared to V2,
+    can return additional explanation information with 'nobranch' responses.
+    """
+
     def do_bzrdir_request(self):
         """Open a branch at path and return the reference or format.
 

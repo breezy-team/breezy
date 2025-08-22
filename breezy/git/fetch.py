@@ -176,6 +176,8 @@ def import_git_blob(
 
 
 class SubmodulesRequireSubtrees(BzrError):
+    """Error raised when repository contains submodules but format doesn't support them."""
+
     _fmt = (
         "The repository you are fetching from contains submodules, "
         "which require a Bazaar format that supports tree references."
@@ -422,6 +424,22 @@ def verify_commit_reconstruction(
     unusual_modes,
     verifiers,
 ):
+    """Verify that a commit can be reconstructed correctly.
+
+    Args:
+        target_git_object_retriever: Object retriever for the target repository.
+        lookup_object: Function to look up Git objects by SHA.
+        o: Original Git commit object.
+        rev: Bazaar revision object.
+        ret_tree: Reconstructed tree.
+        parent_trees: Parent trees.
+        mapping: Mapping between Git and Bazaar.
+        unusual_modes: Dictionary of unusual file modes.
+        verifiers: Verifier information.
+
+    Raises:
+        AssertionError: If reconstruction fails or differs from original.
+    """
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
         raise AssertionError(
@@ -467,6 +485,12 @@ def verify_commit_reconstruction(
 
 
 def ensure_inventories_in_repo(repo, trees):
+    """Ensure that inventories for given trees are present in the repository.
+
+    Args:
+        repo: Repository to add inventories to.
+        trees: List of trees whose inventories should be present.
+    """
     real_inv_vf = repo.inventories.without_fallbacks()
     for t in trees:
         revid = t.get_revision_id()
@@ -477,6 +501,20 @@ def ensure_inventories_in_repo(repo, trees):
 def import_git_commit(
     repo, mapping, head, lookup_object, target_git_object_retriever, trees_cache, strict
 ):
+    """Import a Git commit into a Bazaar repository.
+
+    Args:
+        repo: Target Bazaar repository.
+        mapping: Mapping between Git and Bazaar.
+        head: Git commit SHA to import.
+        lookup_object: Function to look up Git objects.
+        target_git_object_retriever: Object retriever for the target.
+        trees_cache: Cache for revision trees.
+        strict: Whether to use strict mode.
+
+    Returns:
+        tuple: (revision, testament3_sha1) if testament was created, else (revision, None).
+    """
     o = lookup_object(head)
     # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
     # were bzr roundtripped revisions they would be specified in the
@@ -662,12 +700,30 @@ def import_git_objects(
 
 
 class DetermineWantsRecorder:
+    """Recorder for determine_wants calls in Git fetch operations."""
+
     def __init__(self, actual):
+        """Initialize the recorder.
+
+        Args:
+            actual: The actual determine_wants function to wrap.
+        """
         self.actual = actual
         self.wants = []
         self.remote_refs = {}
 
     def __call__(self, refs):
+        """Record refs and determine wants.
+
+        Args:
+            refs: Dictionary of remote references.
+
+        Returns:
+            List of wanted refs.
+
+        Raises:
+            TypeError: If refs is not a dictionary.
+        """
         if not isinstance(refs, dict):
             raise TypeError(refs)
         self.remote_refs = refs

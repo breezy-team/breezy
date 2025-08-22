@@ -20,20 +20,36 @@ from .. import errors, registry
 
 
 class BadInventoryFormat(errors.BzrError):
+    """Base exception class for inventory serialization errors."""
+
     _fmt = "Root class for inventory serialization errors"
 
 
 class UnexpectedInventoryFormat(BadInventoryFormat):
+    """Raised when an inventory is not in the expected format."""
+
     _fmt = "The inventory was not in the expected format:\n %(msg)s"
 
     def __init__(self, msg):
+        """Initialize UnexpectedInventoryFormat exception.
+
+        Args:
+            msg: Error message describing the unexpected format.
+        """
         BadInventoryFormat.__init__(self, msg=msg)
 
 
 class UnsupportedInventoryKind(errors.BzrError):
+    """Raised when an unsupported inventory entry kind is encountered."""
+
     _fmt = """Unsupported entry kind %(kind)s"""
 
     def __init__(self, kind):
+        """Initialize UnsupportedInventoryKind exception.
+
+        Args:
+            kind: The unsupported entry kind.
+        """
         self.kind = kind
 
 
@@ -43,15 +59,59 @@ class RevisionSerializer:
     squashes_xml_invalid_characters = False
 
     def write_revision_to_string(self, rev):
+        """Serialize a revision to a string.
+
+        Args:
+            rev: The revision object to serialize.
+
+        Returns:
+            Serialized revision as a string.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self.write_revision_to_string)
 
     def write_revision_to_lines(self, rev):
+        """Serialize a revision to a list of lines.
+
+        Args:
+            rev: The revision object to serialize.
+
+        Returns:
+            Serialized revision as a list of lines.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self.write_revision_to_lines)
 
     def read_revision(self, f):
+        """Read a revision from a file object.
+
+        Args:
+            f: File-like object to read from.
+
+        Returns:
+            Deserialized revision object.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self.read_revision)
 
     def read_revision_from_string(self, xml_string):
+        """Read a revision from a string.
+
+        Args:
+            xml_string: String containing the serialized revision.
+
+        Returns:
+            Deserialized revision object.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError(self.read_revision_from_string)
 
 

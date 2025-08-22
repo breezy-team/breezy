@@ -28,12 +28,30 @@ class UnlistableTransportDecorator(decorator.TransportDecorator):
         return "unlistable+"
 
     def iter_files_recursive(self):
+        """Raise an error for recursive file iteration.
+
+        This transport doesn't support listing files, so this operation
+        will always raise an error from the base Transport class.
+        """
         Transport.iter_files_recursive(self)
 
     def listable(self):
+        """Check if this transport supports listing directories.
+
+        Returns:
+            bool: Always False as this transport disables listing.
+        """
         return False
 
     def list_dir(self, relpath):
+        """Raise an error for directory listing.
+
+        Args:
+            relpath: Path to list (ignored).
+
+        This transport doesn't support listing, so this operation
+        will always raise an error from the base Transport class.
+        """
         Transport.list_dir(self, relpath)
 
 

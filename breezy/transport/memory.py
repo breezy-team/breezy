@@ -38,7 +38,16 @@ from ..transport import (
 
 
 class MemoryStat:
+    """Stat result for memory transport entries."""
+
     def __init__(self, size, kind, perms=None):
+        """Initialize a memory stat result.
+
+        Args:
+            size: Size of the entry in bytes.
+            kind: File type (S_IFREG, S_IFDIR, S_IFLNK).
+            perms: Permissions bits (defaults to 0o644 for files, 0o755 for dirs).
+        """
         self.st_size = size
         if not S_ISDIR(kind):
             if perms is None:
@@ -177,6 +186,11 @@ class MemoryTransport(transport.Transport):
         return True
 
     def iter_files_recursive(self):
+        """Iterate recursively through all files.
+
+        Yields:
+            Relative paths to all files and symlinks under the current directory.
+        """
         for file in itertools.chain(self._files, self._symlinks):
             if file.startswith(self._cwd):
                 yield urlutils.escape(file[len(self._cwd) :])
@@ -304,6 +318,17 @@ class MemoryTransport(transport.Transport):
         return "/" + "/".join(r)
 
     def readlink(self, link_name):
+        """Read the target of a symbolic link.
+
+        Args:
+            link_name: Path to the symbolic link.
+
+        Returns:
+            str: The target path of the symlink.
+
+        Raises:
+            NoSuchFile: If the symlink doesn't exist.
+        """
         _abspath = self._abspath(link_name)
         try:
             return "/".join(self._symlinks[_abspath])
@@ -330,6 +355,7 @@ class MemoryServer(transport.Server):
     """Server for the MemoryTransport for testing with."""
 
     def start_server(self):
+        """Start the memory server by initializing storage and registering transport."""
         self._dirs = {"/": None}
         self._files = {}
         self._symlinks = {}
@@ -350,6 +376,7 @@ class MemoryServer(transport.Server):
         transport.register_transport(self._scheme, self._memory_factory)
 
     def stop_server(self):
+        """Stop the server and unregister the transport."""
         # unregister this server
         transport.unregister_transport(self._scheme, self._memory_factory)
 
@@ -358,6 +385,11 @@ class MemoryServer(transport.Server):
         return self._scheme
 
     def get_bogus_url(self):
+        """Get a URL for a non-existent location.
+
+        Raises:
+            NotImplementedError: This method is not implemented for memory transport.
+        """
         raise NotImplementedError
 
 
