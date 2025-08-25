@@ -23,8 +23,9 @@ from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
 
+import vcsgraph.graph as _mod_graph
+
 from .. import check, errors, lock, repository, trace, transactions, ui
-from .. import graph as _mod_graph
 from .. import revision as _mod_revision
 from ..decorators import only_raises
 from ..foreign import ForeignRepository

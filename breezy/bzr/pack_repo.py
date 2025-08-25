@@ -36,10 +36,10 @@ import time
 
 from breezy import (
     config,
-    graph,
     transactions,
     ui,
     )
+from vcsgraph import graph
 from breezy.bzr import (
     pack,
     )

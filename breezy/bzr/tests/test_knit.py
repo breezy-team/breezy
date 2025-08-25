@@ -22,7 +22,9 @@ from io import BytesIO
 
 from patiencediff import PatienceSequenceMatcher
 
-from ... import errors, multiparent, osutils
+import vcsgraph.multiparent as multiparent
+
+from ... import errors, osutils
 from ... import transport as _mod_transport
 from ...tests import (
     TestCase,

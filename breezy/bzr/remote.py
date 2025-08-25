@@ -35,7 +35,6 @@ from .. import (
     debug,
     errors,
     gpg,
-    graph,
     lock,
     lockdir,
     osutils,
@@ -43,6 +42,7 @@ from .. import (
     ui,
     urlutils,
 )
+from vcsgraph import graph
 from .. import bzr as _mod_bzr
 from .. import config as _mod_config
 from .. import repository as _mod_repository

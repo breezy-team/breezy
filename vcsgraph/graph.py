@@ -554,6 +554,8 @@ class Graph:
                     )
         # Collapse all the common nodes into a single searcher
         all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
+        total_stopped = 0
+        stopped_common = []
         if ancestor_all_unique:
             # We've seen these nodes in all the searchers, so we'll just go to
             # the next
@@ -565,7 +567,6 @@ class Graph:
                 common_searcher.find_seen_ancestors(ancestor_all_unique)
             )
 
-            total_stopped = 0
             for searcher in unique_tip_searchers:
                 total_stopped += len(
                     searcher.stop_searching_any(
@@ -1664,4 +1665,6 @@ class GraphThunkIdsToKeys:
 
 _counters = [0, 0, 0, 0, 0, 0, 0]
 
+# Import KnownGraph to make it available through this module for compatibility
 from ._known_graph_py import KnownGraph
+

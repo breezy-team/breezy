@@ -265,7 +265,7 @@ rust_extensions = [
         "breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension(
-        "breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3
+        "vcsgraph._graph_rs", "vcsgraph/crates/graph-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension(
         "breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3

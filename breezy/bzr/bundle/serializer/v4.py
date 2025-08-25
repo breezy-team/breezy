@@ -29,7 +29,9 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from .... import errors, lru_cache, multiparent, osutils, trace, ui
+import vcsgraph.multiparent as multiparent
+
+from .... import errors, lru_cache, osutils, trace, ui
 from .... import repository as _mod_repository
 from .... import revision as _mod_revision
 from ....i18n import ngettext

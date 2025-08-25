@@ -26,22 +26,30 @@ version control systems, including:
 """
 
 __all__ = [
-    'topo_sort',
-    'Graph',
-    'DictParentsProvider',
-    'KnownGraph',
-    'MultiParent',
     'BaseVersionedFile',
+    'DictParentsProvider',
+    'FrozenHeadsCache',
+    'Graph',
+    'KnownGraph',
     'MultiMemoryVersionedFile',
+    'MultiParent',
     'MultiVersionedFile',
+    'invert_parent_map',
+    'topo_sort',
 ]
 
 # Re-export commonly used functions and classes
-from .tsort import topo_sort
-from .graph import Graph, DictParentsProvider, KnownGraph
+from .graph import (
+    DictParentsProvider,
+    FrozenHeadsCache,
+    Graph,
+    invert_parent_map,
+)
+from ._known_graph_py import KnownGraph
 from .multiparent import (
-    MultiParent,
     BaseVersionedFile,
     MultiMemoryVersionedFile,
+    MultiParent,
     MultiVersionedFile,
 )
+from .tsort import topo_sort

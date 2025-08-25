@@ -16,8 +16,9 @@
 
 """Tests for the rebase code."""
 
+from vcsgraph.graph import DictParentsProvider, Graph
+
 from ....errors import ConflictsInTree, UnknownFormatError
-from ....graph import DictParentsProvider, Graph
 from ....revision import NULL_REVISION
 from ....tests import TestCase, TestCaseWithTransport
 from ....tests.matchers import RevisionHistoryMatches

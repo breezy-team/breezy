@@ -17,6 +17,7 @@
 """Topological sorting routines."""
 
 from . import graph as _mod_graph
+from ._known_graph_py import KnownGraph
 
 __all__ = ["topo_sort"]
 
@@ -49,5 +50,5 @@ def topo_sort(graph):
     topo_sort is faster when the whole list is needed, while when iterating
     over a part of the list, TopoSorter.iter_topo_order should be used.
     """
-    kg = _mod_graph.KnownGraph(dict(graph))
+    kg = KnownGraph(dict(graph))
     return kg.topo_sort()

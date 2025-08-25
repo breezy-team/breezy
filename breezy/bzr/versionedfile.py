@@ -36,8 +36,9 @@ from breezy import (
     )
 """,
 )
+import vcsgraph.graph as _mod_graph
+
 from .. import errors, osutils, revision, urlutils
-from .. import graph as _mod_graph
 from .. import transport as _mod_transport
 from .._bzr_rs import versionedfile as _versionedfile_rs
 from ..registry import Registry
@@ -2274,7 +2275,7 @@ def sort_groupcompress(parent_map):
 
     :return: A sorted-list of keys
     """
-    from ..tsort import topo_sort
+    from vcsgraph.tsort import topo_sort
 
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.

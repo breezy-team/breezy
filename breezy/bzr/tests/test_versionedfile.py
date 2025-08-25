@@ -16,7 +16,9 @@
 
 """Tests for VersionedFile classes."""
 
-from ... import errors, multiparent, tests
+import vcsgraph.multiparent as multiparent
+
+from ... import errors, tests
 from .. import groupcompress, versionedfile
 
 

@@ -42,7 +42,9 @@ from breezy.i18n import gettext
 
 import contextlib
 
-from . import controldir, debug, errors, graph, osutils, registry, ui
+import vcsgraph.graph as graph
+
+from . import controldir, debug, errors, osutils, registry, ui
 from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject

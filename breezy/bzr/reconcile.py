@@ -23,12 +23,13 @@ __all__ = [
     "VersionedFileRepoReconciler",
 ]
 
+from vcsgraph.tsort import topo_sort
+
 from .. import errors, ui
 from .. import revision as _mod_revision
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from ..tsort import topo_sort
 from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 

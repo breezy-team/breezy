@@ -18,8 +18,9 @@
 
 import itertools
 
+from vcsgraph import DictParentsProvider, Graph, invert_parent_map
+
 from .. import debug, revision, trace
-from ..graph import DictParentsProvider, Graph, invert_parent_map
 from ..repository import AbstractSearchResult
 
 

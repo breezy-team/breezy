@@ -18,9 +18,10 @@
 
 from typing import TYPE_CHECKING
 
+import vcsgraph.graph as _mod_graph
+
 from .. import annotate as _mod_annotate
 from .. import errors, osutils, ui
-from .. import graph as _mod_graph
 from ..annotate import Annotator
 
 if TYPE_CHECKING:

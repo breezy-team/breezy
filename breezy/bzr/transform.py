@@ -29,13 +29,13 @@ from .. import (
     annotate,
     controldir,
     errors,
-    multiparent,
     osutils,
     trace,
     tree,
     ui,
     urlutils,
 )
+import vcsgraph.multiparent as multiparent
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..filters import ContentFilterContext, filtered_output_bytes
