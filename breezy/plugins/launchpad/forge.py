@@ -35,6 +35,7 @@ from ...forge import (
 )
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
+from ...trace import mutter
 
 lazy_import(
     globals(),
