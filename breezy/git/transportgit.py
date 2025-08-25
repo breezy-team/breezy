@@ -84,7 +84,8 @@ class _RemoteGitFile:
         self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
         self._closed = False
         for method in _GitFile.PROXY_METHODS:
-            setattr(self, method, getattr(self._file, method))
+            if hasattr(self._file, method):
+                setattr(self, method, getattr(self._file, method))
 
     def abort(self):
         self._file.close()
