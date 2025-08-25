@@ -31,8 +31,7 @@ class TestStrace(tests.TestCaseWithTransport):
 
     def setUp(self):
         """Set up the test environment."""
-        # NB: see http://pad.lv/626679 and
-        # <https://code.launchpad.net/~mbp/bzr/626679-strace/+merge/34157>:
+        # NB: see http://pad.lv/626679:
         # testing strace by connecting to ourselves has repeatedly caused
         # hangs in running the test suite; these are fixable given enough
         # determination but given that strace is not used by any other tests
