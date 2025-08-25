@@ -39,7 +39,7 @@ import codecs
 import sys
 
 __copyright__ = (
-    "Copyright 2005-2012 Canonical Ltd.\nCopyright 2017-2025 Breezy developers"
+    "Copyright 2005-2012 Canonical Ltd.\nCopyright 2017-2023 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -49,7 +49,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 3, 13, "dev", 0)
+version_info = (3, 4, 0, "dev", 0)
 
 
 def _format_version_tuple(version_info):
@@ -81,9 +81,9 @@ def _format_version_tuple(version_info):
     1.4.0.wibble.0
     """
     if len(version_info) == 2:
-        main_version = f"{version_info[0]}.{version_info[1]}"
+        main_version = "%d.%d" % version_info[:2]
     else:
-        main_version = f"{version_info[0]}.{version_info[1]}.{version_info[2]}"
+        main_version = "%d.%d.%d" % version_info[:3]
     if len(version_info) <= 3:
         return main_version
 
@@ -100,7 +100,7 @@ def _format_version_tuple(version_info):
         sub_string = ".dev" + str(sub)
     elif release_type in ("alpha", "beta"):
         if version_info[2] == 0:
-            main_version = f"{version_info[0]}.{version_info[1]}"
+            main_version = "%d.%d" % version_info[:2]
         sub_string = "." + release_type[0] + str(sub)
     elif release_type == "candidate":
         sub_string = ".rc" + str(sub)
@@ -154,10 +154,7 @@ _fs_enc = sys.getfilesystemencoding()
 if getattr(sys, "_brz_default_fs_enc", None) is not None:
     if _fs_enc is None or codecs.lookup(_fs_enc).name == "ascii":
         _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)  # type: ignore
-if _fs_enc is None:
-    _fs_enc = "ascii"
-else:
-    _fs_enc = codecs.lookup(_fs_enc).name
+_fs_enc = "ascii" if _fs_enc is None else codecs.lookup(_fs_enc).name
 
 
 # brz has various bits of global state that are slowly being eliminated.
@@ -218,12 +215,18 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
 
 
 def get_global_state():
+    """Get the global library state.
+
+    Returns the current global state if it exists, otherwise initializes
+    and returns a new state.
+    """
     if _global_state is None:
         return initialize()
     return _global_state
 
 
 def test_suite():
+    """Return the test suite for the breezy module."""
     import tests
 
     return tests.test_suite()

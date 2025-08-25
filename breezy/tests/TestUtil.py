@@ -29,11 +29,11 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
-    def __init__(self):
+    def __init__(self) -> None:
         logging.Handler.__init__(self)
-        self.records = []
+        self.records: list[str] = []
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         self.records.append(record.getMessage())
 
 
@@ -137,7 +137,7 @@ def _run_and_collect_case(case, res):
 class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""
 
-    suiteClass = TestSuite
+    suiteClass = TestSuite  # noqa: N815
     # Memoize test names by test class dict
     test_func_names: dict[str, list[str]] = {}
 

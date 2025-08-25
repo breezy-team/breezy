@@ -23,10 +23,11 @@ import re
 from breezy import branch as _mod_branch
 from breezy import config as _mod_config
 from breezy import osutils, urlutils
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...workingtree import WorkingTree
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class TestInit(TestCaseWithTransport):
@@ -52,7 +53,7 @@ class TestInit(TestCaseWithTransport):
         """Smoke test for constructing a format with the 'bzr' alias."""
         out, err = self.run_bzr("init --format=bzr")
         self.assertEqual(
-            "Created a standalone tree (format: {})\n".format(self._default_label), out
+            f"Created a standalone tree (format: {self._default_label})\n", out
         )
         self.assertEqual("", err)
 
@@ -97,14 +98,14 @@ Using shared repository: {}
     def test_init_branch(self):
         out, err = self.run_bzr("init")
         self.assertEqual(
-            "Created a standalone tree (format: {})\n".format(self._default_label), out
+            f"Created a standalone tree (format: {self._default_label})\n", out
         )
         self.assertEqual("", err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr("init subdir1")
         self.assertEqual(
-            "Created a standalone tree (format: {})\n".format(self._default_label), out
+            f"Created a standalone tree (format: {self._default_label})\n", out
         )
         self.assertEqual("", err)
         WorkingTree.open("subdir1")
@@ -119,7 +120,7 @@ Using shared repository: {}
         os.mkdir("subdir2")
         out, err = self.run_bzr("init subdir2")
         self.assertEqual(
-            "Created a standalone tree (format: {})\n".format(self._default_label), out
+            f"Created a standalone tree (format: {self._default_label})\n", out
         )
         self.assertEqual("", err)
         # init an existing branch.
@@ -159,8 +160,8 @@ Using shared repository: {}
         # Make sure getcwd can handle unicode filenames
         try:
             os.mkdir("mu-\xb5")
-        except UnicodeError:
-            raise TestSkipped("Unable to create Unicode filename")
+        except UnicodeError as err:
+            raise TestSkipped("Unable to create Unicode filename") from err
         # try to init unicode dir
         self.run_bzr(["init", "-q", "mu-\xb5"])
 
@@ -186,10 +187,12 @@ Using shared repository: {}
     def test_init_default_format_option(self):
         """Brz init should read default format from option default_format."""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string(b"""
+        g_store._load_from_string(
+            b"""
 [DEFAULT]
 default_format = 1.9
-""")
+"""
+        )
         g_store.save()
         out, err = self.run_brz_subprocess("init")
         self.assertContainsRe(out, b"1.9")

@@ -73,17 +73,37 @@ def natural_sort_key(file_name):
 
 
 def output_news_file_sphinx(out_file, news_file_name):
+    """Output a news file entry for Sphinx format.
+
+    Creates a toctree entry for the news file in Sphinx documentation format.
+
+    Args:
+        out_file: The output file object to write to.
+        news_file_name: Path to the news file (must end with .txt).
+
+    Raises:
+        AssertionError: If news_file_name does not have .txt extension.
+    """
     news_file_name = os.path.basename(news_file_name)
     if not news_file_name.endswith(".txt"):
         raise AssertionError(
-            "NEWS file {} does not have .txt extension.".format(news_file_name)
+            f"NEWS file {news_file_name} does not have .txt extension."
         )
     doc_name = news_file_name[:-4]
     link_text = doc_name.replace("-", " ")
-    out_file.write("   {} <{}>\n".format(link_text, doc_name))
+    out_file.write(f"   {link_text} <{doc_name}>\n")
 
 
 def output_news_file_plain(out_file, news_file_name):
+    """Output a news file in plain text format.
+
+    Reads a news file and outputs it in plain text format, processing the content
+    to convert Sphinx-style headers and remove toctree directives.
+
+    Args:
+        out_file: The output file object to write to.
+        news_file_name: Path to the news file to read and process.
+    """
     with open(news_file_name) as f:
         lines = f.readlines()
     title = os.path.basename(news_file_name)[len("brz-") : -len(".txt")]
@@ -101,6 +121,17 @@ def output_news_file_plain(out_file, news_file_name):
 
 
 def main(argv):
+    """Main entry point for the release notes generator.
+
+    Parses command line arguments and generates consolidated release notes
+    from individual NEWS files. Output format depends on the output filename:
+    - index.txt generates Sphinx toctree format
+    - other names generate plain text format
+
+    Args:
+        argv: Command line arguments list. Expected format:
+              [OUTPUT_FILE, NEWS_FILE1, NEWS_FILE2, ...]
+    """
     # Check usage
     parser = OptionParser(usage="%prog OUTPUT_FILE NEWS_FILE [NEWS_FILE ...]")
     (options, args) = parser.parse_args(argv)

@@ -128,29 +128,6 @@ cdef extern from "string.h":
 from ._str_helpers cimport _my_memrchr, safe_string_from_size
 
 
-def _py_memrchr(s, c):
-    """Just to expose _my_memrchr for testing.
-
-    :param s: The Python string to search
-    :param c: The character to search for
-    :return: The offset to the last instance of 'c' in s
-    """
-    cdef void *_s
-    cdef void *found
-    cdef int length
-    cdef char *_c
-
-    assert PyBytes_Size(c) == 1, 'Expected single character string not %r' % c
-    _c = PyBytes_AsString(c)
-    _s = PyBytes_AsString(s)
-    length = PyBytes_Size(s)
-
-    found = _my_memrchr(_s, _c[0], length)
-    if found == NULL:
-        return None
-    return <char*>found - <char*>_s
-
-
 cdef int _is_aligned(void *ptr): # cannot_raise
     """Is this pointer aligned to an integer size offset?
 
@@ -221,289 +198,6 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_
         return -1 # At the end of cur1, but not at cur2
     # We reached the end of both strings
     return 0
-
-
-def lt_by_dirs(path1, path2):
-    """Compare two paths directory by directory.
-
-    This is equivalent to doing::
-
-       operator.lt(path1.split('/'), path2.split('/'))
-
-    The idea is that you should compare path components separately. This
-    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
-    "a-b" comes after "a" but would come before "a/b" lexically.
-
-    :param path1: first path
-    :param path2: second path
-    :return: True if path1 comes first, otherwise False
-    """
-    if not PyBytes_CheckExact(path1):
-        raise TypeError("'path1' must be a bytes string, not %s: %r"
-                        % (type(path1), path1))
-    if not PyBytes_CheckExact(path2):
-        raise TypeError("'path2' must be a bytes string, not %s: %r"
-                        % (type(path2), path2))
-    return -1 == _cmp_by_dirs(PyBytes_AsString(path1),
-                              PyBytes_Size(path1),
-                              PyBytes_AsString(path2),
-                              PyBytes_Size(path2))
-
-
-def _lt_path_by_dirblock(path1, path2):
-    """Compare two paths based on what directory they are in.
-
-    This generates a sort order, such that all children of a directory are
-    sorted together, and grandchildren are in the same order as the
-    children appear. But all grandchildren come after all children.
-
-    In other words, all entries in a directory are sorted together, and
-    directories are sorted in cmp_by_dirs order.
-
-    :param path1: first path
-    :param path2: the second path
-    :return: True if path1 comes first, otherwise False.
-    """
-    if not PyBytes_CheckExact(path1):
-        raise TypeError("'path1' must be a plain string, not %s: %r"
-                        % (type(path1), path1))
-    if not PyBytes_CheckExact(path2):
-        raise TypeError("'path2' must be a plain string, not %s: %r"
-                        % (type(path2), path2))
-    # GZ 2017-06-09: This internal function really only needs lt as well.
-    return (_cmp_path_by_dirblock_intern(PyBytes_AsString(path1),
-                                         PyBytes_Size(path1),
-                                         PyBytes_AsString(path2),
-                                         PyBytes_Size(path2)) < 0)
-
-
-cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
-                                      char *path2, int path2_len): # cannot_raise
-    """Compare two paths by what directory they are in.
-
-    see ``_cmp_path_by_dirblock`` for details.
-    """
-    cdef char *dirname1
-    cdef int dirname1_len
-    cdef char *dirname2
-    cdef int dirname2_len
-    cdef char *basename1
-    cdef int basename1_len
-    cdef char *basename2
-    cdef int basename2_len
-    cdef int cur_len
-    cdef int cmp_val
-
-    if path1_len == 0 and path2_len == 0:
-        return 0
-
-    if path1 == path2 and path1_len == path2_len:
-        return 0
-
-    if path1_len == 0:
-        return -1
-
-    if path2_len == 0:
-        return 1
-
-    basename1 = <char*>_my_memrchr(path1, b'/', path1_len)
-
-    if basename1 == NULL:
-        basename1 = path1
-        basename1_len = path1_len
-        dirname1 = b''
-        dirname1_len = 0
-    else:
-        dirname1 = path1
-        dirname1_len = basename1 - path1
-        basename1 = basename1 + 1
-        basename1_len = path1_len - dirname1_len - 1
-
-    basename2 = <char*>_my_memrchr(path2, b'/', path2_len)
-
-    if basename2 == NULL:
-        basename2 = path2
-        basename2_len = path2_len
-        dirname2 = b''
-        dirname2_len = 0
-    else:
-        dirname2 = path2
-        dirname2_len = basename2 - path2
-        basename2 = basename2 + 1
-        basename2_len = path2_len - dirname2_len - 1
-
-    cmp_val = _cmp_by_dirs(dirname1, dirname1_len,
-                           dirname2, dirname2_len)
-    if cmp_val != 0:
-        return cmp_val
-
-    cur_len = basename1_len
-    if basename2_len < basename1_len:
-        cur_len = basename2_len
-
-    cmp_val = memcmp(basename1, basename2, cur_len)
-    if cmp_val != 0:
-        return cmp_val
-    if basename1_len == basename2_len:
-        return 0
-    if basename1_len < basename2_len:
-        return -1
-    return 1
-
-
-def _bisect_path_left(paths, path):
-    """Return the index where to insert path into paths.
-
-    This uses a path-wise comparison so we get::
-        a
-        a-b
-        a=b
-        a/b
-    Rather than::
-        a
-        a-b
-        a/b
-        a=b
-    :param paths: A list of paths to search through
-    :param path: A single path to insert
-    :return: An offset where 'path' can be inserted.
-    :seealso: bisect.bisect_left
-    """
-    cdef int _lo
-    cdef int _hi
-    cdef int _mid
-    cdef char *path_cstr
-    cdef int path_size
-    cdef char *cur_cstr
-    cdef int cur_size
-    cdef void *cur
-
-    if not PyList_CheckExact(paths):
-        raise TypeError("you must pass a python list for 'paths' not: %s %r"
-                        % (type(paths), paths))
-    if not PyBytes_CheckExact(path):
-        raise TypeError("you must pass a string for 'path' not: %s %r"
-                        % (type(path), path))
-
-    _hi = len(paths)
-    _lo = 0
-
-    path_cstr = PyBytes_AsString(path)
-    path_size = PyBytes_Size(path)
-
-    while _lo < _hi:
-        _mid = (_lo + _hi) // 2
-        cur = PyList_GetItem_object_void(paths, _mid)
-        cur_cstr = PyBytes_AS_STRING_void(cur)
-        cur_size = PyBytes_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock_intern(cur_cstr, cur_size,
-                                        path_cstr, path_size) < 0:
-            _lo = _mid + 1
-        else:
-            _hi = _mid
-    return _lo
-
-
-def _bisect_path_right(paths, path):
-    """Return the index where to insert path into paths.
-
-    This uses a path-wise comparison so we get::
-        a
-        a-b
-        a=b
-        a/b
-    Rather than::
-        a
-        a-b
-        a/b
-        a=b
-    :param paths: A list of paths to search through
-    :param path: A single path to insert
-    :return: An offset where 'path' can be inserted.
-    :seealso: bisect.bisect_right
-    """
-    cdef int _lo
-    cdef int _hi
-    cdef int _mid
-    cdef char *path_cstr
-    cdef int path_size
-    cdef char *cur_cstr
-    cdef int cur_size
-    cdef void *cur
-
-    if not PyList_CheckExact(paths):
-        raise TypeError("you must pass a python list for 'paths' not: %s %r"
-                        % (type(paths), paths))
-    if not PyBytes_CheckExact(path):
-        raise TypeError("you must pass a string for 'path' not: %s %r"
-                        % (type(path), path))
-
-    _hi = len(paths)
-    _lo = 0
-
-    path_cstr = PyBytes_AsString(path)
-    path_size = PyBytes_Size(path)
-
-    while _lo < _hi:
-        _mid = (_lo + _hi) // 2
-        cur = PyList_GetItem_object_void(paths, _mid)
-        cur_cstr = PyBytes_AS_STRING_void(cur)
-        cur_size = PyBytes_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock_intern(path_cstr, path_size,
-                                        cur_cstr, cur_size) < 0:
-            _hi = _mid
-        else:
-            _lo = _mid + 1
-    return _lo
-
-
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
-    """Return the index where to insert dirname into the dirblocks.
-
-    The return value idx is such that all directories blocks in dirblock[:idx]
-    have names < dirname, and all blocks in dirblock[idx:] have names >=
-    dirname.
-
-    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
-    slice of a to be searched.
-    """
-    cdef int _lo
-    cdef int _hi
-    cdef int _mid
-    cdef char *dirname_cstr
-    cdef int dirname_size
-    cdef char *cur_cstr
-    cdef int cur_size
-    cdef void *cur
-
-    if not PyList_CheckExact(dirblocks):
-        raise TypeError("you must pass a python list for 'dirblocks' not: %s %r"
-                        % (type(dirblocks), dirblocks))
-    if not PyBytes_CheckExact(dirname):
-        raise TypeError("you must pass a string for dirname not: %s %r"
-                        % (type(dirname), dirname))
-    if hi is None:
-        _hi = len(dirblocks)
-    else:
-        _hi = hi
-
-    _lo = lo
-    dirname_cstr = PyBytes_AsString(dirname)
-    dirname_size = PyBytes_Size(dirname)
-
-    while _lo < _hi:
-        _mid = (_lo + _hi) // 2
-        # Grab the dirname for the current dirblock
-        # cur = dirblocks[_mid][0]
-        cur = PyTuple_GetItem_void_void(
-                PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_cstr = PyBytes_AS_STRING_void(cur)
-        cur_size = PyBytes_GET_SIZE_void(cur)
-        if _cmp_by_dirs(cur_cstr, cur_size, dirname_cstr, dirname_size) < 0:
-            _lo = _mid + 1
-        else:
-            _hi = _mid
-    return _lo
 
 
 cdef class Reader:
@@ -796,11 +490,6 @@ cdef _pack_stat(stat_value):
     return _encode(packed)[:-1]
 
 
-def pack_stat(stat_value):
-    """Convert stat value into a packed representation quickly with pyrex"""
-    return _pack_stat(stat_value)
-
-
 cpdef update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 
@@ -964,6 +653,10 @@ cdef int _versioned_minikind(char minikind): # cannot_raise
             minikind == b't')
 
 
+cdef utf8_decode(path: bytes):
+    return codecs.utf_8_decode(path, 'surrogateescape')[0]
+
+
 cdef class ProcessEntryC:
 
     cdef int doing_consistency_expansion
@@ -1025,7 +718,6 @@ cdef class ProcessEntryC:
         else:
             self.include_unchanged = int(include_unchanged)
         self.use_filesystem_for_exec = use_filesystem_for_exec
-        self.utf8_decode = codecs.utf_8_decode
         # for all search_indexs in each path at or under each element of
         # search_specific_files, if the detail is relocated: add the id, and
         # add the relocated path as one to search if its not searched already.
@@ -1267,21 +959,21 @@ cdef class ProcessEntryC:
                 if old_path is None:
                     path = self.pathjoin(old_dirname, old_basename)
                     old_path = path
-                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
+                    old_path_u = utf8_decode(old_path)
                     path_u = old_path_u
                 else:
-                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
+                    old_path_u = utf8_decode(old_path)
                     if old_path == path:
                         path_u = old_path_u
                     else:
-                        path_u = self.utf8_decode(path, 'surrogateescape')[0]
+                        path_u = utf8_decode(path)
                 source_kind = _minikind_to_kind(source_minikind)
                 return InventoryTreeChange(entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
                        (source_parent_id, target_parent_id),
-                       (self.utf8_decode(old_basename, 'surrogateescape')[0], self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (utf8_decode(old_basename), utf8_decode(entry[0][1])),
                        (source_kind, target_kind),
                        (source_exec, target_exec)), changed
         elif source_minikind == b'a' and _versioned_minikind(target_minikind):
@@ -1310,21 +1002,21 @@ cdef class ProcessEntryC:
                 else:
                     target_exec = target_details[3]
                 return InventoryTreeChange(entry[0][2],
-                       (None, self.utf8_decode(path, 'surrogateescape')[0]),
+                       (None, utf8_decode(path)),
                        True,
                        (False, True),
                        (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (None, utf8_decode(entry[0][1])),
                        (None, path_info[2]),
                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return InventoryTreeChange(entry[0][2],
-                       (None, self.utf8_decode(path, 'surrogateescape')[0]),
+                       (None, utf8_decode(path)),
                        False,
                        (False, True),
                        (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
+                       (None, utf8_decode(entry[0][1])),
                        (None, None),
                        (None, False)), True
         elif _versioned_minikind(source_minikind) and target_minikind == b'a':
@@ -1339,11 +1031,11 @@ cdef class ProcessEntryC:
                 parent_id = None
             return InventoryTreeChange(
                    entry[0][2],
-                   (self.utf8_decode(old_path, 'surrogateescape')[0], None),
+                   (utf8_decode(old_path), None),
                    True,
                    (True, False),
                    (parent_id, None),
-                   (self.utf8_decode(entry[0][1], 'surrogateescape')[0], None),
+                   (utf8_decode(entry[0][1]), None),
                    (_minikind_to_kind(source_minikind), None),
                    (source_details[3], None)), True
         elif _versioned_minikind(source_minikind) and target_minikind == b'r':
@@ -1391,7 +1083,7 @@ cdef class ProcessEntryC:
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                osutils.parent_directories(new_path.encode('utf8')))
+                [p.encode('utf-8') for p in osutils.parent_directories(new_path)])
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')
@@ -1641,7 +1333,7 @@ cdef class ProcessEntryC:
                         if self.want_unversioned:
                             if current_path_info[2] == 'directory':
                                 if self.tree._directory_is_tree_reference(
-                                    self.utf8_decode(current_path_info[0], 'surrogateescape')[0]):
+                                    utf8_decode(current_path_info[0])):
                                     current_path_info = current_path_info[:2] + \
                                         ('tree-reference',) + current_path_info[3:]
                             new_executable = bool(
@@ -1649,11 +1341,11 @@ cdef class ProcessEntryC:
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
                             return InventoryTreeChange(
                                 None,
-                                (None, self.utf8_decode(current_path_info[0], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[0])),
                                 True,
                                 (False, False),
                                 (None, None),
-                                (None, self.utf8_decode(current_path_info[1], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[1])),
                                 (None, current_path_info[2]),
                                 (None, new_executable))
                     # This dir info has been handled, go to the next
@@ -1706,7 +1398,7 @@ cdef class ProcessEntryC:
 
     cdef object _maybe_tree_ref(self, current_path_info):
         if self.tree._directory_is_tree_reference(
-            self.utf8_decode(current_path_info[0], 'surrogateescape')[0]):
+            utf8_decode(current_path_info[0])):
             return current_path_info[:2] + \
                 ('tree-reference',) + current_path_info[3:]
         else:
@@ -1809,7 +1501,7 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            relpath_unicode = self.utf8_decode(current_path_info[0], 'surrogateescape')[0]
+                            relpath_unicode = utf8_decode(current_path_info[0])
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
@@ -1819,7 +1511,7 @@ cdef class ProcessEntryC:
                                 True,
                                 (False, False),
                                 (None, None),
-                                (None, self.utf8_decode(current_path_info[1], 'surrogateescape')[0]),
+                                (None, utf8_decode(current_path_info[1])),
                                 (None, current_path_info[2]),
                                 (None, new_executable))
                             changed = True

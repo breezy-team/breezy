@@ -384,7 +384,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
         branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(), format=format)
-        self.assertTrue(isinstance(branch, SampleBranch))
+        self.assertIsInstance(branch, SampleBranch)
 
     def test_create_branch_and_repo_under_shared(self):
         # creating a branch and repo in a shared repo uses the
@@ -577,13 +577,13 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         old_fmt = controldir.format_registry.make_controldir("pack-0.92")
         repo_name = old_fmt.repository_format.network_name()
         # Should end up with a 1.9 format (stackable)
-        repo, control, require_stacking, repo_policy = (
-            old_fmt.initialize_on_transport_ex(
-                t,
-                repo_format_name=repo_name,
-                stacked_on="../trunk",
-                stack_on_pwd=t.base,
-            )
+        (
+            repo,
+            control,
+            require_stacking,
+            repo_policy,
+        ) = old_fmt.initialize_on_transport_ex(
+            t, repo_format_name=repo_name, stacked_on="../trunk", stack_on_pwd=t.base
         )
         if repo is not None:
             # Repositories are open write-locked
@@ -738,9 +738,12 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_branch_or_repository_all(self):
         self.make_branch_and_tree("topdir")
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("topdir/foo")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("topdir/foo")
         self.assertEqual(os.path.realpath("topdir"), os.path.realpath(tree.basedir))
         self.assertEqual(os.path.realpath("topdir"), self.local_branch_path(branch))
         self.assertEqual(
@@ -751,9 +754,12 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_branch_or_repository_no_tree(self):
         self.make_branch("branch")
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("branch/foo")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("branch/foo")
         self.assertEqual(tree, None)
         self.assertEqual(os.path.realpath("branch"), self.local_branch_path(branch))
         self.assertEqual(
@@ -764,9 +770,12 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_branch_or_repository_repo(self):
         self.make_repository("repo")
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("repo")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("repo")
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
@@ -778,9 +787,12 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_containing_tree_branch_or_repository_shared_repo(self):
         self.make_repository("shared", shared=True)
         bzrdir.BzrDir.create_branch_convenience("shared/branch", force_new_tree=False)
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("shared/branch")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("shared/branch")
         self.assertEqual(tree, None)
         self.assertEqual(
             os.path.realpath("shared/branch"), self.local_branch_path(branch)
@@ -794,9 +806,12 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_containing_tree_branch_or_repository_branch_subdir(self):
         self.make_branch_and_tree("foo")
         self.build_tree(["foo/bar/"])
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("foo/bar")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("foo/bar")
         self.assertEqual(os.path.realpath("foo"), os.path.realpath(tree.basedir))
         self.assertEqual(os.path.realpath("foo"), self.local_branch_path(branch))
         self.assertEqual(
@@ -808,9 +823,12 @@ class ChrootedTests(TestCaseWithTransport):
     def test_open_containing_tree_branch_or_repository_repo_subdir(self):
         self.make_repository("bar")
         self.build_tree(["bar/baz/"])
-        tree, branch, repo, relpath = (
-            bzrdir.BzrDir.open_containing_tree_branch_or_repository("bar/baz")
-        )
+        (
+            tree,
+            branch,
+            repo,
+            relpath,
+        ) = bzrdir.BzrDir.open_containing_tree_branch_or_repository("bar/baz")
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
@@ -860,7 +878,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             "topdir/foo"
         )
-        self.assertIs(tree, None)
+        self.assertIsNone(tree)
         self.assertEqual(os.path.realpath("topdir/foo"), self.local_branch_path(branch))
         self.assertEqual("", relpath)
 
@@ -878,7 +896,7 @@ class ChrootedTests(TestCaseWithTransport):
         # without a tree:
         self.make_branch("topdir/foo")
         tree, branch = bzrdir.BzrDir.open_tree_or_branch("topdir/foo")
-        self.assertIs(tree, None)
+        self.assertIsNone(tree)
         self.assertEqual(os.path.realpath("topdir/foo"), self.local_branch_path(branch))
 
     def test_open_tree_or_branch_named(self):
@@ -1002,9 +1020,10 @@ class ChrootedTests(TestCaseWithTransport):
     def test_find_controldirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
         t = self.get_transport()
-        path_filter_server, path_filter_transport = (
-            self.make_fake_permission_denied_transport(t, ["foo"])
-        )
+        (
+            path_filter_server,
+            path_filter_transport,
+        ) = self.make_fake_permission_denied_transport(t, ["foo"])
         # local transport
         self.assertBranchUrlsEndWith(
             "/baz/", bzrdir.BzrDir.find_controldirs(path_filter_transport)
@@ -1113,13 +1132,13 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         """
         mydir = controldir.format_registry.make_controldir("knit")
         self.assertEqual(mydir, mydir)
-        self.assertFalse(mydir != mydir)
+        self.assertEqual(mydir, mydir)
         otherdir = controldir.format_registry.make_controldir("knit")
         self.assertEqual(otherdir, mydir)
-        self.assertFalse(otherdir != mydir)
+        self.assertEqual(otherdir, mydir)
         otherdir2 = controldir.format_registry.make_controldir("development-subtree")
         self.assertNotEqual(otherdir2, mydir)
-        self.assertFalse(otherdir2 == mydir)
+        self.assertNotEqual(otherdir2, mydir)
 
     def test_with_features(self):
         tree = self.make_branch_and_tree("tree", format="2a")
@@ -1267,7 +1286,7 @@ class TestHTTPRedirections(
     _transport = HttpTransport
 
     def _qualified_url(self, host, port):
-        result = "http://{}:{}".format(host, port)
+        result = f"http://{host}:{port}"
         self.permit_url(result)
         return result
 
@@ -1280,7 +1299,7 @@ class TestHTTPRedirections_nosmart(
     _transport = NoSmartTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = "nosmart+http://{}:{}".format(host, port)
+        result = f"nosmart+http://{host}:{port}"
         self.permit_url(result)
         return result
 
@@ -1293,7 +1312,7 @@ class TestHTTPRedirections_readonly(
     _transport = ReadonlyTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = "readonly+http://{}:{}".format(host, port)
+        result = f"readonly+http://{host}:{port}"
         self.permit_url(result)
         return result
 
@@ -1306,7 +1325,7 @@ class TestDotBzrHidden(TestCaseWithTransport):
     def get_ls(self):
         f = subprocess.Popen(self.ls, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = f.communicate()
-        self.assertEqual(0, f.returncode, "Calling {} failed: {}".format(self.ls, err))
+        self.assertEqual(0, f.returncode, f"Calling {self.ls} failed: {err}")
         return out.splitlines()
 
     def test_dot_bzr_hidden(self):

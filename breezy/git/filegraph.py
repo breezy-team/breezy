@@ -17,6 +17,7 @@
 
 """File graph access."""
 
+import contextlib
 import posixpath
 import stat
 
@@ -29,11 +30,31 @@ from .mapping import encode_git_path
 
 
 class GitFileLastChangeScanner:
+    """Scanner for finding the last change revision of files in Git repositories."""
+
     def __init__(self, repository):
+        """Initialize the scanner with a repository.
+
+        Args:
+            repository: The repository to scan.
+        """
         self.repository = repository
         self.store = self.repository._git.object_store
 
     def find_last_change_revision(self, path, commit_id):
+        """Find the last commit that changed a given path.
+
+        Args:
+            path: The path to check (as bytes).
+            commit_id: The commit to start searching from.
+
+        Returns:
+            tuple: (store, path, commit_id) of the last change.
+
+        Raises:
+            TypeError: If path is not bytes.
+            AssertionError: If the path doesn't exist in the commit.
+        """
         if not isinstance(path, bytes):
             raise TypeError(path)
         store = self.store
@@ -59,9 +80,7 @@ class GitFileLastChangeScanner:
             else:
                 break
         if target_mode is None:
-            raise AssertionError(
-                "sha {!r} for {!r} in {!r}".format(target_sha, path, commit_id)
-            )
+            raise AssertionError(f"sha {target_sha!r} for {path!r} in {commit_id!r}")
         while True:
             parent_commits = []
             for parent_id in commit.parents:
@@ -94,7 +113,14 @@ class GitFileLastChangeScanner:
 
 
 class GitFileParentProvider:
+    """Provider for file parent information in Git repositories."""
+
     def __init__(self, change_scanner):
+        """Initialize the parent provider.
+
+        Args:
+            change_scanner: GitFileLastChangeScanner instance to use.
+        """
         self.change_scanner = change_scanner
         self.store = self.change_scanner.repository._git.object_store
 
@@ -104,14 +130,16 @@ class GitFileParentProvider:
         )
         try:
             path = encode_git_path(mapping.parse_file_id(file_id))
-        except ValueError:
-            raise KeyError(file_id)
+        except ValueError as err:
+            raise KeyError(file_id) from err
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (store, path, text_parent) = (
-                    self.change_scanner.find_last_change_revision(path, commit_parent)
-                )
+                (
+                    store,
+                    path,
+                    text_parent,
+                ) = self.change_scanner.find_last_change_revision(path, commit_parent)
             except KeyError:
                 continue
             if text_parent not in text_parents:
@@ -124,6 +152,17 @@ class GitFileParentProvider:
         )
 
     def get_parent_map(self, keys):
+        """Get parent map for given file keys.
+
+        Args:
+            keys: List of (file_id, text_revision) tuples.
+
+        Returns:
+            dict: Mapping from keys to their parent tuples.
+
+        Raises:
+            TypeError: If file_id or text_revision are not bytes.
+        """
         ret = {}
         for key in keys:
             (file_id, text_revision) = key
@@ -134,8 +173,6 @@ class GitFileParentProvider:
                 raise TypeError(file_id)
             if not isinstance(text_revision, bytes):
                 raise TypeError(text_revision)
-            try:
+            with contextlib.suppress(KeyError):
                 ret[key] = self._get_parents(file_id, text_revision)
-            except KeyError:
-                pass
         return ret

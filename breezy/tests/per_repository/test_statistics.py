@@ -58,6 +58,6 @@ class TestGatherStats(TestCaseWithRepository):
         # now ask for global repository stats.
         stats = tree.branch.repository.gather_stats()
         self.assertEqual(0, stats["revisions"])
-        self.assertFalse("committers" in stats)
-        self.assertFalse("firstrev" in stats)
-        self.assertFalse("latestrev" in stats)
+        self.assertNotIn("committers", stats)
+        self.assertNotIn("firstrev", stats)
+        self.assertNotIn("latestrev", stats)

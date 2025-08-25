@@ -70,9 +70,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError(
-            "don't know how to export {{{}}} of kind {!r}".format(
-                final_path, entry.kind
-            )
+            f"don't know how to export {{{final_path}}} of kind {entry.kind!r}"
         )
     return (item, fileobj)
 
@@ -84,16 +82,16 @@ def tarball_generator(
 
     Args:
       tree: Tree to export
+      root: Root directory to export
       subdir: Sub directory to export
       force_mtime: Option mtime to force, instead of using tree
         timestamps.
+      format: Tarball format to use (tgz, tar, tbz, etc)
+      recurse_nested: Whether to recurse into nested trees.
     Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
-    with (
-        closing(tarfile.open(None, "w:{}".format(format), buf)) as ball,
-        tree.lock_read(),
-    ):
+    with closing(tarfile.open(None, f"w:{format}", buf)) as ball, tree.lock_read():
         for final_path, tree_path, entry in _export_iter_entries(
             tree, subdir, recurse_nested=recurse_nested
         ):
@@ -175,6 +173,19 @@ def plain_tar_generator(
 
 
 def tar_xz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=False):
+    """Generate a tar file compressed with xz.
+
+    Args:
+        tree: The tree to archive.
+        dest: Destination for the archive.
+        root: Root directory in the archive.
+        subdir: Subdirectory to archive.
+        force_mtime: Optional modification time to force.
+        recurse_nested: Whether to recurse into nested trees.
+
+    Returns:
+        Generator yielding tar.xz archive data.
+    """
     return tar_lzma_generator(
         tree, dest, root, subdir, force_mtime, "xz", recurse_nested=recurse_nested
     )

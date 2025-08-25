@@ -17,8 +17,10 @@
 
 import os.path
 
-from breezy.iterablefile import IterableFile
-from breezy.patches import (
+from breezy.tests import TestCase, TestCaseWithTransport
+
+from ..osutils import IterableFile
+from ..patches import (
     NO_NL,
     AppliedPatches,
     BinaryFiles,
@@ -33,13 +35,13 @@ from breezy.patches import (
     difference_index,
     get_patch_names,
     hunk_from_header,
+    iter_lines_handle_nl,
     iter_patched,
     iter_patched_from_hunks,
     parse_line,
     parse_patch,
     parse_patches,
 )
-from breezy.tests import TestCase, TestCaseWithTransport
 
 
 class PatchesTester(TestCase):
@@ -56,9 +58,9 @@ class PatchesTester(TestCase):
     def test_parse_patches_leading_noise(self):
         # https://bugs.launchpad.net/bzr/+bug/502076
         lines = [
-            b"diff -pruN commands.py",
-            b"--- orig/commands.py",
-            b"+++ mod/dommands.py",
+            b"diff -pruN commands.py\n",
+            b"--- orig/commands.py\n",
+            b"+++ mod/dommands.py\n",
         ]
         list(parse_patches(iter(lines), allow_dirty=True))
 
@@ -73,9 +75,7 @@ class PatchesTester(TestCase):
             b"--- orig/another.py\n",
             b"+++ mod/another.py\n",
         ]
-        patches = list(
-            parse_patches(lines.__iter__(), allow_dirty=True, keep_dirty=True)
-        )
+        patches = list(parse_patches(iter(lines), allow_dirty=True, keep_dirty=True))
         self.assertLength(2, patches)
         self.assertEqual(
             patches[0]["dirty_head"],
@@ -96,27 +96,40 @@ class PatchesTester(TestCase):
             [b"--- orig/another.py\n", b"+++ mod/another.py\n"],
         )
 
+    def test_get_patches_reads_limited(self):
+        lines = (
+            b"--- orig/commands.py\t2020-09-09 23:39:35 +0000\n"
+            b"+++ mod/dommands.py\t2020-09-09 23:39:35 +0000\n"
+            b"other\n"
+            b"foo\n"
+        ).splitlines(True)
+        i = iter(lines)
+        (orig, mod) = get_patch_names(i)
+        self.assertEqual(orig, (b"orig/commands.py", b"2020-09-09 23:39:35 +0000"))
+        self.assertEqual(mod, (b"mod/dommands.py", b"2020-09-09 23:39:35 +0000"))
+        self.assertEqual([b"other\n", b"foo\n"], list(i))
+
     def testValidPatchHeader(self):
         """Parse a valid patch header."""
         lines = (
             b"--- orig/commands.py\t2020-09-09 23:39:35 +0000\n"
             b"+++ mod/dommands.py\t2020-09-09 23:39:35 +0000\n"
-        ).split(b"\n")
+        ).splitlines(True)
         (orig, mod) = get_patch_names(lines.__iter__())
         self.assertEqual(orig, (b"orig/commands.py", b"2020-09-09 23:39:35 +0000"))
         self.assertEqual(mod, (b"mod/dommands.py", b"2020-09-09 23:39:35 +0000"))
 
     def testValidPatchHeaderMissingTimestamps(self):
         """Parse a valid patch header."""
-        lines = b"--- orig/commands.py\n+++ mod/dommands.py\n".split(b"\n")
-        (orig, mod) = get_patch_names(lines.__iter__())
+        lines = b"--- orig/commands.py\n+++ mod/dommands.py\n".splitlines(True)
+        (orig, mod) = get_patch_names(iter(lines))
         self.assertEqual(orig, (b"orig/commands.py", None))
         self.assertEqual(mod, (b"mod/dommands.py", None))
 
     def testInvalidPatchHeader(self):
         """Parse an invalid patch header."""
-        lines = b"-- orig/commands.py\n+++ mod/dommands.py".split(b"\n")
-        self.assertRaises(MalformedPatchHeader, get_patch_names, lines.__iter__())
+        lines = b"-- orig/commands.py\n+++ mod/dommands.py".splitlines(True)
+        self.assertRaises(MalformedPatchHeader, get_patch_names, iter(lines))
 
     def testValidHunkHeader(self):
         """Parse a valid hunk header."""
@@ -179,12 +192,12 @@ class PatchesTester(TestCase):
         self.makeMalformedLine(b"hello\n")
 
     def testMalformedLineNO_NL(self):
-        r"""Parse invalid '\\ No newline at end of file' in hunk lines."""
+        r"""Parse invalid '\ No newline at end of file' in hunk lines."""
         self.makeMalformedLine(NO_NL)
 
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
-        patch = parse_patch(lines.__iter__())
+        patch = parse_patch(iter(lines))
         pstr = patch.as_bytes()
         i = difference_index(patchtext, pstr)
         if i is not None:
@@ -245,7 +258,7 @@ class PatchesTester(TestCase):
                 removals.append(orig[i])
                 continue
             self.assertEqual(mod[mod_pos], orig[i])
-        rem_iter = removals.__iter__()
+        rem_iter = iter(removals)
         for hunk in patch.hunks:
             for line in hunk.lines:
                 if isinstance(line, RemoveLine):
@@ -394,3 +407,10 @@ class AppliedPatchesTests(TestCaseWithTransport):
         )
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertEqual(b"b\n", newtree.get_file_text("b"))
+
+
+class IterLinesHandleNlTests(TestCase):
+    def test_simple(self):
+        self.assertEqual(
+            [b"a\n", b"b\n"], list(iter_lines_handle_nl(iter([b"a\n", b"b\n"])))
+        )

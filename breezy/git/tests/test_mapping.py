@@ -121,12 +121,15 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = b"Author"
-        c.id  # noqa: B018
+        try:
+            c.id  # noqa: B018
+        except TypeError:  # old version of dulwich
+            self.skipTest("dulwich too old")
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr
         )
-        self.assertIs(rev.message, None)
+        self.assertEqual(rev.message, "")
 
     def test_unknown_encoding(self):
         c = Commit()
@@ -167,7 +170,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties["author"])
         self.assertEqual("iso8859-1", rev.properties["git-explicit-encoding"])
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_explicit_encoding_false(self):
         c = Commit()
@@ -188,7 +191,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties["author"])
         self.assertEqual("false", rev.properties["git-explicit-encoding"])
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_implicit_encoding_fallback(self):
         c = Commit()
@@ -208,7 +211,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties["author"])
         self.assertEqual("latin1", rev.properties["git-implicit-encoding"])
-        self.assertTrue("git-explicit-encoding" not in rev.properties)
+        self.assertNotIn("git-explicit-encoding", rev.properties)
 
     def test_implicit_encoding_utf8(self):
         c = Commit()
@@ -227,8 +230,8 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties["author"])
-        self.assertTrue("git-explicit-encoding" not in rev.properties)
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-explicit-encoding", rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_unknown_extra(self):
         c = Commit()
@@ -351,69 +354,87 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r = Revision(
             self.mapping.revision_id_foreign_to_bzr(
                 b"edf99e6c56495c620f20d5dacff9859ff7119261"
-            )
+            ),
+            message="MyCommitMessage",
+            parent_ids=[],
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            properties={},
+            inventory_sha1=None,
         )
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
-        r.properties = {}
         self.assertRoundtripRevision(r)
 
     def test_revision_id(self):
-        r = Revision(b"myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
-        r.properties = {}
+        r = Revision(
+            b"myrevid",
+            message="MyCommitMessage",
+            parent_ids=[],
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            properties={},
+            inventory_sha1=None,
+        )
         self.assertRoundtripRevision(r)
 
     def test_ghost_parent(self):
-        r = Revision(b"myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = [b"iamaghost"]
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
-        r.properties = {}
+        r = Revision(
+            b"myrevid",
+            message="MyCommitMessage",
+            parent_ids=[b"iamaghost"],
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            properties={},
+            inventory_sha1=None,
+        )
         self.assertRoundtripRevision(r)
 
     def test_custom_property(self):
-        r = Revision(b"myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.properties = {"fool": "bar"}
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
+        r = Revision(
+            b"myrevid",
+            message="MyCommitMessage",
+            parent_ids=[],
+            properties={"fool": "bar"},
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            inventory_sha1=None,
+        )
         self.assertRoundtripRevision(r)
 
     def test_multiple_authors(self):
-        r = Revision(b"myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.properties = {
-            "authors": "Jelmer Vernooij <jelmer@jelmer.uk>\nAlex <alexa@example.com>"
-        }
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
+        r = Revision(
+            b"myrevid",
+            message="MyCommitMessage",
+            parent_ids=[],
+            properties={
+                "authors": "Jelmer Vernooij <jelmer@jelmer.uk>\n"
+                "Alex <alexa@example.com>"
+            },
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            inventory_sha1=None,
+        )
         c = self.assertRoundtripRevision(r)
         self.assertEqual(c.author, b"Jelmer Vernooij <jelmer@jelmer.uk>")
 
     def test_multiple_authors_comma(self):
-        r = Revision(b"myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.properties = {
-            "authors": "Jelmer Vernooij <jelmer@jelmer.uk>, Alex <alexa@example.com>"
-        }
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
+        r = Revision(
+            b"myrevid",
+            message="MyCommitMessage",
+            parent_ids=[],
+            properties={
+                "authors": "Jelmer Vernooij <jelmer@jelmer.uk>, "
+                "Alex <alexa@example.com>"
+            },
+            committer="Jelmer Vernooij <jelmer@apache.org>",
+            timestamp=453543543,
+            timezone=0,
+            inventory_sha1=None,
+        )
         c = self.assertRoundtripRevision(r)
         self.assertEqual(c.author, b"Jelmer Vernooij <jelmer@jelmer.uk>")
 

@@ -19,7 +19,7 @@
 from io import BytesIO
 
 from ... import conflicts as _mod_conflicts
-from ... import errors, lock, osutils
+from ... import errors, lock
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
 from ...bzr import conflicts as _mod_bzr_conflicts
@@ -27,11 +27,28 @@ from ...bzr import inventory, xml5
 from ...bzr import transform as bzr_transform
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree
-from ...transport.local import LocalTransport
+from ...transport.local import LocalTransport, file_kind
 from ...workingtree import WorkingTreeFormat
 
 
 def get_conflicted_stem(path):
+    """Extract the base filename from a conflict file path.
+
+    Conflict files have special suffixes like .THIS, .OTHER, .BASE etc.
+    This function removes those suffixes to get the original filename.
+
+    Args:
+        path: File path that may have a conflict suffix
+
+    Returns:
+        str: The path without conflict suffix, or None if no suffix found
+
+    Example:
+        >>> get_conflicted_stem('file.txt.THIS')
+        'file.txt'
+        >>> get_conflicted_stem('file.txt')
+        None
+    """
     for suffix in _mod_bzr_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[: -len(suffix)]
@@ -55,20 +72,33 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     ignore_filename = ".bzrignore"
 
+    supports_setting_file_ids = True
+    """If this format allows setting the file id."""
+
     def get_format_description(self):
-        """See WorkingTreeFormat.get_format_description()."""
+        """Get a human-readable description of this format.
+
+        Returns:
+            str: "Working tree format 2"
+        """
         return "Working tree format 2"
 
     def _stub_initialize_on_transport(self, transport, file_mode):
-        """Workaround: create control files for a remote working tree.
+        """Create minimal control files for a remote working tree.
 
-        This ensures that it can later be updated and dealt with locally,
-        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
-        no working tree.  (See bug #43064).
+        This is a workaround that ensures remote directories can later be
+        updated and dealt with locally, since BzrDirFormat6 and BzrDirFormat5
+        cannot represent directories with no working tree. (See bug #43064).
+
+        Creates an empty inventory and pending-merges file.
+
+        Args:
+            transport: Transport to create files on
+            file_mode: Unix file mode for created files
         """
         sio = BytesIO()
         inv = inventory.Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         transport.put_file("inventory", sio, file_mode)
         transport.put_bytes("pending-merges", b"", file_mode)
@@ -84,10 +114,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_controldir.transport.base)
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_controldir.open_branch()
+        branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
         with branch.lock_write():
@@ -117,8 +144,12 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
     def __init__(self):
+        """Initialize the working tree format.
+
+        Sets up format 2 to work with BzrDirFormat6 control directories.
+        """
         super().__init__()
-        from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        from .bzrdir import BzrDirFormat6
 
         self._matchingcontroldir = BzrDirFormat6()
 
@@ -152,6 +183,16 @@ class WorkingTree2(PreDirStateWorkingTree):
     """
 
     def __init__(self, basedir, *args, **kwargs):
+        """Initialize a format 2 working tree.
+
+        Format 2 working trees require that self._inventory always exists,
+        so this constructor ensures the inventory is loaded if not already present.
+
+        Args:
+            basedir: Base directory of the working tree
+            *args: Additional positional arguments for parent class
+            **kwargs: Additional keyword arguments for parent class
+        """
         super().__init__(basedir, *args, **kwargs)
         # WorkingTree2 has more of a constraint that self._inventory must
         # exist. Because this is an older format, we don't mind the overhead
@@ -163,7 +204,12 @@ class WorkingTree2(PreDirStateWorkingTree):
             self.read_working_inventory()
 
     def _get_check_refs(self):
-        """Return the references needed to perform a check of this tree."""
+        """Get references needed to check the integrity of this tree.
+
+        Returns:
+            list: A list of (ref_type, ref_id) tuples, where ref_type is 'trees'
+                and ref_id is the last revision of this tree
+        """
         return [("trees", self.last_revision())]
 
     def lock_tree_write(self):
@@ -184,6 +230,18 @@ class WorkingTree2(PreDirStateWorkingTree):
             raise
 
     def unlock(self):
+        """Unlock the working tree.
+
+        Since format 2 shares control files with the branch, this reverses
+        the locking order used in lock_tree_write(). If this is the last
+        lock reference, it also:
+        - Performs implementation cleanup
+        - Flushes any modified inventory
+        - Writes dirty hash cache
+
+        Returns:
+            The result of unlocking the control files
+        """
         # we share control files:
         if self._control_files._lock_count == 3:
             # do non-implementation specific cleanup
@@ -200,6 +258,14 @@ class WorkingTree2(PreDirStateWorkingTree):
             self.branch.unlock()
 
     def _iter_conflicts(self):
+        """Iterate over files in conflict.
+
+        Identifies files that have conflict markers by looking for files
+        with conflict suffixes (.THIS, .OTHER, etc.).
+
+        Yields:
+            str: Base filenames (without suffixes) of conflicted files
+        """
         conflicted = set()
         for path, _file_class, _file_kind, _entry in self.list_files():
             stem = get_conflicted_stem(path)
@@ -210,19 +276,28 @@ class WorkingTree2(PreDirStateWorkingTree):
                 yield stem
 
     def conflicts(self):
+        """Get the list of conflicts in the working tree.
+
+        Detects conflicts by looking for files with conflict suffixes.
+        Determines whether each conflict is a text conflict (all files exist
+        and are regular files) or a contents conflict.
+
+        Returns:
+            ConflictList: List of Conflict objects representing current conflicts
+        """
         with self.lock_read():
             conflicts = _mod_conflicts.ConflictList()
             for conflicted in self._iter_conflicts():
                 text = True
                 try:
-                    if osutils.file_kind(self.abspath(conflicted)) != "file":
+                    if file_kind(self.abspath(conflicted)) != "file":
                         text = False
                 except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in (".THIS", ".OTHER"):
                         try:
-                            kind = osutils.file_kind(self.abspath(conflicted + suffix))
+                            kind = file_kind(self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
                         except _mod_transport.NoSuchFile:
@@ -238,7 +313,29 @@ class WorkingTree2(PreDirStateWorkingTree):
             return conflicts
 
     def set_conflicts(self, arg):
+        """Set the list of conflicts.
+
+        Format 2 does not support explicitly setting conflicts - they are
+        detected by the presence of conflict marker files.
+
+        Args:
+            arg: New conflict list (unused)
+
+        Raises:
+            UnsupportedOperation: Always raised as format 2 doesn't support this
+        """
         raise errors.UnsupportedOperation(self.set_conflicts, self)
 
     def add_conflicts(self, arg):
+        """Add conflicts to the working tree.
+
+        Format 2 does not support explicitly adding conflicts - they are
+        detected by the presence of conflict marker files.
+
+        Args:
+            arg: Conflicts to add (unused)
+
+        Raises:
+            UnsupportedOperation: Always raised as format 2 doesn't support this
+        """
         raise errors.UnsupportedOperation(self.add_conflicts, self)

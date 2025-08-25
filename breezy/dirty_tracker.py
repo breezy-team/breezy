@@ -68,15 +68,29 @@ class DirtyTracker:
     _process: _Process
 
     def __init__(self, tree: WorkingTree, subpath: str = ".") -> None:
+        """Initialize the DirtyTracker.
+
+        Args:
+            tree: The working tree to track changes in.
+            subpath: The subdirectory to track (default is root ".").
+        """
         self._tree = tree
         self._subpath = subpath
 
     def __enter__(self):
+        """Enter the context manager and start tracking changes.
+
+        Returns:
+            Self instance for context manager usage.
+
+        Raises:
+            TooManyOpenFiles: If the system limit for open files is reached.
+        """
         try:
             self._wm = WatchManager()
         except OSError as e:
             if "EMFILE" in e.args[0]:
-                raise TooManyOpenFiles()
+                raise TooManyOpenFiles() from e
             raise
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)
@@ -96,6 +110,16 @@ class DirtyTracker:
         return self
 
     def __exit__(self, exc_val, exc_typ, exc_tb):
+        """Exit the context manager and stop tracking changes.
+
+        Args:
+            exc_val: Exception value if an exception occurred.
+            exc_typ: Exception type if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False to propagate any exception that occurred.
+        """
         self._wdd.clear()
         self._wm.close()
         return False

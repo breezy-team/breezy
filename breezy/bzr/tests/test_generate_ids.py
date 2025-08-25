@@ -60,13 +60,13 @@ class TestFileIds(tests.TestCase):
         # Test both case squashing and length restriction
         fid = gen_file_id("A" * 50 + ".txt")
         self.assertStartsWith(fid, b"a" * 20 + b"-")
-        self.assertTrue(len(fid) < 60)
+        self.assertLess(len(fid), 60)
 
         # restricting length happens after the other actions, so
         # we preserve as much as possible
         fid = gen_file_id("\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz")
         self.assertStartsWith(fid, b"abcdefghijklmnopqrst-")
-        self.assertTrue(len(fid) < 60)
+        self.assertLess(len(fid), 60)
 
     def test_file_ids_are_ascii(self):
         tail = rb"-\d{14}-[a-z0-9]{16}-\d+"
@@ -75,29 +75,11 @@ class TestFileIds(tests.TestCase):
         self.assertGenFileId(b"bar" + tail, "bar")
         self.assertGenFileId(b"br" + tail, "b\xe5r")
 
-    def test__next_id_suffix_sets_suffix(self):
-        generate_ids._gen_file_id_suffix = None
-        generate_ids._next_id_suffix()
-        self.assertNotEqual(None, generate_ids._gen_file_id_suffix)
-
     def test__next_id_suffix_increments(self):
-        generate_ids._gen_file_id_suffix = b"foo-"
-        generate_ids._gen_file_id_serial = 1
-        try:
-            self.assertEqual(b"foo-2", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-3", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-4", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-5", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-6", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-7", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-8", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-9", generate_ids._next_id_suffix())
-            self.assertEqual(b"foo-10", generate_ids._next_id_suffix())
-        finally:
-            # Reset so that all future ids generated in the test suite
-            # don't end in 'foo-XXX'
-            generate_ids._gen_file_id_suffix = None
-            generate_ids._gen_file_id_serial = 0
+        ids = [generate_ids._next_id_suffix(suffix="foo-") for i in range(10)]
+        ns = [int(id.split(b"-")[-1]) for id in ids]
+        for i in range(1, len(ns)):
+            self.assertEqual(ns[i] - 1, ns[i - 1])
 
     def test_gen_root_id(self):
         # Mostly just make sure gen_root_id() exists

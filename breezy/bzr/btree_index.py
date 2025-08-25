@@ -24,7 +24,6 @@ from ..lazy_import import lazy_import
 lazy_import(
     globals(),
     """
-import bisect
 import math
 import tempfile
 import zlib
@@ -81,7 +80,7 @@ class _BuilderRow:
         remainder = (self.spool.tell() + skipped_bytes) % _PAGE_SIZE
         if remainder != 0:
             raise AssertionError(
-                f"incorrect node length: {self.spool.tell()}, {remainder}"
+                "incorrect node length: %d, %d" % (self.spool.tell(), remainder)
             )
         self.nodes += 1
         self.writer = None
@@ -157,7 +156,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \\0 or \\n.
+            bytes as long as it does not contain \0 or \n.
         """
         # Ensure that 'key' is a tuple.
         key = tuple(key)
@@ -200,8 +199,8 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
             if len(self._backing_indices) == backing_pos:
                 self._backing_indices.append(None)
             self._backing_indices[backing_pos] = new_backing
-            for bp in range(backing_pos):
-                self._backing_indices[bp] = None
+            for backing_pos in range(backing_pos):  # noqa: B020
+                self._backing_indices[backing_pos] = None
         else:
             self._backing_indices.append(new_backing)
         self._nodes = {}
@@ -345,7 +344,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
             # division point, then we need a new root:
             if new_row:
                 # We need a new row
-                if "index" in debug.debug_flags:
+                if debug.debug_flag_enabled("index"):
                     trace.mutter("Inserting new global row.")
                 new_row = _InternalBuilderRow()
                 reserved_bytes = 0
@@ -417,7 +416,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         if position > _RESERVED_HEADER_BYTES:
             raise AssertionError(
                 "Could not fit the header in the"
-                f" reserved space: {position} > {_RESERVED_HEADER_BYTES}"
+                " reserved space: %d > %d" % (position, _RESERVED_HEADER_BYTES)
             )
         # write the rows out:
         for row in rows:
@@ -436,7 +435,8 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                 if not isinstance(row, _LeafBuilderRow):
                     raise AssertionError(
                         "Incorrect amount of data copied"
-                        f" expected: {(row.nodes - 1) * _PAGE_SIZE}, got: {copied_len}"
+                        " expected: %d, got: %d"
+                        % ((row.nodes - 1) * _PAGE_SIZE, copied_len)
                     )
         result.flush()
         size = result.tell()
@@ -458,7 +458,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
             no defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "iter_all_entries scales with size of history.")
         # Doing serial rather than ordered would be faster; but this shouldn't
         # be getting called routinely anyway.
@@ -561,7 +561,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (_references, value) in self._nodes.items():
+                for key, (references, value) in self._nodes.items():  # noqa: B007
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -584,6 +584,7 @@ class BTreeBuilder(_mod_index.GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
     def __lt__(self, other):
+        """Compare with another index for sorting."""
         if isinstance(other, type(self)):
             return self._nodes < other._nodes
         # Always sort existing indexes before ones that are still being built.
@@ -689,6 +690,7 @@ class BTreeGraphIndex:
         self._row_offsets = None  # Start of each row, [-1] is the end
 
     def __hash__(self):
+        """Return hash based on object identity."""
         return id(self)
 
     def __eq__(self, other):
@@ -701,6 +703,7 @@ class BTreeGraphIndex:
         )
 
     def __lt__(self, other):
+        """Compare with another index for sorting by name and size."""
         if isinstance(other, type(self)):
             return (self._name, self._size) < (other._name, other._size)
         # Always sort existing indexes before ones that are still being built.
@@ -709,6 +712,7 @@ class BTreeGraphIndex:
         raise TypeError
 
     def __ne__(self, other):
+        """Return True if not equal to other."""
         return not self.__eq__(other)
 
     def _get_and_cache_nodes(self, nodes):
@@ -781,12 +785,12 @@ class BTreeGraphIndex:
         :param offsets: The offsets to be read
         :return: A list of offsets to download
         """
-        if "index" in debug.debug_flags:
+        if debug.debug_flag_enabled("index"):
             trace.mutter("expanding: %s\toffsets: %s", self._name, offsets)
 
         if len(offsets) >= self._recommended_pages:
             # Don't add more, we are already requesting more than enough
-            if "index" in debug.debug_flags:
+            if debug.debug_flag_enabled("index"):
                 trace.mutter(
                     "  not expanding large request (%s >= %s)",
                     len(offsets),
@@ -795,7 +799,7 @@ class BTreeGraphIndex:
             return offsets
         if self._size is None:
             # Don't try anything, because we don't know where the file ends
-            if "index" in debug.debug_flags:
+            if debug.debug_flag_enabled("index"):
                 trace.mutter("  not expanding without knowing index size")
             return offsets
         total_pages = self._compute_total_pages_in_index()
@@ -808,7 +812,7 @@ class BTreeGraphIndex:
                 expanded = [x for x in range(total_pages) if x not in cached_offsets]
             else:
                 expanded = list(range(total_pages))
-            if "index" in debug.debug_flags:
+            if debug.debug_flag_enabled("index"):
                 trace.mutter("  reading all unread pages: %s", expanded)
             return expanded
 
@@ -828,7 +832,7 @@ class BTreeGraphIndex:
                 # then it isn't worth expanding our request. Once we've read at
                 # least 2 nodes, then we are probably doing a search, and we
                 # start expanding our requests.
-                if "index" in debug.debug_flags:
+                if debug.debug_flag_enabled("index"):
                     trace.mutter("  not expanding on first reads")
                 return offsets
             final_offsets = self._expand_to_neighbors(
@@ -836,7 +840,7 @@ class BTreeGraphIndex:
             )
 
         final_offsets = sorted(final_offsets)
-        if "index" in debug.debug_flags:
+        if debug.debug_flag_enabled("index"):
             trace.mutter("expanded:  %s", final_offsets)
         return final_offsets
 
@@ -902,11 +906,13 @@ class BTreeGraphIndex:
         self._leaf_node_cache.clear()
 
     def external_references(self, ref_list_num):
+        """Return external references from the specified reference list."""
         if self._root_node is None:
             self._get_root_node()
         if ref_list_num + 1 > self.node_ref_lists:
             raise ValueError(
-                f"No ref list {ref_list_num}, index has {self.node_ref_lists} ref lists"
+                "No ref list %d, index has %d ref lists"
+                % (ref_list_num, self.node_ref_lists)
             )
         keys = set()
         refs = set()
@@ -996,7 +1002,7 @@ class BTreeGraphIndex:
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "iter_all_entries scales with size of history.")
         if not self.key_count():
             return
@@ -1006,7 +1012,7 @@ class BTreeGraphIndex:
                 for key, (value, refs) in self._root_node.all_items():
                     yield (self, key, value, refs)
             else:
-                for key, (value, _refs) in self._root_node.all_items():
+                for key, (value, refs) in self._root_node.all_items():  # noqa: B007
                     yield (self, key, value)
             return
         start_of_leaves = self._row_offsets[-2]
@@ -1026,7 +1032,7 @@ class BTreeGraphIndex:
                     yield (self, key, value, refs)
         else:
             for _, node in nodes:
-                for key, (value, _refs) in node.all_items():
+                for key, (value, refs) in node.all_items():  # noqa: B007
                     yield (self, key, value)
 
     @staticmethod
@@ -1040,6 +1046,8 @@ class BTreeGraphIndex:
         :param fixed_keys: A sorted list of keys to match against
         :return: A list of (integer position, [key list]) tuples.
         """
+        import bisect
+
         if not in_keys:
             return []
         if not fixed_keys:
@@ -1235,7 +1243,8 @@ class BTreeGraphIndex:
             return set()
         if ref_list_num >= self.node_ref_lists:
             raise ValueError(
-                f"No ref list {ref_list_num}, index has {self.node_ref_lists} ref lists"
+                "No ref list %d, index has %d ref lists"
+                % (ref_list_num, self.node_ref_lists)
             )
 
         # The main trick we are trying to accomplish is that when we find a
@@ -1514,9 +1523,8 @@ class BTreeGraphIndex:
             else:
                 if offset > self._size:
                     raise AssertionError(
-                        "tried to read past the end of the file {} > {}".format(
-                            offset, self._size
-                        )
+                        "tried to read past the end"
+                        f" of the file {offset} > {self._size}"
                     )
                 size = min(size, self._size - offset)
             ranges.append((base_offset + offset, size))
@@ -1547,7 +1555,7 @@ class BTreeGraphIndex:
             elif bytes.startswith(_INTERNAL_FLAG):
                 node = _InternalNode(bytes)
             else:
-                raise AssertionError("Unknown node type for {!r}".format(bytes))
+                raise AssertionError(f"Unknown node type for {bytes!r}")
             yield offset // _PAGE_SIZE, node
 
     def _signature(self):
@@ -1574,6 +1582,6 @@ try:
     from . import _btree_serializer_pyx as _btree_serializer  # type: ignore
 
     _gcchk_factory = _btree_serializer._parse_into_chk  # type: ignore
-except ImportError as e:
+except ModuleNotFoundError as e:
     osutils.failed_to_load_extension(e)
     from . import _btree_serializer_py as _btree_serializer

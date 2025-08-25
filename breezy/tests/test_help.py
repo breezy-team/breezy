@@ -16,7 +16,6 @@
 
 """Unit tests for the breezy.help module."""
 
-import re
 import textwrap
 
 from .. import (
@@ -30,7 +29,6 @@ from .. import (
     plugin,
     tests,
 )
-from .test_i18n import ZzzTranslations
 
 
 class TestErrors(tests.TestCase):
@@ -361,25 +359,13 @@ Description:
         )
 
 
-class ZzzTranslationsForDoc(ZzzTranslations):
-    _section_pat = re.compile(":\\w+:\\n\\s+")
-    _indent_pat = re.compile("\\s+")
-
-    def zzz(self, s):
-        m = self._section_pat.match(s)
-        if m is None:
-            m = self._indent_pat.match(s)
-        if m:
-            return "{}zz{{{{{}}}}}".format(m.group(0), s[m.end() :])
-        return "zz{{{{{}}}}}".format(s)
-
-
 class TestCommandHelpI18n(tests.TestCase):
     """Tests for help on translated commands."""
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, "_translations", ZzzTranslationsForDoc())
+        i18n.install_zzz_for_doc()
+        self.addCleanup(i18n.install)
 
     def assertCmdHelp(self, expected, cmd):
         self.assertEqualDiff(textwrap.dedent(expected), cmd.get_help_text())
@@ -564,37 +550,30 @@ class TestRegisteredTopic(TestHelp):
     def test_contruct(self):
         """Construction takes the help topic name for the registered item."""
         # validate our test
-        self.assertTrue("basic" in help_topics.topic_registry)
-        topic = help_topics.RegisteredTopic("basic")
-        self.assertEqual("basic", topic.topic)
+        self.assertIn("basic", help_topics.topic_registry)
+        topic = help_topics.topic_registry.get("basic")
+        self.assertEqual("basic", topic.name)
 
     def test_get_help_text(self):
         """RegisteredTopic returns the get_detail results for get_help_text."""
-        topic = help_topics.RegisteredTopic("commands")
+        topic = help_topics.topic_registry.get("commands")
         self.assertEqual(
             help_topics.topic_registry.get_detail("commands"), topic.get_help_text()
         )
 
     def test_get_help_text_with_additional_see_also(self):
-        topic = help_topics.RegisteredTopic("commands")
+        topic = help_topics.topic_registry.get("commands")
         self.assertEndsWith(
             topic.get_help_text(["foo", "bar"]), "\nSee also: bar, foo\n"
         )
 
     def test_get_help_text_loaded_from_file(self):
         # Pick a known topic stored in an external file
-        topic = help_topics.RegisteredTopic("authentication")
+        topic = help_topics.topic_registry.get("authentication")
         self.assertStartsWith(
             topic.get_help_text(),
             "Authentication Settings\n=======================\n\n",
         )
-
-    def test_get_help_topic(self):
-        """The help topic for RegisteredTopic is its topic from construction."""
-        topic = help_topics.RegisteredTopic("foobar")
-        self.assertEqual("foobar", topic.get_help_topic())
-        topic = help_topics.RegisteredTopic("baz")
-        self.assertEqual("baz", topic.get_help_topic())
 
 
 class TestTopicIndex(TestHelp):
@@ -608,16 +587,14 @@ class TestTopicIndex(TestHelp):
         index = help_topics.HelpTopicIndex()
         topics = index.get_topics(None)
         self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
-        self.assertEqual("basic", topics[0].topic)
+        self.assertEqual("basic", topics[0].name)
 
     def test_get_topics_topics(self):
         """Searching for a string returns the matching string."""
         index = help_topics.HelpTopicIndex()
         topics = index.get_topics("topics")
         self.assertEqual(1, len(topics))
-        self.assertIsInstance(topics[0], help_topics.RegisteredTopic)
-        self.assertEqual("topics", topics[0].topic)
+        self.assertEqual("topics", topics[0].name)
 
     def test_get_topics_no_topic(self):
         """Searching for something not registered returns []."""

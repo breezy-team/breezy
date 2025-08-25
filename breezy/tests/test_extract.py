@@ -22,7 +22,10 @@ class TestExtract(TestCaseWithTransport):
     def test_extract(self):
         self.build_tree(["a/", "a/b/", "a/b/c", "a/d"])
         wt = self.make_branch_and_tree("a", format="rich-root-pack")
-        wt.add(["b", "b/c", "d"], ids=[b"b-id", b"c-id", b"d-id"])
+        if wt.supports_setting_file_ids():
+            wt.add(["b", "b/c", "d"], ids=[b"b-id", b"c-id", b"d-id"])
+        else:
+            wt.add(["b", "b/c", "d"])
         wt.commit("added files")
         b_wt = wt.extract("b")
         self.assertTrue(b_wt.is_versioned(""))

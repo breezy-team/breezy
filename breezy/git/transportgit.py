@@ -16,6 +16,7 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+import contextlib
 import os
 import posixpath
 import sys
@@ -83,8 +84,6 @@ class _RemoteGitFile:
 
         self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
         self._closed = False
-        for method in _GitFile.PROXY_METHODS:
-            setattr(self, method, getattr(self._file, method))
 
     def abort(self):
         self._file.close()
@@ -114,8 +113,72 @@ class _RemoteGitFile:
         self._file.close()
         self._closed = True
 
+    # Implement IO methods by delegating to the underlying file
+    def read(self, size=-1):
+        return self._file.read(size)
+
+    def write(self, data):
+        return self._file.write(data)
+
+    def readline(self, size=-1):
+        return self._file.readline(size)
+
+    def readlines(self, hint=-1):
+        return self._file.readlines(hint)
+
+    def writelines(self, lines):
+        return self._file.writelines(lines)
+
+    def seek(self, offset, whence=0):
+        return self._file.seek(offset, whence)
+
+    def tell(self):
+        return self._file.tell()
+
+    def flush(self):
+        return self._file.flush()
+
+    def truncate(self, size=None):
+        return self._file.truncate(size)
+
+    def fileno(self):
+        return self._file.fileno()
+
+    def isatty(self):
+        return self._file.isatty()
+
+    def readable(self):
+        return self._file.readable()
+
+    def writable(self):
+        return self._file.writable()
+
+    def seekable(self):
+        return self._file.seekable()
+
+    def __iter__(self):
+        return iter(self._file)
+
+    def __next__(self):
+        return next(iter(self._file))
+
 
 def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
+    """Create a GitFile-like object that works with transports.
+
+    Args:
+        transport: The transport to use for file operations.
+        filename: Name of the file to operate on.
+        mode: File open mode (default: "rb").
+        bufsize: Buffer size for file operations (default: -1).
+        mask: File permission mask (default: 0o644).
+
+    Returns:
+        A file-like object for Git operations.
+
+    Raises:
+        OSError: If unsupported modes are used (append, read/write, text).
+    """
     if "a" in mode:
         raise OSError("append mode not supported for Git files")
     if "+" in mode:
@@ -135,6 +198,13 @@ class TransportRefsContainer(RefsContainer):
     """Refs container that reads refs from a transport."""
 
     def __init__(self, transport, worktree_transport=None):
+        """Initialize the TransportRefsContainer.
+
+        Args:
+            transport: Transport for accessing refs.
+            worktree_transport: Optional separate transport for worktree operations.
+                              If None, uses the main transport.
+        """
         self.transport = transport
         if worktree_transport is None:
             worktree_transport = transport
@@ -143,7 +213,8 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        """Return string representation of the refs container."""
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     def _ensure_dir_exists(self, path):
         self.transport.clone(posixpath.dirname(path)).create_prefix()
@@ -163,6 +234,11 @@ class TransportRefsContainer(RefsContainer):
         return keys
 
     def allkeys(self):
+        """Get all reference names available in this container.
+
+        Returns:
+            Set of all reference names as bytes.
+        """
         keys = set()
         try:
             self.worktree_transport.get_bytes("HEAD")
@@ -244,10 +320,7 @@ class TransportRefsContainer(RefsContainer):
             exist.
         :raises IOError: if any other error occurs
         """
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         try:
             f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
@@ -260,7 +333,7 @@ class TransportRefsContainer(RefsContainer):
                 return None
             if header == SYMREF:
                 # Read only the first line
-                return header + next(iter(f)).rstrip(b"\r\n")
+                return header + f.read().splitlines()[0].rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40 - len(SYMREF))
@@ -362,61 +435,73 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         # may only be packed
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
-        try:
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
+        with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(name))
-        except NoSuchFile:
-            pass
         self._remove_packed_ref(name)
         return True
 
     def get(self, name, default=None):
+        """Get a reference value with optional default.
+
+        Args:
+            name: Reference name to look up.
+            default: Value to return if reference doesn't exist.
+
+        Returns:
+            Reference value or default if not found.
+        """
         try:
             return self[name]
         except KeyError:
             return default
 
     def unlock_ref(self, name):
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        """Unlock a reference.
+
+        Args:
+            name: Name of the reference to unlock.
+        """
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         lockname = name + b".lock"
-        try:
+        with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(lockname))
-        except NoSuchFile:
-            pass
 
     def lock_ref(self, name):
-        if name == b"HEAD":
-            transport = self.worktree_transport
-        else:
-            transport = self.transport
+        """Lock a reference for exclusive access.
+
+        Args:
+            name: Name of the reference to lock.
+
+        Returns:
+            LogicalLockResult that can be used to unlock the reference.
+
+        Raises:
+            LockContention: If the reference is already locked.
+        """
+        transport = self.worktree_transport if name == b"HEAD" else self.transport
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
             transport.local_abspath(urlutils.quote_from_bytes(name))
-        except NotLocalUrl:
+        except NotLocalUrl as err:
             # This is racy, but what can we do?
             if transport.has(lockname):
-                raise LockContention(name)
+                raise LockContention(name) from err
             transport.put_bytes(lockname, b"Locked by brz-git")
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), "wb")
             except FileLocked as e:
-                raise LockContention(name, e)
+                raise LockContention(name, e) from e
             else:
 
                 def unlock():
                     try:
                         transport.delete(lockname)
-                    except NoSuchFile:
-                        raise LockBroken(lockname)
+                    except NoSuchFile as err:
+                        raise LockBroken(lockname) from err
                     # GitFile.abort doesn't care if the lock has already
                     # disappeared
                     gf.abort()
@@ -441,7 +526,20 @@ def read_gitfile(f):
 
 
 class TransportRepo(BaseRepo):
-    def __init__(self, transport, bare, refs_text=None):
+    """Git repository implementation using Breezy transports.
+
+    This class provides a Git repository that works with Breezy's transport
+    abstraction, allowing access to Git repositories over various protocols.
+    """
+
+    def __init__(self, transport, bare, refs_text=None) -> None:
+        """Initialize a TransportRepo.
+
+        Args:
+            transport: Transport to use for repository access.
+            bare: Whether this is a bare repository.
+            refs_text: Optional refs data as bytes for info/refs container.
+        """
         self.transport = transport
         self.bare = bare
         try:
@@ -474,6 +572,7 @@ class TransportRepo(BaseRepo):
         object_store = TransportObjectStore.from_config(
             self._commontransport.clone(OBJECTDIR), config
         )
+        refs_container: RefsContainer
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
@@ -491,9 +590,19 @@ class TransportRepo(BaseRepo):
         super().__init__(object_store, refs_container)
 
     def controldir(self):
+        """Return the control directory path.
+
+        Returns:
+            Local absolute path to the .git directory.
+        """
         return self._controltransport.local_abspath(".")
 
     def commondir(self):
+        """Return the common directory path.
+
+        Returns:
+            Local absolute path to the common Git directory.
+        """
         return self._commontransport.local_abspath(".")
 
     def close(self):
@@ -502,6 +611,11 @@ class TransportRepo(BaseRepo):
 
     @property
     def path(self):
+        """Return the repository root path.
+
+        Returns:
+            Local absolute path to the repository root.
+        """
         return self.transport.local_abspath(".")
 
     def _determine_file_mode(self):
@@ -514,8 +628,8 @@ class TransportRepo(BaseRepo):
         try:
             return osutils.supports_symlinks(self.path)
         except NotLocalUrl:
-            # TODO(jelmer): Query the transport
-            return sys.platform != "win32"
+            # Assume yes?
+            return True
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
@@ -554,6 +668,11 @@ class TransportRepo(BaseRepo):
         return not self.bare
 
     def get_config(self):
+        """Get the repository configuration.
+
+        Returns:
+            ConfigFile object with repository configuration.
+        """
         from dulwich.config import ConfigFile
 
         try:
@@ -563,6 +682,11 @@ class TransportRepo(BaseRepo):
             return ConfigFile()
 
     def get_config_stack(self):
+        """Get the stacked configuration including global and system configs.
+
+        Returns:
+            StackedConfig object with layered configuration.
+        """
         from dulwich.config import StackedConfig
 
         backends = []
@@ -576,27 +700,38 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
-        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
+        """Return string representation of the repository."""
+        return f"<{self.__class__.__name__} for {self.transport!r}>"
 
     @classmethod
     def init(cls, transport, bare=False):
+        """Initialize a new Git repository.
+
+        Args:
+            transport: Transport where the repository should be created.
+            bare: Whether to create a bare repository.
+
+        Returns:
+            New TransportRepo instance.
+
+        Raises:
+            AlreadyControlDirError: If repository already exists.
+        """
         if not bare:
             try:
                 transport.mkdir(".git")
-            except FileExists:
-                raise AlreadyControlDirError(transport.base)
+            except FileExists as err:
+                raise AlreadyControlDirError(transport.base) from err
             control_transport = transport.clone(".git")
         else:
             control_transport = transport
         for d in BASE_DIRECTORIES:
-            try:
+            with contextlib.suppress(FileExists):
                 control_transport.mkdir("/".join(d))
-            except FileExists:
-                pass
         try:
             control_transport.mkdir(OBJECTDIR)
-        except FileExists:
-            raise AlreadyControlDirError(transport.base)
+        except FileExists as err:
+            raise AlreadyControlDirError(transport.base) from err
         TransportObjectStore.init(control_transport.clone(OBJECTDIR))
         ret = cls(transport, bare)
         ret.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")
@@ -623,6 +758,15 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def from_config(cls, path, config):
+        """Create a TransportObjectStore from configuration.
+
+        Args:
+            path: Transport path to the object store.
+            config: Git configuration object.
+
+        Returns:
+            New TransportObjectStore instance with compression settings from config.
+        """
         try:
             default_compression_level = int(
                 config.get((b"core",), b"compression").decode()
@@ -644,15 +788,29 @@ class TransportObjectStore(PackBasedObjectStore):
         return cls(path, loose_compression_level, pack_compression_level)
 
     def __eq__(self, other):
+        """Check equality with another TransportObjectStore.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if both stores use the same transport.
+        """
         if not isinstance(other, TransportObjectStore):
             return False
         return self.transport == other.transport
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.transport)
+        """Return string representation of the object store."""
+        return f"{self.__class__.__name__}({self.transport!r})"
 
     @property
     def alternates(self):
+        """Get alternate object stores.
+
+        Returns:
+            List of alternate TransportObjectStore instances.
+        """
         if self._alternates is not None:
             return self._alternates
         self._alternates = []
@@ -730,10 +888,8 @@ class TransportObjectStore(PackBasedObjectStore):
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
         self.pack_transport.delete(pack.data.filename)
-        try:
+        with contextlib.suppress(KeyError):
             del self._pack_cache[os.path.basename(pack._basename)]
-        except KeyError:
-            pass
 
     def _iter_loose_objects(self):
         for base in self.transport.list_dir("."):
@@ -747,7 +903,7 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _remove_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
-        self.transport.delete(urlutils.quote_from_bytes(path))
+        self.transport.delete(urlutils.quote(path))
 
     def delete_loose_object(self, sha):
         """Delete a loose object.
@@ -759,7 +915,7 @@ class TransportObjectStore(PackBasedObjectStore):
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
-            with self.transport.get(urlutils.quote_from_bytes(path)) as f:
+            with self.transport.get(urlutils.quote(path)) as f:
                 return ShaFile.from_file(f)
         except NoSuchFile:
             return None
@@ -770,10 +926,8 @@ class TransportObjectStore(PackBasedObjectStore):
         :param obj: Object to add
         """
         (dir, file) = self._split_loose_object(obj.id)
-        try:
+        with contextlib.suppress(FileExists):
             self.transport.mkdir(urlutils.quote_from_bytes(dir))
-        except FileExists:
-            pass
         path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
             return  # Already there, no need to write again
@@ -789,14 +943,18 @@ class TransportObjectStore(PackBasedObjectStore):
 
     @classmethod
     def init(cls, transport):
-        try:
+        """Initialize a new object store.
+
+        Args:
+            transport: Transport where the object store should be created.
+
+        Returns:
+            New TransportObjectStore instance.
+        """
+        with contextlib.suppress(FileExists):
             transport.mkdir("info")
-        except FileExists:
-            pass
-        try:
+        with contextlib.suppress(FileExists):
             transport.mkdir(PACKDIR)
-        except FileExists:
-            pass
         return cls(transport)
 
     def _complete_pack(self, f, path, num_objects, indexer, progress=None):
@@ -813,7 +971,9 @@ class TransportObjectStore(PackBasedObjectStore):
         entries = []
         for i, entry in enumerate(indexer):
             if progress is not None:
-                progress(f"generating index: {i}/{num_objects}\r".encode("ascii"))
+                progress(
+                    ("generating index: %d/%d\r" % (i, num_objects)).encode("ascii")
+                )
             entries.append(entry)
 
         pack_sha, extra_entries = extend_pack(

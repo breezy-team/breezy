@@ -19,9 +19,6 @@ def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         "test_zshcomp",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

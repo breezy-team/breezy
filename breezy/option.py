@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Command line option parsing for Breezy.
+
+This module provides the infrastructure for defining and parsing command line
+options. It includes the Option class and its subclasses for different types
+of options, as well as utilities for parsing and processing command arguments.
+"""
+
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
@@ -28,9 +35,17 @@ from . import registry as _mod_registry
 
 
 class BadOptionValue(errors.BzrError):
+    """Exception raised when an invalid value is provided for an option."""
+
     _fmt = """Bad value "%(value)s" for option "%(name)s"."""
 
     def __init__(self, name, value):
+        """Initialize BadOptionValue.
+
+        Args:
+            name: The name of the option.
+            value: The bad value that was provided.
+        """
         errors.BzrError.__init__(self, name=name, value=value)
 
 
@@ -97,8 +112,16 @@ def _parse_revision_str(revstr):
 
 
 def _parse_change_str(revstr):
-    """Parse the revision string and return a tuple with left-most
-    parent of the revision.
+    """Parse the revision string for the --change option.
+
+    Args:
+        revstr: Revision string to parse.
+
+    Returns:
+        Tuple of (before_revision, revision) specs.
+
+    Raises:
+        RangeInChangeOption: If a revision range is provided.
 
     >>> _parse_change_str('123')
     (<RevisionSpec_before before:123>, <RevisionSpec_dwim 123>)
@@ -114,6 +137,14 @@ def _parse_change_str(revstr):
 
 
 def _parse_merge_type(typestring):
+    """Parse a merge type string.
+
+    Args:
+        typestring: String identifying the merge type.
+
+    Returns:
+        The merge type class.
+    """
     return get_merge_type(typestring)
 
 
@@ -123,15 +154,12 @@ def get_merge_type(typestring):
 
     try:
         return merge_types[typestring][0]
-    except KeyError:
+    except KeyError as e:
         templ = "%s%%7s: %%s" % (" " * 12)
         lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
         type_list = "\n".join(lines)
-        msg = "No known merge type {}. Supported types are:\n{}".format(
-            typestring,
-            type_list,
-        )
-        raise errors.CommandError(msg)
+        msg = f"No known merge type {typestring}. Supported types are:\n{type_list}"
+        raise errors.CommandError(msg) from e
 
 
 class Option:
@@ -199,13 +227,24 @@ class Option:
         self.hidden = hidden
 
     def short_name(self):
+        """Return the short name for this option, or None."""
         if self._short_name:
             return self._short_name
 
     def set_short_name(self, short_name):
+        """Set the short name for this option.
+
+        Args:
+            short_name: Single character short name.
+        """
         self._short_name = short_name
 
     def get_negation_name(self):
+        """Return the negation name for this option.
+
+        Returns:
+            String with 'no-' prefix added or removed as appropriate.
+        """
         if self.name.startswith("no-"):
             return self.name[3:]
         else:
@@ -213,39 +252,36 @@ class Option:
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
-        option_strings = ["--{}".format(self.name)]
+        option_strings = [f"--{self.name}"]
         if short_name is not None:
-            option_strings.append("-{}".format(short_name))
-        if self.hidden:
-            help = optparse.SUPPRESS_HELP
-        else:
-            help = self.help
+            option_strings.append(f"-{short_name}")
+        help = optparse.SUPPRESS_HELP if self.hidden else self.help
         optargfn = self.type
         if optargfn is None:
             parser.add_option(
+                *option_strings,
                 action="callback",
                 callback=self._optparse_bool_callback,
                 callback_args=(True,),
                 help=help,
-                *option_strings,
             )
-            negation_strings = ["--{}".format(self.get_negation_name())]
+            negation_strings = [f"--{self.get_negation_name()}"]
             parser.add_option(
+                *negation_strings,
                 action="callback",
                 callback=self._optparse_bool_callback,
                 callback_args=(False,),
                 help=optparse.SUPPRESS_HELP,
-                *negation_strings,
             )
         else:
             parser.add_option(
+                *option_strings,
                 action="callback",
                 callback=self._optparse_callback,
                 type="string",
                 metavar=self.argname.upper(),
                 help=help,
                 default=OptionParser.DEFAULT_VALUE,
-                *option_strings,
             )
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
@@ -256,10 +292,10 @@ class Option:
     def _optparse_callback(self, option, opt, value, parser):
         try:
             v = self.type(value)
-        except ValueError:
+        except ValueError as e:
             raise optparse.OptionValueError(
-                "invalid value for option {}: {}".format(option, value)
-            )
+                f"invalid value for option {option}: {value}"
+            ) from e
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -275,6 +311,14 @@ class Option:
         yield self.name, self.short_name(), argname, self.help
 
     def is_hidden(self, name):
+        """Return True if this option should be hidden in help.
+
+        Args:
+            name: Option name (unused in base implementation).
+
+        Returns:
+            Boolean indicating if the option is hidden.
+        """
         return self.hidden
 
 
@@ -291,10 +335,11 @@ class ListOption(Option):
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser."""
-        option_strings = ["--{}".format(self.name)]
+        option_strings = [f"--{self.name}"]
         if short_name is not None:
-            option_strings.append("-{}".format(short_name))
+            option_strings.append(f"-{short_name}")
         parser.add_option(
+            *option_strings,
             action="callback",
             callback=self._optparse_callback,
             type="string",
@@ -302,7 +347,6 @@ class ListOption(Option):
             help=self.help,
             dest=self._param_name,
             default=[],
-            *option_strings,
         )
 
     def _optparse_callback(self, option, opt, value, parser):
@@ -386,6 +430,7 @@ class RegistryOption(Option):
 
     @property
     def registry(self):
+        """Return the registry for this option, loading it if necessary."""
         if self._registry is None:
             self._registry = self._lazy_registry.get_obj()
         return self._registry
@@ -429,7 +474,7 @@ class RegistryOption(Option):
                 if key in self.registry.aliases():
                     continue
                 option_strings = [
-                    ("--{}".format(name))
+                    f"--{name}"
                     for name in [key]
                     + [
                         alias
@@ -442,12 +487,12 @@ class RegistryOption(Option):
                 else:
                     help = self.registry.get_help(key)
                 if self.short_value_switches and key in self.short_value_switches:
-                    option_strings.append("-{}".format(self.short_value_switches[key]))
+                    option_strings.append(f"-{self.short_value_switches[key]}")
                 parser.add_option(
+                    *option_strings,
                     action="callback",
                     callback=self._optparse_value_callback(key),
                     help=help,
-                    *option_strings,
                 )
 
     def _optparse_value_callback(self, cb_value):
@@ -470,27 +515,55 @@ class RegistryOption(Option):
                 yield key, None, None, self.registry.get_help(key)
 
     def is_alias(self, name):
-        """Check whether a particular format is an alias."""
+        """Check whether a particular name is an alias.
+
+        Args:
+            name: The name to check.
+
+        Returns:
+            Boolean indicating if the name is an alias.
+        """
         if name == self.name:
             return False
         return name in self.registry.aliases()
 
     def is_hidden(self, name):
+        """Return True if the named option should be hidden.
+
+        Args:
+            name: The option name to check.
+
+        Returns:
+            Boolean indicating if the option is hidden.
+        """
         if name == self.name:
             return Option.is_hidden(self, name)
         return getattr(self.registry.get_info(name), "hidden", False)
 
 
 class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting."""
+    """OptionParser that raises exceptions instead of exiting.
+
+    This is used to integrate with breezy's error handling system rather
+    than having optparse call sys.exit() on errors.
+    """
 
     DEFAULT_VALUE = object()
 
     def __init__(self):
+        """Initialize OptionParser."""
         optparse.OptionParser.__init__(self)
         self.formatter = GettextIndentedHelpFormatter()
 
     def error(self, message):
+        """Handle option parsing errors.
+
+        Args:
+            message: Error message to report.
+
+        Raises:
+            CommandError: Always, instead of calling sys.exit().
+        """
         raise errors.CommandError(message)
 
 
@@ -498,6 +571,7 @@ class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
     """Adds gettext() call to format_option()."""
 
     def __init__(self):
+        """Initialize GettextIndentedHelpFormatter."""
         optparse.IndentedHelpFormatter.__init__(self)
 
     def format_option(self, option):
@@ -562,6 +636,14 @@ _verbosity_level = 0
 
 
 def _verbosity_level_callback(option, opt_str, value, parser):
+    """Callback function for handling verbosity level changes.
+
+    Args:
+        option: The Option object.
+        opt_str: The option string that triggered this callback.
+        value: The argument value (if any).
+        parser: The OptionParser being used.
+    """
     global _verbosity_level
     if not value:
         # Either --no-verbose or --no-quiet was specified
@@ -647,6 +729,6 @@ _global_option(
     "timezone", type=str, help="Display timezone as local, original, or utc."
 )
 
-diff_writer_registry = _mod_registry.Registry[str, Callable]()
+diff_writer_registry = _mod_registry.Registry[str, Callable, None]()
 diff_writer_registry.register("plain", lambda x: x, "Plaintext diff output.")
 diff_writer_registry.default_key = "plain"

@@ -204,15 +204,15 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Make a source, sprout a target off it
         try:
             builder = self.make_branch_builder("source")
-        except errors.UninitializableFormat:
-            raise TestNotApplicable("uninitializeable format")
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable("uninitializeable format") from e
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout("target").open_branch()
         # Add a tag to the source, then pull from source
         try:
             source.tags.set_tag("tag-a", rev2)
-        except errors.TagsNotSupported:
-            raise TestNotApplicable("format does not support tags.")
+        except errors.TagsNotSupported as e:
+            raise TestNotApplicable("format does not support tags.") from e
         source.tags.set_tag("tag-a", rev2)
         source.get_config_stack().set("branch.fetch_tags", True)
         target.pull(source)
@@ -225,8 +225,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Make a source, sprout a target off it
         try:
             builder = self.make_branch_builder("source")
-        except errors.UninitializableFormat:
-            raise TestNotApplicable("uninitializeable format")
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable("uninitializeable format") from e
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout("target").open_branch()
         # Add a new commit to the ancestry
@@ -234,8 +234,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         # Add a tag to the source, then pull rev_2_again from source
         try:
             source.tags.set_tag("tag-a", rev2)
-        except errors.TagsNotSupported:
-            raise TestNotApplicable("format does not support tags.")
+        except errors.TagsNotSupported as e:
+            raise TestNotApplicable("format does not support tags.") from e
         source.get_config_stack().set("branch.fetch_tags", True)
         target.pull(source, stop_revision=rev_2_again)
         # The tag is present, and so is its revision.
@@ -321,8 +321,10 @@ class TestPullHook(per_branch.TestCaseWithBranch):
             local = controldir.ControlDir.create_branch_convenience("local2")
             try:
                 local.bind(target)
-            except branch.BindingUnsupported:
-                raise TestNotApplicable("default format does not support binding")
+            except branch.BindingUnsupported as e:
+                raise TestNotApplicable(
+                    "default format does not support binding"
+                ) from e
         source = self.make_branch("source")
         branch.Branch.hooks.install_named_hook(
             "post_pull", self.capture_post_pull_hook, None

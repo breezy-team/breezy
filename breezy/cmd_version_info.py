@@ -23,7 +23,6 @@ lazy_import(
     """
 from breezy import (
     branch,
-    version_info_formats,
     workingtree,
     )
 from breezy.i18n import gettext
@@ -41,19 +40,21 @@ def _parse_version_info_format(format):
     This looks in the version info format registry, and if the format
     cannot be found, generates a useful error exception.
     """
+    from . import version_info_formats
+
     try:
         return version_info_formats.get_builder(format)
-    except KeyError:
+    except KeyError as err:
         formats = version_info_formats.get_builder_formats()
         raise errors.CommandError(
             gettext(
                 "No known version info format {0}. Supported types are: {1}"
             ).format(format, formats)
-        )
+        ) from err
 
 
 class cmd_version_info(Command):
-    __doc__ = """Show version information about this tree.
+    r"""Show version information about this tree.
 
     You can use this command to add information about version into
     source code of an application. The output can be in one of the
@@ -107,6 +108,21 @@ class cmd_version_info(Command):
         template=None,
         revision=None,
     ):
+        """Run the version-info command.
+
+        Args:
+            location: Path to the branch or working tree to examine. Defaults to current directory.
+            format: Output format for version information. If None, uses default format.
+            all: If True, include all possible information (history, clean status, file revisions).
+            check_clean: If True, check if the tree has uncommitted changes.
+            include_history: If True, include the revision history.
+            include_file_revisions: If True, include the last revision for each file.
+            template: Custom template string for output formatting.
+            revision: Specific revision to examine. Must be a single revision specifier.
+
+        Raises:
+            CommandError: If more than one revision specifier is provided.
+        """
         if revision and len(revision) > 1:
             raise errors.CommandError(
                 gettext(
@@ -118,6 +134,8 @@ class cmd_version_info(Command):
             location = "."
 
         if format is None:
+            from . import version_info_formats
+
             format = version_info_formats.format_registry.get()
 
         try:
@@ -138,10 +156,7 @@ class cmd_version_info(Command):
             if "{clean}" in template:
                 check_clean = True
 
-        if revision is not None:
-            revision_id = revision[0].as_revision_id(b)
-        else:
-            revision_id = None
+        revision_id = revision[0].as_revision_id(b) if revision is not None else None
 
         builder = format(
             b,

@@ -14,8 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.builtins import cmd_checkout
-from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
+from ...builtins import cmd_checkout
+from ..transport_util import TestCaseWithConnectionHookedTransport
 
 
 class TestCheckout(TestCaseWithConnectionHookedTransport):

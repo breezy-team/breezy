@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for mergeable content reading functionality."""
+
 import socketserver
 
 from .. import errors, tests
@@ -24,6 +26,8 @@ from . import test_server
 
 
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
+    """Tests for reading mergeable content from URLs."""
+
     def test_read_mergeable_skips_local(self):
         """A local bundle named like the URL should not be read."""
         out, wt = test_read_bundle.create_bundle_file(self)
@@ -58,18 +62,22 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
         url = sock_server.get_url()
-        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+        self.assertRaises(ConnectionResetError, read_mergeable_from_url, url)
 
 
 class DisconnectingHandler(socketserver.BaseRequestHandler):
     """A request handler that immediately closes any connection made to it."""
 
     def handle(self):
+        """Handle incoming request by immediately closing the connection."""
         self.request.close()
 
 
 class DisconnectingServer(test_server.TestingTCPServerInAThread):
+    """Test server that immediately disconnects clients."""
+
     def __init__(self):
+        """Initialize the disconnecting server."""
         super().__init__(
             ("127.0.0.1", 0), test_server.TestingTCPServer, DisconnectingHandler
         )

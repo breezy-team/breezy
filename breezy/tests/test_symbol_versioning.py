@@ -20,12 +20,9 @@ import sys
 import warnings
 
 from breezy import symbol_versioning
-from breezy.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-)
 from breezy.tests import TestCase
+
+from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 
 
 @deprecated_function(deprecated_in((0, 7, 0)))
@@ -103,7 +100,6 @@ class TestDeprecationWarnings(TestCase):
                 "This might explain stuff.\n"
                 "\n"
                 "This method was deprecated in version 0.7.0.\n"
-                ""
             )
         else:
             expected_docstring = (
@@ -197,9 +193,9 @@ class TestDeprecationWarnings(TestCase):
 
             a_deprecated_dict["b"] = 42
             self.assertEqual(a_deprecated_dict["b"], 42)
-            self.assertTrue("b" in a_deprecated_dict)
+            self.assertIn("b", a_deprecated_dict)
             del a_deprecated_dict["b"]
-            self.assertFalse("b" in a_deprecated_dict)
+            self.assertNotIn("b", a_deprecated_dict)
             self.assertEqual([expected_warning] * 6, self._warnings)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)

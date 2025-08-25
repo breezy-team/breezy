@@ -27,9 +27,9 @@ _whitespace_match = re.compile("\\s", re.UNICODE).match
 
 
 class _PushbackSequence:
-    def __init__(self, orig):
+    def __init__(self, orig) -> None:
         self._iter = iter(orig)
-        self._pushback_buffer = []
+        self._pushback_buffer: list[str] = []
 
     def __next__(self):
         if len(self._pushback_buffer) > 0:
@@ -131,16 +131,36 @@ class _Word:
 
 
 class Splitter:
+    """Iterator that splits a command line into arguments.
+
+    This handles proper quoting and escaping of arguments on all platforms.
+    """
+
     def __init__(self, command_line, single_quotes_allowed):
+        """Initialize the Splitter.
+
+        Args:
+            command_line: The command line string to split.
+            single_quotes_allowed: Whether to allow single quotes for quoting.
+        """
         self.seq = _PushbackSequence(command_line)
         self.allowed_quote_chars = '"'
         if single_quotes_allowed:
             self.allowed_quote_chars += "'"
 
     def __iter__(self):
+        """Return the iterator object itself."""
         return self
 
     def __next__(self):
+        """Get the next token from the command line.
+
+        Returns:
+            Tuple of (quoted, token) where quoted is True if the token was quoted.
+
+        Raises:
+            StopIteration: When no more tokens are available.
+        """
         quoted, token = self._get_token()
         if token is None:
             raise StopIteration
@@ -165,5 +185,14 @@ class Splitter:
 
 
 def split(unsplit, single_quotes_allowed=True):
+    """Split a command line string into a list of arguments.
+
+    Args:
+        unsplit: The command line string to split.
+        single_quotes_allowed: Whether to allow single quotes for quoting.
+
+    Returns:
+        List of argument strings.
+    """
     splitter = Splitter(unsplit, single_quotes_allowed=single_quotes_allowed)
     return [arg for quoted, arg in splitter]

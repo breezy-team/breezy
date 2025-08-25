@@ -30,13 +30,12 @@ lazy_import(
 import time
 
 from breezy import (
-    debug,
     progress,
     )
 """,
 )
 
-from .. import config, osutils, trace
+from .. import config, debug, osutils, trace
 from . import NullProgressView, UIFactory
 
 
@@ -73,17 +72,16 @@ class _ChooseUI:
         Setup final prompt and the lists of choices and associated
         shortcuts.
         """
-        index = 0
         help_list = []
         self.alternatives = {}
         choices = choices.split("\n")
         if default is not None and default not in range(0, len(choices)):
             raise ValueError("invalid default index")
-        for c in choices:
+        for index, c in enumerate(choices):
             name = c.replace("&", "").lower()
             choice = (name, index)
             if name in self.alternatives:
-                raise ValueError("duplicated choice: {}".format(name))
+                raise ValueError(f"duplicated choice: {name}")
             self.alternatives[name] = choice
             shortcut = c.find("&")
             if shortcut != -1 and (shortcut + 1) < len(c):
@@ -94,19 +92,18 @@ class _ChooseUI:
             else:
                 c = c.replace("&", "")
                 shortcut = c[0]
-                help = "[{}]{}".format(shortcut, c[1:])
+                help = f"[{shortcut}]{c[1:]}"
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
-                raise ValueError("duplicated shortcut: {}".format(shortcut))
+                raise ValueError(f"duplicated shortcut: {shortcut}")
             self.alternatives[shortcut] = choice
             # Add redirections for default.
             if index == default:
                 self.alternatives[""] = choice
                 self.alternatives["\r"] = choice
             help_list.append(help)
-            index += 1
 
-        self.prompt = "{} ({}): ".format(msg, ", ".join(help_list))
+        self.prompt = f"{msg} ({', '.join(help_list)}): "
 
     def _getline(self):
         line = self.ui.stdin.readline()
@@ -126,10 +123,7 @@ class _ChooseUI:
 
     def interact(self):
         """Keep asking the user until a valid choice is made."""
-        if self.line_based:
-            getchoice = self._getline
-        else:
-            getchoice = self._getchar
+        getchoice = self._getline if self.line_based else self._getchar
         iter = 0
         while True:
             iter += 1
@@ -174,6 +168,13 @@ class TextUIFactory(UIFactory):
         self._progress_view = NullProgressView()
 
     def __enter__(self):
+        """Set up the UI factory context.
+
+        This initializes the streams and progress view.
+
+        Returns:
+            self: The TextUIFactory instance.
+        """
         # Choose default encoding and handle py2/3 differences
         self._setup_streams()
         # paints progress, network activity, etc
@@ -209,6 +210,11 @@ class TextUIFactory(UIFactory):
         return choose_ui.interact()
 
     def be_quiet(self, state):
+        """Set quiet mode on or off.
+
+        Args:
+            state: True to enable quiet mode, False to disable.
+        """
         if state and not self._quiet:
             self.clear_term()
         UIFactory.be_quiet(self, state)
@@ -227,6 +233,14 @@ class TextUIFactory(UIFactory):
         self._progress_view.clear()
 
     def get_integer(self, prompt):
+        """Prompt the user for an integer value.
+
+        Args:
+            prompt: The prompt message to display.
+
+        Returns:
+            int: The integer value entered by the user.
+        """
         while True:
             self.prompt(prompt)
             line = self.stdin.readline()
@@ -236,6 +250,11 @@ class TextUIFactory(UIFactory):
                 pass
 
     def get_non_echoed_password(self):
+        """Read a password without echoing it to the terminal.
+
+        Returns:
+            str or None: The password entered, or None if no input.
+        """
         isatty = getattr(self.stdin, "isatty", None)
         if isatty is not None and isatty():
             import getpass
@@ -323,7 +342,7 @@ class TextUIFactory(UIFactory):
             to allow UIs to reformat the prompt.
         """
         if not isinstance(prompt, str):
-            raise ValueError("prompt {!r} not a unicode string".format(prompt))
+            raise ValueError(f"prompt {prompt!r} not a unicode string")
         if kwargs:
             # See <https://launchpad.net/bugs/365891>
             prompt = prompt % kwargs
@@ -347,22 +366,35 @@ class TextUIFactory(UIFactory):
             log(display=display)
 
     def show_error(self, msg):
+        """Display an error message.
+
+        Args:
+            msg: The error message to display.
+        """
         self.clear_term()
-        self.stderr.write("bzr: error: {}\n".format(msg))
+        self.stderr.write(f"bzr: error: {msg}\n")
 
     def show_message(self, msg):
+        """Display a message to the user.
+
+        Args:
+            msg: The message to display.
+        """
         self.note(msg)
 
     def show_warning(self, msg):
+        """Display a warning message.
+
+        Args:
+            msg: The warning message to display.
+        """
         self.clear_term()
-        self.stderr.write("bzr: warning: {}\n".format(msg))
+        self.stderr.write(f"bzr: warning: {msg}\n")
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed."""
         if not self._task_stack:
-            warnings.warn(
-                "{!r} updated but no tasks are active".format(task), stacklevel=2
-            )
+            warnings.warn(f"{task!r} updated but no tasks are active", stacklevel=1)
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
@@ -414,6 +446,13 @@ class TextProgressView:
     """
 
     def __init__(self, term_file, encoding=None, errors=None):
+        """Initialize a TextProgressView.
+
+        Args:
+            term_file: The terminal file object to write progress to.
+            encoding: Character encoding to use (defaults to terminal encoding).
+            errors: Error handling mode (unused in this implementation).
+        """
         self._term_file = term_file
         if encoding is None:
             self._encoding = getattr(term_file, "encoding", None) or "ascii"
@@ -452,6 +491,7 @@ class TextProgressView:
         self._term_file.write("\r" + u + "\r")
 
     def clear(self):
+        """Clear any progress output from the terminal."""
         if self._have_output:
             self._show_line("")
         self._have_output = False
@@ -474,10 +514,12 @@ class TextProgressView:
                 completion_fraction = (
                     self._last_task._overall_completion_fraction() or 0
                 )
-            if completion_fraction < self._fraction and "progress" in debug.debug_flags:
+            if completion_fraction < self._fraction and debug.debug_flags_enabled(
+                "progress"
+            ):
                 debug.set_trace()
             self._fraction = completion_fraction
-            markers = int(round(float(cols) * completion_fraction)) - 1
+            markers = round(float(cols) * completion_fraction) - 1
             bar_str = "[" + ("#" * markers + spin_str).ljust(cols) + "] "
             return bar_str
         elif (self._last_task is None) or self._last_task.show_spinner:
@@ -586,7 +628,7 @@ class TextProgressView:
             self._bytes_by_direction[direction] += byte_count
         else:
             self._bytes_by_direction["unknown"] += byte_count
-        if "no_activity" in debug.debug_flags:
+        if debug.debug_flag_enabled("no_activity"):
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to
@@ -631,12 +673,17 @@ class TextProgressView:
             self._bytes_by_direction["write"] / 1000.0,
         )
         if self._bytes_by_direction["unknown"] > 0:
-            msg += " u:%.0fkB)" % (self._bytes_by_direction["unknown"] / 1000.0)
+            msg += f" u:{self._bytes_by_direction['unknown'] / 1000.0:.0f}kB)"
         else:
             msg += ")"
         return msg
 
     def log_transport_activity(self, display=False):
+        """Log transport activity statistics.
+
+        Args:
+            display: If True, also display the statistics to the terminal.
+        """
         msg = self._format_bytes_by_direction()
         trace.mutter(msg)
         if display and self._total_byte_count > 0:
@@ -649,7 +696,7 @@ def _get_stream_encoding(stream):
     if encoding is None:
         encoding = getattr(stream, "encoding", None)
     if encoding is None:
-        encoding = osutils.get_terminal_encoding(trace=True)
+        encoding = osutils.get_terminal_encoding()
     return encoding
 
 
@@ -696,6 +743,14 @@ class TextUIOutputStream:
     """
 
     def __init__(self, ui_factory, stream, encoding=None, errors="strict"):
+        """Initialize a TextUIOutputStream.
+
+        Args:
+            ui_factory: The UI factory that owns this stream.
+            stream: The underlying stream to wrap.
+            encoding: Character encoding to use (defaults to stream encoding).
+            errors: Error handling mode ('strict', 'replace', 'ignore', or 'exact').
+        """
         self.ui_factory = ui_factory
         # GZ 2017-05-21: Clean up semantics when callers are made saner.
         inner = _unwrap_stream(stream)
@@ -724,14 +779,25 @@ class TextUIOutputStream:
         self.wrapped_stream.write(to_write)
 
     def flush(self):
+        """Flush the stream, clearing terminal first."""
         self.ui_factory.clear_term()
         self.wrapped_stream.flush()
 
     def write(self, to_write):
+        """Write data to the stream.
+
+        Args:
+            to_write: String or bytes to write.
+        """
         self.ui_factory.clear_term()
         self._write(to_write)
 
     def writelines(self, lines):
+        """Write multiple lines to the stream.
+
+        Args:
+            lines: Iterable of strings or bytes to write.
+        """
         self.ui_factory.clear_term()
         for line in lines:
             self._write(line)

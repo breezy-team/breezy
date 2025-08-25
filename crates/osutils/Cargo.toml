@@ -1,0 +1,35 @@
+[package]
+name = "breezy-osutils"
+version = { workspace = true }
+edition = "2021"
+description = "Low level OS wrappers for Breezy"
+license = "GPL-2.0+"
+
+[lib]
+
+[dependencies]
+memchr = "2.7.4"
+chrono = { workspace = true }
+walkdir = "2"
+sha1 = "0.10"
+unicode-normalization = "0.1.19"
+rand = "0.9"
+log = "0.4"
+lazy_static = "1.4.0"
+regex = "1.5.4"
+hostname = "0.4.1"
+num_cpus = "1.13.0"
+path-clean = "1"
+termion = ">=1"
+dirs = "6"
+encoding_rs = ">=0.8"
+whoami = { workspace = true }
+nix = { workspace = true, features = ["fs"] }
+pyo3 = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["user", "process", "signal"] }
+termios = "0.3"
+
+[features]
+pyo3 = ["dep:pyo3"]

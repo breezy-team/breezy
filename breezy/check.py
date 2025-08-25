@@ -46,9 +46,25 @@ class Check:
     """Check a repository."""
 
     def __init__(self, repository, check_repo=True):
+        """Initialize a Check instance.
+
+        Args:
+            repository: The repository to check.
+            check_repo: Whether to check the repository itself. Defaults to True.
+        """
         self.repository = repository
 
     def report_results(self, verbose):
+        """Report the results of the check operation.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Args:
+            verbose: Whether to provide verbose output.
+
+        Raises:
+            NotImplementedError: Always raised as this is an abstract method.
+        """
         raise NotImplementedError(self.report_results)
 
 
@@ -93,9 +109,12 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     an exception raised at the end of the process.
     """
     try:
-        base_tree, branch, repo, relpath = (
-            ControlDir.open_containing_tree_branch_or_repository(path)
-        )
+        (
+            base_tree,
+            branch,
+            repo,
+            relpath,
+        ) = ControlDir.open_containing_tree_branch_or_repository(path)
     except errors.NotBranchError:
         base_tree = branch = repo = None
 

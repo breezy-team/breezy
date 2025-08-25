@@ -1,3 +1,10 @@
+"""Repository management and revision storage for Breezy.
+
+This module provides the Repository class and related functionality for storing
+and managing revision history, file texts, inventory data, and revision
+signatures. Repositories are the core storage mechanism for version control
+data in Breezy.
+"""
 # Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -28,13 +35,14 @@ import time
 
 from breezy import (
     config,
-    osutils,
     )
 from breezy.i18n import gettext
 """,
 )
 
-from . import controldir, debug, errors, graph, registry, ui
+import contextlib
+
+from . import controldir, debug, errors, graph, osutils, registry, ui
 from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
@@ -49,13 +57,22 @@ _deprecation_warning_done = False
 
 
 class IsInWriteGroupError(errors.InternalBzrError):
+    """Error raised when trying to refresh data while in a write group."""
+
     _fmt = "May not refresh_data of repo %(repo)s while in a write group."
 
     def __init__(self, repo):
+        """Initialize the error with the repository.
+
+        Args:
+            repo: The repository that is in a write group.
+        """
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CannotSetRevisionId(errors.BzrError):
+    """Error raised when the repository format doesn't support setting revision IDs."""
+
     _fmt = "Repository format does not support setting revision ids."
 
 
@@ -68,6 +85,12 @@ class FetchResult:
     """
 
     def __init__(self, total_fetched=None, revidmap=None):
+        """Initialize a fetch result.
+
+        Args:
+            total_fetched: Number of revisions fetched.
+            revidmap: For lossy fetches, map from source revid to target revid.
+        """
         self.total_fetched = total_fetched
         self.revidmap = revidmap
 
@@ -154,7 +177,7 @@ class CommitBuilder:
         """Verify things like commit messages don't have bogus characters."""
         # TODO(jelmer): Make this repository-format specific
         if "\r" in text:
-            raise ValueError("Invalid value for {}: {!r}".format(context, text))
+            raise ValueError(f"Invalid value for {context}: {text!r}")
 
     def _validate_revprops(self, revprops):
         for key, value in revprops.items():
@@ -162,11 +185,11 @@ class CommitBuilder:
             # correctly, so refuse to accept them
             if not isinstance(value, str):
                 raise ValueError(
-                    "revision property ({}) is not a valid"
-                    " (unicode) string: {!r}".format(key, value)
+                    f"revision property ({key}) is not a valid"
+                    f" (unicode) string: {value!r}"
                 )
             # TODO(jelmer): Make this repository-format specific
-            self._validate_unicode_text(value, "revision property ({})".format(key))
+            self._validate_unicode_text(value, f"revision property ({key})")
 
     def commit(self, message):
         """Make the actual commit.
@@ -247,13 +270,18 @@ class RepositoryWriteLockResult(LogicalLockResult):
     """
 
     def __init__(self, unlock, repository_token):
+        """Initialize a repository write lock result.
+
+        Args:
+            unlock: Callable to unlock the repository.
+            repository_token: Token from the underlying lock.
+        """
         LogicalLockResult.__init__(self, unlock)
         self.repository_token = repository_token
 
     def __repr__(self):
-        return "RepositoryWriteLockResult({}, {})".format(
-            self.repository_token, self.unlock
-        )
+        """Return string representation of the lock result."""
+        return f"RepositoryWriteLockResult({self.repository_token}, {self.unlock})"
 
 
 class WriteGroup:
@@ -263,14 +291,22 @@ class WriteGroup:
     """
 
     def __init__(self, repository, suppress_errors=False):
+        """Initialize a write group context manager.
+
+        Args:
+            repository: The repository to manage a write group for.
+            suppress_errors: Whether to suppress errors when aborting.
+        """
         self.repository = repository
         self._suppress_errors = suppress_errors
 
     def __enter__(self):
+        """Enter the write group context."""
         self.repository.start_write_group()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the write group context, committing or aborting as needed."""
         if exc_type:
             self.repository.abort_write_group(self._suppress_errors)
             return False
@@ -315,9 +351,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 )
                 return
             raise errors.BzrError(
-                "mismatched lock context and write group. {!r}, {!r}".format(
-                    self._write_group, self.get_transaction()
-                )
+                f"mismatched lock context and write group. {self._write_group!r}, {self.get_transaction()!r}"
             )
         try:
             self._abort_write_group()
@@ -369,7 +403,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         revisions that might be present.  There is no direct replacement
         method.
         """
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             mutter_callsite(2, "all_revision_ids is linear with history.")
         return self._all_revision_ids()
 
@@ -417,19 +451,22 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @property
     def user_transport(self):
+        """Get the transport for user-visible data."""
         return self.controldir.user_transport
 
     @property
     def control_transport(self):
+        """Get the transport for control data."""
         return self._transport
 
     def __repr__(self):
+        """Return string representation of the repository."""
         if self._fallback_repositories:
             return "{}({!r}, fallback_repositories={!r})".format(
                 self.__class__.__name__, self.base, self._fallback_repositories
             )
         else:
-            return "{}({!r})".format(self.__class__.__name__, self.base)
+            return f"{self.__class__.__name__}({self.base!r})"
 
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
@@ -458,6 +495,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return self._write_group is not None
 
     def is_locked(self):
+        """Return True if this repository is locked."""
         return self.control_files.is_locked()
 
     def is_write_locked(self):
@@ -474,8 +512,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
         fact.
-
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
 
         Args:
           token: if this is already locked, then lock_write will fail
@@ -521,6 +557,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return LogicalLockResult(self.unlock)
 
     def get_physical_lock_status(self):
+        """Return physical lock status from the control files."""
         return self.control_files.get_physical_lock_status()
 
     def leave_lock_in_place(self):
@@ -673,9 +710,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError(
-                "mismatched lock context {!r} and write group {!r}.".format(
-                    self.get_transaction(), self._write_group
-                )
+                f"mismatched lock context {self.get_transaction()!r} and "
+                f"write group {self._write_group!r}."
             )
         result = self._commit_write_group()
         self._write_group = None
@@ -716,6 +752,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         self._refresh_data()
 
     def resume_write_group(self, tokens):
+        """Resume a write group using the provided tokens.
+
+        Args:
+            tokens: Tokens needed to resume the write group.
+        """
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
         if self._write_group:
@@ -791,6 +832,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Unlock the repository."""
         if self.control_files._lock_count == 1 and self.control_files._lock_mode == "w":
             if self._write_group is not None:
                 self.abort_write_group()
@@ -977,6 +1019,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 ]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        """Store a GPG signature for the specified revision.
+
+        Args:
+            gpg_strategy: GPG strategy for signing.
+            plaintext: The plaintext to sign.
+            revision_id: The revision to store the signature for.
+        """
         raise NotImplementedError(self.store_revision_signature)
 
     def add_signature_text(self, revision_id, signature):
@@ -1023,7 +1072,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise errors.NoSuchRevision(self, known_revid)
+                raise errors.NoSuchRevision(self, known_revid) from err
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
@@ -1098,6 +1147,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
 
     def get_transaction(self):
+        """Return the current transaction from the control files."""
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
@@ -1176,6 +1226,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.make_working_trees)
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision using the given GPG strategy.
+
+        Args:
+            revision_id: The revision to sign.
+            gpg_strategy: The GPG strategy to use for signing.
+        """
         raise NotImplementedError(self.sign_revision)
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
@@ -1242,22 +1298,18 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if _deprecation_warning_done:
             return
         try:
-            if branch is None:
-                conf = config.GlobalStack()
-            else:
-                conf = branch.get_config_stack()
+            conf = config.GlobalStack() if branch is None else branch.get_config_stack()
             if "format_deprecation" in conf.get("suppress_warnings"):
                 return
             warning(
-                "Format {} for {} is deprecated -"
-                " please use 'brz upgrade' to get better performance".format(
-                    self._format, self.controldir.transport.base
-                )
+                f"Format {self._format} for {self.controldir.transport.base} is deprecated -"
+                " please use 'brz upgrade' to get better performance"
             )
         finally:
             _deprecation_warning_done = True
 
     def supports_rich_root(self):
+        """Return True if this repository supports rich root data."""
         return self._format.rich_root_data
 
     def _check_ascii_revisionid(self, revision_id, method):
@@ -1268,13 +1320,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             if isinstance(revision_id, str):
                 try:
                     revision_id.encode("ascii")
-                except UnicodeEncodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeEncodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
             else:
                 try:
                     revision_id.decode("ascii")
-                except UnicodeDecodeError:
-                    raise errors.NonAsciiRevisionId(method, self)
+                except UnicodeDecodeError as err:
+                    raise errors.NonAsciiRevisionId(method, self) from err
 
 
 class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
@@ -1285,7 +1337,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
         return controldir.format_registry.make_controldir("default").repository_format
 
 
-network_format_registry = registry.FormatRegistry["RepositoryFormat"]()
+network_format_registry = registry.FormatRegistry["RepositoryFormat", None]()
 """Registry of formats indexed by their network name.
 
 The network name for a repository format is an identifier that can be used when
@@ -1397,13 +1449,16 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_multiple_authors: bool = True
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
+        """Return string representation of the format."""
+        return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):
+        """Compare format objects for equality."""
         # format objects are generally stateless
         return isinstance(other, self.__class__)
 
     def __ne__(self, other):
+        """Compare format objects for inequality."""
         return not self == other
 
     def get_format_description(self):
@@ -1453,6 +1508,14 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(self.network_name)
 
     def check_conversion_target(self, target_format):
+        """Check if this format can be converted to the target format.
+
+        Args:
+            target_format: The format to convert to.
+
+        Raises:
+            BadConversionTarget: If conversion is not supported.
+        """
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 "Does not support rich root data.", target_format, from_format=self
@@ -1555,10 +1618,10 @@ class InterRepository(InterObject[Repository]):
                             revision_id and its parents.
         """
         with self.lock_write():
-            try:
+            with contextlib.suppress(
+                NotImplementedError, errors.RepositoryUpgradeRequired
+            ):
                 self.target.set_make_working_trees(self.source.make_working_trees())
-            except (NotImplementedError, errors.RepositoryUpgradeRequired):
-                pass
             self.target.fetch(self.source, revision_id=revision_id)
 
     def fetch(
@@ -1623,16 +1686,23 @@ class InterRepository(InterObject[Repository]):
             raise errors.IncompatibleRepositories(
                 source, target, "different rich-root support"
             )
-        if not hasattr(source, "_serializer") or not hasattr(target, "_serializer"):
+        if not hasattr(source, "_revision_serializer") or not hasattr(
+            target, "_revision_serializer"
+        ):
             if source != target:
                 raise errors.IncompatibleRepositories(
                     source, target, "different formats"
                 )
             return
 
-        if source._serializer != target._serializer:
+        if source._inventory_serializer != target._inventory_serializer:
             raise errors.IncompatibleRepositories(
-                source, target, "different serializers"
+                source, target, "different inventory serializers"
+            )
+
+        if source._revision_serializer != target._revision_serializer:
+            raise errors.IncompatibleRepositories(
+                source, target, "different revision serializers"
             )
 
 
@@ -1754,6 +1824,4 @@ class _LazyListJoin:
         return iter(full_list)
 
     def __repr__(self):
-        return "{}.{}({})".format(
-            self.__module__, self.__class__.__name__, self.list_parts
-        )
+        return f"{self.__module__}.{self.__class__.__name__}({self.list_parts})"

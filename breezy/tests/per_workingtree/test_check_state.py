@@ -39,10 +39,7 @@ class TestCaseWithState(TestCaseWithWorkingTree):
             tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
         # mutate the state file on all platforms.
-        if completely:
-            f = open(dirstate_path, "wb")
-        else:
-            f = open(dirstate_path, "ab")
+        f = open(dirstate_path, "wb") if completely else open(dirstate_path, "ab")
         try:
             f.write(b"garbage-at-end-of-file\n")
         finally:

@@ -78,4 +78,4 @@ class TestPack(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["pack", "--clean-obsolete-packs"])
 
         pack_names = t.list_dir("repository/obsolete_packs")
-        self.assertTrue(len(pack_names) == 0)
+        self.assertEqual(len(pack_names), 0)

@@ -24,12 +24,13 @@ this.
 
 from breezy import errors, urlutils
 from breezy.bzr import remote
-from breezy.controldir import ControlDir
 from breezy.tests import multiply_tests
 from breezy.tests.per_repository import (
     TestCaseWithRepository,
     all_repository_format_scenarios,
 )
+
+from ...controldir import ControlDir
 
 
 class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
@@ -64,10 +65,7 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
 class TestIncompatibleStacking(TestCaseWithRepository):
     def make_repo_and_incompatible_fallback(self):
         referring = self.make_repository("referring")
-        if referring._format.supports_chks:
-            different_fmt = "1.9"
-        else:
-            different_fmt = "2a"
+        different_fmt = "1.9" if referring._format.supports_chks else "2a"
         fallback = self.make_repository("fallback", format=different_fmt)
         return referring, fallback
 
@@ -129,7 +127,8 @@ def load_tests(loader, standard_tests, pattern):
         "breezy.tests.per_repository_reference.test_unlock",
     ]
     # Parameterize per_repository_reference test modules by format.
-    standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
+    for module_name in module_list:
+        standard_tests.addTests(loader.loadTestsFromName(module_name))
     return multiply_tests(
         standard_tests, external_reference_test_scenarios(), loader.suiteClass()
     )

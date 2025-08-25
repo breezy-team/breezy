@@ -33,10 +33,7 @@ class _LRUNode:
         self.value = value
 
     def __repr__(self):
-        if self.prev is None:
-            prev_key = None
-        else:
-            prev_key = self.prev.key
+        prev_key = None if self.prev is None else self.prev.key
         return "{}({!r} n:{!r} p:{!r})".format(
             self.__class__.__name__, self.key, self.next_key, prev_key
         )
@@ -46,6 +43,13 @@ class LRUCache:
     """A class which manages a cache of entries, removing unused ones."""
 
     def __init__(self, max_cache=100, after_cleanup_count=None):
+        """Initialize an LRUCache.
+
+        Args:
+            max_cache: The maximum number of entries to cache.
+            after_cleanup_count: After cleanup, we should have at most this
+                many entries. Defaults to 80% of max_cache.
+        """
         self._cache = {}
         # The "HEAD" of the lru linked list
         self._most_recently_used = None
@@ -54,9 +58,28 @@ class LRUCache:
         self._update_max_cache(max_cache, after_cleanup_count)
 
     def __contains__(self, key):
+        """Check if a key is in the cache.
+
+        Args:
+            key: The key to check.
+
+        Returns:
+            True if the key is cached, False otherwise.
+        """
         return key in self._cache
 
     def __getitem__(self, key):
+        """Get a value from the cache and mark it as recently used.
+
+        Args:
+            key: The key to retrieve.
+
+        Returns:
+            The cached value.
+
+        Raises:
+            KeyError: If the key is not in the cache.
+        """
         cache = self._cache
         node = cache[key]
         # Inlined from _record_access to decrease the overhead of __getitem__
@@ -88,6 +111,11 @@ class LRUCache:
         return node.value
 
     def __len__(self):
+        """Return the number of items in the cache.
+
+        Returns:
+            The number of cached entries.
+        """
         return len(self._cache)
 
     def __setitem__(self, key, value):
@@ -112,6 +140,15 @@ class LRUCache:
         return self._max_cache
 
     def get(self, key, default=None):
+        """Get a value from the cache, returning default if not found.
+
+        Args:
+            key: The key to retrieve.
+            default: Value to return if key is not found.
+
+        Returns:
+            The cached value or default if not found.
+        """
         node = self._cache.get(key, None)
         if node is None:
             return default

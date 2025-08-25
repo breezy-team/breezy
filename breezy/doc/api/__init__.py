@@ -31,17 +31,22 @@ from breezy import tests
 
 
 def make_new_test_id(test):
-    new_id = "{}.DocFileTest({})".format(__name__, test.id())
+    """Create new test ID for doctest.
+
+    Args:
+        test: Test object to create ID for.
+
+    Returns:
+        Lambda function that returns the new test ID.
+    """
+    new_id = f"{__name__}.DocFileTest({test.id()})"
     return lambda: new_id
 
 
 def load_tests(loader, basic_tests, pattern):
     """This module creates its own test suite with DocFileSuite."""
     dir_ = os.path.dirname(__file__)
-    if os.path.isdir(dir_):
-        candidates = os.listdir(dir_)
-    else:
-        candidates = []
+    candidates = os.listdir(dir_) if os.path.isdir(dir_) else []
     scripts = [candidate for candidate in candidates if candidate.endswith(".txt")]
     # since this module doesn't define tests, we ignore basic_tests
     suite = doctest.DocFileSuite(

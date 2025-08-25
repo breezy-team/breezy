@@ -17,9 +17,10 @@
 """Tests for the SSL support in the urllib HTTP transport."""
 
 import os
+import ssl
 
 from .. import config, tests, trace
-from ..transport.http import opt_ssl_ca_certs, ssl
+from ..transport.http import opt_ssl_ca_certs
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):
@@ -34,7 +35,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
     def test_specified(self):
         self.build_tree(["cacerts.pem"])
         path = os.path.join(self.test_dir, "cacerts.pem")
-        stack = self.get_stack("ssl.ca_certs = {}\n".format(path))
+        stack = self.get_stack(f"ssl.ca_certs = {path}\n")
         self.assertEqual(path, stack.get("ssl.ca_certs"))
 
     def test_specified_doesnt_exist(self):

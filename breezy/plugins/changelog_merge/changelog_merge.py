@@ -59,6 +59,14 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
     name_prefix = "changelog"
 
     def file_matches(self, params):
+        """Check if a file should be merged using the changelog merger.
+
+        Args:
+            params: Parameters containing file paths to check.
+
+        Returns:
+            True if the file should be handled by this merger, False otherwise.
+        """
         affected_files = self.affected_files
         if affected_files is None:
             config = self.merger.this_branch.get_config()
@@ -98,6 +106,8 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
 
 
 class EntryConflict(Exception):
+    """Raised when changelog entries cannot be merged automatically."""
+
     pass
 
 
@@ -155,7 +165,7 @@ def merge_entries(
     result_entries = []
     at_top = True
     for group in m3.merge_groups():
-        if "changelog_merge" in debug.debug_flags:
+        if debug.debug_flag_enabled("changelog_merge"):
             mutter("merge group:\n%r", group)
         group_kind = group[0]
         if group_kind == "conflict":
@@ -173,7 +183,7 @@ def merge_entries(
                 # Changes not made at the top are always preserved as is, no
                 # need to try distinguish edits from adds and deletes.
                 edits_in_other = []
-            if "changelog_merge" in debug.debug_flags:
+            if debug.debug_flag_enabled("changelog_merge"):
                 mutter("at_top: %r", at_top)
                 mutter("new_in_other: %r", new_in_other)
                 mutter("deleted_in_other: %r", deleted_in_other)
@@ -183,12 +193,12 @@ def merge_entries(
             for old_entry, new_entry in edits_in_other:
                 try:
                     index = updated_this.index(old_entry)
-                except ValueError:
+                except ValueError as e:
                     # edited entry no longer present in this!  Just give up and
                     # declare a conflict.
-                    raise EntryConflict()
+                    raise EntryConflict() from e
                 updated_this[index] = new_entry
-            if "changelog_merge" in debug.debug_flags:
+            if debug.debug_flag_enabled("changelog_merge"):
                 mutter("updated_this: %r", updated_this)
             if at_top:
                 # Float new entries from other to the top

@@ -15,9 +15,22 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""An adapter between a Git index and a Bazaar Working Tree."""
+"""Git working tree implementation for Breezy.
 
-import errno
+This module provides an adapter between Git indexes and Breezy working trees,
+allowing Git repositories to be manipulated using the Breezy working tree API.
+The module includes:
+
+- GitWorkingTree: A working tree implementation that uses a Git index
+- GitWorkingTreeFormat: Format class for Git working trees
+- Conflict classes for handling Git-style merge conflicts (TextConflict, ContentsConflict)
+
+The implementation bridges Git's index-based working tree model with Breezy's
+working tree abstraction, handling differences in file tracking, conflict
+resolution, and tree operations.
+"""
+
+import contextlib
 import itertools
 import os
 import posixpath
@@ -52,6 +65,7 @@ from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
+from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
 from .tree import MutableGitIndexTree
@@ -71,9 +85,19 @@ class TextConflict(_mod_conflicts.Conflict):
     _conflict_re = re.compile(b"^(<{7}|={7}|>{7})")
 
     def __init__(self, path):
+        """Initialize a TextConflict.
+
+        Args:
+            path: The path where the conflict occurred.
+        """
         super().__init__(path)
 
     def associated_filenames(self):
+        """Return the list of associated conflict files.
+
+        Returns:
+            List of filenames for the conflict files (.BASE, .OTHER, .THIS).
+        """
         return [self.path + suffix for suffix in (".BASE", ".OTHER", ".THIS")]
 
     def _resolve(self, tt, winner_suffix):
@@ -101,6 +125,14 @@ class TextConflict(_mod_conflicts.Conflict):
         tt.apply()
 
     def action_auto(self, tree):
+        """Attempt to automatically resolve the conflict.
+
+        Args:
+            tree: The working tree where the conflict exists.
+
+        Raises:
+            NotImplementedError: If the conflict cannot be auto-resolved.
+        """
         # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
         #                can't be auto resolved does not seem ideal.
         try:
@@ -116,13 +148,30 @@ class TextConflict(_mod_conflicts.Conflict):
                     raise NotImplementedError("Conflict markers present")
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        """Resolve the conflict with proper cleanup.
+
+        Args:
+            tree: The working tree where the conflict exists.
+            *args: Arguments to pass to _resolve.
+            **kwargs: Keyword arguments to pass to _resolve.
+        """
         with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
     def action_take_this(self, tree):
+        """Resolve the conflict by taking the 'THIS' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'OTHER' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
     def do(self, action, tree):
@@ -132,7 +181,7 @@ class TextConflict(_mod_conflicts.Conflict):
 
         :param tree: The tree passed as a parameter to the method.
         """
-        meth = getattr(self, "action_{}".format(action), None)
+        meth = getattr(self, f"action_{action}", None)
         if meth is None:
             raise NotImplementedError(self.__class__.__name__ + "." + action)
         meth(tree)
@@ -143,21 +192,51 @@ class TextConflict(_mod_conflicts.Conflict):
         pass
 
     def describe(self):
-        return "Text conflict in {path}".format(**self.__dict__)
+        """Return a human-readable description of the conflict.
+
+        Returns:
+            A string describing the conflict.
+        """
+        return f"Text conflict in {self.__dict__['path']}"
 
     def __str__(self):
+        """Return string representation of the conflict.
+
+        Returns:
+            A string representation of the conflict.
+        """
         return self.describe()
 
     def __repr__(self):
-        return "{}({!r})".format(type(self).__name__, self.path)
+        """Return detailed string representation of the conflict.
+
+        Returns:
+            A detailed string representation for debugging.
+        """
+        return f"{type(self).__name__}({self.path!r})"
 
     @classmethod
     def from_index_entry(cls, path, entry):
-        """Create a conflict from a Git index entry."""
+        """Create a conflict from a Git index entry.
+
+        Args:
+            path: The path where the conflict occurred.
+            entry: The Git index entry containing conflict information.
+
+        Returns:
+            A new TextConflict instance.
+        """
         return cls(path)
 
     def to_index_entry(self, tree):
-        """Convert the conflict to a Git index entry."""
+        """Convert the conflict to a Git index entry.
+
+        Args:
+            tree: The working tree containing the conflict.
+
+        Returns:
+            A ConflictedIndexEntry representing this conflict.
+        """
         encoded_path = encode_git_path(tree.abspath(self.path))
         try:
             base = index_entry_from_path(encoded_path + b".BASE")
@@ -184,6 +263,12 @@ class ContentsConflict(_mod_conflicts.Conflict):
     format = "Contents conflict in %(path)s"
 
     def __init__(self, path, conflict_path=None):
+        """Initialize a ContentsConflict.
+
+        Args:
+            path: The path where the conflict occurred.
+            conflict_path: Optional path to the conflict file.
+        """
         for suffix in (".BASE", ".THIS", ".OTHER"):
             if path.endswith(suffix):
                 # Here is the raw path
@@ -193,9 +278,23 @@ class ContentsConflict(_mod_conflicts.Conflict):
         self.conflict_path = conflict_path
 
     def _revision_tree(self, tree, revid):
+        """Get the revision tree for a given revision ID.
+
+        Args:
+            tree: The working tree.
+            revid: The revision ID to get the tree for.
+
+        Returns:
+            The revision tree for the given revision ID.
+        """
         return tree.branch.repository.revision_tree(revid)
 
     def associated_filenames(self):
+        """Return the list of associated conflict files.
+
+        Returns:
+            List of filenames for the conflict files (.BASE, .OTHER, .THIS).
+        """
         return [self.path + suffix for suffix in (".BASE", ".OTHER", ".THIS")]
 
     def _resolve(self, tt, suffix_to_remove):
@@ -237,25 +336,61 @@ class ContentsConflict(_mod_conflicts.Conflict):
             tt.apply()
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        """Resolve the conflict with proper cleanup.
+
+        Args:
+            tree: The working tree where the conflict exists.
+            *args: Arguments to pass to _resolve.
+            **kwargs: Keyword arguments to pass to _resolve.
+        """
         with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
     def action_take_this(self, tree):
+        """Resolve the conflict by taking the 'THIS' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "OTHER")
 
     def action_take_other(self, tree):
+        """Resolve the conflict by taking the 'OTHER' version.
+
+        Args:
+            tree: The working tree where the conflict exists.
+        """
         self._resolve_with_cleanups(tree, "THIS")
 
     @classmethod
     def from_index_entry(cls, entry):
-        """Create a conflict from a Git index entry."""
+        """Create a conflict from a Git index entry.
+
+        Args:
+            entry: The Git index entry containing conflict information.
+
+        Returns:
+            A new ContentsConflict instance.
+        """
         return cls(entry.path)
 
     def describe(self):
+        """Return a human-readable description of the conflict.
+
+        Returns:
+            A string describing the conflict.
+        """
         return f"Contents conflict in {self.__dict__['path']}"
 
     def to_index_entry(self, tree):
-        """Convert the conflict to a Git index entry."""
+        """Convert the conflict to a Git index entry.
+
+        Args:
+            tree: The working tree containing the conflict.
+
+        Returns:
+            A ConflictedIndexEntry representing this conflict.
+        """
         encoded_path = encode_git_path(tree.abspath(self.path))
         try:
             base = index_entry_from_path(encoded_path + b".BASE")
@@ -276,6 +411,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, controldir, repo, branch):
+        """Initialize a Git working tree.
+
+        Args:
+            controldir: The control directory for this working tree.
+            repo: The repository associated with this working tree.
+            branch: The branch associated with this working tree.
+        """
         MutableGitIndexTree.__init__(self)
         basedir = controldir.root_transport.local_abspath(".")
         self.basedir = osutils.realpath(basedir)
@@ -294,16 +436,42 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._reset_data()
 
     def supports_tree_reference(self):
+        """Return True if this tree supports tree references (submodules).
+
+        Returns:
+            True, as Git working trees support submodules.
+        """
         return True
 
     def supports_rename_tracking(self):
+        """Return True if this tree supports rename tracking.
+
+        Returns:
+            False, as Git working trees don't support rename tracking through this interface.
+        """
         return False
 
     def _read_index(self):
+        """Read the Git index file.
+
+        This loads the index from disk and marks it as clean.
+        """
         self.index = Index(self.control_transport.local_abspath("index"))
         self._index_dirty = False
 
     def _get_submodule_index(self, relpath):
+        """Get the index for a submodule.
+
+        Args:
+            relpath: The relative path to the submodule (as bytes).
+
+        Returns:
+            The Index object for the submodule.
+
+        Raises:
+            TypeError: If relpath is not bytes.
+            tree.MissingNestedTree: If the submodule is not found.
+        """
         if not isinstance(relpath, bytes):
             raise TypeError(relpath)
         try:
@@ -341,6 +509,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return lock.LogicalLockResult(self.unlock)
 
     def _lock_write_tree(self):
+        """Acquire a write lock on the tree without locking the branch.
+
+        This is an internal method that sets up the necessary locks for
+        writing to the working tree index file.
+
+        Raises:
+            errors.LockContention: If the index file is already locked.
+            errors.ReadOnlyError: If attempting to write lock when already read-locked.
+        """
         if not self._lock_mode:
             self._lock_mode = "w"
             self._lock_count = 1
@@ -348,8 +525,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._index_file = GitFile(
                     self.control_transport.local_abspath("index"), "wb"
                 )
-            except FileLocked:
-                raise errors.LockContention("index")
+            except FileLocked as err:
+                raise errors.LockContention("index") from err
             self._read_index()
         elif self._lock_mode == "r":
             raise errors.ReadOnlyError(self)
@@ -357,6 +534,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self._lock_count += 1
 
     def lock_tree_write(self):
+        """Lock the working tree for writing.
+
+        This locks the branch for reading and the tree for writing.
+
+        Returns:
+            A LogicalLockResult that can be used to unlock the tree.
+        """
         self.branch.lock_read()
         try:
             self._lock_write_tree()
@@ -366,6 +550,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise
 
     def lock_write(self, token=None):
+        """Lock the working tree and branch for writing.
+
+        Args:
+            token: Unused lock token parameter for compatibility.
+
+        Returns:
+            A LogicalLockResult that can be used to unlock the tree.
+        """
         self.branch.lock_write()
         try:
             self._lock_write_tree()
@@ -375,20 +567,41 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise
 
     def is_locked(self):
+        """Return True if this tree is locked.
+
+        Returns:
+            True if the tree is currently locked, False otherwise.
+        """
         return self._lock_count >= 1
 
     def get_physical_lock_status(self):
+        """Return the physical lock status.
+
+        Returns:
+            False, as Git working trees don't use physical locks.
+        """
         return False
 
     def break_lock(self):
-        try:
+        """Break any locks on this working tree.
+
+        This removes index.lock if it exists and breaks the branch lock.
+        """
+        with contextlib.suppress(_mod_transport.NoSuchFile):
             self.control_transport.delete("index.lock")
-        except _mod_transport.NoSuchFile:
-            pass
         self.branch.break_lock()
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Unlock the working tree.
+
+        This decrements the lock count and releases locks when the count
+        reaches zero. If the index was modified, it will be flushed to disk.
+
+        Raises:
+            errors.LockNotHeld: If the tree is not currently locked.
+            errors.LockBroken: If the lock is in an inconsistent state.
+        """
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
         try:
@@ -411,9 +624,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.branch.unlock()
 
     def _cleanup(self):
+        """Perform cleanup operations before unlocking.
+
+        This is a hook for subclasses to perform cleanup operations.
+        """
         pass
 
     def _detect_case_handling(self):
+        """Detect whether the filesystem is case-sensitive.
+
+        Sets self.case_sensitive based on whether we can stat a file
+        with different casing than the actual file.
+        """
         try:
             self._transport.stat(".git/cOnFiG")
         except _mod_transport.NoSuchFile:
@@ -422,12 +644,31 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.case_sensitive = False
 
     def merge_modified(self):
+        """Return a dictionary of modified files during merge.
+
+        Returns:
+            Empty dict, as Git working trees don't track merge modifications this way.
+        """
         return {}
 
     def set_merge_modified(self, modified_hashes):
+        """Set the merge modified hashes.
+
+        Args:
+            modified_hashes: Dictionary of modified file hashes.
+
+        Raises:
+            errors.UnsupportedOperation: This operation is not supported.
+        """
         raise errors.UnsupportedOperation(self.set_merge_modified, self)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parent trees for this working tree.
+
+        Args:
+            parents_list: List of (revision_id, tree) tuples.
+            allow_leftmost_as_ghost: Whether to allow the leftmost parent to be a ghost.
+        """
         self.set_parent_ids([p for p, t in parents_list])
 
     def _set_merges_from_parent_ids(self, rhs_parent_ids):
@@ -436,16 +677,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self.branch.lookup_bzr_revision_id(revid)[0] for revid in rhs_parent_ids
             ]
         except errors.NoSuchRevision as e:
-            raise errors.GhostRevisionUnusableHere(e.revision)
+            raise errors.GhostRevisionUnusableHere(e.revision) from e
         if merges:
             self.control_transport.put_bytes(
                 "MERGE_HEAD", b"\n".join(merges), mode=self.controldir._get_file_mode()
             )
         else:
-            try:
+            with contextlib.suppress(_mod_transport.NoSuchFile):
                 self.control_transport.delete("MERGE_HEAD")
-            except _mod_transport.NoSuchFile:
-                pass
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -482,10 +721,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value and uses that to decide what the parents list should be.
         """
         last_rev = self._last_revision()
-        if last_rev == _mod_revision.NULL_REVISION:
-            parents = []
-        else:
-            parents = [last_rev]
+        parents = [] if last_rev == _mod_revision.NULL_REVISION else [last_rev]
         try:
             merges_bytes = self.control_transport.get_bytes("MERGE_HEAD")
         except _mod_transport.NoSuchFile:
@@ -497,7 +733,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return parents
 
     def check_state(self):
-        """Check that the working state is/isn't valid."""
+        """Check that the working state is/isn't valid.
+
+        This is a no-op for Git working trees as they are always in a valid state.
+        """
         pass
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True, force=False):
@@ -518,9 +757,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             abs_path = self.abspath(file_to_backup)
             backup_name = self.controldir._available_backup_name(file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed {} (but kept a copy: {})".format(
-                file_to_backup, backup_name
-            )
+            return f"removed {file_to_backup} (but kept a copy: {backup_name})"
 
         # Sort needed to first handle directory content before the directory
         files_to_backup = []
@@ -599,14 +836,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 abs_path = self.abspath(f)
                 if verbose:
                     # having removed it, it must be either ignored or unknown
-                    if self.is_ignored(f):
-                        new_status = "I"
-                    else:
-                        new_status = "?"
+                    new_status = "I" if self.is_ignored(f) else "?"
                     kind_ch = osutils.kind_marker(kind)
                     to_file.write(new_status + "       " + f + kind_ch + "\n")
                 if kind is None:
-                    message = "{} does not exist".format(f)
+                    message = f"{f} does not exist"
                 else:
                     if not keep_files:
                         if f in files_to_backup and not force:
@@ -616,9 +850,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                 osutils.rmtree(abs_path)
                             else:
                                 osutils.delete_any(abs_path)
-                            message = "deleted {}".format(f)
+                            message = f"deleted {f}"
                     else:
-                        message = "removed {}".format(f)
+                        message = f"removed {f}"
                 self._unversion_path(f)
 
                 # print only one message (if any) per file.
@@ -627,6 +861,21 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self._versioned_dirs = None
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
+        """Add files to the working tree intelligently.
+
+        This method adds files and directories to the index, recursively
+        adding directory contents and ignoring files that match ignore patterns.
+
+        Args:
+            file_list: List of files/directories to add. Defaults to ["."] if empty.
+            recurse: Whether to recursively add directory contents.
+            action: Optional callback function for each file being added.
+            save: Whether to save changes to the index immediately.
+
+        Returns:
+            A tuple of (added_files, ignored_files_dict) where ignored_files_dict
+            maps ignore patterns to lists of ignored files.
+        """
         if not file_list:
             file_list = ["."]
 
@@ -662,7 +911,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     raise errors.InvalidNormalization(filepath)
 
                 abspath = self.abspath(filepath)
-                kind = osutils.file_kind(abspath)
+                kind = file_kind(abspath)
                 if kind in ("file", "symlink"):
                     (index, subpath) = self._lookup_index(encode_git_path(filepath))
                     if subpath in index:
@@ -708,7 +957,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         ignored.setdefault(ignore_glob, []).append(subp)
                         continue
                     abspath = self.abspath(subp)
-                    kind = osutils.file_kind(abspath)
+                    kind = file_kind(abspath)
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
@@ -725,6 +974,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return added, ignored
 
     def has_filename(self, filename):
+        """Check if a filename exists in the working tree.
+
+        Args:
+            filename: The relative path to check.
+
+        Returns:
+            True if the file exists, False otherwise.
+        """
         return osutils.lexists(self.abspath(filename))
 
     def _iter_files_recursive(
@@ -779,15 +1036,19 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if kinds[pos] is None:
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
-                        kind = osutils.file_kind(fullpath)
-                    except OSError as e:
-                        if e.errno == errno.ENOENT:
-                            raise _mod_transport.NoSuchFile(fullpath)
+                        kind = file_kind(fullpath)
+                    except FileNotFoundError as err:
+                        raise _mod_transport.NoSuchFile(fullpath) from err
                     if f != "" and self._directory_is_tree_reference(f):
                         kind = "tree-reference"
                     kinds[pos] = kind
 
     def flush(self):
+        """Flush pending changes to the index file.
+
+        Raises:
+            errors.NotWriteLocked: If the tree is not write-locked.
+        """
         if self._lock_mode != "w":
             raise errors.NotWriteLocked(self)
         # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
@@ -798,6 +1059,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._flush(f)
 
     def _flush(self, f):
+        """Flush the index to a file.
+
+        Args:
+            f: The file object to write to.
+        """
         try:
             shaf = SHA1Writer(f)
             write_index_dict(shaf, self.index)
@@ -811,10 +1077,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """See Tree.get_file_mtime."""
         try:
             return self._lstat(path).st_mtime
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(path)
-            raise
+        except FileNotFoundError as err:
+            raise _mod_transport.NoSuchFile(path) from err
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -857,75 +1121,185 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return ignore_manager
 
     def _flush_ignore_list_cache(self):
+        """Clear the cached ignore manager.
+
+        This forces the ignore patterns to be re-read from .gitignore files
+        on the next access.
+        """
         self._ignoremanager = None
 
     def set_last_revision(self, revid):
+        """Set the last revision of the working tree.
+
+        Args:
+            revid: The revision ID to set as the last revision.
+
+        Returns:
+            False if the revision is null, otherwise generates revision history.
+
+        Raises:
+            errors.GhostRevisionUnusableHere: If the revision doesn't exist.
+        """
         if _mod_revision.is_null(revid):
             self.branch.set_last_revision_info(0, revid)
             return False
         _mod_revision.check_not_reserved_id(revid)
         try:
             self.branch.generate_revision_history(revid)
-        except errors.NoSuchRevision:
-            raise errors.GhostRevisionUnusableHere(revid)
+        except errors.NoSuchRevision as err:
+            raise errors.GhostRevisionUnusableHere(revid) from err
 
     def _reset_data(self):
+        """Reset internal data structures.
+
+        This is a hook for subclasses to reset any cached data when the
+        working tree state changes.
+        """
         pass
 
     def get_file_verifier(self, path, stat_value=None):
+        """Get a verifier for the file at the given path.
+
+        Args:
+            path: The path to get a verifier for.
+            stat_value: Unused stat value parameter.
+
+        Returns:
+            A tuple of ("GIT", sha_hash) for files, or ("GIT", None) for directories.
+
+        Raises:
+            NoSuchFile: If the path is not versioned.
+        """
         with self.lock_read():
             (index, subpath) = self._lookup_index(encode_git_path(path))
             try:
                 return ("GIT", index[subpath].sha)
-            except KeyError:
+            except KeyError as err:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise _mod_transport.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path) from err
 
     def get_file_sha1(self, path, stat_value=None):
+        """Get the SHA-1 hash of a file's current contents.
+
+        Args:
+            path: The path to get the SHA-1 for.
+            stat_value: Unused stat value parameter.
+
+        Returns:
+            The SHA-1 hash of the file's contents, or None if the file doesn't exist.
+
+        Raises:
+            NoSuchFile: If the path is not versioned.
+        """
         with self.lock_read():
             if not self.is_versioned(path):
                 raise _mod_transport.NoSuchFile(path)
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
-            except OSError as e:
-                if e.errno in (errno.EISDIR, errno.ENOENT):
-                    return None
-                raise
+            except (NotADirectoryError, FileNotFoundError):
+                return None
 
     def revision_tree(self, revid):
+        """Get a revision tree for the specified revision ID.
+
+        Args:
+            revid: The revision ID to get the tree for.
+
+        Returns:
+            A revision tree for the specified revision.
+        """
         return self.repository.revision_tree(revid)
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
+        """Check if a file is executable based on its stat result.
+
+        Args:
+            path: The file path (unused).
+            stat_result: The os.stat result for the file.
+
+        Returns:
+            True if the file is executable, False otherwise.
+        """
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
+        """Check if a file is executable based on the basis tree.
+
+        This method checks executability from the basis tree when the
+        filesystem doesn't support executable bits.
+
+        Args:
+            path: The file path to check.
+            stat_result: The os.stat result (unused).
+
+        Returns:
+            True if the file is executable according to the basis tree.
+        """
         return self.basis_tree().is_executable(path)
 
     def stored_kind(self, path):
+        """Return the stored file kind for a path.
+
+        This returns the kind of file as stored in the index, which may
+        differ from the current kind on disk.
+
+        Args:
+            path: The path to check.
+
+        Returns:
+            The file kind ("file", "directory", "symlink", etc.).
+
+        Raises:
+            NoSuchFile: If the path is not in the index.
+        """
         with self.lock_read():
             encoded_path = encode_git_path(path)
             (index, subpath) = self._lookup_index(encoded_path)
             try:
                 entry = index[subpath]
-            except KeyError:
+            except KeyError as err:
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
-                raise _mod_transport.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path) from err
             entry = getattr(entry, "this", entry)
             return mode_kind(entry.mode)
 
     def _lstat(self, path):
+        """Get the lstat result for a path.
+
+        Args:
+            path: The relative path to stat.
+
+        Returns:
+            The os.lstat result for the file.
+        """
         return os.lstat(self.abspath(path))
 
     def _live_entry(self, path):
+        """Create an index entry from the current state of a file.
+
+        Args:
+            path: The Git-encoded path to create an entry for.
+
+        Returns:
+            An IndexEntry representing the current file state.
+        """
         encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
         return index_entry_from_path(encoded_path)
 
     def is_executable(self, path):
+        """Check if a file is executable.
+
+        Args:
+            path: The path to check.
+
+        Returns:
+            True if the file is executable, False otherwise.
+        """
         with self.lock_read():
             if self._supports_executable():
                 mode = self._lstat(path).st_mode
@@ -946,6 +1320,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
     ):
+        """List files in the working tree.
+
+        Args:
+            include_root: Whether to include the root directory.
+            from_dir: Directory to start listing from.
+            recursive: Whether to list files recursively.
+            recurse_nested: Whether to recurse into nested trees.
+
+        Yields:
+            Tuples of (path, status, kind, file_entry) for each file.
+        """
         if from_dir is None or from_dir == ".":
             from_dir = ""
         dir_ids = {}
@@ -1021,6 +1406,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     )
 
     def all_versioned_paths(self):
+        """Return all paths that are versioned in this tree.
+
+        Returns:
+            A set of all versioned paths, including parent directories.
+        """
         with self.lock_read():
             paths = {""}
             for path in self.index:
@@ -1036,6 +1426,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return paths
 
     def iter_child_entries(self, path):
+        """Iterate over the child entries of a directory.
+
+        Args:
+            path: The directory path to get children for.
+
+        Yields:
+            InventoryEntry objects for each child.
+
+        Raises:
+            NoSuchFile: If the directory doesn't exist.
+        """
         encode_git_path(path)
         with self.lock_read():
             parent_id = self.path2id(path)
@@ -1061,6 +1462,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 raise _mod_transport.NoSuchFile(path)
 
     def conflicts(self):
+        """Return the current conflicts in the working tree.
+
+        Returns:
+            A ConflictList containing all current conflicts.
+        """
         with self.lock_read():
             conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
@@ -1069,6 +1475,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return conflicts
 
     def set_conflicts(self, conflicts):
+        """Set the conflicts in the working tree.
+
+        Args:
+            conflicts: A list of conflict objects to set.
+
+        Raises:
+            UnsupportedOperation: If any conflict type is not supported.
+        """
         by_path = {}
         for conflict in conflicts:
             if not isinstance(conflict, (TextConflict, ContentsConflict)):
@@ -1098,6 +1512,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 del self.index[path]
 
     def add_conflicts(self, new_conflicts):
+        """Add new conflicts to the working tree.
+
+        Args:
+            new_conflicts: A list of conflict objects to add.
+
+        Raises:
+            UnsupportedOperation: If any conflict type is not supported.
+        """
         with self.lock_tree_write():
             for conflict in new_conflicts:
                 if not isinstance(conflict, (TextConflict, ContentsConflict)):
@@ -1114,8 +1536,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         ):
                             continue
                         self.index[encode_git_path(conflict.path)] = entry
-                    except KeyError:
-                        raise errors.UnsupportedOperation(self.add_conflicts, self)
+                    except KeyError as err:
+                        raise errors.UnsupportedOperation(
+                            self.add_conflicts, self
+                        ) from err
                 else:
                     raise errors.UnsupportedOperation(self.add_conflicts, self)
 
@@ -1145,12 +1569,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             current_disk = next(disk_iterator)
             disk_finished = False
-        except OSError as e:
-            if not (
-                e.errno == errno.ENOENT
-                or (sys.platform == "win32" and e.errno == ERROR_PATH_NOT_FOUND)
-            ):
-                raise
+        except FileNotFoundError:
             current_disk = None
             disk_finished = True
         try:
@@ -1278,6 +1697,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     disk_finished = True
 
     def _walkdirs(self, prefix=""):
+        """Walk the versioned directories starting from prefix.
+
+        Args:
+            prefix: The directory prefix to start walking from.
+
+        Yields:
+            Tuples of ((dir_path, dir_file_id), list_of_entries) for each directory.
+        """
         if prefix != "":
             prefix += "/"
         prefix = encode_git_path(prefix)
@@ -1315,9 +1742,19 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return ((k, sorted(v)) for (k, v) in sorted(per_dir.items()))
 
     def get_shelf_manager(self):
+        """Return a shelf manager for this working tree.
+
+        Raises:
+            ShelvingUnsupported: Git working trees don't support shelving.
+        """
         raise workingtree.ShelvingUnsupported()
 
     def store_uncommitted(self):
+        """Store uncommitted changes.
+
+        Raises:
+            StoringUncommittedNotSupported: Git working trees don't support this operation.
+        """
         raise errors.StoringUncommittedNotSupported(self)
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
@@ -1358,16 +1795,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             # Now we have the parents of this content
-            from breezy.annotate import Annotator
-
+            from ..bzr.annotate import VersionedFileAnnotator
             from .annotate import AnnotateProvider
 
             annotate_provider = AnnotateProvider(
                 self.branch.repository._file_change_scanner
             )
-            annotator = Annotator(annotate_provider)
+            annotator = VersionedFileAnnotator(annotate_provider)
 
-            from breezy.graph import Graph
+            from ..graph import Graph
 
             graph = Graph(annotate_provider)
             heads = graph.heads(maybe_file_parent_keys)
@@ -1385,9 +1821,20 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return annotations
 
     def _rename_one(self, from_rel, to_rel):
+        """Rename a single file or directory.
+
+        Args:
+            from_rel: The source path relative to the tree root.
+            to_rel: The target path relative to the tree root.
+        """
         os.rename(self.abspath(from_rel), self.abspath(to_rel))
 
     def _build_checkout_with_index(self):
+        """Build a checkout with an index from the current branch head.
+
+        This creates an index file that reflects the state of the tree
+        at the branch head, used for initializing working trees.
+        """
         build_index_from_tree(
             self.user_transport.local_abspath("."),
             self.control_transport.local_abspath("index"),
@@ -1471,6 +1918,21 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         show_base=False,
         tag_selector=None,
     ):
+        """Pull changes from a source branch into this working tree.
+
+        Args:
+            source: The source branch to pull from.
+            overwrite: Whether to overwrite local changes.
+            stop_revision: The revision to stop pulling at.
+            change_reporter: Optional change reporter for progress.
+            possible_transports: List of transports to try.
+            local: Whether to pull locally only.
+            show_base: Whether to show base text in conflicts.
+            tag_selector: Function to select which tags to pull.
+
+        Returns:
+            The number of revisions pulled.
+        """
         with self.lock_write(), source.lock_read():
             old_revision = self.branch.last_revision()
             count = self.branch.pull(
@@ -1497,8 +1959,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild:
-                raise BadReferenceTarget(self, sub_tree, "Target not inside tree.")
+            except errors.PathNotChild as err:
+                raise BadReferenceTarget(
+                    self, sub_tree, "Target not inside tree."
+                ) from err
 
             path, can_access = osutils.normalized_filename(sub_tree_path)
             if not can_access:
@@ -1506,9 +1970,25 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self._index_add_entry(sub_tree_path, "tree-reference")
 
     def _read_submodule_head(self, path):
+        """Read the HEAD revision of a submodule.
+
+        Args:
+            path: The path to the submodule.
+
+        Returns:
+            The SHA-1 hash of the submodule's HEAD, or None if not found.
+        """
         return read_submodule_head(self.abspath(path))
 
     def get_reference_revision(self, path):
+        """Get the revision ID that a tree reference points to.
+
+        Args:
+            path: The path to the tree reference.
+
+        Returns:
+            The revision ID that the reference points to.
+        """
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
             (index, subpath) = self._lookup_index(encode_git_path(path))
@@ -1518,12 +1998,32 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):
+        """Get the nested working tree at the given path.
+
+        Args:
+            path: The path to the nested tree.
+
+        Returns:
+            A WorkingTree object for the nested tree.
+
+        Raises:
+            MissingNestedTree: If no nested tree exists at the path.
+        """
         try:
             return workingtree.WorkingTree.open(self.abspath(path))
         except errors.NotBranchError as e:
             raise tree.MissingNestedTree(path) from e
 
     def _directory_is_tree_reference(self, relpath):
+        """Check if a directory is a tree reference (submodule).
+
+        Args:
+            relpath: The relative path to check.
+
+        Returns:
+            True if the directory contains a .git file/directory and is not
+            the root of this tree.
+        """
         # as a special case, if a directory contains control files then
         # it's a tree reference, except that the root of the tree is not
         return relpath and osutils.lexists(self.abspath(relpath) + "/.git")
@@ -1602,6 +2102,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 tree.set_parent_ids(new_parents)
 
     def reference_parent(self, path, possible_transports=None):
+        """Get the parent branch for a tree reference.
+
+        Args:
+            path: The path to the tree reference.
+            possible_transports: List of transports to try.
+
+        Returns:
+            A Branch object for the parent, or None if not found.
+        """
         remote_url = self.get_reference_info(path)
         if remote_url is None:
             trace.warning("Unable to find submodule info for %s", path)
@@ -1611,6 +2120,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         )
 
     def get_reference_info(self, path):
+        """Get the reference information for a tree reference.
+
+        Args:
+            path: The path to the tree reference.
+
+        Returns:
+            The URL of the referenced repository, or None if not found.
+        """
         submodule_info = self._submodule_info()
         info = submodule_info.get(encode_git_path(path))
         if info is None:
@@ -1618,20 +2135,23 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return decode_git_path(info[0])
 
     def set_reference_info(self, tree_path, branch_location):
+        """Set the reference information for a tree reference.
+
+        This updates the .gitmodules file with the submodule information.
+
+        Args:
+            tree_path: The path where the tree reference is located.
+            branch_location: The URL of the referenced repository, or None to remove.
+        """
         path = self.abspath(".gitmodules")
         try:
             config = GitConfigFile.from_path(path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                config = GitConfigFile()
-            else:
-                raise
+        except FileNotFoundError:
+            config = GitConfigFile()
         section = (b"submodule", encode_git_path(tree_path))
         if branch_location is None:
-            try:
+            with contextlib.suppress(KeyError):
                 del config[section]
-            except KeyError:
-                pass
         else:
             branch_location = urlutils.join(
                 urlutils.strip_segment_parameters(self.branch.user_url), branch_location
@@ -1642,6 +2162,42 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self.add(".gitmodules")
 
     _marker = object()
+
+    def subsume(self, other_tree):
+        """Subsume another working tree into this one.
+
+        This operation merges another working tree's content and history
+        into this tree as a subdirectory.
+
+        Args:
+            other_tree: The working tree to subsume.
+
+        Raises:
+            errors.BadSubsumeSource: If the other tree is not contained within this tree.
+        """
+        for parent_id in other_tree.get_parent_ids():
+            self.branch.repository.fetch(other_tree.branch.repository, parent_id)
+        self.set_parent_ids(self.get_parent_ids() + other_tree.get_parent_ids())
+        with self.lock_tree_write(), other_tree.lock_tree_write():
+            try:
+                other_tree_path = self.relpath(other_tree.basedir)
+            except errors.PathNotChild as err:
+                raise errors.BadSubsumeSource(
+                    self, other_tree, "Tree is not contained by the other"
+                ) from err
+
+            other_tree_bytes = encode_git_path(other_tree_path)
+
+            ids = {}
+            for p, e in other_tree.index.iteritems():
+                newp = other_tree_bytes + b"/" + p
+                self.index[newp] = e
+                self._index_dirty = True
+                ids[e.sha] = newp
+
+            self.store.add_objects([(other_tree.store[i], p) for (i, p) in ids.items()])
+
+        other_tree.controldir.retire_controldir()
 
     def update(
         self,
@@ -1788,6 +2344,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """Format for Git working trees.
+
+    This format provides Git working tree functionality within the Breezy framework.
+    It does not support versioned directories, file IDs, or storing uncommitted changes.
+    """
+
     _tree_class = GitWorkingTree
 
     supports_versioned_directories = False
@@ -1808,11 +2370,21 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     @property
     def _matchingcontroldir(self):
+        """Return the control directory format that matches this working tree format.
+
+        Returns:
+            A LocalGitControlDirFormat instance.
+        """
         from .dir import LocalGitControlDirFormat
 
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
+        """Return a human-readable description of this format.
+
+        Returns:
+            A string describing this format.
+        """
         return "Git Working Tree"
 
     def initialize(
@@ -1823,7 +2395,21 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
         accelerator_tree=None,
         hardlink=False,
     ):
-        """See WorkingTreeFormat.initialize()."""
+        """Initialize a new Git working tree.
+
+        Args:
+            a_controldir: The control directory to initialize the working tree in.
+            revision_id: The revision ID to set as the initial revision.
+            from_branch: Unused for Git working trees.
+            accelerator_tree: Unused for Git working trees.
+            hardlink: Unused for Git working trees.
+
+        Returns:
+            A new GitWorkingTree instance.
+
+        Raises:
+            errors.IncompatibleFormat: If a_controldir is not a LocalGitDir.
+        """
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir)
         branch = a_controldir.open_branch(nascent_ok=True)

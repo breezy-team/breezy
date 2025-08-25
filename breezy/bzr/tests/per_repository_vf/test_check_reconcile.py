@@ -20,15 +20,16 @@ That is, tests for reconcile and check.
 """
 
 from breezy import osutils
-from breezy.bzr.inventory import Inventory, InventoryFile
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.repository import WriteGroup
-from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable, multiply_scenarios
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....repository import WriteGroup
+from ....revision import NULL_REVISION, Revision, RevisionID
+from ....tests.scenarios import load_tests_apply_scenarios
+from ...inventory import Inventory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
 
@@ -174,7 +175,9 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
         # make rev2, with a-file.
         # a-file has 'rev1b' as an ancestor, even though this is not
         # mentioned by 'rev1a', making it an unreferenced ancestor
-        inv = self.make_one_file_inventory(repo, b"rev2", [b"rev1a", b"rev1b"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev2", [b"rev1a", b"rev1b"], root_revision=b"rev2"
+        )
         self.add_revision(repo, b"rev2", inv, [b"rev1a"])
         self.versioned_root = repo.supports_rich_root()
 
@@ -226,7 +229,7 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     def populate_repository(self, repo):
         # make rev2, with a-file
         # a-file is sane
-        inv = self.make_one_file_inventory(repo, b"rev2", [])
+        inv = self.make_one_file_inventory(repo, b"rev2", [], root_revision=b"rev2")
         self.add_revision(repo, b"rev2", inv, [])
 
         # make ghost revision rev1c, with a version of a-file present so
@@ -240,7 +243,9 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
         # make rev3 with a-file
         # a-file refers to 'rev1c', which is a ghost in this repository, so
         # a-file cannot have rev1c as its ancestor.
-        inv = self.make_one_file_inventory(repo, b"rev3", [b"rev1c"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev3", [b"rev1c"], root_revision=b"rev3"
+        )
         self.add_revision(repo, b"rev3", inv, [b"rev1c", b"rev1a"])
         self.versioned_root = repo.supports_rich_root()
 
@@ -324,7 +329,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
             r"but should have \(rev2c\)",
             r"a-file-id version rev4 has parents \(rev2\) "
             r"but should have \(rev1a\)",
-            f"{count} inconsistent parents",
+            "%d inconsistent parents" % count,
         ]
 
     def populate_repository(self, repo):
@@ -335,7 +340,9 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # make rev2, with a-file.
         # a-file is unmodified from rev1a, and an unreferenced rev2 file
         # version is present in the repository.
-        self.make_one_file_inventory(repo, b"rev2", [b"rev1a"], inv_revision=b"rev1a")
+        inv = self.make_one_file_inventory(
+            repo, b"rev2", [b"rev1a"], inv_revision=b"rev1a", root_revision=b"rev2"
+        )
         self.add_revision(repo, b"rev2", inv, [b"rev1a"])
 
         # make rev3 with a-file
@@ -345,7 +352,9 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # ghost, so only the details from rev1a are available for
         # determining whether a delta is acceptable, or a full is needed,
         # and what the correct parents are.
-        inv = self.make_one_file_inventory(repo, b"rev3", [b"rev2"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev3", [b"rev2"], inv_revision=b"rev3", root_revision=b"rev3"
+        )
         self.add_revision(repo, b"rev3", inv, [b"rev1c", b"rev1a"])
 
         # In rev2b, the true last-modifying-revision of a-file is rev1a,
@@ -355,7 +364,7 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # a-file-rev2b.
         # ??? This is to test deduplication in fixing rev4
         inv = self.make_one_file_inventory(
-            repo, b"rev2b", [b"rev1a"], inv_revision=b"rev1a"
+            repo, b"rev2b", [b"rev1a"], inv_revision=b"rev1a", root_revision=b"rev2b"
         )
         self.add_revision(repo, b"rev2b", inv, [b"rev1a"])
 
@@ -367,12 +376,16 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # a-file, and is a merge of rev2 and rev2b, so it should end up with
         # a parent of just rev1a - the starting file parents list is simply
         # completely wrong.
-        inv = self.make_one_file_inventory(repo, b"rev4", [b"rev2"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev4", [b"rev2"], root_revision=b"rev4"
+        )
         self.add_revision(repo, b"rev4", inv, [b"rev2", b"rev2b"])
 
         # rev2c changes a-file from rev1a, so the version it of a-file it
         # introduces is a head revision when rev5 is checked.
-        inv = self.make_one_file_inventory(repo, b"rev2c", [b"rev1a"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev2c", [b"rev1a"], root_revision=b"rev2c"
+        )
         self.add_revision(repo, b"rev2c", inv, [b"rev1a"])
 
         # rev5 descends from rev2 and rev2c; as rev2 does not alter a-file,
@@ -381,7 +394,9 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
         # available, because we use the heads of the revision parents for
         # the inventory modification revisions of the file to determine the
         # parents for the per file graph.
-        inv = self.make_one_file_inventory(repo, b"rev5", [b"rev2", b"rev2c"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev5", [b"rev2", b"rev2c"], root_revision=b"rev5"
+        )
         self.add_revision(repo, b"rev5", inv, [b"rev2", b"rev2c"])
         self.versioned_root = repo.supports_rich_root()
 
@@ -494,6 +509,7 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
             [b"rev1a", b"rev1b"],
             inv_revision=b"rev1a",
             file_contents=file_contents,
+            root_revision=b"rev2",
         )
         self.add_revision(repo, b"rev2", inv, [b"rev1a", b"rev1b"])
 
@@ -506,11 +522,14 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
             inv_revision=b"rev2",
             file_contents=file_contents,
             make_file_version=False,
+            root_revision=b"rev3",
         )
         self.add_revision(repo, b"rev3", inv, [b"rev2"])
 
         # rev4: a modification of a-file on top of rev3.
-        inv = self.make_one_file_inventory(repo, b"rev4", [b"rev2"])
+        inv = self.make_one_file_inventory(
+            repo, b"rev4", [b"rev2"], root_revision=b"rev4"
+        )
         self.add_revision(repo, b"rev4", inv, [b"rev3"])
         self.versioned_root = repo.supports_rich_root()
 
@@ -589,7 +608,7 @@ class TooManyParentsScenario(BrokenRepoScenario):
         else:
             count = 1
         return (
-            f"     {count} inconsistent parents",
+            "     %d inconsistent parents" % count,
             (
                 r"      \* a-file-id version broken-revision has parents "
                 r"\(good-parent, bad-parent\) but "
@@ -603,11 +622,16 @@ class TooManyParentsScenario(BrokenRepoScenario):
         )
         self.add_revision(repo, b"bad-parent", inv, ())
 
-        inv = self.make_one_file_inventory(repo, b"good-parent", (b"bad-parent",))
+        inv = self.make_one_file_inventory(
+            repo, b"good-parent", (b"bad-parent",), root_revision=b"good-parent"
+        )
         self.add_revision(repo, b"good-parent", inv, (b"bad-parent",))
 
         inv = self.make_one_file_inventory(
-            repo, b"broken-revision", (b"good-parent", b"bad-parent")
+            repo,
+            b"broken-revision",
+            (b"good-parent", b"bad-parent"),
+            root_revision=b"broken-revision",
         )
         self.add_revision(repo, b"broken-revision", inv, (b"good-parent",))
         self.versioned_root = repo.supports_rich_root()
@@ -687,14 +711,18 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         )
 
     def populate_repository(self, repo):
-        inv = self.make_one_file_inventory(repo, b"basis", ())
+        inv = self.make_one_file_inventory(repo, b"basis", (), root_revision=b"basis")
         self.add_revision(repo, b"basis", inv, ())
 
         # 'modified-something-else' is a correctly recorded revision, but it
         # does not modify the file we are looking at, so the inventory for that
         # file in this revision points to 'basis'.
         inv = self.make_one_file_inventory(
-            repo, b"modified-something-else", (b"basis",), inv_revision=b"basis"
+            repo,
+            b"modified-something-else",
+            (b"basis",),
+            inv_revision=b"basis",
+            root_revision=b"modified-something-else",
         )
         self.add_revision(repo, b"modified-something-else", inv, (b"basis",))
 
@@ -702,7 +730,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
         # but the 'current' version of 'a-file' should have 'basis' as its
         # parent.
         inv = self.make_one_file_inventory(
-            repo, b"current", (b"modified-something-else",)
+            repo, b"current", (b"modified-something-else",), root_revision=b"current"
         )
         self.add_revision(repo, b"current", inv, (b"modified-something-else",))
         self.versioned_root = repo.supports_rich_root()
@@ -790,19 +818,29 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
         )
 
     def populate_repository(self, repo):
-        inv = self.make_one_file_inventory(repo, b"parent-1", [])
+        inv = self.make_one_file_inventory(
+            repo, b"parent-1", [], root_revision=b"parent-1"
+        )
         self.add_revision(repo, b"parent-1", inv, [])
 
-        inv = self.make_one_file_inventory(repo, b"parent-2", [])
+        inv = self.make_one_file_inventory(
+            repo, b"parent-2", [], root_revision=b"parent-2"
+        )
         self.add_revision(repo, b"parent-2", inv, [])
 
         inv = self.make_one_file_inventory(
-            repo, b"broken-revision-1-2", [b"parent-2", b"parent-1"]
+            repo,
+            b"broken-revision-1-2",
+            [b"parent-2", b"parent-1"],
+            root_revision=b"broken-revision-1-2",
         )
         self.add_revision(repo, b"broken-revision-1-2", inv, [b"parent-1", b"parent-2"])
 
         inv = self.make_one_file_inventory(
-            repo, b"broken-revision-2-1", [b"parent-1", b"parent-2"]
+            repo,
+            b"broken-revision-2-1",
+            [b"parent-1", b"parent-2"],
+            root_revision=b"broken-revision-2-1",
         )
         self.add_revision(repo, b"broken-revision-2-1", inv, [b"parent-2", b"parent-1"])
         self.versioned_root = repo.supports_rich_root()
@@ -891,7 +929,13 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             factory(repo)
             return repo
 
-    def add_revision(self, repo, revision_id, inv, parent_ids):
+    def add_revision(
+        self,
+        repo,
+        revision_id: RevisionID,
+        inv: Inventory,
+        parent_ids: list[RevisionID],
+    ) -> None:
         """Add a revision with a given inventory and parents to a repository.
 
         :param repo: a repository.
@@ -901,7 +945,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         :param parent_ids: the parents for the new revision.
         """
         inv.revision_id = revision_id
-        inv.root.revision = revision_id
+        self.assertEqual(inv.root.revision, revision_id)
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -910,9 +954,10 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             revision_id,
             committer="jrandom@example.com",
             timestamp=0,
-            inventory_sha1="",
+            inventory_sha1=b"",
             timezone=0,
             message="foo",
+            properties={},
             parent_ids=parent_ids,
         )
         repo.add_revision(revision_id, revision, inv)
@@ -943,19 +988,21 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             Otherwise a unique default (based on revision ID) will be
             generated.
         """
-        inv = Inventory(revision_id=revision)
-        if root_revision is not None:
-            inv.root.revision = root_revision
+        inv = Inventory(revision_id=revision, root_revision=root_revision)
+        self.assertEqual(inv.root.revision, root_revision)
         file_id = b"a-file-id"
-        entry = InventoryFile(file_id, "a file name", b"TREE_ROOT")
-        if inv_revision is not None:
-            entry.revision = inv_revision
-        else:
-            entry.revision = revision
-        entry.text_size = 0
+        entry_revision = inv_revision if inv_revision is not None else revision
         if file_contents is None:
-            file_contents = b"%sline\n" % entry.revision
-        entry.text_sha1 = osutils.sha_string(file_contents)
+            file_contents = b"%sline\n" % entry_revision
+        text_sha1 = osutils.sha_string(file_contents)
+        entry = InventoryFile(
+            file_id,
+            "a file name",
+            inv.root.file_id,
+            revision=entry_revision,
+            text_size=0,
+            text_sha1=text_sha1,
+        )
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines(
@@ -963,6 +1010,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
                 [(file_id, parent) for parent in parents],
                 [file_contents],
             )
+        self.assertEqual(inv.root.revision, root_revision)
         return inv
 
     def require_repo_suffers_text_parent_corruption(self, repo):

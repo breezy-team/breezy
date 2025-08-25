@@ -53,8 +53,8 @@ class TestBase(TestCase):
 
             self.log("")
             self.log("parents: %s" % (k._parents == k2._parents))
-            self.log("         {!r}".format(k._parents))
-            self.log("         {!r}".format(k2._parents))
+            self.log(f"         {k._parents!r}")
+            self.log(f"         {k2._parents!r}")
             self.log("")
             self.fail("read/write check failed")
 
@@ -64,9 +64,9 @@ class WeaveContains(TestBase):
 
     def runTest(self):
         k = Weave(get_scope=lambda: None)
-        self.assertFalse(b"foo" in k)
+        self.assertNotIn(b"foo", k)
         k.add_lines(b"foo", [], TEXT_1)
-        self.assertTrue(b"foo" in k)
+        self.assertIn(b"foo", k)
 
 
 class Easy(TestBase):

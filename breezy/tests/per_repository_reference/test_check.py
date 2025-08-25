@@ -37,4 +37,4 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
             referring.branch.repository.all_revision_ids()
         )
         check_result.report_results(verbose=False)
-        self.assertFalse("inconsistent parents" in self.get_log())
+        self.assertNotIn("inconsistent parents", self.get_log())

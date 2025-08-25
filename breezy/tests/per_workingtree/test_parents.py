@@ -22,6 +22,7 @@ from io import BytesIO
 from ... import errors
 from ... import revision as _mod_revision
 from ...bzr.inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
+from ...bzr.inventory_delta import InventoryDelta
 from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable
 from ...uncommit import uncommit
@@ -432,8 +433,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
-        old_ids = set(old._byid)
-        new_ids = set(new._byid)
+        old_ids = set(old.iter_all_ids())
+        new_ids = set(new.iter_all_ids())
         adds = new_ids - old_ids
         deletes = old_ids - new_ids
         common = old_ids.intersection(new_ids)
@@ -452,7 +453,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                         new.get_entry(file_id),
                     )
                 )
-        return delta
+        return InventoryDelta(delta)
 
     def fake_up_revision(self, tree, revid, shape):
         if not isinstance(tree, InventoryTree):
@@ -496,24 +497,24 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             builder.finish_inventory()
             builder.commit("Message")
 
-    def add_entry(self, inv, rev_id, entry):
-        entry.revision = rev_id
+    def add_entry(self, inv, entry):
         inv.add(entry)
 
     def add_dir(self, inv, rev_id, file_id, parent_id, name):
-        new_dir = InventoryDirectory(file_id, name, parent_id)
-        self.add_entry(inv, rev_id, new_dir)
+        new_dir = InventoryDirectory(file_id, name, parent_id, rev_id)
+        self.add_entry(inv, new_dir)
 
     def add_file(self, inv, rev_id, file_id, parent_id, name, sha, size):
-        new_file = InventoryFile(file_id, name, parent_id)
-        new_file.text_sha1 = sha
-        new_file.text_size = size
-        self.add_entry(inv, rev_id, new_file)
+        new_file = InventoryFile(
+            file_id, name, parent_id, rev_id, text_sha1=sha, text_size=size
+        )
+        self.add_entry(inv, new_file)
 
     def add_link(self, inv, rev_id, file_id, parent_id, name, target):
-        new_link = InventoryLink(file_id, name, parent_id)
-        new_link.symlink_target = target
-        self.add_entry(inv, rev_id, new_link)
+        new_link = InventoryLink(
+            file_id, name, parent_id, rev_id, symlink_target=target
+        )
+        self.add_entry(inv, new_link)
 
     def add_new_root(self, new_shape, old_revid, new_revid):
         if self.bzrdir_format.repository_format.rich_root_data:
@@ -563,7 +564,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     def test_no_parents_just_root(self):
         """Test doing an empty commit - no parent, set a root only."""
         basis_shape = Inventory(root_id=None)  # empty tree
-        new_shape = Inventory()  # tree with a root
+        new_shape = Inventory(root_revision=b"new_parent")  # tree with a root
         self.assertTransitionFromBasisToShape(
             basis_shape, None, new_shape, b"new_parent"
         )

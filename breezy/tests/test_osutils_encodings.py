@@ -17,7 +17,6 @@
 """Tests for the osutils wrapper."""
 
 import codecs
-import locale
 import sys
 
 from .. import osutils
@@ -72,7 +71,7 @@ class TestTerminalEncoding(TestCase):
         self.overrideAttr(sys, "stdin")
         self.overrideAttr(sys, "stdout")
         self.overrideAttr(sys, "stderr")
-        self.overrideAttr(osutils, "_cached_user_encoding")
+        self.overrideAttr(osutils, "get_user_encoding")
 
     def make_wrapped_streams(
         self,
@@ -88,7 +87,7 @@ class TestTerminalEncoding(TestCase):
         sys.stderr.encoding = stderr_encoding
         sys.stdin = StringIOWithEncoding()
         sys.stdin.encoding = stdin_encoding
-        osutils._cached_user_encoding = user_encoding
+        osutils.get_user_encoding = lambda: user_encoding
         if enable_fake_encodings:
             fake_codec.add(stdout_encoding)
             fake_codec.add(stderr_encoding)
@@ -161,46 +160,3 @@ class TestTerminalEncoding(TestCase):
             "  Using encoding latin-1 instead.\n",
             sys.stderr.getvalue(),
         )
-
-
-class TestUserEncoding(TestCase):
-    """Test detection of default user encoding."""
-
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(osutils, "_cached_user_encoding", None)
-        self.overrideAttr(locale, "getpreferredencoding", self.get_encoding)
-        self.overrideAttr(locale, "CODESET", None)
-        self.overrideAttr(sys, "stderr", StringIOWithEncoding())
-
-    def get_encoding(self, do_setlocale=True):
-        return self._encoding
-
-    def test_get_user_encoding(self):
-        self._encoding = "user_encoding"
-        fake_codec.add("user_encoding")
-        self.assertEqual(
-            "iso8859-1",  # fake_codec maps to latin-1
-            osutils.get_user_encoding(),
-        )
-        self.assertEqual("", sys.stderr.getvalue())
-
-    def test_user_cp0(self):
-        self._encoding = "cp0"
-        self.assertEqual("ascii", osutils.get_user_encoding())
-        self.assertEqual("", sys.stderr.getvalue())
-
-    def test_user_cp_unknown(self):
-        self._encoding = "cp-unknown"
-        self.assertEqual("ascii", osutils.get_user_encoding())
-        self.assertEqual(
-            "brz: warning: unknown encoding cp-unknown."
-            " Continuing with ascii encoding.\n",
-            sys.stderr.getvalue(),
-        )
-
-    def test_user_empty(self):
-        """Running bzr from a vim script gives '' for a preferred locale."""
-        self._encoding = ""
-        self.assertEqual("ascii", osutils.get_user_encoding())
-        self.assertEqual("", sys.stderr.getvalue())

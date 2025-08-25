@@ -35,12 +35,12 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_no_args_no_conf(self):
         # this should always identify something, if only "john@localhost"
         out = self.run_bzr("whoami")[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertEqual(1, out.count("@"))
 
     def test_whoami_email_no_args(self):
         out = self.run_bzr("whoami --email")[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertEqual(1, out.count("@"))
 
     def test_whoami_email_arg(self):

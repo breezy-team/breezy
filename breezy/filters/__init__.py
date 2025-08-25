@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
@@ -40,6 +38,8 @@ where:
 Note that context is currently only supported for write converters.
 """
 
+__docformat__ = "google"
+
 
 from io import BytesIO
 from typing import Callable
@@ -48,6 +48,8 @@ from .. import osutils, registry
 
 
 class ContentFilter:
+    """A filter that converts content between canonical and convenience formats."""
+
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
 
@@ -59,7 +61,8 @@ class ContentFilter:
         self.writer = writer
 
     def __repr__(self):
-        return "reader: {}, writer: {}".format(self.reader, self.writer)
+        """Return a string representation of the ContentFilter."""
+        return f"reader: {self.reader}, writer: {self.writer}"
 
 
 Preferences = list[tuple[str, str]]
@@ -94,9 +97,8 @@ class ContentFilterContext:
 
     def revision_id(self):
         """Id of revision that last changed this file."""
-        if self._revision_id is None:
-            if self._tree is not None:
-                self._revision_id = self._tree.get_file_revision(self._relpath)
+        if self._revision_id is None and self._tree is not None:
+            self._revision_id = self._tree.get_file_revision(self._relpath)
         return self._revision_id
 
     def revision(self):
@@ -111,7 +113,7 @@ class ContentFilterContext:
         return self._revision
 
 
-def filtered_input_file(f, filters):
+def filtered_input_file(f, filters) -> tuple[BytesIO, int]:
     """Get an input file that converts external to internal content.
 
     Args:
@@ -160,7 +162,15 @@ def internal_size_sha_file_byname(name, filters):
 
 
 class FilteredStat:
+    """A stat-like object that can have a filtered size."""
+
     def __init__(self, base, st_size=None):
+        """Initialize a FilteredStat from a base stat object.
+
+        Args:
+            base: Base stat object to copy attributes from.
+            st_size: Optional override for the size attribute.
+        """
         self.st_mode = base.st_mode
         self.st_size = st_size or base.st_size
         self.st_mtime = base.st_mtime
@@ -168,7 +178,9 @@ class FilteredStat:
 
 
 # The registry of filter stacks indexed by name.
-filter_stacks_registry = registry.Registry[str, Callable[[str], list[ContentFilter]]]()
+filter_stacks_registry = registry.Registry[
+    str, Callable[[str], list[ContentFilter]], None
+]()
 
 
 # Cache of preferences -> stack
@@ -230,10 +242,7 @@ def _reset_registry(value=None):
     """
     global filter_stacks_registry
     original = filter_stacks_registry
-    if value is None:
-        filter_stacks_registry = registry.Registry()
-    else:
-        filter_stacks_registry = value
+    filter_stacks_registry = registry.Registry() if value is None else value
     _stack_cache.clear()
     return original
 

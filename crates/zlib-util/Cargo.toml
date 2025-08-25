@@ -1,0 +1,11 @@
+[package]
+name = "breezy-zlib-util"
+version = { workspace = true }
+edition = "2018"
+description = "Zlib utility functions"
+license = "GPLv2+"
+
+[lib]
+
+[dependencies]
+flate2 = "1.0"

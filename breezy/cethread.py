@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Thread implementation that captures and re-raises exceptions.
+
+This module provides a thread class that catches exceptions occurring during
+thread execution and re-raises them when the thread is joined, allowing for
+better error handling in multi-threaded applications.
+"""
+
 import sys
 import threading
 from typing import Callable, Optional, Union
@@ -29,6 +36,20 @@ class CatchingExceptionThread(threading.Thread):
     ignored_exceptions: Optional[Callable[[Exception], bool]]
 
     def __init__(self, *args, **kwargs):
+        """Initialize a CatchingExceptionThread instance.
+
+        Args:
+            *args: Positional arguments passed to threading.Thread.
+            **kwargs: Keyword arguments passed to threading.Thread, with special handling for:
+                sync_event: An optional threading.Event used for synchronization. If not
+                    provided, a new Event will be created. This event is used to coordinate
+                    exception handling between threads.
+
+        Note:
+            The sync_event is particularly useful when the calling thread must wait for
+            this thread to reach a certain state. If an exception occurs, the event
+            will be set to unblock the waiting thread.
+        """
         # There are cases where the calling thread must wait, yet, if an
         # exception occurs, the event should be set so the caller is not
         # blocked. The main example is a calling thread that want to wait for

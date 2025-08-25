@@ -14,22 +14,39 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Revision specification parsing and handling.
+
+This module provides functionality for parsing and resolving revision specifications,
+which allow users to specify particular revisions in various ways (by number, date,
+tag, etc.). It includes RevisionSpec classes for different revision specification
+types and utilities for resolving them to actual revision identifiers.
+"""
+
 from typing import Optional
 
 from breezy import revision, workingtree
-from breezy.i18n import gettext
 
 from . import errors, lazy_regex, registry, trace
 from . import revision as _mod_revision
+from .i18n import gettext
 
 
 class InvalidRevisionSpec(errors.BzrError):
+    """Exception raised when a revision specification cannot be resolved."""
+
     _fmt = (
         "Requested revision: '%(spec)s' does not exist in branch:"
         " %(branch_url)s%(extra)s"
     )
 
     def __init__(self, spec, branch, extra=None):
+        """Initialize the exception.
+
+        Args:
+            spec: The revision specification that couldn't be resolved.
+            branch: The branch where the resolution was attempted.
+            extra: Optional additional error information.
+        """
         errors.BzrError.__init__(self, branch=branch, spec=spec)
         self.branch_url = getattr(branch, "user_url", str(branch))
         if extra:
@@ -56,6 +73,13 @@ class RevisionInfo:
     """
 
     def __init__(self, branch, revno=None, rev_id=None):
+        """Initialize revision info.
+
+        Args:
+            branch: The branch this revision info is for.
+            revno: Optional revision number.
+            rev_id: Optional revision identifier.
+        """
         self.branch = branch
         self._has_revno = revno is not None
         self._revno = revno
@@ -66,6 +90,11 @@ class RevisionInfo:
 
     @property
     def revno(self):
+        """Get the revision number, computing it if needed.
+
+        Returns:
+            The revision number, or None if not available.
+        """
         if not self._has_revno and self.rev_id is not None:
             try:
                 self._revno = self.branch.revision_id_to_revno(self.rev_id)
@@ -75,6 +104,11 @@ class RevisionInfo:
         return self._revno
 
     def __bool__(self):
+        """Return True if this represents a valid revision.
+
+        Returns:
+            True if the revision exists in the repository.
+        """
         if self.rev_id is None:
             return False
         # TODO: otherwise, it should depend on how I was built -
@@ -85,9 +119,22 @@ class RevisionInfo:
     __nonzero__ = __bool__
 
     def __len__(self):
+        """Return length for tuple-like interface.
+
+        Returns:
+            Always returns 2 (revno, rev_id).
+        """
         return 2
 
     def __getitem__(self, index):
+        """Support tuple-like access to (revno, rev_id).
+
+        Args:
+            index: Index to access (0 for revno, 1 for rev_id).
+
+        Returns:
+            The revno (index 0) or rev_id (index 1).
+        """
         if index == 0:
             return self.revno
         if index == 1:
@@ -95,9 +142,22 @@ class RevisionInfo:
         raise IndexError(index)
 
     def get(self):
+        """Get the actual Revision object.
+
+        Returns:
+            The Revision object from the repository.
+        """
         return self.branch.repository.get_revision(self.rev_id)
 
     def __eq__(self, other):
+        """Compare with another RevisionInfo or tuple.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if equal.
+        """
         if type(other) not in (tuple, list, type(self)):
             return False
         if isinstance(other, type(self)) and self.branch is not other.branch:
@@ -105,6 +165,11 @@ class RevisionInfo:
         return tuple(self) == tuple(other)
 
     def __repr__(self):
+        """Return string representation for debugging.
+
+        Returns:
+            String representation of this RevisionInfo.
+        """
         return "<breezy.revisionspec.RevisionInfo object {}, {} for {!r}>".format(
             self.revno, self.rev_id, self.branch
         )
@@ -203,6 +268,14 @@ class RevisionSpec:
             raise InvalidRevisionSpec(self.spec, branch)
 
     def in_history(self, branch):
+        """Resolve this revision spec within a branch's history.
+
+        Args:
+            branch: Branch to resolve the revision spec within.
+
+        Returns:
+            RevisionInfo object representing the resolved revision.
+        """
         return self._match_on_and_check(branch, revs=None)
 
         # FIXME: in_history is somewhat broken,
@@ -252,8 +325,13 @@ class RevisionSpec:
         return context_branch.repository.revision_tree(revision_id)
 
     def __repr__(self):
+        """Return string representation for debugging.
+
+        Returns:
+            String representation of this RevisionSpec.
+        """
         # this is mostly for helping with testing
-        return "<{} {}>".format(self.__class__.__name__, self.user_spec)
+        return f"<{self.__class__.__name__} {self.user_spec}>"
 
     def needs_branch(self):
         """Whether this revision spec needs a branch.
@@ -391,7 +469,7 @@ class RevisionSpec_revno(RevisionSpec):
                 try:
                     match_revno = tuple(int(number) for number in revno_spec.split("."))
                 except ValueError as e:
-                    raise InvalidRevisionSpec(self.user_spec, branch, e)
+                    raise InvalidRevisionSpec(self.user_spec, branch, e) from e
 
                 dotted = True
 
@@ -406,8 +484,8 @@ class RevisionSpec_revno(RevisionSpec):
                 revision_id = branch.dotted_revno_to_revision_id(
                     match_revno, _cache_reverse=True
                 )
-            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-                raise InvalidRevisionSpec(self.user_spec, branch)
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as err:
+                raise InvalidRevisionSpec(self.user_spec, branch) from err
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for API compatibility we return None.
@@ -417,14 +495,11 @@ class RevisionSpec_revno(RevisionSpec):
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
-                if (-revno) >= last_revno:
-                    revno = 1
-                else:
-                    revno = last_revno + revno + 1
+                revno = 1 if -revno >= last_revno else last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno)
-            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-                raise InvalidRevisionSpec(self.user_spec, branch)
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as err:
+                raise InvalidRevisionSpec(self.user_spec, branch) from err
         return branch, revno, revision_id
 
     def _as_revision_id(self, context_branch):
@@ -433,9 +508,19 @@ class RevisionSpec_revno(RevisionSpec):
         return revision_id
 
     def needs_branch(self):
+        """Check if this revision spec needs a branch context to resolve.
+
+        Returns:
+            True if a branch is needed for resolution.
+        """
         return self.spec.find(":") == -1
 
     def get_branch(self):
+        """Get the branch location if specified in the revision spec.
+
+        Returns:
+            Branch location string, or None if not specified.
+        """
         if self.spec.find(":") == -1:
             return None
         else:
@@ -447,6 +532,12 @@ RevisionSpec_int = RevisionSpec_revno
 
 
 class RevisionIDSpec(RevisionSpec):
+    """Base class for revision specs that work with revision IDs.
+
+    This class provides common functionality for revision specs that
+    resolve to specific revision identifiers.
+    """
+
     def _match_on(self, branch, revs):
         revision_id = self.as_revision_id(branch)
         return RevisionInfo.from_revision_id(branch, revision_id)
@@ -506,7 +597,7 @@ class RevisionSpec_last(RevisionSpec):
         try:
             offset = int(self.spec)
         except ValueError as e:
-            raise InvalidRevisionSpec(self.user_spec, context_branch, e)
+            raise InvalidRevisionSpec(self.user_spec, context_branch, e) from e
 
         if offset <= 0:
             raise InvalidRevisionSpec(
@@ -516,8 +607,8 @@ class RevisionSpec_last(RevisionSpec):
         revno = last_revno - offset + 1
         try:
             revision_id = context_branch.get_rev_id(revno)
-        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-            raise InvalidRevisionSpec(self.user_spec, context_branch)
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as err:
+            raise InvalidRevisionSpec(self.user_spec, context_branch) from err
         return revno, revision_id
 
     def _as_revision_id(self, context_branch):
@@ -569,8 +660,8 @@ class RevisionSpec_before(RevisionSpec):
             revno = r.revno - 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
-            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
-                raise InvalidRevisionSpec(self.user_spec, branch)
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds) as err:
+                raise InvalidRevisionSpec(self.user_spec, branch) from err
         return RevisionInfo(branch, revno, revision_id)
 
     def _as_revision_id(self, context_branch):
@@ -667,10 +758,7 @@ def _parse_datespec(spec):
         if m.group("time"):
             hour = int(m.group("hour"))
             minute = int(m.group("minute"))
-            if m.group("second"):
-                second = int(m.group("second"))
-            else:
-                second = 0
+            second = int(m.group("second")) if m.group("second") else 0
         else:
             hour, minute, second = 0, 0, 0
 
@@ -734,8 +822,8 @@ class RevisionSpec_date(RevisionSpec):
         """
         try:
             dt = _parse_datespec(self.spec)
-        except ValueError:
-            raise InvalidRevisionSpec(self.user_spec, branch, "invalid date")
+        except ValueError as err:
+            raise InvalidRevisionSpec(self.user_spec, branch, "invalid date") from err
         revno = branch.revno()
         if revno is None:
             return self._scan_backwards(branch, dt)
@@ -850,9 +938,19 @@ class RevisionSpec_branch(RevisionSpec):
         return other_branch.repository.revision_tree(last_revision)
 
     def needs_branch(self):
+        """Check if this revision spec needs a branch context to resolve.
+
+        Returns:
+            False since branch specs don't need additional context.
+        """
         return False
 
     def get_branch(self):
+        """Get the branch location specified in this revision spec.
+
+        Returns:
+            The branch location string.
+        """
         return self.spec
 
 
@@ -899,6 +997,12 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
 
 
 class RevisionSpec_annotate(RevisionIDSpec):
+    """Revision spec that selects the revision that last modified a specific line.
+
+    Uses the format 'annotate:path:line_number' to identify the revision
+    that last modified the specified line in the given file.
+    """
+
     prefix = "annotate:"
 
     help_txt = """Select the revision that last modified the specified line.
@@ -911,7 +1015,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
 
     def _raise_invalid(self, numstring, context_branch):
         raise InvalidRevisionSpec(
-            self.user_spec, context_branch, "No such line: {}".format(numstring)
+            self.user_spec, context_branch, f"No such line: {numstring}"
         )
 
     def _as_revision_id(self, context_branch):
@@ -926,7 +1030,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
                 raise InvalidRevisionSpec(
                     self.user_spec,
                     context_branch,
-                    "File '{}' is not versioned.".format(file_path),
+                    f"File '{file_path}' is not versioned.",
                 )
             revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
@@ -937,12 +1041,18 @@ class RevisionSpec_annotate(RevisionIDSpec):
             raise InvalidRevisionSpec(
                 self.user_spec,
                 context_branch,
-                "Line {} has not been committed.".format(numstring),
+                f"Line {numstring} has not been committed.",
             )
         return revision_id
 
 
 class RevisionSpec_mainline(RevisionIDSpec):
+    """Revision spec that selects the mainline revision that merged another revision.
+
+    Finds the revision on the mainline (left-hand parent chain) that merged
+    the specified revision into the mainline history.
+    """
+
     help_txt = """Select mainline revision that merged the specified revision.
 
     Select the revision that merged the specified revision into mainline.
@@ -974,7 +1084,7 @@ RevisionSpec_dwim.append_possible_revspec(RevisionSpec_revid)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_date)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_branch)
 
-revspec_registry = registry.Registry[str, RevisionSpec]()
+revspec_registry = registry.Registry[str, RevisionSpec, None]()
 
 
 def _register_revspec(revspec):

@@ -22,9 +22,10 @@ import time
 
 from breezy import config, controldir, errors, tests, ui
 from breezy import transport as _mod_transport
-from breezy.osutils import lexists
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
-from breezy.tests.http_server import HttpServer
+
+from ..osutils import lexists
+from .http_server import HttpServer
 
 if features.paramiko.available():
     from breezy.tests import stub_sftp
@@ -53,7 +54,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 
 class SFTPLockTests(TestCaseWithSFTPServer):
     def test_sftp_locks(self):
-        from breezy.errors import LockError
+        from ..errors import LockError
 
         t = self.get_transport()
 
@@ -157,13 +158,14 @@ class SFTPNonServerTest(TestCase):
     def test_get_paramiko_vendor(self):
         """Test that if no 'ssh' is available we get builtin paramiko."""
         from breezy.transport import ssh
+        from breezy.transport.ssh.paramiko import ParamikoVendor
 
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, "_ssh_vendor_manager")
         self.overrideEnv("PATH", ".")
         ssh._ssh_vendor_manager.clear_cache()
         vendor = ssh._get_ssh_vendor()
-        self.assertIsInstance(vendor, ssh.ParamikoVendor)
+        self.assertIsInstance(vendor, ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
         server = stub_sftp.SFTPSiblingAbsoluteServer()
@@ -238,9 +240,9 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self._test_vendor = vendor
 
     def test_connection_paramiko(self):
-        from breezy.transport import ssh
+        from breezy.transport.ssh.paramiko import ParamikoVendor
 
-        self.set_vendor(ssh.ParamikoVendor())
+        self.set_vendor(ParamikoVendor())
         t = self.get_transport()
         self.assertEqual(b"foobar\n", t.get("a_file").read())
 
@@ -283,11 +285,11 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error."""
-        from breezy.transport import ssh
+        from breezy.transport.ssh.paramiko import ParamikoVendor
 
-        self.set_vendor(ssh.ParamikoVendor())
+        self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
-        self.assertRaises(errors.ConnectionError, t.get, "foobar")
+        self.assertRaises(ConnectionError, t.get, "foobar")
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor."""
@@ -296,7 +298,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            self.assertRaises(errors.ConnectionError, t.get, "foobar")
+            self.assertRaises(ConnectionError, t.get, "foobar")
         except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure("Known NameError bug in paramiko 1.6.1")
@@ -314,7 +316,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has("not me")  # Force connection by issuing a request
         with_latency_knob_time = time.time() - start_time
-        self.assertTrue(with_latency_knob_time > 0.4)
+        self.assertGreater(with_latency_knob_time, 0.4)
 
     def test_default(self):
         # This test is potentially brittle: under extremely high machine load
@@ -324,7 +326,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has("not me")  # Force connection by issuing a request
         regular_time = time.time() - start_time
-        self.assertTrue(regular_time < 0.5)
+        self.assertLess(regular_time, 0.5)
 
 
 class FakeSocket:
@@ -437,8 +439,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
         # multiple requests, even if it actually spans multiple logical
         # requests
         self.checkGetRequests(
-            [(0, 32768), (32768, 32768), (65536, 464)],
-            [(0, 40000), (40000, 100), (40100, 1900), (42000, 24000)],
+            [(0, 66000)], [(0, 40000), (40000, 100), (40100, 1900), (42000, 24000)]
         )
 
     def checkRequestAndYield(self, expected, data, offsets):

@@ -15,6 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tag storage implementation for Bazaar branches.
+
+This module provides the BasicTags class which implements tag storage
+in an unversioned branch control file, typically stored as .bzr/branch/tags.
+Tags map human-readable names to revision identifiers.
+"""
+
+import contextlib
+
 import fastbencode as bencode
 
 from .. import errors, trace
@@ -48,15 +57,21 @@ class BasicTags(Tags):
             raise errors.NoSuchTag(tag_name) from e
 
     def get_tag_dict(self):
+        """Return a dictionary of all tags in the branch.
+
+        Returns:
+            dict: A dictionary mapping tag names (str) to revision IDs (bytes).
+                Returns an empty dictionary if no tags file exists.
+        """
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
             except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning(
-                    "No branch/tags file in {}.  "
+                    f"No branch/tags file in {self.branch}.  "
                     "This branch was probably created by bzr 0.15pre.  "
-                    "Create an empty file to silence this message.".format(self.branch)
+                    "Create an empty file to silence this message."
                 )
                 return {}
             return self._deserialize_tag_dict(tag_content)
@@ -71,10 +86,8 @@ class BasicTags(Tags):
                 raise errors.NoSuchTag(tag_name) from e
             master = self.branch.get_master_branch()
             if master is not None:
-                try:
+                with contextlib.suppress(errors.NoSuchTag):
                     master.tags.delete_tag(tag_name)
-                except errors.NoSuchTag:
-                    pass
             self._set_tag_dict(d)
 
     def _set_tag_dict(self, new_dict):
@@ -104,5 +117,5 @@ class BasicTags(Tags):
             return r
         except ValueError as e:
             raise ValueError(
-                "failed to deserialize tag dictionary {!r}: {}".format(tag_content, e)
+                f"failed to deserialize tag dictionary {tag_content!r}: {e}"
             ) from e

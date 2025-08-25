@@ -16,7 +16,7 @@
 
 """Knit-based pack repository formats."""
 
-from .. import errors
+from .. import controldir, debug, errors, trace
 from .. import transport as _mod_transport
 from ..lazy_import import lazy_import
 
@@ -26,19 +26,12 @@ lazy_import(
 import time
 
 from breezy import (
-    controldir,
-    debug,
-    osutils,
     revision as _mod_revision,
-    trace,
     tsort,
     ui,
     )
 from breezy.bzr import (
     pack,
-    xml5,
-    xml6,
-    xml7,
     )
 from breezy.bzr.knit import (
     _KnitGraphIndex,
@@ -70,16 +63,38 @@ from .pack_repo import (
 
 
 class KnitPackRepository(PackRepository, KnitRepository):
+    """A repository that uses knit format with pack storage.
+
+    Combines the knit versioned file format with pack-based storage.
+    """
+
     def __init__(
-        self, _format, a_controldir, control_files, _commit_builder_class, _serializer
+        self,
+        _format,
+        a_controldir,
+        control_files,
+        _commit_builder_class,
+        _revision_serializer,
+        _inventory_serializer,
     ):
+        """Initialize a KnitPackRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory.
+            control_files: Control files for the repository.
+            _commit_builder_class: Class to use for building commits.
+            _revision_serializer: Serializer for revisions.
+            _inventory_serializer: Serializer for inventories.
+        """
         PackRepository.__init__(
             self,
             _format,
             a_controldir,
             control_files,
             _commit_builder_class,
-            _serializer,
+            _revision_serializer,
+            _inventory_serializer,
         )
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
@@ -172,8 +187,16 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+
+        return inventory_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -214,8 +237,16 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     supports_tree_reference = True
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+
+        return inventory_serializer_v7
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -256,8 +287,16 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     supports_tree_reference = False
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+
+        return inventory_serializer_v6
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -296,8 +335,16 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+
+        return inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6")
@@ -334,8 +381,16 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -351,6 +406,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return "Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)"
 
 
@@ -376,8 +432,16 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         matching = controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -395,11 +459,17 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return (
             "Packs 5 rich-root (adds stacking support, requires bzr 1.6) (deprecated)"
         )
 
     def is_deprecated(self):
+        """Check if this format is deprecated.
+
+        Returns:
+            True, as this format is deprecated.
+        """
         return True
 
 
@@ -418,8 +488,16 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml5.serializer_v5
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml5 import inventory_serializer_v5
+
+        return inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9")
@@ -455,8 +533,16 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml6.serializer_v6
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml6 import inventory_serializer_v6
+
+        return inventory_serializer_v6
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9-rich-root")
@@ -472,6 +558,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return b"Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
 
     def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
         return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
 
 
@@ -495,8 +582,16 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
-        return xml7.serializer_v7
+    def _revision_serializer(self):
+        from .xml5 import revision_serializer_v5
+
+        return revision_serializer_v5
+
+    @property
+    def _inventory_serializer(self):
+        from .xml7 import inventory_serializer_v7
+
+        return inventory_serializer_v7
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("development5-subtree")
@@ -535,6 +630,12 @@ class KnitPackStreamSource(StreamSource):
     """
 
     def __init__(self, from_repository, to_format):
+        """Initialize a KnitPackStreamSource.
+
+        Args:
+            from_repository: The source repository.
+            to_format: The target repository format.
+        """
         super().__init__(from_repository, to_format)
         self._text_keys = None
         self._text_fetch_order = "unordered"
@@ -543,7 +644,7 @@ class KnitPackStreamSource(StreamSource):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._serializer._find_text_key_references
+        find_text_keys = from_repo._inventory_serializer._find_text_key_references
         parent_text_keys = set(
             find_text_keys(from_repo._inventory_xml_lines_for_keys(parent_keys))
         )
@@ -554,9 +655,8 @@ class KnitPackStreamSource(StreamSource):
         def find_text_keys_from_content(record):
             if record.storage_kind not in ("knit-delta-gz", "knit-ft-gz"):
                 raise ValueError(
-                    "Unknown content storage kind for inventory text: {}".format(
-                        record.storage_kind
-                    )
+                    "Unknown content storage kind for"
+                    f" inventory text: {record.storage_kind}"
                 )
             # It's a knit record, it has a _raw_record field (even if it was
             # reconstituted from a network stream).
@@ -595,6 +695,14 @@ class KnitPackStreamSource(StreamSource):
         return ("texts", text_stream)
 
     def get_stream(self, search):
+        """Get a stream of records for the given search.
+
+        Args:
+            search: Search object specifying what records to retrieve.
+
+        Yields:
+            Tuples of (stream_type, record_stream) for different data types.
+        """
         revision_ids = search.get_keys()
         yield from self._fetch_revision_texts(revision_ids)
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
@@ -608,6 +716,15 @@ class KnitPacker(Packer):
     def __init__(
         self, pack_collection, packs, suffix, revision_ids=None, reload_func=None
     ):
+        """Initialize a KnitPacker.
+
+        Args:
+            pack_collection: The pack collection to operate on.
+            packs: List of packs to process.
+            suffix: Suffix for the new pack name.
+            revision_ids: Optional list of revision IDs to pack.
+            reload_func: Optional function to reload pack data.
+        """
         super().__init__(
             pack_collection,
             packs,
@@ -825,7 +942,7 @@ class KnitPacker(Packer):
             # eat the iterator to cause it to execute.
             list(inv_lines)
             self._text_filter = None
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             trace.mutter(
                 "%s: create_pack: inventories copied: %s%s %d items t+%6.3fs",
                 time.ctime(),
@@ -854,7 +971,7 @@ class KnitPacker(Packer):
                 packs.append(index_to_pack_map[index])
                 seen_indexes.add(index)
         if len(packs) == len(self.packs):
-            if "pack" in debug.debug_flags:
+            if debug.debug_flag_enabled("pack"):
                 trace.mutter("Not changing pack list, all packs used.")
             return
         seen_packs = set(packs)
@@ -862,7 +979,7 @@ class KnitPacker(Packer):
             if pack not in seen_packs:
                 packs.append(pack)
                 seen_packs.add(pack)
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             old_names = [p.access_tuple()[1] for p in self.packs]
             new_names = [p.access_tuple()[1] for p in packs]
             trace.mutter("Reordering packs\nfrom: %s\n  to: %s", old_names, new_names)
@@ -893,7 +1010,7 @@ class KnitPacker(Packer):
                 total_items,
             )
         )
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             trace.mutter(
                 "%s: create_pack: revisions copied: %s%s %d items t+%6.3fs",
                 time.ctime(),
@@ -948,10 +1065,9 @@ class KnitPacker(Packer):
         # buffer data - we won't be reading-back during the pack creation and
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             plain_pack_list = [
-                "{}{}".format(a_pack.pack_transport.base, a_pack.name)
-                for a_pack in self.packs
+                f"{a_pack.pack_transport.base}{a_pack.name}" for a_pack in self.packs
             ]
             if self.revision_ids is not None:
                 rev_count = len(self.revision_ids)
@@ -983,7 +1099,7 @@ class KnitPacker(Packer):
             new_pack._writer,
             new_pack.signature_index,
         )
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             trace.mutter(
                 "%s: create_pack: revision signatures copied: %s%s %d items t+%6.3fs",
                 time.ctime(),
@@ -1057,13 +1173,19 @@ class KnitReconcilePacker(KnitPacker):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize a KnitReconcilePacker.
+
+        Args:
+            *args: Arguments passed to parent class.
+            **kwargs: Keyword arguments passed to parent class.
+        """
         super().__init__(*args, **kwargs)
         self._data_changed = False
 
     def _process_inventory_lines(self, inv_lines):
         """Generate a text key reference map rather for reconciling with."""
         repo = self._pack_collection.repo
-        refs = repo._serializer._find_text_key_references(inv_lines)
+        refs = repo._inventory_serializer._find_text_key_references(inv_lines)
         self._text_refs = refs
         # during reconcile we:
         #  - convert unreferenced texts to full texts
@@ -1184,7 +1306,7 @@ class KnitReconcilePacker(KnitPacker):
                 if parent_key[0] != key[0]:
                     # Graph parents must match the fileid
                     raise errors.BzrError(
-                        "Mismatched key parent {!r}:{!r}".format(key, parent_keys)
+                        f"Mismatched key parent {key!r}:{parent_keys!r}"
                     )
                 parents.append(parent_key[1])
             text_lines = next(
@@ -1197,9 +1319,7 @@ class KnitReconcilePacker(KnitPacker):
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
             raise errors.BzrCheckError(
-                "Reference to missing compression parents {!r}".format(
-                    missing_text_keys
-                )
+                f"Reference to missing compression parents {missing_text_keys!r}"
             )
         self._log_copied_texts()
 

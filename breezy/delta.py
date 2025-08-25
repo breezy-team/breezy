@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Delta objects and functions for representing changes between trees.
+
+This module provides the TreeDelta class for representing changes between
+two tree states, along with utilities for comparing trees and reporting
+changes in various formats.
+"""
+
 from io import StringIO
 
 from breezy import osutils, trace
@@ -50,6 +57,7 @@ class TreeDelta:
     """
 
     def __init__(self):
+        """Initialize an empty TreeDelta."""
         self.added = []
         self.removed = []
         self.renamed = []
@@ -61,6 +69,14 @@ class TreeDelta:
         self.missing = []
 
     def __eq__(self, other):
+        """Check equality between TreeDelta objects.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the two TreeDelta objects contain the same changes.
+        """
         if not isinstance(other, TreeDelta):
             return False
         return (
@@ -75,9 +91,22 @@ class TreeDelta:
         )
 
     def __ne__(self, other):
+        """Check inequality between TreeDelta objects.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if the two TreeDelta objects contain different changes.
+        """
         return not (self == other)
 
     def __repr__(self):
+        """Return a string representation of the TreeDelta.
+
+        Returns:
+            str: A string representation showing all change lists.
+        """
         return (
             "TreeDelta(added={!r}, removed={!r}, renamed={!r},"
             " copied={!r}, kind_changed={!r}, modified={!r}, unchanged={!r},"
@@ -94,6 +123,12 @@ class TreeDelta:
         )
 
     def has_changed(self):
+        """Check if this delta contains any changes.
+
+        Returns:
+            bool: True if there are any changes (modified, added, removed,
+                renamed, copied, or kind_changed files).
+        """
         return bool(
             self.modified
             or self.added
@@ -106,6 +141,16 @@ class TreeDelta:
     def get_changes_as_text(
         self, show_ids=False, show_unchanged=False, short_status=False
     ):
+        """Get a text representation of the changes in this delta.
+
+        Args:
+            show_ids: If True, include file IDs in the output.
+            show_unchanged: If True, include unchanged files in the output.
+            short_status: If True, use single-letter status indicators.
+
+        Returns:
+            str: A formatted string representing the changes.
+        """
         output = StringIO()
         report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
@@ -147,8 +192,8 @@ def _compare_trees(
             else:
                 if change.kind[0] == "symlink" and not new_tree.supports_symlinks():
                     trace.warning(
-                        'Ignoring "{}" as symlinks '
-                        "are not supported on this filesystem.".format(change.path[0])
+                        f'Ignoring "{change.path[0]}" as symlinks '
+                        "are not supported on this filesystem."
                     )
                 else:
                     delta.removed.append(change)
@@ -173,10 +218,7 @@ def _compare_trees(
             delta.unchanged.append(change)
 
     def change_key(change):
-        if change.path[0] is None:
-            path = change.path[1]
-        else:
-            path = change.path[0]
+        path = change.path[1] if change.path[0] is None else change.path[0]
         return (path, change.file_id)
 
     delta.removed.sort(key=change_key)
@@ -260,9 +302,8 @@ class _ChangeReporter:
             self.view_name = view_info[0]
             self.view_files = view_info[1]
             self.output(
-                "Operating on whole tree but only reporting on '{}' view.".format(
-                    self.view_name
-                )
+                "Operating on whole tree but only reporting on "
+                f"'{self.view_name}' view."
             )
 
     def report(self, paths, versioned, renamed, copied, modified, exe_change, kind):
@@ -330,10 +371,7 @@ class _ChangeReporter:
         # otherwise we always show the current kind when there is one
         elif kind[1] is not None:
             path += self.kind_marker(kind[1])
-        if exe_change:
-            exe = "*"
-        else:
-            exe = " "
+        exe = "*" if exe_change else " "
         self.output(
             "%s%s%s %s%s", rename, self.modified_map[modified], exe, old_path, path
         )
@@ -357,10 +395,7 @@ def report_changes(change_iterator, reporter):
     }
 
     def path_key(change):
-        if change.path[0] is not None:
-            path = change.path[0]
-        else:
-            path = change.path[1]
+        path = change.path[0] if change.path[0] is not None else change.path[1]
         return osutils.splitpath(path)
 
     for change in sorted(change_iterator, key=path_key):
@@ -448,7 +483,7 @@ def report_delta(
 
     def show_more_renamed(item):
         dec_new_path = decorate_path(item.path[1], item.kind[1], item.meta_modified())
-        to_file.write(" => {}".format(dec_new_path))
+        to_file.write(f" => {dec_new_path}")
         if item.changed_content or item.meta_modified():
             extra_modified.append(
                 InventoryTreeChange(
@@ -464,7 +499,7 @@ def report_delta(
             )
 
     def show_more_kind_changed(item):
-        to_file.write(" ({} => {})".format(item.kind[0], item.kind[1]))
+        to_file.write(f" ({item.kind[0]} => {item.kind[1]})")
 
     def show_path(path, kind, meta_modified, default_format, with_file_id_format):
         dec_path = decorate_path(path, kind, meta_modified)
@@ -483,10 +518,7 @@ def report_delta(
     ):
         if files:
             header_shown = False
-            if short_status:
-                prefix = short_status_letter
-            else:
-                prefix = ""
+            prefix = short_status_letter if short_status else ""
             prefix = indent + prefix + "  "
 
             for item in files:
@@ -512,7 +544,7 @@ def report_delta(
                 if show_more is not None:
                     show_more(item)
                 if show_ids and getattr(item, "file_id", None):
-                    to_file.write(" {}".format(item.file_id.decode("utf-8")))
+                    to_file.write(f" {item.file_id.decode('utf-8')}")
                 to_file.write("\n")
 
     show_list(delta.removed, "removed", "D")

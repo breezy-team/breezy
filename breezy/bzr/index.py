@@ -28,19 +28,8 @@ import re
 from bisect import bisect_right
 from io import BytesIO
 
-from ..lazy_import import lazy_import
-
-lazy_import(
-    globals(),
-    """
-from breezy import (
-    bisect_multi,
-    revision as _mod_revision,
-    trace,
-    )
-""",
-)
-from .. import debug, errors
+from .. import debug, errors, trace
+from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 
 _HEADER_READV = (0, 200)
@@ -200,7 +189,7 @@ class GraphIndexBuilder:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in self._nodes.items():  # noqa: B007
+                for key, (absent, _references, value) in self._nodes.items():
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -272,7 +261,7 @@ class GraphIndexBuilder:
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \\0 or \\n.
+            bytes as long as it does not contain \0 or \n.
         """
         (node_refs, absent_references) = self._check_key_ref_value(
             key, references, value
@@ -386,7 +375,9 @@ class GraphIndexBuilder:
         result = BytesIO(b"".join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError(
-                f"Failed index creation. Internal error: mismatched output length and expected length: {len(result.getvalue())} {expected_bytes}"
+                "Failed index creation. Internal error:"
+                " mismatched output length and expected length: %d %d"
+                % (len(result.getvalue()), expected_bytes)
             )
         return result
 
@@ -490,9 +481,11 @@ class GraphIndex:
         )
 
     def __ne__(self, other):
+        """Return True if self != other."""
         return not self.__eq__(other)
 
     def __lt__(self, other):
+        """Return True if self < other for ordering purposes."""
         # We don't really care about the order, just that there is an order.
         if not isinstance(other, GraphIndex) and not isinstance(
             other, InMemoryGraphIndex
@@ -501,12 +494,12 @@ class GraphIndex:
         return hash(self) < hash(other)
 
     def __hash__(self):
+        """Return hash value for the graph index."""
         return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
-        return "{}({!r})".format(
-            self.__class__.__name__, self._transport.abspath(self._name)
-        )
+        """Return string representation of the graph index."""
+        return f"{self.__class__.__name__}({self._transport.abspath(self._name)!r})"
 
     def _buffer_all(self, stream=None):
         """Buffer all the index data.
@@ -516,11 +509,11 @@ class GraphIndex:
         if self._nodes is not None:
             # We already did this
             return
-        if "index" in debug.debug_flags:
+        if debug.debug_flag_enabled("index"):
             trace.mutter("Reading entire index %s", self._transport.abspath(self._name))
         if stream is None:
             stream = self._transport.get(self._name)
-            if self._base_offset != 0:
+            if self._base_offset != 0 or not hasattr(stream, "readline"):
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
                 stream = BytesIO(stream.read()[self._base_offset :])
@@ -566,7 +559,8 @@ class GraphIndex:
         self._buffer_all()
         if ref_list_num + 1 > self.node_ref_lists:
             raise ValueError(
-                f"No ref list {ref_list_num}, index has {self.node_ref_lists} ref lists"
+                "No ref list %d, index has %d ref lists"
+                % (ref_list_num, self.node_ref_lists)
             )
         refs = set()
         nodes = self._nodes
@@ -602,7 +596,7 @@ class GraphIndex:
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "iter_all_entries scales with size of history.")
         if self._nodes is None:
             self._buffer_all()
@@ -726,6 +720,8 @@ class GraphIndex:
             keys supplied. No additional keys will be returned, and every
             key supplied that is in the index will be returned.
         """
+        from .. import bisect_multi
+
         keys = set(keys)
         if not keys:
             return []
@@ -940,10 +936,7 @@ class GraphIndex:
             # get the range of the probed & parsed location
             index = self._parsed_byte_index(location)
             # if the key is below the start of the range, its below
-            if key < self._parsed_key_map[index][0]:
-                direction = -1
-            else:
-                direction = +1
+            direction = -1 if key < self._parsed_key_map[index][0] else +1
             result.append(((location, key), direction))
         readv_ranges = []
         # lookup data to resolve references
@@ -1130,7 +1123,8 @@ class GraphIndex:
         trimmed_data = data[trim_start:trim_end]
         if not (trimmed_data):
             raise AssertionError(
-                f"read unneeded data [{trim_start}:{trim_end}] from [{offset}:{offset + len(data)}]"
+                "read unneeded data [%d:%d] from [%d:%d]"
+                % (trim_start, trim_end, offset, offset + len(data))
             )
         if trim_start:
             offset += trim_start
@@ -1153,9 +1147,8 @@ class GraphIndex:
         for line in lines:
             if line == b"":
                 # must be at the end
-                if self._size:
-                    if not (self._size == pos + 1):
-                        raise AssertionError("{} {}".format(self._size, pos))
+                if self._size and not (self._size == pos + 1):
+                    raise AssertionError(f"{self._size} {pos}")
                 trailers += 1
                 continue
             elements = line.split(b"\0")
@@ -1177,10 +1170,7 @@ class GraphIndex:
             pos += len(line) + 1  # +1 for the \n
             if absent:
                 continue
-            if self.node_ref_lists:
-                node_value = (value, ref_lists)
-            else:
-                node_value = value
+            node_value = (value, ref_lists) if self.node_ref_lists else value
             nodes.append((key, node_value))
             # print "parsed ", key
         return first_key, key, nodes, trailers
@@ -1336,9 +1326,8 @@ class CombinedGraphIndex:
         self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
-        return "{}({})".format(
-            self.__class__.__name__, ", ".join(map(repr, self._indices))
-        )
+        """Return string representation of the combined index."""
+        return f"{self.__class__.__name__}({', '.join(map(repr, self._indices))})"
 
     def clear_cache(self):
         """See GraphIndex.clear_cache()."""
@@ -1496,7 +1485,7 @@ class CombinedGraphIndex:
         Returns a list of names corresponding to the hit_indices param.
         """
         indices_info = zip(self._index_names, self._indices)
-        if "index" in debug.debug_flags:
+        if debug.debug_flag_enabled("index"):
             indices_info = list(indices_info)
             trace.mutter(
                 "CombinedGraphIndex reordering: currently %r, promoting %r",
@@ -1524,7 +1513,7 @@ class CombinedGraphIndex:
 
         self._indices = new_hit_indices + unhit_indices
         self._index_names = hit_names + unhit_names
-        if "index" in debug.debug_flags:
+        if debug.debug_flag_enabled("index"):
             trace.mutter("CombinedGraphIndex reordered: %r", self._indices)
         return hit_names
 
@@ -1684,14 +1673,14 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             trace.mutter_callsite(3, "iter_all_entries scales with size of history.")
         if self.reference_lists:
             for key, (absent, references, value) in self._nodes.items():
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in self._nodes.items():  # noqa: B007
+            for key, (absent, _references, value) in self._nodes.items():
                 if not absent:
                     yield self, key, value
 
@@ -1763,6 +1752,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
     def __lt__(self, other):
+        """Return True if self < other for ordering purposes."""
         # We don't really care about the order, just that there is an order.
         if not isinstance(other, GraphIndex) and not isinstance(
             other, InMemoryGraphIndex

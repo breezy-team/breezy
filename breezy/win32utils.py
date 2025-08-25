@@ -134,9 +134,19 @@ def get_console_size(defaultx=80, defaulty=25):
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 
     if res:
-        (bufx, bufy, curx, cury, wattr, left, top, right, bottom, maxx, maxy) = (
-            struct.unpack("hhhhHhhhhhh", csbi.raw)
-        )
+        (
+            bufx,
+            bufy,
+            curx,
+            cury,
+            wattr,
+            left,
+            top,
+            right,
+            bottom,
+            maxx,
+            maxy,
+        ) = struct.unpack("hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -196,10 +206,10 @@ def get_local_appdata_location():
 
 
 def get_home_location():
-    """Return user's home location.
+    r"""Return user's home location.
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
-    i.e. C:\
+    i.e. C:\.
     """
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
@@ -314,7 +324,7 @@ def glob_expand(file_list):
 def get_app_path(appname):
     r"""Look up in Windows registry for full path to application executable.
     Typically, applications create subkey with their basename
-    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
+    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\.
 
     :param  appname:    name of application (if no filename extension
                         is specified, .exe used)

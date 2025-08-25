@@ -114,7 +114,7 @@ Message: %(message)s.
         content = self.error_message_format % {"code": code, "message": message}
         self.send_response(code, message)
         self.send_header("Content-Type", self.error_content_type)
-        self.send_header("Content-Length", "%d" % len(content))
+        self.send_header("Content-Length", f"{len(content)}")
         self.send_header("Connection", "close")
         self.end_headers()
         if self.command != "HEAD" and code >= 200 and code not in (204, 304):
@@ -183,7 +183,7 @@ Message: %(message)s.
         return checked_ranges
 
     def _header_line_length(self, keyword, value):
-        header_line = "{}: {}\r\n".format(keyword, value)
+        header_line = f"{keyword}: {value}\r\n"
         return len(header_line)
 
     def send_range_content(self, file, start, length):
@@ -204,10 +204,8 @@ Message: %(message)s.
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
-        boundary = "%d" % random.randint(0, 0x7FFFFFFF)
-        self.send_header(
-            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
-        )
+        boundary = "%d" % random.randint(0, 0x7FFFFFFF)  # noqa: S311
+        self.send_header("Content-Type", f"multipart/byteranges; boundary={boundary}")
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -460,9 +458,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         self.logs = []
 
         super().start_server()
-        self._http_base_url = "{}://{}:{}/".format(
-            self._url_protocol, self.host, self.port
-        )
+        self._http_base_url = f"{self._url_protocol}://{self.host}:{self.port}/"
 
     def get_url(self):
         """See breezy.transport.Server.get_url."""

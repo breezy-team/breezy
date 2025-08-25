@@ -28,7 +28,7 @@ class TestSmartServerCommit(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         out, err = self.run_bzr(
             ["checkout", "--lightweight", self.get_url("from"), "target"]
         )
@@ -75,7 +75,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(
             ["branch", self.get_url("from"), self.get_url("target")]
@@ -98,7 +98,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(["branch", self.get_url("from"), "local-target"])
         # This figure represent the amount of work to perform this use case. It
@@ -114,7 +114,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("trunk")
         for count in range(8):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         tree2 = t.branch.controldir.sprout("feature", stacked=True).open_workingtree()
         local_tree = t.branch.controldir.sprout("local-working").open_workingtree()
         local_tree.commit("feature change")
@@ -153,7 +153,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(
             ["branch", "--stacked", self.get_url("from"), "local-target"]
@@ -182,7 +182,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         t.set_parent_ids([t.last_revision(), b"ghost"])
         t.commit(message="add commit with parent")
         self.reset_smart_call_log()
@@ -222,7 +222,7 @@ class TestSmartServerCat(TestCaseWithTransport):
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(["cat", "{}/foo".format(self.get_url("branch"))])
+        out, err = self.run_bzr(["cat", f"{self.get_url('branch')}/foo"])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -238,7 +238,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(["checkout", self.get_url("from"), "target"])
         # This figure represent the amount of work to perform this use case. It
@@ -254,7 +254,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(
             ["checkout", "--lightweight", self.get_url("from"), "target"]
@@ -648,7 +648,7 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         out, err = self.run_bzr(
             ["checkout", "--lightweight", self.get_url("from"), "target"]
         )
@@ -707,7 +707,7 @@ class TestSmartServerUncommit(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(2):
-            t.commit(message=f"commit {count}")
+            t.commit(message="commit %d" % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(["uncommit", "--force", self.get_url("from")])
         # This figure represent the amount of work to perform this use case. It

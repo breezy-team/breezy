@@ -43,6 +43,7 @@
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
+import contextlib
 import re
 import sys
 import time
@@ -66,6 +67,16 @@ REVISIONS_CHUNK_SIZE = 1000
 
 
 def _get_output_stream(destination):
+    """Get the appropriate output stream for the given destination.
+
+    Args:
+        destination: The destination for output. Can be None, "-" for stdout,
+            a filename ending in ".gz" for gzip-compressed output, or any
+            other filename for regular file output.
+
+    Returns:
+        An output stream (file-like object) for writing the export data.
+    """
     if destination is None or destination == "-":
         return helpers.binary_stream(getattr(sys.stdout, "buffer", sys.stdout))
     elif destination.endswith(".gz"):
@@ -110,6 +121,19 @@ def check_ref_format(refname):
 
 
 def sanitize_ref_name_for_git(refname):
+    """Sanitize a reference name to be valid for git-fast-import.
+
+    Rewrites refname to comply with git reference name rules by replacing
+    invalid characters and sequences with underscores. This may break
+    uniqueness guarantees provided by bzr, so callers must manually verify
+    that resulting ref names are unique.
+
+    Args:
+        refname: The reference name to sanitize (bytes).
+
+    Returns:
+        bytes: A sanitized reference name that will be accepted by git.
+    """
     """Rewrite refname so that it will be accepted by git-fast-import.
     For the detailed rules see check_ref_format.
 
@@ -144,6 +168,28 @@ def sanitize_ref_name_for_git(refname):
 
 
 class BzrFastExporter:
+    """Export Bazaar branch data in git fast-import format.
+
+    This class handles the conversion of a Bazaar branch's history into the
+    git fast-import format, which can then be imported into a git repository
+    or processed by other tools that understand this format.
+
+    Attributes:
+        branch: The source Bazaar branch to export.
+        outf: The output file stream for writing export data.
+        ref: The git reference name to use for the exported branch.
+        checkpoint: Number of commits between checkpoints (-1 to disable).
+        revision: Specific revision or revision range to export.
+        plain_format: Whether to use plain format without extended features.
+        rewrite_tags: Whether to rewrite tag names for git compatibility.
+        no_tags: Whether to exclude tags from the export.
+        baseline: Whether to export a baseline of the first revision.
+        verbose: Whether to output verbose progress information.
+        revid_to_mark: Mapping from Bazaar revision IDs to git marks.
+        branch_names: Mapping of branch names.
+        tree_cache: LRU cache for revision trees.
+    """
+
     def __init__(
         self,
         source,
@@ -209,6 +255,15 @@ class BzrFastExporter:
                 # self.branch_names = marks_info[1]
 
     def interesting_history(self):
+        """Calculate the list of revisions to include in the export.
+
+        Determines which revisions should be exported based on the revision
+        range specified and whether a baseline is requested. Excludes revisions
+        before the starting point if one was specified.
+
+        Returns:
+            list: Revision IDs in topological order to be exported.
+        """
         if self.revision:
             rev1, rev2 = builtins._get_revision_range(
                 self.revision, self.branch, "fast-export"
@@ -244,6 +299,14 @@ class BzrFastExporter:
         return list(view_revisions)
 
     def emit_commits(self, interesting):
+        """Emit commit commands for all interesting revisions.
+
+        Processes revisions in chunks for better performance, first preprocessing
+        them to determine required trees, then emitting the actual commit commands.
+
+        Args:
+            interesting: List of revision IDs to emit commits for.
+        """
         if self.baseline:
             revobj = self.branch.repository.get_revision(interesting.pop(0))
             self.emit_baseline(revobj, self.ref)
@@ -269,6 +332,17 @@ class BzrFastExporter:
                 self.emit_commit(revobj, self.ref, trees[parent], trees[revid])
 
     def run(self):
+        """Execute the export process.
+
+        Main entry point that coordinates the entire export process:
+        1. Locks the repository for reading
+        2. Calculates interesting history
+        3. Emits features (if not plain format)
+        4. Emits all commits
+        5. Emits tags (if enabled)
+        6. Saves marks file (if requested)
+        7. Outputs statistics
+        """
         # Export the data
         with self.branch.repository.lock_read():
             interesting = self.interesting_history()
@@ -286,20 +360,31 @@ class BzrFastExporter:
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
-        msg = "{} {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} {msg}"
         trace.note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "{} WARNING: {}".format(self._time_of_day(), msg)
+        msg = f"{self._time_of_day()} WARNING: {msg}"
         trace.warning(msg, *args)
 
     def _time_of_day(self):
+        """Get the current time of day as a formatted string.
+
+        Returns:
+            str: Time in HH:MM:SS format.
+        """
         """Time of day as a string."""
         # Note: this is a separate method so tests can patch in a fixed value
         return time.strftime("%H:%M:%S")
 
     def report_progress(self, commit_count, details=""):
+        """Report export progress at regular intervals.
+
+        Args:
+            commit_count: Number of commits exported so far.
+            details: Additional details to include in the progress message.
+        """
         if commit_count and commit_count % self.progress_every == 0:
             if self._commit_total:
                 counts = f"{commit_count}/{self._commit_total}"
@@ -308,12 +393,16 @@ class BzrFastExporter:
             minutes = (time.time() - self._start_time) / 60
             rate = commit_count * 1.0 / minutes
             if rate > 10:
-                rate_str = "at {:.0f}/minute ".format(rate)
+                rate_str = f"at {rate:.0f}/minute "
             else:
-                rate_str = "at {:.1f}/minute ".format(rate)
-            self.note("{} commits exported {}{}".format(counts, rate_str, details))
+                rate_str = f"at {rate:.1f}/minute "
+            self.note(f"{counts} commits exported {rate_str}{details}")
 
     def dump_stats(self):
+        """Output final statistics about the export.
+
+        Reports the total number of revisions exported and the time taken.
+        """
         time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = len(self.revid_to_mark)
         self.note(
@@ -324,22 +413,39 @@ class BzrFastExporter:
         )
 
     def print_cmd(self, cmd):
+        """Write a fast-import command to the output stream.
+
+        Args:
+            cmd: The command object to write.
+        """
         self.outf.write(b"%s\n" % cmd)
 
     def _save_marks(self):
+        """Save the marks mapping to a file if requested.
+
+        Writes the mapping between git marks and Bazaar revision IDs to the
+        export marks file if one was specified.
+        """
         if self.export_marks_file:
             revision_ids = {m: r for r, m in self.revid_to_mark.items()}
             marks_file.export_marks(self.export_marks_file, revision_ids)
 
     def is_empty_dir(self, tree, path):
+        """Check if a path represents an empty directory.
+
+        Args:
+            tree: The tree object to check in.
+            path: The path to check.
+
+        Returns:
+            bool: True if path is an empty directory, False otherwise.
+        """
         # Continue if path is not a directory
         try:
             if tree.kind(path) != "directory":
                 return False
         except _mod_transport.NoSuchFile:
-            self.warning(
-                "Skipping empty_dir detection - no file_id for {}".format(path)
-            )
+            self.warning(f"Skipping empty_dir detection - no file_id for {path}")
             return False
 
         # Use treewalk to find the contents of our directory
@@ -347,10 +453,24 @@ class BzrFastExporter:
         return len(contents[1]) == 0
 
     def emit_features(self):
+        """Emit feature commands for all supported fast-import features.
+
+        Features enable extended functionality beyond the basic fast-import
+        format. Only emitted when not using plain format.
+        """
         for feature in sorted(commands.FEATURE_NAMES):
             self.print_cmd(commands.FeatureCommand(feature))
 
     def emit_baseline(self, revobj, ref):
+        """Emit a baseline commit with the full source tree.
+
+        Creates a commit containing the complete state of the tree at the
+        given revision, used as a baseline for subsequent incremental commits.
+
+        Args:
+            revobj: The revision object to use as baseline.
+            ref: The git reference to reset and commit to.
+        """
         # Emit a full source tree of the first commit's parent
         mark = 1
         self.revid_to_mark[revobj.revision_id] = b"%d" % mark
@@ -361,6 +481,19 @@ class BzrFastExporter:
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def preprocess_commit(self, revid, revobj, ref):
+        """Preprocess a commit to determine required trees.
+
+        Assigns a mark to the revision and determines which trees need to be
+        loaded for processing this commit.
+
+        Args:
+            revid: The revision ID being processed.
+            revobj: The revision object (may be None for ghosts).
+            ref: The git reference for this commit.
+
+        Returns:
+            list: Revision IDs of trees that need to be loaded.
+        """
         if self.revid_to_mark.get(revid) or revid in self.excluded_revisions:
             return []
         if revobj is None:
@@ -382,6 +515,17 @@ class BzrFastExporter:
         return [parent, revobj.revision_id]
 
     def emit_commit(self, revobj, ref, tree_old, tree_new):
+        """Emit a commit command with file changes.
+
+        Generates and outputs a commit command including all file modifications,
+        additions, deletions, and renames between the old and new trees.
+
+        Args:
+            revobj: The revision object to emit.
+            ref: The git reference for this commit.
+            tree_old: The tree of the parent revision.
+            tree_new: The tree of the current revision.
+        """
         # For parentless commits we need to issue reset command first, otherwise
         # git-fast-import will assume previous commit was this one's parent
         if tree_old.get_revision_id() == breezy.revision.NULL_REVISION:
@@ -405,6 +549,17 @@ class BzrFastExporter:
             self.print_cmd(commands.CheckpointCommand())
 
     def _get_name_email(self, user):
+        """Extract name and email from a user string.
+
+        Parses a user string in various formats to extract the name and email
+        components. Handles cases where email is not in angle brackets.
+
+        Args:
+            user: User string in format "Name <email>" or just "email".
+
+        Returns:
+            tuple: (name_bytes, email_bytes) both encoded as UTF-8.
+        """
         if user.find("<") == -1:
             # If the email isn't inside <>, we need to use it as the name
             # in order for things to round-trip correctly.
@@ -416,6 +571,20 @@ class BzrFastExporter:
         return name.encode("utf-8"), email.encode("utf-8")
 
     def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
+        """Build a commit command with all necessary metadata.
+
+        Constructs a complete commit command including author/committer info,
+        commit message, parent references, and file changes.
+
+        Args:
+            git_ref: The git reference to update.
+            mark: The mark number for this commit.
+            revobj: The revision object containing commit metadata.
+            file_cmds: List of file commands for this commit.
+
+        Returns:
+            CommitCommand: The complete commit command object.
+        """
         # Get the committer and author info
         committer = revobj.committer
         name, email = self._get_name_email(committer)
@@ -469,10 +638,8 @@ class BzrFastExporter:
         else:
             properties = revobj.properties
             for prop in self.properties_to_exclude:
-                try:
+                with contextlib.suppress(KeyError):
                     del properties[prop]
-                except KeyError:
-                    pass
 
         # Build and return the result
         return commands.CommitCommand(
@@ -489,6 +656,17 @@ class BzrFastExporter:
         )
 
     def _get_revision_trees(self, revids):
+        """Get revision trees for multiple revision IDs.
+
+        Retrieves trees from cache when possible, otherwise loads from the
+        repository. Updates the cache with newly loaded trees.
+
+        Args:
+            revids: List of revision IDs to get trees for.
+
+        Yields:
+            RevisionTree objects for each revision ID.
+        """
         missing = []
         by_revid = {}
         for revid in revids:
@@ -510,6 +688,19 @@ class BzrFastExporter:
             self.tree_cache[revid] = tree
 
     def _get_filecommands(self, tree_old, tree_new):
+        """Generate file commands for changes between two trees.
+
+        Compares two trees and generates appropriate file commands for all
+        changes including additions, modifications, deletions, renames, and
+        kind changes.
+
+        Args:
+            tree_old: The old tree to compare from.
+            tree_new: The new tree to compare to.
+
+        Yields:
+            FileCommand objects for each change.
+        """
         """Get the list of FileCommands for the changes between two revisions."""
         changes = tree_new.changes_from(tree_old)
 
@@ -564,9 +755,7 @@ class BzrFastExporter:
                     )
             else:
                 self.warning(
-                    "cannot export '{}' of kind {} yet - ignoring".format(
-                        change.path[1], change.kind[1]
-                    )
+                    f"cannot export '{change.path[1]}' of kind {change.kind[1]} yet - ignoring"
                 )
 
         # TODO(jelmer): Improve performance on remote repositories
@@ -577,6 +766,22 @@ class BzrFastExporter:
             )
 
     def _process_renames_and_deletes(self, renames, deletes, revision_id, tree_old):
+        """Process renames and deletes in the correct order.
+
+        Handles complex cases where renames and deletes interact, ensuring
+        the correct ordering of operations for git fast-import.
+
+        Args:
+            renames: List of rename changes.
+            deletes: List of delete changes.
+            revision_id: Current revision ID (for logging).
+            tree_old: The old tree for checking empty directories.
+
+        Returns:
+            tuple: (file_cmds, modifies, renamed) where file_cmds are the
+                commands to emit, modifies are modifications to process,
+                and renamed is a list of (old_path, new_path) tuples.
+        """
         file_cmds = []
         modifies = []
         renamed = []
@@ -613,11 +818,7 @@ class BzrFastExporter:
                     )
                 deleted_paths.remove(change.path[1])
             if self.is_empty_dir(tree_old, change.path[0]):
-                self.note(
-                    "Skipping empty dir {} in rev {}".format(
-                        change.path[0], revision_id
-                    )
-                )
+                self.note(f"Skipping empty dir {change.path[0]} in rev {revision_id}")
                 continue
             # oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)
@@ -652,9 +853,7 @@ class BzrFastExporter:
                 new_child_path = must_be_renamed[old_child_path]
                 if self.verbose:
                     self.note(
-                        "implicitly renaming {} => {}".format(
-                            old_child_path, new_child_path
-                        )
+                        f"implicitly renaming {old_child_path} => {new_child_path}"
                     )
                 file_cmds.append(
                     commands.FileRenameCommand(
@@ -673,33 +872,46 @@ class BzrFastExporter:
         return file_cmds, modifies, renamed
 
     def _adjust_path_for_renames(self, path, renamed, revision_id):
+        """Adjust a path to account for previous renames in the same commit.
+
+        When multiple operations affect the same file, we need to track how
+        paths change throughout the commit.
+
+        Args:
+            path: The path to adjust.
+            renamed: List of (old_path, new_path) tuples from previous renames.
+            revision_id: Current revision ID (for logging).
+
+        Returns:
+            str: The adjusted path.
+        """
         # If a previous rename is found, we should adjust the path
         for old, new in renamed:
             if path == old:
                 self.note(
-                    "Changing path {} given rename to {} in revision {}".format(
-                        path, new, revision_id
-                    )
+                    f"Changing path {path} given rename to {new} in revision {revision_id}"
                 )
                 path = new
             elif path.startswith(old + "/"):
                 self.note(
-                    "Adjusting path {} given rename of {} to {} in revision {}".format(
-                        path, old, new, revision_id
-                    )
+                    f"Adjusting path {path} given rename of {old} to {new} in revision {revision_id}"
                 )
                 path = path.replace(old + "/", new + "/")
         return path
 
     def emit_tags(self):
+        """Emit reset commands for all tags in the branch.
+
+        Exports tags as lightweight tags in git. Handles tag name validation
+        and sanitization when in plain format mode.
+        """
         for tag, revid in self.branch.tags.get_tag_dict().items():
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:
                 self.warning(
-                    "not creating tag {!r} pointing to non-existent revision {}".format(
-                        tag, revid
-                    )
+                    f"not creating tag {tag!r} pointing to non-existent "
+                    f"revision {revid}"
                 )
             else:
                 git_ref = b"refs/tags/%s" % tag.encode("utf-8")

@@ -192,7 +192,7 @@ class TestHooks(tests.TestCase):
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEqual(obj._module, module_name)
             self.assertEqual(obj._member_name, member_name)
-            self.assertTrue(hook_name in obj)
+            self.assertIn(hook_name, obj)
             self.assertIs(callbacks, obj[hook_name]._callbacks)
 
 
@@ -269,8 +269,7 @@ class TestHook(tests.TestCase):
         hook.hook(callback, "my callback")
         callback_repr = repr(callback)
         self.assertEqual(
-            "<HookPoint(foo), callbacks=[{}(my callback)]>".format(callback_repr),
-            repr(hook),
+            f"<HookPoint(foo), callbacks=[{callback_repr}(my callback)]>", repr(hook)
         )
 
 
@@ -284,7 +283,7 @@ class TestHookRegistry(tests.TestCase):
         for key, factory in known_hooks.items():
             self.assertTrue(
                 callable(factory),
-                "The factory({!r}) for {!r} is not callable".format(factory, key),
+                f"The factory({factory!r}) for {key!r} is not callable",
             )
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)

@@ -27,18 +27,32 @@ from .inter import InterObject
 
 
 class FileTimestampUnavailable(errors.BzrError):
+    """Error raised when a file timestamp is not available."""
+
     _fmt = "The filestamp for %(path)s is not available."
 
     internal_error = True
 
     def __init__(self, path):
+        """Initialize with the problematic path.
+
+        Args:
+            path: The path for which the timestamp is unavailable.
+        """
         self.path = path
 
 
 class MissingNestedTree(errors.BzrError):
+    """Error raised when a nested tree cannot be resolved."""
+
     _fmt = "The nested tree for %(path)s can not be resolved."
 
     def __init__(self, path):
+        """Initialize with the problematic path.
+
+        Args:
+            path: The path for which the nested tree is missing.
+        """
         self.path = path
 
 
@@ -48,12 +62,14 @@ class TreeEntry:
     __slots__: list[str] = []
 
     def __eq__(self, other):
+        """Compare tree entries for equality."""
         # yes, this is ugly, TODO: best practice __eq__ style.
         return isinstance(other, TreeEntry) and other.__class__ == self.__class__
 
     kind: str
 
     def kind_character(self):
+        """Return a single character representing this entry's kind."""
         return "???"
 
     def is_unmodified(self, other):
@@ -73,6 +89,7 @@ class TreeDirectory(TreeEntry):
     kind = "directory"
 
     def kind_character(self):
+        """Return '/' to represent a directory."""
         return "/"
 
 
@@ -84,6 +101,7 @@ class TreeFile(TreeEntry):
     kind = "file"
 
     def kind_character(self):
+        """Return empty string to represent a file."""
         return ""
 
 
@@ -95,6 +113,7 @@ class TreeLink(TreeEntry):
     kind = "symlink"
 
     def kind_character(self):
+        """Return empty string to represent a symlink."""
         return ""
 
 
@@ -106,6 +125,7 @@ class TreeReference(TreeEntry):
     kind = "tree-reference"
 
     def kind_character(self):
+        """Return '+' to represent a tree reference."""
         return "+"
 
 
@@ -125,6 +145,17 @@ class TreeChange:
     def __init__(
         self, path, changed_content, versioned, name, kind, executable, copied=False
     ):
+        """Initialize a TreeChange.
+
+        Args:
+            path: Tuple of (old_path, new_path) or None.
+            changed_content: Whether content has changed.
+            versioned: Tuple of (old_versioned, new_versioned).
+            name: Tuple of (old_name, new_name) or None.
+            kind: Tuple of (old_kind, new_kind).
+            executable: Tuple of (old_executable, new_executable).
+            copied: Whether this represents a copied file.
+        """
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
@@ -134,7 +165,8 @@ class TreeChange:
         self.copied = copied
 
     def __repr__(self):
-        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
+        """Return string representation of the TreeChange."""
+        return f"{self.__class__.__name__}{self._as_tuple()!r}"
 
     def _as_tuple(self):
         return (
@@ -148,6 +180,7 @@ class TreeChange:
         )
 
     def __eq__(self, other):
+        """Compare TreeChange objects for equality."""
         if isinstance(other, TreeChange):
             return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
@@ -155,23 +188,28 @@ class TreeChange:
         return False
 
     def __lt__(self, other):
+        """Compare TreeChange objects for ordering."""
         return self._as_tuple() < other._as_tuple()
 
     def meta_modified(self):
+        """Return True if metadata (like executable flag) was modified."""
         if self.versioned == (True, True):
             return self.executable[0] != self.executable[1]
         return False
 
     @property
     def renamed(self):
+        """Return True if the item was renamed (not copied)."""
         return (
             not self.copied and None not in self.name and self.path[0] != self.path[1]
         )
 
     def is_reparented(self):
+        """Return True if the item was moved to a different directory."""
         return osutils.dirname(self.path[0]) != osutils.dirname(self.path[1])
 
     def discard_new(self):
+        """Create a TreeChange representing removal of the new version."""
         return self.__class__(
             (self.path[0], None),
             self.changed_content,
@@ -213,6 +251,7 @@ class Tree:
         return True
 
     def supports_tree_reference(self):
+        """Return True if this tree supports tree references."""
         raise NotImplementedError(self.supports_tree_reference)
 
     def supports_symlinks(self):
@@ -392,6 +431,11 @@ class Tree:
         raise NotImplementedError(self.list_files)
 
     def iter_references(self):
+        """Iterate over paths that are tree references.
+
+        Yields:
+            Paths to nested trees if tree references are supported.
+        """
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == "tree-reference":
@@ -422,6 +466,14 @@ class Tree:
         raise NotImplementedError(self.get_nested_tree)
 
     def kind(self, path):
+        """Return the kind of file at the given path.
+
+        Args:
+            path: Path to examine.
+
+        Returns:
+            String indicating the file kind (file, directory, symlink, etc).
+        """
         raise NotImplementedError(
             "Tree subclass {} must implement kind".format(self.__class__.__name__)
         )
@@ -454,6 +506,14 @@ class Tree:
         raise NotImplementedError(self.path_content_summary)
 
     def get_reference_revision(self, path):
+        """Return the revision id of the tree reference at path.
+
+        Args:
+            path: Path to the tree reference.
+
+        Returns:
+            Revision id that the tree reference points to.
+        """
         raise NotImplementedError(
             "Tree subclass {} must implement get_reference_revision".format(
                 self.__class__.__name__
@@ -674,6 +734,7 @@ class Tree:
         return iter([])
 
     def unlock(self):
+        """Release any locks held by this tree."""
         pass
 
     def filter_unversioned_files(self, paths):
@@ -718,6 +779,7 @@ class Tree:
         raise NotImplementedError(self.walkdirs)
 
     def supports_content_filtering(self):
+        """Return True if this tree supports content filtering."""
         return False
 
     def _content_filter_stack(self, path=None):
@@ -739,7 +801,7 @@ class Tree:
             return []
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
-        if "filters" in debug.debug_flags:
+        if debug.debug_flag_enabled("filters"):
             trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 
@@ -849,12 +911,22 @@ class InterTree(InterObject[Tree]):
 
     @classmethod
     def is_compatible(kls, source, target):
+        """Return True if this InterTree can handle source and target trees."""
         # The default implementation is naive and uses the public API, so
         # it works for all trees.
         return True
 
     @classmethod
     def get(cls, source: Tree, target: Tree) -> "InterTree":
+        """Get an InterTree implementation for source and target trees.
+
+        Args:
+            source: Source tree for comparisons.
+            target: Target tree for comparisons.
+
+        Returns:
+            An InterTree instance.
+        """
         return cast("InterTree", super().get(source, target))
 
     def compare(

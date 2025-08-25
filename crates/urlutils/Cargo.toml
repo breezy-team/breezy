@@ -1,0 +1,15 @@
+[package]
+name = "breezy-urlutils"
+version = { workspace = true }
+edition = "2021"
+description = "URL utilities for Breezy"
+license = "GPL-2.0+"
+
+[lib]
+
+[dependencies]
+url = "2.2.2"
+regex = "1.5.4"
+lazy_static = "1.4.0"
+breezy-osutils = { path = "../osutils" }
+percent-encoding = "2.1.0"

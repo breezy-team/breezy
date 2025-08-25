@@ -31,9 +31,8 @@ class NonAsciiTest(TestCaseWithTransport):
         br_dir = "\u1234"
         try:
             wt = self.make_branch_and_tree(br_dir)
-        except UnicodeEncodeError:
-            raise TestSkipped("filesystem can't accomodate nonascii names")
-            return
+        except UnicodeEncodeError as err:
+            raise TestSkipped("filesystem can't accomodate nonascii names") from err
         with open(pathjoin(br_dir, "a"), "w") as f:
             f.write("hello")
         wt.add(["a"], ids=[b"a-id"])
@@ -49,6 +48,7 @@ squared_c = "\xbc"  # This gets mapped to '2' if we use NFK[CD]
 squared_d = "\xbc"
 quarter_c = "\xb2"  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
 quarter_d = "\xb2"
+surrogate = "\udcb5"
 
 
 class TestNormalization(TestCase):
@@ -65,6 +65,8 @@ class TestNormalization(TestCase):
         self.assertEqual(squared_c, normalize("NFD", squared_d))
         self.assertEqual(quarter_d, normalize("NFC", quarter_c))
         self.assertEqual(quarter_c, normalize("NFD", quarter_d))
+        self.assertEqual(surrogate, normalize("NFC", surrogate))
+        self.assertEqual(surrogate, normalize("NFD", surrogate))
 
 
 class NormalizedFilename(TestCaseWithTransport):
@@ -85,6 +87,7 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((squared_c, True), anf(squared_d))
         self.assertEqual((quarter_c, True), anf(quarter_c))
         self.assertEqual((quarter_c, True), anf(quarter_d))
+        self.assertEqual((surrogate, False), anf(surrogate))
 
     def test__inaccessible_normalized_filename(self):
         inf = osutils._inaccessible_normalized_filename
@@ -101,16 +104,7 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((squared_c, True), inf(squared_d))
         self.assertEqual((quarter_c, True), inf(quarter_c))
         self.assertEqual((quarter_c, True), inf(quarter_d))
-
-    def test_functions(self):
-        if osutils.normalizes_filenames():
-            self.assertEqual(
-                osutils.normalized_filename, osutils._accessible_normalized_filename
-            )
-        else:
-            self.assertEqual(
-                osutils.normalized_filename, osutils._inaccessible_normalized_filename
-            )
+        self.assertEqual((surrogate, True), inf(surrogate))
 
     def test_platform(self):
         # With FAT32 and certain encodings on win32
@@ -120,8 +114,8 @@ class NormalizedFilename(TestCaseWithTransport):
         files = [a_circle_c + ".1", a_dots_c + ".2", z_umlat_c + ".3"]
         try:
             self.build_tree(files)
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         if sys.platform == "darwin":
             expected = sorted([a_circle_d + ".1", a_dots_d + ".2", z_umlat_d + ".3"])
@@ -147,8 +141,8 @@ class NormalizedFilename(TestCaseWithTransport):
         ]
         try:
             self.build_tree(files, line_endings="native")
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         for fname in files:
             # We should get an exception if we can't open the file at
@@ -168,9 +162,7 @@ class NormalizedFilename(TestCaseWithTransport):
             self.assertEqual(
                 shouldbe,
                 actual,
-                "contents of {!r} is incorrect: {!r} != {!r}".format(
-                    path, shouldbe, actual
-                ),
+                f"contents of {path!r} is incorrect: {shouldbe!r} != {actual!r}",
             )
 
     def test_access_non_normalized(self):
@@ -180,8 +172,8 @@ class NormalizedFilename(TestCaseWithTransport):
 
         try:
             self.build_tree(files)
-        except UnicodeError:
-            raise TestSkipped("filesystem cannot create unicode files")
+        except UnicodeError as err:
+            raise TestSkipped("filesystem cannot create unicode files") from err
 
         for fname in files:
             # We should get an exception if we can't open the file at

@@ -16,10 +16,10 @@
 
 """Tests of breezy test matchers."""
 
-from testtools.matchers import *
+from testtools.matchers import Equals
 
 from . import TestCase, TestCaseWithTransport
-from .matchers import *
+from .matchers import *  # noqa: F403
 
 
 class StubTree:
@@ -64,9 +64,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
     def test__str__(self):
         matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
-            "MatchesAncestry(repository='A repository', revision_id={!r})".format(
-                b"arevid"
-            ),
+            f"MatchesAncestry(repository='A repository', revision_id={b'arevid'!r})",
             str(matcher),
         )
 
@@ -96,9 +94,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision {!r} was [{!r}], expected []".format(
-                revid1, revid1
-            ),
+            f"mismatched ancestry for revision {revid1!r} was [{revid1!r}], expected []",
             mismatch.describe(),
         )
 
@@ -106,7 +102,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
 class TestHasLayout(TestCaseWithTransport):
     def test__str__(self):
         matcher = HasLayout([(b"a", b"a-id")])
-        self.assertEqual("HasLayout({!r})".format([(b"a", b"a-id")]), str(matcher))
+        self.assertEqual(f"HasLayout({[(b'a', b'a-id')]!r})", str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree(".")
@@ -150,9 +146,7 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree(".")
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual(
-            "HasPathRelations({!r}, {!r})".format(t, [("a", "b")]), str(matcher)
-        )
+        self.assertEqual(f"HasPathRelations({t!r}, {[('a', 'b')]!r})", str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree(".")

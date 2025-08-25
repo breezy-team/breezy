@@ -129,19 +129,19 @@ added:
             working_tree, None, diff=True, output_encoding="utf8"
         )
 
-        self.assertTrue(
+        self.assertIn(
             b"""\
 @@ -0,0 +1,1 @@
 +contents of hello
-"""
-            in template
+""",
+            template,
         )
-        self.assertTrue(
+        self.assertIn(
             """\
 added:
   hell\u00d8
-""".encode()
-            in template
+""".encode(),
+            template,
         )
 
     def make_do_nothing_editor(self, basename="fed"):
@@ -154,7 +154,7 @@ added:
             name = basename + ".sh"
             with open(name, "wb") as f:
                 f.write(b"#!/bin/sh\n")
-            os.chmod(name, 0o755)
+            os.chmod(name, 0o755)  # noqa: S103
             return "./" + name
 
     def test_run_editor(self):
@@ -169,7 +169,7 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv(
-            "BRZ_EDITOR", '"{}"'.format(self.make_do_nothing_editor("name with spaces"))
+            "BRZ_EDITOR", f'"{self.make_do_nothing_editor("name with spaces")}"'
         )
         self.assertEqual(True, msgeditor._run_editor("a_filename"))
 
@@ -182,35 +182,33 @@ added:
         if not isinstance(message, bytes):
             message = message.encode("utf-8")
         with open("fed.py", "w") as f:
-            f.write("#!{}\n".format(sys.executable))
+            f.write(f"#!{sys.executable}\n")
             f.write(
-                """\
-# coding=utf-8
+                f"""# coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
     with open(fn, 'rb') as f:
         s = f.read()
     with open(fn, 'wb') as f:
-        f.write({!r})
+        f.write({message!r})
         f.write(s)
-""".format(message)
+"""
             )
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
             with open("fed.bat", "w") as f:
                 f.write(
-                    """\
-@echo off
-"{}" fed.py %1
-""".format(sys.executable)
+                    f"""@echo off
+"{sys.executable}" fed.py %1
+"""
                 )
             self.overrideEnv("BRZ_EDITOR", "fed.bat")
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
-            os.chmod("fed.py", 0o755)
-            mutter("Setting BRZ_EDITOR to %r", "{} ./fed.py".format(sys.executable))
-            self.overrideEnv("BRZ_EDITOR", "{} ./fed.py".format(sys.executable))
+            os.chmod("fed.py", 0o755)  # noqa: S103
+            mutter("Setting BRZ_EDITOR to %r", f"{sys.executable} ./fed.py")
+            self.overrideEnv("BRZ_EDITOR", f"{sys.executable} ./fed.py")
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()
@@ -236,9 +234,7 @@ if len(sys.argv) == 2:
         uni_val, ue_val = probe_unicode_in_user_encoding()
         if ue_val is None:
             self.skipTest(
-                "Cannot find a unicode character that works in encoding {}".format(
-                    osutils.get_user_encoding()
-                )
+                f"Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}"
             )
 
         self.assertEqual(

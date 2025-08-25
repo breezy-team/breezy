@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Use ~/.netrc as a credential store for authentication.conf."""
+
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
@@ -25,20 +27,31 @@ from ... import transport as _mod_transport
 
 
 class NetrcCredentialStore(config.CredentialStore):
+    """Credential store that reads from ~/.netrc file."""
+
     def __init__(self):
+        """Initialize the netrc credential store.
+
+        Raises:
+            NoSuchFile: If ~/.netrc file doesn't exist.
+        """
         super().__init__()
-        import errno
         import netrc
 
         try:
             self._netrc = netrc.netrc()
-        except OSError as e:
-            if e.args[0] == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(e.filename)
-            else:
-                raise
+        except FileNotFoundError as e:
+            raise _mod_transport.NoSuchFile(e.filename) from e
 
     def decode_password(self, credentials):
+        """Decode password from netrc for given credentials.
+
+        Args:
+            credentials: Dictionary containing host and optionally user.
+
+        Returns:
+            Password string if found and user matches, None otherwise.
+        """
         auth = self._netrc.authenticators(credentials["host"])
         password = None
         if auth is not None:
@@ -58,12 +71,19 @@ config.credential_store_registry.register_lazy(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load test modules for the netrc credential store plugin.
+
+    Args:
+        loader: Test loader.
+        basic_tests: Basic test suite.
+        pattern: Test pattern (unused).
+
+    Returns:
+        Updated test suite with plugin tests.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

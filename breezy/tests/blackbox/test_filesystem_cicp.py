@@ -143,10 +143,10 @@ class TestAdd(TestCICPBase):
         expected_fname = pathjoin(wt.basedir, "MixedCaseParent", "notfound")
         run_script(
             self,
-            """
+            f"""
             $ brz add mixedcaseparent/notfound
-            2>brz: ERROR: No such file: {}
-            """.format(repr(expected_fname)),
+            2>brz: ERROR: No such file: {expected_fname!r}
+            """,
         )
 
 

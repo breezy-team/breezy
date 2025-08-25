@@ -25,9 +25,18 @@ from . import errors, hooks, trace, tree
 
 
 class BadReferenceTarget(errors.InternalBzrError):
+    """Exception raised when attempting to add an invalid tree reference."""
+
     _fmt = "Can't add reference to %(other_tree)s into %(tree)s.%(reason)s"
 
     def __init__(self, tree, other_tree, reason):
+        """Initialize BadReferenceTarget exception.
+
+        Args:
+            tree: The tree where the reference was being added.
+            other_tree: The tree being referenced.
+            reason: Explanation of why the reference is invalid.
+        """
         self.tree = tree
         self.other_tree = other_tree
         self.reason = reason
@@ -53,6 +62,12 @@ class MutableTree(tree.Tree):
     """
 
     def __init__(self, *args, **kw):
+        """Initialize the MutableTree.
+
+        Args:
+            *args: Variable positional arguments passed to parent class.
+            **kw: Variable keyword arguments passed to parent class.
+        """
         super().__init__(*args, **kw)
         # Is this tree on a case-insensitive or case-preserving file-system?
         # Sub-classes may initialize to False if they detect they are being
@@ -99,6 +114,17 @@ class MutableTree(tree.Tree):
         raise errors.UnsupportedOperation(self.add_reference, self)
 
     def commit(self, message=None, revprops=None, *args, **kwargs):
+        """Commit the changes in this tree to a new revision.
+
+        Args:
+            message: Commit message describing the changes.
+            revprops: Dictionary of revision properties.
+            *args: Additional positional arguments for commit.
+            **kwargs: Additional keyword arguments for commit.
+
+        Returns:
+            The revision ID of the newly committed revision.
+        """
         # avoid circular imports
         from breezy import commit
 
@@ -116,11 +142,11 @@ class MutableTree(tree.Tree):
             for hook in MutableTree.hooks["start_commit"]:
                 hook(self)
             committed_id = commit.Commit().commit(
+                *args,
+                **kwargs,
                 working_tree=self,
                 revprops=revprops,
                 possible_master_transports=possible_master_transports,
-                *args,
-                **kwargs,
             )
             post_hook_params = PostCommitHookParams(self)
             for hook in MutableTree.hooks["post_commit"]:

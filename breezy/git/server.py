@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Git server implementation for Bazaar repositories."""
+
 import sys
 
 from dulwich.object_store import MissingObjectFinder, peel_sha
@@ -39,10 +41,23 @@ class BzrBackend(Backend):
     """A git serve backend that can use a Bazaar repository."""
 
     def __init__(self, transport):
+        """Initialize BzrBackend.
+
+        Args:
+            transport: Transport to use for accessing repositories.
+        """
         self.transport = transport
         self.mapping = default_mapping
 
     def open_repository(self, path):
+        """Open a repository at the given path.
+
+        Args:
+            path: Git-style path to the repository.
+
+        Returns:
+            BzrBackendRepo: The opened repository.
+        """
         # FIXME: More secure path sanitization
         transport = self.transport.clone(decode_git_path(path).lstrip("/"))
         trace.mutter("client opens %r: %r", path, transport)
@@ -50,7 +65,15 @@ class BzrBackend(Backend):
 
 
 class BzrBackendRepo(BackendRepo):
+    """Git backend repository implementation using Bazaar."""
+
     def __init__(self, transport, mapping):
+        """Initialize BzrBackendRepo.
+
+        Args:
+            transport: Transport for the repository location.
+            mapping: Git-to-Bazaar mapping to use.
+        """
         self.mapping = mapping
         self.repo_dir = ControlDir.open_from_transport(transport)
         self.repo = self.repo_dir.find_repository()
@@ -58,10 +81,23 @@ class BzrBackendRepo(BackendRepo):
         self.refs = get_refs_container(self.repo_dir, self.object_store)
 
     def get_refs(self):
+        """Get all refs in the repository.
+
+        Returns:
+            dict: Mapping of ref names to SHA1s.
+        """
         with self.object_store.lock_read():
             return self.refs.as_dict()
 
     def get_peeled(self, name):
+        """Get the peeled SHA for a ref.
+
+        Args:
+            name: The ref name.
+
+        Returns:
+            bytes: The peeled SHA1.
+        """
         cached = self.refs.get_peeled(name)
         if cached is not None:
             return cached
@@ -84,7 +120,6 @@ class BzrBackendRepo(BackendRepo):
                     shallow=shallows,
                     progress=progress,
                     get_tagged=get_tagged,
-                    lossy=True,
                 )
             else:
                 return MissingObjectFinder(
@@ -93,7 +128,15 @@ class BzrBackendRepo(BackendRepo):
 
 
 class BzrTCPGitServer(TCPGitServer):
+    """TCP Git server with Bazaar-specific error handling."""
+
     def handle_error(self, request, client_address):
+        """Handle errors during request processing.
+
+        Args:
+            request: The request that caused the error.
+            client_address: Address of the client.
+        """
         trace.log_exception_quietly()
         trace.warning(
             "Exception happened during processing of request from %s", client_address
@@ -101,6 +144,15 @@ class BzrTCPGitServer(TCPGitServer):
 
 
 def serve_git(transport, host=None, port=None, inet=False, timeout=None):
+    """Start a Git server.
+
+    Args:
+        transport: Transport for the repository location.
+        host: Host to bind to (defaults to localhost).
+        port: Port to bind to (auto-assigned if not specified).
+        inet: Whether to run in inetd mode.
+        timeout: Connection timeout.
+    """
     backend = BzrBackend(transport)
 
     if host is None:
@@ -113,6 +165,16 @@ def serve_git(transport, host=None, port=None, inet=False, timeout=None):
 
 
 def git_http_hook(branch, method, path):
+    """HTTP hook for Git smart HTTP protocol.
+
+    Args:
+        branch: The branch being accessed.
+        method: HTTP method.
+        path: Request path.
+
+    Returns:
+        callable: WSGI application if the request is a Git request, None otherwise.
+    """
     from dulwich.web import DEFAULT_HANDLERS, HTTPGitApplication, HTTPGitRequest
 
     handler = None
@@ -161,6 +223,17 @@ def serve_command(handler_cls, backend, inf=sys.stdin, outf=sys.stdout):
 
 
 def serve_git_receive_pack(transport, host=None, port=None, inet=False):
+    """Serve git-receive-pack command.
+
+    Args:
+        transport: Transport for the repository location.
+        host: Host to bind to (ignored in inetd mode).
+        port: Port to bind to (ignored in inetd mode).
+        inet: Whether to run in inetd mode (required).
+
+    Raises:
+        CommandError: If not running in inetd mode.
+    """
     if not inet:
         raise errors.CommandError("git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
@@ -168,6 +241,17 @@ def serve_git_receive_pack(transport, host=None, port=None, inet=False):
 
 
 def serve_git_upload_pack(transport, host=None, port=None, inet=False):
+    """Serve git-upload-pack command.
+
+    Args:
+        transport: Transport for the repository location.
+        host: Host to bind to (ignored in inetd mode).
+        port: Port to bind to (ignored in inetd mode).
+        inet: Whether to run in inetd mode (required).
+
+    Raises:
+        CommandError: If not running in inetd mode.
+    """
     if not inet:
         raise errors.CommandError("git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)

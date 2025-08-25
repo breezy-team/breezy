@@ -63,7 +63,25 @@ _eol_filter_stack_map = {
 
 
 def eol_lookup(key):
+    """Look up the appropriate EOL filter stack for the given key.
+
+    Args:
+        key: The EOL conversion type. Valid values are:
+            - 'exact': No conversion
+            - 'native': Convert to native line endings (LF on Unix, CRLF on Windows)
+            - 'lf': Convert to Unix line endings (LF)
+            - 'crlf': Convert to Windows line endings (CRLF)
+            - 'native-with-crlf-in-repo': CRLF in repo, native on checkout
+            - 'lf-with-crlf-in-repo': CRLF in repo, LF on checkout
+            - 'crlf-with-crlf-in-repo': CRLF in repo, CRLF on checkout
+
+    Returns:
+        A list of ContentFilter objects for the specified EOL conversion.
+
+    Raises:
+        BzrError: If the key is not a recognized EOL value.
+    """
     filter = _eol_filter_stack_map.get(key)
     if filter is None:
-        raise BzrError("Unknown eol value '{}'".format(key))
+        raise BzrError(f"Unknown eol value '{key}'")
     return filter

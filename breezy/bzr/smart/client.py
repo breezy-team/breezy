@@ -1,3 +1,4 @@
+"""Smart client for Breezy smart server protocol."""
 # Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,15 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import lazy_import
-
-lazy_import.lazy_import(
-    globals(),
-    """
-from breezy.bzr.smart import request as _mod_request
-""",
-)
-
 import breezy
 
 from ... import debug, errors, hooks, trace
@@ -30,6 +22,20 @@ from . import message, protocol
 
 
 class _SmartClient:
+    """Smart client for communicating with a Bazaar smart server.
+
+    This class provides the low-level interface for making RPC calls to a
+    Bazaar smart server. It handles protocol negotiation, request encoding,
+    and response decoding.
+
+    The client supports multiple protocol versions and will automatically
+    negotiate the best version supported by both client and server.
+
+    Attributes:
+        _medium: The SmartClientMedium used for communication.
+        _headers: Dictionary of headers to send with each request.
+    """
+
     def __init__(self, medium, headers=None):
         """Constructor.
 
@@ -42,7 +48,12 @@ class _SmartClient:
             self._headers = dict(headers)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._medium)
+        """Return a string representation of the SmartClient.
+
+        Returns:
+            String representation showing the class name and medium.
+        """
+        return f"{self.__class__.__name__}({self._medium!r})"
 
     def _call_and_read_response(
         self,
@@ -53,6 +64,24 @@ class _SmartClient:
         body_stream=None,
         expect_response_body=True,
     ):
+        """Internal method to send a request and read the response.
+
+        This creates a _SmartClientRequest object to handle the actual
+        communication, including retries and protocol version negotiation.
+
+        Args:
+            method: The remote method name to call (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional body bytes to send with the request.
+            readv_body: Optional readv array for the request body.
+            body_stream: Optional stream object for the request body.
+            expect_response_body: Whether to expect a response body.
+
+        Returns:
+            Tuple of (response_tuple, response_handler) where response_tuple
+            contains the response status and arguments, and response_handler
+            can be used to read the response body if present.
+        """
         request = _SmartClientRequest(
             self,
             method,
@@ -83,12 +112,12 @@ class _SmartClient:
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError("method must be a byte string, not {!r}".format(method))
+            raise TypeError(f"method must be a byte string, not {method!r}")
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError("args must be byte strings, not {!r}".format(args))
+                raise TypeError(f"args must be byte strings, not {args!r}")
         if not isinstance(body, bytes):
-            raise TypeError("body must be byte string, not {!r}".format(body))
+            raise TypeError(f"body must be byte string, not {body!r}")
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False
         )
@@ -97,24 +126,57 @@ class _SmartClient:
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError("method must be a byte string, not {!r}".format(method))
+            raise TypeError(f"method must be a byte string, not {method!r}")
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError("args must be byte strings, not {!r}".format(args))
+                raise TypeError(f"args must be byte strings, not {args!r}")
         if not isinstance(body, bytes):
-            raise TypeError("body must be byte string, not {!r}".format(body))
+            raise TypeError(f"body must be byte string, not {body!r}")
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True
         )
         return (response, response_handler)
 
     def call_with_body_readv_array(self, args, body):
+        """Call a method with a readv array body.
+
+        This is used for requests that need to send multiple byte ranges
+        as the request body, typically for optimized bulk data transfers.
+
+        Args:
+            args: Tuple where first element is the method name and remaining
+                elements are method arguments (all byte strings).
+            body: A readv array specifying byte ranges to send.
+
+        Returns:
+            Tuple of (response, response_handler) where response contains
+            the response status and arguments, and response_handler can be
+            used to read the response body.
+        """
         response, response_handler = self._call_and_read_response(
             args[0], args[1:], readv_body=body, expect_response_body=True
         )
         return (response, response_handler)
 
     def call_with_body_stream(self, args, stream):
+        """Call a method with a streaming body.
+
+        This is used for requests that need to send large amounts of data
+        without loading it all into memory at once.
+
+        Args:
+            args: Tuple where first element is the method name and remaining
+                elements are method arguments (all byte strings).
+            stream: A file-like object to stream as the request body.
+
+        Returns:
+            Tuple of (response, response_handler) where response contains
+            the response status and arguments.
+
+        Note:
+            Streaming requests cannot be retried if the connection fails
+            after streaming has begun.
+        """
         response, response_handler = self._call_and_read_response(
             args[0], args[1:], body_stream=stream, expect_response_body=False
         )
@@ -153,6 +215,17 @@ class _SmartClientRequest:
         body_stream=None,
         expect_response_body=True,
     ):
+        """Initialize a SmartClientRequest.
+
+        Args:
+            client: The _SmartClient that owns this request.
+            method: The remote method name to call (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional body bytes to send with the request.
+            readv_body: Optional readv array for the request body.
+            body_stream: Optional stream object for the request body.
+            expect_response_body: Whether to expect a response body.
+        """
         self.client = client
         self.method = method
         self.args = args
@@ -178,9 +251,11 @@ class _SmartClientRequest:
 
     def _is_safe_to_send_twice(self):
         """Check if the current method is re-entrant safe."""
-        if self.body_stream is not None or "noretry" in debug.debug_flags:
+        if self.body_stream is not None or debug.debug_flag_enabled("noretry"):
             # We can't restart a body stream that has already been consumed.
             return False
+        from breezy.bzr.smart import request as _mod_request
+
         request_type = _mod_request.request_handlers.get_info(self.method)
         if request_type in ("read", "idem", "semi"):
             return True
@@ -188,12 +263,15 @@ class _SmartClientRequest:
         # already consumed the local stream.
         if request_type in ("semivfs", "mutate", "stream"):
             return False
-        trace.mutter(
-            "Unknown request type: {} for method {}".format(request_type, self.method)
-        )
+        trace.mutter(f"Unknown request type: {request_type} for method {self.method}")
         return False
 
     def _run_call_hooks(self):
+        """Run any registered call hooks.
+
+        This method executes all hooks registered for 'call' events,
+        passing them information about the current request.
+        """
         if not _SmartClient.hooks["call"]:
             return
         params = CallHookParams(
@@ -213,14 +291,12 @@ class _SmartClientRequest:
             response_tuple = response_handler.read_response_tuple(
                 expect_body=self.expect_response_body
             )
-        except errors.ConnectionReset:
+        except ConnectionResetError:
             self.client._medium.reset()
             if not self._is_safe_to_send_twice():
                 raise
             trace.warning(
-                "ConnectionReset reading response for {!r}, retrying".format(
-                    self.method
-                )
+                f"ConnectionReset reading response for {self.method!r}, retrying"
             )
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(protocol_version)
@@ -247,8 +323,9 @@ class _SmartClientRequest:
                 # TODO: We could recover from this without disconnecting if
                 # we recognise the protocol version.
                 trace.warning(
-                    f"Server does not understand Bazaar network protocol {protocol_version},"
+                    "Server does not understand Bazaar network protocol %d,"
                     " reconnecting.  (Upgrade the server to avoid this.)"
+                    % (protocol_version,)
                 )
                 self.client._medium.disconnect()
                 last_err = err
@@ -295,7 +372,7 @@ class _SmartClientRequest:
         encoder, response_handler = self._construct_protocol(protocol_version)
         try:
             self._send_no_retry(encoder)
-        except errors.ConnectionReset:
+        except ConnectionResetError:
             # If we fail during the _send_no_retry phase, then we can
             # be confident that the server did not get our request, because we
             # haven't started waiting for the reply yet. So try the request
@@ -304,7 +381,7 @@ class _SmartClientRequest:
 
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
-            if ("noretry" in debug.debug_flags) or (
+            if (debug.debug_flag_enabled("noretry")) or (
                 self.body_stream is not None and encoder.body_stream_started
             ):
                 # We can't restart a body_stream that has been partially
@@ -313,7 +390,7 @@ class _SmartClientRequest:
                 #   SmartClientRequestProtocolOne or Two, because they don't
                 #   support client-side body streams.
                 raise
-            trace.warning("ConnectionReset calling {!r}, retrying".format(self.method))
+            trace.warning(f"ConnectionReset calling {self.method!r}, retrying")
             trace.log_exception_quietly()
             encoder, response_handler = self._construct_protocol(protocol_version)
             self._send_no_retry(encoder)
@@ -343,7 +420,17 @@ class _SmartClientRequest:
 
 
 class SmartClientHooks(hooks.Hooks):
+    """Hook management for smart client operations.
+
+    This class defines the hooks available for smart client operations,
+    allowing extensions to monitor or modify client behavior.
+    """
+
     def __init__(self):
+        """Initialize the SmartClientHooks.
+
+        Registers the available hook points for smart client operations.
+        """
         hooks.Hooks.__init__(self, "breezy.bzr.smart.client", "_SmartClient.hooks")
         self.add_hook(
             "call",
@@ -359,7 +446,30 @@ _SmartClient.hooks = SmartClientHooks()  # type: ignore
 
 
 class CallHookParams:
+    """Parameters passed to smart client call hooks.
+
+    This class encapsulates all the information about a smart client
+    request that is passed to registered hooks. Hooks can inspect but
+    not modify these parameters.
+
+    Attributes:
+        method: The method name being called (byte string).
+        args: Tuple of arguments for the method (byte strings).
+        body: Optional request body bytes.
+        readv_body: Optional readv array for the request.
+        medium: The SmartClientMedium being used.
+    """
+
     def __init__(self, method, args, body, readv_body, medium):
+        """Initialize CallHookParams.
+
+        Args:
+            method: The method name being called (byte string).
+            args: Tuple of arguments for the method (byte strings).
+            body: Optional request body bytes.
+            readv_body: Optional readv array for the request.
+            medium: The SmartClientMedium being used.
+        """
         self.method = method
         self.args = args
         self.body = body
@@ -367,13 +477,35 @@ class CallHookParams:
         self.medium = medium
 
     def __repr__(self):
+        """Return a string representation of the CallHookParams.
+
+        Returns:
+            String representation showing non-None attributes.
+        """
         attrs = {k: v for k, v in self.__dict__.items() if v is not None}
-        return "<{} {!r}>".format(self.__class__.__name__, attrs)
+        return f"<{self.__class__.__name__} {attrs!r}>"
 
     def __eq__(self, other):
+        """Check equality with another CallHookParams instance.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if both objects have the same attributes, False otherwise.
+            NotImplemented if other is not a CallHookParams instance.
+        """
         if not isinstance(other, type(self)):
             return NotImplemented
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
+        """Check inequality with another CallHookParams instance.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if objects are not equal, False if they are equal.
+        """
         return not self == other

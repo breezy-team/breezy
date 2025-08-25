@@ -14,17 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""XML serialization format version 8.
+
+This module provides XML-based inventory serialization for Bazaar format 8.
+It includes support for rich roots and the altered-by hack for efficient
+file ID lookups.
+"""
+
 from typing import Optional
 
+from breezy._bzr_rs import revision_serializer_v8  # noqa: F401
+
 from .. import lazy_regex, trace
-from .. import revision as _mod_revision
-from ..errors import BzrError
-from ..revision import Revision
 from .xml_serializer import (
-    XMLSerializer,
+    XMLInventorySerializer,
     encode_and_escape,
-    escape_invalid_chars,
-    get_utf8_or_ascii,
     serialize_inventory_flat,
     unpack_inventory_entry,
     unpack_inventory_flat,
@@ -40,6 +44,18 @@ _xml_unescape_map = {
 
 
 def _unescaper(match, _map=_xml_unescape_map):
+    """Unescape XML entity references.
+
+    Args:
+        match: A regex match object containing the entity code.
+        _map: Dictionary mapping entity names to their unescaped values.
+
+    Returns:
+        bytes: The unescaped character(s).
+
+    Raises:
+        KeyError: If the entity code is not recognized.
+    """
     code = match.group(1)
     try:
         return _map[code]
@@ -57,7 +73,7 @@ def _unescape_xml(data):
     return _unescape_re.sub(_unescaper, data)
 
 
-class Serializer_v8(XMLSerializer):
+class InventorySerializer_v8(XMLInventorySerializer):
     """This serialiser adds rich roots.
 
     Its revision format number matches its inventory number.
@@ -72,7 +88,6 @@ class Serializer_v8(XMLSerializer):
 
     supported_kinds = {"file", "directory", "symlink"}
     format_num = b"8"
-    revision_format_num: Optional[bytes] = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
@@ -127,6 +142,14 @@ class Serializer_v8(XMLSerializer):
         return self.write_inventory(inv, None)
 
     def write_inventory_to_chunks(self, inv):
+        """Write inventory to chunks.
+
+        Args:
+            inv: The inventory to serialize.
+
+        Returns:
+            list: The inventory serialized as a list of byte chunks.
+        """
         return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):
@@ -170,61 +193,6 @@ class Serializer_v8(XMLSerializer):
             )
         )
 
-    def write_revision_to_lines(self, rev):
-        """Revision object -> xml tree."""
-        # For the XML format, we need to write them as Unicode rather than as
-        # utf-8 strings. So that cElementTree can handle properly escaping
-        # them.
-        lines = []
-        el = (
-            b'<revision committer="%s" format="%s" '
-            b'inventory_sha1="%s" revision_id="%s" '
-            b'timestamp="%.3f"'
-            % (
-                encode_and_escape(rev.committer),
-                self.revision_format_num or self.format_num,
-                rev.inventory_sha1,
-                encode_and_escape(rev.revision_id.decode("utf-8")),
-                rev.timestamp,
-            )
-        )
-        if rev.timezone is not None:
-            el += b' timezone="%s"' % str(rev.timezone).encode("ascii")
-        lines.append(el + b">\n")
-        message = encode_and_escape(escape_invalid_chars(rev.message)[0])
-        lines.extend((b"<message>" + message + b"</message>\n").splitlines(True))
-        if rev.parent_ids:
-            lines.append(b"<parents>\n")
-            for parent_id in rev.parent_ids:
-                _mod_revision.check_not_reserved_id(parent_id)
-                lines.append(
-                    b'<revision_ref revision_id="%s" />\n'
-                    % encode_and_escape(parent_id.decode("utf-8"))
-                )
-            lines.append(b"</parents>\n")
-        if rev.properties:
-            preamble = b"<properties>"
-            for prop_name, prop_value in sorted(rev.properties.items()):
-                if prop_value:
-                    proplines = (
-                        preamble
-                        + b'<property name="%s">%s</property>\n'
-                        % (
-                            encode_and_escape(prop_name),
-                            encode_and_escape(escape_invalid_chars(prop_value)[0]),
-                        )
-                    ).splitlines(True)
-                else:
-                    proplines = [
-                        preamble
-                        + b'<property name="%s" />\n' % (encode_and_escape(prop_name),)
-                    ]
-                preamble = b""
-                lines.extend(proplines)
-            lines.append(b"</properties>\n")
-        lines.append(b"</revision>\n")
-        return lines
-
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         # This is here because it's overridden by xml7
         return unpack_inventory_entry(elt, entry_cache, return_from_cache)
@@ -238,56 +206,6 @@ class Serializer_v8(XMLSerializer):
         )
         self._check_cache_size(len(inv), entry_cache)
         return inv
-
-    def _unpack_revision(self, elt):
-        """XML Element -> Revision object."""
-        format = elt.get("format")
-        format_num = self.format_num
-        if self.revision_format_num is not None:
-            format_num = self.revision_format_num
-        if format is not None:
-            if format.encode() != format_num:
-                raise BzrError("invalid format version {!r} on revision".format(format))
-        get_cached = get_utf8_or_ascii
-        rev = Revision(
-            committer=elt.get("committer"),
-            timestamp=float(elt.get("timestamp")),
-            revision_id=get_cached(elt.get("revision_id")),
-            inventory_sha1=elt.get("inventory_sha1").encode("ascii"),
-        )
-        parents = elt.find("parents")
-        if parents is not None:
-            for p in parents:
-                rev.parent_ids.append(get_cached(p.get("revision_id")))
-        self._unpack_revision_properties(elt, rev)
-        v = elt.get("timezone")
-        if v is None:
-            rev.timezone = 0
-        else:
-            rev.timezone = int(v)
-        rev.message = elt.findtext("message")  # text of <message>
-        return rev
-
-    def _unpack_revision_properties(self, elt, rev):
-        """Unpack properties onto a revision."""
-        props_elt = elt.find("properties")
-        if props_elt is None:
-            return
-        for prop_elt in props_elt:
-            if prop_elt.tag != "property":
-                raise AssertionError(
-                    "bad tag under properties list: {!r}".format(prop_elt.tag)
-                )
-            name = prop_elt.get("name")
-            value = prop_elt.text
-            # If a property had an empty value ('') cElementTree reads
-            # that back as None, convert it back to '', so that all
-            # properties have string values
-            if value is None:
-                value = ""
-            if name in rev.properties:
-                raise AssertionError("repeated property {!r}".format(name))
-            rev.properties[name] = value
 
     def _find_text_key_references(self, line_iterator):
         """Core routine for extracting references to texts from inventories.
@@ -370,4 +288,4 @@ class Serializer_v8(XMLSerializer):
         return result
 
 
-serializer_v8 = Serializer_v8()
+inventory_serializer_v8 = InventorySerializer_v8()

@@ -59,6 +59,15 @@ from .urls import bzr_url_to_git_url, git_url_to_bzr_url
 
 
 def _update_tip(source, target, revid, overwrite=False):
+    """Update the target branch's tip to the specified revision.
+
+    Args:
+        source: The source branch being pulled from.
+        target: The target branch being updated.
+        revid: The revision ID to update the target branch to.
+        overwrite: If True, unconditionally update the tip. If False, only
+            update if target is not ahead of revid.
+    """
     if not overwrite:
         last_rev = target.last_revision()
         graph = target.repository.get_graph(source.repository)
@@ -71,6 +80,16 @@ def _update_tip(source, target, revid, overwrite=False):
 
 
 def _calculate_revnos(branch):
+    """Determine whether revision numbers should be calculated for the branch.
+
+    Args:
+        branch: The branch to check for revision number calculation settings.
+
+    Returns:
+        bool: True if revision numbers should be calculated, False otherwise.
+            Returns True if the branch format stores revision numbers, otherwise
+            checks the branch's 'calculate_revnos' configuration option.
+    """
     if branch._format.stores_revno():
         return True
     config = branch.get_config_stack()
@@ -81,6 +100,18 @@ class GitPullResult(branch.PullResult):
     """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
+        """Look up the revision number for a given revision ID.
+
+        Args:
+            revid: The revision ID to look up (must be bytes).
+
+        Returns:
+            int or None: The revision number if found and calculation is enabled,
+                None otherwise.
+
+        Raises:
+            TypeError: If revid is not bytes.
+        """
         if not isinstance(revid, bytes):
             raise TypeError(revid)
         if not _calculate_revnos(self.target_branch):
@@ -91,16 +122,40 @@ class GitPullResult(branch.PullResult):
 
     @property
     def old_revno(self):
+        """The revision number before the pull operation.
+
+        Returns:
+            int or None: The revision number of the old revision, or None
+                if revision numbers are not being calculated.
+        """
         return self._lookup_revno(self.old_revid)
 
     @property
     def new_revno(self):
+        """The revision number after the pull operation.
+
+        Returns:
+            int or None: The revision number of the new revision, or None
+                if revision numbers are not being calculated.
+        """
         return self._lookup_revno(self.new_revid)
 
 
 class InterTagsFromGitToRemoteGit(InterTags):
+    """InterTags implementation for merging from Git tags to remote Git tags."""
+
     @classmethod
     def is_compatible(klass, source, target):
+        """Check if this InterTags is compatible with the source and target.
+
+        Args:
+            source: The source tags object.
+            target: The target tags object.
+
+        Returns:
+            bool: True if both source and target are GitTags and target
+                is a remote repository, False otherwise.
+        """
         if not isinstance(source, GitTags):
             return False
         if not isinstance(target, GitTags):
@@ -113,6 +168,19 @@ class InterTagsFromGitToRemoteGit(InterTags):
         ignore_master: bool = False,
         selector: Optional[TagSelector] = None,
     ) -> tuple[TagUpdates, set[TagConflict]]:
+        """Merge tags from source to target remote Git repository.
+
+        Args:
+            overwrite: If True, overwrite conflicting tags. If False,
+                create conflicts for tags that differ.
+            ignore_master: If True, ignore master branch considerations.
+            selector: Optional function to filter which tags to merge.
+
+        Returns:
+            tuple: A tuple of (tag_updates, tag_conflicts) where tag_updates
+                is a dictionary of tag names to revision IDs that were updated,
+                and tag_conflicts is a set of TagConflict objects.
+        """
         if self.source.branch.repository.has_same_location(
             self.target.branch.repository
         ):
@@ -162,8 +230,20 @@ class InterTagsFromGitToRemoteGit(InterTags):
 
 
 class InterTagsFromGitToLocalGit(InterTags):
+    """InterTags implementation for merging from Git tags to local Git tags."""
+
     @classmethod
     def is_compatible(klass, source, target):
+        """Check if this InterTags is compatible with the source and target.
+
+        Args:
+            source: The source tags object.
+            target: The target tags object.
+
+        Returns:
+            bool: True if both source and target are GitTags and target
+                is a local repository, False otherwise.
+        """
         if not isinstance(source, GitTags):
             return False
         if not isinstance(target, GitTags):
@@ -171,6 +251,19 @@ class InterTagsFromGitToLocalGit(InterTags):
         return getattr(target.branch.repository, "_git", None) is not None
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
+        """Merge tags from source to target local Git repository.
+
+        Args:
+            overwrite: If True, overwrite conflicting tags. If False,
+                create conflicts for tags that differ.
+            ignore_master: If True, ignore master branch considerations.
+            selector: Optional function to filter which tags to merge.
+
+        Returns:
+            tuple: A tuple of (tag_updates, tag_conflicts) where tag_updates
+                is a dictionary of tag names to revision IDs that were updated,
+                and tag_conflicts is a set of TagConflict objects.
+        """
         if self.source.branch.repository.has_same_location(
             self.target.branch.repository
         ):
@@ -217,19 +310,40 @@ class InterTagsFromGitToLocalGit(InterTags):
 
 
 class InterTagsFromGitToNonGit(InterTags):
+    """InterTags implementation for merging from Git tags to non-Git tags."""
+
     @classmethod
     def is_compatible(klass, source: Tags, target: Tags):
+        """Check if this InterTags is compatible with the source and target.
+
+        Args:
+            source: The source tags object.
+            target: The target tags object.
+
+        Returns:
+            bool: True if source is GitTags and target is not GitTags,
+                False otherwise.
+        """
         if not isinstance(source, GitTags):
             return False
         return not isinstance(target, GitTags)
 
     def merge(self, overwrite=False, ignore_master=False, selector=None):
-        """See Tags.merge_to."""
+        """Merge tags from Git source to non-Git target.
+
+        Args:
+            overwrite: If True, overwrite conflicting tags. If False,
+                create conflicts for tags that differ.
+            ignore_master: If True, ignore master branch considerations.
+            selector: Optional function to filter which tags to merge.
+
+        Returns:
+            tuple: A tuple of (tag_updates, tag_conflicts) where tag_updates
+                is a dictionary of tag names to revision IDs that were updated,
+                and tag_conflicts is a set of TagConflict objects.
+        """
         source_tag_refs = self.source.branch.get_tag_refs()
-        if ignore_master:
-            master = None
-        else:
-            master = self.target.branch.get_master_branch()
+        master = None if ignore_master else self.target.branch.get_master_branch()
         with contextlib.ExitStack() as es:
             if master is not None:
                 es.enter_context(master.lock_write())
@@ -256,6 +370,20 @@ class InterTagsFromGitToNonGit(InterTags):
         selector=None,
         ignore_master=False,
     ):
+        """Merge tags to a specific target tags object.
+
+        Args:
+            to_tags: The target tags object to merge into.
+            source_tag_refs: Iterator of source tag references.
+            overwrite: If True, overwrite conflicting tags.
+            selector: Optional function to filter which tags to merge.
+            ignore_master: If True, ignore master branch considerations.
+
+        Returns:
+            tuple: A tuple of (tag_updates, tag_conflicts) where tag_updates
+                is a dictionary of tag names to revision IDs that were updated,
+                and tag_conflicts is a set of TagConflict objects.
+        """
         unpeeled_map = defaultdict(set)
         conflicts = []
         updates = {}
@@ -293,10 +421,21 @@ class GitTags(Tags):
     """Ref-based tag dictionary."""
 
     def __init__(self, branch):
+        """Initialize GitTags with the given branch.
+
+        Args:
+            branch: The Git branch containing the tags.
+        """
         self.branch = branch
         self.repository = branch.repository
 
     def get_tag_dict(self):
+        """Get a dictionary of all tags.
+
+        Returns:
+            dict: A dictionary mapping tag names to revision IDs. Only
+                includes tags that point to valid commit objects.
+        """
         ret = {}
         for _ref_name, tag_name, peeled, _unpeeled in self.branch.get_tag_refs():
             try:
@@ -308,45 +447,81 @@ class GitTags(Tags):
         return ret
 
     def lookup_tag(self, tag_name):
-        """Return the referent string of a tag."""
+        """Return the referent string of a tag.
+
+        Args:
+            tag_name: The name of the tag to look up.
+
+        Returns:
+            bytes: The revision ID that the tag points to.
+
+        Raises:
+            NoSuchTag: If the tag does not exist.
+        """
         # TODO(jelmer): Replace with something more efficient for local tags.
         td = self.get_tag_dict()
         try:
             return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
+        except KeyError as err:
+            raise errors.NoSuchTag(tag_name) from err
 
 
 class LocalGitTagDict(GitTags):
     """Dictionary with tags in a local repository."""
 
     def __init__(self, branch):
+        """Initialize LocalGitTagDict with the given branch.
+
+        Args:
+            branch: The local Git branch containing the tags.
+        """
         super().__init__(branch)
         self.refs = self.repository.controldir._git.refs
 
     def _set_tag_dict(self, to_dict):
+        """Set the entire tag dictionary, removing any extra tags.
+
+        Args:
+            to_dict: Dictionary mapping tag names to revision IDs to set.
+        """
         extra = set(self.refs.allkeys())
         for k, revid in to_dict.items():
             name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
-            try:
+            with contextlib.suppress(errors.GhostTagsNotSupported):
                 self.set_tag(k, revid)
-            except errors.GhostTagsNotSupported:
-                pass
         for name in extra:
             if is_tag(name):
                 del self.repository._git[name]
 
     def set_tag(self, name, revid):
+        """Set a tag to point to a specific revision.
+
+        Args:
+            name: The name of the tag to set.
+            revid: The revision ID the tag should point to.
+
+        Raises:
+            GhostTagsNotSupported: If the revision ID is not present in
+                the repository.
+        """
         try:
             git_sha, mapping = self.branch.lookup_bzr_revision_id(revid)
-        except errors.NoSuchRevision:
-            raise errors.GhostTagsNotSupported(self)
+        except errors.NoSuchRevision as err:
+            raise errors.GhostTagsNotSupported(self) from err
         self.refs[tag_name_to_ref(name)] = git_sha
         self.branch._tag_refs = None
 
     def delete_tag(self, name):
+        """Delete a tag.
+
+        Args:
+            name: The name of the tag to delete.
+
+        Raises:
+            NoSuchTag: If the tag does not exist.
+        """
         ref = tag_name_to_ref(name)
         if ref not in self.refs:
             raise errors.NoSuchTag(name)
@@ -355,27 +530,68 @@ class LocalGitTagDict(GitTags):
 
 
 class GitBranchFormat(branch.BranchFormat):
+    """Base format for Git branches."""
+
     def network_name(self):
+        """Return the network name for this branch format.
+
+        Returns:
+            bytes: The network identifier for Git branches.
+        """
         return b"git"
 
     def supports_tags(self):
+        """Check if this format supports tags.
+
+        Returns:
+            bool: True, as Git branches support tags.
+        """
         return True
 
     def supports_leaving_lock(self):
+        """Check if this format supports leaving locks in place.
+
+        Returns:
+            bool: False, as Git branches don't support leaving locks.
+        """
         return False
 
     def supports_tags_referencing_ghosts(self):
+        """Check if tags can reference ghost revisions.
+
+        Returns:
+            bool: False, as Git tags cannot reference ghost revisions.
+        """
         return False
 
     def tags_are_versioned(self):
+        """Check if tags are versioned in this format.
+
+        Returns:
+            bool: False, as Git tags are not versioned.
+        """
         return False
 
     def get_foreign_tests_branch_factory(self):
+        """Get a factory for creating test branches.
+
+        Returns:
+            ForeignTestsBranchFactory: A factory for creating test branches
+                compatible with this format.
+        """
         from .tests.test_branch import ForeignTestsBranchFactory
 
         return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
+        """Create a tags object for the given branch.
+
+        Args:
+            branch: The branch to create tags for.
+
+        Returns:
+            Tags: A tags object appropriate for the branch type (local or remote).
+        """
         try:
             return branch.tags
         except AttributeError:
@@ -390,27 +606,74 @@ class GitBranchFormat(branch.BranchFormat):
     def initialize(
         self, a_controldir, name=None, repository=None, append_revisions_only=None
     ):
+        """Initialize a new branch in the given control directory.
+
+        Args:
+            a_controldir: The control directory to initialize the branch in.
+            name: Optional name for the branch.
+            repository: Optional repository to use.
+            append_revisions_only: Optional flag for append-only mode.
+
+        Raises:
+            NotImplementedError: This base class doesn't implement initialization.
+        """
         raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
+        """Get the branch reference from the control directory.
+
+        Args:
+            controldir: The control directory to get the reference from.
+            name: Optional branch name.
+
+        Returns:
+            str or None: The branch reference, if any.
+        """
         return controldir.get_branch_reference(name=name)
 
     def set_reference(self, controldir, name, target):
+        """Set a branch reference in the control directory.
+
+        Args:
+            controldir: The control directory to set the reference in.
+            name: The branch name.
+            target: The target branch to reference.
+
+        Returns:
+            The result of setting the branch reference.
+        """
         return controldir.set_branch_reference(target, name)
 
     def stores_revno(self):
-        """True if this branch format store revision numbers."""
+        """Check if this branch format stores revision numbers.
+
+        Returns:
+            bool: False, as Git branches don't store revision numbers directly.
+        """
         return False
 
     supports_reference_locations = False
 
 
 class LocalGitBranchFormat(GitBranchFormat):
+    """Format for local Git branches."""
+
     def get_format_description(self):
+        """Get a description of this branch format.
+
+        Returns:
+            str: A human-readable description of the format.
+        """
         return "Local Git Branch"
 
     @property
     def _matchingcontroldir(self):
+        """Get the matching control directory format.
+
+        Returns:
+            LocalGitControlDirFormat: The control directory format that
+                matches this branch format.
+        """
         from .dir import LocalGitControlDirFormat
 
         return LocalGitControlDirFormat()
@@ -418,6 +681,21 @@ class LocalGitBranchFormat(GitBranchFormat):
     def initialize(
         self, a_controldir, name=None, repository=None, append_revisions_only=None
     ):
+        """Initialize a local Git branch in the control directory.
+
+        Args:
+            a_controldir: The control directory to initialize the branch in.
+                Must be a LocalGitDir.
+            name: Optional name for the branch.
+            repository: Optional repository to use.
+            append_revisions_only: Optional flag for append-only mode.
+
+        Returns:
+            LocalGitBranch: The newly created branch.
+
+        Raises:
+            IncompatibleFormat: If the control directory is not a LocalGitDir.
+        """
         from .dir import LocalGitDir
 
         if not isinstance(a_controldir, LocalGitDir):
@@ -434,13 +712,34 @@ class GitBranch(ForeignBranch):
 
     @property
     def control_transport(self):
+        """The control transport for this branch.
+
+        Returns:
+            Transport: The control transport.
+        """
         return self._control_transport
 
     @property
     def user_transport(self):
+        """The user transport for this branch.
+
+        Returns:
+            Transport: The user transport.
+        """
         return self._user_transport
 
     def __init__(self, controldir, repository, ref: bytes, format):
+        """Initialize a Git branch.
+
+        Args:
+            controldir: The control directory containing the branch.
+            repository: The Git repository.
+            ref: The Git ref (branch reference) as bytes.
+            format: The branch format.
+
+        Raises:
+            TypeError: If ref is not bytes.
+        """
         self.repository = repository
         self._format = format
         self.controldir = controldir
@@ -448,7 +747,7 @@ class GitBranch(ForeignBranch):
         self._lock_count = 0
         super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
-            raise TypeError("ref is invalid: {!r}".format(ref))
+            raise TypeError(f"ref is invalid: {ref!r}")
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone(".")
@@ -471,7 +770,14 @@ class GitBranch(ForeignBranch):
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repository uses weaves.
+
+        Args:
+            lightweight: If True, create a lightweight checkout format.
+                If False, create a regular checkout format.
+
+        Returns:
+            ControlDirFormat: The appropriate control directory format
+                for the checkout.
         """
         if lightweight:
             return controldir.format_registry.make_controldir("git")
@@ -479,21 +785,43 @@ class GitBranch(ForeignBranch):
             return controldir.format_registry.make_controldir("default")
 
     def set_stacked_on_url(self, url):
+        """Set the stacked-on URL for this branch.
+
+        Args:
+            url: The URL to stack on.
+
+        Raises:
+            UnstackableBranchFormat: Git branches cannot be stacked.
+        """
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
     def get_child_submit_format(self):
-        """Return the preferred format of submissions to this branch."""
+        """Return the preferred format of submissions to this branch.
+
+        Returns:
+            str: The preferred format, either from configuration or "git".
+        """
         ret = self.get_config_stack().get("child_submit_format")
         if ret is not None:
             return ret
         return "git"
 
     def get_config(self):
+        """Get the configuration for this branch.
+
+        Returns:
+            GitBranchConfig: The branch configuration object.
+        """
         from .config import GitBranchConfig
 
         return GitBranchConfig(self)
 
     def get_config_stack(self):
+        """Get the configuration stack for this branch.
+
+        Returns:
+            GitBranchStack: The branch configuration stack.
+        """
         from .config import GitBranchStack
 
         return GitBranchStack(self)
@@ -501,7 +829,13 @@ class GitBranch(ForeignBranch):
     def _get_nick(self, local=False, possible_master_transports=None):
         """Find the nick name for this branch.
 
-        :return: Branch nick
+        Args:
+            local: If True, only look for local nicknames.
+            possible_master_transports: Possible master transports to use.
+
+        Returns:
+            str: The branch nickname. Returns the branch name or "HEAD" if
+                no specific nick is configured.
         """
         if getattr(self.repository, "_git", None):
             cs = self.repository._git.get_config_stack()
@@ -514,6 +848,11 @@ class GitBranch(ForeignBranch):
         return self.name or "HEAD"
 
     def _set_nick(self, nick):
+        """Set the nickname for this branch.
+
+        Args:
+            nick: The new nickname to set for the branch.
+        """
         cf = self.repository._git.get_config()
         cf.set((b"branch", self.name.encode("utf-8")), b"nick", nick.encode("utf-8"))
         f = BytesIO()
@@ -523,14 +862,35 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "<{}({!r}, {!r})>".format(
-            self.__class__.__name__, self.repository.base, self.name
-        )
+        """Return string representation of this branch.
+
+        Returns:
+            str: String representation including class name, repository base, and branch name.
+        """
+        return f"<{self.__class__.__name__}({self.repository.base!r}, {self.name!r})>"
 
     def set_last_revision(self, revid):
+        """Set the last revision of this branch.
+
+        Args:
+            revid: The revision ID to set as the last revision.
+
+        Raises:
+            NotImplementedError: Subclasses must implement this method.
+        """
         raise NotImplementedError(self.set_last_revision)
 
     def generate_revision_history(self, revid, last_rev=None, other_branch=None):
+        """Generate the revision history for this branch.
+
+        Args:
+            revid: The revision ID to set as the new tip.
+            last_rev: The previous tip revision ID, if any.
+            other_branch: The branch being merged from, if any.
+
+        Raises:
+            DivergedBranches: If last_rev is not an ancestor of revid.
+        """
         if last_rev is not None:
             graph = self.repository.get_graph()
             if not graph.is_ancestor(last_rev, revid):
@@ -540,6 +900,18 @@ class GitBranch(ForeignBranch):
         self.set_last_revision(revid)
 
     def lock_write(self, token=None):
+        """Lock the branch for writing.
+
+        Args:
+            token: Lock token (not supported for Git branches).
+
+        Returns:
+            LogicalLockResult: Lock result that can be used to unlock.
+
+        Raises:
+            TokenLockingNotSupported: If token is provided.
+            ReadOnlyError: If already locked for reading.
+        """
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
         if self._lock_mode:
@@ -554,12 +926,27 @@ class GitBranch(ForeignBranch):
         return lock.LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
+        """Leave lock in place when unlocking.
+
+        Raises:
+            NotImplementedError: Git branches don't support leaving locks.
+        """
         raise NotImplementedError(self.leave_lock_in_place)
 
     def dont_leave_lock_in_place(self):
+        """Don't leave lock in place when unlocking.
+
+        Raises:
+            NotImplementedError: Git branches don't support lock management.
+        """
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     def get_stacked_on_url(self):
+        """Get the URL this branch is stacked on.
+
+        Raises:
+            UnstackableBranchFormat: Git branches cannot be stacked.
+        """
         # Git doesn't do stacking (yet...)
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
@@ -614,6 +1001,11 @@ class GitBranch(ForeignBranch):
         return self._get_related_merge_branch(cs)
 
     def set_parent(self, location):
+        """Set parent branch location.
+
+        Args:
+            location: URL of the parent branch.
+        """
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
         this_url = urlutils.strip_segment_parameters(self.user_url)
@@ -638,9 +1030,19 @@ class GitBranch(ForeignBranch):
         self.repository._write_git_config(cs)
 
     def break_lock(self):
+        """Break any existing locks on the branch.
+
+        Raises:
+            NotImplementedError: This operation is not supported for Git branches.
+        """
         raise NotImplementedError(self.break_lock)
 
     def lock_read(self):
+        """Lock the branch for reading.
+
+        Returns:
+            LogicalLockResult: Lock result that can be used to unlock.
+        """
         if self._lock_mode:
             if self._lock_mode not in ("r", "w"):
                 raise ValueError(self._lock_mode)
@@ -652,9 +1054,19 @@ class GitBranch(ForeignBranch):
         return lock.LogicalLockResult(self.unlock)
 
     def peek_lock_mode(self):
+        """Return the current lock mode without blocking.
+
+        Returns:
+            str or None: The current lock mode ('r', 'w', or None).
+        """
         return self._lock_mode
 
     def is_locked(self):
+        """Check if the branch is locked.
+
+        Returns:
+            bool: True if the branch is locked, False otherwise.
+        """
         return self._lock_mode is not None
 
     def _lock_ref(self):
@@ -678,9 +1090,20 @@ class GitBranch(ForeignBranch):
             self.repository.unlock()
 
     def get_physical_lock_status(self):
+        """Return physical lock status.
+
+        Returns:
+            bool: False, as Git branches don't use physical locks.
+        """
         return False
 
     def last_revision(self):
+        """Get the last revision ID of this branch.
+
+        Returns:
+            bytes: The revision ID of the branch tip, or NULL_REVISION
+                if the branch has no commits.
+        """
         with self.lock_read():
             # perhaps should escape this ?
             if self.head is None:
@@ -695,6 +1118,14 @@ class GitBranch(ForeignBranch):
         )
 
     def lookup_foreign_revision_id(self, foreign_revid):
+        """Look up a Bazaar revision ID from a foreign (Git) revision ID.
+
+        Args:
+            foreign_revid: The foreign revision ID to look up.
+
+        Returns:
+            bytes: The corresponding Bazaar revision ID.
+        """
         try:
             return self.repository.lookup_foreign_revision_id(
                 foreign_revid, self.mapping
@@ -704,9 +1135,25 @@ class GitBranch(ForeignBranch):
             return self.mapping.revision_id_foreign_to_bzr(foreign_revid)
 
     def lookup_bzr_revision_id(self, revid):
+        """Look up a foreign (Git) revision ID from a Bazaar revision ID.
+
+        Args:
+            revid: The Bazaar revision ID to look up.
+
+        Returns:
+            tuple: (foreign_revid, mapping) tuple.
+        """
         return self.repository.lookup_bzr_revision_id(revid, mapping=self.mapping)
 
     def get_unshelver(self, tree):
+        """Get an unshelver for the given tree.
+
+        Args:
+            tree: Working tree to get unshelver for.
+
+        Raises:
+            StoringUncommittedNotSupported: Git branches don't support shelving.
+        """
         raise errors.StoringUncommittedNotSupported(self)
 
     def _clear_cached_state(self):
@@ -716,12 +1163,25 @@ class GitBranch(ForeignBranch):
     def _iter_tag_refs(self, refs):
         """Iterate over the tag refs.
 
-        :param refs: Refs dictionary (name -> git sha1)
-        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        Args:
+            refs: Refs dictionary (name -> git sha1).
+
+        Returns:
+            Iterator: Iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+                tuples for each tag reference.
+
+        Raises:
+            NotImplementedError: Subclasses must implement this method.
         """
         raise NotImplementedError(self._iter_tag_refs)
 
     def get_tag_refs(self):
+        """Get all tag references for this branch.
+
+        Returns:
+            list: List of (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+                tuples for all tag references. The result is cached.
+        """
         with self.lock_read():
             if self._tag_refs is None:
                 self._tag_refs = list(self._iter_tag_refs())
@@ -759,6 +1219,13 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, controldir, repository, ref):
+        """Initialize a local Git branch.
+
+        Args:
+            controldir: The control directory containing the branch.
+            repository: The Git repository.
+            ref: The Git ref (branch reference) as bytes.
+        """
         super().__init__(controldir, repository, ref, LocalGitBranchFormat())
 
     def create_checkout(
@@ -769,6 +1236,19 @@ class LocalGitBranch(GitBranch):
         accelerator_tree=None,
         hardlink=False,
     ):
+        """Create a checkout of this branch.
+
+        Args:
+            to_location: The location where the checkout should be created.
+            revision_id: Optional revision ID to check out. If None,
+                checks out the branch tip.
+            lightweight: If True, create a lightweight checkout.
+            accelerator_tree: Optional accelerator tree for faster checkout.
+            hardlink: If True, use hardlinks when possible.
+
+        Returns:
+            WorkingTree: The working tree for the new checkout.
+        """
         t = transport.get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
@@ -793,6 +1273,7 @@ class LocalGitBranch(GitBranch):
         self._ref_lock.unlock()
 
     def break_lock(self):
+        """Break any existing lock on this Git branch."""
         self.repository._git.refs.unlock_ref(self.ref)
 
     def _gen_revision_history(self):
@@ -805,11 +1286,17 @@ class LocalGitBranch(GitBranch):
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
         except errors.RevisionNotPresent as e:
-            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
 
     def _get_head(self):
+        """Get the Git SHA1 of the branch head.
+
+        Returns:
+            bytes or None: The SHA1 of the branch head, or None if
+                the branch doesn't exist.
+        """
         try:
             return self.repository._git.refs[self.ref]
         except KeyError:
@@ -827,10 +1314,24 @@ class LocalGitBranch(GitBranch):
         return revno, last_revid
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information.
+
+        Args:
+            revno: Revision number.
+            revision_id: Revision ID.
+        """
         self.set_last_revision(revision_id)
         self._last_revision_info_cache = revno, revision_id
 
     def set_last_revision(self, revid):
+        """Set the last revision for this branch.
+
+        Args:
+            revid: Revision ID to set as last revision.
+
+        Raises:
+            InvalidRevisionId: If revision ID is invalid.
+        """
         if not revid or not isinstance(revid, bytes):
             raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
@@ -854,6 +1355,11 @@ class LocalGitBranch(GitBranch):
     head = property(_get_head, _set_head)
 
     def get_push_location(self):
+        """Get the push location for this branch.
+
+        Returns:
+            str: The push location URL or None.
+        """
         """See Branch.get_push_location."""
         push_loc = self.get_config_stack().get("push_location")
         if push_loc is not None:
@@ -862,22 +1368,49 @@ class LocalGitBranch(GitBranch):
         return self._get_related_push_branch(cs)
 
     def set_push_location(self, location):
+        """Set the push location for this branch.
+
+        Args:
+            location: Push location URL to set.
+        """
         """See Branch.set_push_location."""
         self.get_config().set_user_option(
             "push_location", location, store=config.STORE_LOCATION
         )
 
     def supports_tags(self):
+        """Check if this branch supports tags.
+
+        Returns:
+            bool: True, as Git branches support tags.
+        """
         return True
 
     def store_uncommitted(self, creator):
+        """Store uncommitted changes.
+
+        Args:
+            creator: Creator function for uncommitted content.
+
+        Raises:
+            StoringUncommittedNotSupported: Git branches don't support this.
+        """
+        """Store uncommitted changes.
+
+        Args:
+            creator: The object creating the uncommitted changes.
+
+        Raises:
+            StoringUncommittedNotSupported: Git branches don't support storing uncommitted changes.
+        """
         raise errors.StoringUncommittedNotSupported(self)
 
     def _iter_tag_refs(self):
         """Iterate over the tag refs.
 
-        :param refs: Refs dictionary (name -> git sha1)
-        :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+        Returns:
+            Iterator: Iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
+                tuples for each tag reference in the local repository.
         """
         refs = self.repository.controldir.get_refs_container()
         for ref_name, unpeeled in refs.as_dict().items():
@@ -893,12 +1426,32 @@ class LocalGitBranch(GitBranch):
             yield (ref_name, tag_name, peeled, unpeeled)
 
     def create_memorytree(self):
+        """Create a memory tree for this branch.
+
+        Returns:
+            GitMemoryTree: A memory tree that can be used for operations
+                without touching the working tree.
+        """
         from .memorytree import GitMemoryTree
 
         return GitMemoryTree(self, self.repository._git.object_store, self.head)
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
+    """Quickly look up a revision number for a revision ID.
+
+    Args:
+        local_branch: The local branch to try first.
+        remote_branch: The remote branch to try if local fails.
+        revid: The revision ID to look up (must be bytes).
+
+    Returns:
+        int or None: The revision number if found and calculation is enabled,
+            None otherwise.
+
+    Raises:
+        TypeError: If revid is not bytes.
+    """
     if not isinstance(revid, bytes):
         raise TypeError(revid)
     # Try in source branch first, it'll be faster
@@ -920,22 +1473,31 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
 
 
 class GitBranchPullResult(branch.PullResult):
+    """Result of a pull operation between Git branches."""
+
     def __init__(self):
+        """Initialize a GitBranchPullResult."""
         super().__init__()
         self.new_git_head = None
         self._old_revno = None
         self._new_revno = None
 
     def report(self, to_file):
+        """Write a human-readable report of this pull result.
+
+        Args:
+            to_file: File-like object to write the report to.
+        """
         if not is_quiet():
             if self.old_revid == self.new_revid:
                 to_file.write("No revisions to pull.\n")
             elif self.new_git_head is not None:
                 to_file.write(
-                    f"Now on revision {self.new_revno} (git sha: {self.new_git_head}).\n"
+                    "Now on revision %d (git sha: %s).\n"
+                    % (self.new_revno, self.new_git_head)
                 )
             else:
-                to_file.write(f"Now on revision {self.new_revno}.\n")
+                to_file.write("Now on revision %d.\n" % (self.new_revno,))
         self._show_tag_conficts(to_file)
 
     def _lookup_revno(self, revid):
@@ -963,15 +1525,35 @@ class GitBranchPullResult(branch.PullResult):
 
 
 class GitBranchPushResult(branch.BranchPushResult):
+    """Result of a push operation between Git branches."""
+
     def _lookup_revno(self, revid):
+        """Look up the revision number for a revision ID.
+
+        Args:
+            revid: The revision ID to look up.
+
+        Returns:
+            int or None: The revision number if found, None otherwise.
+        """
         return _quick_lookup_revno(self.source_branch, self.target_branch, revid)
 
     @property
     def old_revno(self):
+        """The revision number before the push operation.
+
+        Returns:
+            int or None: The revision number of the old revision.
+        """
         return self._lookup_revno(self.old_revid)
 
     @property
     def new_revno(self):
+        """The revision number after the push operation.
+
+        Returns:
+            int or None: The revision number of the new revision.
+        """
         new_original_revno = getattr(self, "new_original_revno", None)
         if new_original_revno:
             return new_original_revno
@@ -981,7 +1563,7 @@ class GitBranchPushResult(branch.BranchPushResult):
 
 
 class InterFromGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls from Git into bzr."""
+    """InterBranch implementation that pulls from Git into Bazaar branches."""
 
     @staticmethod
     def _get_branch_formats_to_test():
@@ -1002,6 +1584,16 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     @classmethod
     def is_compatible(cls, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is a GitBranch, target is not a GitBranch,
+                and the interrepo supports fetch_objects.
+        """
         if not isinstance(source, GitBranch):
             return False
         if isinstance(target, GitBranch):
@@ -1013,6 +1605,17 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return True
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions from source branch.
+
+        Args:
+            stop_revision: Revision to stop fetching at.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+        """
         self.fetch_objects(
             stop_revision, fetch_tags=fetch_tags, limit=limit, lossy=lossy
         )
@@ -1021,6 +1624,15 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def fetch_objects(
         self, stop_revision, fetch_tags, limit=None, lossy=False, tag_selector=None
     ):
+        """Fetch objects from source to target repository.
+
+        Args:
+            stop_revision: Revision to stop fetching at.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+            tag_selector: Function to select tags to fetch.
+        """
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
             c = self.source.get_config_stack()
@@ -1056,6 +1668,12 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return head, refs
 
     def update_references(self, revid=None):
+        """Update Git submodule references in the target branch.
+
+        Args:
+            revid: Revision ID to update references for. If None, uses the
+                target branch's last revision.
+        """
         if revid is None:
             revid = self.target.last_revision()
         tree = self.target.repository.revision_tree(revid)
@@ -1129,15 +1747,27 @@ class InterFromGitBranch(branch.GenericInterBranch):
         local=False,
         tag_selector=None,
     ):
-        """See Branch.pull.
+        """Pull changes from the source branch to the target branch.
 
-        :param _hook_master: Private parameter - set the branch to
-            be supplied as the master to pull hooks.
-        :param run_hooks: Private parameter - if false, this branch
-            is being called because it's the master of the primary branch,
-            so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
-            supplied as the target_branch to pull hooks.
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to pull up to.
+            possible_transports: Reusable transports for accessing branches.
+            _hook_master: Private parameter - set the branch to
+                be supplied as the master to pull hooks.
+            run_hooks: Private parameter - if false, this branch
+                is being called because it's the master of the primary branch,
+                so it should not run its hooks.
+            _override_hook_target: Private parameter - set the branch to be
+                supplied as the target_branch to pull hooks.
+            local: If True, only update the working tree.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            PullResult: Result of the pull operation.
+
+        Raises:
+            LocalRequiresBoundBranch: If local=True but branch is not bound.
         """
         # This type of branch can't be bound.
         bound_location = self.target.get_bound_location()
@@ -1178,6 +1808,17 @@ class InterFromGitBranch(branch.GenericInterBranch):
             )
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
+        """Perform the basic push operation between branches.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches. Can be True,
+                False, or a set of aspects to overwrite ('history', 'tags').
+            stop_revision: Revision to push up to.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            BranchPushResult: Result of the push operation.
+        """
         if overwrite is True:
             overwrite = {"history", "tags"}
         elif not overwrite:
@@ -1205,6 +1846,19 @@ class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions between Git branches.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Args:
+            stop_revision: Revision to fetch up to.
+            fetch_tags: Whether to fetch tags.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Raises:
+            NotImplementedError: Always, as this must be implemented by subclasses.
+        """
         raise NotImplementedError(self.fetch)
 
 
@@ -1213,12 +1867,26 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        """Get the branch formats to test for compatibility.
+
+        Returns:
+            List of tuples containing (source_format, target_format) pairs.
+        """
         from .remote import RemoteGitBranchFormat
 
         return [(LocalGitBranchFormat(), RemoteGitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is LocalGitBranch and target is RemoteGitBranch.
+        """
         from .remote import RemoteGitBranch
 
         return isinstance(source, LocalGitBranch) and isinstance(
@@ -1241,11 +1909,10 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             else:
                 result.old_revid = self.target.lookup_foreign_revision_id(old_ref)
             new_ref = self.source.repository.lookup_bzr_revision_id(stop_revision)[0]
-            if not overwrite:
-                if remote_divergence(
-                    old_ref, new_ref, self.source.repository._git.object_store
-                ):
-                    raise errors.DivergedBranches(self.source, self.target)
+            if not overwrite and remote_divergence(
+                old_ref, new_ref, self.source.repository._git.object_store
+            ):
+                raise errors.DivergedBranches(self.source, self.target)
             refs = {self.target.ref: new_ref}
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict(
@@ -1256,7 +1923,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 if sha not in self.source.repository._git:
                     trace.mutter("Ignoring missing SHA: %s", sha)
                     continue
-                refs[tag_name_to_ref(name)] = sha
+                refs[tag_name_to_ref(name.decode("utf-8"))] = sha
             return refs
 
         dw_result = self.target.repository.send_pack(
@@ -1286,9 +1953,32 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     @classmethod
     def is_compatible(self, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is any GitBranch and target is LocalGitBranch.
+        """
         return isinstance(source, GitBranch) and isinstance(target, LocalGitBranch)
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        """Fetch revisions from source to target branch.
+
+        Args:
+            stop_revision: Revision to fetch up to. If None, fetches all revisions.
+            fetch_tags: Whether to fetch tags. If None, uses branch configuration.
+            limit: Maximum number of revisions to fetch.
+            lossy: Whether lossy fetch is allowed.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+
+        Raises:
+            LossyPushToSameVCS: If lossy=True for Git to Git fetch.
+        """
         if lossy:
             raise errors.LossyPushToSameVCS(
                 source_branch=self.source, target_branch=self.target
@@ -1329,6 +2019,15 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
+        """Update references from source to target repository.
+
+        Args:
+            stop_revision: Revision to update up to. If None, updates all refs.
+
+        Returns:
+            Tuple of (refs, stop_revision) where refs is a mapping of reference
+            names to revision IDs.
+        """
         interrepo = _mod_repository.InterRepository.get(
             self.source.repository, self.target.repository
         )
@@ -1361,6 +2060,23 @@ class InterGitLocalGitBranch(InterGitBranch):
         local=False,
         tag_selector=None,
     ):
+        """Pull changes from the source Git branch to the target Git branch.
+
+        Args:
+            stop_revision: Revision to pull up to.
+            overwrite: Whether to overwrite diverged branches. Can be True,
+                False, or a set of aspects to overwrite ('history', 'tags').
+            possible_transports: Reusable transports for accessing branches.
+            run_hooks: Whether to run pre/post pull hooks.
+            local: If True, only update the working tree.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitPullResult: Result of the pull operation.
+
+        Raises:
+            LocalRequiresBoundBranch: If local=True (Git branches can't be bound).
+        """
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -1393,6 +2109,18 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
+    """Update Git refs and handle tag conflicts.
+
+    Args:
+        result: The result object to update with tag information.
+        new_refs: Dictionary of new refs to set.
+        overwrite: Whether to overwrite existing refs.
+        tag_selector: Optional function to filter which tags to process.
+        old_refs: Dictionary of existing refs.
+
+    Returns:
+        dict: Updated refs dictionary with resolved conflicts.
+    """
     result.tag_updates = {}
     result.tag_conflicts = []
     ret = {}
@@ -1447,9 +2175,15 @@ def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls into a Git branch."""
+    """InterBranch implementation that pulls from Bazaar branches into Git."""
 
     def __init__(self, source, target):
+        """Initialize InterToGitBranch.
+
+        Args:
+            source: The source (Bazaar) branch.
+            target: The target (Git) branch.
+        """
         super().__init__(source, target)
         self.interrepo = _mod_repository.InterRepository.get(
             source.repository, target.repository
@@ -1457,6 +2191,12 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        """Get the branch formats to test for compatibility.
+
+        Returns:
+            List of tuples containing (source_format, target_format) pairs
+            for testing Bazaar to Git branch conversion.
+        """
         try:
             default_format = branch.format_registry.get_default()
         except AttributeError:
@@ -1470,9 +2210,32 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     @classmethod
     def is_compatible(self, source, target):
+        """Check if this InterBranch is compatible with the source and target.
+
+        Args:
+            source: The source branch.
+            target: The target branch.
+
+        Returns:
+            bool: True if source is not a GitBranch and target is a GitBranch.
+        """
         return not isinstance(source, GitBranch) and isinstance(target, GitBranch)
 
     def _get_new_refs(self, stop_revision=None, fetch_tags=None, stop_revno=None):
+        """Get new references to be set in the target Git repository.
+
+        Args:
+            stop_revision: Revision to update up to. If None, uses last revision.
+            fetch_tags: Whether to include tags in the refs.
+            stop_revno: Revision number corresponding to stop_revision.
+
+        Returns:
+            Dict mapping reference names to (old_sha, new_revision_id) tuples.
+
+        Raises:
+            ObjectNotLocked: If the source branch is not locked.
+            TypeError: If stop_revision is not bytes.
+        """
         if not self.source.is_locked():
             raise errors.ObjectNotLocked(self.source)
         if stop_revision is None:
@@ -1514,6 +2277,17 @@ class InterToGitBranch(branch.GenericInterBranch):
         return refs, main_ref, (stop_revno, stop_revision)
 
     def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+        """Fetch revisions from Bazaar source to Git target.
+
+        Args:
+            stop_revision: Revision to fetch up to. If None, fetches all revisions.
+            fetch_tags: Whether to fetch tags. If None, uses branch configuration.
+            lossy: Whether to allow lossy conversion.
+            limit: Maximum number of revisions to fetch.
+
+        Returns:
+            FetchResult: Result of the fetch operation.
+        """
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # Default to True for local fetches to match remote behavior
@@ -1530,8 +2304,8 @@ class InterToGitBranch(branch.GenericInterBranch):
         if getattr(self.interrepo, "fetch_revs", None):
             try:
                 revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             return _mod_repository.FetchResult(
                 revidmap={
                     old_revid: new_revid
@@ -1561,6 +2335,20 @@ class InterToGitBranch(branch.GenericInterBranch):
         _stop_revno=None,
         tag_selector=None,
     ):
+        """Pull changes from the Bazaar source to the Git target branch.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to pull up to.
+            local: If True, only update the working tree.
+            possible_transports: Reusable transports for accessing branches.
+            run_hooks: Whether to run pre/post pull hooks.
+            _stop_revno: Internal - revision number for stop_revision.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitBranchPullResult: Result of the pull operation.
+        """
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1576,8 +2364,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
                     update_refs, lossy=False
                 )
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION)
             )
@@ -1600,6 +2388,22 @@ class InterToGitBranch(branch.GenericInterBranch):
         _stop_revno=None,
         tag_selector=None,
     ):
+        """Push changes from the Bazaar source to the Git target branch.
+
+        Args:
+            overwrite: Whether to overwrite diverged branches.
+            stop_revision: Revision to push up to.
+            lossy: Whether to allow lossy conversion.
+            _override_hook_source_branch: Internal - override source branch for hooks.
+            _stop_revno: Internal - revision number for stop_revision.
+            tag_selector: Tag selection criteria.
+
+        Returns:
+            GitBranchPushResult: Result of the push operation.
+
+        Raises:
+            NoRoundtrippingSupport: If lossy=False and round-tripping is not supported.
+        """
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1617,8 +2421,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
                     update_refs, lossy=lossy, overwrite=overwrite
                 )
-            except NoPushSupport:
-                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            except NoPushSupport as err:
+                raise errors.NoRoundtrippingSupport(self.source, self.target) from err
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION)
             )

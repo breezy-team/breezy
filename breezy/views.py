@@ -14,15 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-__docformat__ = "google"
-
 """View management.
 
 Views are contained within a working tree and normally constructed
-when first accessed.  Clients should do, for example, ...
+when first accessed. Clients should do, for example:
 
-  tree.views.lookup_view()
+    tree.views.lookup_view()
 """
+
+__docformat__ = "google"
 
 import re
 
@@ -38,6 +38,11 @@ class NoSuchView(errors.BzrError):
     _fmt = "No such view: %(view_name)s."
 
     def __init__(self, view_name):
+        """Initialize NoSuchView exception.
+
+        Args:
+            view_name: Name of the view that was not found.
+        """
         self.view_name = view_name
 
 
@@ -50,13 +55,30 @@ class ViewsNotSupported(errors.BzrError):
     )
 
     def __init__(self, tree):
+        """Initialize ViewsNotSupported exception.
+
+        Args:
+            tree: The tree that does not support views.
+        """
         self.tree = tree
 
 
 class FileOutsideView(errors.BzrError):
+    """Exception raised when a file is outside the current view.
+
+    This error occurs when trying to operate on a file that is not included
+    in the currently active view.
+    """
+
     _fmt = 'Specified file "%(file_name)s" is outside the current view: %(view_str)s'
 
     def __init__(self, file_name, view_files):
+        """Initialize FileOutsideView exception.
+
+        Args:
+            file_name: Name of the file that is outside the view.
+            view_files: List of files that are included in the current view.
+        """
         self.file_name = file_name
         self.view_str = ", ".join(view_files)
 
@@ -94,12 +116,22 @@ class PathBasedViews(_Views):
     """
 
     def __init__(self, tree):
+        """Initialize PathBasedViews manager.
+
+        Args:
+            tree: The working tree to manage views for.
+        """
         self.tree = tree
         self._loaded = False
         self._current = None
         self._views = {}
 
     def supports_views(self):
+        """Check if this view manager supports views.
+
+        Returns:
+            True, as PathBasedViews supports view storage.
+        """
         return True
 
     def get_view_info(self):
@@ -144,8 +176,8 @@ class PathBasedViews(_Views):
                 else:
                     return []
             return self._views[view_name]
-        except KeyError:
-            raise NoSuchView(view_name)
+        except KeyError as err:
+            raise NoSuchView(view_name) from err
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
@@ -171,8 +203,8 @@ class PathBasedViews(_Views):
             self._load_view_info()
             try:
                 del self._views[view_name]
-            except KeyError:
-                raise NoSuchView(view_name)
+            except KeyError as err:
+                raise NoSuchView(view_name) from err
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
@@ -184,10 +216,7 @@ class PathBasedViews(_Views):
         calling this method.
         """
         with self.tree.lock_write():
-            if self._current is None:
-                keywords = {}
-            else:
-                keywords = {"current": self._current}
+            keywords = {} if self._current is None else {"current": self._current}
             self.tree._transport.put_bytes(
                 "views", self._serialize_view_content(keywords, self._views)
             )
@@ -209,7 +238,7 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "{}={}\n".format(key, keywords[key])
+            line = f"{key}={keywords[key]}\n"
             lines.append(line.encode("utf-8"))
         if view_dict:
             lines.append(b"views:\n")
@@ -229,7 +258,7 @@ class PathBasedViews(_Views):
         if not match:
             raise ValueError("format marker missing from top of views file")
         elif match.group(1) != b"1":
-            raise ValueError("cannot decode views format {}".format(match.group(1)))
+            raise ValueError(f"cannot decode views format {match.group(1)}")
         try:
             keywords = {}
             views = {}
@@ -252,8 +281,8 @@ class PathBasedViews(_Views):
             return keywords, views
         except ValueError as e:
             raise ValueError(
-                "failed to deserialize views content {!r}: {}".format(view_content, e)
-            )
+                f"failed to deserialize views content {view_content!r}: {e}"
+            ) from e
 
 
 class DisabledViews(_Views):
@@ -263,9 +292,19 @@ class DisabledViews(_Views):
     """
 
     def __init__(self, tree):
+        """Initialize DisabledViews manager.
+
+        Args:
+            tree: The tree that does not support views.
+        """
         self.tree = tree
 
     def supports_views(self):
+        """Check if this view manager supports views.
+
+        Returns:
+            False, as DisabledViews does not support view storage.
+        """
         return False
 
     def _not_supported(self, *a, **k):

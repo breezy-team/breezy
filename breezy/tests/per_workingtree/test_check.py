@@ -16,9 +16,10 @@
 
 """Tests for checking of trees."""
 
-from breezy.bzr.workingtree import InventoryWorkingTree
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...bzr.workingtree import InventoryWorkingTree
 
 
 class TestCheck(TestCaseWithWorkingTree):

@@ -21,7 +21,8 @@ from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -36,7 +37,7 @@ class TestRefreshData(TestCaseWithRepository):
         source = self.make_branch_and_memory_tree("source")
         source.lock_write()
         self.addCleanup(source.unlock)
-        source.add([""], [b"root-id"])
+        source.add([""], ids=[b"root-id"])
         revid = source.commit("foo", rev_id=b"new-rev")
         # Force data reading on weaves/knits
         repo.all_revision_ids()

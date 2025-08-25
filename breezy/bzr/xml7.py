@@ -14,10 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""XML serialization format version 7 with tree reference support."""
+
 from . import xml6
 
 
-class Serializer_v7(xml6.Serializer_v6):
+class InventorySerializer_v7(xml6.InventorySerializer_v6):
     """A Serializer that supports tree references."""
 
     # this format is used by BzrBranch6
@@ -26,4 +28,4 @@ class Serializer_v7(xml6.Serializer_v6):
     format_num = b"7"
 
 
-serializer_v7 = Serializer_v7()
+inventory_serializer_v7 = InventorySerializer_v7()

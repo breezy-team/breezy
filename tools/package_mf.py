@@ -16,6 +16,7 @@
 
 """Custom module finder for entire package."""
 
+import contextlib
 import os
 import sys
 
@@ -32,10 +33,25 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
     """
 
     def __init__(self, path=None, debug=0, excludes=None, replace_paths=None):
-        if replace_paths is None:
-            replace_paths = []
+        """Initialize the custom module finder.
+
+        Args:
+            path (list, optional): List of directories to search for modules.
+                                 If not specified, only Python standard library is used.
+            debug (int, optional): Debug level for module finder operations. Defaults to 0.
+            excludes (list, optional): List of module names to exclude from processing.
+                                     Defaults to empty list.
+            replace_paths (list, optional): List of path replacements for module locations.
+                                          Defaults to empty list.
+
+        Note:
+            This initializer sets up the module finder with appropriate defaults
+            and delegates to the parent ModuleFinder constructor.
+        """
         if excludes is None:
             excludes = []
+        if replace_paths is None:
+            replace_paths = []
         if path is None:
             path = [os.path.dirname(os.__file__)]  # only python std lib
         modulefinder.ModuleFinder.__init__(self, path, debug, excludes, replace_paths)
@@ -43,7 +59,22 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
     def load_package_recursive(self, fqname):
         """Recursively process each module in package.
 
-        :param  fqname:   name of the package.
+        This method loads all modules within a package hierarchy, starting from
+        the specified fully qualified package name. It processes all parent
+        packages first, then recursively discovers and imports all submodules
+        and subpackages, excluding test directories.
+
+        Args:
+            fqname (str): Fully qualified name of the package to process.
+                         For example: 'breezy.plugins.launchpad'
+
+        Note:
+            The method handles import errors gracefully by suppressing exceptions
+            during module import operations. It skips 'tests' directories and
+            'setup.py' files during recursive discovery.
+
+        Raises:
+            KeyError: If a required parent module is not found in the modules dict.
         """
         # Load all the parents
         parent = None
@@ -57,12 +88,10 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
             # (The actual error is
             # AttributeError: 'NoneType' object has no attribute 'is_package')
             # Ignore errors here and bail out in the collection loop.
-            try:
+            with contextlib.suppress(BaseException):
                 self.import_module(
                     partname, ".".join(path), self.modules.get(parent_path, None)
                 )
-            except BaseException:
-                pass
         stack = [(fqname, parent_path)]
         while stack:
             (package, parent_path) = stack.pop(0)
@@ -90,7 +119,21 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                 self.import_module(partname, ".".join((package, partname)), pkg_module)
 
     def get_result(self):
-        """Return 2-tuple: (list of packages, list of modules)."""
+        """Return discovered packages and modules.
+
+        Analyzes all discovered modules and categorizes them into packages
+        and regular modules based on their properties.
+
+        Returns:
+            tuple: A 2-tuple containing:
+                - list: Sorted list of package names (modules with __path__ attribute)
+                - list: Sorted list of module names (regular modules, excluding __main__)
+
+        Note:
+            Built-in modules (those without __file__ attribute) are excluded
+            from the results. The __main__ module is also excluded from the
+            modules list.
+        """
         keys = sorted(self.modules.keys())
         mods = []
         packs = []
@@ -106,6 +149,14 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
 
 
 if __name__ == "__main__":
+    """Command line interface for package module discovery.
+    
+    Usage: python package_mf.py <package_name>
+    
+    This script demonstrates the CustomModuleFinder by discovering all
+    packages and modules within the specified package and printing them
+    to stdout.
+    """
     package = sys.argv[1]
 
     mf = CustomModuleFinder()

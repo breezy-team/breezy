@@ -20,14 +20,25 @@ from . import errors, log
 
 
 def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
+    """Generate LogRevision objects from revision data.
+
+    Transforms revision tuples into LogRevision objects suitable for display,
+    optionally including revision deltas for verbose output.
+
+    Args:
+        revisions: An iterable of (revno, rev_id, merge_depth) tuples.
+        revision_source: Repository or branch providing revision data.
+        verbose: If True, include revision deltas in output.
+        rev_tag_dict: Optional dict mapping revision IDs to tags.
+
+    Yields:
+        LogRevision: Objects containing revision data, delta, and tags.
+    """
     if rev_tag_dict is None:
         rev_tag_dict = {}
     for revno, rev_id, merge_depth in revisions:
         rev = revision_source.get_revision(rev_id)
-        if verbose:
-            delta = revision_source.get_revision_delta(rev_id)
-        else:
-            delta = None
+        delta = revision_source.get_revision_delta(rev_id) if verbose else None
         yield log.LogRevision(
             rev, revno, merge_depth, delta=delta, tags=rev_tag_dict.get(rev_id)
         )
@@ -200,9 +211,7 @@ def _find_unmerged(
     else:
         if restrict != "all":
             raise ValueError(
-                'param restrict not one of "all", "local", "remote": {!r}'.format(
-                    restrict
-                )
+                f'param restrict not one of "all", "local", "remote": {restrict!r}'
             )
         local_extra, remote_extra = graph.find_difference(
             local_revision_id, remote_revision_id
@@ -234,5 +243,15 @@ def _find_unmerged(
 
 
 def sorted_revisions(revisions, history_map):
+    """Sort revisions according to their position in history.
+
+    Args:
+        revisions: An iterable of revision IDs to sort.
+        history_map: A dict mapping revision IDs to their numeric position
+            in history (lower numbers come first).
+
+    Returns:
+        list: A sorted list of (position, revision_id) tuples.
+    """
     revisions = sorted([(history_map[r], r) for r in revisions])
     return revisions

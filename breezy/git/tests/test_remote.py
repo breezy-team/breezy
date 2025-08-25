@@ -28,7 +28,6 @@ from dulwich.repo import Repo as GitRepo
 from ...branch import Branch
 from ...controldir import ControlDir
 from ...errors import (
-    ConnectionReset,
     DivergedBranches,
     NoSuchTag,
     NotBranchError,
@@ -181,12 +180,11 @@ Email support@github.com for help
         )
 
     def test_connection_reset_by_peer(self):
-        self.assertEqual(
-            ConnectionReset("[Errno 104] Connection reset by peer"),
-            parse_git_error(
-                "url", RemoteGitError("[Errno 104] Connection reset by peer")
-            ),
+        got = parse_git_error(
+            "url", RemoteGitError("[Errno 104] Connection reset by peer")
         )
+        self.assertIsInstance(got, ConnectionResetError)
+        self.assertEqual("[Errno 104] Connection reset by peer", got.args[0])
 
     def test_http_unexpected(self):
         self.assertEqual(
@@ -218,7 +216,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup("http://", HangupException()), ConnectionReset
+            parse_git_hangup("http://", HangupException()), ConnectionResetError
         )
 
     def test_single_line(self):
@@ -309,17 +307,18 @@ class TestRemoteGitBranch(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_set_last_revision_info(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message 1",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
             ref=b"refs/heads/newbranch",
         )
-        c2 = self.remote_real.do_commit(
+        c2 = remote_worktree.commit(
             message=b"message 2",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -346,11 +345,12 @@ class FetchFromRemoteTestBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_sprout_simple(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -366,17 +366,19 @@ class FetchFromRemoteTestBase:
 
     def test_sprout_submodule_invalid(self):
         self.sub_real = GitRepo.init("sub", mkdir=True)
-        self.sub_real.do_commit(
+        sub_worktree = self.sub_real.get_worktree()
+        sub_worktree.commit(
             message=b"message in sub",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
 
         self.sub_real.clone("remote/nested")
-        self.remote_real.stage("nested")
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.stage("nested")
         self.permit_url(urljoin(self.remote_url, "../sub"))
         self.assertIn(b"nested", self.remote_real.open_index())
-        self.remote_real.do_commit(
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -395,24 +397,28 @@ class FetchFromRemoteTestBase:
 
     def test_sprout_submodule_relative(self):
         self.sub_real = GitRepo.init("sub", mkdir=True)
-        self.sub_real.do_commit(
+        sub_worktree = self.sub_real.get_worktree()
+        sub_worktree.commit(
             message=b"message in sub",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
 
         with open("remote/.gitmodules", "w") as f:
-            f.write("""
+            f.write(
+                """
 [submodule "lala"]
 \tpath = nested
 \turl = ../sub/.git
-""")
-        self.remote_real.stage(".gitmodules")
+"""
+            )
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.stage(".gitmodules")
         self.sub_real.clone("remote/nested")
-        self.remote_real.stage("nested")
+        remote_worktree.stage("nested")
         self.permit_url(urljoin(self.remote_url, "../sub"))
         self.assertIn(b"nested", self.remote_real.open_index())
-        self.remote_real.do_commit(
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -431,12 +437,13 @@ class FetchFromRemoteTestBase:
         )
 
     def test_sprout_with_tags(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        c2 = self.remote_real.do_commit(
+        c2 = remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -460,12 +467,13 @@ class FetchFromRemoteTestBase:
         )
 
     def test_sprout_with_annotated_tag(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        c2 = self.remote_real.do_commit(
+        c2 = remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -497,12 +505,13 @@ class FetchFromRemoteTestBase:
         )
 
     def test_sprout_with_annotated_tag_unreferenced(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -549,7 +558,7 @@ class PushToRemoteBase:
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_push_branch_new(self):
@@ -584,7 +593,8 @@ class PushToRemoteBase:
         cfg.set((b"core",), b"bare", True)
         cfg.write_to_path()
         self.remote_real.refs.set_symbolic_ref(b"HEAD", b"refs/heads/master")
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -638,8 +648,8 @@ class PushToRemoteBase:
         branch = builder.get_branch()
         try:
             branch.tags.set_tag("atag", rev_2)
-        except TagsNotSupported:
-            raise TestNotApplicable("source format does not support tags")
+        except TagsNotSupported as err:
+            raise TestNotApplicable("source format does not support tags") from err
 
         branch.get_config_stack().set("branch.fetch_tags", True)
         if self._from_format == "git":
@@ -661,7 +671,8 @@ class PushToRemoteBase:
         )
 
     def test_push(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -698,7 +709,8 @@ class PushToRemoteBase:
         )
 
     def test_push_diverged(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -741,16 +753,18 @@ class RemoteControlDirTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
 
     def test_remove_branch(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -768,12 +782,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
         )
 
     def test_list_branches(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -784,12 +800,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual({"master", "blah"}, {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -804,12 +822,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual({"", "blah", "master"}, set(remote.branch_names()))
 
     def test_remove_tag(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -829,12 +849,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
         )
 
     def test_set_tag(self):
-        c1 = self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        c1 = remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -842,7 +864,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         remote.open_branch().tags.set_tag(
-            b"blah", default_mapping.revision_id_foreign_to_bzr(c1)
+            "blah", default_mapping.revision_id_foreign_to_bzr(c1)
         )
         self.assertEqual(
             self.remote_real.get_refs(),
@@ -854,12 +876,13 @@ class RemoteControlDirTests(TestCaseWithTransport):
         )
 
     def test_annotated_tag(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        c2 = self.remote_real.do_commit(
+        c2 = remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -884,12 +907,14 @@ class RemoteControlDirTests(TestCaseWithTransport):
         )
 
     def test_get_branch_reference(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
         )
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"another commit",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -903,7 +928,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(None, remote.get_branch_reference("master"))
 
     def test_get_branch_nick(self):
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",
@@ -951,9 +977,10 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init("remote", mkdir=True)
-        self.remote_url = "git://{}/".format(os.path.abspath(self.remote_real.path))
+        self.remote_url = f"git://{os.path.abspath(self.remote_real.path)}/"
         self.permit_url(self.remote_url)
-        self.remote_real.do_commit(
+        remote_worktree = self.remote_real.get_worktree()
+        remote_worktree.commit(
             message=b"message",
             committer=b"committer <committer@example.com>",
             author=b"author <author@example.com>",

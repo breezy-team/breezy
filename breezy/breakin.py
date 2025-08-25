@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+r"""Signal handling for debugging support.
+
+This module provides functionality to hook a debugger into signal handlers,
+allowing developers to drop into a debugger when specific signals are received.
+On Unix systems, this uses SIGQUIT (Ctrl-\), and on Windows, it uses SIGBREAK
+(Ctrl-Pause).
+"""
+
 import os
 import signal
 from typing import Optional
@@ -27,11 +35,9 @@ def _debug(signal_number, interrupted_frame):
     import sys
 
     sys.stderr.write(
-        "** {} received, entering debugger\n"
+        f"** {_breakin_signal_name} received, entering debugger\n"
         "** Type 'c' to continue or 'q' to stop the process\n"
-        "** Or {} again to quit (and possibly dump core)\n".format(
-            _breakin_signal_name, _breakin_signal_name
-        )
+        f"** Or {_breakin_signal_name} again to quit (and possibly dump core)\n"
     )
     # It seems that on Windows, when sys.stderr is to a PIPE, then we need to
     # flush. Not sure why it is buffered, but that seems to be the case.
@@ -48,6 +54,16 @@ def _debug(signal_number, interrupted_frame):
 
 
 def determine_signal():
+    """Determine the appropriate signal to use for debugging breakin.
+
+    Checks for platform-specific signals and sets the global signal number
+    and name variables. On Unix-like systems, SIGQUIT is used, while on
+    Windows, SIGBREAK is used.
+
+    Returns:
+        Optional[int]: The signal number to use for debugging breakin,
+            or None if no appropriate signal is available.
+    """
     global _breakin_signal_number
     global _breakin_signal_name
     if _breakin_signal_number is not None:
@@ -71,7 +87,7 @@ def determine_signal():
 def hook_debugger_to_signal():
     r"""Add a signal handler so we drop into the debugger.
 
-    On Unix, this is hooked into SIGQUIT (C-\\), and on Windows, this is
+    On Unix, this is hooked into SIGQUIT (C-\), and on Windows, this is
     hooked into SIGBREAK (C-Pause).
     """
     # when sigquit (C-\) or sigbreak (C-Pause) is received go into pdb

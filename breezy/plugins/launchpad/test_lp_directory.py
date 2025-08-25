@@ -19,25 +19,15 @@
 from ... import transport
 from ...branch import Branch
 from ...directory_service import directories
-from ...tests import (
-    TestCaseWithMemoryTransport,
-)
+from ...tests import TestCaseWithMemoryTransport
 from . import _register_directory
 
 
-class FakeResolveFactory:
-    def __init__(self, test, expected_path, result):
-        self._test = test
-        self._expected_path = expected_path
-        self._result = result
-
-    def __call__(self, path, url):
-        self._test.assertEqual(self._expected_path, path)
-        return self._result
-
-
 class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
+    """Test cases for directory service branch opening."""
+
     def test_directory_open_branch(self):
+        """Test that opening an lp: branch redirects to the real location."""
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch("target")
 

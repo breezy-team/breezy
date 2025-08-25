@@ -16,16 +16,18 @@
 
 """Tests for the InterTree.compare() function."""
 
+import contextlib
 import os
 import shutil
 
 from breezy import errors, mutabletree, tests
-from breezy.bzr.inventorytree import InventoryTreeChange
-from breezy.osutils import supports_symlinks
 from breezy.tests import features
-from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
-from breezy.tree import TreeChange
+
+from ...bzr.inventorytree import InventoryTreeChange
+from ...osutils import supports_symlinks
+from ...tree import TreeChange
+from ..matchers import MatchesTreeChanges
 
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the
@@ -500,7 +502,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             if left_item == right_item:
                 same.append(str(left_item))
             else:
-                different.append(" {}\n {}".format(left_item, right_item))
+                different.append(f" {left_item}\n {right_item}")
         self.fail(
             "iter_changes output different. Unchanged items:\n"
             + "\n".join(same)
@@ -625,8 +627,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         iterator = tree.iter_entries_by_dir(specific_files=[path])
         try:
             return next(iterator)[1]
-        except StopIteration:
-            raise KeyError(path)
+        except StopIteration as err:
+            raise KeyError(path) from err
 
     def changed_content(self, tree, path):
         entry = self.get_path_entry(tree, path)
@@ -1244,14 +1246,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(["a"], ["file"], [b"a-id"])
         try:
             tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
-        except KeyError:
+        except errors.BadFileKindError as err:
             raise tests.TestNotApplicable(
-                "Cannot represent a FIFO in this case {}".format(self.id())
-            )
-        try:
+                f"Cannot represent a FIFO in this case {self.id()}"
+            ) from err
+        with contextlib.suppress(errors.BadFileKindError):
             self.do_iter_changes(tree1, tree2)
-        except errors.BadFileKindError:
-            pass
 
     def test_missing_in_target(self):
         """Test with the target files versioned but absent from disk."""
@@ -1876,8 +1876,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/\u03b1/\u03c9-added",
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(["\u03b1"], ids=[a_id])
         tree2.add(["\u03b1", "\u03b1/\u03c9-added"], ids=[a_id, added_id])
 
@@ -1911,8 +1911,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/\u03b1/",
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(["\u03b1", "\u03b1/\u03c9-deleted"], ids=[a_id, deleted_id])
         tree2.add(["\u03b1"], ids=[a_id])
 
@@ -1947,8 +1947,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/" + mod_path,
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(["\u03b1", mod_path], ids=[a_id, mod_id])
         tree2.add(["\u03b1", mod_path], ids=[a_id, mod_id])
 
@@ -1980,8 +1980,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/\u03b1/",
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         self.build_tree_contents(
             [
                 ("tree1/\u03c9-source", b"contents\n"),
@@ -2027,8 +2027,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/\u03b1/",
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         self.build_tree_contents(
             [
                 ("tree1/\u03b1/\u03c9-subfile", b"sub contents\n"),
@@ -2092,8 +2092,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     "tree2/\u03c9-unknown_root_file",
                 ]
             )
-        except UnicodeError:
-            raise tests.TestSkipped("Could not create Unicode files.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Could not create Unicode files.") from err
         tree1.add(["\u03b1"], ids=[a_id])
         tree2.add(["\u03b1"], ids=[a_id])
 

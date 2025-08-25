@@ -19,14 +19,20 @@
 import yaml
 
 from breezy import errors, hooks
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 
 class YamlVersionInfoBuilder(VersionInfoBuilder):
     """This writes a yaml stream out."""
 
     def generate(self, to_file):
+        """Generate version information in YAML format and write to file.
+
+        Args:
+            to_file: File-like object to write the YAML output to.
+        """
         info = {}
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
@@ -97,6 +103,11 @@ class YamlVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for yaml-formatted version-info output."""
 
     def __init__(self):
+        """Initialize YamlVersionInfoBuilderHooks.
+
+        Sets up the hooks system for YAML version info builder with the
+        appropriate module and attribute names.
+        """
         super().__init__(
             "breezy.version_info_formats.format_yaml", "YamlVersionInfoBuilder.hooks"
         )

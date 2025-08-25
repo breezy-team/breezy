@@ -14,8 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Functions for displaying information about Breezy directories.
+
+This module provides utilities for showing information about branches,
+repositories, and working trees.
+"""
+
 __all__ = ["show_bzrdir_info"]
 
+import contextlib
 import sys
 import time
 from io import StringIO
@@ -25,7 +32,6 @@ from . import controldir, errors, osutils, urlutils
 from . import hooks as _mod_hooks
 from .bzr import bzrdir
 from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
-from .i18n import gettext
 from .missing import find_unmerged
 
 
@@ -164,14 +170,12 @@ def _gather_related_branches(branch):
     locs.add_url("push branch", branch.get_push_location())
     locs.add_url("parent branch", branch.get_parent())
     locs.add_url("submit branch", branch.get_submit_branch())
-    try:
-        locs.add_url("stacked on", branch.get_stacked_on_url())
-    except (
+    with contextlib.suppress(
         _mod_branch.UnstackableBranchFormat,
         errors.UnstackableRepositoryFormat,
         errors.NotStacked,
     ):
-        pass
+        locs.add_url("stacked on", branch.get_stacked_on_url())
     return locs
 
 
@@ -199,17 +203,11 @@ def _show_format_info(
     outfile.write("\n")
     outfile.write("Format:\n")
     if control:
-        outfile.write(
-            "       control: {}\n".format(control._format.get_format_description())
-        )
+        outfile.write(f"       control: {control._format.get_format_description()}\n")
     if working:
-        outfile.write(
-            "  working tree: {}\n".format(working._format.get_format_description())
-        )
+        outfile.write(f"  working tree: {working._format.get_format_description()}\n")
     if branch:
-        outfile.write(
-            "        branch: {}\n".format(branch._format.get_format_description())
-        )
+        outfile.write(f"        branch: {branch._format.get_format_description()}\n")
     if repository:
         outfile.write(
             "    repository: {}\n".format(repository._format.get_format_description())
@@ -226,23 +224,14 @@ def _show_locking_info(repository=None, branch=None, working=None, outfile=None)
         outfile.write("\n")
         outfile.write("Lock status:\n")
         if working:
-            if working.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
-            outfile.write("  working tree: {}\n".format(status))
+            status = "locked" if working.get_physical_lock_status() else "unlocked"
+            outfile.write(f"  working tree: {status}\n")
         if branch:
-            if branch.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
-            outfile.write("        branch: {}\n".format(status))
+            status = "locked" if branch.get_physical_lock_status() else "unlocked"
+            outfile.write(f"        branch: {status}\n")
         if repository:
-            if repository.get_physical_lock_status():
-                status = "locked"
-            else:
-                status = "unlocked"
-            outfile.write("    repository: {}\n".format(status))
+            status = "locked" if repository.get_physical_lock_status() else "unlocked"
+            outfile.write(f"    repository: {status}\n")
 
 
 def _show_missing_revisions_branch(branch, outfile):
@@ -254,7 +243,7 @@ def _show_missing_revisions_branch(branch, outfile):
         if remote_extra:
             outfile.write("\n")
             outfile.write(
-                gettext("Branch is out of date: missing %d revision%s.\n")
+                ("Branch is out of date: missing %d revision%s.\n")
                 % (len(remote_extra), plural(len(remote_extra)))
             )
 
@@ -276,7 +265,7 @@ def _show_missing_revisions_working(working, outfile):
         missing_count = branch_revno - tree_last_revno
         outfile.write("\n")
         outfile.write(
-            gettext("Working tree is out of date: missing %d revision%s.\n")
+            ("Working tree is out of date: missing %d revision%s.\n")
             % (missing_count, plural(missing_count))
         )
 
@@ -289,11 +278,11 @@ def _show_working_stats(working, outfile):
     outfile.write("\n")
     outfile.write("In the working tree:\n")
     outfile.write("  %8s unchanged\n" % len(delta.unchanged))
-    outfile.write("  %8d modified\n" % len(delta.modified))
-    outfile.write("  %8d added\n" % len(delta.added))
-    outfile.write("  %8d removed\n" % len(delta.removed))
-    outfile.write("  %8d renamed\n" % len(delta.renamed))
-    outfile.write("  %8d copied\n" % len(delta.copied))
+    outfile.write(f"  {len(delta.modified):8} modified\n")
+    outfile.write(f"  {len(delta.added):8} added\n")
+    outfile.write(f"  {len(delta.removed):8} removed\n")
+    outfile.write(f"  {len(delta.renamed):8} renamed\n")
+    outfile.write(f"  {len(delta.copied):8} copied\n")
 
     ignore_cnt = unknown_cnt = 0
     for path in working.extras():
@@ -412,7 +401,7 @@ def show_component_info(
         verbose = 2
     layout = describe_layout(repository, branch, working, control)
     format = describe_format(control, repository, branch, working)
-    outfile.write("{} (format: {})\n".format(layout, format))
+    outfile.write(f"{layout} (format: {format})\n")
     _show_location_info(
         gather_location_info(
             control=control, repository=repository, branch=branch, working=working
@@ -475,14 +464,8 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             phrase += " with " + " and ".join(extra)
         return phrase
     else:
-        if repository.is_shared():
-            independence = "Repository "
-        else:
-            independence = "Standalone "
-        if tree is not None:
-            phrase = "tree"
-        else:
-            phrase = "branch"
+        independence = "Repository " if repository.is_shared() else "Standalone "
+        phrase = "tree" if tree is not None else "branch"
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
@@ -495,13 +478,10 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             elif branch.get_bound_location() is not None:
                 if independence == "Standalone ":
                     independence = ""
-                if tree is None:
-                    phrase = "Bound branch"
-                else:
-                    phrase = "Checkout"
+                phrase = "Bound branch" if tree is None else "Checkout"
         if independence != "":
             phrase = phrase.lower()
-        return "{}{}".format(independence, phrase)
+        return f"{independence}{phrase}"
 
 
 def describe_format(control, repository, branch, tree):

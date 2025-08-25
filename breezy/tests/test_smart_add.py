@@ -26,9 +26,7 @@ class AddCustomIDAction(add.AddAction):
         # Now generate a custom id
         file_id = (kind + "-" + path.replace("/", "%")).encode("utf-8")
         if self.should_print:
-            self._to_file.write(
-                "added {} with id {}\n".format(path, file_id.decode("utf-8"))
-            )
+            self._to_file.write(f"added {path} with id {file_id.decode('utf-8')}\n")
         return file_id
 
 

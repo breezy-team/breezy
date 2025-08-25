@@ -48,6 +48,7 @@ if os.name == "posix":
 
 
 def main():
+    """Main entry point for the Breezy command-line interface."""
     import breezy.breakin
 
     breezy.breakin.hook_debugger_to_signal()

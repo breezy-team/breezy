@@ -21,7 +21,6 @@
 
 cdef extern from "python-compat.h":
     object PyBytes_FromStringAndSize (char *, Py_ssize_t)
-    object PyBytes_InternFromStringAndSize (char *, Py_ssize_t)
 
 
 cdef inline void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
@@ -49,4 +48,5 @@ cdef inline object safe_interned_string_from_size(char *s, Py_ssize_t size):
     if size < 0:
         raise AssertionError(
             'tried to create a string with an invalid size: %d' % size)
-    return PyBytes_InternFromStringAndSize(s, size)
+    # For now, don't intern on Python 3
+    return PyBytes_FromStringAndSize(s, size)

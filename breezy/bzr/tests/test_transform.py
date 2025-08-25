@@ -21,6 +21,7 @@ import time
 from ... import errors, filters, osutils, rules
 from ...controldir import ControlDir
 from ...tests import UnavailableFeature, features
+from ...transport.local import file_kind
 from ..conflicts import DuplicateEntry
 from ..transform import build_tree
 from . import TestCaseWithTransport
@@ -73,7 +74,7 @@ class TestBuildTree(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         build_tree(basis, b)
-        self.assertIs(os.path.isdir("b/foo"), True)
+        self.assertTrue(os.path.isdir("b/foo"))
         with open("b/foo/bar", "rb") as f:
             self.assertEqual(f.read(), b"contents")
         self.assertEqual(os.readlink("b/foo/baz"), "a/foo/bar")
@@ -178,7 +179,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.make_branch("target4/dir1/file")
         build_tree(source.basis_tree(), target)
         self.assertPathExists("target4/dir1/file")
-        self.assertEqual("directory", osutils.file_kind("target4/dir1/file"))
+        self.assertEqual("directory", file_kind("target4/dir1/file"))
         self.assertPathExists("target4/dir1/file.diverted")
         self.assertEqual(
             [

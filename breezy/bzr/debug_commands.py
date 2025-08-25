@@ -40,6 +40,8 @@ def as_tuples(obj):
 
 
 class cmd_dump_btree(Command):
+    """Command to dump btree index file contents."""
+
     __doc__ = """Dump the contents of a btree index file to stdout.
 
     PATH is a btree index file, it can be any URL. This includes things like
@@ -65,6 +67,7 @@ class cmd_dump_btree(Command):
     ]
 
     def run(self, path, raw=False):
+        """Execute the btree dump command."""
         dirname, basename = osutils.split(path)
         t = transport.get_transport(dirname)
         if raw:
@@ -97,7 +100,7 @@ class cmd_dump_btree(Command):
                 header_end, data = bt._parse_header_from_bytes(page_bytes)
                 self.outf.write(page_bytes[:header_end])
                 page_bytes = data
-            self.outf.write(f"\nPage {page_idx}\n")
+            self.outf.write("\nPage %d\n" % (page_idx,))
             if len(page_bytes) == 0:
                 self.outf.write("(empty)\n")
             else:
@@ -133,10 +136,12 @@ class cmd_dump_btree(Command):
                 node[2].decode("utf-8"),
                 refs_as_tuples,
             )
-            self.outf.write("{}\n".format(as_tuple))
+            self.outf.write(f"{as_tuple}\n")
 
 
 class cmd_file_id(Command):
+    """Command to print file_id of a file or directory."""
+
     __doc__ = """Print file_id of a particular file or directory.
 
     The file_id is assigned when the file is first added and remains the
@@ -150,6 +155,7 @@ class cmd_file_id(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the file_id command."""
         tree, relpath = WorkingTree.open_containing(filename)
         file_id = tree.path2id(relpath)
         if file_id is None:
@@ -159,6 +165,8 @@ class cmd_file_id(Command):
 
 
 class cmd_file_path(Command):
+    """Command to print path of file_ids to a file or directory."""
+
     __doc__ = """Print path of file_ids to a file or directory.
 
     This prints one line for each directory down to the target,
@@ -170,6 +178,7 @@ class cmd_file_path(Command):
 
     @display_command
     def run(self, filename):
+        """Execute the file_path command."""
         tree, relpath = WorkingTree.open_containing(filename)
         fid = tree.path2id(relpath)
         if fid is None:
@@ -177,4 +186,4 @@ class cmd_file_path(Command):
         segments = osutils.splitpath(relpath)
         for pos in range(1, len(segments) + 1):
             path = osutils.joinpath(segments[:pos])
-            self.outf.write("{}\n".format(tree.path2id(path)))
+            self.outf.write(f"{tree.path2id(path)}\n")

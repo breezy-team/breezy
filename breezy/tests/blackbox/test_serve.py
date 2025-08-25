@@ -272,9 +272,7 @@ class TestBzrServe(TestBzrServeBase):
         m.read_bytes(1)
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
-        self.assertEqual(
-            b"Connection Timeout: disconnecting client after 0.2 seconds\n", err
-        )
+        self.assertEqual(b"disconnecting client after 0.2 seconds\n", err)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_supports_client_timeout(self):
@@ -292,9 +290,7 @@ class TestBzrServe(TestBzrServeBase):
         m.read_bytes(1)
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
-        self.assertEqual(
-            b"Connection Timeout: disconnecting client after 0.1 seconds\n", err
-        )
+        self.assertEqual(b"disconnecting client after 0.1 seconds\n", err)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
@@ -318,7 +314,10 @@ class TestBzrServe(TestBzrServeBase):
         )
         body = response_handler.read_body_bytes()
         if body != big_contents:
-            self.fail('Failed to properly read the contents of "bigfile"')
+            self.fail(
+                'Failed to properly read the contents of "bigfile": read %d of %d'
+                % (len(body), len(big_contents))
+            )
         # Now that our request is finished, the medium should notice it has
         # been disconnected.
         self.assertEqual(b"", m.read_bytes(1))
@@ -423,15 +422,17 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         # Read-only
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
-        self.assertEqual("readonly+{}".format(base_url), self.bzr_serve_transport.base)
+        self.assertEqual(f"readonly+{base_url}", self.bzr_serve_transport.base + "/")
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport, allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual(base_url, self.bzr_serve_transport.base)
+        self.assertEqual(base_url, self.bzr_serve_transport.base + "/")
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()
-        self.assertEqual("readonly+{}".format(base_url), self.bzr_serve_transport.base)
-        self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
+        self.assertEqual(f"readonly+{base_url}", self.bzr_serve_transport.base)
+        self.assertEqual(
+            base_dir + "/", server_maker.get_base_path(self.bzr_serve_transport)
+        )

@@ -42,10 +42,9 @@ def load_tests(loader, basic_tests, pattern):
         "per_repository_vf",
         "per_versionedfile",
         "test__btree_serializer",
-        "test__chk_map",
         "test__dirstate_helpers",
         "test__groupcompress",
-        "test__rio",
+        "test_annotate",
         "test_btree_index",
         "test_bundle",
         "test_bzrdir",
@@ -59,6 +58,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_inv",
         "test_inventory_delta",
         "test_knit",
+        "test_lockable_files",
         "test_matchers",
         "test_pack",
         "test_read_bundle",
@@ -84,9 +84,6 @@ def load_tests(loader, basic_tests, pattern):
     ]
 
     # add the tests for the sub modules
-    suite.addTests(
-        loader.loadTestsFromModuleNames(
-            [prefix + module_name for module_name in testmod_names]
-        )
-    )
+    for module_name in testmod_names:
+        suite.addTest(loader.loadTestsFromName(prefix + module_name))
     return suite

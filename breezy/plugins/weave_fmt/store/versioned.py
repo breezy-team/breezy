@@ -1,3 +1,11 @@
+"""Versioned file store implementation for the weave format.
+
+This module provides VersionedFileStore, which manages collections of versioned
+files (typically weaves) stored through Breezy's transport system. It handles
+multiple versions of files with their complete history and inter-revision
+relationships.
+"""
+
 # Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,7 +25,6 @@
 # XXX: Some consideration of the problems that might occur if there are
 # files whose id differs only in case.  That should probably be forbidden.
 
-
 import os
 
 from .... import osutils
@@ -26,7 +33,12 @@ from . import TransportStore
 
 
 class VersionedFileStore(TransportStore):
-    """Collection of many versioned files in a transport."""
+    """Collection of many versioned files accessible through a transport.
+
+    This store manages multiple versioned files (typically weaves) that are
+    stored using a transport backend. Each versioned file can contain multiple
+    revisions with their history and relationships.
+    """
 
     # TODO: Rather than passing versionedfile_kwargs, perhaps pass in a
     # transport factory callable?
@@ -41,8 +53,18 @@ class VersionedFileStore(TransportStore):
         versionedfile_kwargs=None,
         escaped=False,
     ):
-        if versionedfile_kwargs is None:
-            versionedfile_kwargs = {}
+        """Initialize a versioned file store.
+
+        Args:
+            transport: Transport to use for file operations.
+            prefixed: If True, use hash-based directory prefixing.
+            precious: If True, versioned files should not be deleted carelessly.
+            dir_mode: File mode to use when creating directories.
+            file_mode: File mode to use when creating files.
+            versionedfile_class: Class to use for creating versioned files.
+            versionedfile_kwargs: Additional keyword arguments for versioned files.
+            escaped: If True, use escaped filenames for special characters.
+        """
         super().__init__(
             transport,
             dir_mode=dir_mode,
@@ -53,15 +75,28 @@ class VersionedFileStore(TransportStore):
         )
         self._precious = precious
         self._versionedfile_class = versionedfile_class
-        self._versionedfile_kwargs = versionedfile_kwargs
+        self._versionedfile_kwargs = versionedfile_kwargs or {}
         # Used for passing get_scope to versioned file constructors;
         self.get_scope = None
 
     def filename(self, file_id):
-        """Return the path relative to the transport root."""
+        """Return the path relative to the transport root for a file ID.
+
+        Args:
+            file_id: The file identifier to get the path for.
+
+        Returns:
+            str: The relative path for the file.
+        """
         return self._relpath(file_id)
 
     def __iter__(self):
+        """Iterate over all file IDs in the versioned file store.
+
+        Yields:
+            bytes: File IDs present in the store, discovered by examining
+                files with known versioned file suffixes.
+        """
         suffixes = self._versionedfile_class.get_suffixes()
         ids = set()
         for relpath in self._iter_files_recursive():
@@ -76,27 +111,69 @@ class VersionedFileStore(TransportStore):
                     break  # only one suffix can match
 
     def has_id(self, file_id):
+        """Check if all required files for a versioned file ID exist.
+
+        Args:
+            file_id: The file identifier to check for.
+
+        Returns:
+            bool: True if all required files exist for the versioned file.
+        """
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
         return all(self._transport.has(filename + suffix) for suffix in suffixes)
 
     def get_empty(self, file_id, transaction):
-        """Get an empty weave, which implies deleting the existing one first."""
+        """Get an empty versioned file, deleting any existing one first.
+
+        Args:
+            file_id: The file identifier to create an empty versioned file for.
+            transaction: The transaction context for the operation.
+
+        Returns:
+            VersionedFile: A new empty versioned file instance.
+        """
         if self.has_id(file_id):
             self.delete(file_id, transaction)
         return self.get_weave_or_empty(file_id, transaction)
 
     def delete(self, file_id, transaction):
-        """Remove file_id from the store."""
+        """Remove all files associated with a file ID from the store.
+
+        Args:
+            file_id: The file identifier to remove.
+            transaction: The transaction context for the operation.
+        """
         suffixes = self._versionedfile_class.get_suffixes()
         filename = self.filename(file_id)
         for suffix in suffixes:
             self._transport.delete(filename + suffix)
 
     def _get(self, file_id):
+        """Get a file stream for reading a versioned file.
+
+        Args:
+            file_id: The file identifier to retrieve.
+
+        Returns:
+            File-like object for reading the file content.
+        """
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
+        """Put a file stream into the store for a given file ID.
+
+        Args:
+            file_id: The file identifier to store under.
+            f: File-like object containing data to store.
+
+        Returns:
+            The result of the transport put operation.
+
+        Raises:
+            _mod_transport.NoSuchFile: If the directory doesn't exist and
+                the store is not configured for prefixing.
+        """
         fn = self.filename(file_id)
         try:
             return self._transport.put_file(fn, f, mode=self._file_mode)
@@ -107,11 +184,17 @@ class VersionedFileStore(TransportStore):
             return self._transport.put_file(fn, f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction, _filename=None):
-        """Return the VersionedFile for file_id.
+        """Return the VersionedFile for a given file ID.
 
-        :param _filename: filename that would be returned from self.filename for
-        file_id. This is used to reduce duplicate filename calculations when
-        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        Args:
+            file_id: The file identifier to retrieve the versioned file for.
+            transaction: The transaction context for the operation.
+            _filename: Optional filename that would be returned from self.filename
+                for file_id. This is used to reduce duplicate filename calculations
+                when using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+
+        Returns:
+            VersionedFile: The versioned file instance for the given file ID.
         """
         if _filename is None:
             _filename = self.filename(file_id)
@@ -138,11 +221,19 @@ class VersionedFileStore(TransportStore):
     def _make_new_versionedfile(
         self, file_id, transaction, known_missing=False, _filename=None
     ):
-        """Make a new versioned file.
+        """Create a new versioned file in the store.
 
-        :param _filename: filename that would be returned from self.filename for
-        file_id. This is used to reduce duplicate filename calculations when
-        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        Args:
+            file_id: The file identifier for the new versioned file.
+            transaction: The transaction context for the operation.
+            known_missing: If True, skip the existence check since we know
+                the file doesn't exist.
+            _filename: Optional filename that would be returned from self.filename
+                for file_id. This is used to reduce duplicate filename calculations
+                when using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+
+        Returns:
+            VersionedFile: A new empty versioned file instance.
         """
         if not known_missing and self.has_id(file_id):
             self.delete(file_id, transaction)
@@ -177,7 +268,18 @@ class VersionedFileStore(TransportStore):
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
-        """Return a weave, or an empty one if it doesn't exist."""
+        """Return a versioned file, or create an empty one if it doesn't exist.
+
+        This method is optimized for cases where we need to access many
+        versioned files and want to avoid repeated filename calculations.
+
+        Args:
+            file_id: The file identifier to retrieve or create.
+            transaction: The transaction context for the operation.
+
+        Returns:
+            VersionedFile: The existing or newly created versioned file instance.
+        """
         # This is typically used from 'commit' and 'fetch/push/pull' where
         # we scan across many versioned files once. As such the small overhead
         # of calculating the filename before doing a cache lookup is more than
@@ -193,7 +295,15 @@ class VersionedFileStore(TransportStore):
             return weave
 
     def _put_weave(self, file_id, weave, transaction):
-        """Preserved here for upgrades-to-weaves to use."""
+        """Store a versioned file by copying all records from another.
+
+        This method is preserved for upgrades-to-weaves to use.
+
+        Args:
+            file_id: The file identifier for the new versioned file.
+            weave: The source versioned file to copy records from.
+            transaction: The transaction context for the operation.
+        """
         myweave = self._make_new_versionedfile(file_id, transaction)
         myweave.insert_record_stream(
             weave.get_record_stream(
@@ -202,5 +312,12 @@ class VersionedFileStore(TransportStore):
         )
 
     def total_size(self):
+        """Return the total count and size, adjusted for versioned file suffixes.
+
+        Returns:
+            Tuple[float, int]: A tuple of (adjusted_file_count, total_bytes).
+                The file count is divided by the number of suffixes since each
+                versioned file consists of multiple physical files.
+        """
         count, bytes = super().total_size()
         return (count / len(self._versionedfile_class.get_suffixes())), bytes

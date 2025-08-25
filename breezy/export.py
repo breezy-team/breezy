@@ -16,7 +16,6 @@
 
 """Export trees to tarballs, non-controlled directories, zipfiles, etc."""
 
-import errno
 import os
 import sys
 import time
@@ -187,13 +186,10 @@ def dir_exporter_generator(
     """
     try:
         os.mkdir(dest)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            # check if directory empty
-            if os.listdir(dest) != []:
-                raise errors.BzrError("Can't export tree to non-empty directory.")
-        else:
-            raise
+    except FileExistsError as e:
+        # check if directory empty
+        if os.listdir(dest) != []:
+            raise errors.BzrError("Can't export tree to non-empty directory.") from e
     # Iterate everything, building up the files we will want to export, and
     # creating the directories and symlinks that we need.
     # This tracks (None, (destination_path, executable))
@@ -213,13 +209,11 @@ def dir_exporter_generator(
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
-                    "Failed to create symlink {!r} -> {!r}, error: {}".format(
-                        fullpath, symlink_target, e
-                    )
-                )
+                    f"Failed to create symlink {fullpath!r} -> {symlink_target!r}, error: {e}"
+                ) from e
         else:
             raise errors.BzrError(
-                "don't know how to export {{{}}} of kind {!r}".format(tp, ie.kind)
+                f"don't know how to export {{{tp}}} of kind {ie.kind!r}"
             )
 
         yield

@@ -22,8 +22,9 @@ import time
 
 from breezy import tests
 from breezy.bzr import hashcache
-from breezy.bzr.workingtree import InventoryWorkingTree
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...bzr.workingtree import InventoryWorkingTree
 
 
 class TestReadonly(TestCaseWithWorkingTree):
@@ -44,10 +45,7 @@ class TestReadonly(TestCaseWithWorkingTree):
 
     def _set_all_dirs(self, basedir, readonly=True):
         """Recursively set all directories beneath this one."""
-        if readonly:
-            mode = 0o555
-        else:
-            mode = 0o755
+        mode = 365 if readonly else 493
 
         for root, dirs, _files in os.walk(basedir, topdown=False):
             for d in dirs:
@@ -85,7 +83,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         the_hashcache = getattr(tree, "_hashcache", None)
         if the_hashcache is not None:
             self.assertIsInstance(the_hashcache, hashcache.HashCache)
-            the_hashcache._cutoff_time = self._custom_cutoff_time
+            the_hashcache.set_cutoff_offset(10)
             hack_dirstate = False
         else:
             # DirState trees don't have a HashCache, but they do have the same

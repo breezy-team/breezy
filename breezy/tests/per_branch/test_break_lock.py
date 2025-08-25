@@ -16,6 +16,8 @@
 
 """Tests for branch break-lock behaviour."""
 
+import contextlib
+
 from breezy import branch as _mod_branch
 from breezy import errors, tests, ui
 from breezy.tests import per_branch
@@ -29,10 +31,8 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.branch.break_lock()
-        except NotImplementedError:
-            pass
 
     def test_unlocked_repo_locked(self):
         # break lock on the branch should try on the repository even

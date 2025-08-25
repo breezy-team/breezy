@@ -33,11 +33,12 @@ import os
 import sys
 
 from breezy import urlutils
-from breezy.branch import Branch
-from breezy.controldir import ControlDir
 from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
+
+from ..branch import Branch
+from ..controldir import ControlDir
+from ..workingtree import WorkingTree
+from .test_sftp_transport import TestCaseWithSFTPServer
 
 
 def chmod_r(base, file_mode, dir_mode):

@@ -17,6 +17,13 @@
 # Author: Martin Pool <mbp@canonical.com>
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
+"""Text merge functionality for handling two-way and three-way merges.
+
+This module provides classes for merging text files with conflict detection
+and resolution. It supports structured merge information representation and
+various merge strategies.
+"""
+
 
 class TextMerge:
     """Base class for text-mergers
@@ -40,6 +47,16 @@ class TextMerge:
     SPLIT_MARKER = b"=======\n"
 
     def __init__(self, a_marker=A_MARKER, b_marker=B_MARKER, split_marker=SPLIT_MARKER):
+        r"""Initialize a TextMerge instance with conflict markers.
+
+        Args:
+            a_marker: Marker for the start of conflicted region A (THIS).
+                Defaults to "<<<<<<< \n".
+            b_marker: Marker for the end of conflicted region B (OTHER).
+                Defaults to ">>>>>>> \n".
+            split_marker: Marker separating conflicted regions A and B.
+                Defaults to "=======\n".
+        """
         self.a_marker = a_marker
         self.b_marker = b_marker
         self.split_marker = split_marker
@@ -122,6 +139,18 @@ class Merge2(TextMerge):
         b_marker=TextMerge.B_MARKER,
         split_marker=TextMerge.SPLIT_MARKER,
     ):
+        """Initialize a two-way merge operation.
+
+        Args:
+            lines_a: Sequence of lines from the first text (THIS).
+            lines_b: Sequence of lines from the second text (OTHER).
+            a_marker: Marker for the start of conflicted region A.
+                Defaults to TextMerge.A_MARKER.
+            b_marker: Marker for the end of conflicted region B.
+                Defaults to TextMerge.B_MARKER.
+            split_marker: Marker separating conflicted regions A and B.
+                Defaults to TextMerge.SPLIT_MARKER.
+        """
         TextMerge.__init__(self, a_marker, b_marker, split_marker)
         self.lines_a = lines_a
         self.lines_b = lines_b

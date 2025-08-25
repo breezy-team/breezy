@@ -35,6 +35,12 @@ class GitCommitBuilder(CommitBuilder):
     supports_record_entry_contents = False
 
     def __init__(self, *args, **kwargs):
+        """Initialize the GitCommitBuilder.
+
+        Args:
+            *args: Positional arguments passed to parent constructor.
+            **kwargs: Keyword arguments passed to parent constructor.
+        """
         super().__init__(*args, **kwargs)
         self.random_revid = True
         self._validate_revprops(self._revprops)
@@ -46,9 +52,24 @@ class GitCommitBuilder(CommitBuilder):
         self._mapping = self.repository.get_mapping()
 
     def any_changes(self):
+        """Check if there are any changes to commit.
+
+        Returns:
+            True if there are changes, False otherwise.
+        """
         return self._any_changes
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
+        """Record changes from an iterator of changes.
+
+        Args:
+            workingtree: The working tree.
+            basis_revid: Revision ID of the basis tree.
+            iter_changes: Iterator of changes to record.
+
+        Yields:
+            Tuples of (path, (git_sha1, stat_info)) for modified files.
+        """
         seen_root = False
         for change in iter_changes:
             if change.kind == (None, None):
@@ -90,8 +111,8 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
-            except KeyError:
-                raise KeyError("unknown kind {}".format(change.kind[1]))
+            except KeyError as err:
+                raise KeyError(f"unknown kind {change.kind[1]}") from err
             entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
@@ -122,7 +143,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry.reference_revision = reference_revision
                 st = None
             else:
-                raise AssertionError("Unknown kind {!r}".format(change.kind[1]))
+                raise AssertionError(f"Unknown kind {change.kind[1]!r}")
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
             if change.path[0] is not None:
@@ -150,10 +171,19 @@ class GitCommitBuilder(CommitBuilder):
         self.new_inventory = None
 
     def update_basis(self, tree):
+        """Update the basis tree for this commit.
+
+        Args:
+            tree: The basis tree (not used in Git implementation).
+        """
         # Nothing to do here
         pass
 
     def finish_inventory(self):
+        """Finish building the inventory.
+
+        This finalizes the blob dictionary by removing any None entries.
+        """
         # eliminate blobs that were removed
         self._blobs = dict(self._blobs.items())
 
@@ -161,6 +191,14 @@ class GitCommitBuilder(CommitBuilder):
         return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.items())
 
     def commit(self, message):
+        """Create a commit with the specified message.
+
+        Args:
+            message: Commit message.
+
+        Returns:
+            The revision ID of the new commit.
+        """
         self._validate_unicode_text(message, "commit message")
         c = Commit()
         c.parents = [
@@ -191,11 +229,11 @@ class GitCommitBuilder(CommitBuilder):
         c.author = fix_person_identifier(author.encode(encoding))
         bugstext = self._revprops.pop("bugs", None)
         if bugstext is not None:
-            for url, status in bugtracker.decode_bug_urls(bugstext):
+            for url, status in bugtracker.decode_bug_urls(bugstext.splitlines()):
                 if status == bugtracker.FIXED:
-                    pseudoheaders.append(("Fixes: {}".format(url)).encode(encoding))
+                    pseudoheaders.append(f"Fixes: {url}".encode(encoding))
                 elif status == bugtracker.RELATED:
-                    pseudoheaders.append(("Bug: {}".format(url)).encode(encoding))
+                    pseudoheaders.append(f"Bug: {url}".encode(encoding))
                 else:
                     raise bugtracker.InvalidBugStatus(status)
         if self._revprops:
@@ -233,14 +271,34 @@ class GitCommitBuilder(CommitBuilder):
         return self._new_revision_id
 
     def abort(self):
+        """Abort the commit process.
+
+        This aborts any open write group in the repository.
+        """
         if self.repository.is_in_write_group():
             self.repository.abort_write_group()
 
     def revision_tree(self):
+        """Get the revision tree for the committed revision.
+
+        Returns:
+            The revision tree for the new commit.
+        """
         return self.repository.revision_tree(self._new_revision_id)
 
     def get_basis_delta(self):
+        """Get the basis delta for this commit.
+
+        Returns:
+            The inventory delta for this commit.
+        """
         return self._inv_delta
 
     def update_basis_by_delta(self, revid, delta):
+        """Update the basis tree using a delta.
+
+        Args:
+            revid: Revision ID of the basis.
+            delta: Delta to apply (not used in Git implementation).
+        """
         pass

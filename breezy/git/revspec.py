@@ -69,6 +69,11 @@ class RevisionSpec_git(RevisionSpec):
         raise InvalidRevisionSpec(self.user_spec, branch)
 
     def __nonzero__(self):
+        """Check if this revision spec resolves to a valid revision.
+
+        Returns:
+            bool: True if the revision spec is valid and not null, False otherwise.
+        """
         # The default implementation uses branch.repository.has_revision()
         if self.rev_id is None:
             return False
@@ -122,7 +127,17 @@ class RevisionSpec_git(RevisionSpec):
         return RevisionInfo.from_revision_id(branch, revid)
 
     def needs_branch(self):
+        """Check if this revision spec requires a branch.
+
+        Returns:
+            bool: Always returns True as Git SHA1 lookups require a branch.
+        """
         return True
 
     def get_branch(self):
+        """Get the branch associated with this revision spec.
+
+        Returns:
+            None: Git revision specs don't specify a branch.
+        """
         return None

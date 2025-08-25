@@ -25,7 +25,7 @@ def load_tests(loader, basic_tests, pattern):
     modules_to_test = [
         "breezy.bzr.tests.per_inventory.basics",
     ]
-    from breezy.bzr.inventory import CHKInventory, Inventory
+    from ...inventory import CHKInventory, Inventory
 
     def inv_to_chk_inv(test, inv):
         """CHKInventory needs a backing VF, so we create one."""
@@ -54,9 +54,10 @@ def load_tests(loader, basic_tests, pattern):
         ),
     ]
     # add the tests for the sub modules
-    return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(modules_to_test), scenarios, basic_tests
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in modules_to_test:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
+    return tests.multiply_tests(submod_tests, scenarios, basic_tests)
 
 
 class TestCaseWithInventory(tests.TestCaseWithMemoryTransport):

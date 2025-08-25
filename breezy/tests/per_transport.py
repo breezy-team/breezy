@@ -20,14 +20,16 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+import contextlib
 import os
+import random
 import stat
 import sys
 from io import BytesIO
 
 from .. import errors, osutils, pyutils, urlutils
 from .. import transport as _mod_transport
-from ..errors import ConnectionError, PathError, TransportNotPossible
+from ..errors import PathError, TransportNotPossible
 from ..osutils import getcwd
 from ..transport import (
     ConnectedTransport,
@@ -64,7 +66,7 @@ def transport_test_permutations():
             )
             for klass, server_factory in permutations:
                 scenario = (
-                    "{},{}".format(klass.__name__, server_factory.__name__),
+                    f"{klass.__name__},{server_factory.__name__}",
                     {"transport_class": klass, "transport_server": server_factory},
                 )
                 result.append(scenario)
@@ -126,10 +128,8 @@ class TransportTests(TestTransportImplementation):
     def test_external_url(self):
         """.external_url either works or raises InProcessTransport."""
         t = self.get_transport()
-        try:
+        with contextlib.suppress(errors.InProcessTransport):
             t.external_url()
-        except errors.InProcessTransport:
-            pass
 
     def test_has(self):
         t = self.get_transport()
@@ -192,10 +192,8 @@ class TransportTests(TestTransportImplementation):
             return
         # having got a file, read() must either work (i.e. http reading a dir
         # listing) or fail with ReadError
-        try:
+        with contextlib.suppress(errors.ReadError):
             a_file.read()
-        except errors.ReadError:
-            pass
 
     def test_get_bytes(self):
         t = self.get_transport()
@@ -957,10 +955,10 @@ class TransportTests(TestTransportImplementation):
         """
         try:
             url = self._server.get_bogus_url()
-        except NotImplementedError:
+        except NotImplementedError as err:
             raise TestSkipped(
                 "Transport {} has no bogus URL support.".format(self._server.__class__)
-            )
+            ) from err
         t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, ".bzr/branch")
 
@@ -1013,14 +1011,18 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(t.has(source_name))
             self.assertTrue(t.has(link_name))
 
-            st = t.stat(link_name)
-            self.assertEqual(st[ST_NLINK], 2)
-        except TransportNotPossible:
+            try:
+                local_path = t.local_abspath(link_name)
+                st = os.stat(local_path)
+                self.assertEqual(st[ST_NLINK], 2)
+            except errors.NotLocalUrl:
+                pass
+        except TransportNotPossible as err:
             raise TestSkipped(
                 "Transport {} does not support hardlinks.".format(
                     self._server.__class__
                 )
-            )
+            ) from err
 
     def test_symlink(self):
         from stat import S_ISLNK
@@ -1040,13 +1042,12 @@ class TransportTests(TestTransportImplementation):
 
             st = t.stat(link_name)
             self.assertTrue(
-                S_ISLNK(st.st_mode),
-                "expected symlink, got mode {:o}".format(st.st_mode),
+                S_ISLNK(st.st_mode), f"expected symlink, got mode {st.st_mode:o}"
             )
-        except TransportNotPossible:
+        except TransportNotPossible as err:
             raise TestSkipped(
                 "Transport {} does not support symlinks.".format(self._server.__class__)
-            )
+            ) from err
 
         self.assertEqual(source_name, t.readlink(link_name))
 
@@ -1054,10 +1055,10 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         try:
             self.assertRaises(NoSuchFile, t.readlink, "nonexistent")
-        except TransportNotPossible:
+        except TransportNotPossible as err:
             raise TestSkipped(
                 "Transport {} does not support symlinks.".format(self._server.__class__)
-            )
+            ) from err
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1158,15 +1159,9 @@ class TransportTests(TestTransportImplementation):
                 path = t._parsed_url.path
             return str(urlutils.URL(scheme, user, password, host, port, path))
 
-        if t._parsed_url.scheme == "ftp":
-            scheme = "sftp"
-        else:
-            scheme = "ftp"
+        scheme = "sftp" if t._parsed_url.scheme == "ftp" else "ftp"
         self.assertIsNot(t, t._reuse_for(new_url(scheme=scheme)))
-        if t._parsed_url.user == "me":
-            user = "you"
-        else:
-            user = "me"
+        user = "you" if t._parsed_url.user == "me" else "me"
         self.assertIsNot(t, t._reuse_for(new_url(user=user)))
         # passwords are not taken into account because:
         # - it makes no sense to have two different valid passwords for the
@@ -1181,10 +1176,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t, t._reuse_for(new_url(password="from space")))
         # We will not connect, we can use a invalid host
         self.assertIsNot(t, t._reuse_for(new_url(host=t._parsed_url.host + "bar")))
-        if t._parsed_url.port == 1234:
-            port = 4321
-        else:
-            port = 1234
+        port = 4321 if t._parsed_url.port == 1234 else 1234
         self.assertIsNot(t, t._reuse_for(new_url(port=port)))
         # No point in trying to reuse a transport for a local URL
         self.assertIs(None, t._reuse_for("/valid_but_not_existing"))
@@ -1510,8 +1502,10 @@ class TransportTests(TestTransportImplementation):
 
         try:
             self.build_tree(files, transport=t, line_endings="binary")
-        except UnicodeError:
-            raise TestSkipped("cannot handle unicode paths in current encoding")
+        except UnicodeError as err:
+            raise TestSkipped(
+                "cannot handle unicode paths in current encoding"
+            ) from err
 
         # A plain unicode string is not a valid url
         for fname in files:
@@ -1614,7 +1608,7 @@ class TransportTests(TestTransportImplementation):
         # reference the returned data with the random data. To avoid doing
         # multiple large random byte look ups we do several tests on the same
         # backing data.
-        content = osutils.rand_bytes(200 * 1024)
+        content = random.randbytes(200 * 1024)  # noqa: S311
         content_size = len(content)
         if transport.is_readonly():
             self.build_tree_contents([("a", content)])
@@ -1722,6 +1716,7 @@ class TransportTests(TestTransportImplementation):
             return
         with t.open_write_stream("foo") as handle:
             handle.write(b"bcd")
+            handle.flush()
             self.assertEqual(
                 [(0, b"b"), (2, b"d")], list(t.readv("foo", ((0, 1), (2, 1))))
             )
@@ -1792,7 +1787,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport("foo")
         orig_base = transport.base
         transport.set_segment_parameter("arm", "board")
-        self.assertEqual("{},arm=board".format(orig_base), transport.base)
+        self.assertEqual(f"{orig_base},arm=board", transport.base)
         self.assertEqual({"arm": "board"}, transport.get_segment_parameters())
         transport.set_segment_parameter("arm", None)
         transport.set_segment_parameter("nonexistant", None)
@@ -1805,8 +1800,8 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         try:
             t.symlink("target", "link")
-        except TransportNotPossible:
-            raise TestSkipped("symlinks not supported")
+        except TransportNotPossible as err:
+            raise TestSkipped("symlinks not supported") from err
         t2 = t.clone("link")
         st = t2.stat("")
         self.assertTrue(stat.S_ISLNK(st.st_mode))

@@ -20,8 +20,9 @@ import sys
 
 import breezy
 from breezy import commands, osutils, tests
-from breezy.plugins.bash_completion.bashcomp import *
 from breezy.tests import features
+
+from ..bashcomp import *  # noqa: F403
 
 
 class BashCompletionMixin:
@@ -64,7 +65,7 @@ class BashCompletionMixin:
             line for line in err.splitlines() if not line.startswith(b"brz: warning: ")
         ]
         if errlines != []:
-            raise AssertionError("Unexpected error message:\n{}".format(err))
+            raise AssertionError(f"Unexpected error message:\n{err}")
         self.assertEqual(b"", b"".join(errlines), "No messages to standard error")
         # import sys
         # print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
@@ -86,18 +87,14 @@ class BashCompletionMixin:
         missing = set(words) - self.completion_result
         if missing:
             raise AssertionError(
-                "Completion should contain {!r} but it has {!r}".format(
-                    missing, self.completion_result
-                )
+                f"Completion should contain {missing!r} but it has {self.completion_result!r}"
             )
 
     def assertCompletionOmits(self, *words):
         surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError(
-                "Completion should omit {!r} but it has {!r}".format(
-                    surplus, self.completion_result
-                )
+                f"Completion should omit {surplus!r} but it has {self.completion_result!r}"
             )
 
     def get_script(self):
@@ -175,7 +172,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport, BashCompletionMixi
 
     def get_script(self):
         s = super().get_script()
-        s = s.replace("$(brz ", "$({} ".format(" ".join(self.get_brz_command())))
+        s = s.replace("$(brz ", f"$({' '.join(self.get_brz_command())} ")
         s = s.replace("2>/dev/null", "")
         return s
 
@@ -239,15 +236,14 @@ class TestBashCodeGen(tests.TestCase):
     def test_brz_version(self):
         data = CompletionData()
         cg = BashCodeGen(data)
-        self.assertEqual("{}.".format(breezy.version_string), cg.brz_version())
+        self.assertEqual(f"{breezy.version_string}.", cg.brz_version())
         data.plugins["foo"] = PluginData("foo", "1.0")
         data.plugins["bar"] = PluginData("bar", "2.0")
         cg = BashCodeGen(data)
         self.assertEqual(
-            """\
-{} and the following plugins:
+            f"""{breezy.version_string} and the following plugins:
 # bar 2.0
-# foo 1.0""".format(breezy.version_string),
+# foo 1.0""",
             cg.brz_version(),
         )
 

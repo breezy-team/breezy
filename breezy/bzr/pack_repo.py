@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Pack-based repository format implementation.
+
+This module implements a repository format that stores data in 'pack' files,
+which are container files that hold multiple versioned texts, inventories,
+revisions, and signatures. The pack format provides efficient storage and
+fast access to repository data through specialized indices.
+"""
+
+import contextlib
+import hashlib
 import re
 import sys
 
@@ -22,14 +32,11 @@ from ..lazy_import import lazy_import
 lazy_import(
     globals(),
     """
-import contextlib
 import time
 
 from breezy import (
     config,
-    debug,
     graph,
-    osutils,
     transactions,
     ui,
     )
@@ -41,16 +48,16 @@ from breezy.bzr.index import (
     )
 """,
 )
-from .. import errors, lockable_files, lockdir
+from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
-from ..bzr import btree_index
+from ..bzr import btree_index, lockable_files
 from ..bzr import index as _mod_index
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
-from .serializer import Serializer
+from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -128,6 +135,20 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
         lossy=False,
         owns_transaction=True,
     ):
+        """Initialize a PackCommitBuilder.
+
+        Args:
+            repository: The target repository for the commit.
+            parents: Parent revision IDs for the commit.
+            config: Branch configuration.
+            timestamp: Commit timestamp (optional).
+            timezone: Commit timezone (optional).
+            committer: Committer identity (optional).
+            revprops: Revision properties (optional).
+            revision_id: Specific revision ID to use (optional).
+            lossy: Whether this is a lossy conversion (optional).
+            owns_transaction: Whether this builder owns the transaction (optional).
+        """
         VersionedFileCommitBuilder.__init__(
             self,
             repository,
@@ -230,8 +251,8 @@ class Pack:
             from pprint import pformat
 
             raise errors.BzrCheckError(
-                "Newly created pack file {!r} has delta references to "
-                "items not in its repository:\n{}".format(self, pformat(missing_items))
+                f"Newly created pack file {self!r} has delta references to "
+                f"items not in its repository:\n{pformat(missing_items)}"
             )
 
     def file_name(self):
@@ -239,6 +260,11 @@ class Pack:
         return self.name + ".pack"
 
     def get_revision_count(self):
+        """Get the number of revisions in this pack.
+
+        Returns:
+            int: The number of revisions stored in this pack.
+        """
         return self.revision_index.key_count()
 
     def index_name(self, index_type, name):
@@ -280,11 +306,27 @@ class Pack:
         setattr(self, index_type + "_index", index)
 
     def __lt__(self, other):
+        """Compare packs by object ID for sorting.
+
+        Args:
+            other: Another Pack instance to compare with.
+
+        Returns:
+            bool: True if this pack is less than the other.
+
+        Raises:
+            TypeError: If other is not a Pack instance.
+        """
         if not isinstance(other, Pack):
             raise TypeError(other)
         return id(self) < id(other)
 
     def __hash__(self):
+        """Return hash of pack based on its indices.
+
+        Returns:
+            int: Hash value for this pack.
+        """
         return hash(
             (
                 type(self),
@@ -336,12 +378,33 @@ class ExistingPack(Pack):
             raise AssertionError()
 
     def __eq__(self, other):
+        """Check equality with another pack.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if packs are equal.
+        """
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
+        """Check inequality with another pack.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if packs are not equal.
+        """
         return not self.__eq__(other)
 
     def __repr__(self):
+        """Return string representation of this pack.
+
+        Returns:
+            str: String representation including class, transport, and name.
+        """
         return "<{}.{} object at 0x{:x}, {}, {}".format(
             self.__class__.__module__,
             self.__class__.__name__,
@@ -351,10 +414,22 @@ class ExistingPack(Pack):
         )
 
     def __hash__(self):
+        """Return hash of pack based on type and name.
+
+        Returns:
+            int: Hash value for this existing pack.
+        """
         return hash((type(self), self.name))
 
 
 class ResumedPack(ExistingPack):
+    """A pack that is being resumed from a previous suspended state.
+
+    This class represents a pack that was previously being written but was
+    suspended (e.g., due to interrupted write group). It can be resumed to
+    continue the writing process.
+    """
+
     def __init__(
         self,
         name,
@@ -400,6 +475,14 @@ class ResumedPack(ExistingPack):
         # XXX: perhaps check that the .pack file exists?
 
     def access_tuple(self):
+        """Return transport and filename tuple for pack access.
+
+        Returns:
+            tuple: (transport, filename) depending on pack state.
+
+        Raises:
+            AssertionError: If pack is in an invalid state.
+        """
         if self._state == "finished":
             return Pack.access_tuple(self)
         elif self._state == "resumed":
@@ -408,6 +491,11 @@ class ResumedPack(ExistingPack):
             raise AssertionError(self._state)
 
     def abort(self):
+        """Abort the resumed pack by deleting temporary files.
+
+        Removes the pack file and all associated index files from the
+        upload transport.
+        """
         self.upload_transport.delete(self.file_name())
         indices = [
             self.revision_index,
@@ -421,6 +509,11 @@ class ResumedPack(ExistingPack):
             index._transport.delete(index._name)
 
     def finish(self):
+        """Complete the resumed pack by moving files to final locations.
+
+        Moves the pack file and all index files from the upload area to their
+        final locations in the repository, and updates the pack state.
+        """
         self._check_references()
         index_types = ["revision", "inventory", "text", "signature"]
         if self.chk_index is not None:
@@ -491,7 +584,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = osutils.md5()
+        self._hash = hashlib.md5()  # noqa: S324
         # a tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None
@@ -508,7 +601,7 @@ class NewPack(Pack):
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode
         )
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             mutter(
                 "%s: create_pack: pack stream open: %s%s t+%6.3fs",
                 time.ctime(),
@@ -580,6 +673,11 @@ class NewPack(Pack):
         )
 
     def finish_content(self):
+        """Finalize the content of the pack and assign it a name.
+
+        Ends the container writer, flushes any remaining buffered data,
+        and assigns the pack a name based on the MD5 hash of its contents.
+        """
         if self.name is not None:
             return
         self._writer.end()
@@ -637,7 +735,7 @@ class NewPack(Pack):
             new_name = "../packs/" + new_name
         self.upload_transport.move(self.random_name, new_name)
         self._state = "finished"
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             # XXX: size might be interesting?
             mutter(
                 "%s: create_pack: pack finished: %s%s->%s t+%6.3fs",
@@ -660,6 +758,11 @@ class NewPack(Pack):
         return index._external_references()
 
     def set_write_cache_size(self, size):
+        """Set the write cache size for the pack.
+
+        Args:
+            size: Maximum number of bytes to cache before writing to disk.
+        """
         self._cache_limit = size
 
     def _write_index(self, index_type, index, label, suspend=False):
@@ -670,10 +773,7 @@ class NewPack(Pack):
         :param label: What label to give the index e.g. 'revision'.
         """
         index_name = self.index_name(index_type, self.name)
-        if suspend:
-            transport = self.upload_transport
-        else:
-            transport = self.index_transport
+        transport = self.upload_transport if suspend else self.index_transport
         index_tempfile = index.finish()
         index_bytes = index_tempfile.read()
         write_stream = transport.open_write_stream(index_name, mode=self._file_mode)
@@ -684,7 +784,7 @@ class NewPack(Pack):
             )
         )
         self.index_sizes[self.index_offset(index_type)] = len(index_bytes)
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             # XXX: size might be interesting?
             mutter(
                 "%s: create_pack: wrote %s index: %s%s t+%6.3fs",
@@ -757,9 +857,7 @@ class AggregateIndex:
         """
         if self.add_callback is not None:
             raise AssertionError(
-                "{} already has a writable index through {}".format(
-                    self, self.add_callback
-                )
+                f"{self} already has a writable index through {self.add_callback}"
             )
         # allow writing: queue writes to a new index
         self.add_index(index, pack)
@@ -899,7 +997,7 @@ class Packer:
         raise NotImplementedError(self._create_pack_from_packs)
 
     def _log_copied_texts(self):
-        if "pack" in debug.debug_flags:
+        if debug.debug_flag_enabled("pack"):
             mutter(
                 "%s: create_pack: file texts copied: %s%s %d items t+%6.3fs",
                 time.ctime(),
@@ -999,7 +1097,12 @@ class RepositoryPackCollection:
         self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.repo)
+        """Return string representation of the pack collection.
+
+        Returns:
+            str: String representation including class name and repository.
+        """
+        return f"{self.__class__.__name__}({self.repo!r})"
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -1007,7 +1110,7 @@ class RepositoryPackCollection:
         :param pack: A Pack object.
         """
         if pack.name in self._packs_by_name:
-            raise AssertionError("pack {} already in _packs_by_name".format(pack.name))
+            raise AssertionError(f"pack {pack.name} already in _packs_by_name")
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1355,9 +1458,7 @@ class RepositoryPackCollection:
         """
         self.ensure_loaded()
         if a_new_pack.name in self._names:
-            raise errors.BzrError(
-                "Pack {!r} already exists in {}".format(a_new_pack.name, self)
-            )
+            raise errors.BzrError(f"Pack {a_new_pack.name!r} already exists in {self}")
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1426,16 +1527,14 @@ class RepositoryPackCollection:
                 except _mod_transport.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
-                    try:
+                    with contextlib.suppress(_mod_transport.FileExists):
                         pack.pack_transport.mkdir("../obsolete_packs/")
-                    except _mod_transport.FileExists:
-                        pass
                     pack.pack_transport.move(
                         pack.file_name(), "../obsolete_packs/" + pack.file_name()
                     )
             except (errors.PathError, errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
-                mutter("couldn't rename obsolete pack, skipping it:\n{}".format(e))
+                mutter(f"couldn't rename obsolete pack, skipping it:\n{e}")
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
@@ -1448,7 +1547,7 @@ class RepositoryPackCollection:
                         pack.name + suffix, "../obsolete_packs/" + pack.name + suffix
                     )
                 except (errors.PathError, errors.TransportError) as e:
-                    mutter("couldn't rename obsolete index, skipping it:\n{}".format(e))
+                    mutter(f"couldn't rename obsolete index, skipping it:\n{e}")
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
@@ -1615,9 +1714,12 @@ class RepositoryPackCollection:
         self.lock_names()
         try:
             builder = self._index_builder_class()
-            (disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes) = (
-                self._diff_pack_names()
-            )
+            (
+                disk_nodes,
+                deleted_nodes,
+                new_nodes,
+                orig_disk_nodes,
+            ) = self._diff_pack_names()
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
@@ -1668,9 +1770,12 @@ class RepositoryPackCollection:
         if first_read:
             return True
         # out the new value.
-        (disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes) = (
-            self._diff_pack_names()
-        )
+        (
+            disk_nodes,
+            deleted_nodes,
+            new_nodes,
+            orig_disk_nodes,
+        ) = self._diff_pack_names()
         # _packs_at_load is meant to be the explicit list of names in
         # 'pack-names' at then start. As such, it should not contain any
         # pending names that haven't been written out yet.
@@ -1719,7 +1824,7 @@ class RepositoryPackCollection:
             try:
                 obsolete_pack_transport.delete(filename)
             except (errors.PathError, errors.TransportError) as e:
-                warning("couldn't delete obsolete pack, skipping it:\n{}".format(e))
+                warning(f"couldn't delete obsolete pack, skipping it:\n{e}")
         return found
 
     def _start_write_group(self):
@@ -1801,9 +1906,7 @@ class RepositoryPackCollection:
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
-                "Repository {} has missing compression parent(s) {!r} ".format(
-                    self.repo, sorted(all_missing)
-                )
+                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} "
             )
         problems = self._check_new_inventories()
         if problems:
@@ -1889,14 +1992,32 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: type[VersionedFileCommitBuilder]
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
 
     def __init__(
-        self, _format, a_controldir, control_files, _commit_builder_class, _serializer
+        self,
+        _format,
+        a_controldir,
+        control_files,
+        _commit_builder_class,
+        _revision_serializer,
+        _inventory_serializer,
     ):
+        """Initialize a PackRepository.
+
+        Args:
+            _format: The repository format.
+            a_controldir: The control directory containing this repository.
+            control_files: LockableFiles instance for repository control files.
+            _commit_builder_class: Class to use for commit builders.
+            _revision_serializer: Serializer for revision objects.
+            _inventory_serializer: Serializer for inventory objects.
+        """
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._serializer = _serializer
+        self._revision_serializer = _revision_serializer
+        self._inventory_serializer = _inventory_serializer
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
             self._unstacked_provider = graph.CachingParentsProvider(
@@ -1942,6 +2063,11 @@ class PackRepository(MetaDirVersionedFileRepository):
         return hint
 
     def suspend_write_group(self):
+        """Suspend the current write group and return resume tokens.
+
+        Returns:
+            list: Tokens that can be used to resume the write group later.
+        """
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
         self.revisions._index._key_dependencies.clear()
@@ -1959,15 +2085,30 @@ class PackRepository(MetaDirVersionedFileRepository):
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
 
     def get_transaction(self):
+        """Get the current transaction for this repository.
+
+        Returns:
+            Transaction: The current transaction, either write or read-only.
+        """
         if self._write_lock_count:
             return self._transaction
         else:
             return self.control_files.get_transaction()
 
     def is_locked(self):
+        """Check if the repository is locked.
+
+        Returns:
+            bool: True if the repository is locked for reading or writing.
+        """
         return self._write_lock_count or self.control_files.is_locked()
 
     def is_write_locked(self):
+        """Check if the repository is write-locked.
+
+        Returns:
+            bool: True if the repository is locked for writing.
+        """
         return self._write_lock_count
 
     def lock_write(self, token=None):
@@ -1982,7 +2123,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
-            if "relock" in debug.debug_flags and self._prev_lock == "w":
+            if debug.debug_flag_enabled("relock") and self._prev_lock == "w":
                 note("%r was write locked again", self)
             self._prev_lock = "w"
             self._unstacked_provider.enable_cache()
@@ -2003,7 +2144,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files.lock_read()
         if not locked:
-            if "relock" in debug.debug_flags and self._prev_lock == "r":
+            if debug.debug_flag_enabled("relock") and self._prev_lock == "r":
                 note("%r was read locked again", self)
             self._prev_lock = "r"
             self._unstacked_provider.enable_cache()
@@ -2013,10 +2154,24 @@ class PackRepository(MetaDirVersionedFileRepository):
         return LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
+        """Leave the lock in place when unlocking.
+
+        This operation is not supported for pack repositories.
+
+        Raises:
+            NotImplementedError: Always, as this operation is not supported.
+        """
         # not supported - raise an error
         raise NotImplementedError(self.leave_lock_in_place)
 
     def dont_leave_lock_in_place(self):
+        """Don't leave the lock in place when unlocking.
+
+        This operation is not supported for pack repositories.
+
+        Raises:
+            NotImplementedError: Always, as this operation is not supported.
+        """
         # not supported - raise an error
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
@@ -2044,13 +2199,24 @@ class PackRepository(MetaDirVersionedFileRepository):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Unlock the repository.
+
+        Decrements the lock count and releases locks when count reaches zero.
+        If a write group is still active when trying to release a write lock,
+        raises an error.
+
+        Raises:
+            BzrError: If trying to unlock while a write group is active.
+            LockNotHeld: If the repository is not locked.
+            LockBroken: If the lock has been broken.
+        """
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
             self._unstacked_provider.disable_cache()
             self._transaction = None
             self._write_lock_count = 0
             raise errors.BzrError(
-                "Must end write group before releasing write lock on {}".format(self)
+                f"Must end write group before releasing write lock on {self}"
             )
         if self._write_lock_count:
             self._write_lock_count -= 1
@@ -2091,7 +2257,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class: type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer: Serializer
+    _revision_serializer: RevisionSerializer
+    _inventory_serializer: InventorySerializer
     # Packs are not confused by ghosts.
     supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
@@ -2146,7 +2313,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
             a_controldir=a_controldir,
             control_files=control_files,
             _commit_builder_class=self._commit_builder_class,
-            _serializer=self._serializer,
+            _revision_serializer=self._revision_serializer,
+            _inventory_serializer=self._inventory_serializer,
         )
 
 
@@ -2215,9 +2383,7 @@ class _DirectPackAccess:
         """
         raw_data = b"".join(raw_data)
         if not isinstance(raw_data, bytes):
-            raise AssertionError(
-                "data must be plain bytes was {}".format(type(raw_data))
-            )
+            raise AssertionError(f"data must be plain bytes was {type(raw_data)}")
         result = []
         offset = 0
         for key, size in key_sizes:

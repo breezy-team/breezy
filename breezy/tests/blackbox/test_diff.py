@@ -21,9 +21,10 @@ import os
 import re
 
 from breezy import tests, workingtree
-from breezy.diff import DiffTree
-from breezy.diff import format_registry as diff_format_registry
 from breezy.tests import features
+
+from ...diff import DiffTree
+from ...diff import format_registry as diff_format_registry
 
 
 def subst_dates(string):
@@ -53,24 +54,24 @@ class TestDiff(DiffBase):
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!")])
         tree.commit(message="fixing hello")
-        output = self.run_bzr("diff -r 2..3", retcode=1)[0]
-        self.assertTrue("\n+hello world!" in output)
-        output = self.run_bzr("diff -c 3", retcode=1)[0]
-        self.assertTrue("\n+hello world!" in output)
-        output = self.run_bzr("diff -r last:3..last:1", retcode=1)[0]
-        self.assertTrue("\n+baz" in output)
-        output = self.run_bzr("diff -c last:2", retcode=1)[0]
-        self.assertTrue("\n+baz" in output)
+        output = self.run_bzr("diff --color=never -r 2..3", retcode=1)[0]
+        self.assertIn("\n+hello world!", output)
+        output = self.run_bzr("diff --color=never -c 3", retcode=1)[0]
+        self.assertIn("\n+hello world!", output)
+        output = self.run_bzr("diff --color=never -r last:3..last:1", retcode=1)[0]
+        self.assertIn("\n+baz", output)
+        output = self.run_bzr("diff --color=never -c last:2", retcode=1)[0]
+        self.assertIn("\n+baz", output)
         self.build_tree(["moo"])
         tree.add("moo")
         os.unlink("moo")
-        self.run_bzr("diff")
+        self.run_bzr("diff --color=never")
 
     def test_diff_prefix(self):
         """Diff --prefix appends to filenames in output."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
-        out, err = self.run_bzr("diff --prefix old/:new/", retcode=1)
+        out, err = self.run_bzr("diff --color=never --prefix old/:new/", retcode=1)
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -87,14 +88,14 @@ class TestDiff(DiffBase):
 
     def test_diff_illegal_prefix_value(self):
         # There was an error in error reporting for this option
-        out, err = self.run_bzr("diff --prefix old/", retcode=3)
+        out, err = self.run_bzr("diff --color=never --prefix old/", retcode=3)
         self.assertContainsRe(err, "--prefix expects two values separated by a colon")
 
     def test_diff_p1(self):
         """Diff -p1 produces lkml-style diffs."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
-        out, err = self.run_bzr("diff -p1", retcode=1)
+        out, err = self.run_bzr("diff --color=never -p1", retcode=1)
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -113,7 +114,7 @@ class TestDiff(DiffBase):
         """Diff -p0 produces diffs with no prefix."""
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
-        out, err = self.run_bzr("diff -p0", retcode=1)
+        out, err = self.run_bzr("diff --color=never -p0", retcode=1)
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -133,40 +134,40 @@ class TestDiff(DiffBase):
         # (Malone #3619)
         self.make_example_branch()
         out, err = self.run_bzr(
-            "diff does-not-exist",
+            "diff --color=never does-not-exist",
             retcode=3,
             error_regexes=("not versioned.*does-not-exist",),
         )
 
     def test_diff_illegal_revision_specifiers(self):
         out, err = self.run_bzr(
-            "diff -r 1..23..123",
+            "diff --color=never -r 1..23..123",
             retcode=3,
             error_regexes=("one or two revision specifiers",),
         )
 
     def test_diff_using_and_format(self):
         out, err = self.run_bzr(
-            "diff --format=default --using=mydi",
+            "diff --color=never --format=default --using=mydi",
             retcode=3,
             error_regexes=("are mutually exclusive",),
         )
 
     def test_diff_nonexistent_revision(self):
         out, err = self.run_bzr(
-            "diff -r 123",
+            "diff --color=never -r 123",
             retcode=3,
             error_regexes=("Requested revision: '123' does not exist in branch:",),
         )
 
     def test_diff_nonexistent_dotted_revision(self):
-        out, err = self.run_bzr("diff -r 1.1", retcode=3)
+        out, err = self.run_bzr("diff --color=never -r 1.1", retcode=3)
         self.assertContainsRe(
             err, "Requested revision: '1.1' does not exist in branch:"
         )
 
     def test_diff_nonexistent_dotted_revision_change(self):
-        out, err = self.run_bzr("diff -c 1.1", retcode=3)
+        out, err = self.run_bzr("diff --color=never -c 1.1", retcode=3)
         self.assertContainsRe(
             err, "Requested revision: '1.1' does not exist in branch:"
         )
@@ -176,7 +177,7 @@ class TestDiff(DiffBase):
         # (Malone #3619)
         self.make_example_branch()
         self.build_tree(["unversioned-file"])
-        out, err = self.run_bzr("diff unversioned-file", retcode=3)
+        out, err = self.run_bzr("diff --color=never unversioned-file", retcode=3)
         self.assertContainsRe(err, "not versioned.*unversioned-file")
 
     # TODO: What should diff say for a file deleted in working tree?
@@ -232,19 +233,19 @@ class TestDiff(DiffBase):
     def test_diff_branches(self):
         self.example_branches()
         # should open branch1 and diff against branch2,
-        self.check_b2_vs_b1("diff -r branch:branch2 branch1")
+        self.check_b2_vs_b1("diff --color=never -r branch:branch2 branch1")
         # Compare two working trees using various syntax forms
-        self.check_b2_vs_b1("diff --old branch2 --new branch1")
-        self.check_b2_vs_b1("diff --old branch2 branch1")
-        self.check_b2_vs_b1("diff branch2 --new branch1")
+        self.check_b2_vs_b1("diff --color=never --old branch2 --new branch1")
+        self.check_b2_vs_b1("diff --color=never --old branch2 branch1")
+        self.check_b2_vs_b1("diff --color=never branch2 --new branch1")
         # Test with a selected file that was changed
-        self.check_b2_vs_b1("diff --old branch2 --new branch1 file")
-        self.check_b2_vs_b1("diff --old branch2 branch1/file")
-        self.check_b2_vs_b1("diff branch2/file --new branch1")
+        self.check_b2_vs_b1("diff --color=never --old branch2 --new branch1 file")
+        self.check_b2_vs_b1("diff --color=never --old branch2 branch1/file")
+        self.check_b2_vs_b1("diff --color=never branch2/file --new branch1")
         # Test with a selected file that was not changed
-        self.check_no_diffs("diff --old branch2 --new branch1 file2")
-        self.check_no_diffs("diff --old branch2 branch1/file2")
-        self.check_no_diffs("diff branch2/file2 --new branch1")
+        self.check_no_diffs("diff --color=never --old branch2 --new branch1 file2")
+        self.check_no_diffs("diff --color=never --old branch2 branch1/file2")
+        self.check_no_diffs("diff --color=never branch2/file2 --new branch1")
 
     def test_diff_branches_no_working_trees(self):
         branch1_tree, branch2_tree = self.example_branches()
@@ -252,20 +253,20 @@ class TestDiff(DiffBase):
         dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
-        self.check_b2_vs_b1("diff --old branch2 --new branch1")
-        self.check_b2_vs_b1("diff --old branch2 branch1")
-        self.check_b2_vs_b1("diff branch2 --new branch1")
+        self.check_b2_vs_b1("diff --color=never --old branch2 --new branch1")
+        self.check_b2_vs_b1("diff --color=never --old branch2 branch1")
+        self.check_b2_vs_b1("diff --color=never branch2 --new branch1")
         # Compare a branch without a WT to one with a WT
-        self.check_b1_vs_b2("diff --old branch1 --new branch2")
-        self.check_b1_vs_b2("diff --old branch1 branch2")
-        self.check_b1_vs_b2("diff branch1 --new branch2")
+        self.check_b1_vs_b2("diff --color=never --old branch1 --new branch2")
+        self.check_b1_vs_b2("diff --color=never --old branch1 branch2")
+        self.check_b1_vs_b2("diff --color=never branch1 --new branch2")
         # Compare a branch with a WT against another without a WT
         dir2 = branch2_tree.controldir
         dir2.destroy_workingtree()
         self.assertFalse(dir2.has_workingtree())
-        self.check_b1_vs_b2("diff --old branch1 --new branch2")
-        self.check_b1_vs_b2("diff --old branch1 branch2")
-        self.check_b1_vs_b2("diff branch1 --new branch2")
+        self.check_b1_vs_b2("diff --color=never --old branch1 --new branch2")
+        self.check_b1_vs_b2("diff --color=never --old branch1 branch2")
+        self.check_b1_vs_b2("diff --color=never branch1 --new branch2")
 
     def test_diff_revno_branches(self):
         self.example_branches()
@@ -274,11 +275,13 @@ class TestDiff(DiffBase):
         branch2_tree.commit(message="update file once more")
 
         out, err = self.run_bzr(
-            "diff -r revno:1:branch2..revno:1:branch1",
+            "diff --color=never -r revno:1:branch2..revno:1:branch1",
         )
         self.assertEqual("", err)
         self.assertEqual("", out)
-        out, err = self.run_bzr("diff -r revno:2:branch2..revno:1:branch1", retcode=1)
+        out, err = self.run_bzr(
+            "diff --color=never -r revno:2:branch2..revno:1:branch1", retcode=1
+        )
         self.assertEqual("", err)
         self.assertEqualDiff(
             "=== modified file 'file'\n"
@@ -330,46 +333,48 @@ class TestDiff(DiffBase):
     def test_diff_to_working_tree(self):
         self.example_branch2()
         self.build_tree_contents([("branch1/file1", b"new line")])
-        output = self.run_bzr("diff -r 1.. branch1", retcode=1)
+        output = self.run_bzr("diff --color=never -r 1.. branch1", retcode=1)
         self.assertContainsRe(output[0], "\n\\-original line\n\\+new line\n")
 
     def test_diff_to_working_tree_in_subdir(self):
         self.example_branch2()
         self.build_tree_contents([("branch1/file1", b"new line")])
         os.mkdir("branch1/dir1")
-        output = self.run_bzr("diff -r 1..", retcode=1, working_dir="branch1/dir1")
+        output = self.run_bzr(
+            "diff --color=never -r 1..", retcode=1, working_dir="branch1/dir1"
+        )
         self.assertContainsRe(output[0], "\n\\-original line\n\\+new line\n")
 
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing."""
         tree = self.make_example_branch()
-        self.run_bzr("diff -r 0..1 hello", retcode=1)
+        self.run_bzr("diff --color=never -r 0..1 hello", retcode=1)
         tree.rename_one("hello", "hello1")
-        self.run_bzr("diff hello1", retcode=1)
-        self.run_bzr("diff -r 0..1 hello1", retcode=1)
+        self.run_bzr("diff --color=never hello1", retcode=1)
+        self.run_bzr("diff --color=never -r 0..1 hello1", retcode=1)
 
     def test_diff_to_branch_no_working_tree(self):
         branch1_tree = self.example_branch2()
         dir1 = branch1_tree.controldir
         dir1.destroy_workingtree()
         self.assertFalse(dir1.has_workingtree())
-        output = self.run_bzr("diff -r 1.. branch1", retcode=1)
+        output = self.run_bzr("diff --color=never -r 1.. branch1", retcode=1)
         self.assertContainsRe(output[0], "\n\\-original line\n\\+repo line\n")
 
     def test_custom_format(self):
         class BooDiffTree(DiffTree):
             def show_diff(self, specific_files, extra_trees=None):
-                self.to_file.write("BOO!\n")
+                self.to_file.write(b"BOO!\n")
                 return super().show_diff(specific_files, extra_trees)
 
         diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
         self.addCleanup(diff_format_registry.remove, "boo")
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
-        output = self.run_bzr("diff --format=boo", retcode=1)
-        self.assertTrue("BOO!" in output[0])
-        output = self.run_bzr("diff -Fboo", retcode=1)
-        self.assertTrue("BOO!" in output[0])
+        output = self.run_bzr("diff --color=never --format=boo", retcode=1)
+        self.assertIn("BOO!", output[0])
+        output = self.run_bzr("diff --color=never -Fboo", retcode=1)
+        self.assertIn("BOO!", output[0])
 
     def test_binary_diff_remove(self):
         tree = self.make_branch_and_tree(".")
@@ -377,7 +382,7 @@ class TestDiff(DiffBase):
         tree.add(["a"])
         tree.commit("add binary file")
         os.unlink("a")
-        output = self.run_bzr("diff", retcode=1)
+        output = self.run_bzr("diff --color=never", retcode=1)
         self.assertEqual(
             "=== removed file 'a'\nBinary files old/a and new/a differ\n", output[0]
         )
@@ -391,7 +396,7 @@ class TestDiff(DiffBase):
         tree.rename_one("a", "b")
         self.build_tree_contents([("a", "qwer\n")])
         tree.add("a")
-        output, error = self.run_bzr("diff -p0", retcode=1)
+        output, error = self.run_bzr("diff --color=never -p0", retcode=1)
         self.assertEqualDiff(
             """\
 === added file 'a'
@@ -433,27 +438,27 @@ class TestDiffLabels(DiffBase):
     def test_diff_label_removed(self):
         tree = super().make_example_branch()
         tree.remove("hello", keep_files=False)
-        diff = self.run_bzr("diff", retcode=1)
-        self.assertTrue("=== removed file 'hello'" in diff[0])
+        diff = self.run_bzr("diff --color=never", retcode=1)
+        self.assertIn("=== removed file 'hello'", diff[0])
 
     def test_diff_label_added(self):
         tree = super().make_example_branch()
         self.build_tree_contents([("barbar", b"barbar")])
         tree.add("barbar")
-        diff = self.run_bzr("diff", retcode=1)
-        self.assertTrue("=== added file 'barbar'" in diff[0])
+        diff = self.run_bzr("diff --color=never", retcode=1)
+        self.assertIn("=== added file 'barbar'", diff[0])
 
     def test_diff_label_modified(self):
         super().make_example_branch()
         self.build_tree_contents([("hello", b"barbar")])
-        diff = self.run_bzr("diff", retcode=1)
-        self.assertTrue("=== modified file 'hello'" in diff[0])
+        diff = self.run_bzr("diff --color=never", retcode=1)
+        self.assertIn("=== modified file 'hello'", diff[0])
 
     def test_diff_label_renamed(self):
         tree = super().make_example_branch()
         tree.rename_one("hello", "gruezi")
-        diff = self.run_bzr("diff", retcode=1)
-        self.assertTrue("=== renamed file 'hello' => 'gruezi'" in diff[0])
+        diff = self.run_bzr("diff --color=never", retcode=1)
+        self.assertIn("=== renamed file 'hello' => 'gruezi'", diff[0])
 
 
 class TestExternalDiff(DiffBase):
@@ -466,7 +471,7 @@ class TestExternalDiff(DiffBase):
         # However, if 'diff' may not be available
         self.make_example_branch()
         out, err = self.run_brz_subprocess(
-            "diff -Oprogress_bar=none -r 1 --diff-options -ub",
+            "diff --color=never -Oprogress_bar=none -r 1 --diff-options -ub",
             universal_newlines=True,
             retcode=None,
         )
@@ -489,7 +494,8 @@ class TestExternalDiff(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([("hello", b"Foo\n")])
         out, err = self.run_bzr(
-            "diff --diff-options -i --diff-options -a --using diff", retcode=1
+            "diff --color=never --diff-options -i --diff-options -a --using diff",
+            retcode=1,
         )
         self.assertEqual("=== modified file 'hello'\n1c1\n< foo\n---\n> Foo\n", out)
         self.assertEqual("", err)
@@ -500,5 +506,5 @@ class TestDiffOutput(DiffBase):
         # check that output doesn't mangle line-endings
         self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
-        output = self.run_brz_subprocess("diff", retcode=1)[0]
-        self.assertTrue(b"\n+hello world!\n" in output)
+        output = self.run_brz_subprocess("diff --color=never", retcode=1)[0]
+        self.assertIn(b"\n+hello world!\n", output)

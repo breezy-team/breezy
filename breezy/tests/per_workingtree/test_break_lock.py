@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+
 from breezy import errors, ui
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
@@ -28,10 +30,8 @@ class TestBreakLock(TestCaseWithWorkingTree):
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
-        try:
+        with contextlib.suppress(NotImplementedError):
             self.workingtree.break_lock()
-        except NotImplementedError:
-            pass
 
     def test_unlocked_repo_locked(self):
         # break lock on the workingtree should try on the branch even

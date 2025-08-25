@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Implementation of grep functionality for Breezy.
+
+This module provides grep functionality to search through versioned files
+in a Breezy repository, including support for searching through history.
+"""
+
 import re
 from io import BytesIO
 
@@ -22,13 +28,9 @@ from .lazy_import import lazy_import
 lazy_import(
     globals(),
     """
-from fnmatch import fnmatch
 
-from breezy._termcolor import color_string, FG
+from breezy.terminal import color_string, FG
 
-from breezy import (
-    diff,
-    )
 """,
 )
 from . import controldir, errors, osutils, trace
@@ -147,14 +149,34 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id, rebase_initial_depth
 
 
 def compile_pattern(pattern, flags=0):
+    """Compile a regular expression pattern.
+
+    Args:
+        pattern: The regular expression pattern to compile.
+        flags: Optional regex flags (e.g., re.IGNORECASE).
+
+    Returns:
+        Compiled regular expression object.
+
+    Raises:
+        errors.BzrCommandError: If the pattern is invalid.
+    """
     try:
         return re.compile(pattern, flags)
-    except re.error:
-        raise errors.BzrError("Invalid pattern: '{}'".format(pattern))
+    except re.error as err:
+        raise errors.BzrError(f"Invalid pattern: '{pattern}'") from err
     return None
 
 
 def is_fixed_string(s):
+    """Check if a string contains only alphanumeric characters and whitespace.
+
+    Args:
+        s: The string to check.
+
+    Returns:
+        True if the string is a fixed string (no regex special chars), False otherwise.
+    """
     return bool(re.match("^([A-Za-z0-9_]|\\s)*$", s))
 
 
@@ -245,7 +267,14 @@ class _GrepDiffOutputter:
 
 
 def grep_diff(opts):
+    """Search for pattern in uncommitted changes.
+
+    Args:
+        opts: GrepOptions object containing search parameters.
+    """
     wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
+    from breezy import diff
+
     with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
@@ -327,18 +356,23 @@ def grep_diff(opts):
                     display_file = True
                 elif diff_pattern.search(line):
                     if display_revno:
-                        writerevno("=== revno:{} ===".format(revno))
+                        writerevno(f"=== revno:{revno} ===")
                         display_revno = False
                     if display_file:
                         writefileheader(
-                            "  {}".format(file_header.decode(file_encoding, "replace"))
+                            f"  {file_header.decode(file_encoding, 'replace')}"
                         )
                         display_file = False
                     line = line.decode(file_encoding, "replace")
-                    writeline("    {}".format(line))
+                    writeline(f"    {line}")
 
 
 def versioned_grep(opts):
+    """Search for pattern in versioned files across revisions.
+
+    Args:
+        opts: GrepOptions object containing search parameters and revision specs.
+    """
     wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
     with branch.lock_read():
         start_rev = opts.revision[0]
@@ -405,6 +439,11 @@ def versioned_grep(opts):
 
 
 def workingtree_grep(opts):
+    """Search for pattern in the current working tree.
+
+    Args:
+        opts: GrepOptions object containing search parameters.
+    """
     revno = opts.print_revno = None  # for working tree set revno to None
 
     tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
@@ -435,6 +474,16 @@ def _skip_file(include, exclude, path):
 
 
 def dir_grep(tree, path, relpath, opts, revno, path_prefix):
+    """Search for pattern in files within a directory.
+
+    Args:
+        tree: The tree to search in.
+        path: Path to the directory.
+        relpath: Relative path from cwd.
+        opts: GrepOptions object containing search parameters.
+        revno: Revision number (if applicable).
+        path_prefix: Prefix to add to displayed paths.
+    """
     # setup relpath to open files relative to cwd
     if relpath:
         osutils.pathjoin("..", relpath)
@@ -520,7 +569,9 @@ def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
-def _path_in_glob_list(path, glob_list):
+def _path_in_glob_list(path, glob_list) -> bool:
+    from fnmatch import fnmatch
+
     return any(fnmatch(path, glob) for glob in glob_list)
 
 

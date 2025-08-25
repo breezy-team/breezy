@@ -28,6 +28,7 @@ import paramiko
 
 from .. import osutils, trace, urlutils
 from ..transport import ssh
+from ..transport.ssh.paramiko import ParamikoVendor
 from . import test_server
 
 
@@ -38,11 +39,11 @@ class StubServer(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         # all are allowed
-        self.log("sftpserver - authorizing: {}".format(username))
+        self.log(f"sftpserver - authorizing: {username}")
         return paramiko.AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
-        self.log("sftpserver - channel request: {}, {}".format(kind, chanid))
+        self.log(f"sftpserver - channel request: {kind}, {chanid}")
         return paramiko.OPEN_SUCCEEDED
 
 
@@ -74,7 +75,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
         else:
             if not home.startswith(self.root):
                 raise AssertionError(
-                    "home must be a subdirectory of root ({} vs {})".format(home, root)
+                    f"home must be a subdirectory of root ({home} vs {root})"
                 )
             self.home = home[len(self.root) :]
         if self.home.startswith("/"):
@@ -323,7 +324,7 @@ class SocketDelay:
     def __getattr__(self, attr):
         if attr in SocketDelay._proxied_arguments:
             return getattr(self.sock, attr)
-        raise AttributeError("'SocketDelay' object has no attribute {!r}".format(attr))
+        raise AttributeError(f"'SocketDelay' object has no attribute {attr!r}")
 
     def dup(self):
         return SocketDelay(
@@ -423,7 +424,6 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             home=tcs._server_homedir,
         )
         self.sftp_server = sftp_server
-        sys_stderr = sys.stderr  # Used in error reporting during shutdown
         try:
             sftp_server.start_subsystem(
                 "sftp", None, ssh.SocketAsChannelAdapter(self.request)
@@ -435,15 +435,6 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
                 pass
             else:
                 raise
-        except Exception as e:
-            # This typically seems to happen during interpreter shutdown, so
-            # most of the useful ways to report this error won't work.
-            # Writing the exception type, and then the text of the exception,
-            # seems to be the best we can do.
-            # FIXME: All interpreter shutdown errors should have been related
-            # to daemon threads, cleanup needed -- vila 20100623
-            sys_stderr.write("\nEXCEPTION {!r}: ".format(e.__class__))
-            sys_stderr.write("{}\n\n".format(e))
 
     def finish(self):
         self.sftp_server.finish_subsystem()
@@ -467,7 +458,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             (self.host, self.port), TestingSFTPServer, TestingSFTPConnectionHandler
         )
         self._original_vendor = None
-        self._vendor = ssh.ParamikoVendor()
+        self._vendor = ParamikoVendor()
         self._server_interface = server_interface
         self._host_key = None
         self.logs = []
@@ -478,7 +469,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return "sftp://foo:bar@{}:{}/{}".format(self.host, self.port, path)
+        return f"sftp://foo:bar@{self.host}:{self.port}/{path}"
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""

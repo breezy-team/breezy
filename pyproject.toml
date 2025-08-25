@@ -31,9 +31,10 @@ dependencies = [
     "fastbencode",
     "patiencediff",
     "merge3",
-    "dulwich>=0.21.6",
+    "dulwich>=0.24",
     "urllib3>=1.24.1",
     "pyyaml",
+    "tzlocal",
 ]
 dynamic = ["version", "scripts"]
 
@@ -55,21 +56,22 @@ doc = [
 ]
 pgp = ["gpg"]
 github = ["github"]
-paramiko = ["paramiko"]
+paramiko = ["paramiko>=1.6.2"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools",
+    "testtools>=0.9.9",
     "testscenarios",
     "python-subunit",
-    "flake8",
     "cython>=0.29",
     "ruff",
+    "types-paramiko",
+    "types-PyYAML",
 ]
 testing = [
     "testtools",
     "testscenarios",
     "python-subunit",
-    "dulwich>=0.21.6",
+    "dulwich>=0.24",
 ]
 
 [tool.setuptools]
@@ -127,15 +129,7 @@ ignore = [
     "ANN204",
     "ANN205",
     "ANN206",
-    "B904",  # assert
-    "D100",  # Missing docstring in public module
-    "D101",  # Missing docstring in public class
-    "D103",  # Missing docstring in public function
-    "D105",  # Missing docstring in magic method
-    "D102",  # Missing docstring in public method
     "D205",  # 1 blank line required between summary line and description
-    "D106",  # Missing docstring in public nested class
-    "D107",  # Missing docstring in __init__
     "D417",  # Missing argument descriptions in the docstring
     "F821",  # undefined-name
     "E501",  # line too long
@@ -152,7 +146,6 @@ ignore = [
 
     "S602",  # subprocess with shell=True
     "S603",  # check for execution of untrusted input
-    "S101",  # use of assert
     "S105",  # "hardcoded password"; false positives on "pwd"
     "S106",  # "hardcoded password"; false positives on "pwd"
     "S110",  # "consider logging exception"
@@ -175,16 +168,26 @@ ignore = [
     # This is unsafe for breezy, where several objects (e.g. VersionedFiles)
     # have a keys() method but no __iter__
     "SIM118", # Use `key in dict` instead of `key in dict.keys()`
-    "UP032", #  Use f-string instead of `format` call; f-strings break gettext
+    "UP031",  # Use format-specifier instead of `str.format` call
+    "UP032",  # Use f-string instead of `format` call; f-strings break gettext
 ]
 # These are actually fine, but they make mypy more strict and then it fails.
 unfixable = ["ANN204"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "breezy/plugins/po_merge/tests/test_po_merge.py" = ["RUF001"]
+# Ignore docstring requirements for test files
+"breezy/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/bzr/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/*/tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/**/test_*.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+"breezy/**/*_test.py" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.setuptools-gettext]
+build_dir = "breezy/locale"
 
 [tool.cibuildwheel.linux]
 skip = "*-musllinux_* *cp314*"

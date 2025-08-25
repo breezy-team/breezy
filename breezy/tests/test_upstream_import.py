@@ -25,6 +25,7 @@ from .. import osutils, transform
 from .. import revision as _mod_revision
 from ..controldir import ControlDir
 from ..export import export
+from ..transport.local import file_kind
 from ..upstream_import import (
     NotArchiveType,
     ZipFileWrapper,
@@ -69,7 +70,7 @@ class DirFileWriter:
         parent = osutils.dirname(target_path)
         if not os.path.exists(parent):
             os.makedirs(parent)
-        kind = osutils.file_kind(path)
+        kind = file_kind(path)
         if kind == "file":
             copy2(path, target_path)
         if kind == "directory":
@@ -187,7 +188,7 @@ class TestImport(TestCaseInTempDir):
 
     def test_common_directory(self):
         self.assertEqual(common_directory(["ab/c/d", "ab/c/e"]), "ab")
-        self.assertIs(common_directory(["ab/c/d", "ac/c/e"]), None)
+        self.assertIsNone(common_directory(["ab/c/d", "ac/c/e"]))
         self.assertEqual("FEEDME", common_directory(["FEEDME"]))
 
     def test_untar(self):

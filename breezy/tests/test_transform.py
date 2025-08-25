@@ -22,12 +22,10 @@ from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
 from ..bzr import generate_ids
 from ..controldir import ControlDir
-from ..errors import (
-    StrictCommitFailed,
-)
+from ..errors import StrictCommitFailed
 from ..merge import Merge3Merger
 from ..mutabletree import MutableTree
-from ..osutils import file_kind, pathjoin
+from ..osutils import pathjoin
 from ..transform import (
     ROOT_PARENT,
     MalformedTransform,
@@ -36,6 +34,7 @@ from ..transform import (
     resolve_conflicts,
 )
 from ..transport import FileExists
+from ..transport.local import file_kind
 from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 
@@ -167,24 +166,24 @@ class TestTransformMerge(TestCaseInTempDir):
         for tg in this, base, other:
             tg.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        self.assertIs(os.path.isdir(this.wt.abspath("a")), True)
-        self.assertIs(os.path.islink(this.wt.abspath("b")), True)
-        self.assertIs(os.path.isfile(this.wt.abspath("c")), True)
+        self.assertTrue(os.path.isdir(this.wt.abspath("a")))
+        self.assertTrue(os.path.islink(this.wt.abspath("b")))
+        self.assertTrue(os.path.isfile(this.wt.abspath("c")))
         for suffix in ("THIS", "BASE", "OTHER"):
             self.assertEqual(os.readlink(this.wt.abspath("d." + suffix)), suffix)
-        self.assertIs(os.path.lexists(this.wt.abspath("d")), False)
+        self.assertFalse(os.path.lexists(this.wt.abspath("d")))
         self.assertEqual(this.wt.id2path(b"d"), "d.OTHER")
         self.assertEqual(this.wt.id2path(b"f"), "f.THIS")
         self.assertEqual(os.readlink(this.wt.abspath("e")), "other-e")
-        self.assertIs(os.path.lexists(this.wt.abspath("e.THIS")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("e.OTHER")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("e.BASE")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("g")), True)
-        self.assertIs(os.path.lexists(this.wt.abspath("g.BASE")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("h")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("h.BASE")), False)
-        self.assertIs(os.path.lexists(this.wt.abspath("h.THIS")), True)
-        self.assertIs(os.path.lexists(this.wt.abspath("h.OTHER")), True)
+        self.assertFalse(os.path.lexists(this.wt.abspath("e.THIS")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("e.OTHER")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("e.BASE")))
+        self.assertTrue(os.path.lexists(this.wt.abspath("g")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("g.BASE")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("h")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("h.BASE")))
+        self.assertTrue(os.path.lexists(this.wt.abspath("h.THIS")))
+        self.assertTrue(os.path.lexists(this.wt.abspath("h.OTHER")))
 
     def test_filename_merge(self):
         root_id = generate_ids.gen_root_id()
@@ -247,11 +246,11 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         self.assertEqual(this.wt.id2path(b"g"), pathjoin("b/g1.OTHER"))
-        self.assertIs(os.path.lexists(this.wt.abspath("b/g1.BASE")), True)
-        self.assertIs(os.path.lexists(this.wt.abspath("b/g1.THIS")), False)
+        self.assertTrue(os.path.lexists(this.wt.abspath("b/g1.BASE")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("b/g1.THIS")))
         self.assertEqual(this.wt.id2path(b"h"), pathjoin("b/h1.THIS"))
-        self.assertIs(os.path.lexists(this.wt.abspath("b/h1.BASE")), True)
-        self.assertIs(os.path.lexists(this.wt.abspath("b/h1.OTHER")), False)
+        self.assertTrue(os.path.lexists(this.wt.abspath("b/h1.BASE")))
+        self.assertFalse(os.path.lexists(this.wt.abspath("b/h1.OTHER")))
         self.assertEqual(this.wt.id2path(b"i"), pathjoin("b/i1.OTHER"))
 
 
@@ -377,8 +376,9 @@ class TestCommitTransform(tests.TestCaseWithTransport):
             ["Author1 <author1@example.com>", "Author2 <author2@example.com>"],
             revision.get_apparent_authors(),
         )
-        del revision.properties["authors"]
-        self.assertEqual({"foo": "bar", "branch-nick": "tree"}, revision.properties)
+        properties = dict(revision.properties)
+        del properties["authors"]
+        self.assertEqual({"foo": "bar", "branch-nick": "tree"}, properties)
 
     def test_no_explicit_revprops(self):
         branch, tt = self.get_branch_and_transform()

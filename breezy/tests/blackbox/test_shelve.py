@@ -18,7 +18,8 @@ import os
 
 from breezy import shelf
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.script import ScriptRunner
+
+from ..script import ScriptRunner
 
 
 class TestShelveList(TestCaseWithTransport):

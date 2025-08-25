@@ -24,7 +24,6 @@ Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/per_branch/*.py.
 """
 
-from breezy.controldir import ControlDirFormat
 from breezy.tests import (
     TestCaseWithTransport,
     default_transport,
@@ -32,6 +31,8 @@ from breezy.tests import (
     test_server,
 )
 from breezy.transport import memory
+
+from ...controldir import ControlDirFormat
 
 
 def make_scenarios(
@@ -80,7 +81,9 @@ def load_tests(loader, standard_tests, pattern):
         "breezy.tests.per_controldir.test_format",
         "breezy.tests.per_controldir.test_push",
     ]
-    submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
+    submod_tests = loader.suiteClass()
+    for module_name in test_per_controldir:
+        submod_tests.addTest(loader.loadTestsFromName(module_name))
     formats = ControlDirFormat.known_formats()
     scenarios = make_scenarios(
         default_transport,
@@ -91,7 +94,7 @@ def load_tests(loader, standard_tests, pattern):
         formats,
     )
     # This will always add scenarios using the smart server.
-    from breezy.bzr.remote import RemoteBzrDirFormat
+    from ...bzr.remote import RemoteBzrDirFormat
 
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version

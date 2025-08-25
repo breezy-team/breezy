@@ -45,18 +45,23 @@ if getattr(sys, "frozen", None):
 
 
 def import_dulwich():
+    """Import dulwich and verify it meets minimum version requirements.
+
+    Raises:
+        DependencyNotPresent: If dulwich is not installed or version is too old.
+    """
     try:
         from dulwich import __version__ as dulwich_version
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         raise brz_errors.DependencyNotPresent(
             "dulwich", "bzr-git: Please install dulwich, https://www.dulwich.io/"
-        )
+        ) from e
     else:
         if dulwich_version < dulwich_minimum_version:
             raise brz_errors.DependencyNotPresent(
                 "dulwich",
-                "bzr-git: Dulwich is too old; at least "
-                f"{dulwich_minimum_version[0]}.{dulwich_minimum_version[1]}.{dulwich_minimum_version[2]} is required",
+                "bzr-git: Dulwich is too old; at least %d.%d.%d is required"
+                % dulwich_minimum_version,
             )
 
 
@@ -64,6 +69,11 @@ _versions_checked = False
 
 
 def lazy_check_versions():
+    """Lazily check dulwich version requirements.
+
+    This function ensures dulwich is imported and verified only once,
+    when first needed.
+    """
     global _versions_checked
     if _versions_checked:
         return
@@ -98,15 +108,42 @@ RevisionSpec_dwim.append_possible_lazy_revspec(
 
 
 class LocalGitProber(Prober):
+    """Prober for local Git repositories.
+
+    This prober detects Git repositories on the local filesystem,
+    supporting both regular repositories with working trees and
+    bare repositories.
+    """
+
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober.
+
+        Args:
+            transport: The transport to probe.
+
+        Returns:
+            int: Priority value (10 for local Git repositories).
+        """
         return 10
 
     def probe_transport(self, transport):
+        """Probe a transport to detect if it contains a Git repository.
+
+        Args:
+            transport: The transport to probe.
+
+        Returns:
+            LocalGitControlDirFormat or BareLocalGitControlDirFormat if a Git
+            repository is found.
+
+        Raises:
+            NotBranchError: If no Git repository is found.
+        """
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
         if external_url.startswith("http:") or external_url.startswith("https:"):
             # Already handled by RemoteGitProber
             raise brz_errors.NotBranchError(path=transport.base)
@@ -125,24 +162,61 @@ class LocalGitProber(Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return the list of control dir formats known by this prober.
+
+        Returns:
+            list: List of known Git control directory formats.
+        """
         from .dir import BareLocalGitControlDirFormat, LocalGitControlDirFormat
 
         return [BareLocalGitControlDirFormat(), LocalGitControlDirFormat()]
 
 
 def user_agent_for_github():
+    """Return a User-Agent string suitable for GitHub.
+
+    GitHub requires a Git-compatible User-Agent string.
+    See: https://github.com/dulwich/dulwich/issues/562
+
+    Returns:
+        str: User-Agent string in the format "git/Breezy/{version}".
+    """
     # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
-    return "git/Breezy/{}".format(breezy_version)
+    return f"git/Breezy/{breezy_version}"
 
 
 def is_github_url(url):
+    """Check if a URL points to GitHub or similar services.
+
+    Args:
+        url: The URL to check.
+
+    Returns:
+        bool: True if the URL is for github.com or gopkg.in.
+    """
     (scheme, user, password, host, port, path) = urlutils.parse_url(url)
     return host in ("github.com", "gopkg.in")
 
 
 class RemoteGitProber(Prober):
+    """Prober for remote Git repositories.
+
+    This prober detects Git repositories accessed over network protocols
+    including HTTP/HTTPS and the Git smart protocol.
+    """
+
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober.
+
+        Uses a heuristic based on whether 'git' appears in the URL.
+
+        Args:
+            transport: The transport to probe.
+
+        Returns:
+            int: Priority value (-15 if URL contains 'git', -10 otherwise).
+        """
         # This is a surprisingly good heuristic to determine whether this
         # prober is more likely to succeed than the Bazaar one.
         if "git" in transport.base:
@@ -150,6 +224,21 @@ class RemoteGitProber(Prober):
         return -10
 
     def probe_http_transport(self, transport):
+        """Probe an HTTP transport to detect if it contains a Git repository.
+
+        This function is optimized to avoid importing heavy dependencies unless
+        necessary, as it's called for all HTTP repositories.
+
+        Args:
+            transport: The HTTP transport to probe.
+
+        Returns:
+            RemoteGitControlDirFormat or BareLocalGitControlDirFormat if a Git
+            repository is found.
+
+        Raises:
+            NotBranchError: If no Git repository is found.
+        """
         # This function intentionally doesn't use any of the support code under
         # breezy.git, since it's called for every repository that's
         # accessed over HTTP, whether it's Git, Bzr or something else.
@@ -192,10 +281,21 @@ class RemoteGitProber(Prober):
         raise brz_errors.NotBranchError(transport.base)
 
     def probe_transport(self, transport):
+        """Probe a transport to detect if it contains a Git repository.
+
+        Args:
+            transport: The transport to probe.
+
+        Returns:
+            RemoteGitControlDirFormat if a Git repository is found.
+
+        Raises:
+            NotBranchError: If no Git repository is found.
+        """
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport:
-            raise brz_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport as err:
+            raise brz_errors.NotBranchError(path=transport.base) from err
 
         if external_url.startswith("http:") or external_url.startswith("https:"):
             return self.probe_http_transport(transport)
@@ -214,6 +314,11 @@ class RemoteGitProber(Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return the list of control dir formats known by this prober.
+
+        Returns:
+            list: List containing RemoteGitControlDirFormat.
+        """
         from .remote import RemoteGitControlDirFormat
 
         return [RemoteGitControlDirFormat()]
@@ -245,6 +350,17 @@ plugin_cmds.register_lazy(
 
 
 def extract_git_foreign_revid(rev):
+    """Extract the Git commit ID from a revision.
+
+    Args:
+        rev: A revision object that may contain a Git foreign revision ID.
+
+    Returns:
+        str: The Git commit SHA.
+
+    Raises:
+        InvalidRevisionId: If the revision is not a Git revision.
+    """
     try:
         foreign_revid = rev.foreign_revid
     except AttributeError:
@@ -262,6 +378,14 @@ def extract_git_foreign_revid(rev):
 
 
 def update_stanza(rev, stanza):
+    """Update a Rio stanza with Git commit information.
+
+    This is a hook function that adds Git commit SHA to version info stanzas.
+
+    Args:
+        rev: The revision to extract Git information from.
+        stanza: The Rio stanza to update.
+    """
     try:
         git_commit = extract_git_foreign_revid(rev)
     except brz_errors.InvalidRevisionId:
@@ -282,6 +406,17 @@ install_lazy_named_hook(
 
 
 def rewrite_instead_of(location, purpose):
+    """Rewrite a URL using Git's insteadOf/pushInsteadOf configuration.
+
+    This implements Git's URL rewriting feature for compatibility.
+
+    Args:
+        location: The original URL to potentially rewrite.
+        purpose: The purpose of the URL access ('read' or other for push).
+
+    Returns:
+        str: The rewritten URL, or the original if no rewrite rules apply.
+    """
     from dulwich.config import StackedConfig, iter_instead_of
 
     config = StackedConfig.default()
@@ -410,7 +545,16 @@ foreign_vcs_registry.register_lazy(
 
 
 def update_git_cache(repository, revid):
-    """Update the git cache after a local commit."""
+    """Update the git cache after a local commit.
+
+    This function updates the Git object cache for Bazaar repositories
+    that have an associated Git cache, ensuring the cache stays in sync
+    with new commits.
+
+    Args:
+        repository: The repository to update.
+        revid: The revision ID of the newly committed revision.
+    """
     if getattr(repository, "_git", None) is not None:
         return  # No need to update cache for git repositories
 
@@ -448,12 +592,34 @@ def update_git_cache(repository, revid):
 def post_commit_update_cache(
     local_branch, master_branch, old_revno, old_revid, new_revno, new_revid
 ):
+    """Post-commit hook to update Git caches.
+
+    This hook ensures Git caches are updated after commits in both
+    local and master branches.
+
+    Args:
+        local_branch: The local branch (may be None).
+        master_branch: The master branch.
+        old_revno: The old revision number.
+        old_revid: The old revision ID.
+        new_revno: The new revision number.
+        new_revid: The new revision ID.
+    """
     if local_branch is not None:
         update_git_cache(local_branch.repository, new_revid)
     update_git_cache(master_branch.repository, new_revid)
 
 
 def loggerhead_git_hook(branch_app, environ):
+    """Hook for Loggerhead to provide Git HTTP protocol support.
+
+    Args:
+        branch_app: The Loggerhead branch application.
+        environ: The WSGI environment dictionary.
+
+    Returns:
+        Response object if Git HTTP is enabled and applicable, None otherwise.
+    """
     branch = branch_app.branch
     config_stack = branch.get_config_stack()
     if not config_stack.get("git.http"):
@@ -497,6 +663,11 @@ This enables support for fetching Git packs over HTTP in Loggerhead.
 
 
 def test_suite():
+    """Return the test suite for the Git plugin.
+
+    Returns:
+        unittest.TestSuite: The complete test suite for this module.
+    """
     from . import tests
 
     return tests.test_suite()

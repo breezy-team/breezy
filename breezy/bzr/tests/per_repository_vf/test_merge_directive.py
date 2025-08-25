@@ -26,7 +26,8 @@ from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -59,8 +60,8 @@ class TestMergeDirective(TestCaseWithRepository):
 
     def create_merge_directive(self, source_branch, submit_url):
         return merge_directive.MergeDirective2.from_objects(
-            source_branch.repository,
-            source_branch.last_revision(),
+            repository=source_branch.repository,
+            revision_id=source_branch.last_revision(),
             time=1247775710,
             timezone=0,
             target_branch=submit_url,

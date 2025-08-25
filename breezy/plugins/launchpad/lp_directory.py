@@ -84,7 +84,7 @@ def _resolve(url, _lp_login=None):
     path = _expand_user(path, url, _lp_login)
     result = _resolve_via_api(path, url)
 
-    if "launchpad" in debug.debug_flags:
+    if debug.debug_flag_enabled("launchpad"):
         trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
     _warned_login = False
@@ -110,12 +110,20 @@ def _resolve(url, _lp_login=None):
 
 
 class LaunchpadDirectory:
+    """Directory service for looking up Launchpad URLs."""
+
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up."""
         return _resolve(url)
 
 
 def get_test_permutations():
-    # Since this transport doesn't do anything once opened, it's not subjected
-    # to the usual transport tests.
+    """Get the permutations for testing this module.
+
+    Since this transport doesn't do anything once opened, it's not subjected
+    to the usual transport tests.
+
+    Returns:
+        An empty list since no test permutations are needed.
+    """
     return []

@@ -16,215 +16,9 @@
 
 """Python implementations of Dirstate Helper functions."""
 
-import binascii
-import os
-import struct
-
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
-from .dirstate import DirState, DirstateCorrupt
-
-
-def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct(">6L").pack):  # noqa: B008
-    """Convert stat values into a packed representation.
-
-    Not all of the fields from the stat included are strictly needed, and by
-    just encoding the mtime and mode a slight speed increase could be gained.
-    However, using the pyrex version instead is a bigger win.
-    """
-    # base64 encoding always adds a final newline, so strip it off
-    return _b64(
-        _pack(
-            st.st_size & 0xFFFFFFFF,
-            int(st.st_mtime) & 0xFFFFFFFF,
-            int(st.st_ctime) & 0xFFFFFFFF,
-            st.st_dev & 0xFFFFFFFF,
-            st.st_ino & 0xFFFFFFFF,
-            st.st_mode,
-        )
-    )[:-1]
-
-
-def _unpack_stat(packed_stat):
-    """Turn a packed_stat back into the stat fields.
-
-    This is meant as a debugging tool, should not be used in real code.
-    """
-    (st_size, st_mtime, st_ctime, st_dev, st_ino, st_mode) = struct.unpack(
-        ">6L", binascii.a2b_base64(packed_stat)
-    )
-    return {
-        "st_size": st_size,
-        "st_mtime": st_mtime,
-        "st_ctime": st_ctime,
-        "st_dev": st_dev,
-        "st_ino": st_ino,
-        "st_mode": st_mode,
-    }
-
-
-def _bisect_path_left(paths, path):
-    """Return the index where to insert path into paths.
-
-    This uses the dirblock sorting. So all children in a directory come before
-    the children of children. For example::
-
-        a/
-          b/
-            c
-          d/
-            e
-          b-c
-          d-e
-        a-a
-        a=c
-
-    Will be sorted as::
-
-        a
-        a-a
-        a=c
-        a/b
-        a/b-c
-        a/d
-        a/d-e
-        a/b/c
-        a/d/e
-
-    :param paths: A list of paths to search through
-    :param path: A single path to insert
-    :return: An offset where 'path' can be inserted.
-    :seealso: bisect.bisect_left
-    """
-    hi = len(paths)
-    lo = 0
-    while lo < hi:
-        mid = (lo + hi) // 2
-        # Grab the dirname for the current dirblock
-        cur = paths[mid]
-        if _lt_path_by_dirblock(cur, path):
-            lo = mid + 1
-        else:
-            hi = mid
-    return lo
-
-
-def _bisect_path_right(paths, path):
-    """Return the index where to insert path into paths.
-
-    This uses a path-wise comparison so we get::
-        a
-        a-b
-        a=b
-        a/b
-    Rather than::
-        a
-        a-b
-        a/b
-        a=b
-    :param paths: A list of paths to search through
-    :param path: A single path to insert
-    :return: An offset where 'path' can be inserted.
-    :seealso: bisect.bisect_right
-    """
-    hi = len(paths)
-    lo = 0
-    while lo < hi:
-        mid = (lo + hi) // 2
-        # Grab the dirname for the current dirblock
-        cur = paths[mid]
-        if _lt_path_by_dirblock(path, cur):
-            hi = mid
-        else:
-            lo = mid + 1
-    return lo
-
-
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
-    """Return the index where to insert dirname into the dirblocks.
-
-    The return value idx is such that all directories blocks in dirblock[:idx]
-    have names < dirname, and all blocks in dirblock[idx:] have names >=
-    dirname.
-
-    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
-    slice of a to be searched.
-    """
-    if cache is None:
-        cache = {}
-    if hi is None:
-        hi = len(dirblocks)
-    try:
-        dirname_split = cache[dirname]
-    except KeyError:
-        dirname_split = dirname.split(b"/")
-        cache[dirname] = dirname_split
-    while lo < hi:
-        mid = (lo + hi) // 2
-        # Grab the dirname for the current dirblock
-        cur = dirblocks[mid][0]
-        try:
-            cur_split = cache[cur]
-        except KeyError:
-            cur_split = cur.split(b"/")
-            cache[cur] = cur_split
-        if cur_split < dirname_split:
-            lo = mid + 1
-        else:
-            hi = mid
-    return lo
-
-
-def lt_by_dirs(path1, path2):
-    """Compare two paths directory by directory.
-
-    This is equivalent to doing::
-
-       operator.lt(path1.split('/'), path2.split('/'))
-
-    The idea is that you should compare path components separately. This
-    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
-    "a-b" comes after "a" but would come before "a/b" lexically.
-
-    :param path1: first path
-    :param path2: second path
-    :return: True if path1 comes first, otherwise False
-    """
-    if not isinstance(path1, bytes):
-        raise TypeError(
-            "'path1' must be a byte string, not {}: {!r}".format(type(path1), path1)
-        )
-    if not isinstance(path2, bytes):
-        raise TypeError(
-            "'path2' must be a byte string, not {}: {!r}".format(type(path2), path2)
-        )
-    return path1.split(b"/") < path2.split(b"/")
-
-
-def _lt_path_by_dirblock(path1, path2):
-    """Compare two paths based on what directory they are in.
-
-    This generates a sort order, such that all children of a directory are
-    sorted together, and grandchildren are in the same order as the
-    children appear. But all grandchildren come after all children.
-
-    :param path1: first path
-    :param path2: the second path
-    :return: True if path1 comes first, otherwise False
-    """
-    if not isinstance(path1, bytes):
-        raise TypeError(
-            "'path1' must be a plain string, not {}: {!r}".format(type(path1), path1)
-        )
-    if not isinstance(path2, bytes):
-        raise TypeError(
-            "'path2' must be a plain string, not {}: {!r}".format(type(path2), path2)
-        )
-    dirname1, basename1 = os.path.split(path1)
-    key1 = (dirname1.split(b"/"), basename1)
-    dirname2, basename2 = os.path.split(path2)
-    key2 = (dirname2.split(b"/"), basename2)
-    return key1 < key2
+from .dirstate import DirState, DirstateCorrupt, _fields_per_entry
 
 
 def _read_dirblocks(state):
@@ -245,7 +39,7 @@ def _read_dirblocks(state):
     # Remove the last blank entry
     trailing = fields.pop()
     if trailing != b"":
-        raise DirstateCorrupt(state, "trailing garbage: {!r}".format(trailing))
+        raise DirstateCorrupt(state, f"trailing garbage: {trailing!r}")
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -258,7 +52,7 @@ def _read_dirblocks(state):
     #  + newline
     num_present_parents = state._num_present_parents()
     1 + num_present_parents
-    entry_size = state._fields_per_entry()
+    entry_size = _fields_per_entry(num_present_parents)
     expected_field_count = entry_size * state._num_entries
     field_count = len(fields)
     # this checks our adjustment, and also catches file too short.
@@ -329,7 +123,7 @@ def _read_dirblocks(state):
             )
             trailing = next()
             if trailing != b"\n":
-                raise ValueError("trailing garbage in dirstate: {!r}".format(trailing))
+                raise ValueError(f"trailing garbage in dirstate: {trailing!r}")
             # append the entry to the current block
             append_entry(entry)
         state._split_root_dirblock_into_contents()

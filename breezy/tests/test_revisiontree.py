@@ -19,7 +19,8 @@
 
 from breezy import revision
 from breezy.tests import TestCaseWithTransport
-from breezy.tree import FileTimestampUnavailable
+
+from ..tree import FileTimestampUnavailable
 
 
 class TestTreeWithCommits(TestCaseWithTransport):
@@ -72,8 +73,12 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertEqual(revid1, tree.get_file_revision("a"))
 
     def test_get_file_mtime_ghost(self):
+        if not hasattr(self.rev_tree.root_inventory, "delete"):
+            self.skipTest("Inventory does not support delete")
         path = next(iter(self.rev_tree.all_versioned_paths()))
-        self.rev_tree.root_inventory.get_entry(
+        new_ie = self.rev_tree.root_inventory.get_entry(
             self.rev_tree.path2id(path)
-        ).revision = b"ghostrev"
+        ).derive(revision=b"ghostrev")
+        self.rev_tree.root_inventory.delete(new_ie.file_id)
+        self.rev_tree.root_inventory.add(new_ie)
         self.assertRaises(FileTimestampUnavailable, self.rev_tree.get_file_mtime, path)

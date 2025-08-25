@@ -144,7 +144,7 @@ class ChunkWriter:
         if self.bytes_out_len > self.chunk_size:
             raise AssertionError(
                 "Somehow we ended up with too much"
-                f" compressed data, {self.bytes_out_len} > {self.chunk_size}"
+                " compressed data, %d > %d" % (self.bytes_out_len, self.chunk_size)
             )
         nulls_needed = self.chunk_size - self.bytes_out_len
         if nulls_needed:
@@ -206,10 +206,7 @@ class ChunkWriter:
         if self.num_repack > self._max_repack and not reserved:
             self.unused_bytes = bytes
             return True
-        if reserved:
-            capacity = self.chunk_size
-        else:
-            capacity = self.chunk_size - self.reserved_size
+        capacity = self.chunk_size if reserved else self.chunk_size - self.reserved_size
         comp = self.compressor
 
         # Check to see if the currently unflushed bytes would fit with a bit of
@@ -247,10 +244,7 @@ class ChunkWriter:
             # We are a bit extra conservative, because it seems that you *can*
             # get better compression with Z_SYNC_FLUSH than a full compress. It
             # is probably very rare, but we were able to trigger it.
-            if self.num_repack == 0:
-                safety_margin = 100
-            else:
-                safety_margin = 10
+            safety_margin = 100 if self.num_repack == 0 else 10
             if self.bytes_out_len + safety_margin <= capacity:
                 # It fit, so mark it added
                 self.bytes_in.append(bytes)

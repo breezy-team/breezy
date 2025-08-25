@@ -115,8 +115,8 @@ class HTTPSServer(http_server.HttpServer):
         self,
         request_handler=http_server.TestingHTTPRequestHandler,
         protocol_version=None,
-        key_file=ssl_certs.build_path("server_without_pass.key"),
-        cert_file=ssl_certs.build_path("server.crt"),
+        key_file=ssl_certs.build_path("server_without_pass.key"),  # noqa: B008
+        cert_file=ssl_certs.build_path("server.crt"),  # noqa: B008
     ):
         http_server.HttpServer.__init__(
             self, request_handler=request_handler, protocol_version=protocol_version

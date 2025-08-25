@@ -23,13 +23,15 @@ from .. import mutabletree, tests
 
 
 class TestHooks(tests.TestCase):
+    """Tests for MutableTreeHooks functionality."""
+
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
         defaults.
         """
         hooks = mutabletree.MutableTreeHooks()
-        self.assertTrue("start_commit" in hooks, "start_commit not in {}".format(hooks))
-        self.assertTrue("post_commit" in hooks, "post_commit not in {}".format(hooks))
+        self.assertIn("start_commit", hooks, f"start_commit not in {hooks}")
+        self.assertIn("post_commit", hooks, f"post_commit not in {hooks}")
 
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""
@@ -41,16 +43,21 @@ class TestHooks(tests.TestCase):
 
 
 class TestHasChanges(tests.TestCaseWithTransport):
+    """Tests for the has_changes method of MutableTree."""
+
     def setUp(self):
+        """Set up test environment with a branch and tree."""
         super().setUp()
         self.tree = self.make_branch_and_tree("tree")
 
     def test_with_uncommitted_changes(self):
+        """Test that has_changes returns True when there are uncommitted changes."""
         self.build_tree(["tree/file"])
         self.tree.add("file")
         self.assertTrue(self.tree.has_changes())
 
     def test_with_pending_merges(self):
+        """Test that has_changes returns True when there are pending merges."""
         self.tree.commit("first commit")
         other_tree = self.tree.controldir.sprout("other").open_workingtree()
         other_tree.commit("mergeable commit")

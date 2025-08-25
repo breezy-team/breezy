@@ -24,7 +24,10 @@ from . import TestCaseInTempDir, TestSkipped
 
 
 class TestGetCAPath(TestCaseInTempDir):
+    """Tests for CA bundle path discovery functionality."""
+
     def setUp(self):
+        """Set up test environment with clean environment variables."""
         super().setUp()
         self.overrideEnv("CURL_CA_BUNDLE", None)
         self.overrideEnv("PATH", None)
@@ -35,14 +38,17 @@ class TestGetCAPath(TestCaseInTempDir):
             f.write("spam")
 
     def test_found_nothing(self):
+        """Test behavior when no CA bundle can be found."""
         self.assertEqual("", ca_bundle.get_ca_path(use_cache=False))
 
     def test_env_var(self):
+        """Test that CA bundle path is found via CURL_CA_BUNDLE environment variable."""
         self.overrideEnv("CURL_CA_BUNDLE", "foo.bar")
         self._make_file()
         self.assertEqual("foo.bar", ca_bundle.get_ca_path(use_cache=False))
 
     def test_in_path(self):
+        """Test that CA bundle is found in PATH on Windows systems."""
         if sys.platform != "win32":
             raise TestSkipped("Searching in PATH implemented only for win32")
         os.mkdir("foo")

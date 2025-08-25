@@ -36,12 +36,19 @@ transport.register_lazy_transport(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests from this plugin for the test suite.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to add tests to.
+        pattern: Test name pattern for filtering (unused).
+
+    Returns:
+        The modified test suite with additional tests from this plugin.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

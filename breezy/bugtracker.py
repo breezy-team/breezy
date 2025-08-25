@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import errors, registry, urlutils
+"""Bug tracker integration and shorthand bug identifier support.
 
-"""Provides a shorthand for referring to bugs on a variety of bug trackers.
+Provides a shorthand for referring to bugs on a variety of bug trackers.
 
 'commit --fixes' stores references to bugs as a <bug_url> -> <bug_status>
 mapping in the properties for that revision.
@@ -31,158 +31,99 @@ configuration information, these tracker types can return an instance capable
 of converting bug IDs into URLs.
 """
 
-
-_bugs_help = """\
-When making a commit, metadata about bugs fixed by that change can be
-recorded by using the ``--fixes`` option. For each bug marked as fixed, an
-entry is included in the 'bugs' revision property stating '<url> <status>'.
-(The only ``status`` value currently supported is ``fixed.``)
-
-The ``--fixes`` option allows you to specify a bug tracker and a bug identifier
-rather than a full URL. This looks like::
-
-    bzr commit --fixes <tracker>:<id>
-
-or::
-
-    bzr commit --fixes <id>
-
-where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
-identifier for that bug within the bugtracker, usually the bug number.
-If "<tracker>" is not specified the ``bugtracker`` set in the branch
-or global configuration is used.
-
-Bazaar knows about a few bug trackers that have many users. If
-you use one of these bug trackers then there is no setup required to
-use this feature, you just need to know the tracker identifier to use.
-These are the bugtrackers that are built in:
-
-  ============================ ============ ============
-  URL                          Abbreviation Example
-  ============================ ============ ============
-  https://bugs.launchpad.net/  lp           lp:12345
-  http://bugs.debian.org/      deb          deb:12345
-  http://bugzilla.gnome.org/   gnome        gnome:12345
-  ============================ ============ ============
-
-For the bug trackers not listed above configuration is required.
-Support for generating the URLs for any project using Bugzilla or Trac
-is built in, along with a template mechanism for other bugtrackers with
-simple URL schemes. If your bug tracker can't be described by one
-of the schemes described below then you can write a plugin to support
-it.
-
-If you use Bugzilla or Trac, then you only need to set a configuration
-variable which contains the base URL of the bug tracker. These options
-can go into ``breezy.conf``, ``branch.conf`` or into a branch-specific
-configuration section in ``locations.conf``.  You can set up these values
-for each of the projects you work on.
-
-Note: As you provide a short name for each tracker, you can specify one or
-more bugs in one or more trackers at commit time if you wish.
-
-Launchpad
----------
-
-Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
-
-bugzilla_<tracker>_url
-----------------------
-
-If present, the location of the Bugzilla bug tracker referred to by
-<tracker>. This option can then be used together with ``bzr commit
---fixes`` to mark bugs in that tracker as being fixed by that commit. For
-example::
-
-    bugzilla_squid_url = http://bugs.squid-cache.org
-
-would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
-fixed.
-
-trac_<tracker>_url
-------------------
-
-If present, the location of the Trac instance referred to by
-<tracker>. This option can then be used together with ``bzr commit
---fixes`` to mark bugs in that tracker as being fixed by that commit. For
-example::
-
-    trac_twisted_url = http://www.twistedmatrix.com/trac
-
-would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
-fixed.
-
-bugtracker_<tracker>_url
-------------------------
-
-If present, the location of a generic bug tracker instance referred to by
-<tracker>. The location must contain an ``{id}`` placeholder,
-which will be replaced by a specific bug ID. This option can then be used
-together with ``bzr commit --fixes`` to mark bugs in that tracker as being
-fixed by that commit. For example::
-
-    bugtracker_python_url = http://bugs.python.org/issue{id}
-
-would allow ``bzr commit --fixes python:1234`` to mark bug 1234 in Python's
-Roundup bug tracker as fixed, or::
-
-    bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
-
-would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's
-RT bug tracker as fixed, or::
-
-    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}
-
-would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-1234
-in Hudson's JIRA bug tracker as fixed.
-"""
+from . import errors, registry, urlutils
 
 
 class MalformedBugIdentifier(errors.BzrError):
+    """Exception raised when a bug identifier cannot be parsed."""
+
     _fmt = (
         "Did not understand bug identifier %(bug_id)s: %(reason)s. "
         'See "brz help bugs" for more information on this feature.'
     )
 
     def __init__(self, bug_id, reason):
+        """Initialize the exception.
+
+        Args:
+            bug_id: The malformed bug identifier.
+            reason: Description of why the identifier is malformed.
+        """
         self.bug_id = bug_id
         self.reason = reason
 
 
 class InvalidBugTrackerURL(errors.BzrError):
+    """Exception raised when a bug tracker URL template is invalid."""
+
     _fmt = 'The URL for bug tracker "%(abbreviation)s" doesn\'t contain {id}: %(url)s'
 
     def __init__(self, abbreviation, url):
+        """Initialize the exception.
+
+        Args:
+            abbreviation: The bug tracker abbreviation.
+            url: The invalid URL template.
+        """
         self.abbreviation = abbreviation
         self.url = url
 
 
 class UnknownBugTrackerAbbreviation(errors.BzrError):
+    """Exception raised when a bug tracker abbreviation is not recognized."""
+
     _fmt = "Cannot find registered bug tracker called %(abbreviation)s on %(branch)s"
 
     def __init__(self, abbreviation, branch):
+        """Initialize the exception.
+
+        Args:
+            abbreviation: The unrecognized bug tracker abbreviation.
+            branch: The branch where the lookup was attempted.
+        """
         self.abbreviation = abbreviation
         self.branch = branch
 
 
 class InvalidLineInBugsProperty(errors.BzrError):
+    """Exception raised when a line in the bugs property is malformed."""
+
     _fmt = "Invalid line in bugs property: '%(line)s'"
 
     def __init__(self, line):
+        """Initialize the exception.
+
+        Args:
+            line: The invalid line from the bugs property.
+        """
         self.line = line
 
 
 class InvalidBugUrl(errors.BzrError):
+    """Exception raised when a bug URL is malformed."""
+
     _fmt = "Invalid bug URL: %(url)s"
 
     def __init__(self, url):
+        """Initialize the exception.
+
+        Args:
+            url: The invalid bug URL.
+        """
         self.url = url
 
 
 class InvalidBugStatus(errors.BzrError):
+    """Exception raised when a bug status is not recognized."""
+
     _fmt = "Invalid bug status: '%(status)s'"
 
     def __init__(self, status):
+        """Initialize the exception.
+
+        Args:
+            status: The invalid bug status.
+        """
         self.status = status
 
 
@@ -211,6 +152,14 @@ class TrackerRegistry(registry.Registry):
         raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name, branch)
 
     def help_topic(self, topic):
+        """Return help text for bug tracker topics.
+
+        Args:
+            topic: The help topic requested.
+
+        Returns:
+            Help text for the topic.
+        """
         return _bugs_help
 
 
@@ -240,6 +189,14 @@ class IntegerBugTracker(BugTracker):
     """A bug tracker that only allows integer bug IDs."""
 
     def check_bug_id(self, bug_id):
+        """Check that the bug_id is a valid integer.
+
+        Args:
+            bug_id: Bug identifier to validate.
+
+        Raises:
+            MalformedBugIdentifier: If the bug_id is not an integer.
+        """
         try:
             int(bug_id)
         except ValueError as exc:
@@ -255,6 +212,12 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
+        """Initialize the unique integer bug tracker.
+
+        Args:
+            abbreviated_bugtracker_name: Short name for this tracker.
+            base_url: Base URL where bug IDs are appended.
+        """
         self.abbreviation = abbreviated_bugtracker_name
         self.base_url = base_url
 
@@ -278,6 +241,12 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
+        """Initialize the project integer bug tracker.
+
+        Args:
+            abbreviated_bugtracker_name: Short name for this tracker.
+            base_url: Base URL template with {project} and {id} placeholders.
+        """
         self.abbreviation = abbreviated_bugtracker_name
         self._base_url = base_url
 
@@ -288,6 +257,14 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         return self
 
     def check_bug_id(self, bug_id):
+        """Check that the bug_id has valid project/id format.
+
+        Args:
+            bug_id: Bug identifier in project/id format.
+
+        Raises:
+            MalformedBugIdentifier: If the bug_id format is invalid.
+        """
         try:
             (project, bug_id) = bug_id.rsplit("/", 1)
         except ValueError as exc:
@@ -339,9 +316,18 @@ class URLParametrizedBugTracker(BugTracker):
     """
 
     def get(self, abbreviation, branch):
+        """Get a bug tracker instance for the given abbreviation.
+
+        Args:
+            abbreviation: Bug tracker abbreviation to look up.
+            branch: Branch to get configuration from.
+
+        Returns:
+            Bug tracker instance if found, None otherwise.
+        """
         config = branch.get_config()
         url = config.get_user_option(
-            "{}_{}_url".format(self.type_name, abbreviation), expand=False
+            f"{self.type_name}_{abbreviation}_url", expand=False
         )
         if url is None:
             return None
@@ -349,6 +335,12 @@ class URLParametrizedBugTracker(BugTracker):
         return self
 
     def __init__(self, type_name, bug_area):
+        """Initialize the URL parametrized bug tracker.
+
+        Args:
+            type_name: Type name for configuration lookup.
+            bug_area: Path component to append for bug URLs.
+        """
         self.type_name = type_name
         self._bug_area = bug_area
 
@@ -381,9 +373,19 @@ class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):
+        """Initialize the generic bug tracker."""
         super().__init__("bugtracker", None)
 
     def get(self, abbreviation, branch):
+        """Get a generic bug tracker instance for the given abbreviation.
+
+        Args:
+            abbreviation: Bug tracker abbreviation to look up.
+            branch: Branch to get configuration from.
+
+        Returns:
+            Bug tracker instance if configured, None otherwise.
+        """
         self._abbreviation = abbreviation
         return super().get(abbreviation, branch)
 
@@ -415,17 +417,17 @@ def encode_fixes_bug_urls(bug_urls):
     for url, tag in bug_urls:
         if " " in url:
             raise InvalidBugUrl(url)
-        lines.append("{} {}".format(url, tag))
+        lines.append(f"{url} {tag}")
     return "\n".join(lines)
 
 
-def decode_bug_urls(bug_text):
+def decode_bug_urls(bug_lines):
     """Decode a bug property text.
 
-    :param bug_text: Contents of a bugs property
+    :param bug_lines: Contents of a bugs property
     :return: iterator over (url, status) tuples
     """
-    for line in bug_text.splitlines():
+    for line in bug_lines:
         try:
             url, status = line.split(None, 2)
         except ValueError as exc:

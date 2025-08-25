@@ -79,7 +79,7 @@ class TestSendRemember(script.TestCaseWithTransportAndScript, TestRememberMixin)
     def setUp(self):
         super().setUp()
         self.run_script(
-            """
+            f"""
             $ brz init grand_parent
             $ cd grand_parent
             $ echo grand_parent > file
@@ -91,12 +91,12 @@ class TestSendRemember(script.TestCaseWithTransportAndScript, TestRememberMixin)
             $ echo parent > file
             $ brz commit -m 'parent'
             $ cd ..
-            $ brz branch parent {working_dir}
-            $ cd {working_dir}
-            $ echo {working_dir} > file
-            $ brz commit -m '{working_dir}'
+            $ brz branch parent {self.working_dir}
+            $ cd {self.working_dir}
+            $ echo {self.working_dir} > file
+            $ brz commit -m '{self.working_dir}'
             $ cd ..
-            """.format(working_dir=self.working_dir),
+            """,
             null_output_matches_anything=True,
         )
 
@@ -135,14 +135,14 @@ class TestPushRemember(script.TestCaseWithTransportAndScript, TestRememberMixin)
     def setUp(self):
         super().setUp()
         self.run_script(
-            """
-            $ brz init {working_dir}
-            $ cd {working_dir}
+            f"""
+            $ brz init {self.working_dir}
+            $ cd {self.working_dir}
             $ echo some content > file
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            """.format(working_dir=self.working_dir),
+            """,
             null_output_matches_anything=True,
         )
 
@@ -151,12 +151,12 @@ class TestPushRemember(script.TestCaseWithTransportAndScript, TestRememberMixin)
         self.do_command(*self.first_use_args)
         # Now create some new content
         self.run_script(
-            """
-            $ cd {working_dir}
+            f"""
+            $ cd {self.working_dir}
             $ echo new content > file
             $ brz commit -m 'new content'
             $ cd ..
-            """.format(working_dir=self.working_dir),
+            """,
             null_output_matches_anything=True,
         )
 
@@ -183,15 +183,15 @@ class TestPullRemember(script.TestCaseWithTransportAndScript, TestRememberMixin)
     def setUp(self):
         super().setUp()
         self.run_script(
-            """
+            f"""
             $ brz init parent
             $ cd parent
             $ echo parent > file
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            $ brz init {working_dir}
-            """.format(working_dir=self.working_dir),
+            $ brz init {self.working_dir}
+            """,
             null_output_matches_anything=True,
         )
 

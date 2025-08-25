@@ -27,32 +27,38 @@ def annotation(text):
     return [tuple(l.split(b" ", 1)) for l in text.splitlines(True)]
 
 
-parent_1 = annotation(b"""\
+parent_1 = annotation(
+    b"""\
 rev1 a
 rev2 b
 rev3 c
 rev4 d
 rev5 e
-""")
+"""
+)
 
 
-parent_2 = annotation(b"""\
+parent_2 = annotation(
+    b"""\
 rev1 a
 rev3 c
 rev4 d
 rev6 f
 rev7 e
 rev8 h
-""")
+"""
+)
 
 
-expected_2_1 = annotation(b"""\
+expected_2_1 = annotation(
+    b"""\
 rev1 a
 blahblah b
 rev3 c
 rev4 d
 rev7 e
-""")
+"""
+)
 
 
 # a: in both, same value, kept
@@ -63,7 +69,8 @@ rev7 e
 # f: in 2, but not in new, so ignored
 # g: not in 1 or 2, so it goes to blahblah
 # h: only in parent 2, so 2 gets it
-expected_1_2_2 = annotation(b"""\
+expected_1_2_2 = annotation(
+    b"""\
 rev1 a
 rev2 b
 rev3 c
@@ -71,7 +78,8 @@ rev4 d
 blahblah e
 blahblah g
 rev8 h
-""")
+"""
+)
 
 
 new_1 = b"""\
@@ -82,13 +90,15 @@ d
 e
 """.splitlines(True)
 
-expected_1 = annotation(b"""\
+expected_1 = annotation(
+    b"""\
 blahblah a
 blahblah b
 blahblah c
 blahblah d
 blahblah e
-""")
+"""
+)
 
 
 new_2 = b"""\
@@ -115,47 +125,59 @@ h
 #  |/
 #  E    # D should supersede A and stay as D (not become E because C references
 #         A)
-duplicate_base = annotation(b"""\
+duplicate_base = annotation(
+    b"""\
 rev-base first
 rev-base second
 rev-base third
 rev-base fourth-base
-""")
+"""
+)
 
-duplicate_A = annotation(b"""\
+duplicate_a = annotation(
+    b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-A fourth-A
-""")
+"""
+)
 
-duplicate_B = annotation(b"""\
+duplicate_b = annotation(
+    b"""\
 rev-base first
 rev-B alt-second
 rev-base third
 rev-B fourth-B
-""")
+"""
+)
 
-duplicate_C = annotation(b"""\
+duplicate_c = annotation(
+    b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-C fourth-C
-""")
+"""
+)
 
-duplicate_D = annotation(b"""\
+duplicate_d = annotation(
+    b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-D fourth-D
-""")
+"""
+)
 
-duplicate_E = annotation(b"""\
+duplicate_e = annotation(
+    b"""\
 rev-base first
 rev-A alt-second
 rev-base third
 rev-E fourth-E
-""")
+"""
+)
 
 
 class TestAnnotate(tests.TestCaseWithTransport):
@@ -294,11 +316,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder.start_series()
         self.addCleanup(builder.finish_series)
         base_text = b"".join(l for r, l in duplicate_base)
-        a_text = b"".join(l for r, l in duplicate_A)
-        b_text = b"".join(l for r, l in duplicate_B)
-        c_text = b"".join(l for r, l in duplicate_C)
-        d_text = b"".join(l for r, l in duplicate_D)
-        e_text = b"".join(l for r, l in duplicate_E)
+        a_text = b"".join(l for r, l in duplicate_a)
+        b_text = b"".join(l for r, l in duplicate_b)
+        c_text = b"".join(l for r, l in duplicate_c)
+        d_text = b"".join(l for r, l in duplicate_d)
+        e_text = b"".join(l for r, l in duplicate_e)
         builder.build_snapshot(
             None,
             [
@@ -368,11 +390,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRepoAnnotate(duplicate_base, repo, "file", b"rev-base")
-        self.assertRepoAnnotate(duplicate_A, repo, "file", b"rev-A")
-        self.assertRepoAnnotate(duplicate_B, repo, "file", b"rev-B")
-        self.assertRepoAnnotate(duplicate_C, repo, "file", b"rev-C")
-        self.assertRepoAnnotate(duplicate_D, repo, "file", b"rev-D")
-        self.assertRepoAnnotate(duplicate_E, repo, "file", b"rev-E")
+        self.assertRepoAnnotate(duplicate_a, repo, "file", b"rev-A")
+        self.assertRepoAnnotate(duplicate_b, repo, "file", b"rev-B")
+        self.assertRepoAnnotate(duplicate_c, repo, "file", b"rev-C")
+        self.assertRepoAnnotate(duplicate_d, repo, "file", b"rev-D")
+        self.assertRepoAnnotate(duplicate_e, repo, "file", b"rev-E")
 
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()

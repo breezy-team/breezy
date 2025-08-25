@@ -29,6 +29,7 @@ from ..bzr.inventory import (
     InventoryLink,
     TreeReference,
 )
+from ..bzr.inventory_delta import InventoryDelta
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
 from ..bzr.versionedfile import ChunkedContentFactory
@@ -80,32 +81,30 @@ def import_git_blob(
         # If nothing has changed since the base revision, we're done
         return []
     file_id = lookup_file_id(decoded_path)
-    if stat.S_ISLNK(mode):
-        cls = InventoryLink
-    else:
-        cls = InventoryFile
-    ie = cls(file_id, decode_git_path(name), parent_id)
-    if ie.kind == "file":
-        ie.executable = mode_is_executable(mode)
+    decoded_name = decode_git_path(name)
+    kind = "symlink" if stat.S_ISLNK(mode) else "file"
+    kwargs = {}
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_exec = base_bzr_tree.is_executable(decoded_path)
-        if ie.kind == "symlink":
-            ie.symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
+        if kind == "symlink":
+            kwargs["symlink_target"] = base_bzr_tree.get_symlink_target(decoded_path)
         else:
-            ie.text_size = base_bzr_tree.get_file_size(decoded_path)
-            ie.text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
-        if ie.kind == "symlink" or ie.executable == base_exec:
-            ie.revision = base_bzr_tree.get_file_revision(decoded_path)
+            kwargs["text_size"] = base_bzr_tree.get_file_size(decoded_path)
+            kwargs["text_sha1"] = base_bzr_tree.get_file_sha1(decoded_path)
+            kwargs["executable"] = mode_is_executable(mode)
+        if kind == "symlink" or kwargs["executable"] == base_exec:
+            kwargs["revision"] = base_bzr_tree.get_file_revision(decoded_path)
         else:
             blob = lookup_object(hexsha)
     else:
         blob = lookup_object(hexsha)
-        if ie.kind == "symlink":
-            ie.revision = None
-            ie.symlink_target = decode_git_path(blob.data)
+        if kind == "symlink":
+            kwargs["revision"] = None
+            kwargs["symlink_target"] = decode_git_path(blob.data)
         else:
-            ie.text_size = sum(map(len, blob.chunked))
-            ie.text_sha1 = osutils.sha_strings(blob.chunked)
+            kwargs["executable"] = mode_is_executable(mode)
+            kwargs["text_size"] = sum(map(len, blob.chunked))
+            kwargs["text_sha1"] = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
@@ -117,36 +116,36 @@ def import_git_blob(
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)
-        if pkind == ie.kind and (
+        if pkind == kind and (
             (
                 pkind == "symlink"
-                and ptree.get_symlink_target(ppath) == ie.symlink_target
+                and ptree.get_symlink_target(ppath) == kwargs.get("symlink_target")
             )
             or (
                 pkind == "file"
-                and ptree.get_file_sha1(ppath) == ie.text_sha1
-                and ptree.is_executable(ppath) == ie.executable
+                and ptree.get_file_sha1(ppath) == kwargs.get("text_sha1")
+                and ptree.is_executable(ppath) == kwargs.get("executable")
             )
         ):
             # found a revision in one of the parents to use
-            ie.revision = ptree.get_file_revision(ppath)
+            kwargs["revision"] = ptree.get_file_revision(ppath)
             break
         parent_key = (file_id, ptree.get_file_revision(ppath))
         if parent_key not in parent_keys:
             parent_keys.append(parent_key)
-    if ie.revision is None:
+    if kwargs.get("revision") is None:
         # Need to store a new revision
-        ie.revision = revision_id
-        if ie.revision is None:
+        kwargs["revision"] = revision_id
+        if kwargs["revision"] is None:
             raise ValueError("no file revision set")
-        if ie.kind == "symlink":
-            chunks = []
-        else:
-            chunks = blob.chunked
+        chunks = [] if kind == "symlink" else blob.chunked
         texts.insert_record_stream(
             [
                 ChunkedContentFactory(
-                    (file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks
+                    (file_id, kwargs["revision"]),
+                    tuple(parent_keys),
+                    kwargs.get("text_sha1"),
+                    chunks,
                 )
             ]
         )
@@ -165,6 +164,11 @@ def import_git_blob(
             )
     else:
         old_path = None
+
+    if kind == "symlink":
+        ie = InventoryLink(file_id, decoded_name, parent_id, **kwargs)
+    else:
+        ie = InventoryFile(file_id, decoded_name, parent_id, **kwargs)
     invdelta.append((old_path, decoded_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, (ie.file_id, ie.revision), path)
@@ -172,6 +176,8 @@ def import_git_blob(
 
 
 class SubmodulesRequireSubtrees(BzrError):
+    """Error raised when repository contains submodules but format doesn't support them."""
+
     _fmt = (
         "The repository you are fetching from contains submodules, "
         "which require a Bazaar format that supports tree references."
@@ -202,8 +208,13 @@ def import_git_submodule(
     path = decode_git_path(path)
     file_id = lookup_file_id(path)
     invdelta = []
-    ie = TreeReference(file_id, decode_git_path(name), parent_id)
-    ie.revision = revision_id
+    ie = TreeReference(
+        file_id,
+        decode_git_path(name),
+        parent_id,
+        revision_id,
+        reference_revision=mapping.revision_id_foreign_to_bzr(hexsha),
+    )
     if base_hexsha is not None:
         old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
@@ -218,7 +229,6 @@ def import_git_submodule(
             )
     else:
         old_path = None
-    ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream(
         [ChunkedContentFactory((file_id, ie.revision), (), None, [])]
     )
@@ -296,7 +306,9 @@ def import_git_tree(
         return [], {}
     invdelta = []
     file_id = lookup_file_id(osutils.safe_unicode(path))
-    ie = InventoryDirectory(file_id, decode_git_path(name), parent_id)
+    ie = InventoryDirectory(
+        file_id, decode_git_path(name), parent_id, revision=revision_id
+    )
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
@@ -306,7 +318,6 @@ def import_git_tree(
         old_path = decode_git_path(path)  # Renames aren't supported yet
     new_path = decode_git_path(path)
     if base_tree is None or type(base_tree) is not Tree:
-        ie.revision = revision_id
         invdelta.append((old_path, new_path, ie.file_id, ie))
         texts.insert_record_stream(
             [ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])]
@@ -413,21 +424,33 @@ def verify_commit_reconstruction(
     unusual_modes,
     verifiers,
 ):
+    """Verify that a commit can be reconstructed correctly.
+
+    Args:
+        target_git_object_retriever: Object retriever for the target repository.
+        lookup_object: Function to look up Git objects by SHA.
+        o: Original Git commit object.
+        rev: Bazaar revision object.
+        ret_tree: Reconstructed tree.
+        parent_trees: Parent trees.
+        mapping: Mapping between Git and Bazaar.
+        unusual_modes: Dictionary of unusual file modes.
+        verifiers: Verifier information.
+
+    Raises:
+        AssertionError: If reconstruction fails or differs from original.
+    """
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
         raise AssertionError(
-            "unusual modes don't match: {!r} != {!r}".format(
-                unusual_modes, new_unusual_modes
-            )
+            f"unusual modes don't match: {unusual_modes!r} != {new_unusual_modes!r}"
         )
     # Verify that we can reconstruct the commit properly
     rec_o = target_git_object_retriever._reconstruct_commit(
         rev, o.tree, True, verifiers
     )
     if rec_o != o:
-        raise AssertionError(
-            "Reconstructed commit differs: {!r} != {!r}".format(rec_o, o)
-        )
+        raise AssertionError(f"Reconstructed commit differs: {rec_o!r} != {o!r}")
     diff = []
     new_objs = {}
     for path, obj, _ie in _tree_to_objects(
@@ -450,9 +473,7 @@ def verify_commit_reconstruction(
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
                     raise AssertionError(
-                        "Modes for {} differ: {:o} != {:o}".format(
-                            path, old_obj[name][0], new_obj[name][0]
-                        )
+                        f"Modes for {path} differ: {old_obj[name][0]:o} != {new_obj[name][0]:o}"
                     )
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper
@@ -460,12 +481,16 @@ def verify_commit_reconstruction(
                     old_obj = lookup_object(old_obj[name][1])
                     new_obj = new_objs[path]
                     break
-        raise AssertionError(
-            "objects differ for {}: {!r} != {!r}".format(path, old_obj, new_obj)
-        )
+        raise AssertionError(f"objects differ for {path}: {old_obj!r} != {new_obj!r}")
 
 
 def ensure_inventories_in_repo(repo, trees):
+    """Ensure that inventories for given trees are present in the repository.
+
+    Args:
+        repo: Repository to add inventories to.
+        trees: List of trees whose inventories should be present.
+    """
     real_inv_vf = repo.inventories.without_fallbacks()
     for t in trees:
         revid = t.get_revision_id()
@@ -476,6 +501,20 @@ def ensure_inventories_in_repo(repo, trees):
 def import_git_commit(
     repo, mapping, head, lookup_object, target_git_object_retriever, trees_cache, strict
 ):
+    """Import a Git commit into a Bazaar repository.
+
+    Args:
+        repo: Target Bazaar repository.
+        mapping: Mapping between Git and Bazaar.
+        head: Git commit SHA to import.
+        lookup_object: Function to look up Git objects.
+        target_git_object_retriever: Object retriever for the target.
+        trees_cache: Cache for revision trees.
+        strict: Whether to use strict mode.
+
+    Returns:
+        tuple: (revision, testament3_sha1) if testament was created, else (revision, None).
+    """
     o = lookup_object(head)
     # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
     # were bzr roundtripped revisions they would be specified in the
@@ -527,6 +566,7 @@ def import_git_commit(
         base_bzr_inventory = None
     else:
         base_bzr_inventory = base_bzr_tree.root_inventory
+    inv_delta = InventoryDelta(inv_delta)
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(
         basis_id, inv_delta, rev.revision_id, rev.parent_ids, base_bzr_inventory
     )
@@ -553,7 +593,7 @@ def import_git_commit(
     store_updater.finish()
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
-    if "verify" in debug.debug_flags:
+    if debug.debug_flag_enabled("verify"):
         verify_commit_reconstruction(
             target_git_object_retriever,
             lookup_object,
@@ -615,7 +655,7 @@ def import_git_objects(
             if o.object[1] not in checked:
                 heads.append(o.object[1])
         else:
-            trace.warning("Unable to import head object {!r}".format(o))
+            trace.warning(f"Unable to import head object {o!r}")
         checked.add(o.id)
     del checked
     # Order the revisions
@@ -660,13 +700,31 @@ def import_git_objects(
 
 
 class DetermineWantsRecorder:
+    """Recorder for determine_wants calls in Git fetch operations."""
+
     def __init__(self, actual):
+        """Initialize the recorder.
+
+        Args:
+            actual: The actual determine_wants function to wrap.
+        """
         self.actual = actual
         self.wants = []
         self.remote_refs = {}
 
     def __call__(self, refs):
-        if type(refs) is not dict:
+        """Record refs and determine wants.
+
+        Args:
+            refs: Dictionary of remote references.
+
+        Returns:
+            List of wanted refs.
+
+        Raises:
+            TypeError: If refs is not a dictionary.
+        """
+        if not isinstance(refs, dict):
             raise TypeError(refs)
         self.remote_refs = refs
         self.wants = self.actual(refs)

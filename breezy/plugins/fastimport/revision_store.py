@@ -72,7 +72,10 @@ class _TreeShim:
             return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
-            assert file_id not in self._new_info_by_id
+            if file_id in self._new_info_by_id:
+                raise AssertionError(
+                    f"file_id {file_id} was in {self._new_info_by_id}"
+                ) from None
             old_ie = self._basis_inv.get_entry(file_id)
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream(
@@ -111,10 +114,10 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except errors.NoSuchId as e:
                 old_ie = None
                 if ie is None:
-                    raise AssertionError("How is both old and new None?")
+                    raise AssertionError("How is both old and new None?") from e
                     change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
@@ -168,6 +171,12 @@ class _TreeShim:
 
 
 class RevisionStore:
+    """Manages loading revisions into a repository.
+
+    This class provides functionality for creating and storing revisions
+    in a Bazaar repository, handling inventory deltas and parent relationships.
+    """
+
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
 
@@ -191,10 +200,15 @@ class RevisionStore:
         if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
-            inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
+                inv = inventory.Inventory(root_id=None, revision_id=revision_id)
                 # The very first root needs to have the right revision
-                inv.root.revision = revision_id
+                root = inventory.InventoryDirectory(
+                    inventory.ROOT_ID, "", None, revision_id
+                )
+                inv.add(root)
+            else:
+                inv = inventory.Inventory(revision_id=revision_id)
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
@@ -203,9 +217,9 @@ class RevisionStore:
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
-        serializer = self.repo._format._serializer
-        search_key_name = serializer.search_key_name
-        maximum_size = serializer.maximum_size
+        inventory_serializer = self.repo._format._inventory_serializer
+        search_key_name = inventory_serializer.search_key_name
+        maximum_size = inventory_serializer.maximum_size
 
         # Maybe the rest of this ought to be part of the CHKInventory API?
         inv = inventory.CHKInventory(search_key_name)
@@ -274,9 +288,7 @@ class RevisionStore:
         if ie.revision != self._current_rev_id:
             raise AssertionError(
                 "start_new_revision() registered a different"
-                " revision ({}) to that in the inventory entry ({})".format(
-                    self._current_rev_id, ie.revision
-                )
+                f" revision ({self._current_rev_id}) to that in the inventory entry ({ie.revision})"
             )
 
         # Find the heads. This code is lifted from
@@ -317,13 +329,9 @@ class RevisionStore:
                 or parent_entry.executable != ie.executable
             ):
                 changed = True
-        elif ie.kind == "symlink":
-            if parent_entry.symlink_target != ie.symlink_target:
-                changed = True
-        if changed:
-            rev_id = ie.revision
-        else:
-            rev_id = parent_entry.revision
+        elif ie.kind == "symlink" and parent_entry.symlink_target != ie.symlink_target:
+            changed = True
+        rev_id = ie.revision if changed else parent_entry.revision
         return tuple(heads), rev_id
 
     def load_using_delta(
@@ -408,7 +416,7 @@ class RevisionStore:
             builder.inv_sha1, builder.new_inventory = builder.inv_sha1
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
-        rev.inv_sha1 = builder.inv_sha1
+        rev.inventory_sha1 = builder.inv_sha1
         builder.repository.add_revision(
             builder._new_revision_id, rev, builder.revision_tree().root_inventory
         )

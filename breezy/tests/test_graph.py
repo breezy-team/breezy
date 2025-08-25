@@ -31,11 +31,11 @@ from . import TestCaseWithMemoryTransport
 #     |  /
 #   rev4
 ancestry_1 = {
-    b"rev1": [NULL_REVISION],
-    b"rev2a": [b"rev1"],
-    b"rev2b": [b"rev1"],
-    b"rev3": [b"rev2a"],
-    b"rev4": [b"rev3", b"rev2b"],
+    b"rev1": (NULL_REVISION,),
+    b"rev2a": (b"rev1",),
+    b"rev2b": (b"rev1",),
+    b"rev3": (b"rev2a",),
+    b"rev4": (b"rev3", b"rev2b"),
 }
 
 
@@ -51,11 +51,11 @@ ancestry_1 = {
 #   |
 # rev4a
 ancestry_2 = {
-    b"rev1a": [NULL_REVISION],
-    b"rev2a": [b"rev1a"],
-    b"rev1b": [NULL_REVISION],
-    b"rev3a": [b"rev2a"],
-    b"rev4a": [b"rev3a"],
+    b"rev1a": (NULL_REVISION,),
+    b"rev2a": (b"rev1a",),
+    b"rev1b": (NULL_REVISION,),
+    b"rev3a": (b"rev2a",),
+    b"rev4a": (b"rev3a",),
 }
 
 
@@ -71,11 +71,11 @@ ancestry_2 = {
 #       |/  \|
 #    rev3a  rev3b
 criss_cross = {
-    b"rev1": [NULL_REVISION],
-    b"rev2a": [b"rev1"],
-    b"rev2b": [b"rev1"],
-    b"rev3a": [b"rev2a", b"rev2b"],
-    b"rev3b": [b"rev2b", b"rev2a"],
+    b"rev1": (NULL_REVISION,),
+    b"rev2a": (b"rev1",),
+    b"rev2b": (b"rev1",),
+    b"rev3a": (b"rev2a", b"rev2b"),
+    b"rev3b": (b"rev2b", b"rev2a"),
 }
 
 
@@ -418,7 +418,7 @@ racing_shortcuts = {
 #
 
 multiple_interesting_unique = {
-    b"a": [NULL_REVISION],
+    b"a": (NULL_REVISION,),
     b"b": [b"a"],
     b"c": [b"b"],
     b"d": [b"c"],
@@ -462,13 +462,13 @@ multiple_interesting_unique = {
 #       |\|/
 #       e f
 shortcut_extra_root = {
-    b"a": [NULL_REVISION],
-    b"b": [b"a"],
-    b"c": [b"b"],
-    b"d": [b"c"],
-    b"e": [b"d"],
-    b"f": [b"a", b"d", b"g"],
-    b"g": [NULL_REVISION],
+    b"a": (NULL_REVISION,),
+    b"b": (b"a",),
+    b"c": (b"b",),
+    b"d": (b"c",),
+    b"e": (b"d",),
+    b"f": (b"a", b"d", b"g"),
+    b"g": (NULL_REVISION,),
 }
 
 #  NULL_REVISION
@@ -482,12 +482,12 @@ shortcut_extra_root = {
 #     a   c
 
 boundary = {
-    b"a": [b"b"],
-    b"c": [b"b", b"d"],
-    b"b": [b"e"],
-    b"d": [b"e"],
-    b"e": [b"f"],
-    b"f": [NULL_REVISION],
+    b"a": (b"b",),
+    b"c": (b"b", b"d"),
+    b"b": (b"e",),
+    b"d": (b"e",),
+    b"e": (b"f",),
+    b"f": (NULL_REVISION,),
 }
 
 
@@ -503,12 +503,12 @@ boundary = {
 #     a   c
 
 with_ghost = {
-    b"a": [b"b"],
-    b"c": [b"b", b"d"],
-    b"b": [b"e"],
-    b"d": [b"e", b"g"],
-    b"e": [b"f"],
-    b"f": [NULL_REVISION],
+    b"a": (b"b",),
+    b"c": (b"b", b"d"),
+    b"b": (b"e",),
+    b"d": (b"e", b"g"),
+    b"e": (b"f",),
+    b"f": (NULL_REVISION,),
     NULL_REVISION: (),
 }
 
@@ -596,7 +596,7 @@ class TestGraphBase(tests.TestCase):
         def get_parent_map(keys):
             bad_keys = set(keys).intersection(break_on)
             if bad_keys:
-                self.fail("key(s) {} was accessed".format(sorted(bad_keys)))
+                self.fail(f"key(s) {sorted(bad_keys)} was accessed")
             return orig_parent_map(keys)
 
         g.get_parent_map = get_parent_map
@@ -642,10 +642,7 @@ class TestGraph(TestCaseWithMemoryTransport):
                 ):
                     continue
                 tree.set_parent_ids(parents)
-                if len(parents) > 0:
-                    left_parent = parents[0]
-                else:
-                    left_parent = NULL_REVISION
+                left_parent = parents[0] if len(parents) > 0 else NULL_REVISION
                 tree.branch.set_last_revision_info(
                     len(tree.branch._lefthand_history(left_parent)), left_parent
                 )
@@ -845,8 +842,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         args = [b"rev2a", b"rev3", b"rev1"]
         topo_args = list(graph.iter_topo_order(args))
         self.assertEqual(set(args), set(topo_args))
-        self.assertTrue(topo_args.index(b"rev2a") > topo_args.index(b"rev1"))
-        self.assertTrue(topo_args.index(b"rev2a") < topo_args.index(b"rev3"))
+        self.assertGreater(topo_args.index(b"rev2a"), topo_args.index(b"rev1"))
+        self.assertLess(topo_args.index(b"rev2a"), topo_args.index(b"rev3"))
 
     def test_is_ancestor(self):
         graph = self.make_graph(ancestry_1)
@@ -862,7 +859,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         instrumented_graph = _mod_graph.Graph(instrumented_provider)
         instrumented_graph.is_ancestor(b"rev2a", b"rev2b")
-        self.assertTrue(b"null:" not in instrumented_provider.calls)
+        self.assertNotIn(b"null:", instrumented_provider.calls)
 
     def test_is_between(self):
         graph = self.make_graph(ancestry_1)
@@ -885,7 +882,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor(b"a", b"c"))
-        self.assertTrue(b"null:" not in instrumented_provider.calls)
+        self.assertNotIn(b"null:", instrumented_provider.calls)
 
     def test_iter_ancestry(self):
         nodes = boundary.copy()
@@ -1662,7 +1659,7 @@ class TestGetChildMap(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
-    """Tests for the CachingParentsProvider.
+    """Test CachingParentsProvider.
 
     These tests run with:
 
@@ -1890,22 +1887,27 @@ class TestStackedParentsProvider(tests.TestCase):
         return SharedInstrumentedParentsProvider(pp, self.calls, info)
 
     def test_stacked_parents_provider(self):
-        parents1 = _mod_graph.DictParentsProvider({b"rev2": [b"rev3"]})
-        parents2 = _mod_graph.DictParentsProvider({b"rev1": [b"rev4"]})
+        parents1 = _mod_graph.DictParentsProvider({b"rev2": (b"rev3",)})
+        parents2 = _mod_graph.DictParentsProvider({b"rev1": (b"rev4",)})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
         self.assertEqual(
-            {b"rev1": [b"rev4"], b"rev2": [b"rev3"]},
-            stacked.get_parent_map([b"rev1", b"rev2"]),
+            {b"rev1": (b"rev4",), b"rev2": (b"rev3",)},
+            stacked.get_parent_map(
+                (
+                    b"rev1",
+                    b"rev2",
+                )
+            ),
         )
         self.assertEqual(
-            {b"rev2": [b"rev3"], b"rev1": [b"rev4"]},
-            stacked.get_parent_map([b"rev2", b"rev1"]),
+            {b"rev2": (b"rev3",), b"rev1": (b"rev4",)},
+            stacked.get_parent_map((b"rev2", b"rev1")),
         )
         self.assertEqual(
-            {b"rev2": [b"rev3"]}, stacked.get_parent_map([b"rev2", b"rev2"])
+            {b"rev2": (b"rev3",)}, stacked.get_parent_map((b"rev2", b"rev2"))
         )
         self.assertEqual(
-            {b"rev1": [b"rev4"]}, stacked.get_parent_map([b"rev1", b"rev1"])
+            {b"rev1": (b"rev4",)}, stacked.get_parent_map((b"rev1", b"rev1"))
         )
 
     def test_stacked_parents_provider_overlapping(self):
@@ -1913,10 +1915,10 @@ class TestStackedParentsProvider(tests.TestCase):
         # 1
         # |
         # 2
-        parents1 = _mod_graph.DictParentsProvider({b"rev2": [b"rev1"]})
-        parents2 = _mod_graph.DictParentsProvider({b"rev2": [b"rev1"]})
+        parents1 = _mod_graph.DictParentsProvider({b"rev2": (b"rev1",)})
+        parents2 = _mod_graph.DictParentsProvider({b"rev2": (b"rev1",)})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b"rev2": [b"rev1"]}, stacked.get_parent_map([b"rev2"]))
+        self.assertEqual({b"rev2": (b"rev1",)}, stacked.get_parent_map([b"rev2"]))
 
     def test_handles_no_get_cached_parent_map(self):
         # this shows that we both handle when a provider doesn't implement

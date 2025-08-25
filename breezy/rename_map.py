@@ -14,9 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Rename detection and mapping functionality for Breezy.
+
+This module provides utilities to detect file renames that have occurred outside
+of version control. It uses content similarity analysis based on edge hashing
+(hashing of line pairs) to identify files that may have been renamed.
+
+The main class RenameMap can analyze a working tree to guess which unversioned
+files are actually renamed versions of missing versioned files.
+"""
+
+import contextlib
 from io import BytesIO
 
-from . import osutils, progress, trace
+from . import errors, osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
 
@@ -25,6 +36,11 @@ class RenameMap:
     """Determine a mapping of renames."""
 
     def __init__(self, tree):
+        """Initialize a RenameMap for the given tree.
+
+        Args:
+            tree: The tree to analyze for rename detection.
+        """
         self.tree = tree
         self.edge_hashes = {}
 
@@ -208,9 +224,11 @@ class RenameMap:
             with from_tree.lock_read():
                 rn = klass(to_tree)
                 pp.next_phase()
-                missing_files, missing_parents, candidate_files = (
-                    rn._find_missing_files(from_tree)
-                )
+                (
+                    missing_files,
+                    missing_parents,
+                    candidate_files,
+                ) = rn._find_missing_files(from_tree)
                 pp.next_phase()
                 rn.add_file_edge_hashes(from_tree, missing_files)
             pp.next_phase()
@@ -233,10 +251,8 @@ class RenameMap:
         file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
         for f in matches.values():
-            try:
+            with contextlib.suppress(errors.NoSuchId):
                 file_id_query.append(self.tree.id2path(f))
-            except errors.NoSuchId:
-                pass
         for old_path, entry in self.tree.iter_entries_by_dir(
             specific_files=file_id_query
         ):
@@ -253,8 +269,6 @@ class RenameMap:
                         parent_id = self.tree.path2id(parent_path)
             if entry.name == new_name and entry.parent_id == parent_id:
                 continue
-            new_entry = entry.copy()
-            new_entry.parent_id = parent_id
-            new_entry.name = new_name
+            new_entry = entry.derive(name=new_name, parent_id=parent_id)
             delta.append((old_path, new_path, new_entry.file_id, new_entry))
         return delta

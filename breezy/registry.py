@@ -102,9 +102,10 @@ class _LazyObjectGetter(_ObjectGetter[T]):
 
 K = TypeVar("K")
 V = TypeVar("V")
+I = TypeVar("I")
 
 
-class Registry(Generic[K, V]):
+class Registry(Generic[K, V, I]):
     """A class that registers objects to a name.
 
     There are many places that want to collect related objects and access them
@@ -126,7 +127,7 @@ class Registry(Generic[K, V]):
         self._dict: dict[K, _ObjectGetter[V]] = {}
         self._aliases: dict[K, K] = {}
         self._help_dict: dict[
-            K, Union[Callable[[Registry[K, V], Optional[K]], str], str]
+            K, Union[Callable[[Registry[K, V, I], Optional[K]], str], str]
         ] = {}
         self._info_dict: dict[K, Any] = {}
 
@@ -135,6 +136,11 @@ class Registry(Generic[K, V]):
         return dict(self._aliases.items())
 
     def alias_map(self) -> dict[K, list[K]]:
+        """Get a map from target names to lists of their aliases.
+
+        Returns:
+            Dictionary mapping each target key to a list of its aliases.
+        """
         ret: dict[K, list[K]] = {}
         for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
@@ -145,7 +151,7 @@ class Registry(Generic[K, V]):
         key: K,
         obj: V,
         help: Optional[str] = None,
-        info: Optional[Any] = None,
+        info: Optional[I] = None,
         override_existing: bool = False,
     ):
         """Register a new object to a name.
@@ -163,9 +169,8 @@ class Registry(Generic[K, V]):
                 already been registered for that key. If True, ignore if there
                 is an existing key (always register the new value).
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError("Key {!r} already registered".format(key))
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
@@ -175,7 +180,7 @@ class Registry(Generic[K, V]):
         module_name: str,
         member_name: str,
         help: Optional[str] = None,
-        info: Optional[Any] = None,
+        info: Optional[I] = None,
         override_existing: bool = False,
     ) -> None:
         """Register a new object to be loaded on request.
@@ -193,27 +198,26 @@ class Registry(Generic[K, V]):
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
         """
-        if not override_existing:
-            if key in self._dict:
-                raise KeyError("Key {!r} already registered".format(key))
+        if not override_existing and key in self._dict:
+            raise KeyError(f"Key {key!r} already registered")
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_alias(self, key: K, target: K, info: Optional[Any] = None):
+    def register_alias(self, key: K, target: K, info: Optional[I] = None):
         """Register an alias.
 
         :param key: Alias name
         :param target: Target key name
         """
         if key in self._dict and key not in self._aliases:
-            raise KeyError("Key {!r} already registered and not an alias".format(key))
+            raise KeyError(f"Key {key!r} already registered and not an alias")
         self._dict[key] = self._dict[target]
         self._aliases[key] = target
         if info is None:
             info = self._info_dict[target]
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
-    def _add_help_and_info(self, key: K, help=None, info=None):
+    def _add_help_and_info(self, key: K, help=None, info: Optional[I] = None):
         """Add the help and information about this key."""
         self._help_dict[key] = help
         self._info_dict[key] = info
@@ -284,24 +288,50 @@ class Registry(Generic[K, V]):
         del self._dict[key]
 
     def __contains__(self, key):
+        """Check if a key is registered in this registry.
+
+        Args:
+            key: The key to check for.
+
+        Returns:
+            True if the key is registered, False otherwise.
+        """
         return key in self._dict
+
+    def __iter__(self):
+        """Iterate over all registered keys.
+
+        Returns:
+            Iterator over the registered keys.
+        """
+        return iter(self._dict)
 
     def keys(self):
         """Get a list of registered entries."""
         return sorted(self._dict)
 
     def iteritems(self) -> Iterator[tuple[K, V]]:
+        """Iterate over (key, object) pairs.
+
+        Yields:
+            Tuple of (key, resolved_object) for each registered item.
+        """
         for key in self._dict:
             yield key, self._dict[key].get_obj()
 
     def items(self):
+        """Get a list of (key, object) pairs.
+
+        Returns:
+            List of (key, resolved_object) tuples for all registered items.
+        """
         # We should not use the iteritems() implementation below (see bug
         # #430510)
         return [(key, self._dict[key].get_obj()) for key in self.keys()]
 
     def _set_default_key(self, key):
         if key not in self._dict:
-            raise KeyError("No object registered under key {}.".format(key))
+            raise KeyError(f"No object registered under key {key}.")
         else:
             self._default_key = key
 
@@ -316,16 +346,34 @@ class Registry(Generic[K, V]):
 
 
 Format = TypeVar("Format")
+Info = TypeVar("Info")
 
 
-class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
+class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
+        """Initialize FormatRegistry.
+
+        Args:
+            other_registry: Optional additional registry to mirror registrations to.
+        """
         super().__init__()
         self._other_registry = other_registry
 
     def register(self, key, obj, help=None, info=None, override_existing=False):
+        """Register a format object.
+
+        Args:
+            key: The format name key.
+            obj: The format object or factory function.
+            help: Optional help text for this format.
+            info: Optional additional information about the format.
+            override_existing: Whether to allow overriding existing registrations.
+
+        Returns:
+            None
+        """
         Registry.register(
             self, key, obj, help=help, info=info, override_existing=override_existing
         )
@@ -343,6 +391,19 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
         info=None,
         override_existing=False,
     ):
+        """Register a format that will be imported on first access.
+
+        Args:
+            key: The format name key.
+            module_name: Name of the module containing the format.
+            member_name: Name of the format object within the module.
+            help: Optional help text for this format.
+            info: Optional additional information about the format.
+            override_existing: Whether to allow overriding existing registrations.
+
+        Returns:
+            None
+        """
         # Overridden to allow capturing registrations to two seperate
         # registries in a single call.
         Registry.register_lazy(
@@ -365,11 +426,27 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
             )
 
     def remove(self, key):
+        """Remove a format from the registry.
+
+        Args:
+            key: The format name key to remove.
+
+        Returns:
+            None
+        """
         super().remove(key)
         if self._other_registry is not None:
             self._other_registry.remove(key)
 
     def get(self, format_string):
+        """Get a format object, calling factory functions if needed.
+
+        Args:
+            format_string: The format name to retrieve.
+
+        Returns:
+            The format object, with factory functions automatically called.
+        """
         r = Registry.get(self, format_string)
         if callable(r):
             r = r()

@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Infrastructure for command handling in Breezy.
+
+This module provides the command registry, base Command class, and supporting
+infrastructure for the breezy command-line interface. It handles command
+discovery, argument parsing, help generation, and execution.
+
+Commands are registered with the builtin_command_registry or plugin_cmds
+registry, and are automatically discovered and made available to the user.
+"""
+
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
@@ -38,27 +48,35 @@ lazy_import(
 import breezy
 from breezy import (
     cmdline,
-    debug,
     ui,
     )
 """,
 )
 
-from . import errors, registry
+from . import debug, errors, registry
 from .hooks import Hooks
-from .i18n import gettext
 from .plugin import disable_plugins, load_plugins, plugin_name
 
 
 class CommandAvailableInPlugin(Exception):
+    """Exception indicating a command is available in a plugin."""
+
     internal_error = False
 
     def __init__(self, cmd_name, plugin_metadata, provider):
+        """Initialize CommandAvailableInPlugin.
+
+        Args:
+            cmd_name: Name of the command.
+            plugin_metadata: Metadata about the plugin providing the command.
+            provider: Provider object for the plugin.
+        """
         self.plugin_metadata = plugin_metadata
         self.cmd_name = cmd_name
         self.provider = provider
 
     def __str__(self):
+        """Return string representation of the exception."""
         _fmt = (
             '"{}" is not a standard brz command. \n'
             "However, the following official plugin provides this command: {}\n"
@@ -93,12 +111,21 @@ class CommandRegistry(registry.Registry):
     """
 
     def __init__(self):
+        """Initialize CommandRegistry."""
         registry.Registry.__init__(self)
         self.overridden_registry = None
         # map from aliases to the real command that implements the name
         self._alias_dict = {}
 
     def get(self, command_name):
+        """Get a command by name, resolving aliases.
+
+        Args:
+            command_name: Name or alias of the command.
+
+        Returns:
+            Command class for the given name.
+        """
         real_name = self._alias_dict.get(command_name, command_name)
         return registry.Registry.get(self, real_name)
 
@@ -125,20 +152,16 @@ class CommandRegistry(registry.Registry):
         except KeyError:
             previous = None
             if self.overridden_registry:
-                try:
+                with contextlib.suppress(KeyError):
                     previous = self.overridden_registry.get(k_unsquished)
-                except KeyError:
-                    pass
         info = CommandInfo.from_command(cmd)
         try:
             registry.Registry.register(
                 self, k_unsquished, cmd, override_existing=decorate, info=info
             )
         except KeyError:
-            trace.warning("Two plugins defined the same command: {!r}".format(k))
-            trace.warning(
-                "Not loading the one in {!r}".format(sys.modules[cmd.__module__])
-            )
+            trace.warning(f"Two plugins defined the same command: {k!r}")
+            trace.warning(f"Not loading the one in {sys.modules[cmd.__module__]!r}")
             trace.warning(
                 "Previously this command was registered from {!r}".format(
                     sys.modules[previous.__module__]
@@ -223,7 +246,7 @@ def all_command_names():
         names = hook(names)
         if names is None:
             raise AssertionError(
-                "hook {} returned None".format(Command.hooks.get_hook_name(hook))
+                f"hook {Command.hooks.get_hook_name(hook)} returned None"
             )
     return names
 
@@ -300,15 +323,17 @@ def get_cmd_object(cmd_name: str, plugins_override: bool = True) -> "Command":
     """
     try:
         return _get_cmd_object(cmd_name, plugins_override)
-    except KeyError:
+    except KeyError as err:
         # No command found, see if this was a typo
         candidate = guess_command(cmd_name)
         if candidate is not None:
             raise errors.CommandError(
-                gettext('unknown command "%s". Perhaps you meant "%s"')
+                i18n.gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate)
-            )
-        raise errors.CommandError(gettext('unknown command "%s"') % cmd_name)
+            ) from err
+        raise errors.CommandError(
+            i18n.gettext('unknown command "%s"') % cmd_name
+        ) from err
 
 
 def _get_cmd_object(
@@ -357,6 +382,8 @@ def _get_cmd_object(
 
 
 class NoPluginAvailable(errors.BzrError):
+    """Error raised when no plugin is available to provide a command."""
+
     pass
 
 
@@ -406,7 +433,7 @@ def _get_external_command(cmd_or_none, cmd_name):
     # Only do external command lookups when no command is found so far.
     if cmd_or_none is not None:
         return cmd_or_none
-    from breezy.externalcommand import ExternalCommand
+    from .externalcommand import ExternalCommand
 
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
@@ -533,6 +560,14 @@ class Command:
         self._exit_stack.close()
 
     def enter_context(self, cm):
+        """Enter a context manager and ensure it gets cleaned up.
+
+        Args:
+            cm: Context manager to enter.
+
+        Returns:
+            The result of entering the context manager.
+        """
         return self._exit_stack.enter_context(cm)
 
     def _usage(self):
@@ -585,24 +620,21 @@ class Command:
             # not be translated.
             doc = self.gettext(doc)
         else:
-            doc = gettext("No help for this command.")
+            doc = i18n.gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
         purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
-        if "Usage" in sections:
-            usage = sections.pop("Usage")
-        else:
-            usage = self._usage()
+        usage = sections.pop("Usage") if "Usage" in sections else self._usage()
 
         # The header is the purpose and usage
         result = ""
-        result += gettext(":Purpose: %s\n") % (purpose,)
+        result += i18n.gettext(":Purpose: %s\n") % (purpose,)
         if usage.find("\n") >= 0:
-            result += gettext(":Usage:\n%s\n") % (usage,)
+            result += i18n.gettext(":Usage:\n%s\n") % (usage,)
         else:
-            result += gettext(":Usage:   %s\n") % (usage,)
+            result += i18n.gettext(":Usage:   %s\n") % (usage,)
         result += "\n"
 
         # Add the options
@@ -621,7 +653,7 @@ class Command:
         if not plain and options.find("  --1.14  ") != -1:
             options = options.replace(" format:\n", " format::\n\n", 1)
         if options.startswith("Options:"):
-            result += gettext(":Options:%s") % (options[len("options:") :],)
+            result += i18n.gettext(":Options:%s") % (options[len("options:") :],)
         else:
             result += options
         result += "\n"
@@ -632,28 +664,28 @@ class Command:
             if None in sections:
                 text = sections.pop(None)
                 text = "\n  ".join(text.splitlines())
-                result += gettext(":Description:\n  %s\n\n") % (text,)
+                result += i18n.gettext(":Description:\n  %s\n\n") % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
             if sections:
                 for label in order:
                     if label in sections:
-                        result += ":{}:\n{}\n".format(label, sections[label])
+                        result += f":{label}:\n{sections[label]}\n"
                 result += "\n"
         else:
             result += (
-                gettext("See brz help %s for more details and examples.\n\n")
+                i18n.gettext("See brz help %s for more details and examples.\n\n")
                 % self.name()
             )
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += gettext(":Aliases:  ")
+            result += i18n.gettext(":Aliases:  ")
             result += ", ".join(self.aliases) + "\n"
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += gettext(':From:     plugin "%s"\n') % plugin_name
+            result += i18n.gettext(':From:     plugin "%s"\n') % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
             if not plain and see_also_as_links:
@@ -665,10 +697,12 @@ class Command:
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`{0} <{1}-help>`").format(item, item)
+                        link_text = i18n.gettext(":doc:`{0} <{1}-help>`").format(
+                            item, item
+                        )
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += gettext(":See also: %s") % ", ".join(see_also) + "\n"
+            result += i18n.gettext(":See also: %s") % ", ".join(see_also) + "\n"
 
         # If this will be rendered as plain text, convert it
         if plain:
@@ -794,7 +828,9 @@ class Command:
             # reset it, so that other commands run in the same process won't
             # inherit state. Before we reset it, log any activity, so that it
             # gets properly tracked.
-            ui.ui_factory.log_transport_activity(display=("bytes" in debug.debug_flags))
+            ui.ui_factory.log_transport_activity(
+                display=(debug.debug_flag_enabled("bytes"))
+            )
             trace.set_verbosity_level(0)
 
     def _setup_run(self):
@@ -841,9 +877,7 @@ class Command:
             def run(self, files=None):
                 pass
         """
-        raise NotImplementedError(
-            "no implementation of command {!r}".format(self.name())
-        )
+        raise NotImplementedError(f"no implementation of command {self.name()!r}")
 
     def help(self):
         """Return help message for this class."""
@@ -944,17 +978,16 @@ def parse_args(command, argv, alias_argv=None):
     """
     # TODO: make it a method of the Command?
     parser = option.get_optparser([v for k, v in sorted(command.options().items())])
-    if alias_argv is not None:
-        args = alias_argv + argv
-    else:
-        args = argv
+    args = alias_argv + argv if alias_argv is not None else argv
 
     # python 2's optparse raises this exception if a non-ascii
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError:
-        raise errors.CommandError(gettext("Only ASCII permitted in option names"))
+    except UnicodeEncodeError as err:
+        raise errors.CommandError(
+            i18n.gettext("Only ASCII permitted in option names")
+        ) from err
 
     opts = {
         k: v
@@ -982,7 +1015,7 @@ def _match_argform(cmd, takes_args, args):
         elif ap[-1] == "+":
             if not args:
                 raise errors.CommandError(
-                    gettext("command {0!r} needs one or more {1}").format(
+                    i18n.gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()
                     )
                 )
@@ -992,7 +1025,7 @@ def _match_argform(cmd, takes_args, args):
         elif ap[-1] == "$":  # all but one
             if len(args) < 2:
                 raise errors.CommandError(
-                    gettext("command {0!r} needs one or more {1}").format(
+                    i18n.gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()
                     )
                 )
@@ -1003,7 +1036,7 @@ def _match_argform(cmd, takes_args, args):
             argname = ap
             if not args:
                 raise errors.CommandError(
-                    gettext("command {0!r} requires argument {1}").format(
+                    i18n.gettext("command {0!r} requires argument {1}").format(
                         cmd, argname.upper()
                     )
                 )
@@ -1012,13 +1045,23 @@ def _match_argform(cmd, takes_args, args):
 
     if args:
         raise errors.CommandError(
-            gettext("extra argument to command {0}: {1}").format(cmd, args[0])
+            i18n.gettext("extra argument to command {0}: {1}").format(cmd, args[0])
         )
 
     return argdict
 
 
 def apply_coveraged(the_callable, *args, **kwargs):
+    """Run a callable under coverage measurement.
+
+    Args:
+        the_callable: Function to call under coverage.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
     import coverage
 
     cov = coverage.Coverage()
@@ -1033,6 +1076,16 @@ def apply_coveraged(the_callable, *args, **kwargs):
 
 
 def apply_profiled(the_callable, *args, **kwargs):
+    """Run a callable under hotshot profiler.
+
+    Args:
+        the_callable: Function to call under profiling.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
     import tempfile
 
     import hotshot
@@ -1083,7 +1136,18 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
-    from breezy.lsprof import profile
+    """Run a callable under lsprof profiler.
+
+    Args:
+        filename: File to save profile data to, or None to print to stdout.
+        the_callable: Function to call under profiling.
+        *args: Arguments to pass to the callable.
+        **kwargs: Keyword arguments to pass to the callable.
+
+    Returns:
+        Result of calling the_callable.
+    """
+    from .lsprof import profile
 
     ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
     stats.sort()
@@ -1091,7 +1155,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.pprint()
     else:
         stats.save(filename)
-        trace.note(gettext('Profile data written to "%s".'), filename)
+        trace.note(i18n.gettext('Profile data written to "%s".'), filename)
     return ret
 
 
@@ -1202,7 +1266,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == "--profile-imports":
             pass  # already handled in startup script Bug #588277
         elif a.startswith("-D"):
-            debug.debug_flags.add(a[2:])
+            debug.set_debug_flag(a[2:])
         elif a.startswith("-O"):
             override_config.append(a[2:])
         else:
@@ -1268,7 +1332,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
-        if "memory" in debug.debug_flags:
+        if debug.debug_flag_enabled("memory"):
             trace.debug_memory("Process status after command:", short=False)
         option._verbosity_level = saved_verbosity_level
         # Reset the overrides
@@ -1328,10 +1392,10 @@ def _specified_or_unicode_argv(argv):
         # ensure all arguments are unicode strings
         for a in argv:
             if not isinstance(a, str):
-                raise ValueError("not native str or unicode: {!r}".format(a))
+                raise ValueError(f"not native str or unicode: {a!r}")
             new_argv.append(a)
-    except (ValueError, UnicodeDecodeError):
-        raise errors.BzrError("argv should be list of unicode strings.")
+    except (ValueError, UnicodeDecodeError) as err:
+        raise errors.BzrError("argv should be list of unicode strings.") from err
     return new_argv
 
 
@@ -1391,6 +1455,7 @@ class HelpCommandIndex:
     """A index for bzr help that returns commands."""
 
     def __init__(self):
+        """Initialize HelpCommandIndex."""
         self.prefix = "commands/"
 
     def get_topics(self, topic):
@@ -1429,6 +1494,7 @@ class ProvidersRegistry(registry.Registry):
     """This registry exists to allow other providers to exist."""
 
     def __iter__(self):
+        """Iterate over all registered providers."""
         for _key, provider in self.items():
             yield provider
 

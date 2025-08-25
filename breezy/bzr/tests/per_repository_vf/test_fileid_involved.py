@@ -24,7 +24,8 @@ from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -46,7 +47,9 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         old_rt = b.repository.revision_tree(b"A-id")
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = b"B-id"
-        new_inv.get_entry(b"a-file-id").revision = b"ghost-id"
+        new_ie = new_inv.get_entry(b"a-file-id").derive(revision=b"ghost-id")
+        new_inv.delete(b"a-file-id")
+        new_inv.add(new_ie)
         new_rev = _mod_revision.Revision(
             b"B-id",
             timestamp=time.time(),
@@ -55,6 +58,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
             committer="Joe Foo <joe@foo.com>",
             properties={},
             parent_ids=(b"A-id", b"ghost-id"),
+            inventory_sha1=None,
         )
         b.lock_write()
         self.addCleanup(b.unlock)

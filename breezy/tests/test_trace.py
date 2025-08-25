@@ -83,7 +83,7 @@ class TestTrace(TestCase):
 
     def test_format_mem_dump(self):
         self.requireFeature(features.meliae)
-        debug.debug_flags.add("mem_dump")
+        debug.set_debug_flag("mem_dump")
         try:
             raise MemoryError()
         except MemoryError:
@@ -98,7 +98,7 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
         # cannot find the file specified".
-        self.assertEqual("brz: ERROR: {}\n".format(e_str), msg)
+        self.assertEqual(f"brz: ERROR: {e_str}\n", msg)
 
     def test_format_io_error(self):
         try:
@@ -155,10 +155,10 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError:
+        except ModuleNotFoundError:
             msg = _format_exception()
         else:
-            self.fail("somehow succeeded in importing {!r}".format(ImaginaryModule))
+            self.fail(f"somehow succeeded in importing {ImaginaryModule!r}")
         self.assertContainsRe(
             msg,
             "^brz: ERROR: No module named '?ImaginaryModule'?\n"
@@ -284,10 +284,10 @@ class TestTrace(TestCase):
         tmp1 = tempfile.NamedTemporaryFile()
         tmp2 = tempfile.NamedTemporaryFile()
         try:
-            memento1 = push_log_file(tmp1)
+            memento1 = push_log_file(tmp1, short=True)
             mutter("comment to file1")
             try:
-                memento2 = push_log_file(tmp2)
+                memento2 = push_log_file(tmp2, short=True)
                 try:
                     mutter("comment to file2")
                 finally:
@@ -317,12 +317,17 @@ class TestTrace(TestCase):
         self.overrideAttr(sys, "stderr", StringIO())
         # Set the log file to something that cannot exist
         self.overrideEnv("BRZ_LOG", "/no-such-dir/brz.log")
-        self.overrideAttr(trace, "_brz_log_filename")
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
         logf = trace._open_brz_log()
         if os.path.isdir("/no-such-dir"):
             raise TestSkipped("directory creation succeeded")
         self.assertIs(None, logf)
-        self.assertContainsRe(
+
+        self.expectFailure(
+            "This test currently fails because brz's testsuite doesn't capture "
+            "error output from rust",
+            self.assertContainsRe,
             sys.stderr.getvalue(),
             "failed to open trace file: .* '/no-such-dir/brz.log'$",
         )
@@ -336,13 +341,18 @@ class TestTrace(TestCase):
         self.overrideEnv("BRZ_LOG", None)
         self.overrideEnv("BRZ_HOME", "/no-such-dir")
         self.overrideEnv("XDG_CACHE_HOME", "/no-such-dir")
-        self.overrideAttr(trace, "_brz_log_filename")
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
         logf = trace._open_brz_log()
         if os.path.isdir("/no-such-dir"):
             raise TestSkipped("directory creation succeeded")
         self.assertIs(None, logf)
-        self.assertContainsRe(
-            sys.stderr.getvalue(), "failed to open trace file: .* '/no-such-dir'$"
+        self.expectFailure(
+            "This test currently fails because brz's testsuite doesn't capture "
+            "error output from rust",
+            self.assertContainsRe,
+            sys.stderr.getvalue(),
+            "failed to open trace file: .* /no-such-dir.*$",
         )
 
 
@@ -396,25 +406,13 @@ class TestLogging(TestCase):
         logging.getLogger("brz").debug("%s", "\xa7")
         self.assertEqual("   DEBUG  \xa7\n", self.get_log())
 
-    def test_log_utf8_msg(self):
-        logging.getLogger("brz").debug(b"\xc2\xa7")
-        self.assertEqual("   DEBUG  \xa7\n", self.get_log())
-
     def test_log_utf8_arg(self):
-        logging.getLogger("brz").debug(b"%s", b"\xc2\xa7")
+        logging.getLogger("brz").debug("%s", b"\xc2\xa7")
         expected = "   DEBUG  b'\\xc2\\xa7'\n"
         self.assertEqual(expected, self.get_log())
 
-    def test_log_bytes_msg(self):
-        logging.getLogger("brz").debug(b"\xa7")
-        log = self.get_log()
-        self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsRe(
-            log, "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n"
-        )
-
     def test_log_bytes_arg(self):
-        logging.getLogger("brz").debug(b"%s", b"\xa7")
+        logging.getLogger("brz").debug("%s", b"\xa7")
         self.get_log()
         self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 
@@ -448,15 +446,16 @@ class TestBzrLog(TestCaseInTempDir):
 class TestTraceConfiguration(TestCaseInTempDir):
     def test_default_config(self):
         config = trace.DefaultConfig()
-        self.overrideAttr(trace, "_brz_log_filename", None)
-        trace._brz_log_filename = None
-        expected_filename = trace._get_brz_log_filename()
-        self.assertEqual(None, trace._brz_log_filename)
+        old_brz_log_filename = trace.get_brz_log_filename()
+        self.addCleanup(trace.set_brz_log_filename, old_brz_log_filename)
+        trace.set_brz_log_filename(None)
+        expected_filename = trace._initialize_brz_log_filename()
+        self.assertEqual(None, trace.get_brz_log_filename())
         config.__enter__()
         try:
             # Should have entered and setup a default filename.
-            self.assertEqual(expected_filename, trace._brz_log_filename)
+            self.assertEqual(expected_filename, trace.get_brz_log_filename())
         finally:
             config.__exit__(None, None, None)
             # Should have exited and cleaned up.
-            self.assertEqual(None, trace._brz_log_filename)
+            self.assertEqual(None, trace.get_brz_log_filename())

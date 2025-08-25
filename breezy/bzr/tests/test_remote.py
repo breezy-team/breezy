@@ -33,6 +33,7 @@ import fastbencode as bencode
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
+from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
@@ -51,7 +52,6 @@ from .. import (
     vf_search,
 )
 from ..bzrdir import BzrDir, BzrDirFormat
-from ..chk_serializer import chk_bencode_serializer
 from ..remote import (
     RemoteBranch,
     RemoteBranchFormat,
@@ -227,18 +227,14 @@ class FakeClient(_SmartClient):
     def finished_test(self):
         if self._expected_calls:
             raise AssertionError(
-                "{!r} finished but was still expecting {!r}".format(
-                    self, self._expected_calls[0]
-                )
+                f"{self!r} finished but was still expecting {self._expected_calls[0]!r}"
             )
 
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
         except IndexError as e:
-            raise AssertionError(
-                "{!r} didn't expect any more calls".format(self)
-            ) from e
+            raise AssertionError(f"{self!r} didn't expect any more calls") from e
         if response_tuple[0] == b"unknown":
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b"error":
@@ -253,23 +249,13 @@ class FakeClient(_SmartClient):
             next_call = self._expected_calls.pop(0)
         except IndexError as e:
             raise AssertionError(
-                "{!r} didn't expect any more calls but got {!r}{!r}".format(
-                    self,
-                    method,
-                    args,
-                )
+                f"{self!r} didn't expect any more calls but got {method!r}{args!r}"
             ) from e
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:
             raise AssertionError(
-                "{!r} expected {!r}{!r} but got {!r}{!r}".format(
-                    self,
-                    next_call[0],
-                    next_call[1],
-                    method,
-                    args,
-                )
+                f"{self!r} expected {next_call[0]!r}{next_call[1]!r} but got {method!r}{args!r}"
             )
 
     def call(self, method, *args):
@@ -832,14 +818,8 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = MemoryTransport()
         transport.mkdir("quack")
         transport = transport.clone("quack")
-        if rich_root:
-            rich_response = b"yes"
-        else:
-            rich_response = b"no"
-        if subtrees:
-            subtree_response = b"yes"
-        else:
-            subtree_response = b"no"
+        rich_response = b"yes" if rich_root else b"no"
+        subtree_response = b"yes" if subtrees else b"no"
         client = FakeClient(transport.base)
         client.add_success_response(
             b"ok", b"", rich_response, subtree_response, external_lookup, network_name
@@ -3273,14 +3253,18 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
     def test_hpss_get_single_revision(self):
         transport_path = "quack"
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        somerev1 = Revision(b"somerev1")
-        somerev1.committer = "Joe Committer <joe@example.com>"
-        somerev1.timestamp = 1321828927
-        somerev1.timezone = -60
-        somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
-        somerev1.message = "Message"
+        somerev1 = Revision(
+            b"somerev1",
+            committer="Joe Committer <joe@example.com>",
+            timestamp=1321828927,
+            timezone=-60,
+            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            parent_ids=[],
+            message="Message",
+            properties={},
+        )
         body = zlib.compress(
-            b"".join(chk_bencode_serializer.write_revision_to_lines(somerev1))
+            b"".join(revision_bencode_serializer.write_revision_to_lines(somerev1))
         )
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
@@ -3389,7 +3373,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         )
 
     def test_unexpected_error(self):
-        revid = "123"
+        revid = b"123"
         transport_path = "sinhala"
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b"AnUnexpectedError")
@@ -4037,8 +4021,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
            * texts substream: (some-rev, some-file)
         """
         # Define a stream using generators so that it isn't rewindable.
-        inv = inventory.Inventory(revision_id=b"rev1")
-        inv.root.revision = b"rev1"
+        inv = inventory.Inventory(revision_id=b"rev1", root_revision=b"rev1")
 
         def stream_with_inv_delta():
             yield ("inventories", inventories_substream())
@@ -4054,30 +4037,29 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            chunks = fmt._serializer.write_inventory_to_lines(inv)
-            yield versionedfile.ChunkedContentFactory(
-                (b"rev1",), (), None, chunks, chunks_are_lines=True
-            )
+            chunks = fmt._inventory_serializer.write_inventory_to_lines(inv)
+            yield versionedfile.ChunkedContentFactory((b"rev1",), (), None, chunks)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
-                "directory", "newdir", inv.root.file_id, b"newdir-id"
+                "directory", "newdir", inv.root.file_id, b"newdir-id", revision=b"ghost"
             )
-            entry.revision = b"ghost"
-            delta = [(None, "newdir", b"newdir-id", entry)]
+            delta = inventory_delta.InventoryDelta(
+                [(None, "newdir", b"newdir-id", entry)]
+            )
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False
             )
             lines = serializer.delta_to_lines(b"rev1", b"rev2", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev2",), ((b"rev1",)), None, lines
+                (b"rev2",), ((b"rev1",),), None, lines
             )
             # Another delta.
             lines = serializer.delta_to_lines(b"rev1", b"rev3", delta)
             yield versionedfile.ChunkedContentFactory(
-                (b"rev3",), ((b"rev1",)), None, lines
+                (b"rev3",), ((b"rev1",),), None, lines
             )
 
         return stream_with_inv_delta()
@@ -4187,8 +4169,8 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         dest_url = self.get_vfs_only_url("repo2")
         dest_bzrdir = BzrDir.create(dest_url)
         dest_repo = dest_bzrdir.create_repository()
-        self.assertFalse(isinstance(dest_repo, RemoteRepository))
-        self.assertTrue(isinstance(src_repo, RemoteRepository))
+        self.assertNotIsInstance(dest_repo, RemoteRepository)
+        self.assertIsInstance(src_repo, RemoteRepository)
         src_repo.copy_content_into(dest_repo)
 
 
@@ -4774,7 +4756,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         local.repository.fetch(remote_branch.repository)
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
-        self.assertFalse(b"Branch.revision_history" in self.hpss_calls)
+        self.assertNotIn(b"Branch.revision_history", self.hpss_calls)
 
     def test_fetch_everything_needs_just_one_call(self):
         local = self.make_branch("local")
@@ -4838,7 +4820,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
-        self.assertTrue(len(self.hpss_calls) > 1)
+        self.assertGreater(len(self.hpss_calls), 1)
 
 
 class TestUpdateBoundBranchWithModifiedBoundLocation(tests.TestCaseWithTransport):
@@ -4993,10 +4975,12 @@ class TestRepositoryIterInventories(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
-                        self._serialize_inv_delta(b"null:", b"somerevid", []),
+                        self._serialize_inv_delta(
+                            b"null:", b"somerevid", inventory_delta.InventoryDelta([])
+                        ),
                     )
                 ],
             )
@@ -5051,10 +5035,12 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
-                        self._serialize_inv_delta(b"null:", b"somerevid", []),
+                        self._serialize_inv_delta(
+                            b"null:", b"somerevid", inventory_delta.InventoryDelta([])
+                        ),
                     )
                 ],
             )
@@ -5103,10 +5089,12 @@ class TestRepositoryAnnotate(TestRemoteRepository):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerevid",
+                        (b"somerevid",),
                         None,
                         None,
-                        self._serialize_inv_delta(b"null:", b"somerevid", []),
+                        self._serialize_inv_delta(
+                            b"null:", b"somerevid", inventory_delta.InventoryDelta([])
+                        ),
                     )
                 ],
             )

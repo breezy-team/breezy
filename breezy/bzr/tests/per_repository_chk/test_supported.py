@@ -18,10 +18,11 @@
 
 from breezy import errors, osutils, repository
 from breezy.bzr import btree_index
-from breezy.bzr.remote import RemoteRepository
 from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
-from breezy.bzr.versionedfile import VersionedFiles
 from breezy.tests import TestNotApplicable
+
+from ...remote import RemoteRepository
+from ...versionedfile import VersionedFiles
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):
@@ -328,14 +329,14 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                     "add",
                     (
                         "file-" + name,
-                        ("file-{}-id".format(name)).encode(),
+                        (f"file-{name}-id").encode(),
                         "file",
-                        ("content {}\n".format(name)).encode(),
+                        f"content {name}\n".encode(),
                     ),
                 )
             )
             file_modifies.append(
-                ("modify", ("file-" + name, ("new content {}\n".format(name)).encode()))
+                ("modify", ("file-" + name, f"new content {name}\n".encode()))
             )
         builder.build_snapshot(
             None,

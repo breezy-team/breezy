@@ -18,7 +18,6 @@
 """Black-box tests for brz help."""
 
 from breezy import config, i18n, tests
-from breezy.tests.test_i18n import ZzzTranslations
 
 
 class TestHelp(tests.TestCaseWithTransport):
@@ -27,7 +26,7 @@ class TestHelp(tests.TestCaseWithTransport):
             output = self.run_bzr(cmd)[0]
             line1 = output.split("\n")[0]
             if not line1.startswith("Breezy"):
-                self.fail("bad output from brz {}:\n{!r}".format(cmd, output))
+                self.fail(f"bad output from brz {cmd}:\n{output!r}")
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
     def test_help_topics(self):
@@ -68,25 +67,28 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'."""
         out, err = self.run_bzr("help repositories")
-        from breezy.help_topics import _repositories, help_as_plain_text
+        from breezy.help_topics import help_as_plain_text, topic_registry
 
-        expected = help_as_plain_text(_repositories)
+        repositories = topic_registry.get("repositories").get_contents()
+        expected = help_as_plain_text(repositories)
         self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'."""
         out, err = self.run_bzr("help working-trees")
-        from breezy.help_topics import _working_trees, help_as_plain_text
+        from breezy.help_topics import help_as_plain_text, topic_registry
 
-        expected = help_as_plain_text(_working_trees)
+        working_trees = topic_registry.get("working-trees").get_contents()
+        expected = help_as_plain_text(working_trees)
         self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
         """Smoke test for 'brz help status-flags'."""
         out, err = self.run_bzr("help status-flags")
-        from breezy.help_topics import _status_flags, help_as_plain_text
+        from breezy.help_topics import help_as_plain_text, topic_registry
 
-        expected = help_as_plain_text(_status_flags)
+        status_flags = topic_registry.get("status-flags").get_contents()
+        expected = help_as_plain_text(status_flags)
         self.assertEqual(expected, out)
 
     def test_help_commands(self):
@@ -124,10 +126,10 @@ class TestHelp(tests.TestCaseWithTransport):
 
         commands = extract_cmd_names(help_commands)
         hidden = extract_cmd_names(help_hidden)
-        self.assertTrue("commit" in commands)
-        self.assertTrue("commit" not in hidden)
-        self.assertTrue("rocks" in hidden)
-        self.assertTrue("rocks" not in commands)
+        self.assertIn("commit", commands)
+        self.assertNotIn("commit", hidden)
+        self.assertIn("rocks", hidden)
+        self.assertNotIn("rocks", commands)
 
     def test_help_detail(self):
         dash_h = self.run_bzr("diff -h")[0]
@@ -183,7 +185,8 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, "_translations", ZzzTranslations())
+        i18n.install_zzz()
+        self.addCleanup(i18n.install)
 
     def test_help_command_utf8(self):
         out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")

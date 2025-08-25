@@ -85,15 +85,11 @@ class MultiWalker:
         # optimized versions, or maybe writing optimized unicode versions.
         if not isinstance(path1, str):
             raise TypeError(
-                "'path1' must be a unicode string, not {}: {!r}".format(
-                    type(path1), path1
-                )
+                f"'path1' must be a unicode string, not {type(path1)}: {path1!r}"
             )
         if not isinstance(path2, str):
             raise TypeError(
-                "'path2' must be a unicode string, not {}: {!r}".format(
-                    type(path2), path2
-                )
+                f"'path2' must be a unicode string, not {type(path2)}: {path2!r}"
             )
         return MultiWalker._path_to_key(path1) < MultiWalker._path_to_key(path2)
 

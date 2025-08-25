@@ -14,38 +14,58 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Bazaar support for Breezy."""
+
+__all__ = [
+    "BzrProber",
+    "LineEndingError",
+    "RemoteBzrProber",
+    "hashcache",
+    "register_metadir",
+    "rio",
+]
+
 from typing import TYPE_CHECKING
 
 from .. import config, controldir, errors, pyutils, registry
 from .. import transport as _mod_transport
+from .._bzr_rs import hashcache, rio
 from ..branch import format_registry as branch_format_registry
 from ..repository import format_registry as repository_format_registry
 from ..workingtree import format_registry as workingtree_format_registry
 
 if TYPE_CHECKING:
-    from .bzrdir import BzrDirFormat
+    from .bzrdir import BzrDirFormat  # noqa: F401
 
 
 class LineEndingError(errors.BzrError):
+    """Exception raised when line ending corruption is detected."""
+
     _fmt = (
         "Line ending corrupted for file: %(file)s; "
         "Maybe your files got corrupted in transport?"
     )
 
     def __init__(self, file):
+        """Create a LineEndingError exception.
+
+        Args:
+            file: The file that has corrupted line endings.
+        """
         self.file = file
 
 
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    formats = registry.FormatRegistry["BzrDirFormat"](
+    formats = registry.FormatRegistry["BzrDirFormat", None](
         controldir.network_format_registry
     )
     """The known .bzr formats."""
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return 10
 
     @classmethod
@@ -80,6 +100,7 @@ class BzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known .bzr formats."""
         result = []
         for _name, format in cls.formats.items():
             if callable(format):
@@ -96,6 +117,7 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        """Return the priority for this prober."""
         return -10
 
     @classmethod
@@ -130,6 +152,7 @@ class RemoteBzrProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
+        """Return list of known remote formats."""
         from .remote import RemoteBzrDirFormat
 
         return [RemoteBzrDirFormat()]
@@ -186,7 +209,7 @@ def register_metadir(
             raise ImportError(f"failed to load {full_name}: {e}") from e
         except AttributeError as e:
             raise AttributeError(
-                "no factory {} in module {!r}".format(full_name, sys.modules[mod_name])
+                f"no factory {full_name} in module {sys.modules[mod_name]!r}"
             ) from e
         return factory()
 

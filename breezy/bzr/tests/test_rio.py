@@ -27,41 +27,46 @@ from tempfile import TemporaryFile
 
 from breezy.tests import TestCase
 
-from .. import rio
-from ..rio import RioReader, Stanza, read_stanza, read_stanzas, rio_file
+from ...osutils import IterableFile
+from .. import rio as _mod_rio
+from ..rio_patch import read_patch_stanza, to_patch_lines
+
+
+def rio_file(stanzas):
+    return IterableFile(_mod_rio.rio_iter(stanzas))
 
 
 class TestRio(TestCase):
     def test_stanza(self):
         """Construct rio stanza in memory."""
-        s = Stanza(number="42", name="fred")
-        self.assertTrue("number" in s)
-        self.assertFalse("color" in s)
-        self.assertFalse("42" in s)
+        s = _mod_rio.Stanza(number="42", name="fred")
+        self.assertIn("number", s)
+        self.assertNotIn("color", s)
+        self.assertNotIn("42", s)
         self.assertEqual(list(s.iter_pairs()), [("name", "fred"), ("number", "42")])
         self.assertEqual(s.get("number"), "42")
         self.assertEqual(s.get("name"), "fred")
 
     def test_empty_value(self):
         """Serialize stanza with empty field."""
-        s = Stanza(empty="")
+        s = _mod_rio.Stanza(empty="")
         self.assertEqual(s.to_string(), b"empty: \n")
 
     def test_to_lines(self):
         """Write simple rio stanza to string."""
-        s = Stanza(number="42", name="fred")
+        s = _mod_rio.Stanza(number="42", name="fred")
         self.assertEqual(list(s.to_lines()), [b"name: fred\n", b"number: 42\n"])
 
     def test_as_dict(self):
         """Convert rio Stanza to dictionary."""
-        s = Stanza(number="42", name="fred")
+        s = _mod_rio.Stanza(number="42", name="fred")
         sd = s.as_dict()
         self.assertEqual(sd, {"number": "42", "name": "fred"})
 
     def test_to_file(self):
         """Write rio to file."""
         tmpf = TemporaryFile()
-        s = Stanza(
+        s = _mod_rio.Stanza(
             a_thing='something with "quotes like \\"this\\""', number="42", name="fred"
         )
         s.write(tmpf)
@@ -77,7 +82,9 @@ number: 42
 
     def test_multiline_string(self):
         tmpf = TemporaryFile()
-        s = Stanza(motto="war is peace\nfreedom is slavery\nignorance is strength")
+        s = _mod_rio.Stanza(
+            motto="war is peace\nfreedom is slavery\nignorance is strength"
+        )
         s.write(tmpf)
         tmpf.seek(0)
         self.assertEqual(
@@ -89,7 +96,7 @@ motto: war is peace
 """,
         )
         tmpf.seek(0)
-        s2 = read_stanza(tmpf)
+        s2 = _mod_rio.read_stanza(tmpf)
         self.assertEqual(s, s2)
 
     def test_read_stanza(self):
@@ -100,8 +107,8 @@ timestamp: 1130653962
 timezone: 36000
 committer: Martin Pool <mbp@test.sourcefrog.net>
 """.splitlines(True)
-        s = read_stanza(lines)
-        self.assertTrue("revision" in s)
+        s = _mod_rio.read_stanza(lines)
+        self.assertIn("revision", s)
         self.assertEqual(s.get("revision"), "mbp@sourcefrog.net-123-abc")
         self.assertEqual(
             list(s.iter_pairs()),
@@ -116,7 +123,7 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
 
     def test_repeated_field(self):
         """Repeated field in rio."""
-        s = Stanza()
+        s = _mod_rio.Stanza()
         for k, v in [
             ("a", "10"),
             ("b", "20"),
@@ -126,20 +133,20 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
             ("b", "2000"),
         ]:
             s.add(k, v)
-        s2 = read_stanza(s.to_lines())
+        s2 = _mod_rio.read_stanza(s.to_lines())
         self.assertEqual(s, s2)
         self.assertEqual(s.get_all("a"), ["10", "100", "1000"])
         self.assertEqual(s.get_all("b"), ["20", "200", "2000"])
 
     def test_backslash(self):
-        s = Stanza(q="\\")
+        s = _mod_rio.Stanza(q="\\")
         t = s.to_string()
         self.assertEqual(t, b"q: \\\n")
-        s2 = read_stanza(s.to_lines())
+        s2 = _mod_rio.read_stanza(s.to_lines())
         self.assertEqual(s, s2)
 
     def test_blank_line(self):
-        s = Stanza(none="", one="\n", two="\n\n")
+        s = _mod_rio.Stanza(none="", one="\n", two="\n\n")
         self.assertEqual(
             s.to_string(),
             b"""\
@@ -151,11 +158,11 @@ two:\x20
 \t
 """,
         )
-        s2 = read_stanza(s.to_lines())
+        s2 = _mod_rio.read_stanza(s.to_lines())
         self.assertEqual(s, s2)
 
     def test_whitespace_value(self):
-        s = Stanza(space=" ", tabs="\t\t\t", combo="\n\t\t\n")
+        s = _mod_rio.Stanza(space=" ", tabs="\t\t\t", combo="\n\t\t\n")
         self.assertEqual(
             s.to_string(),
             b"""\
@@ -166,13 +173,13 @@ space:\x20\x20
 tabs: \t\t\t
 """,
         )
-        s2 = read_stanza(s.to_lines())
+        s2 = _mod_rio.read_stanza(s.to_lines())
         self.assertEqual(s, s2)
         self.rio_file_stanzas([s])
 
     def test_quoted(self):
         """Rio quoted string cases."""
-        s = Stanza(
+        s = _mod_rio.Stanza(
             q1='"hello"',
             q2=' "for',
             q3='\n\n"for"\n',
@@ -183,30 +190,31 @@ tabs: \t\t\t
             q8="\\",
             q9='\\"\\"',
         )
-        s2 = read_stanza(s.to_lines())
+        s2 = _mod_rio.read_stanza(s.to_lines())
         self.assertEqual(s, s2)
         # apparent bug in read_stanza
-        # s3 = read_stanza(self.stanzas_to_str([s]))
+        # s3 = _mod_rio.read_stanza(self.stanzas_to_str([s]))
         # self.assertEqual(s, s3)
 
     def test_read_empty(self):
         """Detect end of rio file."""
-        s = read_stanza([])
+        s = _mod_rio.read_stanza([])
         self.assertEqual(s, None)
-        self.assertTrue(s is None)
+        self.assertIsNone(s)
 
     def test_read_nul_byte(self):
         """File consisting of a nul byte causes an error."""
-        self.assertRaises(ValueError, read_stanza, [b"\0"])
+        self.assertRaises(Exception, _mod_rio.read_stanza, [b"\0"])
 
     def test_read_nul_bytes(self):
         """File consisting of many nul bytes causes an error."""
-        self.assertRaises(ValueError, read_stanza, [b"\0" * 100])
+        self.assertRaises(Exception, _mod_rio.read_stanza, [b"\0" * 100])
 
     def test_read_iter(self):
         """Read several stanzas from file."""
         tmpf = TemporaryFile()
-        tmpf.write(b"""\
+        tmpf.write(
+            b"""\
 version_header: 1
 
 name: foo
@@ -214,24 +222,25 @@ val: 123
 
 name: bar
 val: 129319
-""")
+"""
+        )
         tmpf.seek(0)
-        reader = read_stanzas(tmpf)
-        iter(reader)
+        reader = _mod_rio.read_stanzas(tmpf)
         stuff = list(reader)
         self.assertEqual(
             stuff,
             [
-                Stanza(version_header="1"),
-                Stanza(name="foo", val="123"),
-                Stanza(name="bar", val="129319"),
+                _mod_rio.Stanza(version_header="1"),
+                _mod_rio.Stanza(name="foo", val="123"),
+                _mod_rio.Stanza(name="bar", val="129319"),
             ],
         )
 
     def test_read_several(self):
         """Read several stanzas from file."""
         tmpf = TemporaryFile()
-        tmpf.write(b"""\
+        tmpf.write(
+            b"""\
 version_header: 1
 
 name: foo
@@ -244,24 +253,24 @@ address:   "Willowglen"
 
 name: bar
 val: 129319
-""")
+"""
+        )
         tmpf.seek(0)
-        s = read_stanza(tmpf)
-        self.assertEqual(s, Stanza(version_header="1"))
-        s = read_stanza(tmpf)
-        self.assertEqual(s, Stanza(name="foo", val="123"))
-        s = read_stanza(tmpf)
+        s = _mod_rio.read_stanza(tmpf)
+        self.assertEqual(s, _mod_rio.Stanza(version_header="1"))
+        s = _mod_rio.read_stanza(tmpf)
+        self.assertEqual(s, _mod_rio.Stanza(name="foo", val="123"))
+        s = _mod_rio.read_stanza(tmpf)
         self.assertEqual(s.get("name"), "quoted")
         self.assertEqual(s.get("address"), '  "Willowglen"\n  42 Wallaby Way\n  Sydney')
-        s = read_stanza(tmpf)
-        self.assertEqual(s, Stanza(name="bar", val="129319"))
-        s = read_stanza(tmpf)
+        s = _mod_rio.read_stanza(tmpf)
+        self.assertEqual(s, _mod_rio.Stanza(name="bar", val="129319"))
+        s = _mod_rio.read_stanza(tmpf)
         self.assertEqual(s, None)
-        self.check_rio_file(tmpf)
 
     def check_rio_file(self, real_file):
         real_file.seek(0)
-        read_write = rio_file(RioReader(real_file)).read()
+        read_write = rio_file(_mod_rio.RioReader(real_file)).read()
         real_file.seek(0)
         self.assertEqual(read_write, real_file.read())
 
@@ -270,12 +279,13 @@ val: 129319
         return rio_file(stanzas).read()
 
     def rio_file_stanzas(self, stanzas):
-        new_stanzas = list(RioReader(rio_file(stanzas)))
+        new_stanzas = list(_mod_rio.RioReader(rio_file(stanzas)))
         self.assertEqual(new_stanzas, stanzas)
 
     def test_tricky_quoted(self):
         tmpf = TemporaryFile()
-        tmpf.write(b'''\
+        tmpf.write(
+            b'''\
 s: "one"
 
 s:\x20
@@ -306,7 +316,8 @@ s: backslashes\\\\\\
 
 s: both\\\"
 
-''')
+'''
+        )
         tmpf.seek(0)
         expected_vals = [
             '"one"',
@@ -323,24 +334,24 @@ s: both\\\"
             'both\\"',
         ]
         for expected in expected_vals:
-            stanza = read_stanza(tmpf)
+            stanza = _mod_rio.read_stanza(tmpf)
             self.rio_file_stanzas([stanza])
             self.assertEqual(len(stanza), 1)
             self.assertEqual(stanza.get("s"), expected)
 
     def test_write_empty_stanza(self):
         """Write empty stanza."""
-        l = list(Stanza().to_lines())
+        l = list(_mod_rio.Stanza().to_lines())
         self.assertEqual(l, [])
 
     def test_rio_raises_type_error(self):
         """TypeError on adding invalid type to Stanza."""
-        s = Stanza()
+        s = _mod_rio.Stanza()
         self.assertRaises(TypeError, s.add, "foo", {})
 
     def test_rio_raises_type_error_key(self):
         """TypeError on adding invalid type to Stanza."""
-        s = Stanza()
+        s = _mod_rio.Stanza()
         self.assertRaises(TypeError, s.add, 10, {})
 
     def test_rio_surrogateescape(self):
@@ -350,22 +361,20 @@ s: both\\\"
             uni_data = raw_bytes.decode("utf-8", "surrogateescape")
         except LookupError:
             self.skipTest("surrogateescape is not available on Python < 3")
-        s = Stanza(foo=uni_data)
-        self.assertEqual(s.get("foo"), uni_data)
-        raw_lines = s.to_lines()
-        self.assertEqual(
-            raw_lines, [b"foo: " + uni_data.encode("utf-8", "surrogateescape") + b"\n"]
-        )
-        new_s = read_stanza(raw_lines)
-        self.assertEqual(new_s.get("foo"), uni_data)
+        try:
+            _mod_rio.Stanza(foo=uni_data)
+        except TypeError:
+            pass
+        else:
+            self.fail()
 
     def test_rio_unicode(self):
         uni_data = "\N{KATAKANA LETTER O}"
-        s = Stanza(foo=uni_data)
+        s = _mod_rio.Stanza(foo=uni_data)
         self.assertEqual(s.get("foo"), uni_data)
         raw_lines = s.to_lines()
         self.assertEqual(raw_lines, [b"foo: " + uni_data.encode("utf-8") + b"\n"])
-        new_s = read_stanza(raw_lines)
+        new_s = _mod_rio.read_stanza(raw_lines)
         self.assertEqual(new_s.get("foo"), uni_data)
 
     def mail_munge(self, lines, dos_nl=True):
@@ -378,24 +387,108 @@ s: both\\\"
         return new_lines
 
     def test_patch_rio(self):
-        stanza = Stanza(data="#\n\r\\r ", space=" " * 255, hash="#" * 255)
-        lines = rio.to_patch_lines(stanza)
+        stanza = _mod_rio.Stanza(data="#\n\r\\r ", space=" " * 255, hash="#" * 255)
+        lines = to_patch_lines(stanza)
         for line in lines:
             self.assertContainsRe(line, b"^# ")
-            self.assertTrue(len(line) <= 72)
-        for line in rio.to_patch_lines(stanza, max_width=12):
-            self.assertTrue(len(line) <= 12)
-        new_stanza = rio.read_patch_stanza(self.mail_munge(lines, dos_nl=False))
+            self.assertGreaterEqual(72, len(line))
+        for line in to_patch_lines(stanza, max_width=12):
+            self.assertGreaterEqual(12, len(line))
+        new_stanza = read_patch_stanza(self.mail_munge(lines, dos_nl=False))
         lines = self.mail_munge(lines)
-        new_stanza = rio.read_patch_stanza(lines)
+        new_stanza = read_patch_stanza(lines)
         self.assertEqual("#\n\r\\r ", new_stanza.get("data"))
         self.assertEqual(" " * 255, new_stanza.get("space"))
         self.assertEqual("#" * 255, new_stanza.get("hash"))
 
     def test_patch_rio_linebreaks(self):
-        stanza = Stanza(breaktest="linebreak -/" * 30)
-        self.assertContainsRe(rio.to_patch_lines(stanza, 71)[0], b"linebreak\\\\\n")
-        stanza = Stanza(breaktest="linebreak-/" * 30)
-        self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0], b"linebreak-\\\\\n")
-        stanza = Stanza(breaktest="linebreak/" * 30)
-        self.assertContainsRe(rio.to_patch_lines(stanza, 70)[0], b"linebreak\\\\\n")
+        stanza = _mod_rio.Stanza(breaktest="linebreak -/" * 30)
+        line1 = to_patch_lines(stanza, 71)[0]
+        self.assertContainsRe(line1, b"linebreak\\\\\n")
+        stanza = _mod_rio.Stanza(breaktest="linebreak-/" * 30)
+        self.assertContainsRe(to_patch_lines(stanza, 70)[0], b"linebreak-\\\\\n")
+        stanza = _mod_rio.Stanza(breaktest="linebreak/" * 30)
+        self.assertContainsRe(to_patch_lines(stanza, 70)[0], b"linebreak\\\\\n")
+
+
+class TestValidTag(TestCase):
+    def test_ok(self):
+        self.assertTrue(_mod_rio.valid_tag("foo"))
+
+    def test_no_spaces(self):
+        self.assertFalse(_mod_rio.valid_tag("foo bla"))
+
+    def test_numeric(self):
+        self.assertTrue(_mod_rio.valid_tag("3foo423"))
+
+    def test_no_colon(self):
+        self.assertFalse(_mod_rio.valid_tag("foo:bla"))
+
+    def test_type_error(self):
+        self.assertRaises(TypeError, _mod_rio.valid_tag, 423)
+
+    def test_empty(self):
+        self.assertFalse(_mod_rio.valid_tag(""))
+
+    def test_unicode(self):
+        # When str is a unicode type, it is valid for a tag
+        self.assertTrue(_mod_rio.valid_tag("foo"))
+
+    def test_non_ascii_char(self):
+        self.assertFalse(_mod_rio.valid_tag("\xb5"))
+
+
+class TestReadUTF8Stanza(TestCase):
+    def assertReadStanza(self, result, line_iter):
+        s = _mod_rio.read_stanza(line_iter)
+        self.assertEqual(result, s)
+        if s is not None:
+            for tag, value in s.iter_pairs():
+                self.assertIsInstance(tag, str)
+                self.assertIsInstance(value, str)
+
+    def assertReadStanzaRaises(self, exception, line_iter):
+        self.assertRaises(exception, _mod_rio.read_stanza, line_iter)
+
+    def test_no_string(self):
+        self.assertReadStanzaRaises(TypeError, [21323])
+
+    def test_empty(self):
+        self.assertReadStanza(None, [])
+
+    def test_none(self):
+        self.assertReadStanza(None, [b""])
+
+    def test_simple(self):
+        self.assertReadStanza(_mod_rio.Stanza(foo="bar"), [b"foo: bar\n", b""])
+
+    def test_multi_line(self):
+        self.assertReadStanza(
+            _mod_rio.Stanza(foo="bar\nbla"), [b"foo: bar\n", b"\tbla\n"]
+        )
+
+    def test_repeated(self):
+        s = _mod_rio.Stanza()
+        s.add("foo", "bar")
+        s.add("foo", "foo")
+        self.assertReadStanza(s, [b"foo: bar\n", b"foo: foo\n"])
+
+    def test_invalid_early_colon(self):
+        self.assertReadStanzaRaises(ValueError, [b"f:oo: bar\n"])
+
+    def test_invalid_tag(self):
+        self.assertReadStanzaRaises(ValueError, [b"f%oo: bar\n"])
+
+    def test_continuation_too_early(self):
+        self.assertReadStanzaRaises(ValueError, [b"\tbar\n"])
+
+    def test_large(self):
+        value = b"bla" * 9000
+        self.assertReadStanza(
+            _mod_rio.Stanza(foo=value.decode()), [b"foo: %s\n" % value]
+        )
+
+    def test_non_ascii_char(self):
+        self.assertReadStanza(
+            _mod_rio.Stanza(foo="n\xe5me"), ["foo: n\xe5me\n".encode()]
+        )

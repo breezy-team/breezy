@@ -37,12 +37,11 @@ class TestErrors(tests.TestCase):
             fmt = getattr(c, "_fmt", None)
             if init:
                 args = inspect.getfullargspec(init)[0]
-                self.assertFalse(
-                    "message" in args,
-                    (
-                        'Argument name "message" not allowed for '
-                        '"errors.{}.__init__"'.format(c.__name__)
-                    ),
+                self.assertNotIn(
+                    "message",
+                    args,
+                    'Argument name "message" not allowed for '
+                    f'"errors.{c.__name__}.__init__"',
                 )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(
@@ -197,7 +196,7 @@ class TestErrors(tests.TestCase):
         # a unicode path to check that %r is being used.
         path = "a path"
         error = errors.ReadError(path)
-        self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
+        self.assertContainsRe(str(error), "^Error reading from 'a path'")
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -276,7 +275,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError("bad value")
         self.assertSocketConnectionError(
-            "Failed to connect to ahost; {}".format(str(orig_error)),
+            f"Failed to connect to ahost; {orig_error!s}",
             host="ahost",
             orig_error=orig_error,
         )
@@ -452,9 +451,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         b = self.make_branch(".")
         error = errors.NoPublicBranch(b)
         url = urlutils.unescape_for_display(b.base, "ascii")
-        self.assertEqualDiff(
-            'There is no public branch set for "{}".'.format(url), str(error)
-        )
+        self.assertEqualDiff(f'There is no public branch set for "{url}".', str(error))
 
     def test_no_repo(self):
         dir = controldir.ControlDir.create(self.get_url())

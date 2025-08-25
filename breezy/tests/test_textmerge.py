@@ -15,17 +15,25 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
+
+"""Tests for text merging functionality."""
+
 from breezy.tests import TestCase
-from breezy.textmerge import Merge2
+
+from ..textmerge import Merge2
 
 
 class TestMerge2(TestCase):
+    """Test the Merge2 text merging class."""
+
     def test_agreed(self):
+        """Test merging identical text produces the same result."""
         lines = "a\nb\nc\nd\ne\nf\n".splitlines(True)
         mlines = list(Merge2(lines, lines).merge_lines()[0])
         self.assertEqualDiff(mlines, lines)
 
     def test_conflict(self):
+        """Test merging conflicting text produces appropriate conflict markers."""
         lines_a = "a\nb\nc\nd\ne\nf\ng\nh\n".splitlines(True)
         lines_b = "z\nb\nx\nd\ne\ne\nf\ng\ny\n".splitlines(True)
         expected = (
@@ -38,6 +46,7 @@ class TestMerge2(TestCase):
         self.assertEqualDiff("".join(mlines), expected)
 
     def test_reprocess(self):
+        """Test the reprocess_struct method for conflict resolution."""
         struct = [("a", "b"), ("c",), ("def", "geh"), ("i",)]
         expect = [("a", "b"), ("c",), ("d", "g"), ("e",), ("f", "h"), ("i",)]
         result = Merge2.reprocess_struct(struct)

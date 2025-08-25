@@ -16,6 +16,6 @@
 
 """Pseudo-namespace package for breezy plugins."""
 
-from breezy.plugin import extend_path
+from ..plugin import extend_path
 
 __path__ = extend_path(__path__, __name__)

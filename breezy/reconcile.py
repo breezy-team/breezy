@@ -87,10 +87,10 @@ class Reconciler:
         if self.canonicalize_chks:
             try:
                 self.repo.reconcile_canonicalize_chks  # noqa: B018
-            except AttributeError:
+            except AttributeError as err:
                 raise errors.BzrError(
                     gettext("%s cannot canonicalize CHKs.") % (self.repo,)
-                )
+                ) from err
             reconcile_result = self.repo.reconcile_canonicalize_chks()
         else:
             reconcile_result = self.repo.reconcile(thorough=True)

@@ -17,9 +17,11 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import contextlib
 import posixpath
 import stat
 from collections.abc import Iterable, Iterator
+from typing import Optional
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -45,6 +47,15 @@ BANNED_FILENAMES = [".git"]
 
 
 def get_object_store(repo, mapping=None):
+    """Get an object store for the given repository.
+
+    Args:
+        repo: The repository to get an object store for.
+        mapping: Optional mapping to use for Git/Bazaar conversion.
+
+    Returns:
+        An object store instance.
+    """
     git = getattr(repo, "_git", None)
     if git is not None:
         git.object_store.unlock = lambda: None
@@ -58,7 +69,15 @@ MAX_TREE_CACHE_SIZE = 50 * 1024 * 1024
 
 
 class LRUTreeCache:
+    """LRU cache for revision trees."""
+
     def __init__(self, repository):
+        """Initialize LRUTreeCache.
+
+        Args:
+            repository: The repository to cache trees from.
+        """
+
         def approx_tree_size(tree):
             # Very rough estimate, 250 per inventory entry
             return len(tree.root_inventory) * 250
@@ -71,6 +90,14 @@ class LRUTreeCache:
         )
 
     def revision_tree(self, revid):
+        """Get a revision tree, using cache if available.
+
+        Args:
+            revid: The revision ID to get the tree for.
+
+        Returns:
+            The revision tree.
+        """
         try:
             tree = self._cache[revid]
         except KeyError:
@@ -79,6 +106,14 @@ class LRUTreeCache:
         return tree
 
     def iter_revision_trees(self, revids):
+        """Iterate over revision trees for the given revision IDs.
+
+        Args:
+            revids: Sequence of revision IDs to get trees for.
+
+        Returns:
+            Generator yielding revision trees in the same order as revids.
+        """
         trees = {}
         todo = []
         for revid in revids:
@@ -100,9 +135,22 @@ class LRUTreeCache:
         return (trees[r] for r in revids)
 
     def revision_trees(self, revids):
+        """Get a list of revision trees for the given revision IDs.
+
+        Args:
+            revids: Sequence of revision IDs to get trees for.
+
+        Returns:
+            List of revision trees in the same order as revids.
+        """
         return list(self.iter_revision_trees(revids))
 
     def add(self, tree):
+        """Add a tree to the cache.
+
+        Args:
+            tree: The revision tree to cache.
+        """
         self._cache[tree.get_revision_id()] = tree
 
 
@@ -140,13 +188,11 @@ def _check_expected_sha(expected_sha, object):
         return
     if len(expected_sha) == 40:
         if expected_sha != object.sha().hexdigest().encode("ascii"):
-            raise AssertionError(
-                "Invalid sha for {!r}: {}".format(object, expected_sha)
-            )
+            raise AssertionError(f"Invalid sha for {object!r}: {expected_sha}")
     elif len(expected_sha) == 20:
         if expected_sha != object.sha().digest():
             raise AssertionError(
-                "Invalid sha for {!r}: {}".format(object, sha_to_hex(expected_sha))
+                f"Invalid sha for {object!r}: {sha_to_hex(expected_sha)}"
             )
     else:
         raise AssertionError(f"Unknown length {len(expected_sha)} for {expected_sha!r}")
@@ -340,7 +386,7 @@ def _tree_to_objects(
             # calculate again from scratch
             ret = directory_to_tree(
                 path,
-                ie.children.values(),
+                tree.iter_child_entries(path),
                 ie_to_hexsha,
                 unusual_modes,
                 dummy_file_name,
@@ -380,6 +426,12 @@ class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
     def __init__(self, repository, mapping=None):
+        """Initialize BazaarObjectStore.
+
+        Args:
+            repository: The Bazaar repository to wrap.
+            mapping: Optional mapping for Git/Bazaar conversion.
+        """
         self.repository = repository
         self._map_updated = False
         self._locked = None
@@ -442,6 +494,11 @@ class BazaarObjectStore(BaseObjectStore):
             self.commit_write_group()
 
     def __iter__(self):
+        """Iterate over all object IDs in the store.
+
+        Returns:
+            Iterator over object SHA1s.
+        """
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
@@ -549,6 +606,20 @@ class BazaarObjectStore(BaseObjectStore):
         allow_missing: bool = False,
         convert_ofs_delta: bool = True,
     ) -> Iterator[ShaFile]:
+        """Iterate over unpacked objects (not supported in this implementation).
+
+        Args:
+            shas: SHA1s to iterate over.
+            include_comp: Whether to include compressed objects.
+            allow_missing: If True, missing objects don't raise KeyError.
+            convert_ofs_delta: Whether to convert offset deltas.
+
+        Yields:
+            ShaFile objects (none in this implementation).
+
+        Raises:
+            KeyError: If shas is not empty and allow_missing is False.
+        """
         # We don't store unpacked objects, so...
         if not allow_missing and shas:
             raise KeyError(shas.pop())
@@ -608,7 +679,7 @@ class BazaarObjectStore(BaseObjectStore):
                 # FIXME: Make sure the file id is the root id
                 return self._lookup_revision_sha1(entry.reference_revision)
             else:
-                raise AssertionError("unknown entry kind '{}'".format(entry.kind))
+                raise AssertionError(f"unknown entry kind '{entry.kind}'")
 
         path = bzr_tree.id2path(fileid)
         tree = directory_to_tree(
@@ -655,6 +726,14 @@ class BazaarObjectStore(BaseObjectStore):
         return (obj.type_num, obj.as_raw_string())
 
     def __contains__(self, sha):
+        """Check if the object store contains the given SHA.
+
+        Args:
+            sha: The SHA1 to check for.
+
+        Returns:
+            True if the SHA is in the store, False otherwise.
+        """
         # See if sha is in map
         try:
             for type, type_data in self.lookup_git_sha(sha):
@@ -668,33 +747,57 @@ class BazaarObjectStore(BaseObjectStore):
                     if self.repository.has_revision(type_data[1]):
                         return True
                 else:
-                    raise AssertionError("Unknown object type '{}'".format(type))
+                    raise AssertionError(f"Unknown object type '{type}'")
             else:
                 return False
         except KeyError:
             return False
 
     def lock_read(self):
+        """Acquire a read lock on this object store.
+
+        Returns:
+            LogicalLockResult that can be used to unlock.
+        """
         self._locked = "r"
         self._map_updated = False
         self.repository.lock_read()
         return LogicalLockResult(self.unlock)
 
     def lock_write(self):
+        """Acquire a write lock on this object store.
+
+        Returns:
+            LogicalLockResult that can be used to unlock.
+        """
         self._locked = "r"
         self._map_updated = False
         self.repository.lock_write()
         return LogicalLockResult(self.unlock)
 
     def is_locked(self):
+        """Check if this object store is currently locked.
+
+        Returns:
+            True if locked, False otherwise.
+        """
         return self._locked is not None
 
     def unlock(self):
+        """Release any locks held on this object store."""
         self._locked = None
         self._map_updated = False
         self.repository.unlock()
 
     def lookup_git_shas(self, shas: Iterable[ObjectID]) -> dict[ObjectID, list]:
+        """Lookup multiple Git SHA1s in the object store.
+
+        Args:
+            shas: Iterable of Git SHA1s to lookup.
+
+        Returns:
+            Dictionary mapping SHA1s to lists of (type, type_data) tuples.
+        """
         ret: dict[ObjectID, list] = {}
         for sha in shas:
             if sha == ZERO_SHA:
@@ -706,16 +809,33 @@ class BazaarObjectStore(BaseObjectStore):
                 # if not, see if there are any unconverted revisions and
                 # add them to the map, search for sha in map again
                 self._update_sha_map()
-                try:
+                with contextlib.suppress(KeyError):
                     ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
-                except KeyError:
-                    pass
         return ret
 
     def lookup_git_sha(self, sha):
+        """Lookup a single Git SHA1 in the object store.
+
+        Args:
+            sha: Git SHA1 to lookup.
+
+        Returns:
+            List of (type, type_data) tuples for this SHA1.
+        """
         return self.lookup_git_shas([sha])[sha]
 
     def __getitem__(self, sha):
+        """Get a Git object by its SHA1.
+
+        Args:
+            sha: SHA1 of the object to retrieve.
+
+        Returns:
+            The Git object (Commit, Tree, or Blob).
+
+        Raises:
+            KeyError: If the object is not found.
+        """
         with self.repository.lock_read():
             for kind, type_data in self.lookup_git_sha(sha):
                 # convert object to git object
@@ -723,11 +843,11 @@ class BazaarObjectStore(BaseObjectStore):
                     (revid, tree_sha, verifiers) = type_data
                     try:
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         if revid == NULL_REVISION:
                             raise AssertionError(
                                 "should not try to look up NULL_REVISION"
-                            )
+                            ) from err
                         trace.mutter(
                             "entry for %s %s in shamap: %r, but not "
                             "found in repository",
@@ -735,7 +855,7 @@ class BazaarObjectStore(BaseObjectStore):
                             sha,
                             type_data,
                         )
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     # FIXME: the type data should say whether conversion was
                     # lossless
                     commit = self._reconstruct_commit(
@@ -755,7 +875,7 @@ class BazaarObjectStore(BaseObjectStore):
                     try:
                         tree = self.tree_cache.revision_tree(revid)
                         rev = self.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
+                    except errors.NoSuchRevision as err:
                         trace.mutter(
                             "entry for %s %s in shamap: %r, but not found in "
                             "repository",
@@ -763,59 +883,46 @@ class BazaarObjectStore(BaseObjectStore):
                             sha,
                             type_data,
                         )
-                        raise KeyError(sha)
+                        raise KeyError(sha) from err
                     unusual_modes = extract_unusual_modes(rev)
                     try:
                         return self._reconstruct_tree(
                             fileid, revid, tree, unusual_modes, expected_sha=sha
                         )
-                    except errors.NoSuchRevision:
-                        raise KeyError(sha)
+                    except errors.NoSuchRevision as err:
+                        raise KeyError(sha) from err
                 else:
-                    raise AssertionError("Unknown object type '{}'".format(kind))
+                    raise AssertionError(f"Unknown object type '{kind}'")
             else:
                 raise KeyError(sha)
 
     def generate_lossy_pack_data(
         self, have, want, shallow=None, progress=None, get_tagged=None, ofs_delta=False
     ):
-        object_ids = list(
-            self.find_missing_objects(
-                have,
-                want,
-                progress=progress,
-                shallow=shallow,
-                get_tagged=get_tagged,
-                lossy=True,
-            )
-        )
-        return pack_objects_to_data(
-            [(self[oid], path) for (oid, (type_num, path)) in object_ids]
-        )
+        """Generate pack data with potential data loss.
 
-    def find_missing_objects(
-        self,
-        have,
-        want,
-        shallow=None,
-        progress=None,
-        ofs_delta=False,
-        get_tagged=None,
-        lossy=False,
-    ):
-        """Iterate over the contents of a pack file.
+        Args:
+            have: Object IDs already available.
+            want: Object IDs that are wanted.
+            shallow: Optional shallow commit list.
+            progress: Optional progress callback.
+            get_tagged: Optional function to get tagged objects.
+            ofs_delta: Whether to use offset deltas.
 
-        :param have: List of SHA1s of objects that should not be sent
-        :param want: List of SHA1s of objects that should be sent
+        Returns:
+            Generator yielding pack data.
         """
+        # We need to generate the actual objects here, not just find their IDs
+        # because self[oid] would reconstruct them with the wrong lossy setting
+        objects = []
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(have + want)
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
         for commit_sha in have:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was {}, not commit".format(type))
+                        raise AssertionError(f"Type was {type}, not commit")
                     processed.add(type_data[0])
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
@@ -826,7 +933,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was {}, not commit".format(type))
+                        raise AssertionError(f"Type was {type}, not commit")
                     pending.add(type_data[0])
             except KeyError:
                 pass
@@ -835,7 +942,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 for type, type_data in ret[commit_sha]:
                     if type != "commit":
-                        raise AssertionError("Type was {}, not commit".format(type))
+                        raise AssertionError(f"Type was {type}, not commit")
                     shallows.add(type_data[0])
             except KeyError:
                 pass
@@ -852,12 +959,84 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchRevision:
                         continue
                     tree = self.tree_cache.revision_tree(revid)
-                    for path, obj in self._revision_to_objects(rev, tree, lossy=lossy):
+                    for path, obj in self._revision_to_objects(rev, tree, lossy=True):
                         if obj.id not in seen:
-                            yield (obj.id, (obj.type_num, path))
+                            objects.append((obj, path))
+                            seen.add(obj.id)
+
+        return pack_objects_to_data(objects)
+
+    def find_missing_objects(
+        self,
+        haves,
+        wants,
+        shallow=None,
+        progress=None,
+        get_tagged=None,
+        get_parents=lambda x: [],
+    ) -> Iterator[tuple[ObjectID, Optional[bytes]]]:
+        """Iterate over the contents of a pack file.
+
+        :param haves: List of SHA1s of objects that should not be sent
+        :param wants: List of SHA1s of objects that should be sent
+        """
+        processed = set()
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(haves) + list(wants))
+        for commit_sha in haves:
+            commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    processed.add(type_data[0])
+            except KeyError:
+                trace.mutter("unable to find remote ref %s", commit_sha)
+        pending = set()
+        for commit_sha in wants:
+            if commit_sha in haves:
+                continue
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    pending.add(type_data[0])
+            except KeyError:
+                pass
+        shallows = set()
+        for commit_sha in shallow or set():
+            try:
+                for type, type_data in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError(f"Type was {type}, not commit")
+                    shallows.add(type_data[0])
+            except KeyError:
+                pass
+
+        seen = set()
+        with self.repository.lock_read():
+            graph = self.repository.get_graph()
+            todo = _find_missing_bzr_revids(graph, pending, processed, shallow)
+            with ui.ui_factory.nested_progress_bar() as pb:
+                for i, revid in enumerate(graph.iter_topo_order(todo)):
+                    pb.update("generating git objects", i, len(todo))
+                    try:
+                        rev = self.repository.get_revision(revid)
+                    except errors.NoSuchRevision:
+                        continue
+                    tree = self.tree_cache.revision_tree(revid)
+                    for path, obj in self._revision_to_objects(
+                        rev, tree, lossy=(not self.mapping.roundtripping)
+                    ):
+                        if obj.id not in seen:
+                            yield (obj.id, path.encode("utf-8") if path else None)
                             seen.add(obj.id)
 
     def add_thin_pack(self):
+        """Add a thin pack to the object store.
+
+        Returns:
+            A thin pack handler for adding objects.
+        """
         import os
         import tempfile
 

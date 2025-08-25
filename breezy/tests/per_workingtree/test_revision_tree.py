@@ -111,9 +111,10 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         return tree, [base_revid, this_revid, other_revid]
 
     def test_kind_parent_tree(self):
-        tree, [base_revid, this_revid, other_revid] = (
-            self.make_branch_with_merged_deletions()
-        )
+        (
+            tree,
+            [base_revid, this_revid, other_revid],
+        ) = self.make_branch_with_merged_deletions()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()
@@ -125,10 +126,10 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         self.assertEqual(["directory", "file"], [basis.kind("b"), basis.kind("b/c")])
         try:
             other = tree.revision_tree(parents[1])
-        except errors.NoSuchRevisionInTree:
+        except errors.NoSuchRevisionInTree as err:
             raise tests.TestNotApplicable(
-                "Tree type {} caches only the basis revision tree.".format(type(tree))
-            )
+                f"Tree type {type(tree)} caches only the basis revision tree."
+            ) from err
         other.lock_read()
         self.addCleanup(other.unlock)
         self.assertRaises(_mod_transport.NoSuchFile, other.kind, "b")

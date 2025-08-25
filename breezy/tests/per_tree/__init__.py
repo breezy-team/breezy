@@ -28,19 +28,20 @@ Specific tests for individual variations are in other places such as:
 import contextlib
 
 from breezy import tests, transform, transport
-from breezy.bzr.workingtree_4 import (
+from breezy.tests import features
+from breezy.tests.per_workingtree import make_scenario as wt_make_scenario
+from breezy.tests.per_workingtree import make_scenarios as wt_make_scenarios
+
+from ...bzr.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,
     WorkingTreeFormat5,
 )
-from breezy.git.tree import GitRevisionTree
-from breezy.git.workingtree import GitWorkingTreeFormat
-from breezy.revisiontree import RevisionTree
-from breezy.tests import features
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
-from breezy.tests.per_workingtree import make_scenario as wt_make_scenario
-from breezy.tests.per_workingtree import make_scenarios as wt_make_scenarios
-from breezy.workingtree import format_registry
+from ...git.tree import GitRevisionTree
+from ...git.workingtree import GitWorkingTreeFormat
+from ...revisiontree import RevisionTree
+from ...workingtree import format_registry
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def return_parameter(testcase, something):
@@ -400,9 +401,9 @@ def load_tests(loader, standard_tests, pattern):
         "tree",
         "walkdirs",
     ]
-    submod_tests = loader.loadTestsFromModuleNames(
-        [__name__ + ".test_" + name for name in per_tree_mod_names]
-    )
+    submod_tests = loader.suiteClass()
+    for name in per_tree_mod_names:
+        submod_tests.addTest(loader.loadTestsFromName(__name__ + ".test_" + name))
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created

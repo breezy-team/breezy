@@ -20,7 +20,7 @@
 import os
 import sys
 
-from .. import bedding, osutils, tests
+from .. import bedding, errors, osutils, tests
 
 if sys.platform == "win32":
     from .. import win32utils
@@ -30,7 +30,7 @@ def override_whoami(test):
     test.overrideEnv("EMAIL", None)
     test.overrideEnv("BRZ_EMAIL", None)
     # Also, make sure that it's not inferred from mailname.
-    test.overrideAttr(bedding, "_auto_user_id", lambda: (None, None))
+    test.overrideEnv("BRZ_DISABLE_AUTO_USER_ID", "1")
 
 
 class TestConfigPath(tests.TestCase):
@@ -252,3 +252,9 @@ class TestXDGCacheDir(tests.TestCaseInTempDir):
         self.overrideEnv("XDG_CACHE_HOME", xdgcachedir)
         newdir = osutils.pathjoin(xdgcachedir, "breezy")
         self.assertEqual(bedding.cache_dir(), newdir)
+
+
+class TestDefaultEmail(tests.TestCase):
+    def test_default_email(self):
+        override_whoami(self)
+        self.assertRaises(errors.NoWhoami, bedding.default_email)

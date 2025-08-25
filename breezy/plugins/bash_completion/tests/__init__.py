@@ -14,14 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for the bash_completion plugin."""
+
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         "test_bashcomp",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

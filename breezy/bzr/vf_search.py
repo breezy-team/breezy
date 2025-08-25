@@ -62,6 +62,7 @@ class SearchResult(AbstractSearchResult):
         self._keys = frozenset(keys)
 
     def __repr__(self):
+        """Return a string representation of this SearchResult."""
         kind, start_keys, exclude_keys, key_count = self._recipe
         if len(start_keys) > 5:
             start_keys_repr = repr(list(start_keys)[:5])[:-1] + ", ...]"
@@ -71,7 +72,13 @@ class SearchResult(AbstractSearchResult):
             exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ", ...]"
         else:
             exclude_keys_repr = repr(exclude_keys)
-        return f"<{self.__class__.__name__} {kind}:({start_keys_repr}, {exclude_keys_repr}, {key_count})>"
+        return "<%s %s:(%s, %s, %d)>" % (
+            self.__class__.__name__,
+            kind,
+            start_keys_repr,
+            exclude_keys_repr,
+            key_count,
+        )
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -97,6 +104,11 @@ class SearchResult(AbstractSearchResult):
         return self._recipe
 
     def get_network_struct(self):
+        """Return a network-ready representation of this search result.
+
+        Returns:
+            tuple: A tuple of (recipe_type, encoded_data) suitable for network transmission.
+        """
         start_keys = b" ".join(self._recipe[1])
         stop_keys = b" ".join(self._recipe[2])
         count = str(self._recipe[3]).encode("ascii")
@@ -160,14 +172,13 @@ class PendingAncestryResult(AbstractSearchResult):
         self.repo = repo
 
     def __repr__(self):
+        """Return a string representation of this PendingAncestryResult."""
         if len(self.heads) > 5:
             heads_repr = repr(list(self.heads)[:5])[:-1]
-            heads_repr += f", <{len(self.heads) - 5} more>...]"
+            heads_repr += ", <%d more>...]" % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
-        return "<{} heads:{} repo:{!r}>".format(
-            self.__class__.__name__, heads_repr, self.repo
-        )
+        return f"<{self.__class__.__name__} heads:{heads_repr} repo:{self.repo!r}>"
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -183,6 +194,11 @@ class PendingAncestryResult(AbstractSearchResult):
         return ("proxy-search", self.heads, set(), -1)
 
     def get_network_struct(self):
+        """Return a network-ready representation of this search result.
+
+        Returns:
+            list: A list of bytes representing the ancestry search.
+        """
         parts = [b"ancestry-of"]
         parts.extend(self.heads)
         return parts
@@ -226,6 +242,11 @@ class EmptySearchResult(AbstractSearchResult):
     """An empty search result."""
 
     def is_empty(self):
+        """Check if this search result is empty.
+
+        Returns:
+            bool: Always True for an empty search result.
+        """
         return True
 
 
@@ -233,19 +254,39 @@ class EverythingResult(AbstractSearchResult):
     """A search result that simply requests everything in the repository."""
 
     def __init__(self, repo):
+        """Initialize an EverythingResult.
+
+        Args:
+            repo: The repository to search.
+        """
         self._repo = repo
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._repo)
+        """Return a string representation of this EverythingResult."""
+        return f"{self.__class__.__name__}({self._repo!r})"
 
     def get_recipe(self):
+        """Get a recipe for recreating this search.
+
+        :raises NotImplementedError: EverythingResult does not support recipes.
+        """
         raise NotImplementedError(self.get_recipe)
 
     def get_network_struct(self):
+        """Return a network-ready representation of this search result.
+
+        Returns:
+            tuple: A tuple containing the search type identifier.
+        """
         return (b"everything",)
 
     def get_keys(self):
-        if "evil" in debug.debug_flags:
+        """Get all revision IDs in the repository.
+
+        Returns:
+            set: All revision IDs in the repository.
+        """
+        if debug.debug_flag_enabled("evil"):
             from . import remote
 
             if isinstance(self._repo, remote.RemoteRepository):
@@ -256,12 +297,26 @@ class EverythingResult(AbstractSearchResult):
         return self._repo.all_revision_ids()
 
     def is_empty(self):
+        """Check if this search result is empty.
+
+        Returns:
+            bool: Always False (optimistic assumption for performance).
+        """
         # It's ok for this to wrongly return False: the worst that can happen
         # is that RemoteStreamSource will initiate a get_stream on an empty
         # repository.  And almost all repositories are non-empty.
         return False
 
     def refine(self, seen, referenced):
+        """Refine this search by excluding seen revisions.
+
+        Args:
+            seen: Revision IDs that have already been processed.
+            referenced: Additional revision IDs that were referenced.
+
+        Returns:
+            PendingAncestryResult: A refined search result.
+        """
         heads = set(self._repo.all_revision_ids())
         heads.difference_update(seen)
         heads.update(referenced)
@@ -272,11 +327,23 @@ class EverythingNotInOther(AbstractSearch):
     """Find all revisions in that are in one repo but not the other."""
 
     def __init__(self, to_repo, from_repo, find_ghosts=False):
+        """Initialize an EverythingNotInOther search.
+
+        Args:
+            to_repo: Repository to search for missing revisions.
+            from_repo: Repository to compare against.
+            find_ghosts: If True, include ghost revisions in the search.
+        """
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
 
     def execute(self):
+        """Execute the search for missing revisions.
+
+        Returns:
+            AbstractSearchResult: The search result containing missing revisions.
+        """
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, find_ghosts=self.find_ghosts
         )
@@ -313,6 +380,7 @@ class NotInOtherForRevs(AbstractSearch):
         self.limit = limit
 
     def __repr__(self):
+        """Return a string representation of this NotInOtherForRevs search."""
         if len(self.required_ids) > 5:
             reqd_revs_repr = repr(list(self.required_ids)[:5])[:-1] + ", ...]"
         else:
@@ -323,7 +391,8 @@ class NotInOtherForRevs(AbstractSearch):
             ifp_revs_repr = repr(self.if_present_ids)
 
         return (
-            "<{} from:{!r} to:{!r} find_ghosts:{!r} req'd:{!r} if-present:{!r}limit:{!r}>"
+            "<{} from:{!r} to:{!r} find_ghosts:{!r} req'd:{!r} if-present:{!r}"
+            "limit:{!r}>"
         ).format(
             self.__class__.__name__,
             self.from_repo,
@@ -335,6 +404,11 @@ class NotInOtherForRevs(AbstractSearch):
         )
 
     def execute(self):
+        """Execute the search for missing revisions.
+
+        Returns:
+            AbstractSearchResult: The search result containing missing revisions.
+        """
         return self.to_repo.search_missing_revision_ids(
             self.from_repo,
             revision_ids=self.required_ids,

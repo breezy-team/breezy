@@ -28,12 +28,14 @@ class TestSyntax(tests.TestCase):
             [
                 (["bar"], None, None, None),
             ],
-            script._script_to_commands("""
+            script._script_to_commands(
+                """
             # this comment is ignored
             # so is this
             # no we run bar
             $ bar
-            """),
+            """
+            ),
         )
 
     def test_trim_blank_lines(self):
@@ -49,10 +51,12 @@ class TestSyntax(tests.TestCase):
             [
                 (["bar"], None, "\n", None),
             ],
-            script._script_to_commands("""
+            script._script_to_commands(
+                """
             $bar
 
-            """),
+            """
+            ),
         )
 
     def test_simple_command(self):
@@ -213,16 +217,20 @@ class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_ellipsis_everything(self):
         """A simple ellipsis matches everything."""
-        self.run_script("""
+        self.run_script(
+            """
         $ echo foo
         ...
-        """)
+        """
+        )
 
     def test_ellipsis_matches_empty(self):
-        self.run_script("""
+        self.run_script(
+            """
         $ cd .
         ...
-        """)
+        """
+        )
 
     def test_stops_on_unexpected_output(self):
         story = """
@@ -287,33 +295,41 @@ $ brz branch not-a-branch
 
 class TestArgumentProcessing(script.TestCaseWithTransportAndScript):
     def test_globing(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ echo cat >cat
 $ echo dog >dog
 $ cat *
 cat
 dog
-""")
+"""
+        )
 
     def test_quoted_globbing(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ echo cat >cat
 $ cat '*'
 2>*: No such file or directory
-""")
+"""
+        )
 
     def test_quotes_removal(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
-""")
+"""
+        )
 
     def test_verbosity_isolated(self):
         """Global verbosity is isolated from commands run in scripts."""
         # see also 656694; we should get rid of global verbosity
-        self.run_script("""
+        self.run_script(
+            """
         $ brz init --quiet a
-        """)
+        """
+        )
         self.assertEqual(trace.is_quiet(), False)
 
 
@@ -358,24 +374,30 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.assertFileEqual(b"cat\ndog\n", "file")
 
     def test_cat_bogus_input_file(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ cat <file
 2>file: No such file or directory
-""")
+"""
+        )
 
     def test_cat_bogus_output_file(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ cat >
 2>: No such file or directory
-""")
+"""
+        )
 
     def test_echo_bogus_output_file(self):
         # We need a backing file sysytem for that test so it can't be in
         # TestEcho
-        self.run_script("""
+        self.run_script(
+            """
 $ echo >
 2>: No such file or directory
-""")
+"""
+        )
 
 
 class TestMkdir(script.TestCaseWithTransportAndScript):
@@ -388,12 +410,14 @@ class TestMkdir(script.TestCaseWithTransportAndScript):
         self.assertRaises(ValueError, self.run_script, "$ mkdir ../out-of-jail")
 
     def test_mkdir_in_jail(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ mkdir dir
 $ cd dir
 $ mkdir ../dir2
 $ cd ..
-""")
+"""
+        )
         self.assertPathExists("dir")
         self.assertPathExists("dir2")
 
@@ -408,10 +432,12 @@ class TestCd(script.TestCaseWithTransportAndScript):
 
     def test_cd_dir_and_back_home(self):
         self.assertEqual(self.test_dir, osutils.getcwd())
-        self.run_script("""
+        self.run_script(
+            """
 $ mkdir dir
 $ cd dir
-""")
+"""
+        )
         self.assertEqual(osutils.pathjoin(self.test_dir, "dir"), osutils.getcwd())
 
         self.run_script("$ cd")
@@ -420,10 +446,12 @@ $ cd dir
 
 class TestBrz(script.TestCaseWithTransportAndScript):
     def test_brz_smoke(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init branch
             Created a standalone tree (format: ...)
-            """)
+            """
+        )
         self.assertPathExists("branch")
 
 
@@ -476,12 +504,14 @@ $ echo foo
         self.assertFileEqual(b"hello\nhappy\n", "file")
 
     def test_empty_line_in_output_is_respected(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ echo
 
             $ echo bar
             bar
-            """)
+            """
+        )
 
 
 class TestRm(script.TestCaseWithTransportAndScript):
@@ -501,10 +531,12 @@ class TestRm(script.TestCaseWithTransportAndScript):
         self.assertPathDoesNotExist("file")
 
     def test_rm_files(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ echo content >file
 $ echo content >file2
-""")
+"""
+        )
         self.assertPathExists("file2")
         self.run_script("$ rm file file2")
         self.assertPathDoesNotExist("file2")
@@ -512,17 +544,21 @@ $ echo content >file2
     def test_rm_dir(self):
         self.run_script("$ mkdir dir")
         self.assertPathExists("dir")
-        self.run_script("""
+        self.run_script(
+            """
 $ rm dir
 2>rm: cannot remove 'dir': Is a directory
-""")
+"""
+        )
         self.assertPathExists("dir")
 
     def test_rm_dir_recursive(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ mkdir dir
 $ rm -r dir
-""")
+"""
+        )
         self.assertPathDoesNotExist("dir")
 
 
@@ -545,20 +581,24 @@ class TestMv(script.TestCaseWithTransportAndScript):
         )
 
     def test_move_dir(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ mkdir dir
 $ echo content >dir/file
-""")
+"""
+        )
         self.run_script("$ mv dir new_name")
         self.assertPathDoesNotExist("dir")
         self.assertPathExists("new_name")
         self.assertPathExists("new_name/file")
 
     def test_move_file_into_dir(self):
-        self.run_script("""
+        self.run_script(
+            """
 $ mkdir dir
 $ echo content > file
-""")
+"""
+        )
         self.run_script("$ mv file dir")
         self.assertPathExists("dir")
         self.assertPathDoesNotExist("file")
@@ -587,7 +627,8 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
         """
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, "test-confirm")
-        self.run_script("""
+        self.run_script(
+            """
             $ brz test-confirm
             2>Really do it? ([y]es, [n]o): yes
             <y
@@ -596,13 +637,15 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
             2>Really do it? ([y]es, [n]o): no
             <n
             ok, no
-            """)
+            """
+        )
 
 
 class TestShelve(script.TestCaseWithTransportAndScript):
     def setUp(self):
         super().setUp()
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init test
             Created a standalone tree (format: 2a)
             $ cd test
@@ -614,7 +657,8 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             2>added file
             2>Committed revision 1.
             $ echo bar > file
-            """)
+            """
+        )
 
     def test_shelve(self):
         self.run_script(
@@ -630,10 +674,12 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             """,
             null_output_matches_anything=True,
         )
-        self.run_script("""
+        self.run_script(
+            """
             $ brz shelve --list
               1: shelve bar
-            """)
+            """
+        )
 
     def test_dont_shelve(self):
         # We intentionally provide no input here to test EOF
@@ -645,8 +691,10 @@ class TestShelve(script.TestCaseWithTransportAndScript):
             ),
             null_output_matches_anything=True,
         )
-        self.run_script("""
+        self.run_script(
+            """
             $ brz st
             modified:
               file
-            """)
+            """
+        )

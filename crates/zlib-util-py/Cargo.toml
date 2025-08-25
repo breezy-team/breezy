@@ -1,0 +1,11 @@
+[package]
+name = "zlib-util-py"
+version = { workspace = true }
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.19", features = ["extension-module"]}
+breezy-zlib-util = { path = "../zlib-util" }

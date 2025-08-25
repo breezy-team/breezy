@@ -213,7 +213,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
-        self.assertTrue("Empty commit 3" in message)
+        self.assertIn("Empty commit 3", message)
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):
@@ -817,17 +817,17 @@ class TestStatusEncodings(TestCaseWithTransport):
         filename = "hell\u00d8"
         try:
             self.build_tree_contents([(filename, b"contents of hello")])
-        except UnicodeEncodeError:
+        except UnicodeEncodeError as err:
             raise TestSkipped(
                 "can't build unicode working tree in filesystem encoding {}".format(
                     sys.getfilesystemencoding()
                 )
-            )
+            ) from err
         working_tree.add(filename)
         return working_tree
 
     def test_stdout_ascii(self):
-        self.overrideAttr(osutils, "_cached_user_encoding", "ascii")
+        self.overrideAttr(osutils, "get_user_encoding", lambda: "ascii")
         self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -840,7 +840,7 @@ added:
         )
 
     def test_stdout_latin1(self):
-        self.overrideAttr(osutils, "_cached_user_encoding", "latin-1")
+        self.overrideAttr(osutils, "get_user_encoding", lambda: "latin-1")
         self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 

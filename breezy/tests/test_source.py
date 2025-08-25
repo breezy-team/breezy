@@ -47,6 +47,8 @@ LICENSE_EXCEPTIONS = [
 
 
 class TestSourceHelper(TestCase):
+    """Base helper class for source code analysis tests."""
+
     def source_file_name(self, package):
         """Return the path of the .py file for package."""
         if getattr(sys, "frozen", None) is not None:
@@ -59,6 +61,8 @@ class TestSourceHelper(TestCase):
 
 
 class TestApiUsage(TestSourceHelper):
+    """Tests for API usage patterns in the source code."""
+
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
@@ -93,6 +97,8 @@ class TestApiUsage(TestSourceHelper):
 
 
 class TestSource(TestSourceHelper):
+    """Tests for source code quality and compliance."""
+
     def get_breezy_dir(self):
         """Get the path to the root of breezy."""
         source = self.source_file_name(breezy)
@@ -101,7 +107,7 @@ class TestSource(TestSourceHelper):
         # Avoid the case when breezy is packaged in a zip file
         if not os.path.isdir(source_dir):
             raise TestSkipped(
-                "Cannot find breezy source directory. Expected {}".format(source_dir)
+                f"Cannot find breezy source directory. Expected {source_dir}"
             )
         return source_dir
 
@@ -129,6 +135,14 @@ class TestSource(TestSourceHelper):
                 yield osutils.pathjoin(root, f)
 
     def get_source_file_contents(self, extensions=None):
+        """Yield source file names and their contents.
+
+        Args:
+            extensions: Tuple of file extensions to include (default: None).
+
+        Yields:
+            Tuple of (filename, file_contents) for each matching source file.
+        """
         for fname in self.get_source_files(extensions=extensions):
             with open(fname) as f:
                 yield fname, f.read()
@@ -176,16 +190,13 @@ class TestSource(TestSourceHelper):
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, "found: {}".format(match.group())))
+                    incorrect.append((fname, f"found: {match.group()}"))
                 else:
                     incorrect.append((fname, "no copyright line found\n"))
             else:
                 if "by Canonical" in match.group():
                     incorrect.append(
-                        (
-                            fname,
-                            'should not have: "by Canonical": {}'.format(match.group()),
-                        )
+                        (fname, f'should not have: "by Canonical": {match.group()}')
                     )
 
         if incorrect:
@@ -196,7 +207,7 @@ class TestSource(TestSourceHelper):
                 " COPYRIGHT_EXCEPTIONS in"
                 " breezy/tests/test_source.py",
                 # this is broken to prevent a false match
-                "or add '# Copyright (C) 2007 Bazaar hackers' to these files:",
+                "or add '# Copyright (C) 2023 Breezy developers ' to these files:",
                 "",
             ]
             for fname, comment in incorrect:
@@ -256,7 +267,7 @@ class TestSource(TestSourceHelper):
     def _format_message(self, dict_, message):
         files = sorted(
             [
-                "{}: {}".format(f, ", ".join([str(i + 1) for i in lines]))
+                f"{f}: {', '.join([str(i + 1) for i in lines])}"
                 for f, lines in dict_.items()
             ]
         )
@@ -381,7 +392,7 @@ class TestSource(TestSourceHelper):
                 " but did have an except clause set:"
             )
             for fname, func in both_exc_and_no_exc:
-                error_msg.append("{}:{}".format(fname, func))
+                error_msg.append(f"{fname}:{func}")
             error_msg.extend(("", ""))
         if missing_except:
             error_msg.append(
@@ -389,7 +400,7 @@ class TestSource(TestSourceHelper):
             )
             error_msg.append('Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
-                error_msg.append("{}:{}".format(fname, func))
+                error_msg.append(f"{fname}:{func}")
             error_msg.extend(("", ""))
         if error_msg:
             self.fail("\n".join(error_msg))

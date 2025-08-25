@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Graph algorithms and revision graph utilities.
+
+This module provides classes and functions for working with revision graphs,
+including finding ancestors, common ancestors, and performing topological sorting
+of revisions.
+"""
+
+import contextlib
 
 from . import debug, errors, osutils, trace
 from . import revision as _mod_revision
@@ -47,10 +55,16 @@ class DictParentsProvider:
     """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
+        """Initialize DictParentsProvider with ancestry dictionary.
+
+        Args:
+            ancestry: Dictionary mapping keys to their parent keys.
+        """
         self.ancestry = ancestry
 
     def __repr__(self):
-        return "DictParentsProvider({!r})".format(self.ancestry)
+        """Return string representation of DictParentsProvider."""
+        return f"DictParentsProvider({self.ancestry!r})"
 
     # Note: DictParentsProvider does not implement get_cached_parent_map
     #       Arguably, the data is clearly cached in memory. However, this class
@@ -60,7 +74,7 @@ class DictParentsProvider:
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map."""
         ancestry = self.ancestry
-        return {k: ancestry[k] for k in keys if k in ancestry}
+        return {k: tuple(ancestry[k]) for k in keys if k in ancestry}
 
 
 class StackedParentsProvider:
@@ -70,10 +84,16 @@ class StackedParentsProvider:
     """
 
     def __init__(self, parent_providers):
+        """Initialize StackedParentsProvider with a list of providers.
+
+        Args:
+            parent_providers: List of parents providers to stack.
+        """
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._parent_providers)
+        """Return string representation of StackedParentsProvider."""
+        return f"{self.__class__.__name__}({self._parent_providers!r})"
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents.
@@ -146,7 +166,8 @@ class CachingParentsProvider:
         self.enable_cache(True)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self._real_provider)
+        """Return string representation of CachingParentsProvider."""
+        return f"{self.__class__.__name__}({self._real_provider!r})"
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
@@ -216,12 +237,26 @@ class CallableToParentsProviderAdapter:
     """
 
     def __init__(self, a_callable):
+        """Initialize adapter with a callable.
+
+        Args:
+            a_callable: Callable that accepts keys and returns parent map.
+        """
         self.callable = a_callable
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.callable)
+        """Return string representation of CallableToParentsProviderAdapter."""
+        return f"{self.__class__.__name__}({self.callable!r})"
 
     def get_parent_map(self, keys):
+        """Get parent map by calling the underlying callable.
+
+        Args:
+            keys: Keys to get parent map for.
+
+        Returns:
+            Dictionary mapping keys to their parents.
+        """
         return self.callable(keys)
 
 
@@ -250,7 +285,8 @@ class Graph:
         self._parents_provider = parents_provider
 
     def __repr__(self):
-        return "Graph({!r})".format(self._parents_provider)
+        """Return string representation of Graph."""
+        return f"Graph({self._parents_provider!r})"
 
     def find_lca(self, *revisions):
         """Determine the lowest common ancestors of the provided revisions.
@@ -462,7 +498,7 @@ class Graph:
             unique_searcher, all_unique_searcher, unique_tip_searchers, common_searcher
         )
         true_unique_nodes = unique_nodes.difference(common_searcher.seen)
-        if "graph" in debug.debug_flags:
+        if debug.debug_flag_enabled("graph"):
             trace.mutter(
                 "Found %d truly unique nodes out of %d",
                 len(true_unique_nodes),
@@ -565,7 +601,7 @@ class Graph:
                         searcher.find_seen_ancestors(ancestor_all_unique)
                     )
                 )
-        if "graph" in debug.debug_flags:
+        if debug.debug_flag_enabled("graph"):
             trace.mutter(
                 "For %d unique nodes, created %d + 1 unique searchers"
                 " (%d stopped search tips, %d common ancestors"
@@ -619,7 +655,7 @@ class Graph:
             tstart = osutils.perf_counter()
             nodes = all_unique_searcher.step()
             common_to_all_unique_nodes.update(nodes)
-            if "graph" in debug.debug_flags:
+            if debug.debug_flag_enabled("graph"):
                 tdelta = osutils.perf_counter() - tstart
                 trace.mutter(
                     "all_unique_searcher step() took %.3fs"
@@ -649,7 +685,7 @@ class Graph:
             stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
             will_search_set = frozenset(searcher._next_query)
             if not will_search_set:
-                if "graph" in debug.debug_flags:
+                if debug.debug_flag_enabled("graph"):
                     trace.mutter(
                         "Unique searcher %s was stopped."
                         " (%s iterations) %d nodes stopped",
@@ -677,7 +713,7 @@ class Graph:
                 next_searcher = searchers[0]
                 for searcher in searchers[1:]:
                     next_searcher.seen.intersection_update(searcher.seen)
-                if "graph" in debug.debug_flags:
+                if debug.debug_flag_enabled("graph"):
                     trace.mutter(
                         "Combining %d searchers into a single"
                         " searcher searching %d nodes with"
@@ -706,10 +742,11 @@ class Graph:
         step_all_unique_counter = 0
         # While we still have common nodes to search
         while common_searcher._next_query:
-            (newly_seen_common, newly_seen_unique) = (
-                self._step_unique_and_common_searchers(
-                    common_searcher, unique_tip_searchers, unique_searcher
-                )
+            (
+                newly_seen_common,
+                newly_seen_unique,
+            ) = self._step_unique_and_common_searchers(
+                common_searcher, unique_tip_searchers, unique_searcher
             )
             # These nodes are common ancestors of all unique nodes
             common_to_all_unique_nodes = self._find_nodes_common_to_all_unique(
@@ -746,7 +783,7 @@ class Graph:
                 unique_tip_searchers, common_to_all_unique_nodes
             )
             if len(unique_tip_searchers) != len(next_unique_searchers):
-                if "graph" in debug.debug_flags:
+                if debug.debug_flag_enabled("graph"):
                     trace.mutter(
                         "Collapsed %d unique searchers => %d at %s iterations",
                         len(unique_tip_searchers),
@@ -837,8 +874,8 @@ class Graph:
                         "Somehow we ended up converging"
                         " without actually marking them as"
                         " in common."
-                        "\nStart_nodes: {}"
-                        "\nuncommon_nodes: {}".format(revisions, uncommon_nodes)
+                        f"\nStart_nodes: {revisions}"
+                        f"\nuncommon_nodes: {uncommon_nodes}"
                     )
                 break
         return border_ancestors, common_ancestors, searchers
@@ -1053,6 +1090,15 @@ class Graph:
             pending = next_pending
 
     def iter_lefthand_ancestry(self, start_key, stop_keys=None):
+        """Iterate over the lefthand ancestry of start_key.
+
+        Args:
+            start_key: Key to start the ancestry walk from.
+            stop_keys: Optional set of keys to stop at.
+
+        Yields:
+            Keys in lefthand ancestry order.
+        """
         if stop_keys is None:
             stop_keys = ()
         next_key = start_key
@@ -1060,8 +1106,8 @@ class Graph:
         def get_parents(key):
             try:
                 return self._parents_provider.get_parent_map([key])[key]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_key, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(next_key, self) from err
 
         while True:
             if next_key in stop_keys:
@@ -1082,7 +1128,8 @@ class Graph:
         """
         from breezy import tsort
 
-        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
+        pm = self.get_parent_map(revisions)
+        sorter = tsort.TopoSorter(pm)
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):
@@ -1304,6 +1351,11 @@ class HeadsCache:
     """A cache of results for graph heads calls."""
 
     def __init__(self, graph):
+        """Initialize HeadsCache with a graph.
+
+        Args:
+            graph: Graph object to cache heads calls for.
+        """
         self.graph = graph
         self._heads = {}
 
@@ -1332,6 +1384,11 @@ class FrozenHeadsCache:
     """Cache heads() calls, assuming the caller won't modify them."""
 
     def __init__(self, graph):
+        """Initialize FrozenHeadsCache with a graph.
+
+        Args:
+            graph: Graph object to cache heads calls for.
+        """
         self.graph = graph
         self._heads = {}
 
@@ -1379,12 +1436,13 @@ class _BreadthFirstSearcher:
         self._current_parents = {}
 
     def __repr__(self):
-        if self._iterations:
-            prefix = "searching"
-        else:
-            prefix = "starting"
-        search = "{}={!r}".format(prefix, list(self._next_query))
-        return f"_BreadthFirstSearcher(iterations={self._iterations}, {search}, seen={list(self.seen)!r})"
+        prefix = "searching" if self._iterations else "starting"
+        search = f"{prefix}={list(self._next_query)!r}"
+        return "_BreadthFirstSearcher(iterations=%d, %s, seen=%r)" % (
+            self._iterations,
+            search,
+            list(self.seen),
+        )
 
     def get_state(self):
         """Get the current state of this searcher.
@@ -1584,10 +1642,8 @@ class _BreadthFirstSearcher:
             # 0 after this loop
             for parents in self._current_parents.values():
                 for parent_id in parents:
-                    try:
+                    with contextlib.suppress(KeyError):
                         stop_rev_references[parent_id] -= 1
-                    except KeyError:
-                        pass
             stop_parents = set()
             for rev_id, refs in stop_rev_references.items():
                 if refs == 0:
@@ -1622,100 +1678,26 @@ class _BreadthFirstSearcher:
             return revs, ghosts
 
 
-def invert_parent_map(parent_map):
-    """Given a map from child => parents, create a map of parent=>children."""
-    child_map = {}
-    for child, parents in parent_map.items():
-        for p in parents:
-            # Any given parent is likely to have only a small handful
-            # of children, many will have only one. So we avoid mem overhead of
-            # a list, in exchange for extra copying of tuples
-            if p not in child_map:
-                child_map[p] = (child,)
-            else:
-                child_map[p] = child_map[p] + (child,)
-    return child_map
-
-
-def collapse_linear_regions(parent_map):
-    """Collapse regions of the graph that are 'linear'.
-
-    For example::
-
-      A:[B], B:[C]
-
-    can be collapsed by removing B and getting::
-
-      A:[C]
-
-    :param parent_map: A dictionary mapping children to their parents
-    :return: Another dictionary with 'linear' chains collapsed
-    """
-    # Note: this isn't a strictly minimal collapse. For example:
-    #   A
-    #  / \
-    # B   C
-    #  \ /
-    #   D
-    #   |
-    #   E
-    # Will not have 'D' removed, even though 'E' could fit. Also:
-    #   A
-    #   |    A
-    #   B => |
-    #   |    C
-    #   C
-    # A and C are both kept because they are edges of the graph. We *could* get
-    # rid of A if we wanted.
-    #   A
-    #  / \
-    # B   C
-    # |   |
-    # D   E
-    #  \ /
-    #   F
-    # Will not have any nodes removed, even though you do have an
-    # 'uninteresting' linear D->B and E->C
-    children = {}
-    for child, parents in parent_map.items():
-        children.setdefault(child, [])
-        for p in parents:
-            children.setdefault(p, []).append(child)
-
-    removed = set()
-    result = dict(parent_map)
-    for node in parent_map:
-        parents = result[node]
-        if len(parents) == 1:
-            parent_children = children[parents[0]]
-            if len(parent_children) != 1:
-                # This is not the only child
-                continue
-            node_children = children[node]
-            if len(node_children) != 1:
-                continue
-            child_parents = result.get(node_children[0], None)
-            if len(child_parents) != 1:
-                # This is not its only parent
-                continue
-            # The child of this node only points at it, and the parent only has
-            # this as a child. remove this node, and join the others together
-            result[node_children[0]] = parents
-            children[parents[0]] = node_children
-            del result[node]
-            del children[node]
-            removed.add(node)
-
-    return result
+from ._graph_rs import collapse_linear_regions, invert_parent_map  # noqa: F401
 
 
 class GraphThunkIdsToKeys:
     """Forwards calls about 'ids' to be about keys internally."""
 
     def __init__(self, graph):
+        """Initialize GraphThunkIdsToKeys with a graph.
+
+        Args:
+            graph: Graph object to forward calls to.
+        """
         self._graph = graph
 
     def topo_sort(self):
+        """Perform topological sort and return revision ids.
+
+        Returns:
+            List of revision ids in topological order.
+        """
         return [r for (r,) in self._graph.topo_sort()]
 
     def heads(self, ids):
@@ -1725,18 +1707,29 @@ class GraphThunkIdsToKeys:
         return {h[0] for h in head_keys}
 
     def merge_sort(self, tip_revision):
+        """Perform merge sort starting from tip_revision.
+
+        Args:
+            tip_revision: Revision id to start merge sort from.
+
+        Returns:
+            List of merge sorted nodes.
+        """
         nodes = self._graph.merge_sort((tip_revision,))
         for node in nodes:
             node.key = node.key[0]
         return nodes
 
     def add_node(self, revision, parents):
+        """Add a node to the graph.
+
+        Args:
+            revision: Revision id to add.
+            parents: List of parent revision ids.
+        """
         self._graph.add_node((revision,), [(p,) for p in parents])
 
 
 _counters = [0, 0, 0, 0, 0, 0, 0]
-try:
-    from ._known_graph_pyx import KnownGraph
-except ImportError as e:
-    osutils.failed_to_load_extension(e)
-    from ._known_graph_py import KnownGraph  # noqa: F401
+
+from ._known_graph_py import KnownGraph  # noqa: F401

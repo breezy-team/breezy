@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Atomic file operations.
+
+This module provides AtomicFile, a class for writing files atomically.
+Changes are written to a temporary file and then atomically renamed to
+the target filename, ensuring that readers never see a partially-written file.
+"""
+
 import os
 import stat
 
@@ -25,9 +32,17 @@ _hostname = None
 
 
 class AtomicFileAlreadyClosed(errors.PathError):
+    """Raised when an operation is attempted on a closed AtomicFile."""
+
     _fmt = '"%(function)s" called on an AtomicFile after it was closed: "%(path)s"'
 
     def __init__(self, path, function):
+        """Initialize AtomicFileAlreadyClosed.
+
+        Args:
+            path: The path of the file.
+            function: The function that was called on the closed file.
+        """
         errors.PathError.__init__(self, path=path, extra=None)
         self.function = function
 
@@ -44,6 +59,13 @@ class AtomicFile:
     __slots__ = ["_fd", "realfilename", "tmpfilename"]
 
     def __init__(self, filename, mode="wb", new_mode=None):
+        """Initialize an AtomicFile.
+
+        Args:
+            filename: The target filename.
+            mode: The file mode ('wb' or 'wt').
+            new_mode: Unix permissions for the new file (octal).
+        """
         global _hostname
 
         self._fd = None
@@ -51,7 +73,12 @@ class AtomicFile:
         if _hostname is None:
             _hostname = osutils.get_host_name()
 
-        self.tmpfilename = f"{filename}.{_pid}.{_hostname}.{osutils.rand_chars(10)}.tmp"
+        self.tmpfilename = "%s.%d.%s.%s.tmp" % (
+            filename,
+            _pid,
+            _hostname,
+            osutils.rand_chars(10),
+        )
 
         self.realfilename = filename
 
@@ -59,12 +86,9 @@ class AtomicFile:
         if mode == "wb":
             flags |= osutils.O_BINARY
         elif mode != "wt":
-            raise ValueError("invalid AtomicFile mode {!r}".format(mode))
+            raise ValueError(f"invalid AtomicFile mode {mode!r}")
 
-        if new_mode is not None:
-            local_mode = new_mode
-        else:
-            local_mode = 0o666
+        local_mode = new_mode if new_mode is not None else 438
 
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time
@@ -78,11 +102,16 @@ class AtomicFile:
                 osutils.chmod_if_possible(self.tmpfilename, new_mode)
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.realfilename)
+        """Return a string representation of the AtomicFile.
+
+        Returns:
+            A string representation showing the target filename.
+        """
+        return f"{self.__class__.__name__}({self.realfilename!r})"
 
     def write(self, data):
         """Write some data to the file. Like file.write()."""
-        os.write(self._fd, data)
+        return os.write(self._fd, data)
 
     def _close_tmpfile(self, func_name):
         """Close the local temp file in preparation for commit or abort."""
@@ -108,9 +137,26 @@ class AtomicFile:
             self.abort()
 
     def __enter__(self):
+        """Enter the context manager.
+
+        Returns:
+            The AtomicFile instance.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager.
+
+        If an exception occurred, abort the operation. Otherwise, commit.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False to propagate any exception.
+        """
         if exc_type:
             self.abort()
             return False

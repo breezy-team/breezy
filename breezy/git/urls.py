@@ -19,6 +19,7 @@
 from dulwich.client import parse_rsync_url
 
 from .. import urlutils
+from .._git_rs import bzr_url_to_git_url  # noqa: F401
 from .refs import ref_to_branch_name
 
 KNOWN_GIT_SCHEMES = ["git+ssh", "git", "http", "https", "ftp", "ssh"]
@@ -28,6 +29,38 @@ SCHEME_REPLACEMENT = {
 
 
 def git_url_to_bzr_url(location, branch=None, ref=None):
+    """Convert a Git URL to a Bzr URL format.
+
+    This function takes a Git repository URL and converts it to a format
+    that Bzr can understand. It handles various Git URL schemes including
+    git+ssh, git, http, https, ftp, and ssh. It also supports rsync-style
+    URLs (e.g., user@host:path).
+
+    Args:
+        location: The Git URL to convert. Can be in various formats including
+            standard URLs (http://..., git://...) or rsync-style (user@host:path).
+        branch: Optional branch name to append to the URL. Cannot be specified
+            together with ref.
+        ref: Optional Git reference (e.g., tag or commit) to append to the URL.
+            Cannot be specified together with branch. If ref is b"HEAD", it
+            will be ignored.
+
+    Returns:
+        A string containing the converted Bzr URL. If the input URL scheme is
+        not recognized as a Git scheme, the original location is returned
+        unchanged.
+
+    Raises:
+        ValueError: If both branch and ref parameters are specified.
+
+    Examples:
+        >>> git_url_to_bzr_url("git://github.com/user/repo.git")
+        'git://github.com/user/repo.git'
+        >>> git_url_to_bzr_url("user@host:path/to/repo")
+        'git+ssh://user@host/path/to/repo'
+        >>> git_url_to_bzr_url("https://github.com/user/repo", branch="main")
+        'https://github.com/user/repo,branch=main'
+    """
     if branch is not None and ref is not None:
         raise ValueError("only specify one of branch or ref")
     url = urlutils.URL.from_string(location)
@@ -66,10 +99,3 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
             params["branch"] = urlutils.escape(branch, safe="")
         location = urlutils.join_segment_parameters(location, params)
     return location
-
-
-def bzr_url_to_git_url(location):
-    target_url, target_params = urlutils.split_segment_parameters(location)
-    branch = target_params.get("branch")
-    ref = target_params.get("ref")
-    return target_url, branch, ref

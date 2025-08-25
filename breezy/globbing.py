@@ -23,67 +23,10 @@ expressions.
 import re
 
 from . import lazy_regex
+from ._bzr_rs import globbing as _globbing_rs
 from .trace import mutter, warning
 
-
-class Replacer:
-    """Do a multiple-pattern substitution.
-
-    The patterns and substitutions are combined into one, so the result of
-    one replacement is never substituted again. Add the patterns and
-    replacements via the add method and then call the object. The patterns
-    must not contain capturing groups.
-    """
-
-    _expand = lazy_regex.lazy_compile("\\\\&")
-
-    def __init__(self, source=None):
-        self._pat = None
-        if source:
-            self._pats = list(source._pats)
-            self._funs = list(source._funs)
-        else:
-            self._pats = []
-            self._funs = []
-
-    def add(self, pat, fun):
-        r"""Add a pattern and replacement.
-
-        The pattern must not contain capturing groups.
-        The replacement might be either a string template in which \& will be
-        replaced with the match, or a function that will get the matching text
-        as argument. It does not get match object, because capturing is
-        forbidden anyway.
-        """
-        self._pat = None
-        self._pats.append(pat)
-        self._funs.append(fun)
-
-    def add_replacer(self, replacer):
-        r"""Add all patterns from another replacer.
-
-        All patterns and replacements from replacer are appended to the ones
-        already defined.
-        """
-        self._pat = None
-        self._pats.extend(replacer._pats)
-        self._funs.extend(replacer._funs)
-
-    def __call__(self, text):
-        if not self._pat:
-            self._pat = lazy_regex.lazy_compile(
-                "|".join(["({})".format(p) for p in self._pats]), re.UNICODE
-            )
-        return self._pat.sub(self._do_sub, text)
-
-    def _do_sub(self, m):
-        fun = self._funs[m.lastindex - 1]
-        if callable(fun):
-            return fun(m.group(0))
-        else:
-            return self._expand.sub(m.group(0), fun)
-
-
+Replacer = _globbing_rs.Replacer
 _sub_named = Replacer()
 _sub_named.add(r"\[:digit:\]", r"\d")
 _sub_named.add(r"\[:space:\]", r"\s")
@@ -102,9 +45,7 @@ def _sub_group(m):
 def _invalid_regex(repl):
     def _(m):
         warning(
-            "'{}' not allowed within a regular expression. Replacing with '{}'".format(
-                m, repl
-            )
+            f"'{m}' not allowed within a regular expression. Replacing with '{repl}'"
         )
         return repl
 
@@ -136,7 +77,7 @@ _sub_re.add(r"\\+$", _trailing_backslashes_regex)
 
 _sub_fullpath = Replacer()
 _sub_fullpath.add(r"^RE:.*", _sub_re)  # RE:<anything> is a regex
-_sub_fullpath.add(r"\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]", _sub_group)  # char group
+_sub_fullpath.add(r"\[\^?\]?(?:[^\]\[]|\[:[^\]]+:\])+\]", _sub_group)  # char group
 _sub_fullpath.add(r"(?:(?<=/)|^)(?:\.?/)+", "")  # canonicalize path
 _sub_fullpath.add(r"\\.", r"\&")  # keep anything backslashed
 _sub_fullpath.add(r"[(){}|^$+.]", r"\\&")  # escape specials
@@ -146,7 +87,7 @@ _sub_fullpath.add(r"\?", r"[^/]")  # ? everywhere
 
 
 _sub_basename = Replacer()
-_sub_basename.add(r"\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]", _sub_group)  # char group
+_sub_basename.add(r"\[\^?\]?(?:[^\]\[]|\[:[^\]]+:\])+\]", _sub_group)  # char group
 _sub_basename.add(r"\\.", r"\&")  # keep anything backslashed
 _sub_basename.add(r"[(){}|^$+.]", r"\\&")  # escape specials
 _sub_basename.add(r"\*+", r".*")  # * everywhere
@@ -199,6 +140,11 @@ class Globster:
     }
 
     def __init__(self, patterns):
+        """Initialize a Globster with a set of patterns.
+
+        Args:
+            patterns: A list of glob patterns to match against.
+        """
         self._regex_patterns = []
         pattern_lists = {
             "extension": [],
@@ -214,8 +160,8 @@ class Globster:
 
     def _add_patterns(self, patterns, translator, prefix=""):
         while patterns:
-            grouped_rules = ["({})".format(translator(pat)) for pat in patterns[:99]]
-            joined_rule = "{}(?:{})$".format(prefix, "|".join(grouped_rules))
+            grouped_rules = [f"({translator(pat)})" for pat in patterns[:99]]
+            joined_rule = f"{prefix}(?:{'|'.join(grouped_rules)})$"
             # Explicitly use lazy_compile here, because we count on its
             # nicer error reporting.
             self._regex_patterns.append(
@@ -243,7 +189,7 @@ class Globster:
             for _, patterns in self._regex_patterns:
                 for p in patterns:
                     if not Globster.is_pattern_valid(p):
-                        bad_patterns += "\n  {}".format(p)
+                        bad_patterns += f"\n  {p}"
             e.msg += bad_patterns
             raise e
         return None
@@ -273,7 +219,7 @@ class Globster:
         """
         result = True
         translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
-        tpattern = "({})".format(translator(pattern))
+        tpattern = f"({translator(pattern)})"
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("")  # force compile
@@ -294,6 +240,11 @@ class ExceptionGlobster:
     """
 
     def __init__(self, patterns):
+        """Initialize an ExceptionGlobster with a set of patterns.
+
+        Args:
+            patterns: A list of glob patterns, potentially with '!' or '!!' prefixes.
+        """
         ignores = [[], [], []]
         for p in patterns:
             if p.startswith("!!"):
@@ -311,7 +262,7 @@ class ExceptionGlobster:
         """
         double_neg = self._ignores[2].match(filename)
         if double_neg:
-            return "!!{}".format(double_neg)
+            return f"!!{double_neg}"
         elif self._ignores[1].match(filename):
             return None
         else:
@@ -338,16 +289,4 @@ class _OrderedGlobster(Globster):
             )
 
 
-_slashes = lazy_regex.lazy_compile(r"[\\/]+")
-
-
-def normalize_pattern(pattern):
-    """Converts backslashes in path patterns to forward slashes.
-
-    Doesn't normalize regular expressions - they may contain escapes.
-    """
-    if not (pattern.startswith("RE:") or pattern.startswith("!RE:")):
-        pattern = _slashes.sub("/", pattern)
-    if len(pattern) > 1:
-        pattern = pattern.rstrip("/")
-    return pattern
+normalize_pattern = _globbing_rs.normalize_pattern

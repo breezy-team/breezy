@@ -17,9 +17,10 @@
 """Tests for Branch.dotted_revno_to_revision_id()."""
 
 from breezy import errors
-from breezy.bzr.fullhistory import FullHistoryBzrBranch
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_branch import TestCaseWithBranch
+
+from ...bzr.fullhistory import FullHistoryBzrBranch
 
 
 class TestDottedRevnoToRevisionId(TestCaseWithBranch):

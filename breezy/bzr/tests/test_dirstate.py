@@ -16,7 +16,10 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
+import binascii
+import bisect
 import os
+import struct
 import tempfile
 
 from ... import controldir, errors, memorytree, osutils, tests
@@ -24,6 +27,8 @@ from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import dirstate, inventory, inventorytree, workingtree_4
+from ..inventory import _make_delta
+from ..inventory_delta import InventoryDelta
 
 # TODO:
 # TESTS to write:
@@ -212,7 +217,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         """
         # The state should already be write locked, since we just had to do
         # some operation to get here.
-        self.assertTrue(state._lock_token is not None)
+        self.assertIsNotNone(state._lock_token)
         try:
             self.assertEqual(expected_result[0], state.get_parent_ids())
             # there should be no ghosts in this tree.
@@ -235,9 +240,9 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
 
         a
         b/
-          c
-          d/
-            e
+        c
+        d/
+        e
         b-c
         f
         """
@@ -699,10 +704,10 @@ class TestTreeToDirState(TestCaseWithDirState):
         # create some trees to test from
         parents = []
         for i in range(7):
-            tree = self.make_branch_and_tree(f"tree{i}")
+            tree = self.make_branch_and_tree("tree%d" % i)
             self.build_tree(
                 [
-                    f"tree{i}/name",
+                    "tree%d/name" % i,
                 ]
             )
             tree.add(["name"], ids=[b"file-id%d" % i])
@@ -957,14 +962,20 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
-        self.assertEqual([b"a-root-value", b"subdir-id"], sorted(id_index))
+        self.assertEqual([b"a-root-value", b"subdir-id"], sorted(id_index.file_ids()))
         state.add("file-name", b"file-id", "file", None, "")
-        self.assertEqual([b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index))
+        self.assertEqual(
+            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+        )
         state.update_minimal(
             (b"", b"new-name", b"file-id"), b"f", path_utf8=b"new-name"
         )
-        self.assertEqual([b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index))
-        self.assertEqual([(b"", b"new-name", b"file-id")], sorted(id_index[b"file-id"]))
+        self.assertEqual(
+            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+        )
+        self.assertEqual(
+            [(b"", b"new-name", b"file-id")], sorted(id_index.get(b"file-id"))
+        )
         state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
@@ -1525,7 +1536,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 ],
             ),
             (
-                (b"", b"a dir", b"a dir id"),
+                (b"", b"a dir", b"a-dir-id"),
                 [
                     (b"d", b"", 0, False, dirstate.pack_stat(stat)),  # current tree
                 ],
@@ -1533,7 +1544,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         ]
         state = dirstate.DirState.initialize("dirstate")
         try:
-            state.add("a dir", b"a dir id", "directory", stat, None)
+            state.add("a dir", b"a-dir-id", "directory", stat, None)
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1561,7 +1572,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 ],
             ),
             (
-                (b"", link_name.encode("UTF-8"), b"a link id"),
+                (b"", link_name.encode("UTF-8"), b"a-link-id"),
                 [
                     (
                         b"l",
@@ -1575,7 +1586,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         ]
         state = dirstate.DirState.initialize("dirstate")
         try:
-            state.add(link_name, b"a link id", "symlink", stat, target.encode("UTF-8"))
+            state.add(link_name, b"a-link-id", "symlink", stat, target.encode("UTF-8"))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1609,7 +1620,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 ],
             ),
             (
-                (b"", b"a dir", b"a dir id"),
+                (b"", b"a dir", b"a-dir-id"),
                 [
                     (b"d", b"", 0, False, dirstate.pack_stat(dirstat)),  # current tree
                 ],
@@ -1629,7 +1640,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         ]
         state = dirstate.DirState.initialize("dirstate")
         try:
-            state.add("a dir", b"a dir id", "directory", dirstat, None)
+            state.add("a dir", b"a-dir-id", "directory", dirstat, None)
             state.add("a dir/a file", b"a-file-id", "file", filestat, b"1" * 20)
             # added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
@@ -2896,7 +2907,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
 
 class Test_InvEntryToDetails(tests.TestCase):
     def assertDetails(self, expected, inv_entry):
-        details = dirstate.DirState._inv_entry_to_details(inv_entry)
+        details = dirstate._inv_entry_to_details(inv_entry)
         self.assertEqual(expected, details)
         # details should always allow join() and always be a plain str when
         # finished
@@ -2906,12 +2917,14 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertIsInstance(tree_data, bytes)
 
     def test_unicode_symlink(self):
-        inv_entry = inventory.InventoryLink(
-            b"link-file-id", "nam\N{EURO SIGN}e", b"link-parent-id"
-        )
-        inv_entry.revision = b"link-revision-id"
         target = "link-targ\N{EURO SIGN}t"
-        inv_entry.symlink_target = target
+        inv_entry = inventory.InventoryLink(
+            b"link-file-id",
+            "nam\N{EURO SIGN}e",
+            b"link-parent-id",
+            b"link-revision-id",
+            symlink_target=target,
+        )
         self.assertDetails(
             (b"l", target.encode("UTF-8"), 0, False, b"link-revision-id"), inv_entry
         )
@@ -2936,7 +2949,6 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()
         statvalue, sha1 = p.stat_and_sha1("foo")
-        self.assertTrue(len(statvalue) >= 10)
         self.assertEqual(len(text), statvalue.st_size)
         self.assertEqual(expected_sha, sha1)
 
@@ -2968,13 +2980,12 @@ class TestUpdateBasisByDelta(tests.TestCase):
         except KeyError:
             dir_id = osutils.basename(dirname).encode("utf-8") + b"-id"
         if is_dir:
-            ie = inventory.InventoryDirectory(file_id, basename, dir_id)
+            ie = inventory.InventoryDirectory(file_id, basename, dir_id, rev_id)
             dir_ids[path] = file_id
         else:
-            ie = inventory.InventoryFile(file_id, basename, dir_id)
-            ie.text_size = 0
-            ie.text_sha1 = b""
-        ie.revision = rev_id
+            ie = inventory.InventoryFile(
+                file_id, basename, dir_id, rev_id, text_size=0, text_sha1=b""
+            )
         return ie
 
     def create_tree_from_shape(self, rev_id, shape):
@@ -2988,12 +2999,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == "":
                 # Replace the root entry
-                del inv._byid[inv.root.file_id]
-                inv.root.file_id = file_id
-                inv._byid[file_id] = inv.root
+                inv.rename_id(inv.root.file_id, file_id)
                 dir_ids[""] = file_id
-                continue
-            inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
+            else:
+                inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
         return inventorytree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_empty_dirstate(self):
@@ -3018,7 +3027,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 continue
             ie = self.path_to_ie(new_path, file_id, rev_id, dir_ids)
             inv_delta.append((old_path, new_path, file_id, ie))
-        return inv_delta
+        return InventoryDelta(inv_delta)
 
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
@@ -3035,7 +3044,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
-        delta = target_tree.root_inventory._make_delta(basis_tree.root_inventory)
+        delta = _make_delta(target_tree.root_inventory, basis_tree.root_inventory)
         state.update_basis_by_delta(delta, b"target")
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(
@@ -3358,3 +3367,157 @@ class TestUpdateBasisByDelta(tests.TestCase):
             basis=[("other-file", b"file-id")],
             delta=[("file", "file", b"file-id")],
         )
+
+
+class TestBisectDirblock(tests.TestCase):
+    """Test that bisect_dirblock() returns the expected values.
+
+    bisect_dirblock is intended to work like bisect.bisect_left() except it
+    knows it is working on dirblocks and that dirblocks are sorted by ('path',
+    'to', 'foo') chunks rather than by raw 'path/to/foo'.
+    """
+
+    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
+        """Assert that bisect_split works like bisect_left on the split paths.
+
+        :param dirblocks: A list of (path, [info]) pairs.
+        :param split_dirblocks: A list of ((split, path), [info]) pairs.
+        :param path: The path we are indexing.
+
+        All other arguments will be passed along.
+        """
+        self.assertIsInstance(dirblocks, list)
+        bisect_split_idx = dirstate.bisect_dirblock(dirblocks, path, *args, **kwargs)
+        split_dirblock = (path.split(b"/"), [])
+        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock, *args)
+        self.assertEqual(
+            bisect_left_idx,
+            bisect_split_idx,
+            "bisect_split disagreed. {} != {} for key {!r}".format(
+                bisect_left_idx, bisect_split_idx, path
+            ),
+        )
+
+    def paths_to_dirblocks(self, paths):
+        """Convert a list of paths into dirblock form.
+
+        Also, ensure that the paths are in proper sorted order.
+        """
+        dirblocks = [(path, []) for path in paths]
+        split_dirblocks = [(path.split(b"/"), []) for path in paths]
+        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
+        return dirblocks, split_dirblocks
+
+    def test_simple(self):
+        """In the simple case it works just like bisect_left."""
+        paths = [b"", b"a", b"b", b"c", b"d"]
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+        self.assertBisect(dirblocks, split_dirblocks, b"_")
+        self.assertBisect(dirblocks, split_dirblocks, b"aa")
+        self.assertBisect(dirblocks, split_dirblocks, b"bb")
+        self.assertBisect(dirblocks, split_dirblocks, b"cc")
+        self.assertBisect(dirblocks, split_dirblocks, b"dd")
+        self.assertBisect(dirblocks, split_dirblocks, b"a/a")
+        self.assertBisect(dirblocks, split_dirblocks, b"b/b")
+        self.assertBisect(dirblocks, split_dirblocks, b"c/c")
+        self.assertBisect(dirblocks, split_dirblocks, b"d/d")
+
+    def test_involved(self):
+        """This is where bisect_left diverges slightly."""
+        paths = [
+            b"",
+            b"a",
+            b"a/a",
+            b"a/a/a",
+            b"a/a/z",
+            b"a/a-a",
+            b"a/a-z",
+            b"a/z",
+            b"a/z/a",
+            b"a/z/z",
+            b"a/z-a",
+            b"a/z-z",
+            b"a-a",
+            b"a-z",
+            b"z",
+            b"z/a/a",
+            b"z/a/z",
+            b"z/a-a",
+            b"z/a-z",
+            b"z/z",
+            b"z/z/a",
+            b"z/z/z",
+            b"z/z-a",
+            b"z/z-z",
+            b"z-a",
+            b"z-z",
+        ]
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path)
+
+    def test_involved_cached(self):
+        """This is where bisect_left diverges slightly."""
+        paths = [
+            b"",
+            b"a",
+            b"a/a",
+            b"a/a/a",
+            b"a/a/z",
+            b"a/a-a",
+            b"a/a-z",
+            b"a/z",
+            b"a/z/a",
+            b"a/z/z",
+            b"a/z-a",
+            b"a/z-z",
+            b"a-a",
+            b"a-z",
+            b"z",
+            b"z/a/a",
+            b"z/a/z",
+            b"z/a-a",
+            b"z/a-z",
+            b"z/z",
+            b"z/z/a",
+            b"z/z/z",
+            b"z/z-a",
+            b"z/z-z",
+            b"z-a",
+            b"z-z",
+        ]
+        cache = {}
+        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
+        for path in paths:
+            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
+
+
+def _unpack_stat(packed_stat):
+    """Turn a packed_stat back into the stat fields.
+
+    This is meant as a debugging tool, should not be used in real code.
+    """
+    (st_size, st_mtime, st_ctime, st_dev, st_ino, st_mode) = struct.unpack(
+        ">6L", binascii.a2b_base64(packed_stat)
+    )
+    return {
+        "st_size": st_size,
+        "st_mtime": st_mtime,
+        "st_ctime": st_ctime,
+        "st_dev": st_dev,
+        "st_ino": st_ino,
+        "st_mode": st_mode,
+    }
+
+
+class TestPackStatRobust(tests.TestCase):
+    """Check packed representaton of stat values is robust on all inputs."""
+
+    def pack(self, statlike_tuple):
+        return dirstate.pack_stat(os.stat_result(statlike_tuple))
+
+    @staticmethod
+    def unpack_field(packed_string, stat_field):
+        return _unpack_stat(packed_string)[stat_field]

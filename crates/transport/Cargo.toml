@@ -1,0 +1,33 @@
+[package]
+name = "breezy-transport"
+version = { workspace = true }
+edition = "2018"
+description = "Transport layer for Breezy"
+license = "GPL-2.0+"
+repository = "https://code.launchpad.net/brz"
+homepage = "https://www.breezy-vcs.org/"
+documentation = "https://www.breezy-vcs.org/doc/"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+
+[lib]
+
+[dependencies]
+breezy-osutils = { path = "../osutils" }
+url = { workspace = true }
+tempfile = "3"
+pyo3 = { workspace = true, optional = true }
+pyo3-filelike = { workspace = true, optional = true }
+breezy-urlutils = { path = "../urlutils" }
+path-clean = "1"
+walkdir = "2.3"
+lazy_static = "1"
+sftp = { version = ">=0.2", optional = true }
+log = { workspace = true }
+nix = { workspace = true, features = ["uio"] }
+
+[features]
+default = ["pyo3", "sftp"]
+pyo3 = ["dep:pyo3", "dep:pyo3-filelike"]
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }

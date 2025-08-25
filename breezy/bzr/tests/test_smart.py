@@ -35,15 +35,17 @@ from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
 from breezy.bzr import branch as _mod_bzrbranch
 from breezy.bzr import inventory_delta, versionedfile
+from breezy.bzr.inventory import _make_delta
 from breezy.bzr.smart import branch as smart_branch
 from breezy.bzr.smart import bzrdir as smart_dir
 from breezy.bzr.smart import packrepository as smart_packrepo
 from breezy.bzr.smart import repository as smart_repo
 from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
-from breezy.bzr.testament import Testament
 from breezy.tests import test_server
 from breezy.transport import chroot, memory
+
+from ..testament import Testament
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -391,18 +393,9 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         :result: The SmartServerResponse to expect when opening it.
         """
         repo = self.make_repository(".", shared=shared, format=format)
-        if repo.supports_rich_root():
-            rich_root = b"yes"
-        else:
-            rich_root = b"no"
-        if repo._format.supports_tree_reference:
-            subtrees = b"yes"
-        else:
-            subtrees = b"no"
-        if repo._format.supports_external_lookups:
-            external = b"yes"
-        else:
-            external = b"no"
+        rich_root = b"yes" if repo.supports_rich_root() else b"no"
+        subtrees = b"yes" if repo._format.supports_tree_reference else b"no"
+        external = b"yes" if repo._format.supports_external_lookups else b"no"
         if smart_dir.SmartServerRequestFindRepositoryV3 == self._request_class:
             return smart_req.SuccessfulSmartServerResponse(
                 (b"ok", b"", rich_root, subtrees, external, repo._format.network_name())
@@ -1896,9 +1889,9 @@ class TestSmartServerRepositoryIterRevisions(tests.TestCaseWithMemoryTransport):
         ]
 
         contents = b"".join(response.body_stream)
-        self.assertTrue(
-            contents
-            in (b"".join([entries[0], entries[1]]), b"".join([entries[1], entries[0]]))
+        self.assertIn(
+            contents,
+            (b"".join([entries[0], entries[1]]), b"".join([entries[1], entries[0]])),
         )
 
     def test_missing(self):
@@ -2341,10 +2334,7 @@ class TestSmartServerRepositoryGetPhysicalLockStatus(tests.TestCaseWithTransport
         self.addCleanup(repo.lock_write().unlock)
         # lock_write() doesn't necessarily actually take a physical
         # lock out.
-        if repo.get_physical_lock_status():
-            expected = b"yes"
-        else:
-            expected = b"no"
+        expected = b"yes" if repo.get_physical_lock_status() else b"no"
         request_class = smart_repo.SmartServerRepositoryGetPhysicalLockStatus
         request = request_class(backing)
         self.assertEqual(
@@ -2528,7 +2518,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         # monkey-patch the pack collection to disable autopacking
         repo._pack_collection._max_pack_count = lambda count: count
         for x in range(10):
-            tree.commit("commit {}".format(x))
+            tree.commit(f"commit {x}")
         self.assertEqual(10, len(repo._pack_collection.names()))
         del repo._pack_collection._max_pack_count
         return repo
@@ -2550,7 +2540,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         for x in range(9):
-            tree.commit("commit {}".format(x))
+            tree.commit(f"commit {x}")
         backing = self.get_transport()
         request = smart_packrepo.SmartServerPackRepositoryAutopack(backing)
         response = request.execute(b"")
@@ -2592,7 +2582,7 @@ class TestHandlers(tests.TestCase):
             try:
                 smart_req.request_handlers.get(key)
             except AttributeError as e:
-                raise AttributeError("failed to get {}: {}".format(key, e)) from e
+                raise AttributeError(f"failed to get {key}: {e}") from e
 
     def assertHandlerEqual(self, verb, handler):
         self.assertEqual(smart_req.request_handlers.get(verb), handler)
@@ -2880,7 +2870,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
     def _get_serialized_inventory_delta(self, repository, base_revid, revid):
         base_inv = repository.revision_tree(base_revid).root_inventory
         inv = repository.revision_tree(revid).root_inventory
-        inv_delta = inv._make_delta(base_inv)
+        inv_delta = _make_delta(inv, base_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(True, True)
         return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
@@ -2901,7 +2891,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
                 "inventory-deltas",
                 [
                     versionedfile.FulltextContentFactory(
-                        b"somerev",
+                        (b"somerev",),
                         None,
                         None,
                         self._get_serialized_inventory_delta(
@@ -2999,11 +2989,11 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestGetAllReferenceInfo(backing)
         branch = self.make_branch(".")
-        branch.set_reference_info("some/path", "http://www.example.com/")
+        branch.set_reference_info(b"file-id", "http://www.example.com/", "some/path")
         response = request.execute(b"")
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok",))
         self.assertEqual(
-            [[b"some/path", b"http://www.example.com/", b""]],
+            [[b"file-id", b"http://www.example.com/", b"some/path"]],
             bencode.bdecode(response.body),
         )

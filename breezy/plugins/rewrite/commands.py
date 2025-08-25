@@ -25,19 +25,30 @@ from ...transport import NoSuchFile
 
 
 def finish_rebase(state, wt, replace_map, replayer):
+    """Complete a rebase operation by replaying commits and cleaning up state.
+
+    Args:
+        state: The RebaseState1 object tracking the rebase operation.
+        wt: The WorkingTree being rebased.
+        replace_map: Dictionary mapping old revision IDs to new revision IDs.
+        replayer: The WorkingTreeRevisionRewriter for replaying commits.
+
+    Raises:
+        CommandError: If conflicts occur during commit replay.
+    """
     from .rebase import rebase
 
     try:
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
-    except ConflictsInTree:
+    except ConflictsInTree as e:
         raise CommandError(
             gettext(
                 "A conflict occurred replaying a commit."
                 " Resolve the conflict and run 'brz rebase-continue' or "
                 "run 'brz rebase-abort'."
             )
-        )
+        ) from e
     # Remove plan file
     state.remove_plan()
 
@@ -112,6 +123,27 @@ class cmd_rebase(Command):
         pending_merges=False,
         directory=".",
     ):
+        """Execute the rebase command.
+
+        Args:
+            upstream_location: Location of the upstream branch to rebase onto.
+                If None, uses the parent branch or current directory for pending merges.
+            onto: Specific revision to rebase onto instead of the tip of upstream.
+            revision: Range of revisions to rebase. Can be one or two revision specs.
+            merge_type: Type of merge to use when replaying commits.
+            verbose: Whether to show detailed information about the rebase operation.
+            dry_run: If True, show what would be done without actually doing it.
+            always_rebase_merges: If True, don't skip revisions that merge already
+                present revisions.
+            pending_merges: If True, rebase pending merges onto the local branch.
+            directory: Directory containing the branch to rebase.
+
+        Raises:
+            CommandError: If there are uncommitted changes, no upstream branch is
+                specified, revision arguments are invalid, or a rebase is already
+                in progress.
+            UncommittedChanges: If there are uncommitted changes in the working tree.
+        """
         from ...branch import Branch
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
@@ -178,7 +210,8 @@ class cmd_rebase(Command):
                         gettext("Rebasing more than one pending merge not supported")
                     )
                 stop_revid = wt_parents[1]
-                assert stop_revid is not None, "stop revid invalid"
+                if stop_revid is None:
+                    raise AssertionError("stop revid invalid")
 
             # Check for changes in the working tree.
             if not pending_merges and wt.basis_tree().changes_from(wt).has_changed():
@@ -231,7 +264,7 @@ class cmd_rebase(Command):
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
                 note(gettext("%d revisions will be rebased:") % len(todo))
                 for revid in todo:
-                    note("{}".format(revid))
+                    note(f"{revid}")
 
             if not dry_run:
                 # Write plan file
@@ -258,6 +291,17 @@ class cmd_rebase_abort(Command):
 
     @display_command
     def run(self, directory="."):
+        """Execute the rebase-abort command.
+
+        Aborts an interrupted rebase operation by reverting to the state
+        before the rebase began and removing the rebase plan file.
+
+        Args:
+            directory: Directory containing the branch with the interrupted rebase.
+
+        Raises:
+            CommandError: If no rebase operation is in progress.
+        """
         from ...workingtree import WorkingTree
         from .rebase import RebaseState1, complete_revert
 
@@ -268,8 +312,8 @@ class cmd_rebase_abort(Command):
             # Read plan file and set last revision
             try:
                 last_rev_info = state.read_plan()[0]
-            except NoSuchFile:
-                raise CommandError("No rebase to abort")
+            except NoSuchFile as e:
+                raise CommandError("No rebase to abort") from e
             complete_revert(wt, [last_rev_info[1]])
             state.remove_plan()
         finally:
@@ -291,6 +335,20 @@ class cmd_rebase_continue(Command):
 
     @display_command
     def run(self, merge_type=None, directory="."):
+        """Execute the rebase-continue command.
+
+        Continues an interrupted rebase operation after conflicts have been
+        resolved. Commits the current revision being replayed and continues
+        with the remaining revisions in the rebase plan.
+
+        Args:
+            merge_type: Type of merge to use when replaying remaining commits.
+            directory: Directory containing the branch with the interrupted rebase.
+
+        Raises:
+            CommandError: If there are unresolved conflicts or no rebase
+                operation is in progress.
+        """
         from ...workingtree import WorkingTree
         from .rebase import RebaseState1, WorkingTreeRevisionRewriter
 
@@ -311,8 +369,8 @@ class cmd_rebase_continue(Command):
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase to continue"))
+            except NoSuchFile as e:
+                raise CommandError(gettext("No rebase to continue")) from e
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
@@ -338,6 +396,18 @@ class cmd_rebase_todo(Command):
     ]
 
     def run(self, directory="."):
+        """Execute the rebase-todo command.
+
+        Displays a list of revisions that still need to be replayed as part
+        of the current rebase operation, showing the mapping from old revision
+        IDs to new revision IDs.
+
+        Args:
+            directory: Directory containing the branch with the active rebase.
+
+        Raises:
+            CommandError: If no rebase operation is in progress.
+        """
         from ...workingtree import WorkingTree
         from .rebase import RebaseState1, rebase_todo
 
@@ -346,8 +416,8 @@ class cmd_rebase_todo(Command):
             state = RebaseState1(wt)
             try:
                 replace_map = state.read_plan()[1]
-            except NoSuchFile:
-                raise CommandError(gettext("No rebase in progress"))
+            except NoSuchFile as err:
+                raise CommandError(gettext("No rebase in progress")) from err
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
                 note(gettext("Currently replaying: %s") % currentrevid)
@@ -372,6 +442,22 @@ class cmd_replay(Command):
     hidden = True
 
     def run(self, location, revision=None, merge_type=None, directory="."):
+        """Execute the replay command.
+
+        Replays specific commits from another branch on top of the current
+        branch. This is a lower-level operation compared to rebase that
+        allows replaying arbitrary revisions.
+
+        Args:
+            location: Location of the branch to replay commits from.
+            revision: Revision or range of revisions to replay. Must be specified.
+            merge_type: Type of merge to use when replaying commits.
+            directory: Directory containing the target branch.
+
+        Raises:
+            CommandError: If revision is not specified or contains invalid
+                number of arguments.
+        """
         from ... import ui
         from ...branch import Branch
         from ...workingtree import WorkingTree
@@ -434,6 +520,17 @@ class cmd_pseudonyms(Command):
     hidden = True
 
     def run(self, repository=None):
+        """Execute the pseudonyms command.
+
+        Shows a list of 'pseudonym' revisions - revisions that are roughly
+        the same revision, usually because they were converted from the same
+        revision in a foreign version control system. This is useful for
+        identifying duplicate or equivalent revisions across different imports.
+
+        Args:
+            repository: Path to the repository to analyze. If None, uses the
+                current directory.
+        """
         from ...controldir import ControlDir
 
         dir, _ = ControlDir.open_containing(repository)
@@ -467,6 +564,27 @@ class cmd_rebase_foreign(Command):
     ]
 
     def run(self, new_base=None, verbose=False, idmap_file=None, directory="."):
+        """Execute the rebase-foreign command.
+
+        Rebases revisions based on a branch created with a different import tool
+        by identifying pseudonym revisions and updating revision ancestry to
+        match the new base branch. This helps reconcile branches that were
+        imported from the same foreign VCS using different tools.
+
+        Args:
+            new_base: Location of the new base branch. If None, uses the stored
+                parent location.
+            verbose: Whether to show detailed information about the operation.
+            idmap_file: Optional file path to write the mapping of old to new
+                revision IDs.
+            directory: Directory containing the branch to rebase.
+
+        Raises:
+            CommandError: If no pull location is known or specified when new_base
+                is None.
+            NoWorkingTree: If the directory doesn't contain a working tree (handled
+                gracefully by opening just the branch).
+        """
         from ... import urlutils
         from ...branch import Branch
         from ...foreign import update_workingtree_fileids
@@ -509,6 +627,14 @@ class cmd_rebase_foreign(Command):
         )
 
         def generate_rebase_map(revision_id):
+            """Generate rebase mapping for a revision based on pseudonyms.
+
+            Args:
+                revision_id: The revision ID to generate a rebase map for.
+
+            Returns:
+                Dictionary mapping old revision IDs to new ones.
+            """
             return generate_rebase_map_from_pseudonyms(
                 pseudonyms,
                 branch_to.repository.get_ancestry(revision_id),
@@ -516,6 +642,15 @@ class cmd_rebase_foreign(Command):
             )
 
         def determine_new_revid(old_revid, new_parents):
+            """Determine the new revision ID for a rebased revision.
+
+            Args:
+                old_revid: The original revision ID.
+                new_parents: List of new parent revision IDs.
+
+            Returns:
+                The new deterministic revision ID.
+            """
             return create_deterministic_revid(old_revid, new_parents)
 
         branch_to.lock_write()
@@ -545,7 +680,7 @@ class cmd_rebase_foreign(Command):
             f = open(idmap_file, "w")
             try:
                 for oldid, newid in renames.iteritems():
-                    f.write("{}\t{}\n".format(oldid, newid))
+                    f.write(f"{oldid}\t{newid}\n")
             finally:
                 f.close()
 

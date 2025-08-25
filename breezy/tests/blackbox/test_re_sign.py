@@ -18,8 +18,9 @@
 """Black-box tests for brz re-sign."""
 
 from breezy import gpg, tests
-from breezy.bzr.testament import Testament
-from breezy.controldir import ControlDir
+
+from ...bzr.testament import Testament
+from ...controldir import ControlDir
 
 
 class ReSign(tests.TestCaseInTempDir):
@@ -55,11 +56,11 @@ class ReSign(tests.TestCaseInTempDir):
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr("re-sign -r revid:{}".format(a.decode("utf-8")))
+        self.run_bzr(f"re-sign -r revid:{a.decode('utf-8')}")
 
         self.assertEqualSignature(repo, a)
 
-        self.run_bzr("re-sign {}".format(b.decode("utf-8")))
+        self.run_bzr(f"re-sign {b.decode('utf-8')}")
         self.assertEqualSignature(repo, b)
 
     def test_resign_range(self):
@@ -91,5 +92,5 @@ class ReSign(tests.TestCaseInTempDir):
         self.monkey_patch_gpg()
         self.run_bzr("re-sign --directory=a -r revid:" + a.decode("utf-8"))
         self.assertEqualSignature(repo, a)
-        self.run_bzr("re-sign -d a {}".format(b.decode("utf-8")))
+        self.run_bzr(f"re-sign -d a {b.decode('utf-8')}")
         self.assertEqualSignature(repo, b)

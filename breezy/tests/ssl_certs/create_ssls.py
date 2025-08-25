@@ -49,6 +49,8 @@ _dir = os.path.dirname
 our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
 sys.path.insert(0, our_bzr)
 
+import contextlib
+
 from breezy.tests import ssl_certs
 
 
@@ -61,15 +63,13 @@ def needs(request, *paths):
     """Errors out if the specified path does not exists."""
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
-        error("{} needs: {}".format(request, ",".join(missing)))
+        error(f"{request} needs: {','.join(missing)}")
 
 
 def rm_f(path):
     """Rm -f path."""
-    try:
+    with contextlib.suppress(BaseException):
         os.unlink(path)
-    except:
-        pass
 
 
 def _openssl(args, input=None):
@@ -116,8 +116,8 @@ def build_ca_key():
     key_path = ssl_certs.build_path("ca.key")
     rm_f(key_path)
     _openssl(
-        ["genrsa", "-passout", "stdin", "-aes256", "-out", key_path, "4096"],
-        input="{ca_pass}\n{ca_pass}\n".format(**ssl_params),
+        ["genrsa", "-passout", "stdin", "-des3", "-out", key_path, "4096"],
+        input=f"{ssl_params['ca_pass']}\n{ssl_params['ca_pass']}\n",
     )
 
 
@@ -130,8 +130,6 @@ def build_ca_certificate():
     _openssl(
         [
             "req",
-            "-addext",
-            "keyUsage = keyCertSign",
             "-passin",
             "stdin",
             "-new",
@@ -165,14 +163,14 @@ def build_server_key():
     rm_f(key_path)
     _openssl(
         ["genrsa", "-passout", "stdin", "-des3", "-out", key_path, "4096"],
-        input="{server_pass}\n{server_pass}\n".format(**ssl_params),
+        input=f"{ssl_params['server_pass']}\n{ssl_params['server_pass']}\n",
     )
 
     key_nopass_path = ssl_certs.build_path("server_without_pass.key")
     rm_f(key_nopass_path)
     _openssl(
         ["rsa", "-passin", "stdin", "-in", key_path, "-out", key_nopass_path],
-        input="{server_pass}\n".format(**ssl_params),
+        input=f"{ssl_params['server_pass']}\n",
     )
 
 
@@ -228,7 +226,7 @@ def sign_server_certificate():
             "-out",
             server_cert_path,
         ],
-        input="{ca_pass}\n".format(**ssl_params),
+        input=f"{ssl_params['ca_pass']}\n",
     )
 
 
@@ -237,7 +235,7 @@ def build_ssls(name, options, builders):
         for item in options:
             builder = builders.get(item, None)
             if builder is None:
-                error("{} is not a known {}".format(item, name))
+                error(f"{item} is not a known {name}")
             builder()
 
 
@@ -287,19 +285,10 @@ opt_parser.add_option(
 )
 
 
-key_builders = {
-    "ca": build_ca_key,
-    "server": build_server_key,
-}
-certificate_builders = {
-    "ca": build_ca_certificate,
-}
-signing_request_builders = {
-    "server": build_server_signing_request,
-}
-signing_builders = {
-    "server": sign_server_certificate,
-}
+key_builders = {"ca": build_ca_key, "server": build_server_key}
+certificate_builders = {"ca": build_ca_certificate}
+signing_request_builders = {"server": build_server_signing_request}
+signing_builders = {"server": sign_server_certificate}
 
 
 if __name__ == "__main__":

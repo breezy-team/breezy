@@ -36,41 +36,78 @@ class ContainerError(errors.BzrError):
 
 
 class UnknownContainerFormatError(ContainerError):
+    """Exception raised when encountering unknown container format."""
+
     _fmt = "Unrecognised container format: %(container_format)r"
 
     def __init__(self, container_format):
+        """Initialize UnknownContainerFormatError.
+
+        Args:
+            container_format: The unknown container format encountered.
+        """
         self.container_format = container_format
 
 
 class UnexpectedEndOfContainerError(ContainerError):
+    """Exception raised when container stream ends unexpectedly."""
+
     _fmt = "Unexpected end of container stream"
 
 
 class UnknownRecordTypeError(ContainerError):
+    """Exception raised when encountering unknown record type."""
+
     _fmt = "Unknown record type: %(record_type)r"
 
     def __init__(self, record_type):
+        """Initialize UnknownRecordTypeError.
+
+        Args:
+            record_type: The unknown record type encountered.
+        """
         self.record_type = record_type
 
 
 class InvalidRecordError(ContainerError):
+    """Exception raised when a record is invalid."""
+
     _fmt = "Invalid record: %(reason)s"
 
     def __init__(self, reason):
+        """Initialize InvalidRecordError.
+
+        Args:
+            reason: The reason the record is invalid.
+        """
         self.reason = reason
 
 
 class ContainerHasExcessDataError(ContainerError):
+    """Exception raised when container has excess data after end marker."""
+
     _fmt = "Container has data after end marker: %(excess)r"
 
     def __init__(self, excess):
+        """Initialize ContainerHasExcessDataError.
+
+        Args:
+            excess: The excess data found after end marker.
+        """
         self.excess = excess
 
 
 class DuplicateRecordNameError(ContainerError):
+    """Exception raised when container has duplicate record names."""
+
     _fmt = "Container has multiple records with the same name: %(name)s"
 
     def __init__(self, name):
+        """Initialize DuplicateRecordNameError.
+
+        Args:
+            name: The duplicate record name.
+        """
         self.name = name.decode("utf-8")
 
 
@@ -84,7 +121,7 @@ def _check_name(name):
     :seealso: _check_name_encoding
     """
     if _whitespace_re.search(name) is not None:
-        raise InvalidRecordError("{!r} is not a valid name.".format(name))
+        raise InvalidRecordError(f"{name!r} is not a valid name.")
 
 
 def _check_name_encoding(name):
@@ -172,6 +209,11 @@ class ContainerWriter:
         self.write_func(self._serialiser.begin())
 
     def write_func(self, bytes):
+        """Write bytes to the container.
+
+        Args:
+            bytes: The bytes to write.
+        """
         self._write_func(bytes)
         self.current_offset += len(bytes)
 
@@ -238,12 +280,23 @@ class ReadVFile:
             self._string = BytesIO(data)
 
     def read(self, length):
+        """Read specified number of bytes from the current string.
+
+        Args:
+            length: Number of bytes to read.
+
+        Returns:
+            The bytes read.
+
+        Raises:
+            BzrError: If insufficient bytes are available.
+        """
         self._next()
         result = self._string.read(length)
         if len(result) < length:
             raise errors.BzrError(
-                f"wanted {length} bytes but next "
-                f"hunk only contains {len(result)}: {result[:20]!r}..."
+                "wanted %d bytes but next "
+                "hunk only contains %d: %r..." % (length, len(result), result[:20])
             )
         return result
 
@@ -252,9 +305,7 @@ class ReadVFile:
         self._next()
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1:] != b"\n":
-            raise errors.BzrError(
-                "short readline in the readvfile hunk: {!r}".format(result)
-            )
+            raise errors.BzrError(f"short readline in the readvfile hunk: {result!r}")
         return result
 
 
@@ -273,6 +324,8 @@ def make_readv_reader(transport, filename, requested_records):
 
 
 class BaseReader:
+    """Base class for reading container data from files."""
+
     def __init__(self, source_file):
         """Constructor.
 
@@ -282,6 +335,14 @@ class BaseReader:
         self._source = source_file
 
     def reader_func(self, length=None):
+        """Read data from the source file.
+
+        Args:
+            length: Optional number of bytes to read. If None, reads all available.
+
+        Returns:
+            The bytes read from the source.
+        """
         return self._source.read(length)
 
     def _read_line(self):
@@ -393,6 +454,8 @@ class ContainerReader(BaseReader):
 
 
 class BytesRecordReader(BaseReader):
+    """Reader for bytes records in container format."""
+
     def read(self):
         """Read this record.
 
@@ -409,9 +472,7 @@ class BytesRecordReader(BaseReader):
         try:
             length = int(length_line)
         except ValueError as e:
-            raise InvalidRecordError(
-                "{!r} is not a valid length.".format(length_line)
-            ) from e
+            raise InvalidRecordError(f"{length_line!r} is not a valid length.") from e
 
         # Read the list of names.
         names = []
@@ -460,6 +521,7 @@ class ContainerPushParser:
     """
 
     def __init__(self):
+        """Initialize a new ContainerPushParser."""
         self._buffer = b""
         self._state_handler = self._state_expecting_format_line
         self._parsed_records = []
@@ -471,6 +533,11 @@ class ContainerPushParser:
         self._current_record_names = []
 
     def accept_bytes(self, bytes):
+        """Accept additional bytes and parse them.
+
+        Args:
+            bytes: New bytes to add to the parsing buffer.
+        """
         self._buffer += bytes
         # Keep iterating the state machine until it stops consuming bytes from
         # the buffer.
@@ -487,6 +554,14 @@ class ContainerPushParser:
             cur_buffer_length = len(self._buffer)
 
     def read_pending_records(self, max=None):
+        """Read parsed records from the buffer.
+
+        Args:
+            max: Maximum number of records to return. If None, returns all.
+
+        Returns:
+            List of parsed records.
+        """
         if max:
             records = self._parsed_records[:max]
             del self._parsed_records[:max]
@@ -535,9 +610,7 @@ class ContainerPushParser:
             try:
                 self._current_record_length = int(line)
             except ValueError as e:
-                raise InvalidRecordError(
-                    "{!r} is not a valid length.".format(line)
-                ) from e
+                raise InvalidRecordError(f"{line!r} is not a valid length.") from e
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):
@@ -563,6 +636,11 @@ class ContainerPushParser:
         pass
 
     def read_size_hint(self):
+        """Get a hint for how many bytes should be read next.
+
+        Returns:
+            Number of bytes that should be read for optimal parsing.
+        """
         hint = 16384
         if self._state_handler == self._state_expecting_body:
             remaining = self._current_record_length - len(self._buffer)
@@ -573,6 +651,14 @@ class ContainerPushParser:
 
 
 def iter_records_from_file(source_file):
+    """Iterate over records from a file.
+
+    Args:
+        source_file: File-like object to read from.
+
+    Yields:
+        Records from the container file.
+    """
     parser = ContainerPushParser()
     while True:
         bytes = source_file.read(parser.read_size_hint())

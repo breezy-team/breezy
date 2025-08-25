@@ -18,44 +18,10 @@
 
 import pprint
 
-from .. import _known_graph_py, errors, tests
+from .. import errors, tests
+from ..graph import KnownGraph
 from ..revision import NULL_REVISION
-from . import features, test_graph
-from .scenarios import load_tests_apply_scenarios
-
-
-def caching_scenarios():
-    scenarios = [
-        ("python", {"module": _known_graph_py, "do_cache": True}),
-    ]
-    if compiled_known_graph_feature.available():
-        scenarios.append(
-            ("C", {"module": compiled_known_graph_feature.module, "do_cache": True})
-        )
-    return scenarios
-
-
-def non_caching_scenarios():
-    scenarios = [
-        ("python-nocache", {"module": _known_graph_py, "do_cache": False}),
-    ]
-    if compiled_known_graph_feature.available():
-        scenarios.append(
-            (
-                "C-nocache",
-                {"module": compiled_known_graph_feature.module, "do_cache": False},
-            )
-        )
-    return scenarios
-
-
-load_tests = load_tests_apply_scenarios
-
-
-compiled_known_graph_feature = features.ModuleAvailableFeature(
-    "breezy._known_graph_pyx"
-)
-
+from . import test_graph
 
 #  a
 #  |\
@@ -68,11 +34,8 @@ alt_merge = {b"a": [], b"b": [b"a"], b"c": [b"b"], b"d": [b"a", b"c"]}
 
 
 class TestCaseWithKnownGraph(tests.TestCase):
-    scenarios = caching_scenarios()
-    module = None  # Set by load_tests
-
     def make_known_graph(self, ancestry):
-        return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
+        return KnownGraph(ancestry)
 
 
 class TestKnownGraph(TestCaseWithKnownGraph):
@@ -91,10 +54,10 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
     def test_parent_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual([NULL_REVISION], graph.get_parent_keys(b"rev1"))
-        self.assertEqual([b"rev1"], graph.get_parent_keys(b"rev2a"))
-        self.assertEqual([b"rev1"], graph.get_parent_keys(b"rev2b"))
-        self.assertEqual([b"rev2a"], graph.get_parent_keys(b"rev3"))
+        self.assertEqual((NULL_REVISION,), tuple(graph.get_parent_keys(b"rev1")))
+        self.assertEqual((b"rev1",), tuple(graph.get_parent_keys(b"rev2a")))
+        self.assertEqual((b"rev1",), tuple(graph.get_parent_keys(b"rev2b")))
+        self.assertEqual((b"rev2a",), tuple(graph.get_parent_keys(b"rev3")))
         self.assertEqual([b"rev2b", b"rev3"], sorted(graph.get_parent_keys(b"rev4")))
         self.assertRaises(KeyError, graph.get_child_keys, b"not_in_graph")
 
@@ -203,9 +166,6 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
-    scenarios = caching_scenarios() + non_caching_scenarios()
-    do_cache = None  # Set by load_tests
-
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
         self.assertEqual({b"null:"}, graph.heads([b"null:"]))
@@ -323,9 +283,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
                     continue
                 if node_idx[node] <= node_idx[parent]:
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(
-                            parent, node, sort_result
-                        )
+                        f"parent {parent} must come before child {node}:\n{sort_result}"
                     )
 
     def test_topo_sort_empty(self):

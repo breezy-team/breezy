@@ -14,10 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Conflict resolution and management utilities.
+
+This module provides commands and classes for handling merge conflicts,
+including listing conflicts, resolving them, and managing conflict files.
+"""
+
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-import errno
 import os
 
 from .lazy_import import lazy_import
@@ -32,10 +37,14 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """,
 )
+import contextlib
+
 from . import commands, errors, option, osutils, registry, trace
 
 
 class cmd_conflicts(commands.Command):
+    """Command to list files with conflicts."""
+
     __doc__ = """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -56,6 +65,12 @@ class cmd_conflicts(commands.Command):
     _see_also = ["resolve", "conflict-types"]
 
     def run(self, text=False, directory="."):
+        """Execute the conflicts command.
+
+        Args:
+            text: If True, only list paths of files with text conflicts.
+            directory: Directory to search for conflicts in.
+        """
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
@@ -66,7 +81,7 @@ class cmd_conflicts(commands.Command):
                 self.outf.write(str(conflict) + "\n")
 
 
-resolve_action_registry = registry.Registry[str, str]()
+resolve_action_registry = registry.Registry[str, str, None]()
 
 
 resolve_action_registry.register(
@@ -87,7 +102,10 @@ resolve_action_registry.default_key = "done"
 
 
 class ResolveActionOption(option.RegistryOption):
+    """Registry option for resolve actions."""
+
     def __init__(self):
+        """Initialize ResolveActionOption."""
         super().__init__(
             "action",
             "How to resolve the conflict.",
@@ -97,6 +115,8 @@ class ResolveActionOption(option.RegistryOption):
 
 
 class cmd_resolve(commands.Command):
+    """Command to mark conflicts as resolved."""
+
     __doc__ = """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -118,6 +138,14 @@ class cmd_resolve(commands.Command):
     _see_also = ["conflicts"]
 
     def run(self, file_list=None, all=False, action=None, directory=None):
+        """Execute the resolve command.
+
+        Args:
+            file_list: List of files to resolve.
+            all: If True, resolve all conflicts.
+            action: Action to take when resolving.
+            directory: Directory to work in.
+        """
         if all:
             if file_list:
                 raise errors.CommandError(
@@ -133,10 +161,7 @@ class cmd_resolve(commands.Command):
                 file_list, directory
             )
             if action is None:
-                if file_list is None:
-                    action = "auto"
-                else:
-                    action = "done"
+                action = "auto" if file_list is None else "done"
         before, after = resolve(tree, file_list, action=action)
         # GZ 2012-07-27: Should unify UI below now that auto is less magical.
         if action == "auto" and file_list is None:
@@ -216,21 +241,18 @@ def restore(filename):
     try:
         osutils.rename(filename + ".THIS", filename)
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".BASE")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".OTHER")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     if not conflicted:
         raise errors.NotConflicted(filename)
 
@@ -242,6 +264,11 @@ class ConflictList:
     """
 
     def __init__(self, conflicts=None):
+        """Initialize ConflictList.
+
+        Args:
+            conflicts: Optional list of conflicts to initialize with.
+        """
         object.__init__(self)
         if conflicts is None:
             self.__list = []
@@ -249,28 +276,44 @@ class ConflictList:
             self.__list = conflicts
 
     def is_empty(self):
+        """Check if the conflict list is empty.
+
+        Returns:
+            True if there are no conflicts, False otherwise.
+        """
         return len(self.__list) == 0
 
     def __len__(self):
+        """Return the number of conflicts."""
         return len(self.__list)
 
     def __iter__(self):
+        """Iterate over conflicts."""
         return iter(self.__list)
 
     def __getitem__(self, key):
+        """Get conflict by index."""
         return self.__list[key]
 
     def append(self, conflict):
+        """Append a conflict to the list.
+
+        Args:
+            conflict: Conflict to append.
+        """
         return self.__list.append(conflict)
 
     def __eq__(self, other_list):
+        """Check equality with another conflict list."""
         return list(self) == list(other_list)
 
     def __ne__(self, other_list):
+        """Check inequality with another conflict list."""
         return not (self == other_list)
 
     def __repr__(self):
-        return "ConflictList({!r})".format(self.__list)
+        """Return string representation of ConflictList."""
+        return f"ConflictList({self.__list!r})"
 
     def to_strings(self):
         """Generate strings for the provided conflicts."""
@@ -299,10 +342,9 @@ class ConflictList:
             if conflict.path in path_set:
                 selected = True
                 selected_paths.add(conflict.path)
-            if recurse:
-                if osutils.is_inside_any(path_set, conflict.path):
-                    selected = True
-                    selected_paths.add(conflict.path)
+            if recurse and osutils.is_inside_any(path_set, conflict.path):
+                selected = True
+                selected_paths.add(conflict.path)
 
             if selected:
                 selected_conflicts.append(conflict)
@@ -311,9 +353,9 @@ class ConflictList:
         if ignore_misses is not True:
             for path in [p for p in paths if p not in selected_paths]:
                 if not os.path.exists(tree.abspath(path)):
-                    print("{} does not exist".format(path))
+                    print(f"{path} does not exist")
                 else:
-                    print("{} is not conflicted".format(path))
+                    print(f"{path} is not conflicted")
         return new_conflicts, selected_conflicts
 
 
@@ -323,6 +365,11 @@ class Conflict:
     typestring: str
 
     def __init__(self, path):
+        """Initialize Conflict with a path.
+
+        Args:
+            path: Path where the conflict occurred.
+        """
         self.path = path
 
     def associated_filenames(self):
@@ -330,12 +377,14 @@ class Conflict:
         raise NotImplementedError(self.associated_filenames)
 
     def cleanup(self, tree):
+        """Clean up conflict files associated with this conflict.
+
+        Args:
+            tree: Working tree containing the files.
+        """
         for fname in self.associated_filenames():
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 osutils.delete_any(tree.abspath(fname))
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
 
     def do(self, action, tree):
         """Apply the specified action to the conflict.

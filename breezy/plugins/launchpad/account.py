@@ -28,10 +28,14 @@ LAUNCHPAD_BASE = "https://launchpad.net/"
 
 
 class UnknownLaunchpadUsername(errors.BzrError):
+    """Raised when a Launchpad username is not registered."""
+
     _fmt = "The user name %(user)s is not registered on Launchpad."
 
 
 class NoRegisteredSSHKeys(errors.BzrError):
+    """Raised when a Launchpad user has not registered any SSH keys."""
+
     _fmt = (
         "The user %(user)s has not registered any SSH keys with Launchpad.\n"
         "See <https://launchpad.net/people/+me>"
@@ -39,6 +43,8 @@ class NoRegisteredSSHKeys(errors.BzrError):
 
 
 class MismatchedUsernames(errors.BzrError):
+    """Raised when authentication.conf and breezy.conf have different usernames."""
+
     _fmt = (
         "breezy.conf and authentication.conf disagree about launchpad"
         " account name.  Please re-run launchpad-login."
@@ -106,9 +112,9 @@ def check_lp_login(username, _transport=None):
         _transport = transport.get_transport_from_url(LAUNCHPAD_BASE)
 
     try:
-        data = _transport.get_bytes("~{}/+sshkeys".format(username))
-    except transport.NoSuchFile:
-        raise UnknownLaunchpadUsername(user=username)
+        data = _transport.get_bytes(f"~{username}/+sshkeys")
+    except transport.NoSuchFile as e:
+        raise UnknownLaunchpadUsername(user=username) from e
 
     if not data:
         raise NoRegisteredSSHKeys(user=username)

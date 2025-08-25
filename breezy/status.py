@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Status reporting for working trees and revisions.
+
+This module provides functionality for displaying the status of changes between
+trees, including modified files, pending merges, conflicts, and unversioned files.
+The main entry points are show_tree_status() for displaying working tree status
+and report_changes() for comparing two arbitrary trees.
+"""
+
 import sys
 
 from . import delta as _mod_delta
@@ -154,13 +162,13 @@ def show_tree_status(
             try:
                 old = revision[0].as_tree(wt.branch)
             except errors.NoSuchRevision as e:
-                raise errors.CommandError(str(e))
+                raise errors.CommandError(str(e)) from e
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
                 except errors.NoSuchRevision as e:
-                    raise errors.CommandError(str(e))
+                    raise errors.CommandError(str(e)) from e
             else:
                 new = wt
         with old.lock_read(), new.lock_read():
@@ -213,7 +221,7 @@ def show_tree_status(
                 else:
                     prefix = "I  "
                 for ignored_file in ignored_files:
-                    to_file.write("{} {}\n".format(prefix, ignored_file))
+                    to_file.write(f"{prefix} {ignored_file}\n")
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.
@@ -225,11 +233,8 @@ def show_tree_status(
             if len(conflicts) > 0 and not short:
                 to_file.write("conflicts:\n")
             for conflict in conflicts:
-                if short:
-                    prefix = "C  "
-                else:
-                    prefix = " "
-                to_file.write("{} {}\n".format(prefix, conflict.describe()))
+                prefix = "C  " if short else " "
+                to_file.write(f"{prefix} {conflict.describe()}\n")
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -241,11 +246,8 @@ def show_tree_status(
                 # We could calculate prefix outside the loop but, given
                 # how rarely this ought to happen, it's OK and arguably
                 # slightly faster to do it here (ala conflicts above)
-                if short:
-                    prefix = "X  "
-                else:
-                    prefix = " "
-                to_file.write("{} {}\n".format(prefix, nonexistent))
+                prefix = "X  " if short else " "
+                to_file.write(f"{prefix} {nonexistent}\n")
             if new_is_working_tree and show_pending:
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
@@ -310,10 +312,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         sub_prefix = "    "
 
     def show_log_message(rev, prefix):
-        if term_width is None:
-            width = term_width
-        else:
-            width = term_width - len(prefix)
+        width = term_width if term_width is None else term_width - len(prefix)
         log_message = log_formatter.log_string(None, rev, width, prefix=prefix)
         to_file.write(log_message + "\n")
 
@@ -359,9 +358,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         num, first, depth, eom = next(rev_id_iterator)
         if first != merge:
             raise AssertionError(
-                "Somehow we misunderstood how iter_topo_order works {} != {}".format(
-                    first, merge
-                )
+                f"Somehow we misunderstood how iter_topo_order works {first} != {merge}"
             )
         for _num, sub_merge, _depth, _eom in rev_id_iterator:
             rev = revisions[sub_merge]
@@ -482,9 +479,22 @@ class StatusHookParams:
         self.specific_files = specific_files
 
     def __eq__(self, other):
+        """Check equality with another StatusHookParams instance.
+
+        Args:
+            other: Another object to compare with.
+
+        Returns:
+            bool: True if all attributes are equal, False otherwise.
+        """
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
+        """Return a string representation of the StatusHookParams instance.
+
+        Returns:
+            str: A string representation showing the class name and all attribute values.
+        """
         return "<{}({}, {}, {}, {}, {}, {}, {}, {})>".format(
             self.__class__.__name__,
             self.old_tree,
@@ -519,10 +529,7 @@ def _show_shelve_summary(params):
         if shelves:
             singular = "%d shelf exists. "
             plural = "%d shelves exist. "
-            if len(shelves) == 1:
-                fmt = singular
-            else:
-                fmt = plural
+            fmt = singular if len(shelves) == 1 else plural
             params.to_file.write(fmt % len(shelves))
             params.to_file.write('See "brz shelve --list" for details.\n')
 

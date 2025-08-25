@@ -21,6 +21,7 @@ import os
 import time
 
 from ... import errors, osutils
+from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
@@ -372,7 +373,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         def lock_and_compare_all_current_dirstate(tree, lock_method):
             getattr(tree, lock_method)()
             state = tree.current_dirstate()
-            self.assertFalse(state in known_dirstates)
+            self.assertNotIn(state, known_dirstates)
             known_dirstates.add(state)
             tree.unlock()
 
@@ -409,10 +410,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev_tree2 = tree.branch.repository.revision_tree(rev_id2)
         optimiser = InterTree.get(rev_tree, rev_tree2)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(optimiser, workingtree_4.InterDirStateTree)
         optimiser = InterTree.get(rev_tree2, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(optimiser, workingtree_4.InterDirStateTree)
 
     def test_revtree_not_in_dirstate_to_dirstate_not_interdirstate(self):
         # we should not get a dirstate optimiser when the revision id for of
@@ -424,10 +425,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_read()
         optimiser = InterTree.get(rev_tree, tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(optimiser, workingtree_4.InterDirStateTree)
         optimiser = InterTree.get(tree, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(optimiser, workingtree_4.InterDirStateTree)
         tree.unlock()
 
     def test_empty_basis_to_dirstate_tree(self):
@@ -524,7 +525,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(["tree/a", "tree/b"])
         tree.add(["a"], ids=[b"a-id"])
         self.assertEqual("a", tree.id2path(b"a-id"))
-        self.assertRaises(errors.NoSuchId, tree.id2path, "a")
+        self.assertRaises(errors.NoSuchId, tree.id2path, b"a")
         tree.commit("a")
         tree.add(["b"], ids=[b"b-id"])
 
@@ -893,18 +894,22 @@ class TestCorruptDirstate(TestCaseWithTransport):
         tree.flush()
 
         # self.assertRaises(Exception, tree.update_basis_by_delta,
-        new_dir = inventory.InventoryDirectory(b"dir-id", "new-dir", root_id)
-        new_dir.revision = b"new-revision-id"
-        new_file = inventory.InventoryFile(b"file-id", "new-file", root_id)
-        new_file.revision = b"new-revision-id"
+        new_dir = inventory.InventoryDirectory(
+            b"dir-id", "new-dir", root_id, revision=b"new-revision-id"
+        )
+        new_file = inventory.InventoryFile(
+            b"file-id", "new-file", root_id, revision=b"new-revision-id"
+        )
         self.assertRaises(
             errors.InconsistentDelta,
             tree.update_basis_by_delta,
             b"new-revision-id",
-            [
-                ("dir", "new-dir", b"dir-id", new_dir),
-                ("dir/file", "new-dir/new-file", b"file-id", new_file),
-            ],
+            InventoryDelta(
+                [
+                    ("dir", "new-dir", b"dir-id", new_dir),
+                    ("dir/file", "new-dir/new-file", b"file-id", new_file),
+                ]
+            ),
         )
         del state
 

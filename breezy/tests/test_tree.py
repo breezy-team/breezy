@@ -18,7 +18,8 @@
 
 from breezy import errors, revision
 from breezy.tests import TestCase, TestCaseWithTransport
-from breezy.tree import (
+
+from ..tree import (
     FileTimestampUnavailable,
     InterTree,
     find_previous_paths,

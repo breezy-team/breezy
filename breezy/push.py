@@ -33,6 +33,11 @@ class PushResult:
     """
 
     def __init__(self):
+        """Initialize a new PushResult instance.
+
+        Sets all result attributes to None initially. These will be populated
+        during the push operation.
+        """
         self.branch_push_result = None
         self.stacked_on = None
         self.workingtree_updated = None
@@ -102,15 +107,15 @@ def _show_push_branch(
                 use_existing_dir=use_existing_dir,
                 no_tree=no_tree,
             )
-        except errors.AlreadyControlDirError:
+        except errors.AlreadyControlDirError as err:
             raise errors.CommandError(
                 gettext(
                     "Target directory %s already contains a .bzr directory, "
                     "but it is not valid."
                 )
                 % (location,)
-            )
-        except transport.FileExists:
+            ) from err
+        except transport.FileExists as err:
             if not use_existing_dir:
                 raise errors.CommandError(
                     gettext(
@@ -120,11 +125,11 @@ def _show_push_branch(
                         " there anyway."
                     )
                     % location
-                )
+                ) from err
             # This shouldn't occur, but if it does the FileExists error will be
             # more informative than an UnboundLocalError for br_to.
             raise
-        except transport.NoSuchFile:
+        except transport.NoSuchFile as err:
             if not create_prefix:
                 raise errors.CommandError(
                     gettext(
@@ -134,17 +139,17 @@ def _show_push_branch(
                         " leading parent directories."
                     )
                     % location
-                )
+                ) from err
             # This shouldn't occur (because create_prefix is true, so
             # create_clone_on_transport should be catching NoSuchFile and
             # creating the missing directories) but if it does the original
             # NoSuchFile error will be more informative than an
             # UnboundLocalError for br_to.
             raise
-        except errors.TooManyRedirections:
+        except errors.TooManyRedirections as err:
             raise errors.CommandError(
                 gettext("Too many redirections trying to make %s.") % location
-            )
+            ) from err
         push_result = PushResult()
         # TODO: Some more useful message about what was copied
         try:
@@ -172,14 +177,14 @@ def _show_push_branch(
             push_result = dir_to.push_branch(
                 br_from, revision_id, overwrite, remember, create_prefix, lossy=lossy
             )
-        except errors.DivergedBranches:
+        except errors.DivergedBranches as err:
             raise errors.CommandError(
                 gettext(
                     "These branches have diverged."
                     '  See "brz help diverged-branches"'
                     " for more information."
                 )
-            )
+            ) from err
         except errors.NoRoundtrippingSupport as e:
             raise errors.CommandError(
                 gettext(
@@ -187,8 +192,8 @@ def _show_push_branch(
                     "push to %s. You may want to use --lossy."
                 )
                 % e.target_branch.mapping.vcs.abbreviation
-            )
-        except errors.NoRepositoryPresent:
+            ) from e
+        except errors.NoRepositoryPresent as err:
             # we have a controldir but no branch or repository
             # XXX: Figure out what to do other than complain.
             raise errors.CommandError(
@@ -199,7 +204,7 @@ def _show_push_branch(
                     " directory out of the way and try again."
                 )
                 % location
-            )
+            ) from err
         if push_result.workingtree_updated is False:
             warning(
                 "This transport does not update the working "

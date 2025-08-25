@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Message handling for the smart server protocol.
+
+This module provides classes for handling messages sent and received over
+the smart server protocol. It includes handlers for both conventional
+request/response patterns and streaming message processing.
+"""
+
 from collections import deque
 from io import BytesIO
 
@@ -29,6 +36,7 @@ class MessageHandler:
     """
 
     def __init__(self):
+        """Initialize the message handler."""
         self.headers = None
 
     def headers_received(self, headers):
@@ -43,22 +51,38 @@ class MessageHandler:
 
         Note that a 'byte' part is a message part consisting of exactly one
         byte.
+
+        Args:
+            byte: A single byte that was received.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self.byte_received)
 
     def bytes_part_received(self, bytes):
         """Called when a 'bytes' part is received.
 
-        A 'bytes' message part can contain any number of bytes.  It should not
+        A 'bytes' message part can contain any number of bytes. It should not
         be confused with a 'byte' part, which is always a single byte.
+
+        Args:
+            bytes: The bytes that were received.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self.bytes_received)
 
     def structure_part_received(self, structure):
         """Called when a 'structure' part is received.
 
-        :param structure: some structured data, which will be some combination
-            of list, dict, int, and str objects.
+        Args:
+            structure: Some structured data, which will be some combination
+                of list, dict, int, and str objects.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError(self.bytes_received)
 
@@ -66,6 +90,12 @@ class MessageHandler:
         """Called when there is a protocol decoding error.
 
         The default implementation just re-raises the exception.
+
+        Args:
+            exception: The exception that occurred during protocol decoding.
+
+        Raises:
+            The exception parameter (re-raised).
         """
         raise
 
@@ -91,6 +121,12 @@ class ConventionalRequestHandler(MessageHandler):
     """
 
     def __init__(self, request_handler, responder):
+        """Initialize the conventional request handler.
+
+        Args:
+            request_handler: The request handler that will process the request.
+            responder: The responder that will send the response.
+        """
         MessageHandler.__init__(self)
         self.request_handler = request_handler
         self.responder = responder
@@ -99,6 +135,11 @@ class ConventionalRequestHandler(MessageHandler):
         self._response_sent = False
 
     def protocol_error(self, exception):
+        """Handle a protocol error during request processing.
+
+        Args:
+            exception: The exception that occurred during protocol processing.
+        """
         if self.responder.response_sent:
             # We can only send one response to a request, no matter how many
             # errors happen while processing it.
@@ -106,6 +147,15 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
+        """Process a received byte part.
+
+        Args:
+            byte: The single byte that was received.
+
+        Raises:
+            TypeError: If byte is not a bytes object.
+            SmartProtocolError: If an unexpected byte is received.
+        """
         if not isinstance(byte, bytes):
             raise TypeError(byte)
         if self.expecting == "body":
@@ -117,24 +167,35 @@ class ConventionalRequestHandler(MessageHandler):
                 self.expecting = "error"
             else:
                 raise errors.SmartProtocolError(
-                    "Non-success status byte in request body: {!r}".format(byte)
+                    f"Non-success status byte in request body: {byte!r}"
                 )
         else:
-            raise errors.SmartProtocolError(
-                "Unexpected message part: byte({!r})".format(byte)
-            )
+            raise errors.SmartProtocolError(f"Unexpected message part: byte({byte!r})")
 
     def structure_part_received(self, structure):
+        """Process a received structure part.
+
+        Args:
+            structure: The structured data that was received.
+
+        Raises:
+            SmartProtocolError: If the structure is received at an unexpected time.
+        """
         if self.expecting == "args":
             self._args_received(structure)
         elif self.expecting == "error":
             self._error_received(structure)
         else:
             raise errors.SmartProtocolError(
-                "Unexpected message part: structure({!r})".format(structure)
+                f"Unexpected message part: structure({structure!r})"
             )
 
     def _args_received(self, args):
+        """Handle received arguments.
+
+        Args:
+            args: The arguments received for the request.
+        """
         self.expecting = "body"
         self.request_handler.args_received(args)
         if self.request_handler.finished_reading:
@@ -143,24 +204,41 @@ class ConventionalRequestHandler(MessageHandler):
             self.expecting = "end"
 
     def _error_received(self, error_args):
+        """Handle received error arguments.
+
+        Args:
+            error_args: The error arguments received after the request body.
+        """
         self.expecting = "end"
         self.request_handler.post_body_error_received(error_args)
 
     def bytes_part_received(self, bytes):
+        """Process received bytes part.
+
+        Args:
+            bytes: The bytes that were received as part of the request body.
+
+        Raises:
+            SmartProtocolError: If bytes are received at an unexpected time.
+        """
         if self.expecting == "body":
             self._should_finish_body = True
             self.request_handler.accept_body(bytes)
         else:
             raise errors.SmartProtocolError(
-                "Unexpected message part: bytes({!r})".format(bytes)
+                f"Unexpected message part: bytes({bytes!r})"
             )
 
     def end_received(self):
+        """Handle the end of message.
+
+        Raises:
+            SmartProtocolError: If the end is received at an unexpected time
+                or if the request handler hasn't finished reading.
+        """
         if self.expecting not in ["body", "end"]:
             raise errors.SmartProtocolError(
-                "End of message received prematurely (while expecting {})".format(
-                    self.expecting
-                )
+                f"End of message received prematurely (while expecting {self.expecting})"
             )
         self.expecting = "nothing"
         self.request_handler.end_received()
@@ -212,7 +290,15 @@ class ResponseHandler:
 
 
 class ConventionalResponseHandler(MessageHandler, ResponseHandler):
+    """A response handler for conventional smart protocol responses.
+
+    This handler manages the state of reading a conventional response,
+    which consists of a status, arguments, optional body data, and
+    an end-of-message marker.
+    """
+
     def __init__(self):
+        """Initialize the conventional response handler."""
         MessageHandler.__init__(self)
         self.status = None
         self.args = None
@@ -224,62 +310,93 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self.finished_reading = False
 
     def setProtoAndMediumRequest(self, protocol_decoder, medium_request):
+        """Set the protocol decoder and medium request.
+
+        Args:
+            protocol_decoder: The protocol decoder to use for reading.
+            medium_request: The medium request to read from.
+        """
         self._protocol_decoder = protocol_decoder
         self._medium_request = medium_request
 
     def byte_part_received(self, byte):
+        """Process a received byte part in the response.
+
+        Args:
+            byte: The single byte that was received.
+
+        Raises:
+            TypeError: If byte is not a bytes object.
+            SmartProtocolError: If an invalid or unexpected byte is received.
+        """
         if not isinstance(byte, bytes):
             raise TypeError(byte)
         if byte not in [b"E", b"S"]:
-            raise errors.SmartProtocolError(
-                "Unknown response status: {!r}".format(byte)
-            )
+            raise errors.SmartProtocolError(f"Unknown response status: {byte!r}")
         if self._body_started:
             if self._body_stream_status is not None:
                 raise errors.SmartProtocolError(
-                    "Unexpected byte part received: {!r}".format(byte)
+                    f"Unexpected byte part received: {byte!r}"
                 )
             self._body_stream_status = byte
         else:
             if self.status is not None:
                 raise errors.SmartProtocolError(
-                    "Unexpected byte part received: {!r}".format(byte)
+                    f"Unexpected byte part received: {byte!r}"
                 )
             self.status = byte
 
     def bytes_part_received(self, bytes):
+        """Process received bytes as part of the response body.
+
+        Args:
+            bytes: The bytes received as part of the response body.
+        """
         self._body_started = True
         self._bytes_parts.append(bytes)
 
     def structure_part_received(self, structure):
+        """Process a received structure part in the response.
+
+        Args:
+            structure: The structured data received.
+
+        Raises:
+            SmartProtocolError: If the structure is invalid or unexpected.
+        """
         if not isinstance(structure, tuple):
             raise errors.SmartProtocolError(
-                "Args structure is not a sequence: {!r}".format(structure)
+                f"Args structure is not a sequence: {structure!r}"
             )
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(
-                    "Unexpected structure received: {!r} (already got {!r})".format(
-                        structure, self.args
-                    )
+                    f"Unexpected structure received: {structure!r} (already got {self.args!r})"
                 )
             self.args = structure
         else:
             if self._body_stream_status != b"E":
                 raise errors.SmartProtocolError(
-                    "Unexpected structure received after body: {!r}".format(structure)
+                    f"Unexpected structure received after body: {structure!r}"
                 )
             self._body_error_args = structure
 
     def _wait_for_response_args(self):
+        """Wait for response arguments to be received."""
         while self.args is None and not self.finished_reading:
             self._read_more()
 
     def _wait_for_response_end(self):
+        """Wait for the complete response to be received."""
         while not self.finished_reading:
             self._read_more()
 
     def _read_more(self):
+        """Read more data from the medium and process it.
+
+        Raises:
+            ConnectionResetError: If the connection is unexpectedly closed.
+        """
         next_read_size = self._protocol_decoder.next_read_size()
         if next_read_size == 0:
             # a complete request has been read.
@@ -289,13 +406,13 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         data = self._medium_request.read_bytes(next_read_size)
         if data == b"":
             # end of file encountered reading from server
-            if "hpss" in debug.debug_flags:
+            if debug.debug_flag_enabled("hpss"):
                 mutter(
                     "decoder state: buf[:10]=%r, state_accept=%s",
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__,
                 )
-            raise errors.ConnectionReset(
+            raise ConnectionResetError(
                 "Unexpected end of message. "
                 "Please check connectivity and permissions, and report a bug "
                 "if problems persist."
@@ -303,6 +420,14 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._protocol_decoder.accept_bytes(data)
 
     def protocol_error(self, exception):
+        """Handle a protocol error during response processing.
+
+        Args:
+            exception: The exception that occurred during protocol processing.
+
+        Raises:
+            The exception parameter (re-raised).
+        """
         # Whatever the error is, we're done with this request.
         self.finished_reading = True
         self._medium_request.finished_reading()
@@ -313,7 +438,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._wait_for_response_args()
         if not expect_body:
             self._wait_for_response_end()
-        if "hpss" in debug.debug_flags:
+        if debug.debug_flag_enabled("hpss"):
             mutter("   result:   %r", self.args)
         if self.status == b"E":
             self._wait_for_response_end()
@@ -334,17 +459,25 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         if self._body is None:
             self._wait_for_response_end()
             body_bytes = b"".join(self._bytes_parts)
-            if "hpss" in debug.debug_flags:
+            if debug.debug_flag_enabled("hpss"):
                 mutter("              %d body bytes read", len(body_bytes))
             self._body = BytesIO(body_bytes)
             self._bytes_parts = None
         return self._body.read(count)
 
     def read_streamed_body(self):
+        """Read the response body as a stream of byte chunks.
+
+        Yields:
+            Bytes chunks from the response body.
+
+        Raises:
+            Smart server errors if the body stream ended with an error status.
+        """
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if "hpssdetail" in debug.debug_flags:
+                if debug.debug_flag_enabled("hpssdetail"):
                     mutter("              %d byte part read", len(bytes_part))
                 yield bytes_part
             self._read_more()
@@ -352,6 +485,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             _raise_smart_server_error(self._body_error_args)
 
     def cancel_read_body(self):
+        """Cancel reading the response body and finish the response."""
         self._wait_for_response_end()
 
 

@@ -21,40 +21,83 @@ from typing import Optional
 from . import errors, hooks, registry, urlutils
 
 
+class AutoMergeUnavailable(errors.BzrError):
+    """Exception raised when auto-merge cannot be enabled."""
+
+    _fmt = "Unable to enable auto-merge: %(msg)s"
+
+    def __init__(self, msg):
+        """Initialize the exception.
+
+        Args:
+            msg: Error message explaining why auto-merge is unavailable.
+        """
+        errors.BzrError.__init__(self)
+        self.msg = msg
+
+
 class NoSuchProject(errors.BzrError):
+    """Exception raised when a project does not exist."""
+
     _fmt = "Project does not exist: %(project)s."
 
     def __init__(self, project):
+        """Initialize the exception.
+
+        Args:
+            project: Name of the project that doesn't exist.
+        """
         errors.BzrError.__init__(self)
         self.project = project
 
 
 class MergeProposalExists(errors.BzrError):
+    """Exception raised when a merge proposal already exists."""
+
     _fmt = "A merge proposal already exists: %(url)s."
 
     def __init__(self, url, existing_proposal=None):
+        """Initialize the exception.
+
+        Args:
+            url: URL of the existing merge proposal.
+            existing_proposal: Optional existing proposal object.
+        """
         errors.BzrError.__init__(self)
         self.url = url
         self.existing_proposal = existing_proposal
 
 
 class UnsupportedForge(errors.BzrError):
+    """Exception raised when no supported forge is found for a branch."""
+
     _fmt = "No supported forge for %(branch)s."
 
     def __init__(self, branch):
+        """Initialize the exception.
+
+        Args:
+            branch: The branch for which no forge support was found.
+        """
         errors.BzrError.__init__(self)
         self.branch = branch
 
 
 class ReopenFailed(errors.BzrError):
+    """Exception raised when reopening a merge proposal fails."""
+
     _fmt = "Reopening the merge proposal failed: %(error)s."
 
 
 class TitleUnsupported(errors.BzrError):
+    """Exception raised when a merge proposal doesn't support titles."""
+
     _fmt = "The merge proposal %(mp)s does not support a title."
 
 
 class AutoMergeUnsupported(errors.BzrError):
+    """Exception raised when a merge proposal doesn't support auto-merge."""
+
     _fmt = "The merge proposal %(mp)s does not support automerge."
 
 
@@ -62,6 +105,7 @@ class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
+        """Initialize the propose merge hooks."""
         hooks.Hooks.__init__(self, __name__, "Proposer.hooks")
         self.add_hook(
             "get_prerequisite",
@@ -81,6 +125,11 @@ class LabelsUnsupported(errors.BzrError):
     _fmt = "Labels are not supported by %(forge)r."
 
     def __init__(self, forge):
+        """Initialize the exception.
+
+        Args:
+            forge: The forge that doesn't support labels.
+        """
         errors.BzrError.__init__(self)
         self.forge = forge
 
@@ -89,6 +138,11 @@ class PrerequisiteBranchUnsupported(errors.BzrError):
     """Prerequisite branch not supported by this forge."""
 
     def __init__(self, forge):
+        """Initialize the exception.
+
+        Args:
+            forge: The forge that doesn't support labels.
+        """
         errors.BzrError.__init__(self)
         self.forge = forge
 
@@ -99,6 +153,11 @@ class ForgeLoginRequired(errors.BzrError):
     _fmt = "Action requires credentials for hosting site %(forge)r."
 
     def __init__(self, forge):
+        """Initialize the exception.
+
+        Args:
+            forge: The forge that doesn't support labels.
+        """
         errors.BzrError.__init__(self)
         self.forge = forge
 
@@ -109,6 +168,12 @@ class SourceNotDerivedFromTarget(errors.BzrError):
     _fmt = "Source %(source_branch)r not derived from target %(target_branch)r."
 
     def __init__(self, source_branch, target_branch):
+        """Initialize the exception.
+
+        Args:
+            source_branch: The source branch that is not derived from target.
+            target_branch: The target branch.
+        """
         errors.BzrError.__init__(
             self, source_branch=source_branch, target_branch=target_branch
         )
@@ -123,15 +188,35 @@ class MergeProposal:
     supports_auto_merge: bool
 
     def __init__(self, url=None):
+        """Initialize the merge proposal.
+
+        Args:
+            url: Optional URL of the merge proposal.
+        """
         self.url = url
 
     def __str__(self):
+        """Return string representation of the merge proposal.
+
+        Returns:
+            URL of the merge proposal.
+        """
         return self.url
 
     def __repr__(self):
-        return "<{}({!r})>".format(self.__class__.__name__, self.url)
+        """Return debug string representation.
+
+        Returns:
+            Debug representation showing class name and URL.
+        """
+        return "<%s(%r)>" % (self.__class__.__name__, self.url)
 
     def get_web_url(self):
+        """Get the web URL for this merge proposal.
+
+        Returns:
+            Web URL where the merge proposal can be viewed.
+        """
         raise NotImplementedError(self.get_web_url)
 
     def get_description(self):
@@ -175,9 +260,19 @@ class MergeProposal:
         raise NotImplementedError(self.set_target_branch_name)
 
     def get_source_project(self):
+        """Get the source project for this merge proposal.
+
+        Returns:
+            Source project object.
+        """
         raise NotImplementedError(self.get_source_project)
 
     def get_target_project(self):
+        """Get the target project for this merge proposal.
+
+        Returns:
+            Target project object.
+        """
         raise NotImplementedError(self.get_target_project)
 
     def close(self):
@@ -237,6 +332,12 @@ class MergeProposalBuilder:
     hooks = ProposeMergeHooks()
 
     def __init__(self, source_branch, target_branch):
+        """Initialize the merge proposer.
+
+        Args:
+            source_branch: The source branch for the merge proposal.
+            target_branch: The target branch for the merge proposal.
+        """
         self.source_branch = source_branch
         self.target_branch = target_branch
 
@@ -295,7 +396,7 @@ class Forge:
     @property
     def name(self):
         """Name of this instance."""
-        return "{} at {}".format(type(self).__name__, self.base_url)
+        return f"{type(self).__name__} at {self.base_url}"
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?
@@ -545,4 +646,4 @@ def create_project(url: str, *, summary=None) -> None:
         raise UnsupportedForge(url)
 
 
-forges = registry.Registry[str, type[Forge]]()
+forges = registry.Registry[str, type[Forge], None]()

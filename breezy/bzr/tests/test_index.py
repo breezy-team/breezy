@@ -1166,7 +1166,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
                 ((b"ref", b"erence"), b"refdata", ()),
             ],
         )
-        self.assertTrue(index._size > 0)
+        self.assertGreater(index._size, 0)
         self.assertIs(None, index._nodes)
         index._read_and_parse([(0, index._size)])
         self.assertIsNot(None, index._nodes)
@@ -1665,10 +1665,10 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         Nodes will have a value of '' and no references.
         """
         nodes = [
-            ((("index-{}-key-{}".format(name, n)).encode("ascii"),), b"", ())
+            ((f"index-{name}-key-{n}".encode("ascii"),), b"", ())
             for n in range(1, num_nodes + 1)
         ]
-        return self.make_index("index-{}".format(name), 0, nodes=nodes)
+        return self.make_index(f"index-{name}", 0, nodes=nodes)
 
     def test_reorder_after_iter_entries(self):
         # Four indices: [key1] in idx1, [key2,key3] in idx2, [] in idx3,
@@ -2020,10 +2020,7 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
             nodes = []
         result = _mod_index.InMemoryGraphIndex(ref_lists, key_elements=key_elements)
         result.add_nodes(nodes)
-        if add_callback:
-            add_nodes_callback = result.add_nodes
-        else:
-            add_nodes_callback = None
+        add_nodes_callback = result.add_nodes if add_callback else None
         adapter = _mod_index.GraphIndexPrefixAdapter(
             result,
             (b"prefix",),

@@ -180,7 +180,7 @@ class MergeBuilder:
             tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
     def change_contents(self, trans_id, base=None, this=None, other=None):
-        for trans_id, (contents, tt) in zip(
+        for trans_id, (contents, tt) in zip(  # noqa: B020
             trans_id, self.selected_transforms(this, base, other)
         ):
             tt.cancel_creation(trans_id)
@@ -318,8 +318,8 @@ class MergeTest(TestCaseWithTransport):
             )
         try:
             self.do_contents_test(Diff3Merger)
-        except errors.NoDiff3:
-            raise TestSkipped("diff3 not available")
+        except errors.NoDiff3 as err:
+            raise TestSkipped("diff3 not available") from err
 
     def test_contents_merge3(self):
         """Test diff3 merging."""
@@ -458,9 +458,9 @@ y
         builder.change_perms(name4, this=True)
         builder.remove_file(name4, base=True)
         builder.merge()
-        self.assertIs(builder.this.is_executable("name1"), False)
-        self.assertIs(builder.this.is_executable("name2"), True)
-        self.assertIs(builder.this.is_executable("name3"), False)
+        self.assertFalse(builder.this.is_executable("name1"))
+        self.assertTrue(builder.this.is_executable("name2"))
+        self.assertFalse(builder.this.is_executable("name3"))
         builder.cleanup()
 
     def test_new_suffix(self):
@@ -660,7 +660,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.commit("r0")
         self.run_bzr("branch a b")
         b_wt = WorkingTree.open("b")
-        os.chmod("b/file", 0o755)
+        os.chmod("b/file", 0o755)  # noqa: S103
         os.remove("a/file")
         a_wt.commit("removed a")
         self.assertEqual(a_wt.branch.revno(), 2)
@@ -889,7 +889,11 @@ class TestMerger(TestCaseWithTransport):
     def test_from_mergeable(self):
         this, other = self.prepare_for_merging()
         md = merge_directive.MergeDirective2.from_objects(
-            other.branch.repository, b"rev3", 0, 0, "this"
+            repository=other.branch.repository,
+            revision_id=b"rev3",
+            time=0,
+            timezone=0,
+            target_branch="this",
         )
         other.lock_read()
         self.addCleanup(other.unlock)
@@ -908,7 +912,11 @@ class TestMerger(TestCaseWithTransport):
         other.lock_write()
         self.addCleanup(other.unlock)
         md = merge_directive.MergeDirective.from_objects(
-            other.branch.repository, b"rev3", 0, 0, "this"
+            repository=other.branch.repository,
+            revision_id=b"rev3",
+            time=0,
+            timezone=0,
+            target_branch="this",
         )
         merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual(b"rev3", merger.other_rev_id)

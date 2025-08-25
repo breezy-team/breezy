@@ -46,24 +46,29 @@ class LockWrapper:
         self.__dict__["_allow_unlock"] = True
 
     def __eq__(self, other):
+        """Check equality based on wrapped object."""
         # Branch objects look for controlfiles == repo.controlfiles.
         if isinstance(other, LockWrapper):
             return self._other == other._other
         return False
 
     def __getattr__(self, attr):
+        """Delegate attribute access to wrapped object."""
         return getattr(self._other, attr)
 
     def __setattr__(self, attr, val):
+        """Delegate attribute setting to wrapped object."""
         return setattr(self._other, attr, val)
 
     def lock_read(self):
+        """Attempt to acquire a read lock on the wrapped object."""
         self._sequence.append((self._other_id, "lr", self._allow_read))
         if self._allow_read:
             return self._other.lock_read()
         raise TestPreventLocking("lock_read disabled")
 
     def lock_write(self, token=None):
+        """Attempt to acquire a write lock on the wrapped object."""
         self._sequence.append((self._other_id, "lw", self._allow_write))
         if self._allow_write:
             return self._other.lock_write()
@@ -71,6 +76,7 @@ class LockWrapper:
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Attempt to unlock the wrapped object."""
         self._sequence.append((self._other_id, "ul", self._allow_unlock))
         if self._allow_unlock:
             return self._other.unlock()

@@ -25,11 +25,19 @@ class TestSerializer(TestCase):
     """Test serializer."""
 
     def test_registry(self):
-        self.assertIs(xml5.serializer_v5, serializer.format_registry.get("5"))
-        self.assertIs(xml6.serializer_v6, serializer.format_registry.get("6"))
-        self.assertIs(xml7.serializer_v7, serializer.format_registry.get("7"))
-        self.assertIs(xml8.serializer_v8, serializer.format_registry.get("8"))
         self.assertIs(
-            chk_serializer.chk_serializer_255_bigpage,
-            serializer.format_registry.get("9"),
+            xml5.revision_serializer_v5, serializer.revision_format_registry.get("5")
+        )
+        self.assertIs(
+            xml8.revision_serializer_v8, serializer.revision_format_registry.get("8")
+        )
+        self.assertIs(
+            xml6.inventory_serializer_v6, serializer.inventory_format_registry.get("6")
+        )
+        self.assertIs(
+            xml7.inventory_serializer_v7, serializer.inventory_format_registry.get("7")
+        )
+        self.assertIs(
+            chk_serializer.inventory_chk_serializer_255_bigpage_9,
+            serializer.inventory_format_registry.get("9"),
         )

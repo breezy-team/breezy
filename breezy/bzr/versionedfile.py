@@ -16,12 +16,12 @@
 
 """Versioned text file storage api."""
 
+import functools
 import itertools
 import os
-import struct
 from copy import copy
 from io import BytesIO
-from typing import Any
+from typing import Any, Optional
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -33,23 +33,25 @@ import fastbencode as bencode
 
 from breezy import (
     multiparent,
-    revision,
-    urlutils,
-    )
-from breezy.bzr import (
-    groupcompress,
-    knit,
     )
 """,
 )
-from .. import errors, osutils
+from .. import errors, osutils, revision, urlutils
 from .. import graph as _mod_graph
 from .. import transport as _mod_transport
+from .._bzr_rs import versionedfile as _versionedfile_rs
 from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
 
-adapter_registry = Registry[tuple[str, str], Any]()
+FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
+ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory
+AbsentContentFactory = _versionedfile_rs.AbsentContentFactory
+record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
+fulltext_network_to_record = _versionedfile_rs.fulltext_network_to_record
+
+
+adapter_registry = Registry[tuple[str, str], Any, None]()
 adapter_registry.register_lazy(
     ("knit-annotated-delta-gz", "knit-delta-gz"),
     "breezy.bzr.knit",
@@ -82,12 +84,25 @@ for target_storage_kind in ("fulltext", "chunked", "lines"):
 
 
 class UnavailableRepresentation(errors.InternalBzrError):
+    """Raised when a requested content encoding is not available.
+
+    This error occurs when trying to access content in a specific encoding
+    that is not supported or available for the given key.
+    """
+
     _fmt = (
         "The encoding '%(wanted)s' is not available for key %(key)s which "
         "is encoded as '%(native)s'."
     )
 
     def __init__(self, key, wanted, native):
+        """Initialize an UnavailableRepresentation error.
+
+        Args:
+            key: The content key that was requested.
+            wanted: The encoding that was requested.
+            native: The encoding that is actually available.
+        """
         errors.InternalBzrError.__init__(self)
         self.wanted = wanted
         self.native = native
@@ -95,6 +110,12 @@ class UnavailableRepresentation(errors.InternalBzrError):
 
 
 class ExistingContent(errors.BzrError):
+    """Raised when attempting to insert content that already exists.
+
+    This error occurs when trying to add content to a versioned file
+    that has already been stored.
+    """
+
     _fmt = "The content being inserted is already present."
 
 
@@ -114,113 +135,36 @@ class ContentFactory:
         parents).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a ContentFactory."""
-        self.sha1 = None
-        self.size = None
-        self.storage_kind = None
-        self.key = None
+        self.sha1: Optional[bytes] = None
+        self.size: Optional[int] = None
+        self.storage_kind: Optional[str] = None
+        self.key: Optional[tuple[bytes, ...]] = None
         self.parents = None
 
-
-class ChunkedContentFactory(ContentFactory):
-    """Static data content factory.
-
-    This takes a 'chunked' list of strings. The only requirement on 'chunked' is
-    that ''.join(lines) becomes a valid fulltext. A tuple of a single string
-    satisfies this, as does a list of lines.
-
-    :ivar sha1: None, or the sha1 of the content fulltext.
-    :ivar size: None, or the size of the content fulltext.
-    :ivar storage_kind: The native storage kind of this factory. Always
-        'chunked'
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: A tuple of parent keys for self.key. If the object has
-        no parent information, None (as opposed to () for an empty list of
-        parents).
-    :ivar chunks_are_lines: Whether chunks are lines.
-    """
-
-    def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
-        """Create a ContentFactory."""
-        self.sha1 = sha1
-        self.size = sum(map(len, chunks))
-        self.storage_kind = "chunked"
-        self.key = key
-        self.parents = parents
-        self._chunks = chunks
-        self._chunks_are_lines = chunks_are_lines
-
-    def get_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return self._chunks
-        elif storage_kind == "fulltext":
-            return b"".join(self._chunks)
-        elif storage_kind == "lines":
-            if self._chunks_are_lines:
-                return self._chunks
-            return list(osutils.chunks_to_lines(self._chunks))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-    def iter_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return iter(self._chunks)
-        elif storage_kind == "lines":
-            if self._chunks_are_lines:
-                return iter(self._chunks)
-            return iter(osutils.chunks_to_lines(self._chunks))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class FulltextContentFactory(ContentFactory):
-    """Static data content factory.
-
-    This takes a fulltext when created and just returns that during
-    get_bytes_as('fulltext').
-
-    :ivar sha1: None, or the sha1 of the content fulltext.
-    :ivar storage_kind: The native storage kind of this factory. Always
-        'fulltext'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: A tuple of parent keys for self.key. If the object has
-        no parent information, None (as opposed to () for an empty list of
-        parents).
-    """
-
-    def __init__(self, key, parents, sha1, text):
-        """Create a ContentFactory."""
-        self.sha1 = sha1
-        self.size = len(text)
-        self.storage_kind = "fulltext"
-        self.key = key
-        self.parents = parents
-        if not isinstance(text, bytes):
-            raise TypeError(text)
-        self._text = text
-
-    def get_bytes_as(self, storage_kind):
-        if storage_kind == self.storage_kind:
-            return self._text
-        elif storage_kind == "chunked":
-            return [self._text]
-        elif storage_kind == "lines":
-            return osutils.split_lines(self._text)
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-    def iter_bytes_as(self, storage_kind):
-        if storage_kind == "chunked":
-            return iter([self._text])
-        elif storage_kind == "lines":
-            return iter(osutils.split_lines(self._text))
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
+    def map_key(self, cb):
+        """Add prefix to all keys."""
+        if self.key is not None:
+            self.key = cb(self.key)
+        if self.parents is not None:
+            self.parents = tuple([cb(parent) for parent in self.parents])
+        return self
 
 
 class FileContentFactory(ContentFactory):
     """File-based content factory."""
 
     def __init__(self, key, parents, fileobj, sha1=None, size=None):
+        """Initialize a FileContentFactory.
+
+        Args:
+            key: Unique identifier for this content.
+            parents: Parent keys for this content.
+            fileobj: File-like object containing the content data.
+            sha1: SHA1 hash of the content (optional).
+            size: Size of the content in bytes (optional).
+        """
         self.key = key
         self.parents = parents
         self.file = fileobj
@@ -230,6 +174,17 @@ class FileContentFactory(ContentFactory):
         self._needs_reset = False
 
     def get_bytes_as(self, storage_kind):
+        """Get the content bytes in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('fulltext', 'chunked', 'lines').
+
+        Returns:
+            bytes or list: The content data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the requested storage kind is not supported.
+        """
         if self._needs_reset:
             self.file.seek(0)
         self._needs_reset = True
@@ -242,6 +197,17 @@ class FileContentFactory(ContentFactory):
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over content bytes in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('chunked', 'lines').
+
+        Returns:
+            iterator: Iterator over the content data in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the requested storage kind is not supported.
+        """
         if self._needs_reset:
             self.file.seek(0)
         self._needs_reset = True
@@ -250,39 +216,6 @@ class FileContentFactory(ContentFactory):
         elif storage_kind == "lines":
             return self.file
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class AbsentContentFactory(ContentFactory):
-    """A placeholder content factory for unavailable texts.
-
-    :ivar sha1: None.
-    :ivar storage_kind: 'absent'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: None.
-    """
-
-    def __init__(self, key):
-        """Create a ContentFactory."""
-        self.sha1 = None
-        self.size = None
-        self.storage_kind = "absent"
-        self.key = key
-        self.parents = None
-
-    def get_bytes_as(self, storage_kind):
-        raise ValueError(
-            "A request was made for key: {}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing.".format(self.key)
-        )
-
-    def iter_bytes_as(self, storage_kind):
-        raise ValueError(
-            "A request was made for key: {}, but that"
-            " content is not available, and the calling"
-            " code does not handle if it is missing.".format(self.key)
-        )
 
 
 class AdapterFactory(ContentFactory):
@@ -455,7 +388,16 @@ class VersionedFile:
 
     @staticmethod
     def check_not_reserved_id(version_id):
-        revision.check_not_reserved_id(version_id)
+        """Check that a version ID is not a reserved identifier.
+
+        Args:
+            version_id: The version ID to check, or None.
+
+        Raises:
+            ValueError: If version_id is a reserved identifier.
+        """
+        if version_id is not None:
+            revision.check_not_reserved_id(version_id)
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
@@ -855,6 +797,16 @@ class VersionedFile:
     def weave_merge(
         self, plan, a_marker=TextMerge.A_MARKER, b_marker=TextMerge.B_MARKER
     ):
+        """Merge text using a weave merge algorithm.
+
+        Args:
+            plan: The merge plan to execute.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+
+        Returns:
+            list: Merged lines of text.
+        """
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 
@@ -886,6 +838,21 @@ class RecordingVersionedFilesDecorator:
         random_id=False,
         check_content=True,
     ):
+        """Add lines to the versioned file and record the call.
+
+        Args:
+            key: The key for the new version.
+            parents: Parent keys for the new version.
+            lines: The text lines to add.
+            parent_texts: Parent text data (optional).
+            left_matching_blocks: Matching blocks for delta compression (optional).
+            nostore_sha: SHA to skip storing if duplicate (optional).
+            random_id: Whether to use a random ID (optional).
+            check_content: Whether to validate content (optional).
+
+        Returns:
+            The result from the backing versioned file.
+        """
         self.calls.append(
             (
                 "add_lines",
@@ -919,6 +886,19 @@ class RecordingVersionedFilesDecorator:
         random_id=False,
         check_content=True,
     ):
+        """Add content from a factory and record the call.
+
+        Args:
+            factory: ContentFactory providing the content.
+            parent_texts: Parent text data (optional).
+            left_matching_blocks: Matching blocks for delta compression (optional).
+            nostore_sha: SHA to skip storing if duplicate (optional).
+            random_id: Whether to use a random ID (optional).
+            check_content: Whether to validate content (optional).
+
+        Returns:
+            The result from the backing versioned file.
+        """
         self.calls.append(
             (
                 "add_content",
@@ -940,13 +920,32 @@ class RecordingVersionedFilesDecorator:
         )
 
     def check(self):
+        """Check the backing versioned file for consistency."""
         self._backing_vf.check()
 
     def get_parent_map(self, keys):
+        """Get parent mapping for keys and record the call.
+
+        Args:
+            keys: Keys to get parent mapping for.
+
+        Returns:
+            dict: Mapping of keys to their parents.
+        """
         self.calls.append(("get_parent_map", copy(keys)))
         return self._backing_vf.get_parent_map(keys)
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of records and record the call.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: How to sort the results.
+            include_delta_closure: Whether to include delta closure.
+
+        Returns:
+            Iterator over record data.
+        """
         self.calls.append(
             ("get_record_stream", list(keys), sort_order, include_delta_closure)
         )
@@ -955,14 +954,36 @@ class RecordingVersionedFilesDecorator:
         )
 
     def get_sha1s(self, keys):
+        """Get SHA1 hashes for keys and record the call.
+
+        Args:
+            keys: Keys to get SHA1s for.
+
+        Returns:
+            dict: Mapping of keys to their SHA1 hashes.
+        """
         self.calls.append(("get_sha1s", copy(keys)))
         return self._backing_vf.get_sha1s(keys)
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        """Iterate over lines added or present in keys and record the call.
+
+        Args:
+            keys: Keys to iterate over.
+            pb: Optional progress bar.
+
+        Returns:
+            Iterator over lines.
+        """
         self.calls.append(("iter_lines_added_or_present_in_keys", copy(keys)))
         return self._backing_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
 
     def keys(self):
+        """Get all keys and record the call.
+
+        Returns:
+            Iterable of all keys in the versioned file.
+        """
         self.calls.append(("keys",))
         return self._backing_vf.keys()
 
@@ -988,6 +1009,16 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
         self._key_priority = key_priority
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
+        """Get a stream of records with custom ordering and record the call.
+
+        Args:
+            keys: Keys to get records for.
+            sort_order: How to sort the results ('unordered' uses key_priority).
+            include_delta_closure: Whether to include delta closure.
+
+        Yields:
+            Record data in the specified order.
+        """
         self.calls.append(
             ("get_record_stream", list(keys), sort_order, include_delta_closure)
         )
@@ -1082,7 +1113,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "{:02x}/{}".format(adler32(prefix) & 0xFF, prefix.decode("utf-8"))
+        return f"{adler32(prefix) & 255:02x}/{prefix.decode('utf-8')}"
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -1115,10 +1146,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [
-            ((c in self._safe) and chr(c)) or ("%{:02x}".format(c))
-            for c in bytearray(prefix)
-        ]
+        r = [((c in self._safe) and chr(c)) or (f"%{c:02x}") for c in bytearray(prefix)]
         return "".join(r).encode("ascii")
 
     def _unescape(self, basename):
@@ -1315,7 +1343,16 @@ class VersionedFiles:
 
     @staticmethod
     def check_not_reserved_id(version_id):
-        revision.check_not_reserved_id(version_id)
+        """Check that a version ID is not a reserved identifier.
+
+        Args:
+            version_id: The version ID to check, or None.
+
+        Raises:
+            ValueError: If version_id is a reserved identifier.
+        """
+        if version_id is not None:
+            revision.check_not_reserved_id(version_id)
 
     def clear_cache(self):
         """Clear whatever caches this VersionedFile holds.
@@ -1438,9 +1475,14 @@ class VersionedFiles:
         return generator.compute_diffs()
 
     def get_annotator(self):
-        from ..annotate import Annotator
+        """Get an annotator for this versioned file.
 
-        return Annotator(self)
+        Returns:
+            VersionedFileAnnotator: An annotator instance for this versioned file.
+        """
+        from .annotate import VersionedFileAnnotator
+
+        return VersionedFileAnnotator(self)
 
     missing_keys = index._missing_keys_from_parent_map
 
@@ -1639,17 +1681,19 @@ class ThunkedVersionedFiles(VersionedFiles):
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """See VersionedFiles.get_record_stream()."""
+
         # Ordering will be taken care of by each partitioned store; group keys
         # by partition.
+        def add_prefix(p, k):
+            return p + k
+
         keys = sorted(keys)
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             suffixes = [(suffix,) for suffix in suffixes]
             for record in vf.get_record_stream(
                 suffixes, ordering, include_delta_closure
             ):
-                if record.parents is not None:
-                    record.parents = tuple(prefix + parent for parent in record.parents)
-                record.key = prefix + record.key
+                record.map_key(functools.partial(add_prefix, prefix))
                 yield record
 
     def _iter_keys_vf(self, keys):
@@ -1729,6 +1773,13 @@ class ThunkedVersionedFiles(VersionedFiles):
 
 
 class VersionedFilesWithFallbacks(VersionedFiles):
+    """A versioned files implementation that supports fallback sources.
+
+    This class extends VersionedFiles to provide support for fallback
+    versioned files that can supply content not present in the primary
+    versioned files.
+    """
+
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         raise NotImplementedError(self.without_fallbacks)
@@ -1834,9 +1885,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 lines = self._lines[key]
                 parents = self._parents[key]
                 pending.remove(key)
-                yield ChunkedContentFactory(
-                    key, parents, None, lines, chunks_are_lines=True
-                )
+                yield ChunkedContentFactory(key, parents, None, lines)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(pending, "unordered", True):
                 if record.storage_kind == "absent":
@@ -1878,6 +1927,13 @@ class PlanWeaveMerge(TextMerge):
     """
 
     def __init__(self, plan, a_marker=TextMerge.A_MARKER, b_marker=TextMerge.B_MARKER):
+        """Initialize a PlanWeaveMerge.
+
+        Args:
+            plan: The merge plan to execute.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+        """
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = list(plan)
 
@@ -1997,7 +2053,7 @@ class PlanWeaveMerge(TextMerge):
                     # It seems that having the line 2 times is better than
                     # having it omitted. (Easier to manually delete than notice
                     # it needs to be added.)
-                    raise AssertionError("Unknown state: {}".format(state))
+                    raise AssertionError(f"Unknown state: {state}")
         return base_lines
 
 
@@ -2012,6 +2068,15 @@ class WeaveMerge(PlanWeaveMerge):
         a_marker=PlanWeaveMerge.A_MARKER,
         b_marker=PlanWeaveMerge.B_MARKER,
     ):
+        """Initialize a WeaveMerge.
+
+        Args:
+            versionedfile: The versioned file containing the versions to merge.
+            ver_a: First version ID to merge.
+            ver_b: Second version ID to merge.
+            a_marker: Marker for 'A' side conflicts (optional).
+            b_marker: Marker for 'B' side conflicts (optional).
+        """
         plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
@@ -2077,7 +2142,6 @@ class VirtualVersionedFiles(VersionedFiles):
                     None,
                     sha1=osutils.sha_strings(lines),
                     chunks=lines,
-                    chunks_are_lines=True,
                 )
             else:
                 yield AbsentContentFactory((k,))
@@ -2097,6 +2161,11 @@ class NoDupeAddLinesDecorator:
     """
 
     def __init__(self, store):
+        """Initialize a NoDupeAddLinesDecorator.
+
+        Args:
+            store: The underlying versioned files store to decorate.
+        """
         self._store = store
 
     def add_lines(
@@ -2142,6 +2211,14 @@ class NoDupeAddLinesDecorator:
         )
 
     def __getattr__(self, name):
+        """Delegate attribute access to the underlying store.
+
+        Args:
+            name: Name of the attribute to access.
+
+        Returns:
+            The attribute value from the underlying store.
+        """
         return getattr(self._store, name)
 
 
@@ -2166,6 +2243,8 @@ class NetworkRecordStream:
             iterator should have been obtained from a record_streams'
             record.get_bytes_as(record.storage_kind) call.
         """
+        from . import groupcompress, knit
+
         self._bytes_iterator = bytes_iterator
         self._kind_factory = {
             "fulltext": fulltext_network_to_record,
@@ -2187,35 +2266,6 @@ class NetworkRecordStream:
             yield from self._kind_factory[storage_kind](storage_kind, bytes, line_end)
 
 
-def fulltext_network_to_record(kind, bytes, line_end):
-    """Convert a network fulltext record to record."""
-    (meta_len,) = struct.unpack("!L", bytes[line_end : line_end + 4])
-    record_meta = bytes[line_end + 4 : line_end + 4 + meta_len]
-    key, parents = bencode.bdecode_as_tuple(record_meta)
-    if parents == b"nil":
-        parents = None
-    fulltext = bytes[line_end + 4 + meta_len :]
-    return [FulltextContentFactory(key, parents, None, fulltext)]
-
-
-def _length_prefix(bytes):
-    return struct.pack("!L", len(bytes))
-
-
-def record_to_fulltext_bytes(record):
-    if record.parents is None:
-        parents = b"nil"
-    else:
-        parents = tuple([tuple(p) for p in record.parents])
-    record_meta = bencode.bencode((record.key, parents))
-    record_content = record.get_bytes_as("fulltext")
-    return b"fulltext\n%s%s%s" % (
-        _length_prefix(record_meta),
-        record_meta,
-        record_content,
-    )
-
-
 def sort_groupcompress(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
@@ -2231,10 +2281,7 @@ def sort_groupcompress(parent_map):
     per_prefix_map = {}
     for item in parent_map.items():
         key = item[0]
-        if isinstance(key, bytes) or len(key) == 1:
-            prefix = b""
-        else:
-            prefix = key[0]
+        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
         try:
             per_prefix_map[prefix].append(item)
         except KeyError:

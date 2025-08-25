@@ -132,8 +132,8 @@ class TestLockDir(TestCaseWithTransport):
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(
-            set(info1.info_dict.keys()),
-            {"user", "nonce", "hostname", "pid", "start_time"},
+            set(info1.to_readable_dict().keys()),
+            {"user", "hostname", "pid", "time_ago"},
         )
         # should get the same info if we look at it through a different
         # instance
@@ -174,16 +174,17 @@ class TestLockDir(TestCaseWithTransport):
             after = time.time()
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
-            self.assertTrue(
-                after - before <= 8.0,
-                "took %f seconds to detect lock contention" % (after - before),
+            self.assertLessEqual(
+                after - before,
+                8.0,
+                f"took {after - before:f} seconds to detect lock contention",
             )
         finally:
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
         self.assertContainsRe(
             self._logged_reports[0][0],
-            r"Unable to obtain lock .* held by jrandom@example\.com on .*"
+            f"Unable to obtain lock .* held by {osutils.getuser_unicode()} on .*"
             r" \(process #\d+\), acquired .* ago\.\n"
             r"Will continue to try until \d{2}:\d{2}:\d{2}, unless "
             r"you press Ctrl-C.\n"
@@ -200,7 +201,7 @@ class TestLockDir(TestCaseWithTransport):
             before = time.time()
             lf1.wait_lock(timeout=0.4, poll=0.1)
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
+            self.assertLessEqual(after - before, 1.0)
         finally:
             lf1.unlock()
         self.assertEqual([], self._logged_reports)
@@ -415,8 +416,8 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1.peek().to_readable_dict()
         finally:
             ld1.unlock()
-        self.assertEqual(info_list["user"], "jrandom@example.com")
-        self.assertIsInstance(info_list["pid"], int)
+        self.assertEqual(info_list["user"], osutils.getuser_unicode())
+        self.assertIsInstance(info_list["pid"], str)
         self.assertContainsRe(info_list["time_ago"], "^\\d+ seconds? ago$")
 
     def test_lock_without_email(self):
@@ -667,7 +668,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
 
     def test_is_not_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict["pid"] = "123123123123123"
+        info.pid = 1231231
         self.assertFalse(info.is_locked_by_this_process())
 
     def test_lock_holder_live_process(self):
@@ -679,34 +680,21 @@ class TestLockHeldInfo(TestCaseInTempDir):
         """Detect that the holder (this process) is still running."""
         self.overrideAttr(lockdir, "get_host_name", lambda: "aproperhostname")
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict["pid"] = "123123123"
+        info.pid = 123123123
         self.assertTrue(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_machine(self):
         """The lock holder isn't here so we don't know if they're alive."""
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict["hostname"] = "egg.example.com"
-        info.info_dict["pid"] = "123123123"
+        info.hostname = "egg.example.com"
+        info.pid = 123123123
         self.assertFalse(info.is_lock_holder_known_dead())
 
     def test_lock_holder_other_user(self):
         """Only auto-break locks held by this user."""
         info = LockHeldInfo.for_this_process(None)
-        info.info_dict["user"] = "notme@example.com"
-        info.info_dict["pid"] = "123123123"
-        self.assertFalse(info.is_lock_holder_known_dead())
-
-    def test_no_good_hostname(self):
-        """Correctly handle ambiguous hostnames.
-
-        If the lock's recorded with just 'localhost' we can't really trust
-        it's the same 'localhost'.  (There are quite a few of them. :-)
-        So even if the process is known not to be alive, we can't say that's
-        known for sure.
-        """
-        self.overrideAttr(lockdir, "get_host_name", lambda: "localhost")
-        info = LockHeldInfo.for_this_process(None)
-        info.info_dict["pid"] = "123123123"
+        info.user = "notme@example.com"
+        info.pid = 123123123
         self.assertFalse(info.is_lock_holder_known_dead())
 
 

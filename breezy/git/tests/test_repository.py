@@ -112,7 +112,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo.pack()
         with repo.lock_read():
             repo.all_revision_ids()
-            self.assertTrue(len(repo._git.object_store._pack_cache) > 0)
+            self.assertGreater(len(repo._git.object_store._pack_cache), 0)
         self.assertEqual(len(repo._git.object_store._pack_cache), 0)
 
     def test_revision_tree(self):
@@ -205,9 +205,11 @@ class SigningGitRepository(tests.TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
         try:
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack(b"""
+            conf = config.MemoryStack(
+                b"""
 create_signatures=always
-""")
+"""
+            )
             revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
 
             def sign(text):

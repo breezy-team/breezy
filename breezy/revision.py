@@ -14,157 +14,76 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Revision related functionality and data structures.
+
+This module provides utilities for working with revisions, including
+iterating through revision ancestry and finding ancestors in revision
+trees.
+"""
+
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
 __docformat__ = "google"
 
-from typing import Optional
-
-from . import errors, osutils
+from . import errors
+from ._bzr_rs import (  # noqa: F401
+    CURRENT_REVISION,
+    NULL_REVISION,
+    Revision,
+    check_not_reserved_id,
+    is_null,
+    is_reserved_id,
+)
 
 RevisionID = bytes
 
-NULL_REVISION = b"null:"
-CURRENT_REVISION = b"current:"
+
+def iter_bugs(rev):
+    """Iterate over the bugs associated with this revision."""
+    from . import bugtracker
+
+    return bugtracker.decode_bug_urls(rev.bug_urls())
 
 
-class Revision:
-    """Single revision on a branch.
+def get_history(repository, current_revision):
+    """Return the canonical line-of-history for this revision.
 
-    Revisions may know their revision_hash, but only once they've been
-    written out.  This is not stored because you cannot write the hash
-    into the file it describes.
-
-    Attributes:
-      parent_ids: List of parent revision_ids
-
-      properties:
-        Dictionary of revision properties.  These are attached to the
-        revision as extra metadata.  The name must be a single
-        word; the value can be an arbitrary string.
+    If ghosts are present this may differ in result from a ghost-free
+    repository.
     """
-
-    parent_ids: list[RevisionID]
-    revision_id: RevisionID
-    parent_sha1s: list[str]
-    committer: Optional[str]
-    message: str
-    properties: dict[str, bytes]
-    inventory_sha1: str
-    timestamp: float
-    timezone: int
-
-    def __init__(self, revision_id: RevisionID, properties=None, **args) -> None:
-        self.revision_id = revision_id
-        if properties is None:
-            self.properties = {}
+    reversed_result = []
+    while current_revision is not None:
+        reversed_result.append(current_revision.revision_id)
+        if not len(current_revision.parent_ids):
+            reversed_result.append(None)
+            current_revision = None
         else:
-            self.properties = properties
-            self._check_properties()
-        self.committer = None
-        self.parent_ids = []
-        self.parent_sha1s = []
-        # Not used anymore - legacy from for 4.
-        self.__dict__.update(args)
-
-    def __repr__(self):
-        return "<Revision id {}>".format(self.revision_id)
-
-    def datetime(self):
-        import datetime
-
-        # TODO: Handle timezone.
-        return datetime.datetime.fromtimestamp(self.timestamp)
-
-    def __eq__(self, other):
-        if not isinstance(other, Revision):
-            return False
-        return (
-            self.inventory_sha1 == other.inventory_sha1
-            and self.revision_id == other.revision_id
-            and self.timestamp == other.timestamp
-            and self.message == other.message
-            and self.timezone == other.timezone
-            and self.committer == other.committer
-            and self.properties == other.properties
-            and self.parent_ids == other.parent_ids
-        )
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def _check_properties(self):
-        """Verify that all revision properties are OK."""
-        for name, value in self.properties.items():
-            # GZ 2017-06-10: What sort of string are properties exactly?
-            not_text = not isinstance(name, str)
-            if not_text or osutils.contains_whitespace(name):
-                raise ValueError("invalid property name {!r}".format(name))
-            if not isinstance(value, (str, bytes)):
-                raise ValueError(
-                    "invalid property value {!r} for {!r}".format(value, name)
-                )
-
-    def get_history(self, repository):
-        """Return the canonical line-of-history for this revision.
-
-        If ghosts are present this may differ in result from a ghost-free
-        repository.
-        """
-        current_revision = self
-        reversed_result = []
-        while current_revision is not None:
-            reversed_result.append(current_revision.revision_id)
-            if not len(current_revision.parent_ids):
-                reversed_result.append(None)
-                current_revision = None
-            else:
-                next_revision_id = current_revision.parent_ids[0]
-                current_revision = repository.get_revision(next_revision_id)
-        reversed_result.reverse()
-        return reversed_result
-
-    def get_summary(self):
-        """Get the first line of the log message for this revision.
-
-        Return an empty string if message is None.
-        """
-        if self.message:
-            return self.message.lstrip().split("\n", 1)[0]
-        else:
-            return ""
-
-    def get_apparent_authors(self):
-        """Return the apparent authors of this revision.
-
-        If the revision properties contain the names of the authors,
-        return them. Otherwise return the committer name.
-
-        The return value will be a list containing at least one element.
-        """
-        authors = self.properties.get("authors", None)
-        if authors is None:
-            author = self.properties.get("author", self.committer)
-            if author is None:
-                return []
-            return [author]
-        else:
-            return authors.split("\n")
-
-    def iter_bugs(self):
-        """Iterate over the bugs associated with this revision."""
-        bug_property = self.properties.get("bugs", None)
-        if bug_property is None:
-            return iter([])
-        from . import bugtracker
-
-        return bugtracker.decode_bug_urls(bug_property)
+            next_revision_id = current_revision.parent_ids[0]
+            current_revision = repository.get_revision(next_revision_id)
+    reversed_result.reverse()
+    return reversed_result
 
 
 def iter_ancestors(
     revision_id: RevisionID, revision_source, only_present: bool = False
 ):
+    """Iterate through the ancestors of a revision.
+
+    Args:
+        revision_id: The revision ID to start from.
+        revision_source: Source to retrieve revisions from.
+        only_present: If True, only yield revisions that are present
+            in the revision source.
+
+    Yields:
+        tuple[RevisionID, int]: Tuples of (ancestor_id, distance) where
+            distance is the number of generations away from the starting
+            revision.
+
+    Raises:
+        NoSuchRevision: If the starting revision_id cannot be found.
+    """
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
@@ -202,35 +121,3 @@ def find_present_ancestors(
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
-
-
-def __get_closest(intersection):
-    intersection.sort()
-    matches = []
-    for entry in intersection:
-        if entry[0] == intersection[0][0]:
-            matches.append(entry[2])
-    return matches
-
-
-def is_reserved_id(revision_id: RevisionID) -> bool:
-    """Determine whether a revision id is reserved.
-
-    Returns:
-      True if the revision is reserved, False otherwise
-    """
-    return isinstance(revision_id, bytes) and revision_id.endswith(b":")
-
-
-def check_not_reserved_id(revision_id: RevisionID) -> None:
-    """Raise ReservedId if the supplied revision_id is reserved."""
-    if is_reserved_id(revision_id):
-        raise errors.ReservedId(revision_id)
-
-
-def is_null(revision_id: RevisionID) -> bool:
-    if revision_id is None:
-        raise ValueError(
-            "NULL_REVISION should be used for the null revision instead of None."
-        )
-    return revision_id == NULL_REVISION

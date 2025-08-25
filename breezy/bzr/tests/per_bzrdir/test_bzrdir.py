@@ -16,18 +16,19 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import errno
+import contextlib
 from stat import S_ISDIR
 
 import breezy.branch
 from breezy import controldir, errors, repository, transport, workingtree
 from breezy import revision as _mod_revision
 from breezy.bzr import bzrdir
-from breezy.bzr.remote import RemoteBzrDirFormat
 from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.transport import FileExists
-from breezy.transport.local import LocalTransport
+
+from ....transport.local import LocalTransport
+from ...remote import RemoteBzrDirFormat
 
 
 class AnonymousTestBranchFormat(breezy.branch.BranchFormat):
@@ -110,7 +111,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                 try:
                     stat = source.stat(path)
                 except transport.NoSuchFile:
-                    self.fail("{} not in source".format(path))
+                    self.fail(f"{path} not in source")
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
                     directories.append(path)
@@ -118,7 +119,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     self.assertEqualDiff(
                         source.get_bytes(path),
                         target.get_bytes(path),
-                        "text for file {!r} differs:\n".format(path),
+                        f"text for file {path!r} differs:\n",
                     )
 
     def assertRepositoryHasSameItems(self, left_repo, right_repo):
@@ -482,10 +483,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision(b"1"))
-        try:
+        with contextlib.suppress(errors.NotBranchError):
             self.assertTrue(_mod_revision.is_null(dir.open_branch().last_revision()))
-        except errors.NotBranchError:
-            pass
         target = dir.sprout(self.get_url("target"))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # testing inventory isn't reasonable for repositories
@@ -511,9 +510,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                 self.assertContainsRe(
                     inventory_f.read(), b'<inventory format="5">\n</inventory>\n'
                 )
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def test_sprout_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree("commit_tree")
@@ -590,7 +588,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         )
         self.assertEqual([rev2], target.open_workingtree().get_parent_ids())
 
-    def test_retire_bzrdir(self):
+    def test_retire_controldir(self):
         bd = self.make_controldir(".")
         transport = bd.root_transport
         # must not overwrite existing directories
@@ -602,11 +600,11 @@ class TestBzrDir(TestCaseWithBzrDir):
             transport=transport,
         )
         self.assertTrue(transport.has(".bzr"))
-        bd.retire_bzrdir()
+        bd.retire_controldir()
         self.assertFalse(transport.has(".bzr"))
         self.assertTrue(transport.has(".bzr.retired.1"))
 
-    def test_retire_bzrdir_limited(self):
+    def test_retire_controldir_limited(self):
         bd = self.make_controldir(".")
         transport = bd.root_transport
         # must not overwrite existing directories
@@ -619,14 +617,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         )
         self.assertTrue(transport.has(".bzr"))
         self.assertRaises(
-            (FileExists, errors.DirectoryNotEmpty), bd.retire_bzrdir, limit=0
+            (FileExists, errors.DirectoryNotEmpty), bd.retire_controldir, limit=0
         )
 
     def test_get_branch_transport(self):
         dir = self.make_controldir(".")
         # without a format, get_branch_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_branch_transport(None), transport.Transport))
+        self.assertIsInstance(
+            dir.get_branch_transport(None),
+            (transport.Transport, transport._transport_rs.Transport),
+        )
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous branch formats, but not both.
         anonymous_format = AnonymousTestBranchFormat()
@@ -638,7 +639,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             )
         except errors.IncompatibleFormat:
             found_transport = dir.get_branch_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(
+            found_transport, (transport.Transport, transport._transport_rs.Transport)
+        )
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir(".")
 
@@ -646,8 +649,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir(".")
         # without a format, get_repository_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(
-            isinstance(dir.get_repository_transport(None), transport.Transport)
+        self.assertIsInstance(
+            dir.get_repository_transport(None),
+            (transport.Transport, transport._transport_rs.Transport),
         )
         # with a given format, either the bzr dir supports identifiable
         # repositories, or it supports anonymous repository formats, but not both.
@@ -662,7 +666,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             )
         except errors.IncompatibleFormat:
             found_transport = dir.get_repository_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(
+            found_transport, (transport.Transport, transport._transport_rs.Transport)
+        )
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir(".")
 
@@ -670,8 +676,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir(".")
         # without a format, get_workingtree_transport gives use a transport
         # which -may- point to an existing dir.
-        self.assertTrue(
-            isinstance(dir.get_workingtree_transport(None), transport.Transport)
+        self.assertIsInstance(
+            dir.get_workingtree_transport(None),
+            (transport.Transport, transport._transport_rs.Transport),
         )
         # with a given format, either the bzr dir supports identifiable
         # trees, or it supports anonymous tree formats, but not both.
@@ -686,7 +693,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             )
         except errors.IncompatibleFormat:
             found_transport = dir.get_workingtree_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
+        self.assertIsInstance(
+            found_transport, (transport.Transport, transport._transport_rs.Transport)
+        )
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir(".")
 
@@ -703,9 +712,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         if not self.bzrdir_format.is_initializable():
             raise TestNotApplicable("control dir format is not initializable")
-        repo, control, require_stacking, repo_policy = (
-            self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
-        )
+        (
+            repo,
+            control,
+            require_stacking,
+            repo_policy,
+        ) = self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         if repo is not None:
             # Repositories are open write-locked
             self.assertTrue(repo.is_write_locked())

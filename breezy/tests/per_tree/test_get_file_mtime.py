@@ -40,7 +40,7 @@ class TestGetFileMTime(TestCaseWithTree):
         self.assertIsInstance(mtime_file_id, (float, int))
         self.assertTrue(
             now - 10 * 60 < mtime_file_id < now + 10 + 60,
-            "now: {:f}, mtime_file_id: {:f}".format(now, mtime_file_id),
+            f"now: {now:f}, mtime_file_id: {mtime_file_id:f}",
         )
         mtime_path = tree.get_file_mtime("one")
         self.assertEqual(mtime_file_id, mtime_path)

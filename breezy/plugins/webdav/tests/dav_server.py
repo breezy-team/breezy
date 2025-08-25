@@ -20,7 +20,6 @@ This defines the TestingDAVRequestHandler and the DAVServer classes which
 implements the DAV specification parts used by the webdav plugin.
 """
 
-import errno
 import os
 import re
 import shutil  # FIXME: Can't we use breezy.osutils ?
@@ -73,7 +72,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         content_length = self.headers.get("Content-Length")
         encoding = self.headers.get("Transfer-Encoding")
         if encoding is not None:
-            assert encoding == "chunked"
+            if encoding != "chunked":
+                raise AssertionError(
+                    "Unsupported transfer encoding: {}".format(encoding)
+                )
             body = []
             # We receive the content by chunk
             while True:
@@ -129,10 +131,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 return self.list_directory(path)
         ctype = self.guess_type(path)
-        if ctype.startswith("text/"):
-            mode = "r"
-        else:
-            mode = "rb"
+        mode = "r" if ctype.startswith("text/") else "rb"
         try:
             f = open(path, mode)
         except OSError:
@@ -154,7 +153,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         # test fails. Adressing that will mean protecting all reads from the
         # socket, which is too heavy for now -- vila 20070917
         path = self.translate_path(self.path)
-        trace.mutter("do_PUT rel: [{}], abs: [{}]".format(self.path, path))
+        trace.mutter(f"do_PUT rel: [{self.path}], abs: [{path}]")
 
         do_append = False
         # Check the Content-Range header
@@ -176,7 +175,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.end_headers()
 
         try:
-            trace.mutter("do_PUT will try to open: [{}]".format(path))
+            trace.mutter(f"do_PUT will try to open: [{path}]")
             # Always write in binary mode.
             if do_append:
                 f = open(path, "ab")
@@ -184,9 +183,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 f = open(path, "wb")
         except OSError as e:
-            trace.mutter(
-                "do_PUT got: [{!r}] while opening/seeking on [{}]".format(e, self.path)
-            )
+            trace.mutter(f"do_PUT got: [{e!r}] while opening/seeking on [{self.path}]")
             self.send_error(409, "Conflict")
             return
 
@@ -199,7 +196,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             f.close()
             return
         f.close()
-        trace.mutter("do_PUT done: [{}]".format(self.path))
+        trace.mutter(f"do_PUT done: [{self.path}]")
         self.send_response(201)
         self.end_headers()
 
@@ -209,17 +206,13 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         MKCOL is an mkdir in DAV terminology for our part.
         """
         path = self.translate_path(self.path)
-        trace.mutter("do_MKCOL rel: [{}], abs: [{}]".format(self.path, path))
+        trace.mutter(f"do_MKCOL rel: [{self.path}], abs: [{path}]")
         try:
             os.mkdir(path)
-        except OSError as e:
-            if e.errno in (errno.ENOENT,):
-                self.send_error(409, "Conflict")
-            elif e.errno in (errno.EEXIST, errno.ENOTDIR):
-                self.send_error(405, "Not allowed")
-            else:
-                # Ok we fail for an unnkown reason :-/
-                raise
+        except FileNotFoundError:
+            self.send_error(409, "Conflict")
+        except (FileExistsError, NotADirectoryError):
+            self.send_error(405, "Not allowed")
         else:
             self.send_response(201)
             self.end_headers()
@@ -233,8 +226,8 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
             url_to
         )
-        trace.mutter("urlparse: ({}) [{}]".format(url_to, rel_to))
-        trace.mutter("do_COPY rel_from: [{}], rel_to: [{}]".format(self.path, rel_to))
+        trace.mutter(f"urlparse: ({url_to}) [{rel_to}]")
+        trace.mutter(f"do_COPY rel_from: [{self.path}], rel_to: [{rel_to}]")
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         try:
@@ -242,11 +235,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             # not.  In the  mean  time, just  go  along and  trap
             # exceptions
             shutil.copyfile(abs_from, abs_to)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404, "File not found")
-            else:
-                self.send_error(409, "Conflict")
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except OSError:
+            self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -261,7 +253,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         because we *should* fail to delete a non empty dir.
         """
         path = self.translate_path(self.path)
-        trace.mutter("do_DELETE rel: [{}], abs: [{}]".format(self.path, path))
+        trace.mutter(f"do_DELETE rel: [{self.path}], abs: [{path}]")
         try:
             # DAV  makes no  distinction between  files  and dirs
             # when required to nuke them,  but we have to. And we
@@ -271,12 +263,8 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 os.rmdir(path)
             else:
                 os.remove(path)
-        except OSError as e:
-            if e.errno in (errno.ENOENT,):
-                self.send_error(404, "File not found")
-            else:
-                # Ok we fail for an unnkown reason :-/
-                raise
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
         else:
             self.send_response(self.delete_success_code)
             self.end_headers()
@@ -296,8 +284,8 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
             url_to
         )
-        trace.mutter("urlparse: ({}) [{}]".format(url_to, rel_to))
-        trace.mutter("do_MOVE rel_from: [{}], rel_to: [{}]".format(self.path, rel_to))
+        trace.mutter(f"urlparse: ({url_to}) [{rel_to}]")
+        trace.mutter(f"do_MOVE rel_from: [{self.path}], rel_to: [{rel_to}]")
         abs_from = self.translate_path(self.path)
         abs_to = self.translate_path(rel_to)
         if not should_overwrite and os.access(abs_to, os.F_OK):
@@ -305,11 +293,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             return
         try:
             os.rename(abs_from, abs_to)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404, "File not found")
-            else:
-                self.send_error(409, "Conflict")
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except OSError:
+            self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -324,9 +311,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         def _prop(ns, name, value=None):
             if value is None:
-                return "<{}:{}/>".format(ns, name)
+                return f"<{ns}:{name}/>"
             else:
-                return "<{}:{}>{}</{}:{}>".format(ns, name, value, ns, name)
+                return f"<{ns}:{name}>{value}</{ns}:{name}>"
 
         # For namespaces (and test purposes), where apache2 use:
         # - lp1, we use liveprop,
@@ -344,25 +331,22 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             prop["href"] = _prop("D", "href", path)
             prop["type"] = _prop("liveprop", "resourcetype")
             prop["length"] = _prop("liveprop", "getcontentlength", st.st_size)
-            if st.st_mode & stat.S_IXUSR:
-                is_exec = "T"
-            else:
-                is_exec = "F"
+            is_exec = "T" if st.st_mode & stat.S_IXUSR else "F"
             prop["exec"] = _prop("bzr", "executable", is_exec)
         prop["status"] = _prop("D", "status", "HTTP/1.1 200 OK")
 
-        response = """<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
-    {href}
+        response = f"""<D:response xmlns:liveprop="DAV:" xmlns:bzr="DAV:">
+    {prop["href"]}
     <D:propstat>
         <D:prop>
-             {type}
-             {length}
-             {exec}
+             {prop["type"]}
+             {prop["length"]}
+             {prop["exec"]}
         </D:prop>
-        {status}
+        {prop["status"]}
     </D:propstat>
 </D:response>
-""".format(**prop)
+"""
         return response, st
 
     def _generate_dir_responses(self, path, depth):
@@ -395,12 +379,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         try:
             response, st = self._generate_response(self.path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404)
-                return
-            else:
-                raise
+        except FileNotFoundError:
+            self.send_error(404)
+            return
 
         if depth in ("1", "Infinity") and stat.S_ISDIR(st.st_mode):
             dir_responses = self._generate_dir_responses(self.path, depth)
@@ -409,12 +390,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         # Generate the response, we don't care about performance, so we just
         # expand everything into a big string.
-        response = (
-            """<?xml version="1.0" encoding="utf-8"?>
+        response = f"""<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
-{}{}
-</D:multistatus>""".format(response, "".join(dir_responses))
-        ).encode("utf-8")
+{response}{"".join(dir_responses)}
+</D:multistatus>""".encode()
 
         self.send_response(207)
         self.send_header("Content-length", len(response))

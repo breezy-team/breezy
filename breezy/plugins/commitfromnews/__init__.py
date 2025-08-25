@@ -64,14 +64,21 @@ def commit_template(commit, message):
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests from this plugin's test modules.
+
+    Args:
+        loader: The test loader instance.
+        basic_tests: The basic test suite to add tests to.
+        pattern: Pattern to match test files (unused).
+
+    Returns:
+        The test suite with loaded tests added.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests
 
 

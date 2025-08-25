@@ -71,6 +71,14 @@ class cmd_git_import(Command):
             return head_controldir.create_branch()
 
     def run(self, src_location, dest_location=None, colocated=False, dest_format=None):
+        """Import all branches from a git repository.
+
+        Args:
+            src_location: Source git repository location.
+            dest_location: Optional destination location (defaults to basename of source).
+            colocated: Whether to create colocated branches.
+            dest_format: Optional destination format.
+        """
         import os
 
         from .. import controldir, trace, ui, urlutils
@@ -169,6 +177,13 @@ class cmd_git_object(Command):
 
     @display_command
     def run(self, sha1=None, directory=".", pretty=False):
+        """List or display Git objects.
+
+        Args:
+            sha1: Optional SHA1 to display (lists all if not provided).
+            directory: Repository location (defaults to current directory).
+            pretty: Whether to pretty-print objects.
+        """
         from ..controldir import ControlDir
         from ..errors import CommandError
         from ..i18n import gettext
@@ -181,16 +196,13 @@ class cmd_git_object(Command):
             if sha1 is not None:
                 try:
                     obj = object_store[sha1.encode("ascii")]
-                except KeyError:
-                    raise CommandError(gettext("Object not found: %s") % sha1)
-                if pretty:
-                    text = obj.as_pretty_string()
-                else:
-                    text = obj.as_raw_string()
+                except KeyError as err:
+                    raise CommandError(gettext("Object not found: %s") % sha1) from err
+                text = obj.as_pretty_string() if pretty else obj.as_raw_string()
                 self.outf.write(text)
             else:
                 for sha1 in object_store:
-                    self.outf.write("{}\n".format(sha1.decode("ascii")))
+                    self.outf.write(f"{sha1.decode('ascii')}\n")
 
 
 class cmd_git_refs(Command):
@@ -202,6 +214,11 @@ class cmd_git_refs(Command):
 
     @display_command
     def run(self, location="."):
+        """Output all virtual refs for a repository.
+
+        Args:
+            location: Repository location (defaults to current directory).
+        """
         from ..controldir import ControlDir
         from .object_store import get_object_store
         from .refs import get_refs_container
@@ -212,9 +229,7 @@ class cmd_git_refs(Command):
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in sorted(refs.as_dict().items()):
-                self.outf.write(
-                    "{} -> {}\n".format(k.decode("utf-8"), v.decode("utf-8"))
-                )
+                self.outf.write(f"{k.decode('utf-8')} -> {v.decode('utf-8')}\n")
 
 
 class cmd_git_apply(Command):
@@ -238,19 +253,30 @@ class cmd_git_apply(Command):
         """
         from dulwich.patch import git_am_patch_split
 
-        from breezy.patch import patch_tree
+        from ..workingtree import patch_tree
 
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
-        patch_tree(wt, [diff], strip=1, out=self.outf)
+        from io import BytesIO
+
+        b = BytesIO()
+        patch_tree(wt, [diff], strip=1, out=b)
+        self.outf.write(b.getvalue().decode("utf-8", "replace"))
         message = c.message.decode("utf-8")
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: {}\n".format(signed_off_by)
+            message += f"Signed-off-by: {signed_off_by}\n"
         wt.commit(authors=[c.author.decode("utf-8")], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
+        """Apply a series of git-am style patches.
+
+        Args:
+            patches_list: List of patch files to apply.
+            signoff: Whether to add Signed-off-by line.
+            force: Whether to apply patches even with uncommitted changes.
+        """
         from ..errors import UncommittedChanges
         from ..workingtree import WorkingTree
 
@@ -275,6 +301,13 @@ class cmd_git_push_pristine_tar_deltas(Command):
     takes_args = ["target", "package"]
 
     def run(self, target, package, directory="."):
+        """Push pristine tar deltas to a git repository.
+
+        Args:
+            target: Target git repository.
+            package: Package name for pristine tar files.
+            directory: Source repository location (defaults to current directory).
+        """
         from ..branch import Branch
         from ..errors import CommandError, NoSuchRevision
         from ..repository import Repository
@@ -310,7 +343,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                     )
                     continue
                 upstream_version = name[len("upstream/") :]
-                filename = "{}_{}.orig.tar.{}".format(package, upstream_version, kind)
+                filename = f"{package}_{upstream_version}.orig.tar.{kind}"
                 if gitid not in target:
                     warning(
                         "base git id %s for %s missing in target repository",

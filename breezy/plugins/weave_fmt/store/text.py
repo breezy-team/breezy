@@ -20,6 +20,7 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
+import contextlib
 import gzip
 import os
 from io import BytesIO
@@ -64,10 +65,8 @@ class TextStore(TransportStore):
         except NoSuchFile:
             if not self._prefixed:
                 raise
-            try:
+            with contextlib.suppress(FileExists):
                 self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
-            except FileExists:
-                pass
             self._transport.put_file(fn, f, mode=self._file_mode)
 
     def _get(self, fn):

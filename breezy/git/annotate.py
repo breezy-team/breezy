@@ -16,6 +16,8 @@
 
 """Annotate."""
 
+import contextlib
+
 from dulwich.object_store import tree_lookup_path
 
 from .. import osutils
@@ -52,6 +54,17 @@ class GitBlobContentFactory:
         self.size = None
 
     def get_bytes_as(self, storage_kind):
+        """Get the content of the blob in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('fulltext', 'lines', or 'chunked').
+
+        Returns:
+            Content in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the storage kind is not supported.
+        """
         if storage_kind == "fulltext":
             return self.store[self.blob_id].as_raw_string()
         elif storage_kind == "lines":
@@ -63,9 +76,20 @@ class GitBlobContentFactory:
         raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over the content of the blob in the specified storage format.
+
+        Args:
+            storage_kind: The desired storage format ('lines' or 'chunked').
+
+        Returns:
+            Iterator over content in the requested format.
+
+        Raises:
+            UnavailableRepresentation: If the storage kind is not supported.
+        """
         if storage_kind == "lines":
-            return iter(
-                osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks())
+            return osutils.chunks_to_lines_iter(
+                iter(self.store[self.blob_id].as_raw_chunks())
             )
         elif storage_kind == "chunked":
             return iter(self.store[self.blob_id].as_raw_chunks())
@@ -94,14 +118,41 @@ class GitAbsentContentFactory:
         self.size = None
 
     def get_bytes_as(self, storage_kind):
+        """Get the content of an absent blob.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Raises:
+            ValueError: Always, since this represents absent content.
+        """
         raise ValueError
 
     def iter_bytes_as(self, storage_kind):
+        """Iterate over the content of an absent blob.
+
+        Args:
+            storage_kind: The desired storage format.
+
+        Raises:
+            ValueError: Always, since this represents absent content.
+        """
         raise ValueError
 
 
 class AnnotateProvider:
+    """Provides annotate functionality for Git repositories.
+
+    This class provides methods to retrieve parent information and record streams
+    for files in a Git repository, supporting the annotate operation.
+    """
+
     def __init__(self, change_scanner):
+        """Initialize the annotate provider.
+
+        Args:
+            change_scanner: A change scanner instance for tracking file changes.
+        """
         self.change_scanner = change_scanner
         self.store = self.change_scanner.repository._git.object_store
 
@@ -113,9 +164,11 @@ class AnnotateProvider:
         path = encode_git_path(path)
         for commit_parent in self.store[commit_id].parents:
             try:
-                (store, path, text_parent) = (
-                    self.change_scanner.find_last_change_revision(path, commit_parent)
-                )
+                (
+                    store,
+                    path,
+                    text_parent,
+                ) = self.change_scanner.find_last_change_revision(path, commit_parent)
             except KeyError:
                 continue
             if text_parent not in text_parents:
@@ -131,28 +184,45 @@ class AnnotateProvider:
         )
 
     def get_parent_map(self, keys):
+        """Get the parent map for the specified keys.
+
+        Args:
+            keys: Sequence of (path, revision) tuples to get parents for.
+
+        Returns:
+            Dictionary mapping keys to their parent tuples.
+        """
         ret = {}
         for key in keys:
             (path, text_revision) = key
             if text_revision == NULL_REVISION:
                 ret[key] = ()
                 continue
-            try:
+            with contextlib.suppress(KeyError):
                 ret[key] = self._get_parents(path, text_revision)
-            except KeyError:
-                pass
         return ret
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
+        """Get a stream of content records for the specified keys.
+
+        Args:
+            keys: Sequence of (path, revision) tuples to get records for.
+            ordering: Ordering requirement ('topological' or other).
+            include_delta_closure: Whether to include delta closure.
+
+        Yields:
+            Content factory instances for each requested key.
+        """
         if ordering == "topological":
             graph = Graph(self)
             keys = graph.iter_topo_order(keys)
         store = self.change_scanner.repository._git.object_store
         for path, text_revision in keys:
             try:
-                commit_id, mapping = (
-                    self.change_scanner.repository.lookup_bzr_revision_id(text_revision)
-                )
+                (
+                    commit_id,
+                    mapping,
+                ) = self.change_scanner.repository.lookup_bzr_revision_id(text_revision)
             except NoSuchRevision:
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue

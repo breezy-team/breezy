@@ -28,17 +28,20 @@ PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 BRZ_PLUGIN_PATH=-site:-user
 
+MSGFMT?=msgfmt
+MSGMERGE?=msgmerge
+
 # Shorter replacement for $(sort $(wildcard <arg>)) as $(call sw,<arg>)
 sw = $(sort $(wildcard $(1)))
 
 
-.PHONY: all clean realclean extensions flake8 api-docs check-nodocs check
+.PHONY: all clean realclean extensions api-docs check-nodocs check clippy clippy-fix
 
 all: extensions
 
 extensions:
 	@echo "building extension modules."
-	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
+	PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 $(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
 check:: docs check-nodocs
 
@@ -67,15 +70,15 @@ check-ci: docs extensions brz
 brz:
 	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
-# Run Python style checker (apt-get install flake8)
-#
-# Note that at present this gives many false warnings, because it doesn't
-# know about identifiers loaded through lazy_import.
-flake8:
-	$(PYTHON) -m flake8 breezy
+check:: mypy
 
 mypy:
 	$(PYTHON) -m mypy breezy
+
+check:: cargo-check
+
+cargo-check:
+	cargo check --all
 
 clean:
 	$(PYTHON) setup.py clean
@@ -237,6 +240,7 @@ exe:
 	@echo *** Make brz.exe
 	$(PYTHON) tools/win32/ostools.py remove breezy/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
+	$(PYTHON) setup.py build_rust -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_brz.bat win32_brz.exe
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/breezy.url win32_brz.exe
@@ -273,6 +277,8 @@ clean-win32: clean-docs
 .PHONY: update-pot po/brz.pot
 update-pot: po/brz.pot
 
+LOCALES = $(basename $(notdir $(wildcard po/*.po)))
+
 TRANSLATABLE_PYFILES:=$(shell find breezy -name '*.py' \
 		| grep -v 'breezy/tests/' \
 		| grep -v 'breezy/doc' \
@@ -287,6 +293,18 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 	  --from-code UTF-8 --join --sort-by-file --add-comments=i18n: \
 	  -d bzr -p po -o brz.pot
 
+makemessages: po/brz.pot
+	for locale in $(LOCALES); do \
+		echo -n "Updating po/$$locale.po ... "; \
+		$(MSGMERGE) -U po/$$locale.po po/brz.pot; \
+	done
+
+compilemessages:
+	for locale in $(LOCALES); do \
+		modir=breezy/locale/$$locale/LC_MESSAGES; \
+		(test -d $$modir || mkdir -p $$modir) \
+		&& $(MSGFMT) -o $$modir/brz.mo po/$$locale.po; \
+	done
 
 ### Packaging Targets ###
 
@@ -315,12 +333,39 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	ruff format breezy
+	cargo fmt --all
+	ruff format .
 
-check:: check-formatting
+clippy-fix:
+	cargo clippy --fix --all --allow-no-vcs
 
-check-formatting:
-	ruff format --check breezy
+clippy:
+	cargo clippy --all
+
+.PHONY: ruff
+
+check:: ruff
+
+ruff:
+	ruff check .
+
+.PHONY: ruff-fix
+
+ruff-fix:
+	ruff check --fix .
+
+fix:: clippy-fix ruff-fix
+	$(MAKE) reformat
+
+fmt-check:: rust-fmt-check
+
+rust-fmt-check:
+	cargo fmt --all --check
+
+fmt-check:: ruff-fmt-check
+
+ruff-fmt-check:
+	$(MAKE) ruff --check
 
 .testrepository:
 	testr init

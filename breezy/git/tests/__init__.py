@@ -96,10 +96,7 @@ class GitBranchBuilder:
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""
         mark = self._create_blob(content)
-        if executable:
-            mode = b"100755"
-        else:
-            mode = b"100644"
+        mode = b"100755" if executable else b"100644"
         self.commit_info.append(
             b"M %s :%d %s\n" % (mode, mark, self._encode_path(path))
         )
@@ -237,9 +234,6 @@ def load_tests(loader, basic_tests, pattern):
     ]
 
     # add the tests for the sub modules
-    suite.addTests(
-        loader.loadTestsFromModuleNames(
-            [prefix + module_name for module_name in testmod_names]
-        )
-    )
+    for module_name in testmod_names:
+        suite.addTest(loader.loadTestsFromName(prefix + module_name))
     return suite

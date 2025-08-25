@@ -18,8 +18,9 @@
 
 from breezy import errors, tests
 from breezy.bzr import inventory
-from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import HasLayout, HasPathRelations
 
 
 class TestAdd(TestCaseWithWorkingTree):
@@ -82,8 +83,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         try:
             self.build_tree(["f\xf6"])
-        except UnicodeError:
-            raise tests.TestSkipped("Filesystem does not support filename.")
+        except UnicodeError as err:
+            raise tests.TestSkipped("Filesystem does not support filename.") from err
         tree.add(["f\xf6"])
 
         self.assertTreeLayout(["", "f\xf6"], tree)

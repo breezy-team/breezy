@@ -19,14 +19,18 @@
 import threading
 
 from breezy import strace, tests
-from breezy.strace import StraceResult, strace_detailed
-from breezy.tests.features import strace_feature
+
+from ..strace import StraceResult, strace_detailed
+from .features import strace_feature
 
 
 class TestStrace(tests.TestCaseWithTransport):
+    """Tests for strace functionality."""
+
     _test_needs_features = [strace_feature]
 
     def setUp(self):
+        """Set up the test environment."""
         # NB: see http://pad.lv/626679:
         # testing strace by connecting to ourselves has repeatedly caused
         # hangs in running the test suite; these are fixable given enough
@@ -55,11 +59,12 @@ class TestStrace(tests.TestCaseWithTransport):
             if e.err_messages.startswith(
                 "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"
             ):
-                raise tests.TestSkipped("ptrace not permitted")
+                raise tests.TestSkipped("ptrace not permitted") from e
             else:
                 raise
 
     def test_strace_callable_is_called(self):
+        """Test that strace properly invokes the callable with correct arguments."""
         self._check_threads()
 
         output = []
@@ -73,6 +78,7 @@ class TestStrace(tests.TestCaseWithTransport):
         self.assertEqual([("a", ("b",), {"c": "c"})], output)
 
     def test_strace_callable_result(self):
+        """Test that strace returns the correct result from the callable."""
         self._check_threads()
 
         def function():

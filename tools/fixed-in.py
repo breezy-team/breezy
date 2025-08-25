@@ -1,5 +1,13 @@
 #!/usr/bin/python3
 
+"""Tool for finding which release a bug was fixed in by parsing NEWS files.
+
+This script searches through NEWS files to determine in which release a specific
+bug number was fixed, or finds entries matching a regular expression pattern.
+It parses the structured format of Breezy NEWS files to extract bug information,
+authors, release versions, and dates.
+"""
+
 # Simple script that will output the release where a given bug was fixed
 # searching the NEWS file
 
@@ -9,12 +17,30 @@ import sys
 
 
 class NewsParser:
+    """Parser for Breezy NEWS files to extract bug fix information.
+
+    This class implements a state machine to parse the structured format of
+    NEWS files, extracting information about bugs that were fixed in each
+    release along with author information and release dates.
+
+    Attributes:
+        paren_exp_re: Compiled regex for matching parenthetical expressions.
+        release_re: Compiled regex for matching release lines.
+        release_prefix_length: Length of the "brz " prefix in release lines.
+        bugs_re: Compiled regex for matching bug numbers (e.g., #12345).
+    """
+
     paren_exp_re = re.compile(r"\(([^)]+)\)")
     release_re = re.compile("brz[ -]")
     release_prefix_length = len("brz ")
     bugs_re = re.compile("#([0-9]+)")
 
     def __init__(self, news):
+        """Initialize the NewsParser with a NEWS file handle.
+
+        Args:
+            news: File handle or iterable for the NEWS file to parse.
+        """
         self.news = news
         # Temporary attributes used by the parser
         self.release = None
@@ -26,10 +52,20 @@ class NewsParser:
         self.lrs = None
 
     def set_line(self, line):
+        """Set the current line being processed.
+
+        Args:
+            line: The current line from the NEWS file being processed.
+        """
         self.line = line
         self.lrs = line.rstrip()
 
     def try_release(self):
+        """Try to identify if the current line is a release header.
+
+        Returns:
+            bool: True if the line matches a release pattern, False otherwise.
+        """
         if self.release_re.match(self.lrs) is not None:
             # May be a new release
             self.may_be_release = self.lrs
@@ -39,6 +75,14 @@ class NewsParser:
         return False
 
     def confirm_release(self):
+        """Confirm that a previously identified release line is valid.
+
+        A release line is confirmed if it's followed by the appropriate
+        markup line (a line of '#' characters matching the release length).
+
+        Returns:
+            bool: True if the release is confirmed, False otherwise.
+        """
         if self.may_be_release is not None and self.lrs == self.release_markup:
             # The release is followed by the right markup
             self.release = self.may_be_release[self.release_prefix_length :]
@@ -48,10 +92,19 @@ class NewsParser:
         return False
 
     def try_date(self):
+        """Try to parse a release date line.
+
+        Looks for date information in various formats used in NEWS files,
+        including both new format (:release_version: date) and old format
+        (:Released: date).
+
+        Returns:
+            bool: True if a date was found and parsed, False otherwise.
+        """
         if self.release is None:
             return False
         date_re = re.compile(
-            r":{}: (NOT RELEASED YET|\d{{4}}-\d{{2}}-\d{{2}})".format(self.release)
+            rf":{self.release}: (NOT RELEASED YET|\d{{4}}-\d{{2}}-\d{{2}})"
         )
         match = date_re.match(self.lrs)
         if match is not None:
@@ -66,6 +119,11 @@ class NewsParser:
         return False
 
     def add_line_to_entry(self):
+        """Add the current line to the current NEWS entry being accumulated.
+
+        Returns:
+            bool: True if the line was added to the entry, False if it was empty.
+        """
         if self.lrs == "":
             return False
         self.entry += self.line
@@ -105,6 +163,15 @@ class NewsParser:
         self.entry = ""
 
     def parse_bugs(self):
+        """Parse the NEWS file and yield bug information.
+
+        This is the main parsing method that processes the entire NEWS file
+        line by line, maintaining state and yielding bug information as it's
+        found.
+
+        Yields:
+            tuple: (bug_number, authors, release, date, entry) for each bug found.
+        """
         for line in self.news:
             self.set_line(line)
             if self.try_release():
@@ -122,6 +189,12 @@ class NewsParser:
 
 
 def main():
+    """Main entry point for the fixed-in script.
+
+    Parses command line arguments and searches through the NEWS file for
+    either a specific bug number or entries matching a regular expression.
+    Prints information about where bugs were fixed.
+    """
     opt_parser = optparse.OptionParser(
         usage="""Usage: %prog [options] BUG_NUMBER
     """
@@ -149,7 +222,7 @@ def main():
         bug = None
         msg_re = re.compile(opts.msg_re)
     elif len(args) != 1:
-        opt_parser.error("Expected a single bug number, got {!r}".format(args))
+        opt_parser.error(f"Expected a single bug number, got {args!r}")
     else:
         bug = args[0]
 
@@ -174,15 +247,11 @@ def main():
             elif msg_re.search(entry) is not None:
                 found = True
             if found:
-                print(
-                    "Bug {} was fixed in brz-{}/{} by {}:".format(
-                        number, release, date, authors
-                    )
-                )
+                print(f"Bug {number} was fixed in brz-{release}/{date} by {authors}:")
                 print(entry)
             seen += 1
     finally:
-        print("{} bugs seen".format(seen))
+        print(f"{seen} bugs seen")
         news.close()
 
 

@@ -42,10 +42,23 @@ FORMAT_1 = b"# bzr weave file v5\n"
 
 
 def write_weave(weave, f, format=None):
+    """Write a weave to a file.
+
+    Args:
+        weave: The weave object to write.
+        f: File-like object to write to.
+        format: The weave format version to use. Currently only supports None or 1.
+
+    Raises:
+        ValueError: If an unknown format is specified.
+
+    Returns:
+        The result of write_weave_v5 (None).
+    """
     if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
-        raise ValueError("unknown weave format {!r}".format(format))
+        raise ValueError(f"unknown weave format {format!r}")
 
 
 def write_weave_v5(weave, f):
@@ -85,6 +98,14 @@ def write_weave_v5(weave, f):
 
 
 def read_weave(f):
+    """Read a weave from a file.
+
+    Args:
+        f: File-like object to read from.
+
+    Returns:
+        A Weave object containing the data read from the file.
+    """
     # FIXME: detect the weave type and dispatch
     from .weave import Weave
 
@@ -125,12 +146,15 @@ def _read_weave_v5(f, w):
         raise WeaveFormatError("invalid weave file: no header") from err
 
     if l != FORMAT_1:
-        raise WeaveFormatError("invalid weave file header: {!r}".format(l))
+        raise WeaveFormatError(f"invalid weave file header: {l!r}")
 
     ver = 0
     # read weave header.
     while True:
-        l = next(lines)
+        try:
+            l = next(lines)
+        except StopIteration as err:
+            raise WeaveFormatError("unexpected end of file") from err
         if l[0:1] == b"i":
             if len(l) > 2:
                 w._parents.append(list(map(int, l[2:].split(b" "))))
@@ -147,11 +171,14 @@ def _read_weave_v5(f, w):
         elif l == b"w\n":
             break
         else:
-            raise WeaveFormatError("unexpected line {!r}".format(l))
+            raise WeaveFormatError(f"unexpected line {l!r}")
 
     # read weave body
     while True:
-        l = next(lines)
+        try:
+            l = next(lines)
+        except StopIteration as err:
+            raise WeaveFormatError("unexpected end of file") from err
         if l == b"W\n":
             break
         elif l[0:2] == b". ":

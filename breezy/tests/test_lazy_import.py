@@ -259,7 +259,7 @@ class TestScopeReplacer(TestCase):
 
         InstrumentedReplacer(scope=globals(), name="test_class2", factory=factory)
 
-        self.assertFalse(test_class2 is TestClass)
+        self.assertIsNot(test_class2, TestClass)
         obj = test_class2()
         self.assertIs(test_class2, TestClass)
         self.assertIsInstance(obj, TestClass)
@@ -294,7 +294,7 @@ class TestScopeReplacer(TestCase):
             self.fail("test_func1 was not supposed to exist yet")
         InstrumentedReplacer(scope=globals(), name="test_func1", factory=factory)
 
-        self.assertFalse(test_func1 is func)
+        self.assertIsNot(test_func1, func)
         val = test_func1(1, 2, c="3")
         self.assertIs(test_func1, func)
 
@@ -472,6 +472,10 @@ class TestScopeReplacer(TestCase):
         e = self.assertRaises(lazy_import.IllegalUseOfScopeReplacer, test_obj7)
         self.assertIn("replace itself", e.msg)
         self.assertEqual([("__call__", (), {}), "factory"], actions)
+
+        # Clean up the global namespace to avoid affecting test discovery
+        if "test_obj7" in globals():
+            del globals()["test_obj7"]
 
 
 class ImportReplacerHelper(TestCaseInTempDir):
@@ -876,9 +880,8 @@ class TestConvertImportToMap(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Import of {!r} was not converted correctly {} != {}".format(
-                import_strings, expected, proc.imports
-            ),
+            f"Import of {import_strings!r} was not converted correctly"
+            f" {expected} != {proc.imports}",
         )
 
     def test_import_one(self):
@@ -970,9 +973,8 @@ class TestFromToMap(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Import of {!r} was not converted correctly {} != {}".format(
-                from_strings, expected, proc.imports
-            ),
+            f"Import of {from_strings!r} was not converted correctly"
+            f" {expected} != {proc.imports}",
         )
 
     def test_from_one_import_two(self):
@@ -1008,7 +1010,7 @@ class TestCanonicalize(TestCase):
         self.assertEqual(
             expected,
             parsed,
-            "Incorrect parsing of text:\n{}\n{}\n!=\n{}".format(text, expected, parsed),
+            f"Incorrect parsing of text:\n{text}\n{expected}\n!=\n{parsed}",
         )
 
     def test_import_one(self):
@@ -1065,9 +1067,7 @@ class TestImportProcessor(TestCase):
         self.assertEqual(
             expected,
             proc.imports,
-            "Incorrect processing of:\n{}\n{}\n!=\n{}".format(
-                text, expected, proc.imports
-            ),
+            f"Incorrect processing of:\n{text}\n{expected}\n!=\n{proc.imports}",
         )
 
     def test_import_one(self):
@@ -1222,7 +1222,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         else:
             self.fail("root6 was not supposed to exist yet")
 
-        text = "import {} as root6".format(self.root_name)
+        text = f"import {self.root_name} as root6"
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 
@@ -1293,7 +1293,7 @@ import {root_name}.{sub_name}.{submoda_name} as submoda7
             self.fail("root8 was not supposed to exist yet")
         lazy_import.lazy_import(
             globals(),
-            "import {} as root8".format(self.root_name),
+            f"import {self.root_name} as root8",
             lazy_import_class=InstrumentedImportReplacer,
         )
 

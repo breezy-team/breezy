@@ -125,10 +125,7 @@ def vary_by_http_activity():
     activity_scenarios = [
         (
             "urllib,http",
-            {
-                "_activity_server": ActivityHTTPServer,
-                "_transport": HttpTransport,
-            },
+            {"_activity_server": ActivityHTTPServer, "_transport": HttpTransport},
         ),
     ]
     if features.HTTPSServerFeature.available():
@@ -186,7 +183,7 @@ class RecordingServer:
         self.scheme = scheme
 
     def get_url(self):
-        return "{}://{}:{}/".format(self.scheme, self.host, self.port)
+        return f"{self.scheme}://{self.host}:{self.port}/"
 
     def start_server(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -198,7 +195,7 @@ class RecordingServer:
         )
         self._thread.start()
         if "threads" in tests.selftest_debug_flags:
-            sys.stderr.write("Thread started: {}\n".format(self._thread.ident))
+            sys.stderr.write(f"Thread started: {self._thread.ident}\n")
         self._ready.wait()
 
     def _accept_read_and_reply(self):
@@ -228,7 +225,7 @@ class RecordingServer:
         self.port = None
         self._thread.join()
         if "threads" in tests.selftest_debug_flags:
-            sys.stderr.write("Thread  joined: {}\n".format(self._thread.ident))
+            sys.stderr.write(f"Thread  joined: {self._thread.ident}\n")
 
 
 class TestAuthHeader(tests.TestCase):
@@ -260,14 +257,14 @@ class TestAuthHeader(tests.TestCase):
         header = handler.build_auth_header({"user": user, "password": password}, None)
         # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
         # creating a header value with an embedded '\n'
-        self.assertFalse("\n" in header)
+        self.assertNotIn("\n", header)
 
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"', BasicAuthHandler
         )
         match, realm = self.auth_handler.extract_realm(remainder)
-        self.assertTrue(match is not None)
+        self.assertIsNotNone(match)
         self.assertEqual("Thou should not pass", realm)
 
     def test_digest_header(self):
@@ -332,8 +329,8 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer()
         self.addCleanup(server.stop_server)
         server.start_server()
-        self.assertTrue(server.server is not None)
-        self.assertTrue(server.server.serving is not None)
+        self.assertIsNotNone(server.server)
+        self.assertIsNotNone(server.server.serving)
         self.assertTrue(server.server.serving)
 
     def test_create_http_server_one_zero(self):
@@ -406,7 +403,7 @@ class TestHttpTransportUrls(tests.TestCase):
         server.start_server()
         try:
             url = server.get_url()
-            self.assertTrue(url.startswith("{}://".format(self._url_protocol)))
+            self.assertTrue(url.startswith(f"{self._url_protocol}://"))
         finally:
             server.stop_server()
 
@@ -448,13 +445,11 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         fp = t.get("foo/bar")
         self.assertEqualDiff(fp.read(), b"contents of foo/bar\n")
         self.assertEqual(len(server.logs), 1)
-        self.assertTrue(
+        self.assertGreater(
             server.logs[0].find(
-                '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/{}'.format(
-                    breezy.__version__
-                )
-            )
-            > -1
+                f'"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/{breezy.__version__}'
+            ),
+            -1,
         )
 
     def test_has_on_bogus_host(self):
@@ -467,7 +462,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             s = socket.socket()
             s.bind(("localhost", 0))
             t = self._transport("http://{}:{}/".format(*s.getsockname()))
-            self.assertRaises(errors.ConnectionError, t.has, "foo/bar")
+            self.assertRaises(ConnectionError, t.has, "foo/bar")
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -478,7 +473,7 @@ class TestHttpTransportRegistration(tests.TestCase):
     scenarios = vary_by_http_client_implementation()
 
     def test_http_registered(self):
-        t = transport.get_transport_from_url("{}://foo.com/".format(self._url_protocol))
+        t = transport.get_transport_from_url(f"{self._url_protocol}://foo.com/")
         self.assertIsInstance(t, transport.Transport)
         self.assertIsInstance(t, self._transport)
 
@@ -499,9 +494,9 @@ class TestPost(tests.TestCase):
         http_transport = transport.get_transport_from_url(url)
         code, response = http_transport._post(b"abc def end-of-body")
         self.assertTrue(server.received_bytes.startswith(b"POST /.bzr/smart HTTP/1."))
-        self.assertTrue(b"content-length: 19\r" in server.received_bytes.lower())
-        self.assertTrue(
-            b"content-type: application/octet-stream\r" in server.received_bytes.lower()
+        self.assertIn(b"content-length: 19\r", server.received_bytes.lower())
+        self.assertIn(
+            b"content-type: application/octet-stream\r", server.received_bytes.lower()
         )
         # The transport should not be assuming that the server can accept
         # chunked encoding the first time it connects, because HTTP/1.1, so we
@@ -581,17 +576,13 @@ class TestWallServer(TestSpecificRequestHandler):
         # just test for ConnectionError, we have to test
         # InvalidHttpResponse too.
         self.assertRaises(
-            (errors.ConnectionError, errors.InvalidHttpResponse), t.has, "foo/bar"
+            (ConnectionError, errors.InvalidHttpResponse), t.has, "foo/bar"
         )
 
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (
-                errors.ConnectionError,
-                errors.ConnectionReset,
-                errors.InvalidHttpResponse,
-            ),
+            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -628,11 +619,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_has(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (
-                errors.ConnectionError,
-                errors.ConnectionReset,
-                errors.InvalidHttpResponse,
-            ),
+            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
             t.has,
             "foo/bar",
         )
@@ -640,11 +627,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (
-                errors.ConnectionError,
-                errors.ConnectionReset,
-                errors.InvalidHttpResponse,
-            ),
+            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -929,9 +912,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
         # XXX: this is strange; the 'random' name below seems undefined and
         # yet the tests pass -- mbp 2010-10-11 bug 658773
         boundary = "%d" % random.randint(0, 0x7FFFFFFF)
-        self.send_header(
-            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
-        )
+        self.send_header("Content-Type", f"multipart/byteranges; boundary={boundary}")
         self.end_headers()
         for start, end in ranges:
             self.wfile.write(b"--%s\r\n" % boundary.encode("ascii"))
@@ -963,9 +944,7 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
         boundary = "tagada"
-        self.send_header(
-            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
-        )
+        self.send_header("Content-Type", f"multipart/byteranges; boundary={boundary}")
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -984,8 +963,7 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
         self.end_headers()
 
         # Send the multipart body
-        cur = 0
-        for start, end in ranges:
+        for cur, (start, end) in enumerate(ranges):
             self.wfile.write(boundary_line)
             self.send_header("Content-type", "application/octet-stream")
             self.send_header(
@@ -997,7 +975,6 @@ class TruncatedMultipleRangeRequestHandler(http_server.TestingHTTPRequestHandler
                 self.close_connection = 1
                 return
             self.send_range_content(file, start, end - start + 1)
-            cur += 1
         # Final boundary
         self.wfile.write(boundary_line)
 
@@ -1040,9 +1017,7 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
         self.send_response(206)
         self.send_header("Accept-Ranges", "bytes")
         boundary = "tagada"
-        self.send_header(
-            "Content-Type", "multipart/byteranges; boundary={}".format(boundary)
-        )
+        self.send_header("Content-Type", f"multipart/byteranges; boundary={boundary}")
         boundary_line = b"--%s\r\n" % boundary.encode("ascii")
         # Calculate the Content-Length
         content_length = 0
@@ -1061,8 +1036,7 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
         self.end_headers()
 
         # Send the multipart body
-        cur = 0
-        for start, end in ranges:
+        for cur, (start, end) in enumerate(ranges):
             if cur + self._truncated_ranges >= len(ranges):
                 # Abruptly ends the response and close the connection
                 self.close_connection = 1
@@ -1074,7 +1048,6 @@ class TruncatedBeforeBoundaryRequestHandler(http_server.TestingHTTPRequestHandle
             )
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
-            cur += 1
         # Final boundary
         self.wfile.write(boundary_line)
 
@@ -1205,14 +1178,14 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_empty_user(self):
         self.overrideEnv("http_proxy", "http://bar.com")
         request = self._proxied_request()
-        self.assertFalse("Proxy-authorization" in request.headers)
+        self.assertNotIn("Proxy-authorization", request.headers)
 
     def test_user_with_at(self):
         self.overrideEnv(
             "http_proxy", "http://username@domain:password@proxy_host:1234"
         )
         request = self._proxied_request()
-        self.assertFalse("Proxy-authorization" in request.headers)
+        self.assertNotIn("Proxy-authorization", request.headers)
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme."""
@@ -1345,7 +1318,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
         coalesce = t._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
         code, data = t._get(relpath, coalesced)
-        self.assertTrue(code in (200, 206), "_get returns: %d" % code)
+        self.assertIn(code, (200, 206), "_get returns: %d" % code)
         for start, end in ranges:
             data.seek(start)
             yield data.read(end - start + 1)
@@ -1353,7 +1326,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     def _file_tail(self, relpath, tail_amount):
         t = self.get_readonly_transport()
         code, data = t._get(relpath, [], tail_amount)
-        self.assertTrue(code in (200, 206), "_get returns: %d" % code)
+        self.assertIn(code, (200, 206), "_get returns: %d" % code)
         data.seek(-tail_amount, 2)
         return data.read(tail_amount)
 
@@ -1473,7 +1446,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def test_one_redirection(self):
         t = self.get_old_transport()
-        new_prefix = "http://{}:{}".format(self.new_server.host, self.new_server.port)
+        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
             ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]
@@ -1483,8 +1456,8 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def test_five_redirections(self):
         t = self.get_old_transport()
-        old_prefix = "http://{}:{}".format(self.old_server.host, self.old_server.port)
-        new_prefix = "http://{}:{}".format(self.new_server.host, self.new_server.port)
+        old_prefix = f"http://{self.old_server.host}:{self.old_server.port}"
+        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
             ("/1(.*)", r"{}/2\1".format(old_prefix), 302),
             ("/2(.*)", r"{}/3\1".format(old_prefix), 303),
@@ -1619,13 +1592,13 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
     def get_user_url(self, user, password):
         """Build an url embedding user and password."""
-        url = "{}://".format(self.server._url_protocol)
+        url = f"{self.server._url_protocol}://"
         if user is not None:
             url += user
             if password is not None:
                 url += ":" + password
             url += "@"
-        url += "{}:{}/".format(self.server.host, self.server.port)
+        url += f"{self.server.host}:{self.server.port}/"
         return url
 
     def get_user_transport(self, user, password):
@@ -1780,7 +1753,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_no_credential_leaks_in_log(self):
-        self.overrideAttr(debug, "debug_flags", {"http"})
+        old_flags = debug.get_debug_flags()
+        self.addCleanup(debug.set_debug_flags, old_flags)
+        debug.set_debug_flag("http")
         user = "joe"
         password = "very-sensitive-password"
         self.server.add_user(user, password)
@@ -1802,14 +1777,10 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Since the authentification succeeded, there should be a corresponding
         # debug line
         sent_auth_headers = [
-            line
-            for line in self.mutters
-            if line.startswith("> {}".format(self._auth_header))
+            line for line in self.mutters if line.startswith(f"> {self._auth_header}")
         ]
         self.assertLength(1, sent_auth_headers)
-        self.assertStartsWith(
-            sent_auth_headers[0], "> {}: <masked>".format(self._auth_header)
-        )
+        self.assertStartsWith(sent_auth_headers[0], f"> {self._auth_header}: <masked>")
 
 
 class TestProxyAuth(TestAuth):
@@ -2294,7 +2265,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                 ("1/a", b"redirected once"),
             ],
         )
-        new_prefix = "http://{}:{}".format(self.new_server.host, self.new_server.port)
+        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
             ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]
@@ -2336,7 +2307,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.new_server.add_user("joe", "foo")
         ui.ui_factory = tests.TestUIFactory(stdin="joe\nfoo\n")
         t = self.old_transport
-        new_prefix = "http://{}:{}".format(self.new_server.host, self.new_server.port)
+        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
         self.old_server.redirections = [
             ("(.*)", r"{}/1\1".format(new_prefix), 301),
         ]

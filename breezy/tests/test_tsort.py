@@ -19,10 +19,11 @@
 
 import pprint
 
-from breezy.errors import GraphCycleError
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase
-from breezy.tsort import MergeSorter, TopoSorter, merge_sort, topo_sort
+
+from ..errors import GraphCycleError
+from ..revision import NULL_REVISION
+from ..tsort import MergeSorter, TopoSorter, merge_sort, topo_sort
 
 
 class TopoSortTests(TestCase):
@@ -48,15 +49,11 @@ class TopoSortTests(TestCase):
             for parent in parents:
                 if sort_result.index(node) < sort_result.index(parent):
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(
-                            parent, node, sort_result
-                        )
+                        f"parent {parent} must come before child {node}:\n{sort_result}"
                     )
                 if iter_result.index(node) < iter_result.index(parent):
                     self.fail(
-                        "parent {} must come before child {}:\n{}".format(
-                            parent, node, iter_result
-                        )
+                        f"parent {parent} must come before child {node}:\n{iter_result}"
                     )
 
     def test_tsort_empty(self):

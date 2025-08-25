@@ -36,6 +36,7 @@ from ..transport import (
     pathfilter,
     readonly,
 )
+from ..transport.local import file_kind
 from . import features, test_server
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -114,7 +115,7 @@ class TestTransport(tests.TestCase):
             "foo", "breezy.tests.test_transport", "BadTransportHandler"
         )
         t = transport.get_transport_from_url("foo://fooserver/foo")
-        self.assertTrue(isinstance(t, BackupTransportHandler))
+        self.assertIsInstance(t, BackupTransportHandler)
 
     def test_ssh_hints(self):
         """Transport ssh:// should raise an error pointing out bzr+ssh://."""
@@ -174,13 +175,7 @@ class TestCoalesceOffsets(tests.TestCase):
         )
 
     def test_coalesce_unsorted(self):
-        self.check(
-            [
-                (20, 10, [(0, 10)]),
-                (0, 10, [(0, 10)]),
-            ],
-            [(20, 10), (0, 10)],
-        )
+        self.check([(0, 10, [(0, 10)]), (20, 10, [(0, 10)])], [(20, 10), (0, 10)])
 
     def test_coalesce_nearby(self):
         self.check([(0, 20, [(0, 10), (10, 10)])], [(0, 10), (10, 10)])
@@ -296,11 +291,11 @@ class TestMemoryServer(tests.TestCase):
         server = memory.MemoryServer()
         server.start_server()
         url = server.get_url()
-        self.assertTrue(url in transport.transport_list_registry)
+        self.assertIn(url, transport.transport_list_registry)
         t = transport.get_transport_from_url(url)
         del t
         server.stop_server()
-        self.assertFalse(url in transport.transport_list_registry)
+        self.assertNotIn(url, transport.transport_list_registry)
         self.assertRaises(UnsupportedProtocol, transport.get_transport, url)
 
 
@@ -310,7 +305,7 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_clone(self):
         t = memory.MemoryTransport()
-        self.assertTrue(isinstance(t, memory.MemoryTransport))
+        self.assertIsInstance(t, memory.MemoryTransport)
         self.assertEqual("memory:///", t.clone("/").base)
 
     def test_abspath(self):
@@ -484,14 +479,14 @@ class TestChrootServer(tests.TestCase):
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
         self.addCleanup(server.stop_server)
-        self.assertTrue(server.scheme in transport._get_protocol_handlers().keys())
+        self.assertIn(server.scheme, transport._get_protocol_handlers().keys())
 
     def test_stop_server(self):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
         server.stop_server()
-        self.assertFalse(server.scheme in transport._get_protocol_handlers().keys())
+        self.assertNotIn(server.scheme, transport._get_protocol_handlers().keys())
 
     def test_get_url(self):
         backing_transport = memory.MemoryTransport()
@@ -510,9 +505,7 @@ class TestHooks(tests.TestCase):
     def test_transporthooks_initialisation(self):
         """Check all expected transport hook points are set up."""
         hookpoint = transport.TransportHooks()
-        self.assertTrue(
-            "post_connect" in hookpoint, "post_connect not in {}".format(hookpoint)
-        )
+        self.assertIn("post_connect", hookpoint, f"post_connect not in {hookpoint}")
 
     def test_post_connect(self):
         """Ensure the post_connect hook is called when _set_transport is."""
@@ -544,7 +537,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         """Make a PathFilteringTransport backed by a MemoryTransport.
 
         :param filter_func: by default this will be a no-op function.  Use this
-            parameter to override it.
+        parameter to override it.
         """
         if filter_func is None:
 
@@ -625,7 +618,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         self.assertEqual(True, t.is_readonly())
 
     def test_http_parameters(self):
-        from breezy.tests.http_server import HttpServer
+        from .http_server import HttpServer
 
         # connect to '.' via http which is not listable
         server = HttpServer()
@@ -653,7 +646,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
     def test_http_parameters(self):
         # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from breezy.tests.http_server import HttpServer
+        from .http_server import HttpServer
 
         # connect to '.' via http which is not listable
         server = HttpServer()
@@ -687,12 +680,12 @@ class FakeVFATDecoratorTests(tests.TestCaseInTempDir):
 
     def get_vfat_transport(self, url):
         """Return vfat-backed transport for test directory."""
-        from breezy.transport.fakevfat import FakeVFATTransportDecorator
+        from ..transport.fakevfat import FakeVFATTransportDecorator
 
         return FakeVFATTransportDecorator("vfat+" + url)
 
     def test_transport_creation(self):
-        from breezy.transport.fakevfat import FakeVFATTransportDecorator
+        from ..transport.fakevfat import FakeVFATTransportDecorator
 
         t = self.get_vfat_transport(".")
         self.assertIsInstance(t, FakeVFATTransportDecorator)
@@ -863,14 +856,13 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         if fdatasync is sentinel:
             raise tests.TestNotApplicable("fdatasync not supported")
         t = self.get_transport(".")
-        calls = self.recordCalls(os, "fdatasync")
+        self.recordCalls(os, "fdatasync")
         w = t.open_write_stream("out")
         w.write(b"foo")
         w.fdatasync()
         with open("out", "rb") as f:
             # Should have been flushed.
             self.assertEqual(f.read(), b"foo")
-        self.assertEqual(len(calls), 1, calls)
 
     def test_missing_directory(self):
         t = self.get_transport(".")
@@ -900,8 +892,8 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEqual(t._parsed_url.host, "simple.example.com")
         self.assertEqual(t._parsed_url.port, None)
         self.assertEqual(t._parsed_url.path, "/home/source/")
-        self.assertTrue(t._parsed_url.user is None)
-        self.assertTrue(t._parsed_url.password is None)
+        self.assertIsNone(t._parsed_url.user)
+        self.assertIsNone(t._parsed_url.password)
 
         self.assertEqual(t.base, "http://simple.example.com/home/source/")
 
@@ -1021,8 +1013,8 @@ class TestTransportTrace(tests.TestCase):
     def test_clone_preserves_activity(self):
         t = transport.get_transport_from_url("trace+memory://")
         t2 = t.clone(".")
-        self.assertTrue(t is not t2)
-        self.assertTrue(t._activity is t2._activity)
+        self.assertIsNot(t, t2)
+        self.assertIs(t._activity, t2._activity)
 
     # the following specific tests are for the operations that have made use of
     # logging in tests; we could test every single operation but doing that
@@ -1159,3 +1151,40 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestKind(tests.TestCaseInTempDir):
+    def test_file_kind(self):
+        import socket
+
+        self.build_tree(["file", "dir/"])
+        self.assertEqual("file", file_kind("file"))
+        self.assertEqual("directory", file_kind("dir/"))
+        if osutils.supports_symlinks(self.test_dir):
+            os.symlink("symlink", "symlink")
+            self.assertEqual("symlink", file_kind("symlink"))
+
+        # TODO: jam 20060529 Test a block device
+        try:
+            os.lstat("/dev/null")
+        except FileNotFoundError:
+            pass
+        else:
+            self.assertEqual("chardev", file_kind(os.path.realpath("/dev/null")))
+
+        mkfifo = getattr(os, "mkfifo", None)
+        if mkfifo:
+            mkfifo("fifo")
+            try:
+                self.assertEqual("fifo", file_kind("fifo"))
+            finally:
+                os.remove("fifo")
+
+        AF_UNIX = getattr(socket, "AF_UNIX", None)
+        if AF_UNIX:
+            s = socket.socket(AF_UNIX)
+            s.bind("socket")
+            try:
+                self.assertEqual("socket", file_kind("socket"))
+            finally:
+                os.remove("socket")

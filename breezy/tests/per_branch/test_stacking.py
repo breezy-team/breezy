@@ -16,11 +16,14 @@
 
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
+import contextlib
+
 from breezy import branch as _mod_branch
 from breezy import check, controldir, errors
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable, fixtures, transport_util
 from breezy.tests.per_branch import TestCaseWithBranch
+
+from ...revision import NULL_REVISION
 
 unstackable_format_errors = (
     _mod_branch.UnstackableBranchFormat,
@@ -120,7 +123,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             new_branch.set_stacked_on_url(trunk_tree.branch.base)
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         # reading the graph from the stacked branch's repository should see
         # data from the stacked-on branch
         new_repo = new_branch.repository
@@ -137,7 +140,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             new_dir = trunk_tree.controldir.sprout("newbranch", stacked=True)
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         # stacked repository
         self.assertRevisionNotInRepository("newbranch", trunk_revid)
         tree = new_dir.open_branch().create_checkout("local")
@@ -153,7 +156,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             trunk_tree.controldir.sprout("testbranch", stacked=True)
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         # Now serve the original mainline from a smart server
         remote_transport = self.make_smart_server("mainline")
         remote_bzrdir = controldir.ControlDir.open_from_transport(remote_transport)
@@ -170,8 +173,8 @@ class TestStacking(TestCaseWithBranch):
         """Removing the stacked-on branch pulls across all data."""
         try:
             builder = self.make_branch_builder("trunk")
-        except errors.UninitializableFormat:
-            raise TestNotApplicable("uninitializeable format")
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable("uninitializeable format") from e
         # We have a mainline
         trunk, mainline_revid, rev2 = fixtures.build_branch_with_non_ancestral_rev(
             builder
@@ -180,7 +183,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             new_dir = trunk.controldir.sprout(self.get_url("newbranch"), stacked=True)
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         # stacked repository
         self.assertRevisionNotInRepository("newbranch", mainline_revid)
         # TODO: we'd like to commit in the stacked repository; that requires
@@ -216,7 +219,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         stacked_branch = stacked_bzrdir.open_branch()
         stacked_branch.lock_write()
         stacked_branch.set_stacked_on_url(None)
@@ -231,7 +234,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         stacked_branch = stacked_bzrdir.open_branch()
         stacked_branch.lock_write()
         stacked_branch.lock_write()
@@ -267,15 +270,13 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         cloned_bzrdir = stacked_bzrdir.clone("cloned", preserve_stacking=True)
-        try:
+        with contextlib.suppress(unstackable_format_errors):
             self.assertEqual(
                 stacked_bzrdir.open_branch().get_stacked_on_url(),
                 cloned_bzrdir.open_branch().get_stacked_on_url(),
             )
-        except unstackable_format_errors:
-            pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
         # If a branch's stacked-on url is relative, we can still clone
@@ -284,7 +285,7 @@ class TestStacking(TestCaseWithBranch):
         try:
             stacked_bzrdir = self.make_stacked_bzrdir(in_directory="dir")
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         stacked_bzrdir.open_branch().set_stacked_on_url("../stacked-on")
         cloned_bzrdir = stacked_bzrdir.clone(
             self.get_url("cloned"), preserve_stacking=True
@@ -298,7 +299,7 @@ class TestStacking(TestCaseWithBranch):
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors as e:
             # not a testable combination.
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         cloned_unstacked_bzrdir = stacked_bzrdir.clone(
             "cloned-unstacked", preserve_stacking=False
         )
@@ -385,8 +386,8 @@ class TestStacking(TestCaseWithBranch):
         rev1 = stack_on.commit("first commit")
         try:
             stacked_dir = stack_on.controldir.sprout("stacked", stacked=True)
-        except unstackable_format_errors:
-            raise TestNotApplicable("Format does not support stacking.")
+        except unstackable_format_errors as e:
+            raise TestNotApplicable("Format does not support stacking.") from e
         unstacked = self.make_repository("unstacked")
         return stacked_dir.open_workingtree(), unstacked, rev1
 
@@ -413,9 +414,7 @@ class TestStacking(TestCaseWithBranch):
         # see https://bugs.launchpad.net/bzr/+bug/252821
         stack_on = self.make_branch_and_tree("stack-on")
         if not stack_on.branch._format.supports_stacking():
-            raise TestNotApplicable(
-                "{!r} does not support stacking".format(self.branch_format)
-            )
+            raise TestNotApplicable(f"{self.branch_format!r} does not support stacking")
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])
         stack_on.add("a")
@@ -433,9 +432,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
-            raise TestNotApplicable(
-                "{!r} does not support stacking".format(self.branch_format)
-            )
+            raise TestNotApplicable(f"{self.branch_format!r} does not support stacking")
         stack_on = self.make_branch_and_tree("stack-on")
         text_lines = [b"line %d blah blah blah\n" % i for i in range(20)]
         self.build_tree_contents([("stack-on/a", b"".join(text_lines))])
@@ -473,8 +470,8 @@ class TestStacking(TestCaseWithBranch):
         target = self.make_branch("target")
         try:
             target.set_stacked_on_url("../stacked-on")
-        except unstackable_format_errors:
-            raise TestNotApplicable("Format does not support stacking.")
+        except unstackable_format_errors as e:
+            raise TestNotApplicable("Format does not support stacking.") from e
 
         # Change the source branch.
         self.build_tree_contents([("src/a", b"new content")])
@@ -495,8 +492,8 @@ class TestStacking(TestCaseWithBranch):
         stacked = self.make_branch("stacked")
         try:
             stacked.set_stacked_on_url("../stack-on")
-        except unstackable_format_errors:
-            raise TestNotApplicable("Format does not support stacking.")
+        except unstackable_format_errors as e:
+            raise TestNotApplicable("Format does not support stacking.") from e
         self.get_transport().rename("stack-on", "new-stack-on")
         hook_calls = []
 
@@ -515,16 +512,16 @@ class TestStacking(TestCaseWithBranch):
         # stack-on branch.
         try:
             repo = self.make_repository("repo", shared=True)
-        except errors.IncompatibleFormat:
-            raise TestNotApplicable()
+        except errors.IncompatibleFormat as e:
+            raise TestNotApplicable() from e
         if not repo._format.supports_nesting_repositories:
             raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
         bzrdir = self.make_controldir("repo/stack-on")
         try:
             b = bzrdir.create_branch()
-        except errors.UninitializableFormat:
-            raise TestNotApplicable()
+        except errors.UninitializableFormat as e:
+            raise TestNotApplicable() from e
         transport = self.get_transport("stacked")
         b.controldir.clone_on_transport(transport, stacked_on=b.base)
         # Ensure that opening the branch doesn't raise.
@@ -538,8 +535,8 @@ class TestStacking(TestCaseWithBranch):
             stacked_dir = stack_on.controldir.sprout(
                 self.get_url("stacked"), stacked=True
             )
-        except unstackable_format_errors:
-            raise TestNotApplicable("Format does not support stacking.")
+        except unstackable_format_errors as e:
+            raise TestNotApplicable("Format does not support stacking.") from e
         try:
             stacked = stacked_dir.open_workingtree()
         except errors.NoWorkingTree:
@@ -565,12 +562,12 @@ class TestStackingConnections(transport_util.TestCaseWithConnectionHookedTranspo
         try:
             base_tree = self.make_branch_and_tree("base", format=self.bzrdir_format)
         except errors.UninitializableFormat as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         stacked = self.make_branch("stacked", format=self.bzrdir_format)
         try:
             stacked.set_stacked_on_url(base_tree.branch.base)
         except unstackable_format_errors as e:
-            raise TestNotApplicable(e)
+            raise TestNotApplicable(e) from e
         self.rev_base = base_tree.commit("first")
         stacked.set_last_revision_info(1, self.rev_base)
         stacked_relative = self.make_branch(

@@ -19,58 +19,28 @@
 import sys
 
 from ... import tests
+from ..._bzr_rs import groupcompress as _groupcompress_rs
 from ...tests import features
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import _groupcompress_py
+from .. import groupcompress
 
 
 def module_scenarios():
     scenarios = [
-        ("python", {"_gc_module": _groupcompress_py}),
+        (
+            "line",
+            {"make_delta": groupcompress.make_line_delta},
+        ),
+        ("rabin", {"make_delta": groupcompress.make_rabin_delta}),
     ]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.append(("C", {"_gc_module": gc_module}))
     return scenarios
 
 
 def two_way_scenarios():
     scenarios = [
-        (
-            "PP",
-            {
-                "make_delta": _groupcompress_py.make_delta,
-                "apply_delta": _groupcompress_py.apply_delta,
-            },
-        )
+        ("LR", {"make_delta": groupcompress.make_line_delta}),
+        ("RR", {"make_delta": groupcompress.make_rabin_delta}),
     ]
-    if compiled_groupcompress_feature.available():
-        gc_module = compiled_groupcompress_feature.module
-        scenarios.extend(
-            [
-                (
-                    "CC",
-                    {
-                        "make_delta": gc_module.make_delta,
-                        "apply_delta": gc_module.apply_delta,
-                    },
-                ),
-                (
-                    "PC",
-                    {
-                        "make_delta": _groupcompress_py.make_delta,
-                        "apply_delta": gc_module.apply_delta,
-                    },
-                ),
-                (
-                    "CP",
-                    {
-                        "make_delta": gc_module.make_delta,
-                        "apply_delta": _groupcompress_py.apply_delta,
-                    },
-                ),
-            ]
-        )
     return scenarios
 
 
@@ -145,9 +115,8 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.make_delta = self._gc_module.make_delta
-        self.apply_delta = self._gc_module.apply_delta
-        self.apply_delta_to_source = self._gc_module.apply_delta_to_source
+        self.apply_delta = _groupcompress_rs.apply_delta
+        self.apply_delta_to_source = _groupcompress_rs.apply_delta_to_source
 
     def test_make_delta_is_typesafe(self):
         self.make_delta(b"a string", b"another string")
@@ -220,9 +189,12 @@ class TestMakeAndApplyDelta(tests.TestCase):
         self.apply_delta(_text1, b"M\x90M")
         self.assertRaises(TypeError, self.apply_delta, object(), b"M\x90M")
         self.assertRaises(
-            TypeError, self.apply_delta, _text1.decode("latin1"), b"M\x90M"
+            (ValueError, TypeError),
+            self.apply_delta,
+            _text1.decode("latin1"),
+            b"M\x90M",
         )
-        self.assertRaises(TypeError, self.apply_delta, _text1, "M\x90M")
+        self.assertRaises((ValueError, TypeError), self.apply_delta, _text1, "M\x90M")
         self.assertRaises(TypeError, self.apply_delta, _text1, object())
 
     def test_apply_delta(self):
@@ -257,7 +229,7 @@ class TestMakeAndApplyCompatible(tests.TestCase):
     scenarios = two_way_scenarios()
 
     make_delta = None  # Set by load_tests
-    apply_delta = None  # Set by load_tests
+    apply_delta = _groupcompress_rs.apply_delta
 
     def assertMakeAndApply(self, source, target):
         """Assert that generating a delta and applying gives success."""
@@ -313,7 +285,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -341,7 +313,7 @@ class TestDeltaIndex(tests.TestCase):
             for idx, (text_offset, hash_val) in enumerate(entry_list)
             if text_offset != 0 or hash_val != 0
         ]
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (8, 16, rabin_hash(_text1[1:17])),
@@ -387,7 +359,7 @@ class TestDeltaIndex(tests.TestCase):
                 if text_offset != 0 or hash_val != 0
             ]
         )
-        rabin_hash = self._gc_module._rabin_hash
+        rabin_hash = groupcompress.rabin_hash
         self.assertEqual(
             [
                 (25, rabin_hash(_text1[10:26])),
@@ -420,7 +392,7 @@ class TestDeltaIndex(tests.TestCase):
         di.add_source(_second_text, 0)
         self.assertEqual(len(_first_text) + len(_second_text), di._source_offset)
         delta = di.make_delta(_third_text)
-        result = self._gc_module.apply_delta(_first_text + _second_text, delta)
+        result = _groupcompress_rs.apply_delta(_first_text + _second_text, delta)
         self.assertEqualDiff(_third_text, result)
         self.assertEqual(
             b'\x85\x01\x90\x14\x0chas some in \x91v6\x03and\x91d"\x91:\n', delta
@@ -434,7 +406,7 @@ class TestDeltaIndex(tests.TestCase):
         self.assertEqual(len(_first_text) + len(_second_text) + 15, di._source_offset)
         delta = di.make_delta(_third_text)
         self.assertIsNot(None, delta)
-        result = self._gc_module.apply_delta(
+        result = _groupcompress_rs.apply_delta(
             b"12345" + _first_text + b"1234567890" + _second_text, delta
         )
         self.assertIsNot(None, result)
@@ -457,7 +429,7 @@ class TestDeltaIndex(tests.TestCase):
         source += delta
         self.assertEqual(len(_first_text) + len(delta), di._source_offset)
         second_delta = di.make_delta(_third_text)
-        result = self._gc_module.apply_delta(source, second_delta)
+        result = _groupcompress_rs.apply_delta(source, second_delta)
         self.assertEqualDiff(_third_text, result)
         # We should be able to match against the
         # 'previous text\nand has some...'  that was part of the delta bytes
@@ -473,7 +445,7 @@ class TestDeltaIndex(tests.TestCase):
         di.add_delta_source(second_delta, 0)
         source += second_delta
         third_delta = di.make_delta(_third_text)
-        result = self._gc_module.apply_delta(source, third_delta)
+        result = _groupcompress_rs.apply_delta(source, third_delta)
         self.assertEqualDiff(_third_text, result)
         self.assertEqual(
             b"\x85\x01\x90\x14\x91\x7e\x1c\x91S&\x03and\x91\x18,", third_delta
@@ -482,7 +454,7 @@ class TestDeltaIndex(tests.TestCase):
         # existing index
         fourth_delta = di.make_delta(_fourth_text)
         self.assertEqual(
-            _fourth_text, self._gc_module.apply_delta(source, fourth_delta)
+            _fourth_text, _groupcompress_rs.apply_delta(source, fourth_delta)
         )
         self.assertEqual(
             b"\x80\x01"
@@ -497,132 +469,7 @@ class TestDeltaIndex(tests.TestCase):
         source += fourth_delta
         # With the next delta, everything should be found
         fifth_delta = di.make_delta(_fourth_text)
-        self.assertEqual(_fourth_text, self._gc_module.apply_delta(source, fifth_delta))
+        self.assertEqual(
+            _fourth_text, _groupcompress_rs.apply_delta(source, fifth_delta)
+        )
         self.assertEqual(b"\x80\x01\x91\xa7\x7f\x01\n", fifth_delta)
-
-
-class TestCopyInstruction(tests.TestCase):
-    def assertEncode(self, expected, offset, length):
-        data = _groupcompress_py.encode_copy_instruction(offset, length)
-        self.assertEqual(expected, data)
-
-    def assertDecode(self, exp_offset, exp_length, exp_newpos, data, pos):
-        cmd = data[pos]
-        pos += 1
-        out = _groupcompress_py.decode_copy_instruction(data, cmd, pos)
-        self.assertEqual((exp_offset, exp_length, exp_newpos), out)
-
-    def test_encode_no_length(self):
-        self.assertEncode(b"\x80", 0, 64 * 1024)
-        self.assertEncode(b"\x81\x01", 1, 64 * 1024)
-        self.assertEncode(b"\x81\x0a", 10, 64 * 1024)
-        self.assertEncode(b"\x81\xff", 255, 64 * 1024)
-        self.assertEncode(b"\x82\x01", 256, 64 * 1024)
-        self.assertEncode(b"\x83\x01\x01", 257, 64 * 1024)
-        self.assertEncode(b"\x8f\xff\xff\xff\xff", 0xFFFFFFFF, 64 * 1024)
-        self.assertEncode(b"\x8e\xff\xff\xff", 0xFFFFFF00, 64 * 1024)
-        self.assertEncode(b"\x8d\xff\xff\xff", 0xFFFF00FF, 64 * 1024)
-        self.assertEncode(b"\x8b\xff\xff\xff", 0xFF00FFFF, 64 * 1024)
-        self.assertEncode(b"\x87\xff\xff\xff", 0x00FFFFFF, 64 * 1024)
-        self.assertEncode(b"\x8f\x04\x03\x02\x01", 0x01020304, 64 * 1024)
-
-    def test_encode_no_offset(self):
-        self.assertEncode(b"\x90\x01", 0, 1)
-        self.assertEncode(b"\x90\x0a", 0, 10)
-        self.assertEncode(b"\x90\xff", 0, 255)
-        self.assertEncode(b"\xa0\x01", 0, 256)
-        self.assertEncode(b"\xb0\x01\x01", 0, 257)
-        self.assertEncode(b"\xb0\xff\xff", 0, 0xFFFF)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b"\x80", 0, 64 * 1024)
-
-    def test_encode(self):
-        self.assertEncode(b"\x91\x01\x01", 1, 1)
-        self.assertEncode(b"\x91\x09\x0a", 9, 10)
-        self.assertEncode(b"\x91\xfe\xff", 254, 255)
-        self.assertEncode(b"\xa2\x02\x01", 512, 256)
-        self.assertEncode(b"\xb3\x02\x01\x01\x01", 258, 257)
-        self.assertEncode(b"\xb0\x01\x01", 0, 257)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b"\x81\x0a", 10, 64 * 1024)
-
-    def test_decode_no_length(self):
-        # If length is 0, it is interpreted as 64KiB
-        # The shortest possible instruction is a copy of 64KiB from offset 0
-        self.assertDecode(0, 65536, 1, b"\x80", 0)
-        self.assertDecode(1, 65536, 2, b"\x81\x01", 0)
-        self.assertDecode(10, 65536, 2, b"\x81\x0a", 0)
-        self.assertDecode(255, 65536, 2, b"\x81\xff", 0)
-        self.assertDecode(256, 65536, 2, b"\x82\x01", 0)
-        self.assertDecode(257, 65536, 3, b"\x83\x01\x01", 0)
-        self.assertDecode(0xFFFFFFFF, 65536, 5, b"\x8f\xff\xff\xff\xff", 0)
-        self.assertDecode(0xFFFFFF00, 65536, 4, b"\x8e\xff\xff\xff", 0)
-        self.assertDecode(0xFFFF00FF, 65536, 4, b"\x8d\xff\xff\xff", 0)
-        self.assertDecode(0xFF00FFFF, 65536, 4, b"\x8b\xff\xff\xff", 0)
-        self.assertDecode(0x00FFFFFF, 65536, 4, b"\x87\xff\xff\xff", 0)
-        self.assertDecode(0x01020304, 65536, 5, b"\x8f\x04\x03\x02\x01", 0)
-
-    def test_decode_no_offset(self):
-        self.assertDecode(0, 1, 2, b"\x90\x01", 0)
-        self.assertDecode(0, 10, 2, b"\x90\x0a", 0)
-        self.assertDecode(0, 255, 2, b"\x90\xff", 0)
-        self.assertDecode(0, 256, 2, b"\xa0\x01", 0)
-        self.assertDecode(0, 257, 3, b"\xb0\x01\x01", 0)
-        self.assertDecode(0, 65535, 3, b"\xb0\xff\xff", 0)
-        # Special case, if copy == 64KiB, then we store exactly 0
-        # Note that this puns with a copy of exactly 0 bytes, but we don't care
-        # about that, as we would never actually copy 0 bytes
-        self.assertDecode(0, 65536, 1, b"\x80", 0)
-
-    def test_decode(self):
-        self.assertDecode(1, 1, 3, b"\x91\x01\x01", 0)
-        self.assertDecode(9, 10, 3, b"\x91\x09\x0a", 0)
-        self.assertDecode(254, 255, 3, b"\x91\xfe\xff", 0)
-        self.assertDecode(512, 256, 3, b"\xa2\x02\x01", 0)
-        self.assertDecode(258, 257, 5, b"\xb3\x02\x01\x01\x01", 0)
-        self.assertDecode(0, 257, 3, b"\xb0\x01\x01", 0)
-
-    def test_decode_not_start(self):
-        self.assertDecode(1, 1, 6, b"abc\x91\x01\x01def", 3)
-        self.assertDecode(9, 10, 5, b"ab\x91\x09\x0ade", 2)
-        self.assertDecode(254, 255, 6, b"not\x91\xfe\xffcopy", 3)
-
-
-class TestBase128Int(tests.TestCase):
-    scenarios = module_scenarios()
-
-    _gc_module = None  # Set by load_tests
-
-    def assertEqualEncode(self, bytes, val):
-        self.assertEqual(bytes, self._gc_module.encode_base128_int(val))
-
-    def assertEqualDecode(self, val, num_decode, bytes):
-        self.assertEqual((val, num_decode), self._gc_module.decode_base128_int(bytes))
-
-    def test_encode(self):
-        self.assertEqualEncode(b"\x01", 1)
-        self.assertEqualEncode(b"\x02", 2)
-        self.assertEqualEncode(b"\x7f", 127)
-        self.assertEqualEncode(b"\x80\x01", 128)
-        self.assertEqualEncode(b"\xff\x01", 255)
-        self.assertEqualEncode(b"\x80\x02", 256)
-        self.assertEqualEncode(b"\xff\xff\xff\xff\x0f", 0xFFFFFFFF)
-
-    def test_decode(self):
-        self.assertEqualDecode(1, 1, b"\x01")
-        self.assertEqualDecode(2, 1, b"\x02")
-        self.assertEqualDecode(127, 1, b"\x7f")
-        self.assertEqualDecode(128, 2, b"\x80\x01")
-        self.assertEqualDecode(255, 2, b"\xff\x01")
-        self.assertEqualDecode(256, 2, b"\x80\x02")
-        self.assertEqualDecode(0xFFFFFFFF, 5, b"\xff\xff\xff\xff\x0f")
-
-    def test_decode_with_trailing_bytes(self):
-        self.assertEqualDecode(1, 1, b"\x01abcdef")
-        self.assertEqualDecode(127, 1, b"\x7f\x01")
-        self.assertEqualDecode(128, 2, b"\x80\x01abcdef")
-        self.assertEqualDecode(255, 2, b"\xff\x01\xff")

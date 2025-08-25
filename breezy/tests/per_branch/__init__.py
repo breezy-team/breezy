@@ -25,11 +25,12 @@ rather than in `tests/per_branch/*.py`.
 """
 
 from breezy import errors, tests
-from breezy.branch import format_registry
-from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests import test_server
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory
+
+from ...branch import format_registry
+from ...bzr.remote import RemoteBranchFormat
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def make_scenarios(
@@ -84,8 +85,8 @@ class TestCaseWithBranch(TestCaseWithControlDir):
     def make_branch(self, relpath, format=None):
         try:
             return super().make_branch(relpath, format)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable("Uninitializable branch format")
+        except errors.UninitializableFormat as err:
+            raise tests.TestNotApplicable("Uninitializable branch format") from err
 
     def create_tree_with_merge(self):
         """Create a branch with a simple ancestry.
@@ -120,7 +121,6 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
 
 def branch_scenarios():
-    """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [
@@ -189,7 +189,9 @@ def load_tests(loader, standard_tests, pattern):
         "uncommit",
         "update",
     ]
-    sub_tests = loader.loadTestsFromModuleNames(
-        ["breezy.tests.per_branch.test_" + name for name in per_branch_mod_names]
-    )
+    sub_tests = loader.suiteClass()
+    for name in per_branch_mod_names:
+        sub_tests.addTest(
+            loader.loadTestsFromName("breezy.tests.per_branch.test_" + name)
+        )
     return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

@@ -27,6 +27,16 @@ class FullHistoryBzrBranch(BzrBranch):
     """Bzr branch which contains the full revision history."""
 
     def set_last_revision_info(self, revno, revision_id):
+        """Set the last revision information for the branch.
+
+        Args:
+            revno: The revision number.
+            revision_id: The revision ID.
+
+        Raises:
+            InvalidRevisionId: If the revision_id is invalid.
+            AssertionError: If the computed history length doesn't match revno.
+        """
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         with self.lock_write():
@@ -35,7 +45,7 @@ class FullHistoryBzrBranch(BzrBranch):
             # correct
             history = self._lefthand_history(revision_id)
             if len(history) != revno:
-                raise AssertionError(f"{len(history)} != {revno}")
+                raise AssertionError("%d != %d" % (len(history), revno))
             self._set_revision_history(history)
 
     def _read_last_revision_info(self):
@@ -47,7 +57,7 @@ class FullHistoryBzrBranch(BzrBranch):
             return (0, _mod_revision.NULL_REVISION)
 
     def _set_revision_history(self, rev_history):
-        if "evil" in debug.debug_flags:
+        if debug.debug_flag_enabled("evil"):
             mutter_callsite(3, "set_revision_history scales with history.")
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         for rev_id in rev_history:
@@ -99,7 +109,7 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = new_history[: new_history.index(revision_id) + 1]
             except ValueError:
                 rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
+                new_history = _mod_revision.get_history(self.repository, rev)[1:]
         destination._set_revision_history(new_history)
 
     def generate_revision_history(self, revision_id, last_rev=None, other_branch=None):
@@ -162,6 +172,11 @@ class BzrBranchFormat5(BranchFormatMetadir):
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 
     def supports_tags(self):
+        """Check if this branch format supports tags.
+
+        Returns:
+            bool: False, as format 5 doesn't support tags.
+        """
         return False
 
     supports_reference_locations = False

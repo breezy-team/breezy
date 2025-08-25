@@ -39,9 +39,13 @@ Densely packed upper nodes.
 import heapq
 import threading
 from collections.abc import Callable, Generator, Iterator
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 from .. import errors, lru_cache, osutils, registry, trace
+from .._bzr_rs import chk_map as _chk_map_rs
+
+common_prefix_many = _chk_map_rs.common_prefix_many
+common_prefix_pair = _chk_map_rs.common_prefix_pair
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -77,6 +81,7 @@ def _get_cache():
 
 
 def clear_cache():
+    """Clear the CHK map page cache."""
     _get_cache().clear()
 
 
@@ -91,15 +96,110 @@ def _search_key_plain(key: Key) -> SerialisedKey:
     return b"\x00".join(key)
 
 
-search_key_registry = registry.Registry[bytes, Callable[[Key], SerialisedKey]]()
+search_key_registry = registry.Registry[bytes, Callable[[Key], SerialisedKey], None]()
 search_key_registry.register(b"plain", _search_key_plain)
+
+
+def _deserialise_leaf_node(data, key, search_key_func=None):
+    """Deserialise bytes, with key key, into a LeafNode.
+
+    :param bytes: The bytes of the node.
+    :param key: The key that the serialised node has.
+    """
+    result = LeafNode(search_key_func=search_key_func)
+    # Splitlines can split on '\r' so don't use it, split('\n') adds an
+    # extra '' if the bytes ends in a final newline.
+    lines = data.split(b"\n")
+    trailing = lines.pop()
+    if trailing != b"":
+        raise AssertionError(f"We did not have a final newline for {key}")
+    items = {}
+    if lines[0] != b"chkleaf:":
+        raise ValueError(f"not a serialised leaf node: {bytes!r}")
+    maximum_size = int(lines[1])
+    width = int(lines[2])
+    length = int(lines[3])
+    prefix = lines[4]
+    pos = 5
+    while pos < len(lines):
+        line = prefix + lines[pos]
+        elements = line.split(b"\x00")
+        pos += 1
+        if len(elements) != width + 1:
+            raise AssertionError(
+                "Incorrect number of elements (%d vs %d) for: %r"
+                % (len(elements), width + 1, line)
+            )
+        num_value_lines = int(elements[-1])
+        value_lines = lines[pos : pos + num_value_lines]
+        pos += num_value_lines
+        value = b"\n".join(value_lines)
+        items[tuple(elements[:-1])] = value
+    if len(items) != length:
+        raise AssertionError(
+            "item count (%d) mismatch for key %s, bytes %r" % (length, key, bytes)
+        )
+    result._items = items
+    result._len = length
+    result._maximum_size = maximum_size
+    result._key = key
+    result._key_width = width
+    result._raw_size = (
+        sum(map(len, lines[5:]))  # the length of the suffix
+        + (length) * (len(prefix))
+        + (len(lines) - 5)
+    )
+    if not items:
+        result._search_prefix = None
+        result._common_serialised_prefix = None
+    else:
+        result._search_prefix = _unknown
+        result._common_serialised_prefix = prefix
+    if len(data) != result._current_size():
+        raise AssertionError("_current_size computed incorrectly")
+    return result
+
+
+def _deserialise_internal_node(data, key, search_key_func=None):
+    result = InternalNode(search_key_func=search_key_func)
+    # Splitlines can split on '\r' so don't use it, remove the extra ''
+    # from the result of split('\n') because we should have a trailing
+    # newline
+    lines = data.split(b"\n")
+    if lines[-1] != b"":
+        raise ValueError("last line must be ''")
+    lines.pop(-1)
+    items = {}
+    if lines[0] != b"chknode:":
+        raise ValueError(f"not a serialised internal node: {bytes!r}")
+    maximum_size = int(lines[1])
+    width = int(lines[2])
+    length = int(lines[3])
+    common_prefix = lines[4]
+    for line in lines[5:]:
+        line = common_prefix + line
+        prefix, flat_key = line.rsplit(b"\x00", 1)
+        items[prefix] = (flat_key,)
+    if len(items) == 0:
+        raise AssertionError(f"We didn't find any item for {key}")
+    result._items = items
+    result._len = length
+    result._maximum_size = maximum_size
+    result._key = key
+    result._key_width = width
+    # XXX: InternalNodes don't really care about their size, and this will
+    #      change if we add prefix compression
+    result._raw_size = None  # len(bytes)
+    result._node_width = len(prefix)
+    result._search_prefix = common_prefix
+    return result
 
 
 class CHKMap:
     """A persistent map from string to string backed by a CHK store."""
 
     __slots__ = ("_root_node", "_search_key_func", "_store")
-    _root_node: "Node"
+    _root_node: Union["Node", Key]
 
     def __init__(
         self,
@@ -141,7 +241,7 @@ class CHKMap:
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(
-                delta, "New items are already in the map {!r}.".format(existing_new)
+                delta, f"New items are already in the map {existing_new!r}."
             )
         # Now apply changes.
         for old, new, _value in delta:
@@ -186,9 +286,22 @@ class CHKMap:
             _get_cache()[key] = bytes
             return bytes
 
-    def _dump_tree(self, include_keys: bool = False, encoding: str = "utf-8") -> str:
+    def _dump_tree(self, include_keys=False, encoding="utf-8"):
         """Return the tree in a string representation."""
         self._ensure_root()
+
+        def decode(x):
+            return x.decode(encoding)
+
+        res = self._dump_tree_node(
+            self._root_node,
+            prefix=b"",
+            indent="",
+            decode=decode,
+            include_keys=include_keys,
+        )
+        res.append("")  # Give a trailing '\n'
+        return "\n".join(res)
 
         def decode(x):
             return x.decode(encoding)
@@ -212,15 +325,8 @@ class CHKMap:
             key_str = ""
         else:
             node_key = node.key()
-            if node_key is not None:
-                key_str = " {}".format(decode(node_key[0]))
-            else:
-                key_str = " None"
-        result.append(
-            "{}{!r} {}{}".format(
-                indent, decode(prefix), node.__class__.__name__, key_str
-            )
-        )
+            key_str = f" {decode(node_key[0])}" if node_key is not None else " None"
+        result.append(f"{indent}{decode(prefix)!r} {node.__class__.__name__}{key_str}")
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
@@ -239,20 +345,13 @@ class CHKMap:
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
                 result.append(
-                    "      {!r} {!r}".format(
-                        tuple([decode(ke) for ke in key]), decode(value)
-                    )
+                    f"      {tuple([decode(ke) for ke in key])!r} {decode(value)!r}"
                 )
         return result
 
     @classmethod
     def from_dict(
-        cls,
-        store,
-        initial_value,
-        maximum_size: int = 0,
-        key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
     ):
         """Create a CHKMap in store with initial_value as the content.
 
@@ -269,7 +368,7 @@ class CHKMap:
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        root_key = cls._create_directly(
+        root_key = klass._create_directly(
             store,
             initial_value,
             maximum_size=maximum_size,
@@ -277,21 +376,14 @@ class CHKMap:
             search_key_func=search_key_func,
         )
         if not isinstance(root_key, tuple):
-            raise AssertionError(
-                "we got a {} instead of a tuple".format(type(root_key))
-            )
+            raise AssertionError(f"we got a {type(root_key)} instead of a tuple")
         return root_key
 
     @classmethod
     def _create_via_map(
-        cls,
-        store,
-        initial_value,
-        maximum_size: int = 0,
-        key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
     ):
-        result = cls(store, None, search_key_func=search_key_func)
+        result = klass(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
@@ -302,14 +394,8 @@ class CHKMap:
 
     @classmethod
     def _create_directly(
-        cls,
-        store,
-        initial_value,
-        maximum_size: int = 0,
-        key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
     ):
-        node: Node
         node = LeafNode(search_key_func=search_key_func)
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
@@ -540,9 +626,7 @@ class CHKMap:
                             basis_pending
                         )
                         if self_prefix != basis_prefix:
-                            raise AssertionError(
-                                "{!r} != {!r}".format(self_prefix, basis_prefix)
-                            )
+                            raise AssertionError(f"{self_prefix!r} != {basis_prefix!r}")
                         process_common_prefix_nodes(
                             self_node, self_path, basis_node, basis_path
                         )
@@ -564,6 +648,8 @@ class CHKMap:
     ) -> Iterator[tuple[Key, bytes]]:
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
+        if isinstance(self._root_node, tuple):
+            raise AssertionError("Cannot iterate over a map with a tuple root node")
         if key_filter is not None:
             key_filter = [tuple(key) for key in key_filter]
         return self._root_node.iteritems(self._store, key_filter=key_filter)
@@ -582,6 +668,7 @@ class CHKMap:
             )
 
     def __len__(self) -> int:
+        """Return the number of items in the CHK map."""
         self._ensure_root()
         return len(self._root_node)
 
@@ -594,6 +681,8 @@ class CHKMap:
         key = tuple(key)
         # Need a root object.
         self._ensure_root()
+        if isinstance(self._root_node, tuple):
+            raise AssertionError("Cannot map a key to a tuple root node")
         prefix, node_details = self._root_node.map(self._store, key, value)
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
@@ -615,9 +704,8 @@ class CHKMap:
         else:
             raise AssertionError("Invalid node type: {!r}".format(type(node)))
 
-    def unmap(self, key: Key, check_remap=True) -> None:
+    def unmap(self, key, check_remap=True):
         """Remove key from the map."""
-        key = tuple(key)
         self._ensure_root()
         if isinstance(self._root_node, InternalNode):
             unmapped = self._root_node.unmap(self._store, key, check_remap=check_remap)
@@ -679,6 +767,7 @@ class Node:
         self._search_prefix = None
 
     def __repr__(self):
+        """Return string representation of the node."""
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + "...]"
@@ -691,6 +780,22 @@ class Node:
             self._search_prefix,
             items_str,
         )
+
+    def iteritems(self, store, key_filter=None):
+        """Iterate over items in the node.
+
+        :param key_filter: A filter to apply to the node. It should be a
+            list/set/dict or similar repeatedly iterable container.
+        """
+        raise NotImplementedError(self.iteritems)
+
+    def unmap(self, store, key):
+        """Unmap key from the node."""
+        raise NotImplementedError(self.unmap)
+
+    def map(self, store, key: Key, value):
+        """Map key to value."""
+        raise NotImplementedError(self.map)
 
     def key(self) -> Key:
         """Return the key for this node."""
@@ -713,78 +818,6 @@ class Node:
         """
         self._maximum_size = new_size
 
-    @classmethod
-    def common_prefix(cls, prefix, key):
-        """Given 2 strings, return the longest prefix common to both.
-
-        :param prefix: This has been the common prefix for other keys, so it is
-            more likely to be the common prefix in this case as well.
-        :param key: Another string to compare to
-        """
-        if key.startswith(prefix):
-            return prefix
-        pos = -1
-        # Is there a better way to do this?
-        for pos, (left, right) in enumerate(zip(prefix, key)):
-            if left != right:
-                pos -= 1
-                break
-        common = prefix[: pos + 1]
-        return common
-
-    @classmethod
-    def common_prefix_for_keys(cls, keys):
-        """Given a list of keys, find their common prefix.
-
-        :param keys: An iterable of strings.
-        :return: The longest common prefix of all keys.
-        """
-        common_prefix = None
-        for key in keys:
-            if common_prefix is None:
-                common_prefix = key
-                continue
-            common_prefix = cls.common_prefix(common_prefix, key)
-            if not common_prefix:
-                # if common_prefix is the empty string, then we know it won't
-                # change further
-                return b""
-        return common_prefix
-
-    def serialise(self, store) -> Iterator[Key]:
-        """Serialise the node into the store.
-
-        :param store: The store to serialise into.
-        :return: An iterable of keys that were written to the store.
-        """
-        raise NotImplementedError("serialise must be implemented in subclasses")
-
-    def iteritems(
-        self, store, key_filter: Optional[KeyFilter] = None
-    ) -> Iterator[tuple[Key, bytes]]:
-        """Iterate over items in the node.
-
-        :param key_filter: A filter to apply to the node. It should be a
-            list/set/dict or similar repeatedly iterable container.
-        """
-        raise NotImplementedError("iteritems must be implemented in subclasses")
-
-    def add_node(self, prefix: Key, node: "Node") -> None:
-        """Add a child node with prefix prefix, and node node.
-
-        :param prefix: The search key prefix for node.
-        :param node: The node being added.
-        """
-        raise NotImplementedError("add_node must be implemented in subclasses")
-
-    def map(self, store, key: Key, value) -> tuple[Key, list[tuple[Key, "Node"]]]:
-        """Map key to value."""
-        raise NotImplementedError("map must be implemented in subclasses")
-
-    def unmap(self, store, key: Key) -> "Node":
-        """Unmap key from the node."""
-        raise NotImplementedError("unmap must be implemented in subclasses")
-
 
 # Singleton indicating we have not computed _search_prefix yet
 _unknown = object()
@@ -801,6 +834,11 @@ class LeafNode(Node):
     __slots__ = ("_common_serialised_prefix",)
 
     def __init__(self, search_key_func=None):
+        """Initialize a LeafNode.
+
+        Args:
+            search_key_func: Function to generate search keys from regular keys.
+        """
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
@@ -810,6 +848,7 @@ class LeafNode(Node):
             self._search_key_func = search_key_func
 
     def __repr__(self):
+        """Return string representation of the leaf node."""
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + "...]"
@@ -859,7 +898,6 @@ class LeafNode(Node):
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
-        key = tuple(key)
         return _deserialise_leaf_node(bytes, key, search_key_func=search_key_func)
 
     def iteritems(self, store, key_filter=None):
@@ -925,7 +963,7 @@ class LeafNode(Node):
         if self._common_serialised_prefix is None:
             self._common_serialised_prefix = serialised_key
         else:
-            self._common_serialised_prefix = self.common_prefix(
+            self._common_serialised_prefix = common_prefix_pair(
                 self._common_serialised_prefix, serialised_key
             )
         search_key = self._search_key(key)
@@ -934,7 +972,7 @@ class LeafNode(Node):
         if self._search_prefix is None:
             self._search_prefix = search_key
         else:
-            self._search_prefix = self.common_prefix(self._search_prefix, search_key)
+            self._search_prefix = common_prefix_pair(self._search_prefix, search_key)
         if (
             self._len > 1
             and self._maximum_size
@@ -1009,11 +1047,11 @@ class LeafNode(Node):
             return self._split(store)
         else:
             if self._search_prefix is _unknown:
-                raise AssertionError("{!r} must be known".format(self._search_prefix))
+                raise AssertionError(f"{self._search_prefix!r} must be known")
             return self._search_prefix, [(b"", self)]
 
     @staticmethod
-    def _serialise_key(key: Key) -> SerialisedKey:
+    def _serialise_key(key):
         return b"\x00".join(key)
 
     def serialise(self, store):
@@ -1041,10 +1079,8 @@ class LeafNode(Node):
             serialized = b"%s\x00%d\n" % (self._serialise_key(key), len(value_lines))
             if not serialized.startswith(self._common_serialised_prefix):
                 raise AssertionError(
-                    "We thought the common prefix was {!r}"
-                    " but entry {!r} does not have it in common".format(
-                        self._common_serialised_prefix, serialized
-                    )
+                    f"We thought the common prefix was {self._common_serialised_prefix!r}"
+                    f" but entry {serialized!r} does not have it in common"
                 )
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
@@ -1067,7 +1103,7 @@ class LeafNode(Node):
             unique within this node.
         """
         search_keys = [self._search_key_func(key) for key in self._items]
-        self._search_prefix = self.common_prefix_for_keys(search_keys)
+        self._search_prefix = common_prefix_many(search_keys)
         return self._search_prefix
 
     def _are_search_keys_identical(self):
@@ -1093,7 +1129,7 @@ class LeafNode(Node):
             unique within this node.
         """
         serialised_keys = [self._serialise_key(key) for key in self._items]
-        self._common_serialised_prefix = self.common_prefix_for_keys(serialised_keys)
+        self._common_serialised_prefix = common_prefix_many(serialised_keys)
         return self._common_serialised_prefix
 
     def unmap(self, store, key):
@@ -1125,6 +1161,12 @@ class InternalNode(Node):
     __slots__ = ("_node_width",)
 
     def __init__(self, prefix=b"", search_key_func=None):
+        """Initialize an InternalNode.
+
+        Args:
+            prefix: The search key prefix for this node.
+            search_key_func: Function to generate search keys from regular keys.
+        """
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
@@ -1147,20 +1189,20 @@ class InternalNode(Node):
             raise AssertionError("Invalid node type: {!r}".format(type(node)))
         if not prefix.startswith(self._search_prefix):
             raise AssertionError(
-                "prefixes mismatch: {} must start with {}".format(
-                    prefix, self._search_prefix
-                )
+                f"prefixes mismatch: {prefix} must start with {self._search_prefix}"
             )
         if len(prefix) != len(self._search_prefix) + 1:
             raise AssertionError(
-                f"prefix wrong length: len({prefix}) is not {len(self._search_prefix) + 1}"
+                "prefix wrong length: len(%s) is not %d"
+                % (prefix, len(self._search_prefix) + 1)
             )
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
         if self._node_width != len(self._search_prefix) + 1:
             raise AssertionError(
-                f"node width mismatch: {self._node_width} is not {len(self._search_prefix) + 1}"
+                "node width mismatch: %d is not %d"
+                % (self._node_width, len(self._search_prefix) + 1)
             )
         self._items[prefix] = node
         self._key = None
@@ -1182,12 +1224,20 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
-        key = tuple(key)
         return _deserialise_internal_node(bytes, key, search_key_func=search_key_func)
 
     def iteritems(
         self, store, key_filter: Optional[list[Key]] = None
     ) -> Generator[tuple[Key, bytes]]:
+        """Iterate over items in this node and its children.
+
+        Args:
+            store: CHK store to retrieve child nodes from.
+            key_filter: Optional list of keys to filter items.
+
+        Yields:
+            Tuples of (key, value) for items in this subtree.
+        """
         for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
             yield from node.iteritems(store, key_filter=node_filter)
 
@@ -1374,13 +1424,14 @@ class InternalNode(Node):
         search_key = self._search_key(key)
         if self._node_width != len(self._search_prefix) + 1:
             raise AssertionError(
-                f"node width mismatch: {self._node_width} is not {len(self._search_prefix) + 1}"
+                "node width mismatch: %d is not %d"
+                % (self._node_width, len(self._search_prefix) + 1)
             )
         if not search_key.startswith(self._search_prefix):
             # This key doesn't fit in this index, so we need to split at the
             # point where it would fit, insert self into that internal node,
             # and then map this key into that node.
-            new_prefix = self.common_prefix(self._search_prefix, search_key)
+            new_prefix = common_prefix_pair(self._search_prefix, search_key)
             new_parent = InternalNode(new_prefix, search_key_func=self._search_key_func)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
@@ -1393,10 +1444,7 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(search_key, LeafNode)
         old_len = len(child)
-        if isinstance(child, LeafNode):
-            old_size = child._current_size()
-        else:
-            old_size = None
+        old_size = child._current_size() if isinstance(child, LeafNode) else None
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
             # child may have shrunk, or might be a new node
@@ -1483,20 +1531,11 @@ class InternalNode(Node):
         lines.append(b"%s\n" % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if isinstance(node, tuple):
-                key = node[0]
-            elif isinstance(node, Node):
-                key = node._key[0]
-            else:
-                raise AssertionError(
-                    f"InternalNode._items should only contain tuples or Nodes, not {node.__class__}"
-                )
+            key = node[0] if isinstance(node, tuple) else node._key[0]
             serialised = b"%s\x00%s\n" % (prefix, key)
             if not serialised.startswith(self._search_prefix):
                 raise AssertionError(
-                    "prefixes mismatch: {} must start with {}".format(
-                        serialised, self._search_prefix
-                    )
+                    f"prefixes mismatch: {serialised} must start with {self._search_prefix}"
                 )
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -1549,7 +1588,7 @@ class InternalNode(Node):
         :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        self._search_prefix = self.common_prefix_for_keys(self._items)
+        self._search_prefix = common_prefix_many(list(self._items.keys()))
         return self._search_prefix
 
     def unmap(self, store, key: Key, check_remap: bool = True) -> Node:
@@ -1564,6 +1603,8 @@ class InternalNode(Node):
         self._len -= 1
         unmapped: Optional[Node]
         unmapped = child.unmap(store, key)
+        if unmapped is None:
+            raise AssertionError("unmap returned None, but we expected a node")
         self._key = None
         search_key = self._search_key(key)
         if len(unmapped) == 0:
@@ -1655,6 +1696,15 @@ class CHKMapDifference:
     """
 
     def __init__(self, store, new_root_keys, old_root_keys, search_key_func, pb=None):
+        """Initialize CHKMapDifference.
+
+        Args:
+            store: CHK store to retrieve nodes from.
+            new_root_keys: Keys of the new root nodes.
+            old_root_keys: Keys of the old root nodes.
+            search_key_func: Function to generate search keys.
+            pb: Optional progress bar.
+        """
         # TODO: Should we add a StaticTuple barrier here? It would be nice to
         #       force callers to use StaticTuple, because there will often be
         #       lots of keys passed in here. And even if we cast it locally,
@@ -1873,6 +1923,12 @@ class CHKMapDifference:
         return self._flush_new_queue()
 
     def process(self):
+        """Process the difference between old and new CHK maps.
+
+        Yields:
+            Tuples of (record, items) for pages and key-value pairs that
+            are in the new maps but not in the old maps.
+        """
         for record in self._read_all_roots():
             yield record, []
         for record, items in self._process_queues():
@@ -1904,23 +1960,12 @@ def iter_interesting_nodes(
     return iterator.process()
 
 
-try:
-    from ._chk_map_pyx import (
-        _bytes_to_text_key,
-        _deserialise_internal_node,
-        _deserialise_leaf_node,
-        _search_key_16,
-        _search_key_255,
-    )
-except ImportError as e:
-    osutils.failed_to_load_extension(e)
-    from ._chk_map_py import (
-        _bytes_to_text_key,  # noqa: F401
-        _deserialise_internal_node,
-        _deserialise_leaf_node,
-        _search_key_16,
-        _search_key_255,
-    )
+from .._bzr_rs import chk_map as _chk_map_rs
+
+_bytes_to_text_key = _chk_map_rs._bytes_to_text_key
+_search_key_16 = _chk_map_rs._search_key_16
+_search_key_255 = _chk_map_rs._search_key_255
+
 search_key_registry.register(b"hash-16-way", _search_key_16)
 search_key_registry.register(b"hash-255-way", _search_key_255)
 
@@ -1932,12 +1977,10 @@ def _check_key(key):
     to debug problems.
     """
     if not isinstance(key, tuple):
-        raise TypeError("key {!r} is not tuple but {}".format(key, type(key)))
+        raise TypeError(f"key {key!r} is not tuple but {type(key)}")
     if len(key) != 1:
         raise ValueError(f"key {key!r} should have length 1, not {len(key)}")
     if not isinstance(key[0], str):
-        raise TypeError(
-            "key {!r} should hold a str, not {!r}".format(key, type(key[0]))
-        )
+        raise TypeError(f"key {key!r} should hold a str, not {type(key[0])!r}")
     if not key[0].startswith("sha1:"):
-        raise ValueError("key {!r} should point to a sha1:".format(key))
+        raise ValueError(f"key {key!r} should point to a sha1:")

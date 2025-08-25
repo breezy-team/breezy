@@ -48,15 +48,38 @@ class MemoryTree(MutableInventoryTree):
         self._lock_mode = None
 
     def supports_symlinks(self):
+        """Check if this tree supports symbolic links.
+
+        Returns:
+            True, as MemoryTree supports symbolic links.
+        """
         return True
 
     def supports_tree_reference(self):
+        """Check if this tree supports tree references (nested trees).
+
+        Returns:
+            False, as MemoryTree does not support nested trees.
+        """
         return False
 
     def get_config_stack(self):
+        """Get the configuration stack for this tree.
+
+        Returns:
+            The configuration stack from the associated branch.
+        """
         return self.branch.get_config_stack()
 
     def is_control_filename(self, filename):
+        """Check if a filename is a control file.
+
+        Args:
+            filename: The filename to check.
+
+        Returns:
+            False, as MemoryTree has no control filenames.
+        """
         # Memory tree doesn't have any control filenames
         return False
 
@@ -95,6 +118,27 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
+    def iter_child_entries(self, path):
+        """Iterate over the child entries of a directory.
+
+        Args:
+            path: Path to the directory to iterate.
+
+        Returns:
+            Iterator over child inventory entries.
+
+        Raises:
+            NoSuchFile: If the path does not exist.
+            NotADirectory: If the path is not a directory.
+        """
+        with self.lock_read():
+            ie = self._inventory.get_entry_by_path(path)
+            if ie is None:
+                raise _mod_transport.NoSuchFile(path)
+            if ie.kind != "directory":
+                raise errors.NotADirectory(path)
+            return ie.children.values()
+
     def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
@@ -111,6 +155,15 @@ class MemoryTree(MutableInventoryTree):
         return entry.kind, entry.executable, None
 
     def rename_one(self, from_rel, to_rel):
+        """Rename a single file or directory.
+
+        Args:
+            from_rel: The relative path of the source.
+            to_rel: The relative path of the destination.
+
+        Returns:
+            None
+        """
         with self.lock_tree_write():
             file_id = self.path2id(from_rel)
             to_dir, to_tail = os.path.split(to_rel)
@@ -152,9 +205,25 @@ class MemoryTree(MutableInventoryTree):
         return self._file_transport.has(filename)
 
     def is_executable(self, path):
+        """Check if a file is executable.
+
+        Args:
+            path: Path to the file to check.
+
+        Returns:
+            True if the file is executable, False otherwise.
+        """
         return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path):
+        """Return the kind of entry at the given path.
+
+        Args:
+            path: Path to check the kind of.
+
+        Returns:
+            String describing the kind (e.g., 'file', 'directory', 'symlink').
+        """
         return self._inventory.get_entry_by_path(path).kind
 
     def mkdir(self, path, file_id=None):
@@ -312,6 +381,14 @@ class MemoryTree(MutableInventoryTree):
                 raise
 
     def get_symlink_target(self, path):
+        """Get the target of a symbolic link.
+
+        Args:
+            path: Path to the symbolic link.
+
+        Returns:
+            String target of the symbolic link.
+        """
         with self.lock_read():
             return self._file_transport.readlink(path)
 

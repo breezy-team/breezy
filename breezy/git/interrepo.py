@@ -16,6 +16,7 @@
 
 """InterRepository operations."""
 
+import contextlib
 import itertools
 from typing import Callable, Optional
 
@@ -24,13 +25,7 @@ from dulwich.object_store import ObjectStoreGraphWalker
 from dulwich.objects import ObjectID
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
-from dulwich.refs import SYMREF
-
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:  # dulwich < 0.21.3
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
-
+from dulwich.refs import PEELED_TAG_SUFFIX, SYMREF
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
@@ -65,6 +60,12 @@ class InterToGitRepository(InterRepository):
     _matching_repo_format = GitRepositoryFormat()
 
     def __init__(self, source, target):
+        """Initialize InterToGitRepository.
+
+        Args:
+            source: Source repository.
+            target: Target Git repository.
+        """
         super().__init__(source, target)
         self.mapping = self.target.get_mapping()
         self.source_store = get_object_store(self.source, self.mapping)
@@ -97,6 +98,17 @@ class InterToGitRepository(InterRepository):
     def search_missing_revision_ids(
         self, find_ghosts=True, revision_ids=None, if_present_ids=None, limit=None
     ):
+        """Search for missing revision ids in the target repository.
+
+        Args:
+            find_ghosts: Whether to find ghost revisions.
+            revision_ids: Specific revision ids to search for.
+            if_present_ids: Revision ids to search for if present.
+            limit: Maximum number of revisions to search for.
+
+        Returns:
+            SearchResult object containing missing revision ids.
+        """
         if limit is not None:
             raise FetchLimitUnsupported(self)
         git_shas = []
@@ -111,8 +123,8 @@ class InterToGitRepository(InterRepository):
                     continue
                 try:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
-                except KeyError:
-                    raise NoSuchRevision(revid, self.source)
+                except KeyError as err:
+                    raise NoSuchRevision(revid, self.source) from err
                 git_shas.append(git_sha)
             walker = Walker(
                 self.source_store,
@@ -148,6 +160,12 @@ class InterToLocalGitRepository(InterToGitRepository):
     target: LocalGitRepository
 
     def __init__(self, source, target):
+        """Initialize InterToLocalGitRepository.
+
+        Args:
+            source: Source repository.
+            target: Target local Git repository.
+        """
         super().__init__(source, target)
         self.target_store = self.target.controldir._git.object_store
         self.target_refs = self.target.controldir._git.refs
@@ -242,6 +260,16 @@ class InterToLocalGitRepository(InterToGitRepository):
         return bzr_refs
 
     def fetch_refs(self, update_refs, lossy, overwrite: bool = False):
+        """Fetch refs from source to target repository.
+
+        Args:
+            update_refs: Function to update refs.
+            lossy: Whether to allow lossy conversion.
+            overwrite: Whether to overwrite existing refs.
+
+        Returns:
+            Tuple of revision map, old refs, and new refs.
+        """
         self._warn_slow()
         result_refs = {}
         with self.source_store.lock_read():
@@ -279,6 +307,16 @@ class InterToLocalGitRepository(InterToGitRepository):
         return revidmap, old_refs, result_refs
 
     def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
+        """Fetch revisions from source to target repository.
+
+        Args:
+            revs: List of revisions to fetch as (git_sha, bzr_revid) tuples.
+            lossy: Whether to allow lossy conversion.
+            limit: Maximum number of revisions to fetch.
+
+        Returns:
+            Dictionary mapping old revision ids to (git_sha, new_revid) tuples.
+        """
         if not lossy and not self.mapping.roundtripping:
             for _git_sha, bzr_revid in revs:
                 if bzr_revid is not None and needs_roundtripping(
@@ -301,10 +339,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                         new_revid = self.mapping.revision_id_foreign_to_bzr(git_sha)
                     else:
                         new_revid = old_revid
-                        try:
+                        with contextlib.suppress(InvalidRevisionId):
                             self.mapping.revision_id_bzr_to_foreign(old_revid)
-                        except InvalidRevisionId:
-                            pass
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
                 return revidmap
@@ -312,6 +348,17 @@ class InterToLocalGitRepository(InterToGitRepository):
     def fetch(
         self, revision_id=None, find_ghosts: bool = False, lossy=False, fetch_spec=None
     ) -> FetchResult:
+        """Fetch revisions from source to target repository.
+
+        Args:
+            revision_id: Specific revision to fetch.
+            find_ghosts: Whether to find ghost revisions.
+            lossy: Whether to allow lossy conversion.
+            fetch_spec: Specification of what to fetch.
+
+        Returns:
+            FetchResult object.
+        """
         if revision_id is not None:
             stop_revisions = [(None, revision_id)]
         elif fetch_spec is not None:
@@ -319,16 +366,14 @@ class InterToLocalGitRepository(InterToGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 stop_revisions = [(None, revid) for revid in recipe[1]]
             else:
-                raise AssertionError(
-                    "Unsupported search result type {}".format(recipe[0])
-                )
+                raise AssertionError(f"Unsupported search result type {recipe[0]}")
         else:
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
             revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
-        except NoPushSupport:
-            raise NoRoundtrippingSupport(self.source, self.target)
+        except NoPushSupport as err:
+            raise NoRoundtrippingSupport(self.source, self.target) from err
         return FetchResult(revidmap)
 
     @staticmethod
@@ -340,6 +385,8 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 
 class InterToRemoteGitRepository(InterToGitRepository):
+    """InterRepository that copies into a remote Git repository."""
+
     target: RemoteGitRepository
 
     def fetch_refs(self, update_refs, lossy, overwrite: bool = False):
@@ -371,9 +418,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             )
             for ref, error in result.ref_status.items():
                 if error:
-                    raise RemoteGitError(
-                        "unable to update ref {!r}: {}".format(ref, error)
-                    )
+                    raise RemoteGitError(f"unable to update ref {ref!r}: {error}")
             new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
@@ -387,25 +432,56 @@ class InterToRemoteGitRepository(InterToGitRepository):
 
 
 class GitSearchResult(AbstractSearchResult):
+    """Search result implementation for Git repositories."""
+
     def __init__(self, start, exclude, keys):
+        """Initialize GitSearchResult.
+
+        Args:
+            start: Start keys for the search.
+            exclude: Keys to exclude from the search.
+            keys: All keys in the search result.
+        """
         self._start = start
         self._exclude = exclude
         self._keys = keys
 
     def get_keys(self):
+        """Get the keys in this search result.
+
+        Returns:
+            Set of revision keys.
+        """
         return self._keys
 
     def get_recipe(self):
+        """Get the recipe for this search result.
+
+        Returns:
+            Tuple describing the search parameters.
+        """
         return ("search", self._start, self._exclude, len(self._keys))
 
 
 class InterFromGitRepository(InterRepository):
+    """Base InterRepository that copies from a Git repository."""
+
     _matching_repo_format = GitRepositoryFormat()
 
     def _target_has_shas(self, shas):
         raise NotImplementedError(self._target_has_shas)
 
     def get_determine_wants_heads(self, wants, include_tags=False, tag_selector=None):
+        """Get a determine_wants function for specific heads.
+
+        Args:
+            wants: Set of object IDs to fetch.
+            include_tags: Whether to include tags.
+            tag_selector: Function to select which tags to include.
+
+        Returns:
+            Function that determines what objects to fetch.
+        """
         wants = set(wants)
 
         def determine_wants(refs):
@@ -432,6 +508,14 @@ class InterFromGitRepository(InterRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
+        """Determine all objects to fetch from refs.
+
+        Args:
+            refs: Dictionary of ref names to object IDs.
+
+        Returns:
+            List of object IDs to fetch.
+        """
         raise NotImplementedError(self.determine_wants_all)
 
     @staticmethod
@@ -445,6 +529,17 @@ class InterFromGitRepository(InterRepository):
     def search_missing_revision_ids(
         self, find_ghosts=True, revision_ids=None, if_present_ids=None, limit=None
     ):
+        """Search for missing revision ids in the target repository.
+
+        Args:
+            find_ghosts: Whether to find ghost revisions.
+            revision_ids: Specific revision ids to search for.
+            if_present_ids: Revision ids to search for if present.
+            limit: Maximum number of revisions to search for.
+
+        Returns:
+            SearchResult object containing missing revision ids.
+        """
         if limit is not None:
             raise FetchLimitUnsupported(self)
         if revision_ids is None and if_present_ids is None:
@@ -488,6 +583,14 @@ class InterGitNonGitRepository(InterFromGitRepository):
         return {revids[r] for r in self.target.has_revisions(revids)}
 
     def determine_wants_all(self, refs):
+        """Determine all objects to fetch from refs.
+
+        Args:
+            refs: Dictionary of ref names to object IDs.
+
+        Returns:
+            List of object IDs to fetch.
+        """
         potential = set()
         for k, v in refs.items():
             # For non-git target repositories, only worry about peeled
@@ -515,6 +618,16 @@ class InterGitNonGitRepository(InterFromGitRepository):
         raise NotImplementedError(self.fetch_objects)
 
     def get_determine_wants_revids(self, revids, include_tags=False, tag_selector=None):
+        """Get a determine_wants function for specific revision IDs.
+
+        Args:
+            revids: List of revision IDs to fetch.
+            include_tags: Whether to include tags.
+            tag_selector: Function to select which tags to include.
+
+        Returns:
+            Function that determines what objects to fetch.
+        """
         wants = set()
         for revid in set(revids):
             if self.target.has_revision(revid):
@@ -534,6 +647,19 @@ class InterGitNonGitRepository(InterFromGitRepository):
         include_tags=False,
         lossy=False,
     ):
+        """Fetch revisions from source to target repository.
+
+        Args:
+            revision_id: Specific revision to fetch.
+            find_ghosts: Whether to find ghost revisions.
+            mapping: Git mapping to use.
+            fetch_spec: Specification of what to fetch.
+            include_tags: Whether to include tags.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            FetchResult object.
+        """
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -543,9 +669,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 interesting_heads = recipe[1]
             else:
-                raise AssertionError(
-                    "Unsupported search result type {}".format(recipe[0])
-                )
+                raise AssertionError(f"Unsupported search result type {recipe[0]}")
         else:
             interesting_heads = None
 
@@ -572,6 +696,11 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """
 
     def get_target_heads(self):
+        """Get the head revisions in the target repository.
+
+        Returns:
+            Set of revision IDs that are heads in the target.
+        """
         # FIXME: This should be more efficient
         all_revs = self.target.all_revision_ids()
         parent_map = self.target.get_parent_map(all_revs)
@@ -674,6 +803,16 @@ class InterGitGitRepository(InterFromGitRepository):
     def fetch_refs(
         self, update_refs, lossy: bool = False, overwrite: bool = False
     ) -> tuple[RevidMap, EitherRefDict, EitherRefDict]:
+        """Fetch refs from source to target Git repository.
+
+        Args:
+            update_refs: Function to update refs.
+            lossy: Whether to allow lossy conversion.
+            overwrite: Whether to overwrite existing refs.
+
+        Returns:
+            Tuple of revision map, old refs, and new refs.
+        """
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         old_refs = self._get_target_either_refs()
@@ -698,9 +837,28 @@ class InterGitGitRepository(InterFromGitRepository):
         return {}, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
+        """Fetch objects from source repository.
+
+        Args:
+            determine_wants: Function to determine what objects to fetch.
+            limit: Maximum number of objects to fetch.
+            mapping: Git mapping to use.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            Pack hint, last revision, and remote refs.
+        """
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
+        """Check which SHA1s are present in the target repository.
+
+        Args:
+            shas: Iterable of SHA1s to check.
+
+        Returns:
+            Set of SHA1s that are present in the target.
+        """
         return {sha for sha in shas if sha in self.target._git.object_store}
 
     def fetch(
@@ -713,6 +871,20 @@ class InterGitGitRepository(InterFromGitRepository):
         include_tags=False,
         lossy=False,
     ):
+        """Fetch revisions from source to target Git repository.
+
+        Args:
+            revision_id: Specific revision to fetch.
+            find_ghosts: Whether to find ghost revisions.
+            fetch_spec: Specification of what to fetch.
+            branches: Specific branches to fetch.
+            limit: Maximum number of revisions to fetch.
+            include_tags: Whether to include tags.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            FetchResult object.
+        """
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if revision_id is not None:
@@ -722,9 +894,7 @@ class InterGitGitRepository(InterFromGitRepository):
             if recipe[0] in ("search", "proxy-search"):
                 heads = recipe[1]
             else:
-                raise AssertionError(
-                    "Unsupported search result type {}".format(recipe[0])
-                )
+                raise AssertionError(f"Unsupported search result type {recipe[0]}")
             args = heads
         if branches is not None:
             determine_wants = self.get_determine_wants_branches(
@@ -743,6 +913,16 @@ class InterGitGitRepository(InterFromGitRepository):
         return result
 
     def get_determine_wants_revids(self, revids, include_tags=False, tag_selector=None):
+        """Get a determine_wants function for specific revision IDs.
+
+        Args:
+            revids: List of revision IDs to fetch.
+            include_tags: Whether to include tags.
+            tag_selector: Function to select which tags to include.
+
+        Returns:
+            Function that determines what objects to fetch.
+        """
         wants = set()
         for revid in set(revids):
             if revid == NULL_REVISION:
@@ -754,6 +934,16 @@ class InterGitGitRepository(InterFromGitRepository):
         )
 
     def get_determine_wants_branches(self, branches, include_tags=False):
+        """Get a determine_wants function for specific branches.
+
+        Args:
+            branches: List of branch names to fetch.
+            include_tags: Whether to include tags.
+
+        Returns:
+            Function that determines what objects to fetch.
+        """
+
         def determine_wants(refs):
             ret = []
             for name, value in refs.items():
@@ -770,6 +960,14 @@ class InterGitGitRepository(InterFromGitRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
+        """Determine all objects to fetch from refs.
+
+        Args:
+            refs: Dictionary of ref names to object IDs.
+
+        Returns:
+            List of object IDs to fetch.
+        """
         potential = {
             v
             for k, v in refs.items()
@@ -779,12 +977,25 @@ class InterGitGitRepository(InterFromGitRepository):
 
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
+    """InterRepository that copies between local Git repositories."""
+
     source: LocalGitRepository
     target: LocalGitRepository
 
     def fetch_objects(
         self, determine_wants, limit=None, mapping=None, lossy: bool = False
     ):
+        """Fetch objects between local Git repositories.
+
+        Args:
+            determine_wants: Function to determine what objects to fetch.
+            limit: Maximum number of objects to fetch.
+            mapping: Git mapping to use.
+            lossy: Whether to allow lossy conversion.
+
+        Returns:
+            Pack hint, last revision, and remote refs.
+        """
         if limit is not None:
             raise FetchLimitUnsupported(self)
         if lossy:
@@ -807,7 +1018,19 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
 
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
+    """InterRepository that copies from a remote Git to a local Git repository."""
+
     def fetch_objects(self, determine_wants, limit=None, mapping=None):
+        """Fetch objects from remote Git to local Git repository.
+
+        Args:
+            determine_wants: Function to determine what objects to fetch.
+            limit: Maximum number of objects to fetch.
+            mapping: Git mapping to use.
+
+        Returns:
+            Pack hint, last revision, and remote refs.
+        """
         from tempfile import SpooledTemporaryFile
 
         if limit is not None:
@@ -850,6 +1073,8 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
 
 class InterLocalGitRemoteGitRepository(InterToGitRepository):
+    """InterRepository that pushes from a local Git to a remote Git repository."""
+
     def fetch_refs(self, update_refs, lossy=False, overwrite=False):
         """Import the gist of the ancestry of a particular revision."""
         if lossy:
@@ -875,6 +1100,15 @@ class InterLocalGitRemoteGitRepository(InterToGitRepository):
 
     @staticmethod
     def is_compatible(source, target):
+        """Check if this InterRepository is compatible with the given repositories.
+
+        Args:
+            source: Source repository.
+            target: Target repository.
+
+        Returns:
+            True if compatible, False otherwise.
+        """
         return isinstance(source, LocalGitRepository) and isinstance(
             target, RemoteGitRepository
         )

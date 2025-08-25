@@ -80,7 +80,7 @@ class FetchTests(TestCaseWithTransport):
         out = self.fetch([(git_sha1, "HEAD")])
         self.assertEqual(out, b"\n")
         r = Repo("local")
-        self.assertTrue(git_sha1 in r.object_store)
+        self.assertIn(git_sha1, r.object_store)
         self.assertEqual({}, r.get_refs())
 
 
@@ -103,9 +103,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         )
         (out, err) = p.communicate(b"capabilities\n")
         lines = out.splitlines()
-        self.assertIn(
-            b"push", lines, "no 'push' in {!r}, error: {!r}".format(lines, err)
-        )
+        self.assertIn(b"push", lines, f"no 'push' in {lines!r}, error: {err!r}")
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "
@@ -128,9 +126,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(
-            capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs
-        )
+        self.assertIn(capabs, (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()

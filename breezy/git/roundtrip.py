@@ -46,8 +46,7 @@ This extra metadata is stored in so-called "supplements":
 """
 
 from io import BytesIO
-
-from .. import osutils
+from typing import Any
 
 
 class CommitSupplement:
@@ -63,11 +62,17 @@ class CommitSupplement:
 
     explicit_parent_ids = None
 
-    def __init__(self):
-        self.properties = {}
-        self.verifiers = {}
+    def __init__(self) -> None:
+        """Initialize a new CommitSupplement."""
+        self.properties: dict[str, bytes] = {}
+        self.verifiers: dict[str, Any] = {}
 
-    def __nonzero__(self):
+    def __nonzero__(self) -> bool:
+        """Check if this supplement contains any data.
+
+        Returns:
+            bool: True if any supplemental data is present, False otherwise.
+        """
         return bool(self.revision_id or self.properties or self.explicit_parent_ids)
 
 
@@ -115,7 +120,7 @@ def generate_roundtripping_metadata(metadata, encoding):
         lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
-            lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))
+            lines.append(b"property-%s: %s\n" % (key, l))
     if b"testament3-sha1" in metadata.verifiers:
         lines.append(b"testament3-sha1: %s\n" % metadata.verifiers[b"testament3-sha1"])
     return b"".join(lines)
@@ -125,7 +130,7 @@ def extract_bzr_metadata(message):
     """Extract Bazaar metadata from a commit message.
 
     :param message: Commit message to extract from
-    :return: Tuple with original commit message and metadata object
+    :return: tuple with original commit message and metadata object
     """
     split = message.split(b"\n--BZR--\n", 1)
     if len(split) != 2:
@@ -134,6 +139,19 @@ def extract_bzr_metadata(message):
 
 
 def inject_bzr_metadata(message, commit_supplement, encoding):
+    """Inject Bazaar metadata into a commit message.
+
+    Args:
+        message: The original commit message.
+        commit_supplement: CommitSupplement object containing metadata to inject.
+        encoding: Character encoding to use.
+
+    Returns:
+        bytes: The commit message with injected metadata.
+
+    Raises:
+        TypeError: If roundtrip data is not bytes.
+    """
     if not commit_supplement:
         return message
     rt_data = generate_roundtripping_metadata(commit_supplement, encoding)

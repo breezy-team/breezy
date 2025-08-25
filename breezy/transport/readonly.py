@@ -80,9 +80,19 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
         raise TransportNotPossible("readonly transport")
 
     def get_smart_client(self):
+        """Get a smart protocol client.
+
+        Raises:
+            NoSmartMedium: Always raised as readonly transport doesn't support smart operations.
+        """
         raise NoSmartMedium(self)
 
     def get_smart_medium(self):
+        """Get a smart protocol medium.
+
+        Raises:
+            NoSmartMedium: Always raised as readonly transport doesn't support smart operations.
+        """
         raise NoSmartMedium(self)
 
 

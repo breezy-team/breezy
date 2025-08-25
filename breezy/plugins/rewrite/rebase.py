@@ -14,7 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Rebase."""
+"""Git-style rebase functionality for Breezy.
+
+This module provides comprehensive support for rebasing operations in Breezy,
+allowing users to replay commits on top of different base revisions. It includes
+facilities for managing rebase state, creating rebase plans, and executing
+the actual rebase operations using various rewriting strategies.
+
+The main components include:
+- RebaseState classes for tracking rebase progress
+- Plan generation functions for determining rebase operations
+- Revision rewriters for applying changes with new parents
+- Utility functions for managing the rebase process
+"""
 
 import os
 
@@ -38,48 +50,80 @@ REVPROP_REBASE_OF = "rebase-of"
 
 
 class RebaseState:
+    """Abstract base class for managing rebase state.
+
+    This class defines the interface for storing and retrieving rebase state
+    information, including rebase plans and currently active revision tracking.
+    Subclasses must implement the actual storage mechanisms.
+    """
+
     def has_plan(self):
         """Check whether there is a rebase plan present.
 
-        :return: boolean
+        Returns:
+            bool: True if a rebase plan exists, False otherwise.
         """
         raise NotImplementedError(self.has_plan)
 
     def read_plan(self):
         """Read a rebase plan file.
 
-        :return: Tuple with last revision info and replace map.
+        Returns:
+            tuple: A tuple containing (last_revision_info, replace_map) where
+                last_revision_info is a (revno, revid) tuple and replace_map
+                is a dictionary mapping old revision IDs to (new_revid, new_parents).
         """
         raise NotImplementedError(self.read_plan)
 
     def write_plan(self, replace_map):
         """Write a rebase plan file.
 
-        :param replace_map: Replace map (old revid -> (new revid, new parents))
+        Args:
+            replace_map (dict): Replace map where keys are old revision IDs (bytes)
+                and values are (new_revid, new_parents) tuples.
         """
         raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
-        """Remove a rebase plan file."""
+        """Remove a rebase plan file.
+
+        This method cleans up the rebase plan storage, effectively ending
+        the rebase operation state tracking.
+        """
         raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
         """Write the id of the revision that is currently being rebased.
 
-        :param revid: Revision id to write
+        Args:
+            revid (bytes or None): Revision ID of the revision currently being
+                rebased, or None if no revision is currently active.
         """
         raise NotImplementedError(self.write_active_revid)
 
     def read_active_revid(self):
         """Read the id of the revision that is currently being rebased.
 
-        :return: Id of the revision that is being rebased.
+        Returns:
+            bytes or None: ID of the revision that is being rebased, or None
+                if no revision is currently active.
         """
         raise NotImplementedError(self.read_active_revid)
 
 
 class RebaseState1(RebaseState):
+    """File-based implementation of RebaseState using transport.
+
+    This class manages rebase state by storing information in files through
+    a transport mechanism, typically representing files in the working tree.
+    """
+
     def __init__(self, wt):
+        """Initialize rebase state for a working tree.
+
+        Args:
+            wt: Working tree that will contain the rebase state files.
+        """
         self.wt = wt
         self.transport = wt._transport
 
@@ -101,7 +145,8 @@ class RebaseState1(RebaseState):
         """See `RebaseState`."""
         self.wt.update_feature_flags({b"rebase-v1": b"write-required"})
         content = marshall_rebase_plan(self.wt.branch.last_revision_info(), replace_map)
-        assert isinstance(content, bytes)
+        if not isinstance(content, bytes):
+            raise AssertionError(content)
         self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
     def remove_plan(self):
@@ -113,7 +158,8 @@ class RebaseState1(RebaseState):
         """See `RebaseState`."""
         if revid is None:
             revid = NULL_REVISION
-        assert isinstance(revid, bytes)
+        if not isinstance(revid, bytes):
+            raise AssertionError(revid)
         self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
 
     def read_active_revid(self):
@@ -208,10 +254,12 @@ def generate_simple_plan(
 
     :return: replace map
     """
-    assert start_revid is None or start_revid in todo_set, (
-        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
-    )
-    assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
+    if start_revid is not None and start_revid not in todo_set:
+        raise AssertionError(
+            f"invalid start revid({start_revid!r}), todo_set({todo_set!r})"
+        )
+    if stop_revid is not None and stop_revid not in todo_set:
+        raise AssertionError(f"invalid stop_revid {stop_revid}")
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
     order = topo_sort(parent_map)
@@ -229,7 +277,8 @@ def generate_simple_plan(
     # by the heads cache? RBC 20080719
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
-        assert isinstance(oldparents, tuple), "not tuple: {!r}".format(oldparents)
+        if not isinstance(oldparents, tuple):
+            raise AssertionError(f"not tuple: {oldparents!r}")
         parents = []
         # Left parent:
         if heads_cache.heads((oldparents[0], onto_revid)) == {onto_revid}:
@@ -258,20 +307,33 @@ def generate_simple_plan(
                 continue
         parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
-        assert newrevid != oldrevid, "old and newrevid equal ({!r})".format(newrevid)
-        assert isinstance(parents, tuple), "parents not tuple: {!r}".format(parents)
+        if newrevid == oldrevid:
+            raise AssertionError(f"old and newrevid equal ({newrevid!r})")
+        if not isinstance(parents, tuple):
+            raise AssertionError(f"parents not tuple: {parents!r}")
         replace_map[oldrevid] = (newrevid, parents)
     return replace_map
 
 
 def generate_transpose_plan(ancestry, renames, graph, generate_revid):
-    """Create a rebase plan that replaces a bunch of revisions
-    in a revision graph.
+    """Create a rebase plan that replaces a bunch of revisions in a revision graph.
 
-    :param ancestry: Ancestry to consider
-    :param renames: Renames of revision
-    :param graph: Graph object
-    :param generate_revid: Function for creating new revision ids
+    This function creates a rebase plan for transposing revisions, which involves
+    replacing a set of revisions with new ones while maintaining the graph structure
+    and updating all dependent revisions accordingly.
+
+    Args:
+        ancestry: List of (revision_id, parent_ids) tuples representing the ancestry
+            to consider for the transpose operation.
+        renames: Dictionary mapping old revision IDs to new revision IDs that should
+            replace them.
+        graph: Graph object providing access to revision relationships.
+        generate_revid: Function that generates new revision IDs. Should accept
+            (old_revid, parents_tuple) and return a new revision ID.
+
+    Returns:
+        dict: Replace map mapping old revision IDs to (new_revid, new_parents) tuples
+            for all revisions that need to be rewritten.
     """
     replace_map = {}
     todo = []
@@ -314,13 +376,9 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
             for c in children[r]:
                 if c in renames:
                     continue
-                if c in replace_map:
-                    parents = replace_map[c][1]
-                else:
-                    parents = parent_map[c]
-                assert isinstance(parents, tuple), (
-                    "Expected tuple of parents, got: {!r}".format(parents)
-                )
+                parents = replace_map[c][1] if c in replace_map else parent_map[c]
+                if not isinstance(parents, tuple):
+                    raise AssertionError(f"Expected tuple of parents, got: {parents!r}")
                 # replace r in parents with replace_map[r][0]
                 if replace_map[r][0] not in parents:
                     parents = list(parents)
@@ -344,21 +402,39 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
 def rebase_todo(repository, replace_map):
     """Figure out what revisions still need to be rebased.
 
-    :param repository: Repository that contains the revisions
-    :param replace_map: Replace map
+    This function examines a replace map and determines which revisions
+    still need to be rebased by checking if their new versions already
+    exist in the repository.
+
+    Args:
+        repository: Repository that contains the revisions to be checked.
+        replace_map: Dictionary mapping old revision IDs to (new_revid, new_parents)
+            tuples representing the rebase plan.
+
+    Yields:
+        bytes: Revision IDs that still need to be rebased (i.e., their new
+            versions don't exist in the repository yet).
     """
     for revid, parent_ids in replace_map.items():
-        assert isinstance(parent_ids, tuple), "replace map parents not tuple"
+        if not isinstance(parent_ids, tuple):
+            raise AssertionError("replace map parents not tuple")
         if not repository.has_revision(parent_ids[0]):
             yield revid
 
 
 def rebase(repository, replace_map, revision_rewriter):
-    """Rebase a working tree according to the specified map.
+    """Rebase revisions according to the specified replacement map.
 
-    :param repository: Repository that contains the revisions
-    :param replace_map: Dictionary with revisions to (optionally) rewrite
-    :param merge_fn: Function for replaying a revision
+    This function performs the actual rebase operation by processing revisions
+    in topological order and applying the specified replacements using the
+    provided revision rewriter.
+
+    Args:
+        repository: Repository that contains the revisions to be rebased.
+        replace_map: Dictionary mapping old revision IDs to (new_revid, new_parents)
+            tuples that specify how each revision should be rewritten.
+        revision_rewriter: Callable that handles rewriting individual revisions.
+            Should accept (old_revid, new_revid, new_parents) parameters.
     """
     # Figure out the dependencies
     graph = repository.get_graph()
@@ -368,9 +444,8 @@ def rebase(repository, replace_map, revision_rewriter):
         for i, revid in enumerate(todo):
             pb.update("rebase revisions", i, len(todo))
             (newrevid, newparents) = replace_map[revid]
-            assert isinstance(newparents, tuple), "Expected tuple for {!r}".format(
-                newparents
-            )
+            if not isinstance(newparents, tuple):
+                raise AssertionError(f"Expected tuple for {newparents!r}")
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
@@ -380,6 +455,19 @@ def rebase(repository, replace_map, revision_rewriter):
 
 
 def wrap_iter_changes(old_iter_changes, map_tree):
+    """Wrap an iter_changes iterator to map file IDs through a MapTree.
+
+    This function takes an iterator of inventory changes and modifies the
+    file IDs and parent IDs according to a mapping tree, preserving all
+    other change information.
+
+    Args:
+        old_iter_changes: Iterator of InventoryTreeChange objects.
+        map_tree: MapTree object that provides file ID mapping.
+
+    Yields:
+        InventoryTreeChange: Modified change objects with mapped file IDs.
+    """
     for change in old_iter_changes:
         if change.parent_id[0] is not None:
             old_parent = map_tree.new_id(change.parent_id[0])
@@ -402,16 +490,37 @@ def wrap_iter_changes(old_iter_changes, map_tree):
 
 
 class CommitBuilderRevisionRewriter:
-    """Revision rewriter that use commit builder.
+    """Revision rewriter that uses commit builder to create new revisions.
 
-    :ivar repository: Repository in which the revision is present.
+    This class rewrites revisions by creating new commits with the same content
+    but different parent revisions. It uses the repository's commit builder API
+    to efficiently create the new revisions while optionally mapping file IDs.
+
+    Attributes:
+        repository: Repository in which the revisions are present.
+        map_ids (bool): Whether to map file IDs when rewriting revisions.
     """
 
     def __init__(self, repository, map_ids=True):
+        """Initialize the revision rewriter with a repository.
+
+        Args:
+            repository: Repository containing the revisions to rewrite.
+            map_ids (bool, optional): Whether to map file IDs when rewriting.
+                Defaults to True.
+        """
         self.repository = repository
         self.map_ids = map_ids
 
     def _get_present_revisions(self, revids):
+        """Filter a list of revision IDs to only include those present in repository.
+
+        Args:
+            revids: Iterable of revision IDs to filter.
+
+        Returns:
+            tuple: Tuple containing only revision IDs that exist in the repository.
+        """
         return tuple([p for p in revids if self.repository.has_revision(p)])
 
     def __call__(self, oldrevid, newrevid, new_parents):
@@ -422,9 +531,10 @@ class CommitBuilderRevisionRewriter:
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), (
-            "CommitBuilderRevisionRewriter: Expected tuple for {!r}".format(new_parents)
-        )
+        if not isinstance(new_parents, tuple):
+            raise AssertionError(
+                f"CommitBuilderRevisionRewriter: Expected tuple for {new_parents!r}"
+            )
         mutter(
             "creating copy %r of %r with new parents %r",
             newrevid,
@@ -483,8 +593,21 @@ class CommitBuilderRevisionRewriter:
 
 
 class WorkingTreeRevisionRewriter:
+    """Revision rewriter that replays commits in a working tree.
+
+    This class handles rewriting revisions by replaying them in a working tree,
+    using merge operations to apply changes with different parent revisions.
+    """
+
     def __init__(self, wt, state, merge_type=None):
-        """:param wt: Working tree in which to do the replays."""
+        """Initialize the working tree revision rewriter.
+
+        Args:
+            wt: Working tree in which to replay the revisions.
+            state: RebaseState object for tracking rebase progress.
+            merge_type (optional): Merger class to use for merges. If None,
+                defaults to Merge3Merger.
+        """
         self.wt = wt
         self.graph = self.wt.branch.repository.get_graph()
         self.state = state
@@ -508,9 +631,8 @@ class WorkingTreeRevisionRewriter:
         # Make sure there are no conflicts or pending merges/changes
         # in the working tree
         complete_revert(self.wt, [newparents[0]])
-        assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), (
-            "Changes in rev"
-        )
+        if self.wt.changes_from(self.wt.basis_tree()).has_changed():
+            raise AssertionError("Changes in rev")
 
         repository.revision_tree(oldrevid)
         self.state.write_active_revid(oldrevid)
@@ -520,9 +642,7 @@ class WorkingTreeRevisionRewriter:
             oldrevid, oldrev.parent_ids, newrevid, newparents
         )
         mutter(
-            "replaying {!r} as {!r} with base {!r} and new parents {!r}".format(
-                oldrevid, newrevid, base_revid, newparents
-            )
+            f"replaying {oldrevid!r} as {newrevid!r} with base {base_revid!r} and new parents {newparents!r}"
         )
         merger.set_base_revision(base_revid, self.wt.branch)
         merger.merge_type = merge_type
@@ -569,7 +689,8 @@ class WorkingTreeRevisionRewriter:
         :param oldrev: Revision info of new revision to commit.
         :param newrevid: New revision id.
         """
-        assert oldrev.revision_id != newrevid, "Invalid revid {!r}".format(newrevid)
+        if oldrev.revision_id == newrevid:
+            raise AssertionError(f"Invalid revid {newrevid!r}")
         revprops = dict(oldrev.properties)
         revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode("utf-8")
         committer = self.wt.branch.get_config().username()
@@ -596,11 +717,15 @@ class WorkingTreeRevisionRewriter:
 
 
 def complete_revert(wt, newparents):
-    """Simple helper that reverts to specified new parents and makes sure none
-    of the extra files are left around.
+    """Complete revert to specified parents, cleaning up extra files.
 
-    :param wt: Working tree to use for rebase
-    :param newparents: New parents of the working tree
+    This function performs a complete revert of the working tree to the specified
+    parent revisions, ensuring that no leftover files from the previous state
+    remain in the working directory.
+
+    Args:
+        wt: Working tree to revert.
+        newparents: List of revision IDs to set as the new parent revisions.
     """
     newtree = wt.branch.repository.revision_tree(newparents[0])
     delta = wt.changes_from(newtree)
@@ -614,15 +739,25 @@ def complete_revert(wt, newparents):
             else:
                 os.unlink(abs_path)
     wt.revert(None, old_tree=newtree, backups=False)
-    assert not wt.changes_from(wt.basis_tree()).has_changed(), "Rev changed"
+    if wt.changes_from(wt.basis_tree()).has_changed():
+        raise AssertionError("Rev changed")
     wt.set_parent_ids([r for r in newparents if r != NULL_REVISION])
 
 
 class ReplaySnapshotError(BzrError):
-    """Raised when replaying a snapshot failed."""
+    """Raised when replaying a snapshot failed.
+
+    This exception is raised when there are problems during the process
+    of replaying a revision snapshot during rebase operations.
+    """
 
     _fmt = """Replaying the snapshot failed: %(msg)s."""
 
     def __init__(self, msg):
+        """Initialize the error with a descriptive message.
+
+        Args:
+            msg (str): Description of what went wrong during snapshot replay.
+        """
         BzrError.__init__(self)
         self.msg = msg

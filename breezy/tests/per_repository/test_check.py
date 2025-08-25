@@ -18,8 +18,9 @@
 """Test operations that check the repository for corruption."""
 
 from breezy import revision as _mod_revision
-from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests.per_repository import TestCaseWithRepository
+
+from ...bzr.inventorytree import InventoryTreeChange
 
 
 class TestCleanRepository(TestCaseWithRepository):
@@ -52,4 +53,4 @@ class TestCleanRepository(TestCaseWithRepository):
         result = branch.repository.check(None, check_repo=True)
         result.report_results(True)
         log = self.get_log()
-        self.assertFalse("Missing" in log, "Something was missing in {!r}".format(log))
+        self.assertNotIn("Missing", log, f"Something was missing in {log!r}")

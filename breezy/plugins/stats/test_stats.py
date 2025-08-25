@@ -1,3 +1,5 @@
+"""Tests for the stats plugin functionality."""
+
 from ...revision import Revision
 from ...tests import TestCase, TestCaseWithTransport
 from .cmds import collapse_by_person, get_revisions_and_committers
@@ -64,9 +66,36 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
 class TestCollapseByPerson(TestCase):
     def test_no_conflicts(self):
         revisions = [
-            Revision("1", {}, committer="Foo <foo@example.com>"),
-            Revision("2", {}, committer="Bar <bar@example.com>"),
-            Revision("3", {}, committer="Bar <bar@example.com>"),
+            Revision(
+                b"1",
+                [],
+                committer="Foo <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"2",
+                [],
+                committer="Bar <bar@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"3",
+                [],
+                committer="Bar <bar@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
         ]
         foo = ("Foo", "foo@example.com")
         bar = ("Bar", "bar@example.com")
@@ -78,9 +107,36 @@ class TestCollapseByPerson(TestCase):
 
     def test_different_email(self):
         revisions = [
-            Revision("1", {}, committer="Foo <foo@example.com>"),
-            Revision("2", {}, committer="Foo <bar@example.com>"),
-            Revision("3", {}, committer="Foo <bar@example.com>"),
+            Revision(
+                b"1",
+                [],
+                committer="Foo <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"2",
+                [],
+                committer="Foo <bar@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"3",
+                [],
+                committer="Foo <bar@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
         ]
         foo = ("Foo", "foo@example.com")
         bar = ("Foo", "bar@example.com")
@@ -92,9 +148,36 @@ class TestCollapseByPerson(TestCase):
 
     def test_different_name(self):
         revisions = [
-            Revision("1", {}, committer="Foo <foo@example.com>"),
-            Revision("2", {}, committer="Bar <foo@example.com>"),
-            Revision("3", {}, committer="Bar <foo@example.com>"),
+            Revision(
+                b"1",
+                [],
+                committer="Foo <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"2",
+                [],
+                committer="Bar <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"3",
+                [],
+                committer="Bar <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
         ]
         foo = ("Foo", "foo@example.com")
         bar = ("Bar", "foo@example.com")
@@ -106,9 +189,36 @@ class TestCollapseByPerson(TestCase):
 
     def test_different_name_case(self):
         revisions = [
-            Revision("1", {}, committer="Foo <foo@example.com>"),
-            Revision("2", {}, committer="Foo <foo@example.com>"),
-            Revision("3", {}, committer="FOO <bar@example.com>"),
+            Revision(
+                b"1",
+                [],
+                committer="Foo <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"2",
+                [],
+                committer="Foo <foo@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
+            Revision(
+                b"3",
+                [],
+                committer="FOO <bar@example.com>",
+                message="",
+                properties={},
+                timestamp=0,
+                timezone=None,
+                inventory_sha1=None,
+            ),
         ]
         foo = ("Foo", "foo@example.com")
         FOO = ("FOO", "bar@example.com")

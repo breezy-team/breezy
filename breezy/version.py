@@ -26,22 +26,36 @@ from . import bedding, controldir, errors, osutils, trace
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
+    """Display version information about Breezy.
+
+    Shows version details including the Breezy version, Python interpreter
+    information, platform details, and optionally configuration paths and
+    copyright information.
+
+    Args:
+        show_config: If True, display configuration directory and log file paths.
+            Defaults to True.
+        show_copyright: If True, display copyright and license information.
+            Defaults to True.
+        to_file: File-like object to write the version information to.
+            If None, uses sys.stdout. Defaults to None.
+    """
     if to_file is None:
         to_file = sys.stdout
-    to_file.write("Breezy (brz) {}\n".format(breezy.__version__))
+    to_file.write(f"Breezy (brz) {breezy.__version__}\n")
     # is breezy itself in a branch?
     src_tree = _get_brz_source_tree()
     if src_tree:
         src_revision_id = src_tree.last_revision()
-        to_file.write("  from brz checkout {}\n".format(src_tree.basedir))
+        to_file.write(f"  from brz checkout {src_tree.basedir}\n")
         try:
             revno = src_tree.branch.revision_id_to_revno(src_revision_id)
         except errors.GhostRevisionsHaveNoRevno:
             pass
         else:
-            to_file.write("    revision: {}\n".format(revno))
-        to_file.write("    revid: {}\n".format(src_revision_id))
-        to_file.write("    branch nick: {}\n".format(src_tree.branch.nick))
+            to_file.write(f"    revision: {revno}\n")
+        to_file.write(f"    revid: {src_revision_id}\n")
+        to_file.write(f"    branch nick: {src_tree.branch.nick}\n")
 
     to_file.write("  Python interpreter: ")
     # show path to python interpreter
@@ -65,7 +79,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     platform_str = platform.platform(aliased=1)
     if not isinstance(platform_str, str):
         platform_str = platform_str.decode("utf-8")
-    to_file.write("  Platform: {}\n".format(platform_str))
+    to_file.write(f"  Platform: {platform_str}\n")
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
@@ -77,9 +91,9 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         config_dir = osutils.normpath(bedding.config_dir())  # use native slashes
         if not isinstance(config_dir, str):
             config_dir = config_dir.decode(osutils.get_user_encoding())
-        to_file.write("  Breezy configuration: {}\n".format(config_dir))
+        to_file.write(f"  Breezy configuration: {config_dir}\n")
         to_file.write("  Breezy log file: ")
-        to_file.write(trace._brz_log_filename + "\n")
+        to_file.write(trace.get_brz_log_filename() + "\n")
     if show_copyright:
         to_file.write("\n")
         to_file.write(breezy.__copyright__ + "\n")

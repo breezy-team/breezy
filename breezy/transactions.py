@@ -47,6 +47,11 @@ class Transaction:
     """Base class for transactions."""
 
     def writeable(self) -> bool:
+        """Return whether this transaction allows writes.
+
+        Returns:
+            True if writes are allowed, False otherwise.
+        """
         raise NotImplementedError(self.writeable)
 
 
@@ -57,6 +62,7 @@ class ReadOnlyTransaction(Transaction):
         """Clean up this transaction."""
 
     def __init__(self):
+        """Initialize a read-only transaction."""
         super().__init__()
         self.map = IdentityMap()
         self._clean_objects = set()
@@ -68,7 +74,7 @@ class ReadOnlyTransaction(Transaction):
         """Return True if an_object is clean."""
         return an_object in self._clean_objects
 
-    def register_clean(self, an_object, precious=False):
+    def register_clean(self, an_object, precious: bool = False) -> None:
         """Register an_object as being clean.
 
         If the precious hint is True, the object will not
@@ -144,6 +150,7 @@ class WriteTransaction(ReadOnlyTransaction):
                 callback()
 
     def __init__(self):
+        """Initialize a write transaction."""
         super().__init__()
         self._dirty_objects = set()
 
@@ -184,6 +191,7 @@ class PassThroughTransaction(Transaction):
                 callback()
 
     def __init__(self):
+        """Initialize a pass-through transaction."""
         super().__init__()
         self.map = NullIdentityMap()
         self._dirty_objects = set()

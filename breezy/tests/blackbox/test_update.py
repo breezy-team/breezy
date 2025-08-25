@@ -21,7 +21,8 @@ import os
 
 from breezy import branch, osutils, tests, workingtree
 from breezy.bzr import bzrdir
-from breezy.tests.script import ScriptRunner
+
+from ..script import ScriptRunner
 
 
 class TestUpdate(tests.TestCaseWithTransport):
@@ -29,7 +30,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree(".")
         out, err = self.run_bzr("update")
         self.assertEqual(
-            "Tree is up to date at revision 0 of branch {}\n".format(self.test_dir), err
+            f"Tree is up to date at revision 0 of branch {self.test_dir}\n", err
         )
         self.assertEqual("", out)
 
@@ -435,7 +436,7 @@ $ brz update -r revid:m2
             )
 
     def test_update_checkout_prevent_double_merge(self):
-        """ "Launchpad bug 113809 in brz "update performs two merges"
+        """Launchpad bug 113809 in brz "update performs two merges
         https://launchpad.net/bugs/113809.
         """
         master = self.make_branch_and_tree("master")

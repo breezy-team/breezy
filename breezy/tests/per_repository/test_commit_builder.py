@@ -21,9 +21,10 @@ import os
 from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
 from breezy.bzr import inventorytree
-from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import features, per_repository
+from breezy.transport.local import file_kind
 
+from ...bzr.inventorytree import InventoryTreeChange
 from ..test_bedding import override_whoami
 
 
@@ -286,10 +287,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def _add_commit_check_unchanged(self, tree, name):
         tree.add([name])
-        if tree.supports_file_ids:
-            file_id = tree.path2id(name)
-        else:
-            file_id = None
+        file_id = tree.path2id(name) if tree.supports_file_ids else None
         self._commit_check_unchanged(tree, name, file_id)
 
     def _commit_check_unchanged(self, tree, name, file_id):
@@ -549,9 +547,12 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             new_entry = next(revtree.iter_entries_by_dir(specific_files=[new_name]))[1]
 
             if delta_against_basis:
-                (delta_old_name, delta_new_name, delta_file_id, delta_entry) = (
-                    delta_dict[new_name]
-                )
+                (
+                    delta_old_name,
+                    delta_new_name,
+                    delta_file_id,
+                    delta_entry,
+                ) = delta_dict[new_name]
                 self.assertEqual(delta_new_name, new_name)
                 if tree.supports_rename_tracking():
                     self.assertEqual(name, delta_old_name)
@@ -818,7 +819,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            if osutils.file_kind(path) == "directory":
+            if file_kind(path) == "directory":
                 osutils.rmtree(path)
             else:
                 osutils.delete_any(path)
@@ -837,10 +838,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             )
         try:
             self._check_kind_change(self.make_dir, self.make_file, expect_fs_hash=True)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from directory to file"
-            )
+            ) from err
 
     def test_last_modified_dir_link(self):
         if not self.repository_format.supports_versioned_directories:
@@ -851,10 +852,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             )
         try:
             self._check_kind_change(self.make_dir, self.make_link)
-        except errors.UnsupportedKindChange:
+        except errors.UnsupportedKindChange as err:
             raise tests.TestSkipped(
                 "tree does not support changing entry kind from directory to link"
-            )
+            ) from err
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file, expect_fs_hash=True)
@@ -912,10 +913,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             try:
                 rev_id = builder.commit("foo bar blah")
-            except NotImplementedError:
+            except NotImplementedError as err:
                 raise tests.TestNotApplicable(
                     "Format does not support revision properties"
-                )
+                ) from err
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual("foo bar blah", rev.message)
 
@@ -952,8 +953,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         repo_local = branch.repository
         try:
             repo_local.add_fallback_repository(repo_basis)
-        except errors.UnstackableRepositoryFormat:
-            raise tests.TestNotApplicable("not a stackable format.")
+        except errors.UnstackableRepositoryFormat as err:
+            raise tests.TestNotApplicable("not a stackable format.") from err
         self.addCleanup(repo_local.lock_write().unlock)
         if not repo_local._format.supports_chks:
             self.assertRaises(

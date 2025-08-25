@@ -16,6 +16,12 @@
 
 # Original author: David Allouche
 
+"""Branch switching logic for lightweight checkouts.
+
+This module implements the logic for switching a lightweight checkout
+to point to a different branch.
+"""
+
 from . import errors, merge, revision
 from .branch import Branch
 from .i18n import gettext
@@ -158,7 +164,7 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
                         "%(error)s To switch anyway, use --force."
                     )
                     % e.__dict__
-                )
+                ) from e
             with b.lock_write():
                 b.set_bound_location(None)
                 b.pull(

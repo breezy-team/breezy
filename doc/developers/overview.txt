@@ -4,7 +4,7 @@ Breezy Architectural Overview
 
 This document describes the key classes and concepts within Breezy.  It is
 intended to be useful to people working on the Breezy codebase, or to
-people writing plugins.  People writing plugins may also like to read the 
+people writing plugins.  People writing plugins may also like to read the
 guide to `Integrating with Breezy <integration.html>`_ for some specific recipes.
 
 There's some overlap between this and the `Core Concepts`_ section of the
@@ -14,7 +14,7 @@ internals.  In particular the user guide doesn't go any deeper than
 like inventories, but this guide does.
 
 If you have any questions, or if something seems to be incorrect, unclear
-or missing, please talk to us in ``irc://irc.oftc.net/#breezy``, write to
+or missing, please talk to us on Matrix in ``#breezy:matrix.org``, write to
 the Breezy mailing list, or simply file a bug report.
 
 
@@ -160,7 +160,7 @@ More information
 
 See also:
 
-* `Developer guide to breezy transports <transports.html>`_ 
+* `Developer guide to breezy transports <transports.html>`_
 * API docs for ``breezy.transport.Transport``
 
 Control directory
@@ -207,7 +207,7 @@ WorkingTree
 ===========
 
 A workingtree is a special type of Tree that's associated with a working
-directory on disk, where the user can directly modify the files. 
+directory on disk, where the user can directly modify the files.
 
 Responsibilities:
 
@@ -229,7 +229,7 @@ Branch
 ======
 
 A Branch is a key user concept - its a single line of history that one or
-more people have been committing to. 
+more people have been committing to.
 
 A Branch is responsible for:
 
@@ -254,7 +254,7 @@ and graph relationships between them.  A repository holds a bag of
 revision data that can be pointed to by various branches:
 
 * Maintains storage of various history data at a URL:
-  
+
   * Revisions (Must have a matching inventory)
   * Digital Signatures
   * Inventories for each Revision. (Must have all the file texts available).

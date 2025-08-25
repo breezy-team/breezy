@@ -14,8 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for breezy.clean_tree module."""
 
-import errno
 import os
 import shutil
 import sys
@@ -28,7 +28,10 @@ from . import TestCaseInTempDir
 
 
 class TestCleanTree(TestCaseInTempDir):
+    """Test cases for clean_tree functionality."""
+
     def test_symlinks(self):
+        """Test that clean_tree handles symlinks safely without following them."""
         if supports_symlinks(self.test_dir) is False:
             return
         os.mkdir("branch")
@@ -75,9 +78,7 @@ class TestCleanTree(TestCaseInTempDir):
                 # Simulate 'permission denied' error.
                 # This should show up as a warning for the
                 # user.
-                e = OSError()
-                e.errno = errno.EACCES
-                raise e
+                raise PermissionError()
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             """Call user supplied error handler onerror."""
@@ -86,9 +87,8 @@ class TestCleanTree(TestCaseInTempDir):
             # to the user as a warning. We raise OSError to construct
             # proper excinfo that needs to be passed to onerror
             try:
-                raise OSError
-            except OSError as e:
-                e.errno = errno.EACCES
+                raise PermissionError
+            except PermissionError:
                 excinfo = sys.exc_info()
                 function = os.remove
                 if "subdir0" not in path:
@@ -114,4 +114,6 @@ class TestCleanTree(TestCaseInTempDir):
         # Ensure that error other than EACCES during os.remove are
         # not turned into warnings.
         self.build_tree(["subdir1/"])
-        self.assertRaises(OSError, clean_tree, ".", unknown=True, no_prompt=True)
+        self.assertRaises(
+            PermissionError, clean_tree, ".", unknown=True, no_prompt=True
+        )

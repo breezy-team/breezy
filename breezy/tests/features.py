@@ -117,7 +117,7 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
-class _CompatabilityThunkFeature(Feature):
+class _CompatibilityThunkFeature(Feature):
     """This feature is just a thunk to another feature.
 
     It issues a deprecation warning if it is accessed, to let you know that you
@@ -141,7 +141,7 @@ class _CompatabilityThunkFeature(Feature):
         if self._feature is None:
             from breezy import pyutils
 
-            depr_msg = self._dep_version % ("{}.{}".format(self._module, self._name))
+            depr_msg = self._dep_version % (f"{self._module}.{self._name}")
             use_msg = " Use {}.{} instead.".format(
                 self._replacement_module, self._replacement_name
             )
@@ -182,7 +182,7 @@ class ModuleAvailableFeature(Feature):
                     warnings.simplefilter("ignore", warning_category)
                 try:
                     self._module = importlib.import_module(self.module_name)
-                except ImportError:
+                except ModuleNotFoundError:
                     return False
                 return True
         else:
@@ -214,18 +214,18 @@ class PluginLoadedFeature(Feature):
         self.plugin_name = plugin_name
 
     def _probe(self):
-        from breezy.plugin import get_loaded_plugin
+        from ..plugin import get_loaded_plugin
 
         return get_loaded_plugin(self.plugin_name) is not None
 
     @property
     def plugin(self):
-        from breezy.plugin import get_loaded_plugin
+        from ..plugin import get_loaded_plugin
 
         return get_loaded_plugin(self.plugin_name)
 
     def feature_name(self):
-        return "{} plugin".format(self.plugin_name)
+        return f"{self.plugin_name} plugin"
 
 
 class _HTTPSServerFeature(Feature):
@@ -356,7 +356,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
     def _probe(self):
         if CaseInsCasePresFilenameFeature.available():
             return False
-        return not CaseInsensitiveFilesystemFeature.available()
+        return CaseInsensitiveFilesystemFeature.available()
 
     def feature_name(self):
         return "case-sensitive filesystem"
@@ -444,11 +444,12 @@ class ExecutableFeature(Feature):
         return self._path is not None
 
     def feature_name(self):
-        return "{} executable".format(self.name)
+        return f"{self.name} executable"
 
 
 bash_feature = ExecutableFeature("bash")
 diff_feature = ExecutableFeature("diff")
+patch_feature = ExecutableFeature("patch")
 sed_feature = ExecutableFeature("sed")
 msgmerge_feature = ExecutableFeature("msgmerge")
 
@@ -481,18 +482,15 @@ class _StraceFeature(Feature):
     def _probe(self):
         try:
             proc = subprocess.Popen(
-                ["strace"], stderr=subprocess.PIPE, stdout=subprocess.PIPE
+                ["strace"],  # noqa: S607
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
             )
             proc.communicate()
             return True
-        except OSError as e:
-            import errno
-
-            if e.errno == errno.ENOENT:
-                # strace is not installed
-                return False
-            else:
-                raise
+        except FileNotFoundError:
+            # strace is not installed
+            return False
 
     def feature_name(self):
         return "strace"
@@ -506,7 +504,7 @@ class _AttribFeature(Feature):
         if sys.platform not in ("cygwin", "win32"):
             return False
         try:
-            proc = subprocess.Popen(["attrib", "."], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(["attrib", "."], stdout=subprocess.PIPE)  # noqa: S607
         except OSError:
             return False
         return proc.wait() == 0
@@ -566,4 +564,4 @@ class PathFeature(Feature):
         return os.path.exists(self.path)
 
     def feature_name(self):
-        return "{} exists".format(self.path)
+        return f"{self.path} exists"

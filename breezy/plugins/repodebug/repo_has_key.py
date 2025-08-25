@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Command to check if a repository contains a specific key.
+
+This module provides a command to verify whether a given key exists in a
+repository's versioned file storage (e.g., texts, revisions).
+"""
+
 from ...commands import Command
 from ...controldir import ControlDir
 
@@ -34,6 +40,17 @@ class cmd_repo_has_key(Command):
     takes_args = ["repo", "key_parts*"]
 
     def run(self, repo, key_parts_list=None):
+        """Check if a repository contains a specific key.
+
+        Args:
+            repo: Path to the repository to check.
+            key_parts_list: List of key parts where the first element is the
+                versioned file name (e.g., 'texts', 'revisions') and the
+                remaining elements form the key tuple.
+
+        Returns:
+            0 if the key exists in the repository, 1 otherwise.
+        """
         vf_name, key = key_parts_list[0], key_parts_list[1:]
         bd = ControlDir.open(repo)
         repo = bd.open_repository()

@@ -93,7 +93,7 @@ class TestMergeCoreLogic(tests.TestCase):
         self.assertEqual([b"NEW-2", b"NEW-1", b"OLD-1"], result_entries)
 
     def test_acceptance_bug_723968(self):
-        """Verify that bug 723968 is fixed.
+        """Acceptance test for bug 723968.
 
         Merging a branch that:
 

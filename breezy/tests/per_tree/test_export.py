@@ -19,10 +19,11 @@ import tarfile
 import zipfile
 
 from breezy import osutils
-from breezy.errors import UnsupportedOperation
-from breezy.export import export
 from breezy.tests import TestNotApplicable, features
 from breezy.tests.per_tree import TestCaseWithTree
+
+from ...errors import UnsupportedOperation
+from ...export import export
 
 
 class ExportTest:
@@ -69,8 +70,8 @@ class ExportTest:
 
         try:
             tree.add_reference(subtree)
-        except UnsupportedOperation:
-            raise TestNotApplicable("format does not supported nested trees")
+        except UnsupportedOperation as err:
+            raise TestNotApplicable("format does not supported nested trees") from err
         tree.commit("2")
         export(tree, "output", self.exporter, recurse_nested=recurse_nested)
 

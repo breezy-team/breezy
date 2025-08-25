@@ -44,8 +44,8 @@ class TestFormat5(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
 
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
@@ -81,8 +81,8 @@ class TestFormat6(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
 
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
@@ -111,6 +111,8 @@ class TestBreakLockOldBranch(TestCaseWithTransport):
         self.assertEqual("", err)
 
 
+# Note that the testdata here intentionally contains outdated links to
+# the old location of the Bazaar website.
 _upgrade1_template = [
     ("foo", b"new contents\n"),
     (".bzr/",),
@@ -461,15 +463,15 @@ class TestInfo(TestCaseWithTransport):
         # U U U
         out, err = self.run_bzr("info -v branch")
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -487,10 +489,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(
-                "branch",
-                tree.branch.repository._format.get_format_description(),
-            ),
+""",
             out,
         )
         self.assertEqual("", err)
@@ -498,15 +497,15 @@ Repository:
         tree.lock_write()
         out, err = self.run_bzr("info -v branch")
         self.assertEqualDiff(
-            """Standalone tree (format: weave)
+            f"""Standalone tree (format: weave)
 Location:
-  branch root: {}
+  branch root: branch
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: {}
+    repository: {tree.branch.repository._format.get_format_description()}
 
 In the working tree:
          0 unchanged
@@ -524,10 +523,7 @@ Branch history:
 
 Repository:
          0 revisions
-""".format(
-                "branch",
-                tree.branch.repository._format.get_format_description(),
-            ),
+""",
             out,
         )
         self.assertEqual("", err)
@@ -570,7 +566,7 @@ class TestBoundBranch(TestCaseWithTransport):
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual(
-            "brz: ERROR: Branch at {}/ does not support binding.\n".format(cwd), err
+            f"brz: ERROR: Branch at {cwd}/ does not support binding.\n", err
         )
 
     def test_unbind_format_6_bzrdir(self):

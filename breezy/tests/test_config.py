@@ -370,15 +370,15 @@ class FakeControlFilesAndTransport:
         # from Transport
         try:
             return BytesIO(self.files[filename])
-        except KeyError:
-            raise _mod_transport.NoSuchFile(filename)
+        except KeyError as e:
+            raise _mod_transport.NoSuchFile(filename) from e
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
-        except KeyError:
-            raise _mod_transport.NoSuchFile(filename)
+        except KeyError as e:
+            raise _mod_transport.NoSuchFile(filename) from e
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -421,10 +421,10 @@ nonactive = False
 class TestConfigObj(tests.TestCase):
     def test_get_bool(self):
         co = config.ConfigObj(BytesIO(bool_config))
-        self.assertIs(co.get_bool("DEFAULT", "active"), True)
-        self.assertIs(co.get_bool("DEFAULT", "inactive"), False)
-        self.assertIs(co.get_bool("UPPERCASE", "active"), True)
-        self.assertIs(co.get_bool("UPPERCASE", "nonactive"), False)
+        self.assertTrue(co.get_bool("DEFAULT", "active"))
+        self.assertFalse(co.get_bool("DEFAULT", "inactive"))
+        self.assertTrue(co.get_bool("UPPERCASE", "active"))
+        self.assertFalse(co.get_bool("UPPERCASE", "nonactive"))
 
     def test_hash_sign_in_value(self):
         """Before 4.5.0, ConfigObj did not quote # signs in values, so they'd be
@@ -558,21 +558,17 @@ class TestIniConfigBuilding(TestIniConfig):
     def test_cached(self):
         my_config = config.IniBasedConfig.from_string(sample_config_text)
         parser = my_config._get_parser()
-        self.assertTrue(my_config._get_parser() is parser)
-
-    def _dummy_chown(self, path, uid, gid):
-        self.path, self.uid, self.gid = path, uid, gid
+        self.assertIs(my_config._get_parser(), parser)
 
     def test_ini_config_ownership(self):
         """Ensure that chown is happening during _write_config_file."""
         self.requireFeature(features.chown_feature)
-        self.overrideAttr(os, "chown", self._dummy_chown)
-        self.path = self.uid = self.gid = None
         conf = config.IniBasedConfig(file_name="./foo.conf")
         conf._write_config_file()
-        self.assertEqual(self.path, "./foo.conf")
-        self.assertTrue(isinstance(self.uid, int))
-        self.assertTrue(isinstance(self.gid, int))
+        got = os.stat("foo.conf")
+        expected = os.stat(".")
+        self.assertEqual(expected.st_uid, got.st_uid)
+        self.assertEqual(expected.st_gid, got.st_gid)
 
 
 class TestIniConfigSaving(tests.TestCaseInTempDir):
@@ -627,17 +623,21 @@ class TestIniConfigOptionExpansion(tests.TestCase):
         self.assertRaises(config.ExpandingUnknownOption, c.expand_options, "{foo}")
 
     def test_indirect_ref(self):
-        c = self.get_config("""
+        c = self.get_config(
+            """
 foo=xxx
 bar={foo}
-""")
+"""
+        )
         self.assertExpansion("xxx", c, "{bar}")
 
     def test_embedded_ref(self):
-        c = self.get_config("""
+        c = self.get_config(
+            """
 foo=xxx
 bar=foo
-""")
+"""
+        )
         self.assertExpansion("xxx", c, "{{bar}}")
 
     def test_simple_loop(self):
@@ -645,45 +645,53 @@ bar=foo
         self.assertRaises(config.OptionExpansionLoop, c.expand_options, "{foo}")
 
     def test_indirect_loop(self):
-        c = self.get_config("""
+        c = self.get_config(
+            """
 foo={bar}
 bar={baz}
-baz={foo}""")
+baz={foo}"""
+        )
         e = self.assertRaises(config.OptionExpansionLoop, c.expand_options, "{foo}")
         self.assertEqual("foo->bar->baz", e.refs)
         self.assertEqual("{foo}", e.string)
 
     def test_list(self):
-        conf = self.get_config("""
+        conf = self.get_config(
+            """
 foo=start
 bar=middle
 baz=end
 list={foo},{bar},{baz}
-""")
+"""
+        )
         self.assertEqual(
             ["start", "middle", "end"], conf.get_user_option("list", expand=True)
         )
 
     def test_cascading_list(self):
-        conf = self.get_config("""
+        conf = self.get_config(
+            """
 foo=start,{bar}
 bar=middle,{baz}
 baz=end
 list={foo}
-""")
+"""
+        )
         self.assertEqual(
             ["start", "middle", "end"], conf.get_user_option("list", expand=True)
         )
 
     def test_pathological_hidden_list(self):
-        conf = self.get_config("""
+        conf = self.get_config(
+            """
 foo=bin
 bar=go
 start={foo
 middle=},{
 end=bar}
 hidden={start}{middle}{end}
-""")
+"""
+        )
         # Nope, it's either a string or a list, and the list wins as soon as a
         # ',' appears, so the string concatenation never occur.
         self.assertEqual(
@@ -759,7 +767,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
     def setUp(self):
         super().setUp()
-        self._content = "[{}]\none=1\ntwo=2\n".format(self.config_section)
+        self._content = f"[{self.config_section}]\none=1\ntwo=2\n"
         self.config = self.create_config(self._content)
 
     def get_existing_config(self):
@@ -884,12 +892,14 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
 class TestGetUserOptionAs(TestIniConfig):
     def test_get_user_option_as_bool(self):
-        conf, parser = self.make_config_parser("""
+        conf, parser = self.make_config_parser(
+            """
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
 a_list = hmm, who knows ? # This is interpreted as a list !
-""")
+"""
+        )
         get_bool = conf.get_user_option_as_bool
         self.assertEqual(True, get_bool("a_true_bool"))
         self.assertEqual(False, get_bool("a_false_bool"))
@@ -907,11 +917,13 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         self.assertEqual([], warnings)
 
     def test_get_user_option_as_list(self):
-        conf, parser = self.make_config_parser("""
+        conf, parser = self.make_config_parser(
+            """
 a_list = a,b,c
 length_1 = 1,
 one_item = x
-""")
+"""
+        )
         get_list = conf.get_user_option_as_list
         self.assertEqual(["a", "b", "c"], get_list("a_list"))
         self.assertEqual(["1"], get_list("length_1"))
@@ -973,7 +985,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         """The Branch.get_config method works properly."""
         b = controldir.ControlDir.create_standalone_workingtree(".").branch
         my_config = b.get_config()
-        self.assertIs(my_config.get_user_option("wacky"), None)
+        self.assertIsNone(my_config.get_user_option("wacky"))
         my_config.set_user_option("wacky", "unlikely")
         self.assertEqual(my_config.get_user_option("wacky"), "unlikely")
 
@@ -995,7 +1007,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_url = urlutils.local_path_to_url("branch")
         conf = config.LocationConfig.from_string(
-            "[{}]\nnickname = foobar".format(local_url), local_url, save=True
+            f"[{local_url}]\nnickname = foobar", local_url, save=True
         )
         self.assertIsNot(None, conf)
         self.assertEqual("foobar", branch.nick)
@@ -1163,7 +1175,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_find_merge_tool_not_found(self):
         conf = self._get_sample_config()
         cmdline = conf.find_merge_tool("DOES NOT EXIST")
-        self.assertIs(cmdline, None)
+        self.assertIsNone(cmdline)
 
     def test_find_merge_tool_known(self):
         conf = self._get_empty_config()
@@ -1442,7 +1454,7 @@ other_url = /other-subdir
 
     def test_set_user_setting_sets_and_saves2(self):
         self.get_branch_config("/a/c")
-        self.assertIs(self.my_config.get_user_option("foo"), None)
+        self.assertIsNone(self.my_config.get_user_option("foo"))
         self.my_config.set_user_option("foo", "bar")
         self.assertEqual(
             self.my_config.branch.control_files.files["branch.conf"].strip(),
@@ -1599,7 +1611,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
         unicode_user = "b\N{EURO SIGN}ar"
-        unicode_content = "user={}".format(unicode_user)
+        unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
         t.put_bytes("foo.conf", utf8_content)
@@ -2032,9 +2044,7 @@ class TestOptionConverter(tests.TestCase):
         self.overrideAttr(trace, "warning", warning)
         self.assertEqual(None, opt.convert_from_unicode(None, value))
         self.assertLength(1, warnings)
-        self.assertEqual(
-            'Value "{}" is not valid for "{}"'.format(value, opt.name), warnings[0]
-        )
+        self.assertEqual(f'Value "{value}" is not valid for "{opt.name}"', warnings[0])
 
     def assertCallsError(self, opt, value):
         self.assertRaises(
@@ -2307,7 +2317,7 @@ class TestMutableSection(tests.TestCase):
         # The change appears in the shared section
         self.assertEqual("new_value", a_dict.get("foo"))
         # We keep track of the change
-        self.assertTrue("foo" in section.orig)
+        self.assertIn("foo", section.orig)
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_set_preserve_original_once(self):
@@ -2316,7 +2326,7 @@ class TestMutableSection(tests.TestCase):
         section.set("foo", "first_value")
         section.set("foo", "second_value")
         # We keep track of the original value
-        self.assertTrue("foo" in section.orig)
+        self.assertIn("foo", section.orig)
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_remove(self):
@@ -2327,9 +2337,9 @@ class TestMutableSection(tests.TestCase):
         self.assertEqual(None, section.get("foo"))
         # Or we just get the default value
         self.assertEqual("unknown", section.get("foo", "unknown"))
-        self.assertFalse("foo" in section.options)
+        self.assertNotIn("foo", section.options)
         # We keep track of the deletion
-        self.assertTrue("foo" in section.orig)
+        self.assertIn("foo", section.orig)
         self.assertEqual("bar", section.orig.get("foo"))
 
     def test_remove_new_option(self):
@@ -2337,10 +2347,10 @@ class TestMutableSection(tests.TestCase):
         section = self.get_section(a_dict)
         section.set("foo", "bar")
         section.remove("foo")
-        self.assertFalse("foo" in section.options)
+        self.assertNotIn("foo", section.options)
         # The option didn't exist initially so it we need to keep track of it
         # with a special value
-        self.assertTrue("foo" in section.orig)
+        self.assertIn("foo", section.orig)
         self.assertEqual(config._NewlyCreatedOption, section.orig["foo"])
 
 
@@ -2398,8 +2408,8 @@ class TestStoreMinimalAPI(tests.TestCaseWithTransport):
         store = self.get_store(self)
         if isinstance(store, config.TransportIniFileStore):
             raise tests.TestNotApplicable(
-                "{} is not a concrete Store implementation"
-                " so it doesn't need an id".format(store.__class__.__name__)
+                f"{store.__class__.__name__} is not a concrete Store implementation"
+                " so it doesn't need an id"
             )
         self.assertIsNot(None, store.id)
 
@@ -2519,7 +2529,7 @@ class TestDictFromStore(tests.TestCase):
         # are getting the value or displaying it. In the later case, '%s' will
         # do).
         self.assertEqual({"a": "1"}, unquoted)
-        self.assertIn("{}".format(unquoted), ("{u'a': u'1'}", "{'a': '1'}"))
+        self.assertIn(f"{unquoted}", ("{u'a': u'1'}", "{'a': '1'}"))
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
@@ -2538,7 +2548,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         t = self.get_transport()
         # From http://pad.lv/799212
         unicode_user = "b\N{EURO SIGN}ar"
-        unicode_content = "user={}".format(unicode_user)
+        unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
         t.put_bytes("foo.conf", utf8_content)
@@ -2575,7 +2585,10 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         def get_bytes(relpath):
             raise errors.PermissionDenied(relpath, "")
 
-        t.get_bytes = get_bytes
+        try:
+            t.get_bytes = get_bytes
+        except AttributeError as e:
+            raise tests.TestSkipped("unable to override Transport.get_bytes") from e
         store = config.TransportIniFileStore(t, "foo.conf")
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEqual(
@@ -2603,7 +2616,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         # From http://pad.lv/799212
         unicode_user = "b\N{EURO SIGN}ar"
-        unicode_content = "user={}".format(unicode_user)
+        unicode_content = f"user={unicode_user}"
         utf8_content = unicode_content.encode("utf8")
         # Store the raw content in the config file
         with open("foo.conf", "wb") as f:
@@ -2934,7 +2947,8 @@ class TestTransportIniFileStore(TestStore):
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
         store = config.TransportIniFileStore(self.get_transport(), "foo.conf")
-        store._load_from_string(b"""
+        store._load_from_string(
+            b"""
 foo=bar
 l=1,2
 [DEFAULT]
@@ -2945,7 +2959,8 @@ foo_in_bar=barbar
 foo_in_baz=barbaz
 [[qux]]
 foo_in_qux=quux
-""")
+"""
+        )
         sections = list(store.get_sections())
         self.assertLength(4, sections)
         # The default section has no name.
@@ -2992,9 +3007,7 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
-                "{} is not meant to be compatible with the old config design".format(
-                    self.stack
-                )
+                f"{self.stack} is not meant to be compatible with the old config design"
             )
         self.stack.set("one", "1")
         self.stack.set("two", "2")
@@ -3167,7 +3180,8 @@ class TestLocationMatcher(TestStore):
 
     def test_unrelated_section_excluded(self):
         store = self.get_store(self)
-        store._load_from_string(b"""
+        store._load_from_string(
+            b"""
 [/foo]
 section=/foo
 [/foo/baz]
@@ -3178,7 +3192,8 @@ section=/foo/bar
 section=/foo/bar/baz
 [/quux/quux]
 section=/quux/quux
-""")
+"""
+        )
         self.assertEqual(
             ["/foo", "/foo/baz", "/foo/bar", "/foo/bar/baz", "/quux/quux"],
             [section.id for _, section in store.get_sections()],
@@ -3192,12 +3207,14 @@ section=/quux/quux
 
     def test_more_specific_sections_first(self):
         store = self.get_store(self)
-        store._load_from_string(b"""
+        store._load_from_string(
+            b"""
 [/foo]
 section=/foo
 [/foo/bar]
 section=/foo/bar
-""")
+"""
+        )
         self.assertEqual(
             ["/foo", "/foo/bar"], [section.id for _, section in store.get_sections()]
         )
@@ -3212,10 +3229,12 @@ section=/foo/bar
         # It's a bit weird to allow appendpath in a no-name section, but
         # someone may found a use for it
         store = self.get_store(self)
-        store._load_from_string(b"""
+        store._load_from_string(
+            b"""
 foo=bar
 foo:policy = appendpath
-""")
+"""
+        )
         matcher = config.LocationMatcher(store, "dir/subdir")
         sections = list(matcher.get_sections())
         self.assertLength(1, sections)
@@ -3235,10 +3254,12 @@ foo:policy = appendpath
     def test_branch_name_colo(self):
         store = self.get_store(self)
         store._load_from_string(
-            dedent("""\
+            dedent(
+                """\
             [/]
             push_location=my{branchname}
-        """).encode("ascii")
+        """
+            ).encode("ascii")
         )
         matcher = config.LocationMatcher(store, "file:///,branch=example%3c")
         self.assertEqual("example<", matcher.branch_name)
@@ -3248,10 +3269,12 @@ foo:policy = appendpath
     def test_branch_name_basename(self):
         store = self.get_store(self)
         store._load_from_string(
-            dedent("""\
+            dedent(
+                """\
             [/]
             push_location=my{branchname}
-        """).encode("ascii")
+        """
+            ).encode("ascii")
         )
         matcher = config.LocationMatcher(store, "file:///parent/example%3c")
         self.assertEqual("example<", matcher.branch_name)
@@ -3376,14 +3399,16 @@ class TestNameMatcher(TestStore):
 
     def get_matching_sections(self, name):
         store = self.get_store(self)
-        store._load_from_string(b"""
+        store._load_from_string(
+            b"""
 [foo]
 option=foo
 [foo/baz]
 option=foo/baz
 [bar]
 option=bar
-""")
+"""
+        )
         matcher = self.matcher(store, name)
         return list(matcher.get_sections())
 
@@ -3779,17 +3804,21 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion("${Foo,f}", "${Foo,f}")
 
     def test_indirect_ref(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo=xxx
 bar={foo}
-""")
+"""
+        )
         self.assertExpansion("xxx", "{bar}")
 
     def test_embedded_ref(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo=xxx
 bar=foo
-""")
+"""
+        )
         self.assertExpansion("xxx", "{{bar}}")
 
     def test_simple_loop(self):
@@ -3797,10 +3826,12 @@ bar=foo
         self.assertRaises(config.OptionExpansionLoop, self.conf.expand_options, "{foo}")
 
     def test_indirect_loop(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo={bar}
 bar={baz}
-baz={foo}""")
+baz={foo}"""
+        )
         e = self.assertRaises(
             config.OptionExpansionLoop, self.conf.expand_options, "{foo}"
         )
@@ -3808,22 +3839,26 @@ baz={foo}""")
         self.assertEqual("{foo}", e.string)
 
     def test_list(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo=start
 bar=middle
 baz=end
 list={foo},{bar},{baz}
-""")
+"""
+        )
         self.registry.register(config.ListOption("list"))
         self.assertEqual(["start", "middle", "end"], self.conf.get("list", expand=True))
 
     def test_cascading_list(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo=start,{bar}
 bar=middle,{baz}
 baz=end
 list={foo}
-""")
+"""
+        )
         self.registry.register(config.ListOption("list"))
         # Register an intermediate option as a list to ensure no conversion
         # happen while expanding. Conversion should only occur for the original
@@ -3832,14 +3867,16 @@ list={foo}
         self.assertEqual(["start", "middle", "end"], self.conf.get("list", expand=True))
 
     def test_pathologically_hidden_list(self):
-        self.conf.store._load_from_string(b"""
+        self.conf.store._load_from_string(
+            b"""
 foo=bin
 bar=go
 start={foo
 middle=},{
 end=bar}
 hidden={start}{middle}{end}
-""")
+"""
+        )
         # What matters is what the registration says, the conversion happens
         # only after all expansions have been performed
         self.registry.register(config.ListOption("hidden"))
@@ -3890,18 +3927,22 @@ bar = {foo}ux
 class TestStackCrossStoresExpand(tests.TestCaseWithTransport):
     def test_cross_global_locations(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/branch]
 lfoo = loc-foo
 lbar = {gbar}
-""")
+"""
+        )
         l_store.save()
         g_store = config.GlobalStore()
-        g_store._load_from_string(b"""
+        g_store._load_from_string(
+            b"""
 [DEFAULT]
 gfoo = {lfoo}
 gbar = glob-bar
-""")
+"""
+        )
         g_store.save()
         stack = config.LocationStack("/branch")
         self.assertEqual("glob-bar", stack.get("lbar", expand=True))
@@ -3911,11 +3952,13 @@ gbar = glob-bar
 class TestStackExpandSectionLocals(tests.TestCaseWithTransport):
     def test_expand_locals_empty(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user/project]
 base = {basename}
 rel = {relpath}
-""")
+"""
+        )
         l_store.save()
         stack = config.LocationStack("/home/user/project/")
         self.assertEqual("", stack.get("base", expand=True))
@@ -3923,58 +3966,70 @@ rel = {relpath}
 
     def test_expand_basename_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user/project]
 bfoo = {basename}
-""")
+"""
+        )
         l_store.save()
         stack = config.LocationStack("/home/user/project/branch")
         self.assertEqual("branch", stack.get("bfoo", expand=True))
 
     def test_expand_basename_locally_longer_path(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user]
 bfoo = {basename}
-""")
+"""
+        )
         l_store.save()
         stack = config.LocationStack("/home/user/project/dir/branch")
         self.assertEqual("branch", stack.get("bfoo", expand=True))
 
     def test_expand_relpath_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user/project]
 lfoo = loc-foo/{relpath}
-""")
+"""
+        )
         l_store.save()
         stack = config.LocationStack("/home/user/project/branch")
         self.assertEqual("loc-foo/branch", stack.get("lfoo", expand=True))
 
     def test_expand_relpath_unknonw_in_global(self):
         g_store = config.GlobalStore()
-        g_store._load_from_string(b"""
+        g_store._load_from_string(
+            b"""
 [DEFAULT]
 gfoo = {relpath}
-""")
+"""
+        )
         g_store.save()
         stack = config.LocationStack("/home/user/project/branch")
         self.assertRaises(config.ExpandingUnknownOption, stack.get, "gfoo", expand=True)
 
     def test_expand_local_option_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user/project]
 lfoo = loc-foo/{relpath}
 lbar = {gbar}
-""")
+"""
+        )
         l_store.save()
         g_store = config.GlobalStore()
-        g_store._load_from_string(b"""
+        g_store._load_from_string(
+            b"""
 [DEFAULT]
 gfoo = {lfoo}
 gbar = glob-bar
-""")
+"""
+        )
         g_store.save()
         stack = config.LocationStack("/home/user/project/branch")
         self.assertEqual("glob-bar", stack.get("lbar", expand=True))
@@ -3983,12 +4038,14 @@ gbar = glob-bar
     def test_locals_dont_leak(self):
         """Make sure we chose the right local in presence of several sections."""
         l_store = config.LocationStore()
-        l_store._load_from_string(b"""
+        l_store._load_from_string(
+            b"""
 [/home/user]
 lfoo = loc-foo/{relpath}
 [/home/user/project]
 lfoo = loc-foo/{relpath}
-""")
+"""
+        )
         l_store.save()
         stack = config.LocationStack("/home/user/project/branch")
         self.assertEqual("loc-foo/branch", stack.get("lfoo", expand=True))
@@ -4234,11 +4291,13 @@ class TestAuthenticationConfigFilePermissions(tests.TestCaseInTempDir):
         super().setUp()
         self.path = osutils.pathjoin(self.test_dir, "authentication.conf")
         with open(self.path, "wb") as f:
-            f.write(b"""[broken]
+            f.write(
+                b"""[broken]
 scheme=ftp
 user=joe
 port=port # Error: Not an int
-""")
+"""
+            )
         self.overrideAttr(bedding, "authentication_config_path", lambda: self.path)
         osutils.chmod_if_possible(self.path, 0o755)
 
@@ -4294,47 +4353,55 @@ class TestAuthenticationConfigFile(tests.TestCase):
 
     def test_auth_value_not_boolean(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 [broken]
 scheme=ftp
 user=joe
 verify_certificates=askme # Error: Not a boolean
-""")
+"""
+            )
         )
         self.assertRaises(ValueError, conf.get_credentials, "ftp", "foo.net")
 
     def test_auth_value_not_int(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 [broken]
 scheme=ftp
 user=joe
 port=port # Error: Not an int
-""")
+"""
+            )
         )
         self.assertRaises(ValueError, conf.get_credentials, "ftp", "foo.net")
 
     def test_unknown_password_encoding(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 [broken]
 scheme=ftp
 user=joe
 password_encoding=unknown
-""")
+"""
+            )
         )
         self.assertRaises(ValueError, conf.get_password, "ftp", "foo.net", "joe")
 
     def test_credentials_for_scheme_host(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 # Identity on foo.net
 [ftp definition]
 scheme=ftp
 host=foo.net
 user=joe
 password=secret-pass
-""")
+"""
+            )
         )
         # Basic matching
         self._got_user_passwd("joe", "secret-pass", conf, "ftp", "foo.net")
@@ -4345,7 +4412,8 @@ password=secret-pass
 
     def test_credentials_for_host_port(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 # Identity on foo.net
 [ftp definition]
 scheme=ftp
@@ -4353,7 +4421,8 @@ port=10021
 host=foo.net
 user=joe
 password=secret-pass
-""")
+"""
+            )
         )
         # No port
         self._got_user_passwd("joe", "secret-pass", conf, "ftp", "foo.net", port=10021)
@@ -4362,7 +4431,8 @@ password=secret-pass
 
     def test_for_matching_host(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 # Identity on foo.net
 [sourceforge]
 scheme=bzr
@@ -4374,7 +4444,8 @@ scheme=bzr
 host=.bzr.sf.net
 user=georges
 password=bendover
-""")
+"""
+            )
         )
         # matching domain
         self._got_user_passwd("georges", "bendover", conf, "bzr", "foo.bzr.sf.net")
@@ -4383,7 +4454,8 @@ password=bendover
 
     def test_for_matching_host_None(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""\
+            _file=BytesIO(
+                b"""\
 # Identity on foo.net
 [catchup bzr]
 scheme=bzr
@@ -4392,7 +4464,8 @@ password=joepass
 [DEFAULT]
 user=georges
 password=bendover
-""")
+"""
+            )
         )
         # match no host
         self._got_user_passwd("joe", "joepass", conf, "bzr", "quux.net")
@@ -4401,7 +4474,8 @@ password=bendover
 
     def test_credentials_for_path(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [http dir1]
 scheme=http
 host=bar.org
@@ -4414,7 +4488,8 @@ host=bar.org
 path=/dir2
 user=georges
 password=bendover
-""")
+"""
+            )
         )
         # no path no dice
         self._got_user_passwd(None, None, conf, "http", host="bar.org", path="/dir3")
@@ -4429,13 +4504,15 @@ password=bendover
 
     def test_credentials_for_user(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [with user]
 scheme=http
 host=bar.org
 user=jim
 password=jimpass
-""")
+"""
+            )
         )
         # Get user
         self._got_user_passwd("jim", "jimpass", conf, "http", "bar.org")
@@ -4446,19 +4523,22 @@ password=jimpass
 
     def test_credentials_for_user_without_password(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [without password]
 scheme=http
 host=bar.org
 user=jim
-""")
+"""
+            )
         )
         # Get user but no password
         self._got_user_passwd("jim", None, conf, "http", "bar.org")
 
     def test_verify_certificates(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [self-signed]
 scheme=https
 host=bar.org
@@ -4470,7 +4550,8 @@ scheme=https
 host=foo.net
 user=georges
 password=bendover
-""")
+"""
+            )
         )
         credentials = conf.get_credentials("https", "bar.org")
         self.assertEqual(False, credentials.get("verify_certificates"))
@@ -4634,13 +4715,15 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
 
     def test_ssh_password_emits_warning(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [ssh with password]
 scheme=ssh
 host=bar.org
 user=jim
 password=jimpass
-""")
+"""
+            )
         )
         entered_password = "typed-by-hand"
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + "\n")
@@ -4656,12 +4739,14 @@ password=jimpass
 
     def test_ssh_without_password_doesnt_emit_warning(self):
         conf = config.AuthenticationConfig(
-            _file=BytesIO(b"""
+            _file=BytesIO(
+                b"""
 [ssh with password]
 scheme=ssh
 host=bar.org
 user=jim
-""")
+"""
+            )
         )
         entered_password = "typed-by-hand"
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + "\n")

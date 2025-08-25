@@ -19,9 +19,10 @@
 import threading
 
 from breezy import errors, transport
-from breezy.bzr.bzrdir import BzrDir
 from breezy.bzr.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
+
+from ..bzrdir import BzrDir
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -130,7 +131,7 @@ class TestSmartRequest(TestCase):
         if unclassified_requests:
             self.fail(
                 "These requests were not categorized as safe/unsafe"
-                " to retry: {}".format(unclassified_requests)
+                f" to retry: {unclassified_requests}"
             )
 
 

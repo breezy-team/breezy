@@ -18,11 +18,12 @@
 
 from breezy import branch as _mod_branch
 from breezy import errors, tag
-from breezy.branch import Branch
 from breezy.bzr import branch as bzrbranch
 from breezy.bzr import bzrdir
 from breezy.tests import TestCaseWithTransport, script
-from breezy.workingtree import WorkingTree
+
+from ...branch import Branch
+from ...workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
@@ -400,9 +401,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(
             out,
             "^"
-            + "".join(
-                ["tag {} +{}\n".format(revno, revno) for revno in expected_revnos]
-            )
+            + "".join([f"tag {revno} +{revno}\n" for revno in expected_revnos])
             + "$",
         )
 

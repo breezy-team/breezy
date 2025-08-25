@@ -21,11 +21,22 @@
 
 """i18n and l10n support for Bazaar."""
 
-import gettext as _gettext
 import os
 import sys
 
-_translations = None
+from ._cmd_rs import i18n as _i18n_rs
+
+install_zzz = _i18n_rs.install_zzz
+install_zzz_for_doc = _i18n_rs.install_zzz_for_doc
+zzz = _i18n_rs.zzz
+
+
+def disable_i18n():
+    """Disable i18n support.
+
+    This is useful for testing.
+    """
+    _i18n_rs.disable_i18n()
 
 
 def gettext(message):
@@ -34,10 +45,7 @@ def gettext(message):
     :returns: translated message as unicode.
     """
     install()
-    try:
-        return _translations.ugettext(message)
-    except AttributeError:
-        return _translations.gettext(message)
+    return _i18n_rs.gettext(message)
 
 
 def ngettext(singular, plural, number):
@@ -49,11 +57,7 @@ def ngettext(singular, plural, number):
 
     :returns: translated message as unicode.
     """
-    install()
-    try:
-        return _translations.ungettext(singular, plural, number)
-    except AttributeError:
-        return _translations.ngettext(singular, plural, number)
+    return _i18n_rs.ngettext(singular, plural, number)
 
 
 def N_(msg):
@@ -61,93 +65,44 @@ def N_(msg):
     return msg
 
 
-def gettext_per_paragraph(message):
-    """Translate message per paragraph.
-
-    :returns: concatenated translated message as unicode.
-    """
-    install()
-    paragraphs = message.split("\n\n")
-    # Be careful not to translate the empty string -- it holds the
-    # meta data of the .po file.
-    return "\n\n".join(gettext(p) if p else "" for p in paragraphs)
+gettext_per_paragraph = _i18n_rs.gettext_per_paragraph
 
 
-def disable_i18n():
-    """Do not allow i18n to be enabled.  Useful for third party users
-    of breezy.
-    """
-    global _translations
-    _translations = _gettext.NullTranslations()
-
-
-def installed():
-    """Returns whether translations are in use or not."""
-    return _translations is not None
+_installed = False
 
 
 def install(lang=None):
     """Enables gettext translations in brz."""
-    global _translations
-    if installed():
+    global _installed
+    if _installed:
         return
-    _translations = install_translations(lang)
-
-
-def install_translations(lang=None, domain="brz", locale_base=None):
-    """Create a gettext translation object.
-
-    :param lang: language to install.
-    :param domain: translation domain to install.
-    :param locale_base: plugins can specify their own directory.
-
-    :returns: a gettext translations object to use
-    """
     if lang is None:
         lang = _get_current_locale()
-    if lang is not None:
-        languages = lang.split(":")
+    if not lang or (lang == "C") or lang.startswith("C."):
+        # Nothing to be done for C locale
+        _i18n_rs.disable_i18n()
     else:
-        languages = None
-    translation = _gettext.translation(
-        domain,
-        localedir=_get_locale_dir(locale_base),
-        languages=languages,
-        fallback=True,
-    )
-    return translation
+        try:
+            _i18n_rs.install(lang, _get_locale_dir())
+        except OSError as err:
+            # We don't have translation files for "en" or "en_US" locales
+            if not lang.startswith("en"):
+                # Missing translation is not a fatal error, just report it
+                sys.stderr.write(
+                    f'Cannot install translation for locale "{lang}": {err}\n'
+                )
+    _installed = True
 
 
-def add_fallback(fallback):
-    """Add a fallback translations object.  Typically used by plugins.
-
-    :param fallback: gettext.GNUTranslations object
-    """
-    install()
-    _translations.add_fallback(fallback)
-
-
-def uninstall():
-    """Disables gettext translations."""
-    global _translations
-    _translations = None
-
-
-def _get_locale_dir(base):
+def _get_locale_dir():
     """Returns directory to find .mo translations file in, either local or system.
 
     :param base: plugins can specify their own local directory
     """
-    if getattr(sys, "frozen", False):
-        if base is None:
-            base = os.path.dirname(sys.executable)
-        return os.path.join(base, "locale")
-    else:
-        if base is None:
-            base = os.path.dirname(__file__)
-        dirpath = os.path.realpath(os.path.join(base, "locale"))
-        if os.path.exists(dirpath):
-            return dirpath
+    base = os.path.dirname(__file__)
+    dirpath = os.path.realpath(os.path.join(base, "locale"))
+    if os.path.exists(dirpath):
+        return dirpath
     return os.path.join(sys.prefix, "share", "locale")
 
 
@@ -161,17 +116,14 @@ def _check_win32_locale():
 
         try:
             import ctypes
-        except ImportError:
+        except ModuleNotFoundError:
             # use only user's default locale
             lang = locale.getdefaultlocale()[0]
         else:
             # using ctypes to determine all locales
             lcid_user = ctypes.windll.kernel32.GetUserDefaultLCID()
             lcid_system = ctypes.windll.kernel32.GetSystemDefaultLCID()
-            if lcid_user != lcid_system:
-                lcid = [lcid_user, lcid_system]
-            else:
-                lcid = [lcid_user]
+            lcid = [lcid_user, lcid_system] if lcid_user != lcid_system else [lcid_user]
             lang = [locale.windows_locale.get(i) for i in lcid]
             lang = ":".join([i for i in lang if i])
         # set lang code for gettext
@@ -196,12 +148,40 @@ def _get_current_locale():
     return None
 
 
+class Domain:
+    """A gettext domain wrapper for plugin translations.
+
+    This class provides a simple interface to access translations
+    for a specific gettext domain, typically used by plugins.
+
+    Attributes:
+        domain: The gettext domain name (e.g., 'brz-PLUGINNAME').
+    """
+
+    def __init__(self, domain):
+        """Initialize a Domain instance.
+
+        Args:
+            domain: The gettext domain name for the plugin.
+        """
+        self.domain = domain
+
+    def gettext(self, message):
+        """Translate a message using this domain.
+
+        Args:
+            message: The message string to translate.
+
+        Returns:
+            The translated message string.
+        """
+        return _i18n_rs.dgettext(self.domain, message)
+
+
 def load_plugin_translations(domain):
     """Load the translations for a specific plugin.
 
     :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
-    locale_base = os.path.dirname(__file__)
-    translation = install_translations(domain=domain, locale_base=locale_base)
-    add_fallback(translation)
-    return translation
+    _i18n_rs.install_plugin(domain)
+    return Domain(domain)

@@ -662,7 +662,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         self._dirs = {"/": None}
         self._files = {}
         self._locks = {}
-        self._scheme = "redirecting-memory+{}:///".format(id(self))
+        self._scheme = f"redirecting-memory+{id(self)}:///"
         transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
@@ -708,11 +708,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         """
         destination_url = self.memory_server.get_url() + "infinite-loop"
         out, err = self.run_bzr_error(
-            [
-                "Too many redirections trying to make {}\\.\n".format(
-                    re.escape(destination_url)
-                )
-            ],
+            [f"Too many redirections trying to make {re.escape(destination_url)}\\.\n"],
             ["push", "-d", "tree", destination_url],
             retcode=3,
         )
@@ -750,10 +746,7 @@ class TestPushStrictMixin:
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
-        if with_warning:
-            error_regexes = self._default_errors
-        else:
-            error_regexes = []
+        error_regexes = self._default_errors if with_warning else []
         out, err = self.run_bzr(
             self._default_command + args,
             working_dir=self._default_wd,
@@ -905,7 +898,8 @@ class TestPushForeign(tests.TestCaseWithTransport):
 
 class TestPushOutput(script.TestCaseWithTransportAndScript):
     def test_push_log_format(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init trunk
             Created a standalone tree (format: 2a)
             $ cd trunk
@@ -923,10 +917,12 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             1: jrandom@example.com ...we need some foo
             2>All changes applied successfully.
             2>Pushed up to revision 1.
-            """)
+            """
+        )
 
     def test_push_with_revspec(self):
-        self.run_script("""
+        self.run_script(
+            """
             $ brz init-shared-repo .
             Shared repository with trees (format: 2a)
             Location:
@@ -948,4 +944,5 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
             $ brz push -r 1 ../other
             2>Created new branch.
             $ brz st ../other # checking that file is not created (#484516)
-            """)
+            """
+        )

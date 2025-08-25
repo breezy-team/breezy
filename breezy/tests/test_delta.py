@@ -51,10 +51,7 @@ class TestReportChanges(tests.TestCase):
         unversioned_filter=None,
         view_info=None,
     ):
-        if expected is None:
-            expected_lines = None
-        else:
-            expected_lines = [expected]
+        expected_lines = None if expected is None else [expected]
         self.assertReportLines(
             expected_lines,
             file_id,

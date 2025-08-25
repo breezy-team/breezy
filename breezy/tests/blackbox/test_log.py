@@ -144,7 +144,7 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         tree = self.make_branch_and_tree(".")
         # We want more commits than our batch size starts at
         for pos in range(10):
-            tree.commit("{}".format(pos))
+            tree.commit(f"{pos}")
         self.assertLogRevnos(["--limit", "2"], ["10", "9"])
 
     def test_log_limit_short(self):
@@ -469,7 +469,7 @@ class TestLogTags(TestLog):
         branch.tags.set_tag("tag3", branch.last_revision())
 
         log = self.run_bzr("log -r-1")[0]
-        self.assertTrue("tags: tag3" in log)
+        self.assertIn("tags: tag3", log)
 
         log = self.run_bzr("log -r1")[0]
         # I guess that we can't know the order of tags in the output
@@ -498,7 +498,7 @@ class TestLogSignatures(TestLog):
         self.make_linear_branch(format="dirstate-tags")
 
         log = self.run_bzr("log --signatures")[0]
-        self.assertTrue("signature: no signature" in log)
+        self.assertIn("signature: no signature", log)
 
     def test_log_without_signatures(self):
         self.requireFeature(features.gpg)
@@ -506,7 +506,7 @@ class TestLogSignatures(TestLog):
         self.make_linear_branch(format="dirstate-tags")
 
         log = self.run_bzr("log")[0]
-        self.assertFalse("signature: no signature" in log)
+        self.assertNotIn("signature: no signature", log)
 
 
 class TestLogVerbose(TestLog):
@@ -766,7 +766,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(osutils, "_cached_user_encoding")
+        self.overrideAttr(osutils, "get_user_encoding")
 
     def create_branch(self):
         brz = self.run_bzr
@@ -783,12 +783,12 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         else:
             self._message.encode(encoding)
 
-        old_encoding = osutils._cached_user_encoding
+        old_encoding = osutils.get_user_encoding
         # This test requires that 'run_bzr' uses the current
         # breezy, because we override user_encoding, and expect
         # it to be used
         try:
-            osutils._cached_user_encoding = "ascii"
+            osutils.get_user_encoding = lambda: "ascii"
             # We should be able to handle any encoding
             out, err = brz("log", encoding=encoding)
             if not fail:
@@ -797,7 +797,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             else:
                 self.assertNotEqual(-1, out.find("Message with ?"))
         finally:
-            osutils._cached_user_encoding = old_encoding
+            osutils.get_user_encoding = old_encoding
 
     def test_log_handles_encoding(self):
         self.create_branch()
@@ -813,7 +813,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def test_stdout_encoding(self):
         brz = self.run_bzr
-        osutils._cached_user_encoding = "cp1251"
+        osutils.get_user_encoding = lambda: "cp1251"
 
         brz("init")
         self.build_tree(["a"])

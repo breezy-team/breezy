@@ -58,10 +58,7 @@ import errno
 import logging
 import os
 import sys
-import time
 from io import StringIO
-
-import breezy
 
 from .lazy_import import lazy_import
 
@@ -69,36 +66,20 @@ lazy_import(
     globals(),
     """
 from breezy import (
-    bedding,
-    debug,
-    osutils,
     ui,
     )
 """,
 )
-from . import errors
+from . import _cmd_rs, debug, errors
 
 # global verbosity for breezy; controls the log level for stderr; 0=normal; <0
 # is quiet; >0 is verbose.
 _verbosity_level = 0
 
-# File-like object where mutter/debug output is currently sent.  Can be
-# changed by _push_log_file etc.  This is directly manipulated by some
-# external code; maybe there should be functions to do that more precisely
-# than push/pop_log_file.
-_trace_file = None
-
-# Absolute path for brz.log.  Not changed even if the log/trace output is
-# redirected elsewhere.  Used to show the location in --version.
-_brz_log_filename = None
-
-# The time the first message was written to the trace file, so that we can
-# show relative times since startup.
-_brz_log_start_time = breezy._start_time
-
-
 # held in a global for quick reference
 _brz_logger = logging.getLogger("brz")
+
+_trace_handler = None
 
 
 def note(*args, **kwargs):
@@ -116,6 +97,17 @@ def note(*args, **kwargs):
 
 
 def warning(*args, **kwargs):
+    """Output a warning message to the user.
+
+    Takes the same parameters as logging.warning.
+
+    Args:
+        *args: Positional arguments for warning message formatting.
+        **kwargs: Keyword arguments for warning message formatting.
+
+    Returns:
+        None
+    """
     ui.ui_factory.clear_term()
     _brz_logger.warning(*args, **kwargs)
 
@@ -128,36 +120,30 @@ def show_error(*args, **kwargs):
     _brz_logger.error(*args, **kwargs)
 
 
-class _Bytes(str):
-    """Compat class for displaying bytes on Python 2."""
-
-    def __repr__(self):
-        return "b" + str.__repr__(self)
-
-    def __unicode__(self):
-        return self.decode("ascii", "replace")
-
-
 def mutter(fmt, *args):
-    if _trace_file is None:
-        return
-    # XXX: Don't check this every time; instead anyone who closes the file
-    # ought to deregister it.  We can tolerate None.
-    if (getattr(_trace_file, "closed", None) is not None) and _trace_file.closed:
+    """Log a debug message to the trace file.
+
+    This only outputs to the trace file, not to stderr.
+    If no trace handler is active, the message is discarded.
+
+    Args:
+        fmt: Format string for the message.
+        *args: Arguments for format string interpolation.
+
+    Returns:
+        None
+    """
+    global _trace_handler
+    if _trace_handler is None:
         return
 
     # Let format strings be specified as ascii bytes to help Python 2
     if isinstance(fmt, bytes):
         fmt = fmt.decode("ascii", "replace")
 
-    if args:
-        out = fmt % args
-    else:
-        out = fmt
-    now = time.time()
-    out = "{:0.3f}  {}\n".format(now - _brz_log_start_time, out)
-    _trace_file.write(out.encode("utf-8"))
-    # there's no explicit flushing; the file is typically line buffered.
+    out = fmt % args if args else fmt
+
+    _trace_handler.mutter(out)
 
 
 def mutter_callsite(stacklevel, fmt, *args):
@@ -171,107 +157,18 @@ def mutter_callsite(stacklevel, fmt, *args):
     import traceback
 
     outf = StringIO()
-    if stacklevel is None:
-        limit = None
-    else:
-        limit = stacklevel + 1
+    limit = None if stacklevel is None else stacklevel + 1
     traceback.print_stack(limit=limit, file=outf)
     formatted_lines = outf.getvalue().splitlines()
     formatted_stack = "\n".join(formatted_lines[:-2])
     mutter(fmt + "\nCalled from:\n%s", *(args + (formatted_stack,)))
 
 
-def _rollover_trace_maybe(trace_fname):
-    import stat
-
-    try:
-        size = os.stat(trace_fname)[stat.ST_SIZE]
-        if size <= 4 << 20:
-            return
-        old_fname = trace_fname + ".old"
-        osutils.rename(trace_fname, old_fname)
-    except OSError:
-        return
-
-
-def _get_brz_log_filename():
-    """Return the brz log filename.
-
-    :return: A path to the log file
-    :raise EnvironmentError: If the cache directory could not be created
-    """
-    brz_log = os.environ.get("BRZ_LOG")
-    if brz_log:
-        return brz_log
-    return os.path.join(bedding.cache_dir(), "brz.log")
-
-
-def _open_brz_log():
-    """Open the brz.log trace file.
-
-    If the log is more than a particular length, the old file is renamed to
-    brz.log.old and a new file is started.  Otherwise, we append to the
-    existing file.
-
-    This sets the global _brz_log_filename.
-    """
-    global _brz_log_filename
-
-    def _open_or_create_log_file(filename):
-        """Open existing log file, or create with ownership and permissions.
-
-        It inherits the ownership and permissions (masked by umask) from
-        the containing directory to cope better with being run under sudo
-        with $HOME still set to the user's homedir.
-        """
-        flags = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
-        while True:
-            try:
-                fd = os.open(filename, flags)
-                break
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
-            try:
-                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0o666)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise
-            else:
-                osutils.copy_ownership_from_path(filename)
-                break
-        return os.fdopen(fd, "ab", 0)  # unbuffered
-
-    try:
-        _brz_log_filename = _get_brz_log_filename()
-        _rollover_trace_maybe(_brz_log_filename)
-
-        brz_log_file = _open_or_create_log_file(_brz_log_filename)
-        brz_log_file.write(b"\n")
-        if brz_log_file.tell() <= 2:
-            brz_log_file.write(
-                b"this is a debug log for diagnosing/reporting problems in brz\n"
-            )
-            brz_log_file.write(
-                b"you can delete or truncate this file, or include sections in\n"
-            )
-            brz_log_file.write(
-                b"bug reports to https://bugs.launchpad.net/brz/+filebug\n\n"
-            )
-
-        return brz_log_file
-
-    except OSError as e:
-        # If we are failing to open the log, then most likely logging has not
-        # been set up yet. So we just write to stderr rather than using
-        # 'warning()'. If we using warning(), users get the unhelpful 'no
-        # handlers registered for "brz"' when something goes wrong on the
-        # server. (bug #503886)
-        sys.stderr.write("failed to open trace file: {}\n".format(e))
-    # TODO: What should happen if we fail to open the trace file?  Maybe the
-    # objects should be pointed at /dev/null or the equivalent?  Currently
-    # returns None which will cause failures later.
-    return None
+_rollover_trace_maybe = _cmd_rs.rollover_trace_maybe
+_initialize_brz_log_filename = _cmd_rs.initialize_brz_log_filename
+_open_brz_log = _cmd_rs.open_brz_log
+get_brz_log_filename = _cmd_rs.get_brz_log_filename
+set_brz_log_filename = _cmd_rs.set_brz_log_filename
 
 
 def enable_default_logging():
@@ -287,15 +184,13 @@ def enable_default_logging():
 
     :return: A memento from push_log_file for restoring the log state.
     """
-    start_time = osutils.format_local_date(_brz_log_start_time, timezone="local")
     brz_log_file = _open_brz_log()
-    if brz_log_file is not None:
-        brz_log_file.write(start_time.encode("utf-8") + b"\n")
-    memento = push_log_file(
-        brz_log_file,
-        r"[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
-        r"%Y-%m-%d %H:%M:%S",
-    )
+    # TODO: What should happen if we fail to open the trace file?  Maybe the
+    # objects should be pointed at /dev/null or the equivalent?  Currently
+    # returns None which will cause failures later.
+    if brz_log_file is None:
+        return None
+    memento = push_log_file(brz_log_file, short=False)
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     stderr_handler = logging.StreamHandler(stream=sys.stderr)
@@ -303,7 +198,7 @@ def enable_default_logging():
     return memento
 
 
-def push_log_file(to_file, log_format=None, date_format=None):
+def push_log_file(to_file, short=True):
     """Intercept log and trace messages and send them to a file.
 
     :param to_file: A file-like object to which messages will be sent.
@@ -311,12 +206,10 @@ def push_log_file(to_file, log_format=None, date_format=None):
     :returns: A memento that should be passed to _pop_log_file to restore the
         previously active logging.
     """
-    global _trace_file
+    global _trace_handler
     # make a new handler
-    new_handler = EncodedStreamHandler(to_file, "utf-8", level=logging.DEBUG)
-    if log_format is None:
-        log_format = "%(levelname)8s  %(message)s"
-    new_handler.setFormatter(logging.Formatter(log_format, date_format))
+    old_trace_handler = _trace_handler
+    _trace_handler = new_handler = _cmd_rs.BreezyTraceHandler(to_file, short=short)
     # save and remove any existing log handlers
     brz_logger = logging.getLogger("brz")
     old_handlers = brz_logger.handlers[:]
@@ -329,12 +222,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     # TODO: also probably need to save and restore the level on brz_logger.
     # but maybe we can avoid setting the logger level altogether, and just set
     # the level on the handler?
-    #
-    # save the old trace file
-    old_trace_file = _trace_file
-    # send traces to the new one
-    _trace_file = to_file
-    return ("log_memento", old_handlers, new_handler, old_trace_file, to_file)
+    return ("log_memento", old_handlers, new_handler, old_trace_handler)
 
 
 def pop_log_file(entry):
@@ -345,17 +233,15 @@ def pop_log_file(entry):
 
     Takes the memento returned from _push_log_file.
     """
-    (magic, old_handlers, new_handler, old_trace_file, new_trace_file) = entry
-    global _trace_file
-    _trace_file = old_trace_file
+    (magic, old_handlers, new_handler, old_trace_handler) = entry
+    global _trace_handler
+    _trace_handler = old_trace_handler
     brz_logger = logging.getLogger("brz")
     brz_logger.removeHandler(new_handler)
     # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     brz_logger.handlers = old_handlers
-    if new_trace_file is not None:
-        new_trace_file.flush()
 
 
 def log_exception_quietly():
@@ -390,6 +276,15 @@ def get_verbosity_level():
 
 
 def be_quiet(quiet=True):
+    """Set quiet mode on or off.
+
+    Args:
+        quiet: If True, enable quiet mode (verbosity level -1).
+               If False, restore normal verbosity (level 0).
+
+    Returns:
+        None
+    """
     if quiet:
         set_verbosity_level(-1)
     else:
@@ -424,28 +319,7 @@ def debug_memory(message="", short=True):
         _debug_memory_proc(message=message, short=short)
 
 
-_short_fields = ("VmPeak", "VmSize", "VmRSS")
-
-
-def _debug_memory_proc(message="", short=True):
-    try:
-        status_file = open("/proc/{}/status".format(os.getpid()), "rb")
-    except OSError:
-        return
-    try:
-        status = status_file.read()
-    finally:
-        status_file.close()
-    if message:
-        note(message)
-    for line in status.splitlines():
-        if not short:
-            note(line)
-        else:
-            for field in _short_fields:
-                if line.startswith(field):
-                    note(line)
-                    break
+_debug_memory_proc = _cmd_rs.debug_memory_proc
 
 
 def _dump_memory_usage(err_file):
@@ -458,8 +332,8 @@ def _dump_memory_usage(err_file):
             from meliae import scanner
 
             scanner.dump_gc_objects(dump_file)
-            err_file.write("Memory dumped to {}\n".format(name))
-        except ImportError:
+            err_file.write(f"Memory dumped to {name}\n")
+        except ModuleNotFoundError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
         except BaseException:
@@ -484,7 +358,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
         unqualified_breezy_errors and module_name == "breezy.errors"
     ):
         return class_name
-    return "{}.{}".format(module_name, class_name)
+    return f"{module_name}.{class_name}"
 
 
 def report_exception(exc_info, err_file):
@@ -496,7 +370,7 @@ def report_exception(exc_info, err_file):
     """
     # Log the full traceback to brz.log
     log_exception_quietly()
-    if "error" in debug.debug_flags:
+    if debug.debug_flag_enabled("error"):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
@@ -505,14 +379,12 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
         err_file.write("brz: out of memory\n")
-        if "mem_dump" in debug.debug_flags:
+        if debug.debug_flag_enabled("mem_dump"):
             _dump_memory_usage(err_file)
         else:
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, ImportError) and str(exc_object).startswith(
-        "No module named "
-    ):
+    elif isinstance(exc_object, ModuleNotFoundError):
         report_user_error(
             exc_info,
             err_file,
@@ -536,12 +408,19 @@ def report_exception(exc_info, err_file):
 
 
 def print_exception(exc_info, err_file):
+    """Print a full exception with traceback to err_file.
+
+    Args:
+        exc_info: Exception info tuple from sys.exc_info().
+        err_file: File-like object to write the exception to.
+
+    Returns:
+        None
+    """
     import traceback
 
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write(
-        "brz: ERROR: {}: {}\n".format(_qualified_exception_name(exc_type), exc_object)
-    )
+    err_file.write(f"brz: ERROR: {_qualified_exception_name(exc_type)}: {exc_object}\n")
     err_file.write("\n")
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
 
@@ -556,14 +435,14 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
+    err_file.write(f"brz: ERROR: {exc_info[1]!s}\n")
     if advice:
-        err_file.write("{}\n".format(advice))
+        err_file.write(f"{advice}\n")
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in brz."""
-    from breezy.crash import report_bug
+    from .crash import report_bug
 
     report_bug(exc_info, err_file)
 
@@ -588,55 +467,9 @@ def _flush_stdout_stderr():
 
 def _flush_trace():
     # called from the breezy library finalizer returned by breezy.initialize()
-    global _trace_file
-    if _trace_file:
-        _trace_file.flush()
-
-
-class EncodedStreamHandler(logging.Handler):
-    """Robustly write logging events to a stream using the specified encoding.
-
-    Messages are expected to be formatted to unicode, but UTF-8 byte strings
-    are also accepted. An error during formatting or a str message in another
-    encoding will be quitely noted as an error in the Bazaar log file.
-
-    The stream is not closed so sys.stdout or sys.stderr may be passed.
-    """
-
-    def __init__(self, stream, encoding=None, errors="strict", level=0):
-        logging.Handler.__init__(self, level)
-        self.stream = stream
-        if encoding is None:
-            encoding = getattr(stream, "encoding", "ascii")
-        self.encoding = encoding
-        self.errors = errors
-
-    def flush(self):
-        flush = getattr(self.stream, "flush", None)
-        if flush is not None:
-            flush()
-
-    def emit(self, record):
-        try:
-            if not isinstance(record.msg, str):
-                msg = record.msg.decode("utf-8")
-                record.msg = msg
-            line = self.format(record)
-            if not isinstance(line, str):
-                line = line.decode("utf-8")
-            self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
-        except Exception:
-            log_exception_quietly()
-            # Try saving the details that would have been logged in some form
-            msg = args = "<Unformattable>"
-            try:
-                msg = repr(record.msg)
-                args = repr(record.args)
-            except Exception:
-                pass
-            # Using mutter() bypasses the logging module and writes directly
-            # to the file so there's no danger of getting into a loop here.
-            mutter("Logging record unformattable: %s %% %s", msg, args)
+    global _trace_handler
+    if _trace_handler:
+        _trace_handler.flush()
 
 
 class Config:
@@ -648,9 +481,24 @@ class Config:
     """
 
     def __enter__(self):
+        """Enter the context manager.
+
+        Returns:
+            self: This Config instance.
+        """
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False: Always returns False to propagate exceptions.
+        """
         return False  # propogate exceptions.
 
 
@@ -661,12 +509,26 @@ class DefaultConfig(Config):
     """
 
     def __enter__(self):
-        self._original_filename = _brz_log_filename
+        """Enter the context manager and set up default logging.
+
+        Returns:
+            self: This DefaultConfig instance.
+        """
+        self._original_filename = get_brz_log_filename()
         self._original_state = enable_default_logging()
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and restore original logging state.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+
+        Returns:
+            False: Always returns False to propagate exceptions.
+        """
         pop_log_file(self._original_state)
-        global _brz_log_filename
-        _brz_log_filename = self._original_filename
+        _cmd_rs.set_brz_log_filename(self._original_filename)
         return False  # propogate exceptions.

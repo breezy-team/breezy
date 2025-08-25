@@ -357,7 +357,8 @@ class TestPoEntry(PoEntryTestCase):
     def test_simple(self):
         self.exporter.poentry("dummy", 1, "spam")
         self.exporter.poentry("dummy", 2, "ham", "EGG")
-        self.check_output("""\
+        self.check_output(
+            """\
                 #: dummy:1
                 msgid "spam"
                 msgstr ""
@@ -367,37 +368,43 @@ class TestPoEntry(PoEntryTestCase):
                 msgid "ham"
                 msgstr ""
 
-                """)
+                """
+        )
 
     def test_duplicate(self):
         self.exporter.poentry("dummy", 1, "spam")
         # This should be ignored.
         self.exporter.poentry("dummy", 2, "spam", "EGG")
 
-        self.check_output("""\
+        self.check_output(
+            """\
                 #: dummy:1
                 msgid "spam"
                 msgstr ""\n
-                """)
+                """
+        )
 
 
 class TestPoentryPerPergraph(PoEntryTestCase):
     def test_single(self):
         self.exporter.poentry_per_paragraph("dummy", 10, """foo\nbar\nbaz\n""")
-        self.check_output("""\
+        self.check_output(
+            """\
                 #: dummy:10
                 msgid ""
                 "foo\\n"
                 "bar\\n"
                 "baz\\n"
                 msgstr ""\n
-                """)
+                """
+        )
 
     def test_multi(self):
         self.exporter.poentry_per_paragraph(
             "dummy", 10, """spam\nham\negg\n\nSPAM\nHAM\nEGG\n"""
         )
-        self.check_output("""\
+        self.check_output(
+            """\
                 #: dummy:10
                 msgid ""
                 "spam\\n"
@@ -411,7 +418,8 @@ class TestPoentryPerPergraph(PoEntryTestCase):
                 "HAM\\n"
                 "EGG\\n"
                 msgstr ""\n
-                """)
+                """
+        )
 
 
 class TestExportCommandHelp(PoEntryTestCase):

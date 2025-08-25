@@ -22,7 +22,6 @@ There are separate implementation modules for each http client implementation.
 DEBUG = 0
 
 import os
-import ssl
 import sys
 
 from ... import config
@@ -30,7 +29,12 @@ from ... import version_string as breezy_version
 
 
 def default_user_agent():
-    return "Breezy/{}".format(breezy_version)
+    """Get the default User-Agent string for HTTP requests.
+
+    Returns:
+        str: The User-Agent string in the format "Breezy/<version>".
+    """
+    return f"Breezy/{breezy_version}"
 
 
 # Note for packagers: if there is no package providing certs for your platform,
@@ -47,6 +51,17 @@ _ssl_ca_certs_known_locations = [
 
 
 def default_ca_certs():
+    """Get the default path to CA certificates for SSL verification.
+
+    Searches for CA certificate bundles in platform-specific locations.
+    On Windows, looks for cacert.pem in the executable's directory.
+    On other platforms, searches a list of known locations and returns
+    the first existing path.
+
+    Returns:
+        str: Path to the CA certificate bundle. If no bundle is found,
+            returns the first known location as a default.
+    """
     if sys.platform == "win32":
         return os.path.join(os.path.dirname(sys.executable), "cacert.pem")
     elif sys.platform == "darwin":
@@ -66,19 +81,53 @@ def default_ca_certs():
 
 
 def ca_certs_from_store(path):
+    """Validate and return a CA certificates path from configuration.
+
+    Args:
+        path: The path to the CA certificates bundle.
+
+    Returns:
+        str: The validated path.
+
+    Raises:
+        ValueError: If the path does not exist.
+    """
     if not os.path.exists(path):
-        raise ValueError("ca certs path {} does not exist".format(path))
+        raise ValueError(f"ca certs path {path} does not exist")
     return path
 
 
 def cert_reqs_from_store(unicode_str):
+    """Convert a certificate requirement string to SSL constant.
+
+    Args:
+        unicode_str: Either "required" or "none" specifying the certificate
+            verification requirement.
+
+    Returns:
+        int: SSL constant (ssl.CERT_REQUIRED or ssl.CERT_NONE).
+
+    Raises:
+        ValueError: If unicode_str is not "required" or "none".
+    """
+    import ssl
+
     try:
         return {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
-    except KeyError:
-        raise ValueError("invalid value {}".format(unicode_str))
+    except KeyError as e:
+        raise ValueError(f"invalid value {unicode_str}") from e
 
 
 def default_ca_reqs():
+    """Get the default certificate verification requirement for the platform.
+
+    On Windows and macOS, returns "none" due to lack of native access to
+    root certificates. On other platforms, returns "required".
+
+    Returns:
+        str: Either "none" or "required" indicating the default certificate
+            verification requirement.
+    """
     if sys.platform in ("win32", "darwin"):
         # FIXME: Once we get a native access to root certificates there, this
         # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15

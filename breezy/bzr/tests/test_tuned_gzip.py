@@ -30,7 +30,7 @@ class TestToGzip(tests.TestCase):
         decoded = gzip.GzipFile(fileobj=BytesIO(b"".join(gzfromchunks))).read()
         lraw, ldecoded = len(raw_bytes), len(decoded)
         self.assertEqual(
-            lraw, ldecoded, f"Expecting data length {lraw}, got {ldecoded}"
+            lraw, ldecoded, "Expecting data length %d, got %d" % (lraw, ldecoded)
         )
         self.assertEqual(raw_bytes, decoded)
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-"""Cross-platform os tools: files/directories manipulations
+"""Cross-platform os tools: files/directories manipulations.
+
 Usage:
 
     ostools.py help
@@ -26,6 +27,14 @@ import sys
 
 
 def makedir(dirname):
+    """Create a directory if it doesn't exist and verify it's a directory.
+
+    Args:
+        dirname (str): Path to the directory to create.
+
+    Returns:
+        int: 0 on success, 2 if the path exists but is not a directory.
+    """
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     if not os.path.isdir(dirname):
@@ -35,6 +44,27 @@ def makedir(dirname):
 
 
 def main(argv=None):
+    """Main entry point for the ostools command-line interface.
+
+    Provides various file and directory manipulation operations including
+    copying files, copying directory trees, removing files/directories,
+    and creating directories.
+
+    Args:
+        argv (list, optional): Command-line arguments. If None, uses sys.argv[1:].
+
+    Returns:
+        int: Exit code (0 for success, non-zero for error).
+
+    Available commands:
+        help: Show usage information
+        copytodir: Copy files to a directory
+        copytree: Copy files preserving relative paths
+        copydir: Recursively copy a directory tree
+        remove: Remove files or directories
+        basename: Get basename of paths
+        makedir: Create a directory
+    """
     if argv is None:
         argv = sys.argv[1:]
 
@@ -100,6 +130,14 @@ def main(argv=None):
             return 1
 
         def _copy(src, dest, follow_symlinks=True):
+            """Copy function wrapper that provides progress feedback.
+
+            Args:
+                src (str): Source file path.
+                dest (str): Destination file path.
+                follow_symlinks (bool, optional): Whether to follow symbolic links.
+                    Defaults to True.
+            """
             shutil.copy(src, dest, follow_symlinks=follow_symlinks)
             print("Copied:", src, "=>", dest)
 

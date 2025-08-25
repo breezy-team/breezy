@@ -2,27 +2,64 @@
 name = "breezy"
 version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
-edition = "2018"
-publish = false
+edition = "2021"
 default-run = "brz"
 license = "GPL-2.0+"
 description = "Friendly distributed version control system"
 repository = "https://github.com/breezy-team/breezy"
 homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
+include = [
+	"src/*.rs",
+	"breezy/main.rs",
+	"README.rst",
+]
 
 [workspace]
-members = ["lib-rio"]
+members = ["crates/*"]
 
 [workspace.package]
-version = "3.3.13"
+version = "3.4.0"
 
 [[bin]]
 name = "brz"
-path = "breezy/main.rs"
+path = "src/main.rs"
+
+[lib]
+
+[features]
+default = ["i18n", "pyo3"]
+i18n = ["dep:gettext"]
+pyo3 = []
 
 [dependencies]
-pyo3 = { workspace = true }
+pyo3 = { workspace = true, features = ["abi3"] }
+gettext = { workspace = true, optional = true }
+log = { workspace = true }
+breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
+chrono = { workspace = true }
+bazaar = { path = "crates/bazaar" }
+breezy-graph = { path = "crates/graph" }
+percent-encoding = "2"
+url = { workspace = true }
+regex = "1"
+inventory = "0.3"
+lazy_static = "1.4"
+once_cell = "1"
+textwrap = ">=0.13"
+serde_yaml = "0.9"
+serde = { version = "1", features = ["derive"]}
+encoding = "0.2.33"
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["fs"] }
 
 [workspace.dependencies]
-pyo3 = ">=0.23,<0.24"
+nix = ">=0.26"
+pyo3 = "=0.25"
+pyo3-filelike = "0.5.0"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+url = "2"
+log = "0.4"
+whoami = { version = "1", default-features = false }
+gettext = { version = "0.4.0" }

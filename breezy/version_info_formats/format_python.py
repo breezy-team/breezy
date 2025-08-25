@@ -16,11 +16,13 @@
 
 """A generator which creates a python script from the current tree info."""
 
+import contextlib
 import pprint
 
 from breezy import errors
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 # Header and footer for the python format
 _py_version_header = '''#!/usr/bin/env python3
@@ -44,6 +46,11 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
+        """Generate a python module containing version information.
+
+        Args:
+            to_file: A file-like object to write the generated python module to.
+        """
         info = {
             "build_date": create_date_str(),
             "revno": None,
@@ -57,10 +64,8 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info["revno"] = "0"
         else:
-            try:
+            with contextlib.suppress(errors.GhostRevisionsHaveNoRevno):
                 info["revno"] = self._get_revno_str(revision_id)
-            except errors.GhostRevisionsHaveNoRevno:
-                pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
             info["date"] = create_date_str(rev.timestamp, rev.timezone)

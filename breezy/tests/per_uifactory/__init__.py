@@ -123,18 +123,18 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         return TextUIFactory("")
 
     def _check_note(self, note_text):
-        self.assertEqual("{}\n".format(note_text), self.stdout.getvalue())
+        self.assertEqual(f"{note_text}\n", self.stdout.getvalue())
 
     def _check_show_error(self, msg):
-        self.assertEqual("bzr: error: {}\n".format(msg), self.stderr.getvalue())
+        self.assertEqual(f"bzr: error: {msg}\n", self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
-        self.assertEqual("{}\n".format(msg), self.stdout.getvalue())
+        self.assertEqual(f"{msg}\n", self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
-        self.assertEqual("bzr: warning: {}\n".format(msg), self.stderr.getvalue())
+        self.assertEqual(f"bzr: warning: {msg}\n", self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_log_transport_activity_noarg(self):

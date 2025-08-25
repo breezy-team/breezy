@@ -85,8 +85,7 @@ class TestGetTo(TestCaseInTempDir):
     def test_body(self):
         sender, revid = self.get_sender()
         self.assertEqual(
-            "At {}\n\n{}".format(sender.url(), sample_log % revid.decode("utf-8")),
-            sender.body(),
+            f"At {sender.url()}\n\n{sample_log % revid.decode('utf-8')}", sender.body()
         )
 
     def test_custom_body(self):
@@ -171,14 +170,12 @@ class TestGetTo(TestCaseInTempDir):
     def test_subject(self):
         sender, revid = self.get_sender()
         self.assertEqual(
-            "Rev 1: foo bar baz in {}".format(sender.branch.base), sender.subject()
+            f"Rev 1: foo bar baz in {sender.branch.base}", sender.subject()
         )
 
     def test_custom_subject(self):
         sender, revid = self.get_sender(customized_mail_config)
-        self.assertEqual(
-            "[commit] {}".format(sender.revision.get_summary()), sender.subject()
-        )
+        self.assertEqual(f"[commit] {sender.revision.get_summary()}", sender.subject())
 
     def test_diff_filename(self):
         sender, revid = self.get_sender()

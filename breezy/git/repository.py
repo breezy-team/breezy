@@ -34,7 +34,18 @@ from .tree import GitRevisionTree
 
 
 class GitCheck(check.Check):
+    """Check implementation for Git repositories.
+
+    Validates the integrity of Git objects and repository structure.
+    """
+
     def __init__(self, repository, check_repo=True):
+        """Initialize a GitCheck instance.
+
+        Args:
+            repository: The Git repository to check.
+            check_repo: Whether to check the repository itself (default True).
+        """
         self.repository = repository
         self.check_repo = check_repo
         self.checked_rev_cnt = 0
@@ -42,6 +53,12 @@ class GitCheck(check.Check):
         self.problems = []
 
     def check(self, callback_refs=None, check_repo=True):
+        """Perform integrity check on the repository.
+
+        Args:
+            callback_refs: Optional dict of callbacks for progress reporting.
+            check_repo: Whether to check the repository itself (default True).
+        """
         if callback_refs is None:
             callback_refs = {}
         with (
@@ -70,6 +87,11 @@ class GitCheck(check.Check):
             trace.note("%s: %s", sha, problem)
 
     def report_results(self, verbose):
+        """Report the results of the integrity check.
+
+        Args:
+            verbose: Whether to include verbose output.
+        """
         if self.check_repo:
             self._report_repo_results(verbose)
 
@@ -95,6 +117,11 @@ class GitRepository(ForeignRepository):
     chk_bytes = None
 
     def __init__(self, gitdir):
+        """Initialize a GitRepository instance.
+
+        Args:
+            gitdir: The Git directory control structure.
+        """
         self._transport = gitdir.root_transport
         super().__init__(GitRepositoryFormat(), gitdir, control_files=None)
         self.base = gitdir.root_transport.base
@@ -102,14 +129,32 @@ class GitRepository(ForeignRepository):
         self._lock_count = 0
 
     def add_fallback_repository(self, basis_url):
+        """Add a fallback repository (not supported for Git).
+
+        Args:
+            basis_url: URL of the basis repository.
+
+        Raises:
+            UnstackableRepositoryFormat: Always raised as Git doesn't support stacking.
+        """
         raise errors.UnstackableRepositoryFormat(
             self._format, self.control_transport.base
         )
 
     def is_shared(self):
+        """Check if this repository is shared.
+
+        Returns:
+            bool: Always False for Git repositories.
+        """
         return False
 
     def get_physical_lock_status(self):
+        """Get the physical lock status.
+
+        Returns:
+            bool: Always False as Git doesn't use physical locks.
+        """
         return False
 
     def lock_write(self):
@@ -125,15 +170,35 @@ class GitRepository(ForeignRepository):
         return repository.RepositoryWriteLockResult(self.unlock, None)
 
     def break_lock(self):
+        """Break any existing lock (not implemented for Git).
+
+        Raises:
+            NotImplementedError: Always raised.
+        """
         raise NotImplementedError(self.break_lock)
 
     def dont_leave_lock_in_place(self):
+        """Configure to not leave locks in place (not implemented).
+
+        Raises:
+            NotImplementedError: Always raised.
+        """
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     def leave_lock_in_place(self):
+        """Configure to leave locks in place (not implemented).
+
+        Raises:
+            NotImplementedError: Always raised.
+        """
         raise NotImplementedError(self.leave_lock_in_place)
 
     def lock_read(self):
+        """Acquire a read lock on the repository.
+
+        Returns:
+            LogicalLockResult: Lock result that can be used to unlock.
+        """
         if self._lock_mode:
             if self._lock_mode not in ("r", "w"):
                 raise AssertionError
@@ -146,6 +211,12 @@ class GitRepository(ForeignRepository):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
+        """Release a lock on the repository.
+
+        Raises:
+            LockNotHeld: If no lock is currently held.
+            BzrError: If attempting to unlock with an active write group.
+        """
         if self._lock_count == 0:
             raise errors.LockNotHeld(self)
         if self._lock_count == 1 and self._lock_mode == "w":
@@ -166,9 +237,19 @@ class GitRepository(ForeignRepository):
                 self._git.close()
 
     def is_write_locked(self):
+        """Check if the repository is write locked.
+
+        Returns:
+            bool: True if write locked, False otherwise.
+        """
         return self._lock_mode == "w"
 
     def is_locked(self):
+        """Check if the repository is locked.
+
+        Returns:
+            bool: True if locked (read or write), False otherwise.
+        """
         return self._lock_mode is not None
 
     def get_transaction(self):
@@ -187,21 +268,59 @@ class GitRepository(ForeignRepository):
         return ret
 
     def supports_rich_root(self):
+        """Check if the repository supports rich root data.
+
+        Returns:
+            bool: Always True for Git repositories.
+        """
         return True
 
     def get_mapping(self):
+        """Get the default Git-to-Bazaar mapping.
+
+        Returns:
+            The default mapping object for Git repositories.
+        """
         return default_mapping
 
     def make_working_trees(self):
+        """Check if this repository creates working trees (not implemented).
+
+        Raises:
+            NotImplementedError: Always raised for base GitRepository.
+        """
         raise NotImplementedError(self.make_working_trees)
 
     def revision_graph_can_have_wrong_parents(self):
+        """Check if revision graph can have incorrect parents.
+
+        Returns:
+            bool: Always False for Git repositories.
+        """
         return False
 
     def add_signature_text(self, revid, signature):
+        """Add a signature text for a revision (not supported).
+
+        Args:
+            revid: Revision ID to sign.
+            signature: Signature text.
+
+        Raises:
+            UnsupportedOperation: Always raised.
+        """
         raise errors.UnsupportedOperation(self.add_signature_text, self)
 
     def sign_revision(self, revision_id, gpg_strategy):
+        """Sign a revision (not supported).
+
+        Args:
+            revision_id: ID of revision to sign.
+            gpg_strategy: GPG strategy to use.
+
+        Raises:
+            UnsupportedOperation: Always raised.
+        """
         raise errors.UnsupportedOperation(self.add_signature_text, self)
 
 
@@ -209,6 +328,11 @@ class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
 
     def __init__(self, gitdir):
+        """Initialize a LocalGitRepository instance.
+
+        Args:
+            gitdir: The Git directory control structure.
+        """
         GitRepository.__init__(self, gitdir)
         self._git = gitdir._git
         self._file_change_scanner = GitFileLastChangeScanner(self)
@@ -261,6 +385,11 @@ class LocalGitRepository(GitRepository):
         self._git._put_named_file("config", f.getvalue())
 
     def get_file_graph(self):
+        """Get the file graph for this repository.
+
+        Returns:
+            Graph: A graph of file relationships.
+        """
         return _mod_graph.Graph(GitFileParentProvider(self._file_change_scanner))
 
     def iter_files_bytes(self, desired_files):
@@ -288,18 +417,18 @@ class LocalGitRepository(GitRepository):
         for revid, files in per_revision.items():
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
-            except errors.NoSuchRevision:
-                raise errors.RevisionNotPresent(revid, self)
+            except errors.NoSuchRevision as err:
+                raise errors.RevisionNotPresent(revid, self) from err
             try:
                 commit = self._git.object_store[commit_id]
-            except KeyError:
-                raise errors.RevisionNotPresent(revid, self)
+            except KeyError as err:
+                raise errors.RevisionNotPresent(revid, self) from err
             root_tree = commit.tree
             for fileid, identifier in files:
                 try:
                     path = mapping.parse_file_id(fileid)
-                except ValueError:
-                    raise errors.RevisionNotPresent((fileid, revid), self)
+                except ValueError as err:
+                    raise errors.RevisionNotPresent((fileid, revid), self) from err
                 try:
                     mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__,
@@ -307,15 +436,15 @@ class LocalGitRepository(GitRepository):
                         encode_git_path(path),
                     )
                     obj = self._git.object_store[item_id]
-                except KeyError:
-                    raise errors.RevisionNotPresent((fileid, revid), self)
+                except KeyError as err:
+                    raise errors.RevisionNotPresent((fileid, revid), self) from err
                 else:
                     if obj.type_name == b"tree":
                         yield (identifier, [])
                     elif obj.type_name == b"blob":
                         yield (identifier, obj.chunked)
                     else:
-                        raise AssertionError("file text resolved to {!r}".format(obj))
+                        raise AssertionError(f"file text resolved to {obj!r}")
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -338,6 +467,11 @@ class LocalGitRepository(GitRepository):
             yield o.id, revid
 
     def all_revision_ids(self):
+        """Get all revision IDs in the repository.
+
+        Returns:
+            list: All revision IDs in the repository.
+        """
         ret = set()
         for _git_sha, revid in self._iter_revision_ids():
             ret.add(revid)
@@ -367,6 +501,15 @@ class LocalGitRepository(GitRepository):
         return self.get_parent_map(revids, no_alternates=True)
 
     def get_parent_map(self, revids, no_alternates=False):
+        """Get a map of revision IDs to their parents.
+
+        Args:
+            revids: Revision IDs to get parents for.
+            no_alternates: Whether to exclude alternate repositories.
+
+        Returns:
+            dict: Map of revision ID to tuple of parent IDs.
+        """
         parent_map = {}
         for revision_id in revids:
             parents = self._get_parents(revision_id, no_alternates=no_alternates)
@@ -400,21 +543,48 @@ class LocalGitRepository(GitRepository):
         return _mod_graph.KnownGraph(parent_map)
 
     def get_signature_text(self, revision_id):
+        """Get the GPG signature text for a revision.
+
+        Args:
+            revision_id: ID of the revision.
+
+        Returns:
+            bytes: The GPG signature text.
+
+        Raises:
+            NoSuchRevision: If revision not found or has no signature.
+        """
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.object_store[git_commit_id]
-        except KeyError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except KeyError as err:
+            raise errors.NoSuchRevision(self, revision_id) from err
         if commit.gpgsig is None:
             raise errors.NoSuchRevision(self, revision_id)
         return commit.gpgsig
 
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        """Check the consistency of the repository.
+
+        Args:
+            revision_ids: Specific revision IDs to check (unused).
+            callback_refs: Callback references for progress.
+            check_repo: Whether to check the repository.
+
+        Returns:
+            GitCheck: The check result object.
+        """
         result = GitCheck(self, check_repo=check_repo)
         result.check(callback_refs)
         return result
 
     def pack(self, hint=None, clean_obsolete_packs=False):
+        """Pack loose objects in the repository.
+
+        Args:
+            hint: Hint about what to pack (unused).
+            clean_obsolete_packs: Whether to clean obsolete packs (unused).
+        """
         self._git.object_store.pack_loose_objects()
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
@@ -464,8 +634,8 @@ class LocalGitRepository(GitRepository):
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
             try:
                 commit = self._git.object_store[git_commit_id]
-            except KeyError:
-                raise errors.NoSuchRevision(self, revision_id)
+            except KeyError as err:
+                raise errors.NoSuchRevision(self, revision_id) from err
 
             if commit.gpgsig is None:
                 return gpg.SIGNATURE_NOT_SIGNED, None
@@ -488,19 +658,31 @@ class LocalGitRepository(GitRepository):
         """
         try:
             (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
-        except errors.InvalidRevisionId:
-            raise errors.NoSuchRevision(self, bzr_revid)
+        except errors.InvalidRevisionId as err:
+            raise errors.NoSuchRevision(self, bzr_revid) from err
         else:
             return (git_sha, mapping)
 
     def get_revision(self, revision_id):
+        """Get a revision object by ID.
+
+        Args:
+            revision_id: The revision ID to retrieve.
+
+        Returns:
+            Revision: The revision object.
+
+        Raises:
+            InvalidRevisionId: If revision_id is not bytes.
+            NoSuchRevision: If revision not found.
+        """
         if not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id, self)
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.object_store[git_commit_id]
-        except KeyError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except KeyError as err:
+            raise errors.NoSuchRevision(self, revision_id) from err
         revision, roundtrip_revid, verifiers = mapping.import_commit(
             commit, self.lookup_foreign_revision_id, strict=False
         )
@@ -542,13 +724,26 @@ class LocalGitRepository(GitRepository):
     def revision_tree(self, revision_id):
         """See Repository.revision_tree."""
         if revision_id is None:
-            raise ValueError("invalid revision id {}".format(revision_id))
+            raise ValueError(f"invalid revision id {revision_id}")
         return GitRevisionTree(self, revision_id)
 
     def set_make_working_trees(self, trees):
+        """Set whether to make working trees (not supported).
+
+        Args:
+            trees: Whether to make working trees.
+
+        Raises:
+            UnsupportedOperation: Always raised.
+        """
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
     def make_working_trees(self):
+        """Check if this repository creates working trees.
+
+        Returns:
+            bool: True if not a bare repository, False otherwise.
+        """
         return not self._git.get_config().get_boolean(("core",), "bare")
 
 
@@ -583,9 +778,27 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return LocalGitControlDirFormat()
 
     def get_format_description(self):
+        """Get a human-readable description of the format.
+
+        Returns:
+            str: "Git Repository".
+        """
         return "Git Repository"
 
     def initialize(self, controldir, shared=False, _internal=False):
+        """Initialize a repository in a control directory.
+
+        Args:
+            controldir: The control directory to initialize in.
+            shared: Whether the repository should be shared (unused).
+            _internal: Internal flag (unused).
+
+        Returns:
+            GitRepository: The opened repository.
+
+        Raises:
+            UninitializableFormat: If controldir is not a GitDir.
+        """
         from .dir import GitDir
 
         if not isinstance(controldir, GitDir):
@@ -593,18 +806,41 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return controldir.open_repository()
 
     def check_conversion_target(self, target_repo_format):
+        """Check if format can be converted to target format.
+
+        Args:
+            target_repo_format: The target repository format.
+
+        Returns:
+            bool: True if target supports rich root data.
+        """
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
+        """Get a factory for foreign tests repositories.
+
+        Returns:
+            ForeignTestsRepositoryFactory: The test repository factory.
+        """
         from .tests.test_repository import ForeignTestsRepositoryFactory
 
         return ForeignTestsRepositoryFactory()
 
     def network_name(self):
+        """Get the network name for this format.
+
+        Returns:
+            bytes: b"git".
+        """
         return b"git"
 
 
 def get_extra_interrepo_test_combinations():
+    """Get extra test combinations for inter-repository operations.
+
+    Returns:
+        list: Tuples of (InterRepository class, source format, target format).
+    """
     from ..bzr.groupcompress_repo import RepositoryFormat2a
     from . import interrepo
 

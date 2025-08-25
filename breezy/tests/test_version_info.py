@@ -23,7 +23,7 @@ from io import BytesIO, StringIO
 import yaml
 
 from .. import registry, tests, version_info_formats
-from ..bzr.rio import read_stanzas
+from ..bzr import rio
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
     MissingTemplateVariable,
@@ -135,7 +135,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(bio)
         bio.seek(0)
-        stanzas = list(read_stanzas(bio))
+        stanzas = list(rio.read_stanzas(bio))
         self.assertEqual(1, len(stanzas))
         return stanzas[0]
 
@@ -150,15 +150,15 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(["bloe"], stanza.get_all("bla"))
 
     def get_one_stanza(self, stanza, key):
-        new_stanzas = list(read_stanzas(BytesIO(stanza[key].encode("utf8"))))
+        new_stanzas = list(rio.read_stanzas(BytesIO(stanza.get(key).encode("utf8"))))
         self.assertEqual(1, len(new_stanzas))
         return new_stanzas[0]
 
     def test_build_date(self):
         wt = self.create_branch()
         stanza = self.regen(wt)
-        self.assertTrue("date" in stanza)
-        self.assertTrue("build-date" in stanza)
+        self.assertIn("date", stanza)
+        self.assertIn("build-date", stanza)
         self.assertEqual(["3"], stanza.get_all("revno"))
         self.assertEqual(["r3"], stanza.get_all("revision-id"))
 
@@ -314,8 +314,8 @@ class TestVersionInfoYaml(VersionInfoTestCase):
     def test_build_date(self):
         wt = self.create_branch()
         stanza = self.regen(wt)
-        self.assertTrue("date" in stanza)
-        self.assertTrue("build-date" in stanza)
+        self.assertIn("date", stanza)
+        self.assertIn("build-date", stanza)
         self.assertEqual("3", stanza["revno"])
         self.assertEqual("r3", stanza["revision-id"])
 
@@ -440,7 +440,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         outf = StringIO()
         builder.generate(outf)
         local_vars = {}
-        exec(outf.getvalue(), {}, local_vars)
+        exec(outf.getvalue(), {}, local_vars)  # noqa: S102
         return local_vars
 
     def test_python_version(self):
@@ -449,7 +449,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt)
         self.assertEqual("3", tvi["version_info"]["revno"])
         self.assertEqual(b"r3", tvi["version_info"]["revision_id"])
-        self.assertTrue("date" in tvi["version_info"])
+        self.assertIn("date", tvi["version_info"])
         self.assertEqual(None, tvi["version_info"]["clean"])
 
         tvi = self.regen(wt, check_for_clean=True)
@@ -459,8 +459,8 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertFalse(tvi["version_info"]["clean"])
         self.assertEqual(["", "a", "b", "c"], sorted(tvi["file_revisions"].keys()))
-        self.assertEqual(b"r3", tvi["file_revisions"]["a"])
-        self.assertEqual(b"r2", tvi["file_revisions"]["b"])
+        self.assertEqual("r3", tvi["file_revisions"]["a"])
+        self.assertEqual("r2", tvi["file_revisions"]["b"])
         self.assertEqual("unversioned", tvi["file_revisions"]["c"])
         os.remove("branch/c")
 
@@ -487,7 +487,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         os.remove("branch/d")
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(["", "a", "c", "d"], sorted(tvi["file_revisions"].keys()))
-        self.assertEqual(b"r4", tvi["file_revisions"]["a"])
+        self.assertEqual("r4", tvi["file_revisions"]["a"])
         self.assertEqual("unversioned", tvi["file_revisions"]["c"])
         self.assertEqual("removed", tvi["file_revisions"]["d"])
 

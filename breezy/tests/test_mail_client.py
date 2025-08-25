@@ -37,9 +37,8 @@ class TestMutt(tests.TestCase):
             ["-s", "Hi there!", "-a", "file%", "--", "jrandom@example.org"], cmdline
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -71,15 +70,14 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(
             [
                 "-compose",
-                ("attachment='{}',".format(urlutils.local_path_to_url("file%")))
+                f"attachment='{urlutils.local_path_to_url('file%')}',"
                 + "subject='Hi there!',to='jrandom@example.org'",
             ],
             cmdline,
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -116,9 +114,8 @@ class TestEmacsMail(tests.TestCase):
         if eclient.elisp_tmp_file is not None:
             self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -154,9 +151,8 @@ class TestXDGEmail(tests.TestCase):
             cmdline,
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -182,9 +178,8 @@ class TestEvolution(tests.TestCase):
             ["mailto:jrandom@example.org?attach=file%25&subject=Hi%20there%21"], cmdline
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -207,9 +202,8 @@ class TestKMail(tests.TestCase):
             ["-s", "Hi there!", "--attach", "file%", "jrandom@example.org"], cmdline
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
 
@@ -242,16 +236,15 @@ class TestClaws(tests.TestCase):
         self.assertEqual(
             [
                 "--compose",
-                "mailto:jrandom@example.org?subject={}".format(subject_string),
+                f"mailto:jrandom@example.org?subject={subject_string}",
                 "--attach",
                 "file%",
             ],
             cmdline,
         )
         for item in cmdline:
-            self.assertTrue(
-                isinstance(item, str),
-                "Command-line item {!r} is not a native string!".format(item),
+            self.assertIsInstance(
+                item, str, f"Command-line item {item!r} is not a native string!"
             )
 
     def test_with_from(self):

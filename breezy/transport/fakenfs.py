@@ -45,16 +45,22 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
         """
         try:
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, _mod_transport.FileExists):
+        except (errors.DirectoryNotEmpty, _mod_transport.FileExists) as e:
             # if this is a directory rename, raise
             # resourcebusy rather than DirectoryNotEmpty
             stat = self._decorated.stat(rel_to)
             if S_ISDIR(stat.st_mode):
-                raise errors.ResourceBusy(rel_to)
+                raise errors.ResourceBusy(rel_to) from e
             else:
                 raise
 
     def delete(self, relpath):
+        """See Transport.delete().
+
+        This variation on delete raises ResourceBusy if the file to be deleted
+        has a filename starting with '.nfs', simulating NFS behavior where
+        files may be temporarily renamed with .nfs prefixes when in use.
+        """
         if urlutils.basename(relpath).startswith(".nfs"):
             raise errors.ResourceBusy(self.abspath(relpath))
         return self._decorated.delete(relpath)

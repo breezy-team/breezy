@@ -18,8 +18,9 @@
 import os
 
 from breezy import trace
-from breezy.rename_map import RenameMap
 from breezy.tests import TestCaseWithTransport
+
+from ..rename_map import RenameMap
 
 
 def myhash(val):

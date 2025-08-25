@@ -16,18 +16,10 @@
 
 """Ping plugin for brz."""
 
-from ...commands import Command
-from ...lazy_import import lazy_import
-
-lazy_import(
-    globals(),
-    """
-from breezy.bzr.smart.client import _SmartClient
-from breezy.transport import get_transport
-""",
-)
-
 from breezy import errors
+from breezy.transport import get_transport
+
+from ...commands import Command
 
 
 class cmd_ping(Command):
@@ -40,6 +32,16 @@ class cmd_ping(Command):
     takes_args = ["location"]
 
     def run(self, location):
+        """Execute the ping command to test connection to a smart server.
+
+        Args:
+            location: The URL or path to the Bazaar smart server to ping.
+
+        Raises:
+            CommandError: If the location does not support the smart protocol.
+        """
+        from breezy.bzr.smart.client import _SmartClient
+
         transport = get_transport(location)
         try:
             medium = transport.get_smart_medium()
@@ -50,10 +52,10 @@ class cmd_ping(Command):
         # we can see the response headers (if any) via the handler object.
         response, handler = client.call_expecting_body(b"hello")
         handler.cancel_read_body()
-        self.outf.write("Response: {!r}\n".format(response))
+        self.outf.write(f"Response: {response!r}\n")
         if getattr(handler, "headers", None) is not None:
             headers = {
                 k.decode("utf-8"): v.decode("utf-8")
                 for (k, v) in handler.headers.items()
             }
-            self.outf.write("Headers: {!r}\n".format(headers))
+            self.outf.write(f"Headers: {headers!r}\n")

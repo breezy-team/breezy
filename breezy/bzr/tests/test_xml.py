@@ -18,7 +18,7 @@ from io import BytesIO
 
 import breezy.bzr.xml5
 
-from ... import fifo_cache
+from ...revision import Revision
 from .. import inventory, serializer, xml6, xml7, xml8
 from ..inventory import Inventory
 from . import TestCase
@@ -207,7 +207,7 @@ class TestSerializer(TestCase):
     def test_unpack_revision_5(self):
         """Test unpacking a canned revision v5."""
         inp = BytesIO(_revision_v5)
-        rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
+        rev = breezy.bzr.xml5.revision_serializer_v5.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer, "Martin Pool <mbp@sourcefrog.net>")
         eq(len(rev.parent_ids), 1)
@@ -216,7 +216,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_revision_5_utc(self):
         inp = BytesIO(_revision_v5_utc)
-        rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
+        rev = breezy.bzr.xml5.revision_serializer_v5.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer, "Martin Pool <mbp@sourcefrog.net>")
         eq(len(rev.parent_ids), 1)
@@ -226,7 +226,7 @@ class TestSerializer(TestCase):
     def test_unpack_inventory_5(self):
         """Unpack canned new-style inventory."""
         inp = BytesIO(_committed_inv_v5)
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
         ie = inv.get_entry(b"bar-20050824000535-6bc48cfad47ed134")
@@ -237,7 +237,7 @@ class TestSerializer(TestCase):
 
     def test_unpack_basis_inventory_5(self):
         """Unpack canned new-style inventory."""
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_basis_inv_v5)
         )
         eq = self.assertEqual
@@ -250,77 +250,41 @@ class TestSerializer(TestCase):
         eq(inv.get_entry(ie.parent_id).kind, "directory")
 
     def test_unpack_inventory_5a(self):
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_inventory_v5a), revision_id=b"test-rev-id"
         )
         self.assertEqual(b"test-rev-id", inv.root.revision)
 
-    def test_unpack_inventory_5a_cache_and_copy(self):
-        # Passing an entry_cache should get populated with the objects
-        # But the returned objects should be copies if return_from_cache is
-        # False
-        entry_cache = fifo_cache.FIFOCache()
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
-            breezy.osutils.split_lines(_inventory_v5a),
-            revision_id=b"test-rev-id",
-            entry_cache=entry_cache,
-            return_from_cache=False,
-        )
-        for entry in inv.iter_just_entries():
-            key = (entry.file_id, entry.revision)
-            if entry.file_id is inv.root.file_id:
-                # The root id is inferred for xml v5
-                self.assertFalse(key in entry_cache)
-            else:
-                self.assertIsNot(entry, entry_cache[key])
-
-    def test_unpack_inventory_5a_cache_no_copy(self):
-        # Passing an entry_cache should get populated with the objects
-        # The returned objects should be exact if return_from_cache is
-        # True
-        entry_cache = fifo_cache.FIFOCache()
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
-            breezy.osutils.split_lines(_inventory_v5a),
-            revision_id=b"test-rev-id",
-            entry_cache=entry_cache,
-            return_from_cache=True,
-        )
-        for entry in inv.iter_just_entries():
-            key = (entry.file_id, entry.revision)
-            if entry.file_id is inv.root.file_id:
-                # The root id is inferred for xml v5
-                self.assertFalse(key in entry_cache)
-            else:
-                self.assertIs(entry, entry_cache[key])
-
     def test_unpack_inventory_5b(self):
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_inventory_v5b), revision_id=b"test-rev-id"
         )
         self.assertEqual(b"a-rev-id", inv.root.revision)
 
     def test_repack_inventory_5(self):
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_committed_inv_v5)
         )
         outp = BytesIO()
-        breezy.bzr.xml5.serializer_v5.write_inventory(inv, outp)
+        breezy.bzr.xml5.inventory_serializer_v5.write_inventory(inv, outp)
         self.assertEqualDiff(_expected_inv_v5, outp.getvalue())
-        inv2 = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+        inv2 = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(outp.getvalue())
         )
         self.assertEqual(inv, inv2)
 
     def assertRoundTrips(self, xml_string):
         inp = BytesIO(xml_string)
-        inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
+        inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory(inp)
         outp = BytesIO()
-        breezy.bzr.xml5.serializer_v5.write_inventory(inv, outp)
+        breezy.bzr.xml5.inventory_serializer_v5.write_inventory(inv, outp)
         self.assertEqualDiff(xml_string, outp.getvalue())
-        lines = breezy.bzr.xml5.serializer_v5.write_inventory_to_lines(inv)
+        lines = breezy.bzr.xml5.inventory_serializer_v5.write_inventory_to_lines(inv)
         outp.seek(0)
         self.assertEqual(outp.readlines(), lines)
-        inv2 = breezy.bzr.xml5.serializer_v5.read_inventory(BytesIO(outp.getvalue()))
+        inv2 = breezy.bzr.xml5.inventory_serializer_v5.read_inventory(
+            BytesIO(outp.getvalue())
+        )
         self.assertEqual(inv, inv2)
 
     def tests_serialize_inventory_v5_with_root(self):
@@ -329,9 +293,13 @@ class TestSerializer(TestCase):
     def check_repack_revision(self, txt):
         """Check that repacking a revision yields the same information."""
         inp = BytesIO(txt)
-        rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
-        outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
-        rev2 = breezy.bzr.xml5.serializer_v5.read_revision(BytesIO(outfile_contents))
+        rev = breezy.bzr.xml5.revision_serializer_v5.read_revision(inp)
+        outfile_contents = (
+            breezy.bzr.xml5.revision_serializer_v5.write_revision_to_string(rev)
+        )
+        rev2 = breezy.bzr.xml5.revision_serializer_v5.read_revision(
+            BytesIO(outfile_contents)
+        )
         self.assertEqual(rev, rev2)
 
     def test_repack_revision_5(self):
@@ -344,37 +312,63 @@ class TestSerializer(TestCase):
     def test_pack_revision_5(self):
         """Pack revision to XML v5."""
         # fixed 20051025, revisions should have final newline
-        rev = breezy.bzr.xml5.serializer_v5.read_revision_from_string(_revision_v5)
-        outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
+        rev = breezy.bzr.xml5.revision_serializer_v5.read_revision_from_string(
+            _revision_v5
+        )
+        outfile_contents = (
+            breezy.bzr.xml5.revision_serializer_v5.write_revision_to_string(rev)
+        )
         self.assertEqual(outfile_contents[-1:], b"\n")
         self.assertEqualDiff(
             outfile_contents,
-            b"".join(breezy.bzr.xml5.serializer_v5.write_revision_to_lines(rev)),
+            b"".join(
+                breezy.bzr.xml5.revision_serializer_v5.write_revision_to_lines(rev)
+            ),
         )
         self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
     def test_empty_property_value(self):
         """Create an empty property value check that it serializes correctly."""
-        s_v5 = breezy.bzr.xml5.serializer_v5
+        s_v5 = breezy.bzr.xml5.revision_serializer_v5
         rev = s_v5.read_revision_from_string(_revision_v5)
         props = {"empty": "", "one": "one"}
-        rev.properties = props
+        rev = Revision(
+            revision_id=rev.revision_id,
+            timestamp=rev.timestamp,
+            timezone=rev.timezone,
+            committer=rev.committer,
+            message=rev.message,
+            parent_ids=rev.parent_ids,
+            inventory_sha1=rev.inventory_sha1,
+            properties=props,
+        )
         txt = b"".join(s_v5.write_revision_to_lines(rev))
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory(b"tree-root-321", revision_id=b"rev_outer")
-        inv.add(inventory.InventoryFile(b"file-id", "file", b"tree-root-321"))
-        inv.add(inventory.InventoryDirectory(b"dir-id", "dir", b"tree-root-321"))
-        inv.add(inventory.InventoryLink(b"link-id", "link", b"tree-root-321"))
-        inv.get_entry(b"tree-root-321").revision = b"rev_outer"
-        inv.get_entry(b"dir-id").revision = b"rev_outer"
-        inv.get_entry(b"file-id").revision = b"rev_outer"
-        inv.get_entry(b"file-id").text_sha1 = b"A"
-        inv.get_entry(b"file-id").text_size = 1
-        inv.get_entry(b"link-id").revision = b"rev_outer"
-        inv.get_entry(b"link-id").symlink_target = "a"
+        inv = Inventory(root_id=None, revision_id=b"rev_outer")
+        inv.add(inventory.InventoryDirectory(b"tree-root-321", "", None, b"rev_outer"))
+        inv.add(
+            inventory.InventoryFile(
+                b"file-id",
+                "file",
+                b"tree-root-321",
+                b"rev_outer",
+                text_sha1=b"A",
+                text_size=1,
+            )
+        )
+        inv.add(
+            inventory.InventoryDirectory(
+                b"dir-id", "dir", b"tree-root-321", b"rev_outer"
+            )
+        )
+        inv.add(
+            inventory.InventoryLink(
+                b"link-id", "link", b"tree-root-321", b"rev_outer", symlink_target="a"
+            )
+        )
         return inv
 
     def test_roundtrip_inventory_v7(self):
@@ -384,26 +378,26 @@ class TestSerializer(TestCase):
                 b"nested-id", "nested", b"tree-root-321", b"rev_outer", b"rev_inner"
             )
         )
-        lines = xml7.serializer_v7.write_inventory_to_lines(inv)
+        lines = xml7.inventory_serializer_v7.write_inventory_to_lines(inv)
         self.assertEqualDiff(_expected_inv_v7, b"".join(lines))
-        inv2 = xml7.serializer_v7.read_inventory_from_lines(lines)
+        inv2 = xml7.inventory_serializer_v7.read_inventory_from_lines(lines)
         self.assertEqual(5, len(inv2))
         for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_roundtrip_inventory_v6(self):
         inv = self.get_sample_inventory()
-        lines = xml6.serializer_v6.write_inventory_to_lines(inv)
+        lines = xml6.inventory_serializer_v6.write_inventory_to_lines(inv)
         self.assertEqualDiff(_expected_inv_v6, b"".join(lines))
-        inv2 = xml6.serializer_v6.read_inventory_from_lines(lines)
+        inv2 = xml6.inventory_serializer_v6.read_inventory_from_lines(lines)
         self.assertEqual(4, len(inv2))
         for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_wrong_format_v7(self):
         """Can't accidentally open a file with wrong serializer."""
-        s_v6 = breezy.bzr.xml6.serializer_v6
-        s_v7 = xml7.serializer_v7
+        s_v6 = breezy.bzr.xml6.inventory_serializer_v6
+        s_v7 = xml7.inventory_serializer_v7
         self.assertRaises(
             serializer.UnexpectedInventoryFormat,
             s_v7.read_inventory_from_lines,
@@ -416,11 +410,12 @@ class TestSerializer(TestCase):
         )
 
     def test_tree_reference(self):
-        s_v5 = breezy.bzr.xml5.serializer_v5
-        s_v6 = breezy.bzr.xml6.serializer_v6
-        s_v7 = xml7.serializer_v7
-        inv = Inventory(b"tree-root-321", revision_id=b"rev-outer")
-        inv.root.revision = b"root-rev"
+        s_v5 = breezy.bzr.xml5.inventory_serializer_v5
+        s_v6 = breezy.bzr.xml6.inventory_serializer_v6
+        s_v7 = xml7.inventory_serializer_v7
+        inv = Inventory(
+            b"tree-root-321", revision_id=b"rev-outer", root_revision=b"root-rev"
+        )
         inv.add(
             inventory.TreeReference(
                 b"nested-id", "nested", b"tree-root-321", b"rev-outer", b"rev-inner"
@@ -440,47 +435,46 @@ class TestSerializer(TestCase):
 
     def test_roundtrip_inventory_v8(self):
         inv = self.get_sample_inventory()
-        lines = xml8.serializer_v8.write_inventory_to_lines(inv)
-        inv2 = xml8.serializer_v8.read_inventory_from_lines(lines)
+        lines = xml8.inventory_serializer_v8.write_inventory_to_lines(inv)
+        inv2 = xml8.inventory_serializer_v8.read_inventory_from_lines(lines)
         self.assertEqual(4, len(inv2))
         for _path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2.get_entry(ie.file_id))
 
     def test_inventory_text_v8(self):
         inv = self.get_sample_inventory()
-        lines = xml8.serializer_v8.write_inventory_to_lines(inv)
+        lines = xml8.inventory_serializer_v8.write_inventory_to_lines(inv)
         self.assertEqualDiff(_expected_inv_v8, b"".join(lines))
 
-    def test_revision_text_v6(self):
-        """Pack revision to XML v6."""
-        rev = breezy.bzr.xml6.serializer_v6.read_revision_from_string(_expected_rev_v5)
-        serialized = breezy.bzr.xml6.serializer_v6.write_revision_to_lines(rev)
-        self.assertEqualDiff(b"".join(serialized), _expected_rev_v5)
-
-    def test_revision_text_v7(self):
+    def test_revision_text_v5(self):
         """Pack revision to XML v7."""
-        rev = breezy.bzr.xml7.serializer_v7.read_revision_from_string(_expected_rev_v5)
-        serialized = breezy.bzr.xml7.serializer_v7.write_revision_to_lines(rev)
+        rev = breezy.bzr.xml5.revision_serializer_v5.read_revision_from_string(
+            _expected_rev_v5
+        )
+        serialized = breezy.bzr.xml5.revision_serializer_v5.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v5)
 
     def test_revision_text_v8(self):
         """Pack revision to XML v8."""
-        rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(_expected_rev_v8)
-        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_lines(rev)
+        rev = breezy.bzr.xml8.revision_serializer_v8.read_revision_from_string(
+            _expected_rev_v8
+        )
+        serialized = breezy.bzr.xml8.revision_serializer_v8.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v8)
 
     def test_revision_text_v8_complex(self):
         """Pack revision to XML v8."""
-        rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(
+        rev = breezy.bzr.xml8.revision_serializer_v8.read_revision_from_string(
             _expected_rev_v8_complex
         )
-        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_lines(rev)
+        serialized = breezy.bzr.xml8.revision_serializer_v8.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v8_complex)
 
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
-        s_v5 = breezy.bzr.xml5.serializer_v5
-        rev = s_v5.read_revision_from_string(_revision_utf8_v5)
+        sr_v5 = breezy.bzr.xml5.revision_serializer_v5
+        si_v5 = breezy.bzr.xml5.inventory_serializer_v5
+        rev = sr_v5.read_revision_from_string(_revision_utf8_v5)
         self.assertEqual(b"erik@b\xc3\xa5gfors-02", rev.revision_id)
         self.assertIsInstance(rev.revision_id, bytes)
         self.assertEqual([b"erik@b\xc3\xa5gfors-01"], rev.parent_ids)
@@ -490,7 +484,7 @@ class TestSerializer(TestCase):
         self.assertIsInstance(rev.message, str)
 
         # ie.revision should either be None or a utf-8 revision id
-        inv = s_v5.read_inventory_from_lines(
+        inv = si_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_inventory_utf8_v5)
         )
         rev_id_1 = "erik@b\xe5gfors-01".encode()
@@ -527,7 +521,7 @@ class TestSerializer(TestCase):
         self.assertEqual(len(expected), len(actual))
 
     def test_serialization_error(self):
-        s_v5 = breezy.bzr.xml5.serializer_v5
+        s_v5 = breezy.bzr.xml5.inventory_serializer_v5
         e = self.assertRaises(
             serializer.UnexpectedInventoryFormat,
             s_v5.read_inventory_from_lines,
@@ -539,21 +533,14 @@ class TestSerializer(TestCase):
 class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
-    def setUp(self):
-        super().setUp()
-        # Keep the cache clear before and after the test
-        breezy.bzr.xml_serializer._clear_cache()
-        self.addCleanup(breezy.bzr.xml_serializer._clear_cache)
-
     def test_simple_ascii(self):
         # _encode_and_escape always appends a final ", because these parameters
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
         val = breezy.bzr.xml_serializer.encode_and_escape("foo bar")
         self.assertEqual(b"foo bar", val)
-        # The second time should be cached
         val2 = breezy.bzr.xml_serializer.encode_and_escape("foo bar")
-        self.assertIs(val2, val)
+        self.assertEqual(val2, val)
 
     def test_ascii_with_xml(self):
         self.assertEqual(

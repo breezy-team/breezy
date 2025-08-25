@@ -32,7 +32,7 @@ from ...tests import (
     features,
 )
 from .. import knit, knitpack_repo, pack, pack_repo
-from ..index import *
+from ..index import *  # noqa: F403
 from ..knit import (
     AnnotatedKnitContent,
     KnitContent,
@@ -785,7 +785,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         if keys != alt1 and keys != alt2:
             self.fail(
                 "Returned key order did not match either expected order."
-                " expected {} or {}, not {}".format(alt1, alt2, keys)
+                f" expected {alt1} or {alt2}, not {keys}"
             )
 
 
@@ -981,7 +981,7 @@ class LowLevelKnitIndexTests(TestCase):
         # _KndxIndex is a private class, and deals in utf8 revision_ids, not
         # Unicode revision_ids.
         self.assertEqual({(utf8_revision_id,): ()}, index.get_parent_map(index.keys()))
-        self.assertFalse((unicode_revision_id,) in index.keys())
+        self.assertNotIn((unicode_revision_id,), index.keys())
 
     def test_read_utf8_parents(self):
         unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
@@ -1401,7 +1401,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         details = ("line-delta", False)
         res = ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual(None, res)
-        self.assertTrue(parent_key in ann._pending_deltas)
+        self.assertIn(parent_key, ann._pending_deltas)
         pending = ann._pending_deltas[parent_key]
         self.assertEqual(1, len(pending))
         self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
@@ -1422,7 +1422,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # Expanding the second child should remove the content object, and the
         # num_compression_children entry
         ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
-        self.assertFalse(parent_key in ann._content_objects)
+        self.assertNotIn(parent_key, ann._content_objects)
         self.assertEqual({}, ann._num_compression_children)
         # We should not cache the content_objects for rev2 and rev, because
         # they do not have compression children of their own.
@@ -1490,8 +1490,8 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._annotations_cache[p1_key] = [(p1_key,)] * 2
         res = ann._process_pending(p1_key)
         self.assertEqual([], res)
-        self.assertFalse(p1_key in ann._pending_deltas)
-        self.assertTrue(p2_key in ann._pending_annotation)
+        self.assertNotIn(p1_key, ann._pending_deltas)
+        self.assertIn(p2_key, ann._pending_annotation)
         self.assertEqual(
             {p2_key: [(rev_key, (p1_key, p2_key))]}, ann._pending_annotation
         )
@@ -2642,10 +2642,7 @@ class TestStacking(KnitTests):
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
         for result in results:
-            if result[0] == key:
-                source = test
-            else:
-                source = basis
+            source = test if result[0] == key else basis
             record = next(source.get_record_stream([result[0]], "unordered", True))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
@@ -2750,10 +2747,7 @@ class TestStacking(KnitTests):
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
         for result in results:
-            if result[0] == key:
-                source = test
-            else:
-                source = basis
+            source = test if result[0] == key else basis
             record = next(source.get_record_stream([result[0]], "unordered", False))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])

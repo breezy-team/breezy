@@ -35,7 +35,10 @@ try:
     import pkg_resources
 except ModuleNotFoundError:
     ez = {}
-    exec(urllib2.urlopen("http://peak.telecommunity.com/dist/ez_setup.py").read(), ez)
+    exec(  # noqa: S102
+        urllib2.urlopen("http://peak.telecommunity.com/dist/ez_setup.py").read(),
+        ez,
+    )
     ez["use_setuptools"](to_dir=tmpeggs, download_delay=0)
 
     import pkg_resources
@@ -43,13 +46,30 @@ except ModuleNotFoundError:
 if sys.platform == "win32":
 
     def quote(c):
+        """Quote a command argument for Windows if it contains spaces.
+
+        Args:
+            c (str): The command argument to potentially quote.
+
+        Returns:
+            str: The argument quoted with double quotes if it contains spaces,
+                otherwise the original argument.
+        """
         if " " in c:
-            return '"{}"'.format(c)  # work around spawn lamosity on windows
+            return f'"{c}"'  # work around spawn lamosity on windows
         else:
             return c
 else:
 
     def quote(c):
+        """Quote a command argument for non-Windows platforms.
+
+        Args:
+            c (str): The command argument to quote.
+
+        Returns:
+            str: The original argument unchanged (no quoting needed on Unix-like systems).
+        """
         return c
 
 
@@ -63,18 +83,19 @@ env = dict(
 if is_jython:
     import subprocess
 
-    assert (
+    if (
         subprocess.Popen(
             [sys.executable]
             + ["-c", quote(cmd), "-mqNxd", quote(tmpeggs), "zc.buildout"],
             env=env,
         ).wait()
-        == 0
-    )
+        != 0
+    ):
+        raise ASsertionError("Failed to bootstrap zc.buildout")
 
 else:
-    assert (
-        os.spawnle(
+    if (
+        os.spawnle(  # noqa: S606
             os.P_WAIT,
             sys.executable,
             quote(sys.executable),
@@ -85,8 +106,9 @@ else:
             "zc.buildout",
             env,
         )
-        == 0
-    )
+        != 0
+    ):
+        raise AssertionError("Failed to bootstrap zc.buildout")
 
 ws.add_entry(tmpeggs)
 ws.require("zc.buildout")

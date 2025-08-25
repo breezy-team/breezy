@@ -14,6 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Diff functionality and related utilities.
+
+This module provides classes and functions for generating and working with
+diffs between files and trees, including unified diff generation and
+various diff display formats.
+"""
+
 import contextlib
 import difflib
 import os
@@ -26,14 +33,12 @@ from .lazy_import import lazy_import
 lazy_import(
     globals(),
     """
-import errno
-import patiencediff
 import subprocess
 
 from breezy import (
     controldir,
     textfile,
-    timestamp,
+    patch,
     views,
     )
 
@@ -76,6 +81,19 @@ def internal_diff(
     path_encoding="utf8",
     context_lines=DEFAULT_CONTEXT_AMOUNT,
 ):
+    """Generate a unified diff between two sets of lines.
+
+    Args:
+        old_label: Label for the old version.
+        oldlines: Lines from the old version.
+        new_label: Label for the new version.
+        newlines: Lines from the new version.
+        to_file: File to write the diff to.
+        allow_binary: Whether to allow binary content.
+        sequence_matcher: Optional sequence matcher to use.
+        path_encoding: Encoding for path names.
+        context_lines: Number of context lines to include.
+    """
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -91,6 +109,8 @@ def internal_diff(
         textfile.check_text_lines(newlines)
 
     if sequence_matcher is None:
+        import patiencediff
+
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = unified_diff_bytes(
         oldlines,
@@ -225,10 +245,8 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
             stderr=stderr,
             env=env,
         )
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            raise errors.NoDiff(str(e))
-        raise
+    except FileNotFoundError as e:
+        raise errors.NoDiff(str(e)) from e
 
     return pipe
 
@@ -353,7 +371,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
                 raise errors.BzrError(
                     "external diff failed with exit code 2"
                     " when run with LANG=C and LC_ALL=C,"
-                    " but not when run natively: {!r}".format(diffcmd)
+                    f" but not when run natively: {diffcmd!r}"
                 )
 
             first_line = lang_c_out.split(b"\n", 1)[0]
@@ -361,9 +379,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             m = re.match(b"^(binary )?files.*differ$", first_line, re.I)
             if m is None:
                 raise errors.BzrError(
-                    "external diff failed with exit code 2; command: {!r}".format(
-                        diffcmd
-                    )
+                    f"external diff failed with exit code 2; command: {diffcmd!r}"
                 )
             else:
                 # Binary files differ, just return
@@ -374,13 +390,10 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
         to_file.write(out)
         if rc not in (0, 1):
             # returns 1 if files differ; that's OK
-            if rc < 0:
-                msg = f"signal {-rc}"
-            else:
-                msg = f"exit code {rc}"
+            msg = "signal %d" % -rc if rc < 0 else "exit code %d" % rc
 
             raise errors.BzrError(
-                "external diff failed with {}; command: {!r}".format(msg, diffcmd)
+                f"external diff failed with {msg}; command: {diffcmd!r}"
             )
 
     finally:
@@ -393,9 +406,10 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             # deleted)
             try:
                 os.remove(path)
+            except FileNotFoundError:
+                pass
             except OSError as e:
-                if e.errno not in (errno.ENOENT,):
-                    warning("Failed to delete temporary file: %s %s", path, e)
+                warning("Failed to delete temporary file: %s %s", path, e)
 
         cleanup(old_abspath)
         cleanup(new_abspath)
@@ -470,9 +484,11 @@ def get_trees_and_branches_to_diff_locked(
     specific_files = []
     if old_url is None:
         old_url = default_location
-    working_tree, branch, relpath = (
-        controldir.ControlDir.open_containing_tree_or_branch(old_url)
-    )
+    (
+        working_tree,
+        branch,
+        relpath,
+    ) = controldir.ControlDir.open_containing_tree_or_branch(old_url)
     lock_tree_or_branch(working_tree, branch)
     if consider_relpath and relpath != "":
         if working_tree is not None and apply_view:
@@ -485,9 +501,11 @@ def get_trees_and_branches_to_diff_locked(
     if new_url is None:
         new_url = default_location
     if new_url != old_url:
-        working_tree, branch, relpath = (
-            controldir.ControlDir.open_containing_tree_or_branch(new_url)
-        )
+        (
+            working_tree,
+            branch,
+            relpath,
+        ) = controldir.ControlDir.open_containing_tree_or_branch(new_url)
         lock_tree_or_branch(working_tree, branch)
         if consider_relpath and relpath != "":
             if working_tree is not None and apply_view:
@@ -590,10 +608,19 @@ def _patch_header_date(tree, path):
         mtime = tree.get_file_mtime(path)
     except FileTimestampUnavailable:
         mtime = 0
-    return timestamp.format_patch_date(mtime)
+    return patch.format_patch_date(mtime)
 
 
 def get_executable_change(old_is_x, new_is_x):
+    """Get description of executable permission changes.
+
+    Args:
+        old_is_x: Whether the old file was executable.
+        new_is_x: Whether the new file is executable.
+
+    Returns:
+        List containing description of executable change, or None if no change.
+    """
     descr = {True: b"+x", False: b"-x", None: b"??"}
     if old_is_x != new_is_x:
         return [
@@ -631,10 +658,19 @@ class DiffPath:
         self.path_encoding = path_encoding
 
     def finish(self):
+        """Clean up any resources used by the differ."""
         pass
 
     @classmethod
     def from_diff_tree(klass, diff_tree):
+        """Create a DiffPath instance from a DiffTree.
+
+        Args:
+            diff_tree: DiffTree instance to create from.
+
+        Returns:
+            New DiffPath instance.
+        """
         return klass(
             diff_tree.old_tree,
             diff_tree.new_tree,
@@ -660,13 +696,27 @@ class DiffKindChange:
     """
 
     def __init__(self, differs):
+        """Initialize DiffKindChange.
+
+        Args:
+            differs: List of differs to use for handling changes.
+        """
         self.differs = differs
 
     def finish(self):
+        """Clean up any resources used by the differs."""
         pass
 
     @classmethod
     def from_diff_tree(klass, diff_tree):
+        """Create a DiffKindChange instance from a DiffTree.
+
+        Args:
+            diff_tree: DiffTree instance to create from.
+
+        Returns:
+            New DiffKindChange instance.
+        """
         return klass(diff_tree.differs)
 
     def diff(self, old_path, new_path, old_kind, new_kind):
@@ -686,6 +736,8 @@ class DiffKindChange:
 
 
 class DiffTreeReference(DiffPath):
+    """Differ for tree reference comparisons."""
+
     def diff(self, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two tree references.  (dummy)."""
         if "tree-reference" not in (old_kind, new_kind):
@@ -698,6 +750,8 @@ class DiffTreeReference(DiffPath):
 
 
 class DiffDirectory(DiffPath):
+    """Differ for directory comparisons."""
+
     def diff(self, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two directories.  (dummy)."""
         if "directory" not in (old_kind, new_kind):
@@ -710,6 +764,8 @@ class DiffDirectory(DiffPath):
 
 
 class DiffSymlink(DiffPath):
+    """Differ for symlink comparisons."""
+
     def diff(self, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two symlinks.
 
@@ -735,6 +791,12 @@ class DiffSymlink(DiffPath):
         return self.diff_symlink(old_target, new_target)
 
     def diff_symlink(self, old_target, new_target):
+        """Compare two symlink targets.
+
+        Args:
+            old_target: Target of the old symlink.
+            new_target: Target of the new symlink.
+        """
         if old_target is None:
             self.to_file.write(
                 b"=== target is '%s'\n"
@@ -757,6 +819,8 @@ class DiffSymlink(DiffPath):
 
 
 class DiffText(DiffPath):
+    """Differ for text file comparisons."""
+
     # GNU Patch uses the epoch date to detect files that are being added
     # or removed in a diff.
     EPOCH_DATE = "1970-01-01 00:00:00 +0000"
@@ -772,6 +836,18 @@ class DiffText(DiffPath):
         text_differ=internal_diff,
         context_lines=DEFAULT_CONTEXT_AMOUNT,
     ):
+        """Initialize DiffText.
+
+        Args:
+            old_tree: Old tree to compare from.
+            new_tree: New tree to compare to.
+            to_file: File to write diff output to.
+            path_encoding: Encoding for file paths.
+            old_label: Label for old version.
+            new_label: Label for new version.
+            text_differ: Function to use for text diffing.
+            context_lines: Number of context lines.
+        """
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.text_differ = text_differ
         self.old_label = old_label
@@ -801,8 +877,8 @@ class DiffText(DiffPath):
             new_date = self.EPOCH_DATE
         else:
             return self.CANNOT_DIFF
-        from_label = "{}{}\t{}".format(self.old_label, old_path or new_path, old_date)
-        to_label = "{}{}\t{}".format(self.new_label, new_path or old_path, new_date)
+        from_label = f"{self.old_label}{old_path or new_path}\t{old_date}"
+        to_label = f"{self.new_label}{new_path or old_path}\t{new_date}"
         return self.diff_text(old_path, new_path, from_label, to_label)
 
     def diff_text(self, from_path, to_path, from_label, to_label):
@@ -850,6 +926,8 @@ class DiffText(DiffPath):
 
 
 class DiffFromTool(DiffPath):
+    """Differ that uses external tools for file comparison."""
+
     def __init__(
         self,
         command_template: Union[str, list[str]],
@@ -858,31 +936,61 @@ class DiffFromTool(DiffPath):
         to_file,
         path_encoding="utf-8",
     ):
+        """Initialize DiffFromTool.
+
+        Args:
+            command_template: Template for external diff command.
+            old_tree: Old tree to compare from.
+            new_tree: New tree to compare to.
+            to_file: File to write diff output to.
+            path_encoding: Encoding for file paths.
+        """
         import tempfile
 
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-
         self._root = tempfile.mkdtemp(prefix="brz-diff-")
 
     @classmethod
     def from_string(
-        klass,
+        cls,
         command_template: Union[str, list[str]],
         old_tree: Tree,
         new_tree: Tree,
         to_file,
         path_encoding: str = "utf-8",
     ):
-        return klass(command_template, old_tree, new_tree, to_file, path_encoding)
+        """Create DiffFromTool from command template string.
+
+        Args:
+            command_template: Template for external diff command.
+            old_tree: Old tree to compare from.
+            new_tree: New tree to compare to.
+            to_file: File to write diff output to.
+            path_encoding: Encoding for file paths.
+
+        Returns:
+            New DiffFromTool instance.
+        """
+        return cls(command_template, old_tree, new_tree, to_file, path_encoding)
 
     @classmethod
-    def make_from_diff_tree(klass, command_string, external_diff_options=None):
+    def make_from_diff_tree(cls, command_string, external_diff_options=None):
+        """Create a factory function for DiffFromTool instances.
+
+        Args:
+            command_string: Command string for external diff tool.
+            external_diff_options: Additional options for the external tool.
+
+        Returns:
+            Factory function that creates DiffFromTool instances.
+        """
+
         def from_diff_tree(diff_tree):
             full_command_string = [command_string]
             if external_diff_options is not None:
                 full_command_string.extend(external_diff_options.split())
-            return klass.from_string(
+            return cls.from_string(
                 full_command_string,
                 diff_tree.old_tree,
                 diff_tree.new_tree,
@@ -911,11 +1019,8 @@ class DiffFromTool(DiffPath):
         command = self._get_command(old_path, new_path)
         try:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=self._root)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise errors.ExecutableMissing(command[0])
-            else:
-                raise
+        except FileNotFoundError as e:
+            raise errors.ExecutableMissing(command[0]) from e
         self.to_file.write(proc.stdout.read())
         proc.stdout.close()
         return proc.wait()
@@ -925,11 +1030,8 @@ class DiffFromTool(DiffPath):
             self._root
         ):
             return False
-        try:
+        with contextlib.suppress(FileExistsError):
             os.symlink(tree.abspath(""), osutils.pathjoin(self._root, prefix))
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
         return True
 
     @staticmethod
@@ -971,11 +1073,8 @@ class DiffFromTool(DiffPath):
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
-        try:
+        with contextlib.suppress(FileExistsError):
             os.makedirs(parent_dir)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
         with tree.get_file(relpath) as source, open(full_path, "wb") as target:
             osutils.pumpfile(source, target)
         try:
@@ -998,17 +1097,28 @@ class DiffFromTool(DiffPath):
         return old_disk_path, new_disk_path
 
     def finish(self):
+        """Clean up temporary directory and files."""
         try:
             osutils.rmtree(self._root)
+        except FileNotFoundError:
+            pass
         except OSError as e:
-            if e.errno != errno.ENOENT:
-                mutter(
-                    'The temporary directory "{}" was not cleanly removed: {}.'.format(
-                        self._root, e
-                    )
-                )
+            mutter(
+                f'The temporary directory "{self._root}" was not cleanly removed: {e}.'
+            )
 
     def diff(self, old_path, new_path, old_kind, new_kind):
+        """Perform diff using external tool.
+
+        Args:
+            old_path: Path in old tree.
+            new_path: Path in new tree.
+            old_kind: Kind of old file.
+            new_kind: Kind of new file.
+
+        Returns:
+            CANNOT_DIFF if files are not both regular files, CHANGED otherwise.
+        """
         if (old_kind, new_kind) != ("file", "file"):
             return DiffPath.CANNOT_DIFF
         (old_disk_path, new_disk_path) = self._prepare_files(old_path, new_path)
@@ -1069,7 +1179,7 @@ class DiffTree:
         :param diff_text: DiffPath-type object to use as a last resort for
             diffing text files.
         :param extra_factories: Factories of DiffPaths to try before any other
-            DiffPaths
+        DiffPaths
         """
         if diff_text is None:
             diff_text = DiffText(
@@ -1194,8 +1304,8 @@ class DiffTree:
                 continue
             if change.kind[0] == "symlink" and not self.new_tree.supports_symlinks():
                 warning(
-                    'Ignoring "{}" as symlinks are not '
-                    "supported on this filesystem.".format(change.path[0])
+                    f'Ignoring "{change.path[0]}" as symlinks are not '
+                    "supported on this filesystem."
                 )
                 continue
             oldpath, newpath = change.path
@@ -1258,14 +1368,8 @@ class DiffTree:
         :param old_path: The path of the file in the old tree
         :param new_path: The path of the file in the new tree
         """
-        if old_path is None:
-            old_kind = None
-        else:
-            old_kind = self.old_tree.kind(old_path)
-        if new_path is None:
-            new_kind = None
-        else:
-            new_kind = self.new_tree.kind(new_path)
+        old_kind = None if old_path is None else self.old_tree.kind(old_path)
+        new_kind = None if new_path is None else self.new_tree.kind(new_path)
         self._diff(old_path, new_path, old_kind, new_kind)
 
     def _diff(self, old_path, new_path, old_kind, new_kind):
@@ -1279,5 +1383,5 @@ class DiffTree:
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry[str, type[DiffTree]]()
+format_registry = Registry[str, type[DiffTree], None]()
 format_registry.register("default", DiffTree)

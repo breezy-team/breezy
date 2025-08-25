@@ -108,13 +108,15 @@ class TestPush(per_branch.TestCaseWithBranch):
         bound = self.make_branch("bound")
         try:
             bound.bind(master)
-        except branch.BindingUnsupported:
-            raise tests.TestNotApplicable("Format does not support bound branches")
+        except branch.BindingUnsupported as e:
+            raise tests.TestNotApplicable(
+                "Format does not support bound branches"
+            ) from e
         other = bound.controldir.sprout("other").open_branch()
         try:
             other.tags.set_tag("new-tag", b"some-rev")
-        except errors.TagsNotSupported:
-            raise tests.TestNotApplicable("Format does not support tags")
+        except errors.TagsNotSupported as err:
+            raise tests.TestNotApplicable("Format does not support tags") from err
         other.push(bound)
         self.assertEqual({"new-tag": b"some-rev"}, bound.tags.get_tag_dict())
         self.assertEqual({"new-tag": b"some-rev"}, master.tags.get_tag_dict())
@@ -207,8 +209,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         t.ensure_base()
         try:
             bzrdir = self.bzrdir_format.initialize_on_transport(t)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable("cannot initialize this format")
+        except errors.UninitializableFormat as e:
+            raise tests.TestNotApplicable("cannot initialize this format") from e
         try:
             bzrdir.open_branch()
         except errors.NotBranchError:
@@ -219,8 +221,8 @@ class TestPush(per_branch.TestCaseWithBranch):
             )
         try:
             source = self.make_branch_builder("source", format=self.bzrdir_format)
-        except errors.UninitializableFormat:
-            raise tests.TestNotApplicable("cannot initialize this format")
+        except errors.UninitializableFormat as e:
+            raise tests.TestNotApplicable("cannot initialize this format") from e
         source.start_series()
         revid_a = source.build_snapshot(
             None, [("add", ("", b"root-id", "directory", None))]
@@ -366,8 +368,10 @@ class TestPushHook(per_branch.TestCaseWithBranch):
             local = controldir.ControlDir.create_branch_convenience("local2")
             try:
                 local.bind(target)
-            except branch.BindingUnsupported:
-                raise tests.TestNotApplicable("default format does not support binding")
+            except branch.BindingUnsupported as e:
+                raise tests.TestNotApplicable(
+                    "default format does not support binding"
+                ) from e
         source = self.make_branch("source")
         branch.Branch.hooks.install_named_hook(
             "post_push", self.capture_post_push_hook, None
@@ -493,7 +497,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
         # Branch.get_stacked_on_url, get, get, Branch.lock_write,
         # Branch.last_revision_info, Branch.unlock]
-        self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
+        self.assertLessEqual(len(self.hpss_calls), 9, self.hpss_calls)
 
 
 class TestLossyPush(per_branch.TestCaseWithBranch):

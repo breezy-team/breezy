@@ -21,7 +21,7 @@ from . import FastimportFeature
 
 try:
     from fastimport import commands
-except ImportError:
+except ModuleNotFoundError:
     commands = object()  # type: ignore
 
 
@@ -31,7 +31,6 @@ def load_tests(loader, standard_tests, pattern):
         ("pack-0.92", {"branch_format": "pack-0.92"}),
         ("1.9-rich-root", {"branch_format": "1.9-rich-root"}),
     ]
-
     scenarios.append(("2a", {"branch_format": "2a"}))
     suite = loader.suiteClass()
     result = tests.multiply_tests(standard_tests, scenarios, suite)
@@ -56,11 +55,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         self,
         branch,
         revno,
-        expected_added=None,
-        expected_removed=None,
-        expected_modified=None,
-        expected_renamed=None,
-        expected_kind_changed=None,
+        expected_added=[],  # noqa: B006
+        expected_removed=[],  # noqa: B006
+        expected_modified=[],  # noqa: B006
+        expected_renamed=[],  # noqa: B006
+        expected_kind_changed=[],  # noqa: B006
     ):
         """Check the changes introduced in a revision of a branch.
 
@@ -112,11 +111,11 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def _check_changes(
         self,
         changes,
-        expected_added=None,
-        expected_removed=None,
-        expected_modified=None,
-        expected_renamed=None,
-        expected_kind_changed=None,
+        expected_added=[],  # noqa: B006
+        expected_removed=[],  # noqa: B006
+        expected_modified=[],  # noqa: B006
+        expected_renamed=[],  # noqa: B006
+        expected_kind_changed=[],  # noqa: B006
     ):
         """Check the changes in a TreeDelta.
 
@@ -159,7 +158,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             self.assertEqual(
                 len(renamed),
                 len(expected_renamed),
-                "{} is renamed, expected {}".format(renamed, expected_renamed),
+                f"{renamed} is renamed, expected {expected_renamed}",
             )
             renamed_files = [(item.path[0], item.path[1]) for item in renamed]
             for expected_renamed_entry in expected_renamed:
@@ -167,60 +166,50 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                     expected_renamed_entry[0].decode("utf-8"),
                     expected_renamed_entry[1].decode("utf-8"),
                 )
-                self.assertTrue(
-                    expected_renamed_entry in renamed_files,
-                    "{} is not renamed, {} are".format(
-                        expected_renamed_entry, renamed_files
-                    ),
+                self.assertIn(
+                    expected_renamed_entry,
+                    renamed_files,
+                    f"{expected_renamed_entry} is not renamed, {renamed_files} are",
                 )
         if expected_added is not None:
-            self.assertEqual(
-                len(added), len(expected_added), "{} is added".format(str(added))
-            )
+            self.assertEqual(len(added), len(expected_added), f"{added!s} is added")
             added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
                 expected_added_entry = (expected_added_entry[0].decode("utf-8"),)
-                self.assertTrue(
-                    expected_added_entry in added_files,
-                    "{} is not added, {} are".format(expected_added_entry, added_files),
+                self.assertIn(
+                    expected_added_entry,
+                    added_files,
+                    f"{expected_added_entry} is not added, {added_files} are",
                 )
         if expected_removed is not None:
             self.assertEqual(
-                len(removed),
-                len(expected_removed),
-                "{} is removed".format(str(removed)),
+                len(removed), len(expected_removed), f"{removed!s} is removed"
             )
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
                 expected_removed_entry = (expected_removed_entry[0].decode("utf-8"),)
-                self.assertTrue(
-                    expected_removed_entry in removed_files,
-                    "{} is not removed, {} are".format(
-                        expected_removed_entry, removed_files
-                    ),
+                self.assertIn(
+                    expected_removed_entry,
+                    removed_files,
+                    f"{expected_removed_entry} is not removed, {removed_files} are",
                 )
         if expected_modified is not None:
             self.assertEqual(
-                len(modified),
-                len(expected_modified),
-                "{} is modified".format(str(modified)),
+                len(modified), len(expected_modified), f"{modified!s} is modified"
             )
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:
                 expected_modified_entry = (expected_modified_entry[0].decode("utf-8"),)
-                self.assertTrue(
-                    expected_modified_entry in modified_files,
-                    "{} is not modified, {} are".format(
-                        expected_modified_entry, modified_files
-                    ),
+                self.assertIn(
+                    expected_modified_entry,
+                    modified_files,
+                    f"{expected_modified_entry} is not modified, {modified_files} are",
                 )
         if expected_kind_changed is not None:
             self.assertEqual(
                 len(kind_changed),
                 len(expected_kind_changed),
-                "{} is kind-changed, expected {}".format(
-                    kind_changed, expected_kind_changed
-                ),
+                f"{kind_changed} is kind-changed, expected {expected_kind_changed}",
             )
             kind_changed_files = [
                 (item.path[1], item.kind[0], item.kind[1]) for item in kind_changed
@@ -229,8 +218,9 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 expected_kind_changed_entry = (
                     expected_kind_changed_entry[0].decode("utf-8"),
                 ) + expected_kind_changed_entry[1:]
-                self.assertTrue(
-                    expected_kind_changed_entry in kind_changed_files,
+                self.assertIn(
+                    expected_kind_changed_entry,
+                    kind_changed_files,
                     "{} is not kind-changed, {} are".format(
                         expected_kind_changed_entry, kind_changed_files
                     ),
@@ -302,10 +292,11 @@ class TestImportToPackTag(TestCaseForGenericProcessor):
 
         return command_list
 
+    # non-mark committish not yet supported- bug #410249
+    @tests.expectedFailure
     def test_tag(self):
         handler, branch = self.get_handler()
         path = b"a"
-        raise tests.KnownFailure("non-mark committish not yet supported- bug #410249")
         handler.process(self.file_command_iter(path))
 
 

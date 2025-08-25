@@ -25,10 +25,11 @@ rather than in tests/per_branch/*.py.
 """
 
 from breezy import repository
-from breezy.bzr.remote import RemoteRepositoryFormat
 from breezy.tests import default_transport, multiply_tests, test_server
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory
+
+from ...bzr.remote import RemoteRepositoryFormat
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def formats_to_scenarios(
@@ -134,8 +135,8 @@ def load_tests(loader, standard_tests, pattern):
         "test_write_group",
     ]
     # Parameterize per_repository test modules by format.
-    submod_tests = loader.loadTestsFromModuleNames(
-        [prefix + module_name for module_name in test_repository_modules]
-    )
+    submod_tests = loader.suiteClass()
+    for module_name in test_repository_modules:
+        submod_tests.addTest(loader.loadTestsFromName(prefix + module_name))
     format_scenarios = all_repository_format_scenarios()
     return multiply_tests(submod_tests, format_scenarios, standard_tests)

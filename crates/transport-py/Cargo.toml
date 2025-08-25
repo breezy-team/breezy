@@ -1,0 +1,18 @@
+[package]
+name = "transport-py"
+version = { workspace = true }
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module"]}
+breezy-transport = { path = "../transport" }
+pyo3-filelike = { workspace = true }
+sftp = "0.2.0"
+url = { workspace = true }
+log = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }

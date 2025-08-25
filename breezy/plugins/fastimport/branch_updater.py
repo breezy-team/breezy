@@ -25,6 +25,13 @@ from .helpers import best_format_for_objects_in_a_repository, single_plural
 
 
 class BranchUpdater:
+    """Updates Bazaar branches based on imported data.
+
+    This class is responsible for creating and updating Bazaar branches
+    to match the heads imported from a foreign version control system,
+    typically Git.
+    """
+
     def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
         """Create an object responsible for updating branches.
 
@@ -101,10 +108,7 @@ class BranchUpdater:
             # Using the Bazaar name, get a sister directory to the branch
             return osutils.pathjoin(self.branch.base, "..", name)
 
-        if self.branch is not None:
-            dir_policy = dir_sister_branch
-        else:
-            dir_policy = dir_under_current
+        dir_policy = dir_sister_branch if self.branch is not None else dir_under_current
 
         # Create/track missing branches
         can_create_branches = (

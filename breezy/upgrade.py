@@ -23,6 +23,13 @@ from .i18n import gettext
 
 
 class Convert:
+    """Handles conversion of control directories between different formats.
+
+    This class manages the upgrade process for Bazaar control directories,
+    including backing up the existing directory and converting it to the
+    specified format.
+    """
+
     def __init__(self, url=None, format=None, control_dir=None):
         """Convert a Bazaar control directory to a given format.
 
@@ -58,6 +65,18 @@ class Convert:
                 ui.ui_factory.suppressed_warnings.remove(warning_id)
 
     def convert(self):
+        """Perform the actual conversion of the control directory.
+
+        This method handles the conversion process, including:
+        - Checking if the directory is a checkout
+        - Determining the appropriate format if not specified
+        - Backing up the existing directory
+        - Converting to the new format
+
+        Raises:
+            errors.UpToDateFormat: If the directory is already in the requested format.
+            errors.BzrError: If the directory cannot be upgraded from its current format.
+        """
         try:
             branch = self.controldir.open_branch()
             if branch.user_url != self.controldir.user_url:
@@ -78,10 +97,7 @@ class Convert:
                 rich_root = self.controldir.find_repository()._format.rich_root_data
             except errors.NoRepositoryPresent:
                 rich_root = False  # assume no rich roots
-            if rich_root:
-                format_name = "default-rich-root"
-            else:
-                format_name = "default"
+            format_name = "default-rich-root" if rich_root else "default"
             format = format_registry.make_controldir(format_name)
         else:
             format = self.format
@@ -290,7 +306,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                 succeeded.append(control_dir)
                 continue
             except Exception as ex:
-                trace.warning("conversion error: {}".format(ex))
+                trace.warning(f"conversion error: {ex}")
                 exceptions.append(ex)
                 continue
 

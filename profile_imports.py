@@ -49,14 +49,22 @@ def stack_finish(this, cost):
     """Finish a given entry, and record its cost in time."""
     global _parent_stack
 
-    assert _parent_stack[-1] == this, (
-        "import stack does not end with this {}: {}".format(this, _parent_stack)
-    )
+    if _parent_stack[-1] != this:
+        raise AssertionError(
+            f"import stack does not end with this {this}: {_parent_stack}"
+        )
     _parent_stack.pop()
     _info[this].append(cost)
 
 
 def log_stack_info(out_file, sorted=True, hide_fast=True):
+    """Log stack information to output file.
+
+    Args:
+        out_file: File object to write output to.
+        sorted: Whether to sort the output.
+        hide_fast: Whether to hide fast imports.
+    """
     # Find all of the roots with import = 0
     out_file.write("%5s %5s %-40s @ %s:%s\n" % ("cum", "local", "name", "file", "line"))
     todo = [(value[-1], key) for key, value in _info.items() if value[0] == 0]
@@ -141,7 +149,7 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get("__name__", "<unknown>")
     if fromlist:
-        extra += " [{}]".format(", ".join(map(str, fromlist)))
+        extra += f" [{', '.join(map(str, fromlist))}]"
     frame_lineno = frame.f_lineno
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)

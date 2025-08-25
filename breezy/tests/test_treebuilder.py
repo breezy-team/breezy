@@ -18,9 +18,10 @@
 """Tests for the TreeBuilder helper class."""
 
 from breezy import tests
-from breezy.memorytree import MemoryTree
 from breezy.tests import TestCaseWithTransport
-from breezy.treebuilder import AlreadyBuilding, NotBuilding, TreeBuilder
+
+from ..memorytree import MemoryTree
+from ..treebuilder import TreeBuilder
 
 
 class FakeTree:
@@ -57,26 +58,12 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         builder.start_tree(tree)
         self.assertEqual(["lock_tree_write"], tree._calls)
 
-    def test_start_tree_when_started_fails(self):
-        builder = TreeBuilder()
-        tree = FakeTree()
-        builder.start_tree(tree)
-        self.assertRaises(AlreadyBuilding, builder.start_tree, tree)
-
-    def test_finish_tree_not_started_errors(self):
-        builder = TreeBuilder()
-        self.assertRaises(NotBuilding, builder.finish_tree)
-
     def test_finish_tree_unlocks(self):
         builder = TreeBuilder()
         tree = FakeTree()
         builder.start_tree(tree)
         builder.finish_tree()
         self.assertEqual(["lock_tree_write", "unlock"], tree._calls)
-
-    def test_build_tree_not_started_errors(self):
-        builder = TreeBuilder()
-        self.assertRaises(NotBuilding, builder.build, "foo")
 
     def test_build_tree(self):
         """Test building works using a MemoryTree."""

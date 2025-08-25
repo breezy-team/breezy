@@ -53,10 +53,12 @@ oldrev newrev newparent1 newparent2
     def test_simple_unmarshall_rebase_plan(self):
         self.assertEqual(
             ((1, b"bla"), {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
-            unmarshall_rebase_plan(b"""# Bazaar rebase plan 1
+            unmarshall_rebase_plan(
+                b"""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
-"""),
+"""
+            ),
         )
 
     def test_unmarshall_rebase_plan_formatunknown(self):

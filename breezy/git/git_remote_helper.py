@@ -44,6 +44,14 @@ else:
 
 
 def open_remote_dir(url):
+    """Open or create a remote control directory.
+
+    Args:
+        url: URL of the remote directory to open.
+
+    Returns:
+        ControlDir: The opened or newly created control directory.
+    """
     try:
         return ControlDir.open(url)
     except NotBranchError:
@@ -51,6 +59,15 @@ def open_remote_dir(url):
 
 
 def fetch(outf, wants, shortname, remote_dir, local_dir):
+    """Fetch revisions from remote to local repository.
+
+    Args:
+        outf: Output file stream to write progress.
+        wants: List of (sha1, ref) tuples to fetch.
+        shortname: Short name of the remote.
+        remote_dir: Remote control directory.
+        local_dir: Local control directory.
+    """
     remote_repo = remote_dir.find_repository()
     local_repo = local_dir.find_repository()
     inter = InterRepository.get(remote_repo, local_repo)
@@ -66,6 +83,15 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
 
 
 def push(outf, wants, shortname, remote_dir, local_dir):
+    """Push branches from local to remote repository.
+
+    Args:
+        outf: Output file stream to write results.
+        wants: List of (src_ref, dest_ref) tuples to push.
+        shortname: Short name of the remote.
+        remote_dir: Remote control directory.
+        local_dir: Local control directory.
+    """
     for src_ref, dest_ref in wants:
         local_branch = local_dir.open_branch(ref=src_ref)
         dest_branch_name = ref_to_branch_name(dest_ref)
@@ -84,6 +110,13 @@ class RemoteHelper:
     """Git remote helper."""
 
     def __init__(self, local_dir, shortname, remote_dir):
+        """Initialize the Git remote helper.
+
+        Args:
+            local_dir: Local control directory.
+            shortname: Short name of the remote.
+            remote_dir: Remote control directory.
+        """
         self.local_dir = local_dir
         self.shortname = shortname
         self.remote_dir = remote_dir
@@ -91,9 +124,21 @@ class RemoteHelper:
         self.wants = []
 
     def cmd_capabilities(self, outf, argv):
+        """Handle the 'capabilities' command.
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+        """
         outf.write(b"\n".join([c.encode() for c in CAPABILITIES]) + b"\n\n")
 
     def cmd_list(self, outf, argv):
+        """List all refs in the remote repository.
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+        """
         try:
             repo = self.remote_dir.find_repository()
         except NoRepositoryPresent:
@@ -107,21 +152,54 @@ class RemoteHelper:
             outf.write(b"\n")
 
     def cmd_option(self, outf, argv):
+        """Handle the 'option' command.
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+        """
         outf.write(b"unsupported\n")
 
     def cmd_fetch(self, outf, argv):
+        """Handle the 'fetch' command (batch mode).
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+
+        Raises:
+            Exception: If called inside another batch command.
+        """
         if self.batchcmd not in (None, "fetch"):
             raise Exception("fetch command inside other batch command")
         self.wants.append(tuple(argv[1:]))
         self.batchcmd = "fetch"
 
     def cmd_push(self, outf, argv):
+        """Handle the 'push' command (batch mode).
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+
+        Raises:
+            Exception: If called inside another batch command.
+        """
         if self.batchcmd not in (None, "push"):
             raise Exception("push command inside other batch command")
         self.wants.append(tuple(argv[1].split(":", 1)))
         self.batchcmd = "push"
 
     def cmd_import(self, outf, argv):
+        """Handle the 'import' command to export branch data.
+
+        Args:
+            outf: Output file stream.
+            argv: Command arguments.
+
+        Raises:
+            Exception: If fastimport module is not available.
+        """
         if "fastimport" in CAPABILITIES:
             raise Exception("install fastimport for 'import' command support")
         ref = argv[1].encode("utf-8")
@@ -153,6 +231,12 @@ class RemoteHelper:
     }
 
     def process(self, inf, outf):
+        """Process commands from input stream.
+
+        Args:
+            inf: Input file stream.
+            outf: Output file stream.
+        """
         while True:
             line = inf.readline()
             if not line:
@@ -160,6 +244,16 @@ class RemoteHelper:
             self.process_line(line, outf)
 
     def process_line(self, l, outf):
+        """Process a single command line.
+
+        Args:
+            l: Command line to process.
+            outf: Output file stream.
+
+        Raises:
+            Exception: If command is unknown.
+            AssertionError: If batch command is invalid.
+        """
         argv = l.strip().split()
         if argv == []:
             if self.batchcmd == "fetch":
@@ -169,17 +263,25 @@ class RemoteHelper:
             elif self.batchcmd is None:
                 return
             else:
-                raise AssertionError("invalid batch {!r}".format(self.batchcmd))
+                raise AssertionError(f"invalid batch {self.batchcmd!r}")
             self.batchcmd = None
         else:
             try:
                 self.commands[argv[0].decode()](self, outf, argv)
-            except KeyError:
-                raise Exception("Unknown remote command {!r}".format(argv))
+            except KeyError as err:
+                raise Exception(f"Unknown remote command {argv!r}") from err
         outf.flush()
 
 
 def open_local_dir():
+    """Open the local Git directory.
+
+    Determines the local Git directory from GIT_DIR environment variable
+    or by probing the current directory.
+
+    Returns:
+        ControlDir: The opened local Git control directory.
+    """
     try:
         git_path = os.environ["GIT_DIR"]
     except KeyError:

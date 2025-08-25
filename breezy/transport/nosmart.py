@@ -33,6 +33,14 @@ class NoSmartTransportDecorator(decorator.TransportDecorator):
         return "nosmart+"
 
     def get_smart_medium(self):
+        """Raise NoSmartMedium exception to disable smart medium functionality.
+
+        This method intentionally raises an exception to prevent the use of
+        smart mediums, forcing the transport to use standard protocols.
+
+        Raises:
+            NoSmartMedium: Always raised to indicate no smart medium is available.
+        """
         raise errors.NoSmartMedium(self)
 
 

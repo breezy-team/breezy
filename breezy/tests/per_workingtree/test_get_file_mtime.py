@@ -44,8 +44,8 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         subtree.commit("one")
         try:
             tree.add_reference(subtree)
-        except errors.UnsupportedOperation:
-            raise TestNotApplicable("subtrees not supported")
+        except errors.UnsupportedOperation as err:
+            raise TestNotApplicable("subtrees not supported") from err
         tree.commit("sub")
 
         with tree.lock_read(), subtree.lock_read():

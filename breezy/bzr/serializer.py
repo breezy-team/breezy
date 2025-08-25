@@ -20,27 +20,103 @@ from .. import errors, registry
 
 
 class BadInventoryFormat(errors.BzrError):
+    """Base exception class for inventory serialization errors."""
+
     _fmt = "Root class for inventory serialization errors"
 
 
 class UnexpectedInventoryFormat(BadInventoryFormat):
+    """Raised when an inventory is not in the expected format."""
+
     _fmt = "The inventory was not in the expected format:\n %(msg)s"
 
     def __init__(self, msg):
+        """Initialize UnexpectedInventoryFormat exception.
+
+        Args:
+            msg: Error message describing the unexpected format.
+        """
         BadInventoryFormat.__init__(self, msg=msg)
 
 
 class UnsupportedInventoryKind(errors.BzrError):
+    """Raised when an unsupported inventory entry kind is encountered."""
+
     _fmt = """Unsupported entry kind %(kind)s"""
 
     def __init__(self, kind):
+        """Initialize UnsupportedInventoryKind exception.
+
+        Args:
+            kind: The unsupported entry kind.
+        """
         self.kind = kind
 
 
-class Serializer:
-    """Inventory and revision serialization/deserialization."""
+class RevisionSerializer:
+    """Revision serialization/deserialization."""
 
     squashes_xml_invalid_characters = False
+
+    def write_revision_to_string(self, rev):
+        """Serialize a revision to a string.
+
+        Args:
+            rev: The revision object to serialize.
+
+        Returns:
+            Serialized revision as a string.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
+        raise NotImplementedError(self.write_revision_to_string)
+
+    def write_revision_to_lines(self, rev):
+        """Serialize a revision to a list of lines.
+
+        Args:
+            rev: The revision object to serialize.
+
+        Returns:
+            Serialized revision as a list of lines.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
+        raise NotImplementedError(self.write_revision_to_lines)
+
+    def read_revision(self, f):
+        """Read a revision from a file object.
+
+        Args:
+            f: File-like object to read from.
+
+        Returns:
+            Deserialized revision object.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
+        raise NotImplementedError(self.read_revision)
+
+    def read_revision_from_string(self, xml_string):
+        """Read a revision from a string.
+
+        Args:
+            xml_string: String containing the serialized revision.
+
+        Returns:
+            Deserialized revision object.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
+        raise NotImplementedError(self.read_revision_from_string)
+
+
+class InventorySerializer:
+    """Inventory serialization/deserialization."""
 
     def write_inventory(self, inv, f):
         """Write inventory to a file.
@@ -101,31 +177,35 @@ class Serializer:
         """See read_inventory_from_lines."""
         raise NotImplementedError(self.read_inventory)
 
-    def write_revision_to_string(self, rev):
-        raise NotImplementedError(self.write_revision_to_string)
-
-    def write_revision_to_lines(self, rev):
-        raise NotImplementedError(self.write_revision_to_lines)
-
-    def read_revision(self, f):
-        raise NotImplementedError(self.read_revision)
-
-    def read_revision_from_string(self, xml_string):
-        raise NotImplementedError(self.read_revision_from_string)
-
 
 class SerializerRegistry(registry.Registry):
     """Registry for serializer objects."""
 
 
-format_registry = SerializerRegistry()
-format_registry.register_lazy("5", "breezy.bzr.xml5", "serializer_v5")
-format_registry.register_lazy("6", "breezy.bzr.xml6", "serializer_v6")
-format_registry.register_lazy("7", "breezy.bzr.xml7", "serializer_v7")
-format_registry.register_lazy("8", "breezy.bzr.xml8", "serializer_v8")
-format_registry.register_lazy(
-    "9", "breezy.bzr.chk_serializer", "chk_serializer_255_bigpage"
+revision_format_registry = SerializerRegistry()
+revision_format_registry.register_lazy("5", "breezy._bzr_rs", "revision_serializer_v5")
+revision_format_registry.register_lazy("8", "breezy._bzr_rs", "revision_serializer_v8")
+revision_format_registry.register_lazy(
+    "10", "breezy._bzr_rs", "revision_bencode_serializer"
 )
-format_registry.register_lazy(
-    "10", "breezy.bzr.chk_serializer", "chk_bencode_serializer"
+
+
+inventory_format_registry = SerializerRegistry()
+inventory_format_registry.register_lazy(
+    "5", "breezy.bzr.xml5", "inventory_serializer_v5"
+)
+inventory_format_registry.register_lazy(
+    "6", "breezy.bzr.xml6", "inventory_serializer_v6"
+)
+inventory_format_registry.register_lazy(
+    "7", "breezy.bzr.xml7", "inventory_serializer_v7"
+)
+inventory_format_registry.register_lazy(
+    "8", "breezy.bzr.xml8", "inventory_serializer_v8"
+)
+inventory_format_registry.register_lazy(
+    "9", "breezy.bzr.chk_serializer", "inventory_chk_serializer_255_bigpage_9"
+)
+inventory_format_registry.register_lazy(
+    "10", "breezy.bzr.chk_serializer", "inventory_chk_serializer_255_bigpage_10"
 )

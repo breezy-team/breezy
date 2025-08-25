@@ -23,7 +23,8 @@ from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -133,7 +134,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         rich_root = branch_repo._format.rich_root_data
         all_texts = [
             (ie.file_id, ie.revision)
-            for ie in inv.iter_just_entries()
+            for (_n, ie) in inv.iter_entries()
             if rich_root or inv.id2path(ie.file_id) != ""
         ]
         repo.texts.insert_record_stream(

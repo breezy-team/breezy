@@ -14,6 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""User interface for shelving changes.
+
+This module provides interactive user interface functionality for shelving
+and unshelving changes in a working tree.
+"""
+
 import contextlib
 import shutil
 import sys
@@ -43,6 +49,11 @@ class UseEditor(Exception):
 
 
 class ShelfReporter:
+    """Reporter for shelving operations.
+
+    Provides user-facing messages and prompts for shelving changes.
+    """
+
     vocab = {
         "add file": gettext('Shelve adding file "%(path)s"?'),
         "binary": gettext("Shelve binary changes?"),
@@ -59,6 +70,7 @@ class ShelfReporter:
     invert_diff = False
 
     def __init__(self):
+        """Initialize the shelf reporter."""
         self.delta_reporter = delta._ChangeReporter()
 
     def no_changes(self):
@@ -94,6 +106,11 @@ class ShelfReporter:
 
 
 class ApplyReporter(ShelfReporter):
+    """Reporter for applying shelved changes.
+
+    Provides user-facing messages for unshelving operations.
+    """
+
     vocab = {
         "add file": gettext('Delete file "%(path)s"?'),
         "binary": gettext("Apply binary changes?"),
@@ -110,6 +127,10 @@ class ApplyReporter(ShelfReporter):
     invert_diff = True
 
     def changes_destroyed(self):
+        """Report that changes have been destroyed.
+
+        This is a no-op for apply operations.
+        """
         pass
 
 
@@ -239,6 +260,10 @@ class Shelver:
             creator.finalize()
 
     def finalize(self):
+        """Finalize the shelving operation.
+
+        Completes any pending operations and cleans up resources.
+        """
         if self.change_editor is not None:
             self.change_editor.finish()
         self.work_tree.unlock()
@@ -269,6 +294,16 @@ class Shelver:
         return patches.parse_patch(diff_file)
 
     def prompt(self, message, choices, default):
+        """Prompt the user for a choice.
+
+        Args:
+            message: The prompt message to display.
+            choices: List of available choices.
+            default: The default choice.
+
+        Returns:
+            The user's choice.
+        """
         return ui.ui_factory.choose(message, choices, default=default)
 
     def prompt_bool(self, question, allow_editor=False):
@@ -415,8 +450,8 @@ class Unshelver:
             if shelf_id is not None:
                 try:
                     shelf_id = int(shelf_id)
-                except ValueError:
-                    raise shelf.InvalidShelfId(shelf_id)
+                except ValueError as err:
+                    raise shelf.InvalidShelfId(shelf_id) from err
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:

@@ -214,7 +214,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: {}/".format(osutils.getcwd()),
+                f"Committing to: {osutils.getcwd()}/",
                 "added subdir",
                 "renamed hello.txt => subdir/hello.txt",
                 "Committed revision 2.",
@@ -258,11 +258,9 @@ brz: ERROR: No changes to commit.\
         a_tree.commit(message="Initial message")
 
         a_tree.branch.create_checkout("b")
-        expected = "{}/".format(osutils.abspath("a"))
+        expected = f"{osutils.abspath('a')}/"
         out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
-        self.assertEqual(
-            err, "Committing to: {}\nCommitted revision 2.\n".format(expected)
-        )
+        self.assertEqual(err, f"Committing to: {expected}\nCommitted revision 2.\n")
 
     def test_commit_sanitizes_CR_in_message(self):
         # See bug #433779, basically Emacs likes to pass '\r\n' style line
@@ -338,7 +336,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual("", out)
         self.assertEqual(
             {
-                "Committing to: {}/".format(osutils.pathjoin(osutils.getcwd(), "this")),
+                f"Committing to: {osutils.pathjoin(osutils.getcwd(), 'this')}/",
                 "modified filetomodify",
                 "added newdir",
                 "added newfile",
@@ -458,8 +456,8 @@ altered in u2
         self.build_tree(["a", "b", "c"])
         tree.smart_add(["."])
         out, err = self.run_bzr(["commit", "-m", "test", "-x", "b"])
-        self.assertFalse("added b" in out)
-        self.assertFalse("added b" in err)
+        self.assertNotIn("added b", out)
+        self.assertNotIn("added b", err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(["added"])
         self.assertEqual("b\n", out)
@@ -471,14 +469,14 @@ altered in u2
         self.build_tree(["a", "b", "c"])
         tree.smart_add(["."])
         out, err = self.run_bzr(["commit", "-m", "test", "-x", "b", "-x", "c"])
-        self.assertFalse("added b" in out)
-        self.assertFalse("added c" in out)
-        self.assertFalse("added b" in err)
-        self.assertFalse("added c" in err)
+        self.assertNotIn("added b", out)
+        self.assertNotIn("added c", out)
+        self.assertNotIn("added b", err)
+        self.assertNotIn("added c", err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(["added"])
-        self.assertTrue("b\n" in out)
-        self.assertTrue("c\n" in out)
+        self.assertIn("b\n", out)
+        self.assertIn("c\n", out)
         self.assertEqual("", err)
 
     def test_commit_respects_spec_for_removals(self):
@@ -580,7 +578,7 @@ altered in u2
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
         del properties["branch-nick"]
-        self.assertFalse("bugs" in properties)
+        self.assertNotIn("bugs", properties)
 
     def test_bugs_sets_property(self):
         """Commit --bugs=lp:234 sets the lp:234 revprop to 'related'."""
@@ -664,7 +662,7 @@ altered in u2
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
         self.run_bzr_error(
-            ["Unrecognized bug {}. Commit refused.".format("xxx:123")],
+            [f"Unrecognized bug {'xxx:123'}. Commit refused."],
             "commit -m add-b --fixes=xxx:123",
             working_dir="tree",
         )
@@ -729,7 +727,7 @@ altered in u2
         self.run_bzr("commit -m hello tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertFalse("author" in properties)
+        self.assertNotIn("author", properties)
 
     def test_author_sets_property(self):
         """Commit --author='John Doe <jdoe@example.com>' sets the author
@@ -849,7 +847,7 @@ altered in u2
         else:
             with open("fed.sh", "wb") as f:
                 f.write(b"#!/bin/sh\n")
-            os.chmod("fed.sh", 0o755)
+            os.chmod("fed.sh", 0o755)  # noqa: S103
             self.overrideEnv("BRZ_EDITOR", "./fed.sh")
 
     def setup_commit_with_template(self):

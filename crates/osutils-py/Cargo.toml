@@ -1,0 +1,17 @@
+[package]
+name = "osutils-py"
+version = { workspace = true }
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module", "chrono" ]}
+breezy-osutils = { path = "../osutils" }
+pyo3-filelike = { workspace = true }
+memchr = "2.7.4"
+termion = ">=1"
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }

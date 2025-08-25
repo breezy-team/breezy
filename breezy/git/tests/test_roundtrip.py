@@ -70,10 +70,12 @@ class FormatTests(TestCase):
 
 class ExtractMetadataTests(TestCase):
     def test_roundtrip(self):
-        (msg, metadata) = extract_bzr_metadata(b"""Foo
+        (msg, metadata) = extract_bzr_metadata(
+            b"""Foo
 --BZR--
 revision-id: foo
-""")
+"""
+        )
         self.assertEqual(b"Foo", msg)
         self.assertEqual(b"foo", metadata.revision_id)
 

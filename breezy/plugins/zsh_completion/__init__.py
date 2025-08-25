@@ -26,12 +26,19 @@ commands.plugin_cmds.register_lazy("cmd_zsh_completion", [], __name__ + ".zshcom
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load and return the test suite for this plugin.
+
+    Args:
+        loader: The test loader to use for loading tests.
+        basic_tests: The test suite to add tests to.
+        pattern: The pattern to match test files (unused).
+
+    Returns:
+        The updated test suite with all plugin tests added.
+    """
     testmod_names = [
         "tests",
     ]
-    basic_tests.addTest(
-        loader.loadTestsFromModuleNames(
-            ["{}.{}".format(__name__, tmn) for tmn in testmod_names]
-        )
-    )
+    for tmn in testmod_names:
+        basic_tests.addTest(loader.loadTestsFromName(f"{__name__}.{tmn}"))
     return basic_tests

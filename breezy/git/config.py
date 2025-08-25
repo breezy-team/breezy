@@ -23,12 +23,18 @@ class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf."""
 
     def __init__(self, branch):
+        """Initialize the GitBranchConfig.
+
+        Args:
+            branch: The branch instance to configure.
+        """
         super().__init__(branch)
         # do not provide a BranchDataConfig
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
     def __repr__(self):
-        return "<{} of {!r}>".format(self.__class__.__name__, self.branch)
+        """Return a string representation of this GitBranchConfig."""
+        return f"<{self.__class__.__name__} of {self.branch!r}>"
 
     def set_user_option(
         self, name, value, store=config.STORE_BRANCH, warn_masked=False
@@ -49,9 +55,25 @@ class GitConfigSectionDefault(config.Section):
     id = None
 
     def __init__(self, id, config):
+        """Initialize the GitConfigSectionDefault.
+
+        Args:
+            id: Section identifier.
+            config: Git configuration object.
+        """
         self._config = config
 
     def get(self, name, default=None, expand=True):
+        """Get a configuration value.
+
+        Args:
+            name: Name of the configuration option.
+            default: Default value if option is not found.
+            expand: Whether to expand environment variables.
+
+        Returns:
+            Configuration value or default if not found.
+        """
         if name == "email":
             try:
                 email = self._config.get((b"user",), b"email")
@@ -61,7 +83,7 @@ class GitConfigSectionDefault(config.Section):
                 name = self._config.get((b"user",), b"name")
             except KeyError:
                 return email.decode()
-            return "{} <{}>".format(name.decode(), email.decode())
+            return f"{name.decode()} <{email.decode()}>"
         if name == "gpg_signing_key":
             try:
                 key = self._config.get((b"user",), b"signingkey")
@@ -71,6 +93,11 @@ class GitConfigSectionDefault(config.Section):
         return None
 
     def iter_option_names(self):
+        """Iterate over available option names.
+
+        Yields:
+            Available configuration option names.
+        """
         try:
             self._config.get((b"user",), b"email")
         except KeyError:
@@ -89,10 +116,21 @@ class GitConfigStore(config.Store):
     """Store that uses gitconfig."""
 
     def __init__(self, id, config):
+        """Initialize the GitConfigStore.
+
+        Args:
+            id: Store identifier.
+            config: Git configuration object.
+        """
         self.id = id
         self._config = config
 
     def get_sections(self):
+        """Get configuration sections.
+
+        Returns:
+            List of (store, section) tuples.
+        """
         return [
             (self, GitConfigSectionDefault("default", self._config)),
         ]
@@ -102,6 +140,11 @@ class GitBranchStack(config._CompatibleStack):
     """GitBranch stack."""
 
     def __init__(self, branch):
+        """Initialize the GitBranchStack.
+
+        Args:
+            branch: The branch instance to create a configuration stack for.
+        """
         section_getters = [self._get_overrides]
         lstore = config.LocationStore()
         loc_matcher = config.LocationMatcher(lstore, branch.base)
