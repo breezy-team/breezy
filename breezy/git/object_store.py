@@ -809,7 +809,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param want: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(have + want)
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
         for commit_sha in have:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
