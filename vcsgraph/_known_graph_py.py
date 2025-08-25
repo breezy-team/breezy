@@ -18,7 +18,8 @@
 
 from collections import deque
 
-from . import errors, revision
+from . import errors
+from .graph import NULL_REVISION
 
 
 class _KnownGraphNode:
@@ -213,11 +214,11 @@ class KnownGraph:
             order if they need it.
         """
         candidate_nodes = {key: self._nodes[key] for key in keys}
-        if revision.NULL_REVISION in candidate_nodes:
+        if NULL_REVISION in candidate_nodes:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_nodes.pop(revision.NULL_REVISION)
+            candidate_nodes.pop(NULL_REVISION)
             if not candidate_nodes:
-                return frozenset([revision.NULL_REVISION])
+                return frozenset([NULL_REVISION])
         if len(candidate_nodes) < 2:
             # No or only one candidate
             return frozenset(candidate_nodes)
@@ -334,7 +335,7 @@ class KnownGraph:
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
-        from breezy import tsort
+        from . import tsort
 
         as_parent_map = {
             node.key: node.parent_keys

@@ -79,7 +79,7 @@ zip-safe = false
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["breezy*"]
+include = ["breezy*", "vcsgraph"]
 namespaces = false
 
 [tool.setuptools.package-data]

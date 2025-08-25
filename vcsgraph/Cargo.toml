@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "3.3.9"
+edition = "2021"
+rust-version = "1.60"
+
+[workspace.dependencies]
+pyo3 = { version = ">=0.17, <0.23", features = ["multiple-pymethods"] }
