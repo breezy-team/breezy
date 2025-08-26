@@ -1,3 +1,4 @@
+"""Merge hook for GNU-format ChangeLog files."""
 # Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify

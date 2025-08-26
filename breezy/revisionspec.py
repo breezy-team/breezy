@@ -24,6 +24,8 @@ types and utilities for resolving them to actual revision identifiers.
 
 from typing import Optional
 
+from vcsgraph.errors import NoCommonAncestor
+
 from breezy import revision, workingtree
 
 from . import errors, lazy_regex, registry, trace
@@ -883,7 +885,7 @@ class RevisionSpec_ancestor(RevisionSpec):
                 graph = branch.repository.get_graph(other_branch.repository)
                 rev_id = graph.find_unique_lca(revision_a, revision_b)
             if rev_id == revision.NULL_REVISION:
-                raise errors.NoCommonAncestor(revision_a, revision_b)
+                raise NoCommonAncestor(revision_a, revision_b)
             return rev_id
 
 

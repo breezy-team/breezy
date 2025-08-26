@@ -31,12 +31,17 @@ lazy_import(
     """
 import fastbencode as bencode
 
-from breezy import (
+from breezy.bzr import (
     multiparent,
     )
 """,
 )
-import vcsgraph.graph as _mod_graph
+from vcsgraph import (
+    graph as _mod_graph,
+)
+from vcsgraph import (
+    known_graph as _mod_known_graph,
+)
 
 from .. import errors, osutils, revision, urlutils
 from .. import transport as _mod_transport
@@ -1384,7 +1389,7 @@ class VersionedFiles:
             parent_map.update(this_parent_map)
             pending = set(itertools.chain.from_iterable(this_parent_map.values()))
             pending.difference_update(parent_map)
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = _mod_known_graph.KnownGraph(parent_map)
         return kg
 
     def get_parent_map(self, keys):
@@ -1801,7 +1806,7 @@ class VersionedFilesWithFallbacks(VersionedFiles):
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(missing_keys)
             parent_map.update(f_parent_map)
             missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = _mod_known_graph.KnownGraph(parent_map)
         return kg
 
 

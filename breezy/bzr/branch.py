@@ -35,6 +35,13 @@ from breezy import (
 
 import contextlib
 
+from vcsgraph.errors import (
+    GhostRevisionsHaveNoRevno,
+)
+from vcsgraph.errors import (
+    RevisionNotPresent as VcsGraphRevisionNotPresent,
+)
+
 from .. import errors, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -894,8 +901,8 @@ class BzrBranch8(BzrBranch):
             except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except errors.RevisionNotPresent as exc:
-                    raise errors.GhostRevisionsHaveNoRevno(
+                except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as exc:
+                    raise GhostRevisionsHaveNoRevno(
                         revision_id, exc.revision_id
                     ) from exc
                 index = len(self._partial_revision_history_cache) - 1

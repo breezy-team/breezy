@@ -17,6 +17,8 @@
 import datetime
 import time
 
+from vcsgraph.errors import NoCommonAncestor
+
 from breezy import errors
 from breezy import revision as _mod_revision
 from breezy.tests import TestCaseWithTransport
@@ -583,9 +585,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         new_tree.commit("Commit three", rev_id=b"new_r3")
 
         # With no common ancestor, we should raise another user error
-        self.assertRaises(
-            errors.NoCommonAncestor, self.get_in_history, "ancestor:new_tree"
-        )
+        self.assertRaises(NoCommonAncestor, self.get_in_history, "ancestor:new_tree")
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree("new_tree")

@@ -21,7 +21,6 @@ import shutil
 import stat
 
 from dulwich.objects import Blob, Tree
-
 from vcsgraph.graph import DictParentsProvider, Graph
 
 from ...branchbuilder import BranchBuilder

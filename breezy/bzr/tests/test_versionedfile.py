@@ -16,10 +16,8 @@
 
 """Tests for VersionedFile classes."""
 
-import vcsgraph.multiparent as multiparent
-
 from ... import errors, tests
-from .. import groupcompress, versionedfile
+from .. import groupcompress, multiparent, versionedfile
 
 
 class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):

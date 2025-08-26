@@ -21,7 +21,6 @@ import stat
 
 from dulwich.object_store import tree_lookup_path
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
-
 from vcsgraph.tsort import topo_sort
 
 from .. import debug, osutils, trace
