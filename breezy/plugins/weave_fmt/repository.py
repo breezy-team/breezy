@@ -33,9 +33,12 @@ lazy_import(
 import itertools
 
 from breezy import (
-    graph as _mod_graph,
     ui,
     )
+from vcsgraph import (
+    graph as _mod_graph,
+    known_graph as _mod_known_graph,
+)
 """,
 )
 from ... import debug, errors, lockdir, osutils, trace, urlutils
@@ -1003,7 +1006,7 @@ class RevisionTextStore(TextVersionedFiles):
         """
         keys = self.keys()
         parent_map = self.get_parent_map(keys)
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = _mod_known_graph.KnownGraph(parent_map)
         return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):

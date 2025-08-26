@@ -4245,10 +4245,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_workspace",
         "breezy.tests.test_workingtree",
         "breezy.tests.test_wsgi",
-        "vcsgraph.tests.test_multiparent",
-        "vcsgraph.tests.test_graph",
-        "vcsgraph.tests.test_tsort",
-        "vcsgraph.tests.test__known_graph",
     ]
 
 

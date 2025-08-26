@@ -39,7 +39,6 @@ log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
 bazaar = { path = "crates/bazaar" }
-breezy-graph = { path = "crates/graph" }
 percent-encoding = "2"
 url = { workspace = true }
 regex = "1"

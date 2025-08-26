@@ -62,9 +62,10 @@ lazy_import(
     """
 import gzip
 
+from vcsgraph import tsort
+
 from breezy import (
     diff,
-    tsort,
     ui,
     )
 from breezy.bzr import (

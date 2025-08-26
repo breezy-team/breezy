@@ -28,6 +28,8 @@ import zlib
 from typing import Callable, Optional
 
 import fastbencode as bencode
+from vcsgraph import graph, known_graph
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from .. import (
     branch,
@@ -42,7 +44,6 @@ from .. import (
     ui,
     urlutils,
 )
-from vcsgraph import graph
 from .. import bzr as _mod_bzr
 from .. import config as _mod_config
 from .. import repository as _mod_repository
@@ -2508,7 +2509,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 if value is not None
             }
             revision_graph = _mod_repository._strip_NULL_ghosts(revision_graph)
-            return graph.KnownGraph(revision_graph)
+            return known_graph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -5842,7 +5843,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b"GhostRevisionsHaveNoRevno":
                     (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
-                    raise errors.GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
+                    raise GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
                 raise
             if response[0] == b"ok":
                 return tuple([int(x) for x in response[1:]])
@@ -6376,7 +6377,7 @@ error_translators.register(
 
 no_context_error_translators.register(
     b"GhostRevisionsHaveNoRevno",
-    lambda err: errors.GhostRevisionsHaveNoRevno(*err.error_args),
+    lambda err: GhostRevisionsHaveNoRevno(*err.error_args),
 )
 no_context_error_translators.register(
     b"IncompatibleRepositories",

@@ -18,6 +18,8 @@
 
 import threading
 
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
+
 from breezy import errors, transport
 from breezy.bzr.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
@@ -214,7 +216,7 @@ class TestRequestHanderErrorTranslation(TestCase):
     def test_GhostRevisionsHaveNoRevno(self):
         self.assertTranslationEqual(
             (b"GhostRevisionsHaveNoRevno", b"revid1", b"revid2"),
-            errors.GhostRevisionsHaveNoRevno(b"revid1", b"revid2"),
+            GhostRevisionsHaveNoRevno(b"revid1", b"revid2"),
         )
 
     def test_generic_Exception(self):

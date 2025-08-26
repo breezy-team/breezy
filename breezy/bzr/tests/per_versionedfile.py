@@ -26,7 +26,9 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-import vcsgraph.graph as _mod_graph
+from vcsgraph import (
+    known_graph as _mod_known_graph,
+)
 
 from ... import errors, osutils, progress, transport, ui
 from ...errors import RevisionAlreadyPresent, RevisionNotPresent
@@ -471,7 +473,7 @@ class VersionedFileTestMixIn:
         self.assertEqualDiff(b"newline\nline", vf.get_text(b"noeol2"))
 
     def test_make_mpdiffs(self):
-        import vcsgraph.multiparent as multiparent
+        from breezy.bzr import multiparent
 
         vf = self.get_file("foo")
         self._setup_for_deltas(vf)
@@ -1949,7 +1951,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f.add_lines(key_b, [key_a], [b"\n"])
         f.add_lines(key_c, [key_a, key_b], [b"\n"])
         kg = f.get_known_graph_ancestry([key_c])
-        self.assertIsInstance(kg, _mod_graph.KnownGraph)
+        self.assertIsInstance(kg, _mod_known_graph.KnownGraph)
         self.assertEqual([key_a, key_b, key_c], list(kg.topo_sort()))
 
     def test_known_graph_with_fallbacks(self):
@@ -2904,7 +2906,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         )
 
     def test_make_mpdiffs(self):
-        import vcsgraph.multiparent as multiparent
+        from breezy.bzr import multiparent
 
         files = self.get_versionedfiles("source")
         # add texts that should trip the knit maximum delta chain threshold

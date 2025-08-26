@@ -35,7 +35,6 @@ from .. import (
     ui,
     urlutils,
 )
-import vcsgraph.multiparent as multiparent
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..filters import ContentFilterContext, filtered_output_bytes
@@ -62,7 +61,7 @@ from ..transform import (
 )
 from ..transport.local import file_kind
 from ..tree import find_previous_path
-from . import inventory, inventorytree
+from . import inventory, inventorytree, multiparent
 from .conflicts import Conflict
 
 

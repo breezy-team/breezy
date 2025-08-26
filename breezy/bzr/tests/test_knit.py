@@ -22,10 +22,9 @@ from io import BytesIO
 
 from patiencediff import PatienceSequenceMatcher
 
-import vcsgraph.multiparent as multiparent
-
 from ... import errors, osutils
 from ... import transport as _mod_transport
+from ...bzr import multiparent
 from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,

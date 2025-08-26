@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Multi-parent diff implementation for versioned files."""
+
 import contextlib
 import os
 from io import BytesIO
@@ -22,6 +24,7 @@ from . import errors
 
 
 def topo_iter_keys(vf, keys=None):
+    """Iterate through keys in topological order."""
     if keys is None:
         keys = vf.keys()
     parents = vf.get_parent_map(keys)
@@ -29,6 +32,7 @@ def topo_iter_keys(vf, keys=None):
 
 
 def topo_iter(vf, versions=None):
+    """Iterate through versions in topological order."""
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
@@ -70,15 +74,18 @@ class MultiParent:
     __slots__ = ["hunks"]
 
     def __init__(self, hunks=None):
+        """Initialize a MultiParent diff."""
         if hunks is not None:
             self.hunks = hunks
         else:
             self.hunks = []
 
     def __repr__(self):
+        """Return a string representation of this MultiParent."""
         return f"MultiParent({self.hunks!r})"
 
     def __eq__(self, other):
+        """Check equality with another MultiParent."""
         if self.__class__ is not other.__class__:
             return False
         return self.hunks == other.hunks
@@ -88,8 +95,10 @@ class MultiParent:
         """Produce a MultiParent from a list of lines and parents."""
         try:
             import patiencediff
-        except ImportError:
-            raise ImportError("patiencediff module is required for multiparent operations")
+        except ImportError as e:
+            raise ImportError(
+                "patiencediff module is required for multiparent operations"
+            ) from e
 
         def compare(parent):
             matcher = patiencediff.PatienceSequenceMatcher(None, parent, text)
@@ -150,6 +159,7 @@ class MultiParent:
         return diff
 
     def get_matching_blocks(self, parent, parent_len):
+        """Get matching blocks for a specific parent."""
         for hunk in self.hunks:
             if not isinstance(hunk, ParentText) or hunk.parent != parent:
                 continue
@@ -177,9 +187,11 @@ class MultiParent:
             yield from hunk.to_patch()
 
     def patch_len(self):
+        """Return the length of the patch."""
         return len(b"".join(self.to_patch()))
 
     def zipped_patch_len(self):
+        """Return the length of the gzipped patch."""
         return len(gzip_string(self.to_patch()))
 
     @classmethod
@@ -259,17 +271,21 @@ class NewText:
     __slots__ = ["lines"]
 
     def __init__(self, lines):
+        """Initialize a NewText hunk."""
         self.lines = lines
 
     def __eq__(self, other):
+        """Check equality with another NewText."""
         if self.__class__ is not other.__class__:
             return False
         return other.lines == self.lines
 
     def __repr__(self):
+        """Return a string representation of this NewText."""
         return f"NewText({self.lines!r})"
 
     def to_patch(self):
+        """Generate patch lines for this NewText."""
         yield b"i %d\n" % len(self.lines)
         yield from self.lines
         yield b"\n"
@@ -281,6 +297,7 @@ class ParentText:
     __slots__ = ["child_pos", "num_lines", "parent", "parent_pos"]
 
     def __init__(self, parent, parent_pos, child_pos, num_lines):
+        """Initialize a ParentText hunk."""
         self.parent = parent
         self.parent_pos = parent_pos
         self.child_pos = child_pos
@@ -295,17 +312,20 @@ class ParentText:
         }
 
     def __repr__(self):
+        """Return a string representation of this ParentText."""
         return (
             "ParentText({parent!r}, {parent_pos!r}, {child_pos!r},"
             " {num_lines!r})".format(**self._as_dict())
         )
 
     def __eq__(self, other):
+        """Check equality with another ParentText."""
         if self.__class__ is not other.__class__:
             return False
         return self._as_dict() == other._as_dict()
 
     def to_patch(self):
+        """Generate patch lines for this ParentText."""
         yield (
             b"c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n"
             % self._as_dict()
@@ -316,6 +336,7 @@ class BaseVersionedFile:
     """Pseudo-VersionedFile skeleton for MultiParent."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
+        """Initialize a BaseVersionedFile."""
         self._lines = {}
         self._parents = {}
         self._snapshots = set()
@@ -323,9 +344,11 @@ class BaseVersionedFile:
         self.max_snapshots = max_snapshots
 
     def versions(self):
+        """Return an iterator of version IDs."""
         return iter(self._parents)
 
     def has_version(self, version):
+        """Check if a version exists."""
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
@@ -382,16 +405,23 @@ class BaseVersionedFile:
         self._lines[version_id] = lines
 
     def get_parents(self, version_id):
+        """Get the parent IDs for a version."""
         return self._parents[version_id]
 
     def make_snapshot(self, version_id):
+        """Create a snapshot for the given version."""
         snapdiff = MultiParent([NewText(self.cache_version(version_id))])
         self.add_diff(snapdiff, version_id, self._parents[version_id])
         self._snapshots.add(version_id)
 
     def import_versionedfile(
-        self, vf, snapshots, no_cache=True, single_parent=False, verify=False,
-        progress_callback=None
+        self,
+        vf,
+        snapshots,
+        no_cache=True,
+        single_parent=False,
+        verify=False,
+        progress_callback=None,
     ):
         """Import all revisions of a versionedfile.
 
@@ -509,12 +539,15 @@ class BaseVersionedFile:
         return ranking
 
     def clear_cache(self):
+        """Clear the cached lines."""
         self._lines.clear()
 
     def get_line_list(self, version_ids):
+        """Get a list of line lists for the given version IDs."""
         return [self.cache_version(v) for v in version_ids]
 
     def cache_version(self, version_id):
+        """Get the lines for a version, caching if necessary."""
         try:
             return self._lines[version_id]
         except KeyError:
@@ -531,20 +564,24 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
     """Memory-backed pseudo-versionedfile."""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
+        """Initialize a MultiMemoryVersionedFile."""
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
         self._diffs = {}
 
     def add_diff(self, diff, version_id, parent_ids):
+        """Add a diff to the versioned file."""
         self._diffs[version_id] = diff
         self._parents[version_id] = parent_ids
 
     def get_diff(self, version_id):
+        """Get the diff for a version."""
         try:
             return self._diffs[version_id]
         except KeyError as e:
             raise errors.RevisionNotPresent(version_id, self) from e
 
     def destroy(self):
+        """Clear all diffs."""
         self._diffs = {}
 
 
@@ -552,11 +589,13 @@ class MultiVersionedFile(BaseVersionedFile):
     """Disk-backed pseudo-versionedfile."""
 
     def __init__(self, filename, snapshot_interval=25, max_snapshots=None):
+        """Initialize a MultiVersionedFile."""
         BaseVersionedFile.__init__(self, snapshot_interval, max_snapshots)
         self._filename = filename
         self._diff_offset = {}
 
     def get_diff(self, version_id):
+        """Get the diff for a version from disk."""
         import gzip
 
         start, count = self._diff_offset[version_id]
@@ -569,6 +608,7 @@ class MultiVersionedFile(BaseVersionedFile):
             return MultiParent.from_patch(content)
 
     def add_diff(self, diff, version_id, parent_ids):
+        """Add a diff to the versioned file on disk."""
         import gzip
         import itertools
 
@@ -586,12 +626,14 @@ class MultiVersionedFile(BaseVersionedFile):
         self._parents[version_id] = parent_ids
 
     def destroy(self):
+        """Remove the files from disk."""
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self._filename + ".mpknit")
         with contextlib.suppress(FileNotFoundError):
             os.unlink(self._filename + ".mpidx")
 
     def save(self):
+        """Save the index to disk."""
         import fastbencode as bencode
 
         with open(self._filename + ".mpidx", "wb") as f:
@@ -602,6 +644,7 @@ class MultiVersionedFile(BaseVersionedFile):
             )
 
     def load(self):
+        """Load the index from disk."""
         import fastbencode as bencode
 
         with open(self._filename + ".mpidx", "rb") as f:
@@ -671,6 +714,7 @@ class _Reconstructor:
 
 
 def gzip_string(lines):
+    """Compress lines using gzip."""
     import gzip
 
     sio = BytesIO()

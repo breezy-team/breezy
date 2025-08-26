@@ -27,6 +27,12 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.objects import ZERO_SHA, NotCommitError
 from dulwich.repo import check_ref_format
+from vcsgraph.errors import (
+    GhostRevisionsHaveNoRevno,
+)
+from vcsgraph.errors import (
+    RevisionNotPresent as VcsGraphRevisionNotPresent,
+)
 
 from .. import (
     branch,
@@ -1285,8 +1291,8 @@ class LocalGitBranch(GitBranch):
             ret = list(
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
-        except errors.RevisionNotPresent as e:
-            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
+        except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as e:
+            raise GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
 
@@ -1309,7 +1315,7 @@ class LocalGitBranch(GitBranch):
             revno = graph.find_distance_to_null(
                 last_revid, [(revision.NULL_REVISION, 0)]
             )
-        except errors.GhostRevisionsHaveNoRevno:
+        except GhostRevisionsHaveNoRevno:
             revno = None
         return revno, last_revid
 
@@ -1464,7 +1470,7 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
             graph = local_branch.repository.get_graph()
             try:
                 return graph.find_distance_to_null(revid, [(revision.NULL_REVISION, 0)])
-            except errors.GhostRevisionsHaveNoRevno:
+            except GhostRevisionsHaveNoRevno:
                 if not _calculate_revnos(remote_branch):
                     return None
                 # FIXME: Check using graph.find_distance_to_null() ?
