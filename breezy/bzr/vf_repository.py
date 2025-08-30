@@ -29,12 +29,11 @@ from breezy import (
     config as _mod_config,
     fifo_cache,
     gpg,
-    graph,
     lru_cache,
     revision as _mod_revision,
-    tsort,
     ui,
     )
+from vcsgraph import graph, tsort
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,

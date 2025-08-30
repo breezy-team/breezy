@@ -42,7 +42,10 @@ from breezy.i18n import gettext
 
 import contextlib
 
-from . import controldir, debug, errors, graph, osutils, registry, ui
+import vcsgraph.graph as graph
+from vcsgraph.errors import RevisionNotPresent as VcsGraphRevisionNotPresent
+
+from . import controldir, debug, errors, osutils, registry, ui
 from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
@@ -1069,7 +1072,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(self, partial_history, stop_index=distance_from_known)
-        except errors.RevisionNotPresent as err:
+        except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
                 raise errors.NoSuchRevision(self, known_revid) from err

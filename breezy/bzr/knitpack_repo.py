@@ -25,9 +25,10 @@ lazy_import(
     """
 import time
 
+from vcsgraph import tsort
+
 from breezy import (
     revision as _mod_revision,
-    tsort,
     ui,
     )
 from breezy.bzr import (

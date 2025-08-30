@@ -464,7 +464,7 @@ class Weave(VersionedFile):
         :return: An iterator of ContentFactory objects, each of which is only
             valid until the iterator is advanced.
         """
-        from .. import tsort
+        import vcsgraph.tsort as tsort
 
         versions = [version[-1] for version in versions]
         if ordering == "topological":
@@ -1167,7 +1167,7 @@ def _reweave(wa, wb, pb=None, msg=None):
     :param pb: An optional progress bar, indicating how far done we are
     :param msg: An optional message for the progress
     """
-    from .. import tsort
+    import vcsgraph.tsort as tsort
 
     wr = Weave()
     # first determine combined parents of all versions

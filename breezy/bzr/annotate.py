@@ -18,9 +18,12 @@
 
 from typing import TYPE_CHECKING
 
+from vcsgraph import (
+    known_graph as _mod_known_graph,
+)
+
 from .. import annotate as _mod_annotate
 from .. import errors, osutils, ui
-from .. import graph as _mod_graph
 from ..annotate import Annotator
 
 if TYPE_CHECKING:
@@ -270,7 +273,7 @@ class VersionedFileAnnotator(Annotator):
 
     def _get_heads_provider(self):
         if self._heads_provider is None:
-            self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
+            self._heads_provider = _mod_known_graph.KnownGraph(self._parent_map)
         return self._heads_provider
 
     def _resolve_annotation_tie(self, the_heads, line, tiebreaker):

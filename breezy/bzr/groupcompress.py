@@ -80,7 +80,7 @@ def sort_gc_optimal(parent_map):
 
     :return: A sorted-list of keys
     """
-    from .. import tsort
+    import vcsgraph.tsort as tsort
 
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
@@ -1578,7 +1578,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :return: List of [(source, [keys])] tuples, such that all keys are in
             the defined order, regardless of source.
         """
-        from .. import tsort
+        import vcsgraph.tsort as tsort
 
         if ordering == "topological":
             present_keys = tsort.topo_sort(parent_map)

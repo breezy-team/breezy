@@ -1803,7 +1803,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             )
             annotator = VersionedFileAnnotator(annotate_provider)
 
-            from ..graph import Graph
+            from vcsgraph.graph import Graph
 
             graph = Graph(annotate_provider)
             heads = graph.heads(maybe_file_parent_keys)

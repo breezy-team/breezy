@@ -29,7 +29,6 @@ from .. import (
     annotate,
     controldir,
     errors,
-    multiparent,
     osutils,
     trace,
     tree,
@@ -62,7 +61,7 @@ from ..transform import (
 )
 from ..transport.local import file_kind
 from ..tree import find_previous_path
-from . import inventory, inventorytree
+from . import inventory, inventorytree, multiparent
 from .conflicts import Conflict
 
 

@@ -17,8 +17,9 @@
 """A generator which creates a yaml stanza of the current tree info."""
 
 import yaml
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
-from breezy import errors, hooks
+from breezy import hooks
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
 from ..revision import NULL_REVISION
@@ -41,7 +42,7 @@ class YamlVersionInfoBuilder(VersionInfoBuilder):
             info["date"] = create_date_str(rev.timestamp, rev.timezone)
             try:
                 revno = self._get_revno_str(revision_id)
-            except errors.GhostRevisionsHaveNoRevno:
+            except GhostRevisionsHaveNoRevno:
                 revno = None
             for hook in YamlVersionInfoBuilder.hooks["revision"]:
                 hook(rev, info)

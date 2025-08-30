@@ -60,6 +60,7 @@ def load_tests(loader, basic_tests, pattern):
         "test_knit",
         "test_lockable_files",
         "test_matchers",
+        "test_multiparent",
         "test_pack",
         "test_read_bundle",
         "test_remote",

@@ -15,7 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-from ... import branch, commands, config, errors, option, trace, tsort, ui, workingtree
+import vcsgraph.tsort as tsort
+
+from ... import branch, commands, config, errors, option, trace, ui, workingtree
 from ...revision import NULL_REVISION
 from .classify import classify_delta
 
