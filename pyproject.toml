@@ -25,7 +25,7 @@ classifiers = [
     "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.15"
 dependencies = [
     "configobj",
     "fastbencode",
@@ -187,11 +187,5 @@ unfixable = ["ANN204"]
 convention = "google"
 
 [tool.cibuildwheel.linux]
-skip = "*-musllinux_* *cp314*"
+skip = "*-musllinux_*"
 archs = ["auto", "aarch64"]
-
-[tool.cibuildwheel.macos]
-skip = "*cp314*"
-
-[tool.cibuildwheel.windows]
-skip = "*cp314*"
