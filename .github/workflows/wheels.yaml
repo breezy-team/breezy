@@ -59,8 +59,8 @@ jobs:
     needs: define-matrix
     strategy:
       matrix:
-        os: [ubuntu-latest]
-      fail-fast: true
+        include: ${{ fromJSON(needs.define-matrix.outputs.matrix ) }}
+      fail-fast: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
     steps:
       - uses: actions/checkout@v4
