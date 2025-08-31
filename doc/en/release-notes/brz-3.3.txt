@@ -8,7 +8,7 @@ Breezy Release Notes
 brz 3.3.13
 ##########
 
-:3.3.13: UNRELEASED
+:3.3.13: 2025-08-31
 
 * Add warning when accessing Bazaar branches on Launchpad, as Launchpad
   is phasing out Bazaar code hosting. The warning can be suppressed by
