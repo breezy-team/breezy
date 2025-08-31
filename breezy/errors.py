@@ -2617,23 +2617,6 @@ class BzrBadParameterContainsNewline(BzrBadParameter):
     _fmt = "Parameter %(param)s contains a newline."
 
 
-class ParamikoNotPresent(DependencyNotPresent):
-    """Paramiko library is not available.
-
-    Raised when paramiko is required for SFTP support but is not installed or cannot be imported.
-    """
-
-    _fmt = "Unable to import paramiko (required for sftp support): %(error)s"
-
-    def __init__(self, error):
-        """Initialize with paramiko import error.
-
-        Args:
-            error: The import error that occurred when trying to import paramiko.
-        """
-        DependencyNotPresent.__init__(self, "paramiko", error)
-
-
 class UninitializableFormat(BzrError):
     """Format cannot be initialized by current Breezy version.
 

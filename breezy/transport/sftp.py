@@ -34,7 +34,7 @@ import time
 
 from .. import config, debug, errors, urlutils
 from .._transport_rs import sftp as _sftp_rs
-from ..errors import LockError, PathError
+from ..errors import DependencyNotPresent, LockError, PathError
 from ..osutils import fancy_rename, pumpfile
 from ..trace import mutter, warning
 from ..transport import (
@@ -47,6 +47,23 @@ from ..transport import (
 )
 
 SFTPError = _sftp_rs.SFTPError
+
+
+class ParamikoNotPresent(DependencyNotPresent):
+    """Paramiko library is not available.
+
+    Raised when paramiko is required for SFTP support but is not installed or cannot be imported.
+    """
+
+    _fmt = "Unable to import paramiko (required for sftp support): %(error)s"
+
+    def __init__(self, error):
+        """Initialize with paramiko import error.
+
+        Args:
+            error: The import error that occurred when trying to import paramiko.
+        """
+        DependencyNotPresent.__init__(self, "paramiko", error)
 
 
 class WriteStream:
@@ -728,7 +745,7 @@ class SFTPTransport(ConnectedTransport):
             if e.args == ("Failure",):
                 raise failure_exc(path, str(e) + more_info)
             # Can be something like args = ('Directory not empty:
-            # '/srv/bazaar.launchpad.net/blah...: '
+            # '/srv/example.com/blah...: '
             # [Errno 39] Directory not empty',)
             if (
                 e.args[0].startswith("Directory not empty: ")
@@ -925,6 +942,11 @@ class SFTPTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    import importlib.util
+
+    if importlib.util.find_spec("paramiko") is None:
+        raise ParamikoNotPresent()
+
     from ..tests import stub_sftp
 
     return [

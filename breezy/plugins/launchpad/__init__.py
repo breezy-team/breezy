@@ -14,40 +14,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Launchpad.net integration plugin for Bazaar.
+"""Launchpad.net integration plugin.
 
-This plugin provides facilities for working with Bazaar branches that are
-hosted on Launchpad (http://launchpad.net).  It provides a directory service
-for referring to Launchpad branches using the "lp:" prefix.  For example,
-lp:bzr refers to the Bazaar's main development branch and
-lp:~username/project/branch-name can be used to refer to a specific branch.
+This plugin provides facilities for working with code hosted on Launchpad
+(http://launchpad.net).  It provides a directory service for referring to
+Launchpad repositories using the "lp:" prefix.  For example,
+lp:~username/project/branch-name can be used to refer to a specific repository.
 
-This plugin provides a bug tracker so that "bzr commit --fixes lp:1234" will
+This plugin provides a bug tracker so that "brz commit --fixes lp:1234" will
 record that revision as fixing Launchpad's bug 1234.
 
 The plugin also provides the following commands:
 
     launchpad-login: Show or set the Launchpad user ID
-    launchpad-open: Open a Launchpad branch page in your web browser
+    launchpad-open: Open a Launchpad page in your web browser
 
 """
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-from ... import (
-    ui,
-    version_info,  # noqa: F401
-)
+from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 from ...directory_service import directories
 from ...help_topics import topic_registry
-
-# Register the Bazaar deprecation warning template
-ui.UIFactory._user_warning_templates["launchpad_bazaar_deprecation"] = (
-    "Launchpad is phasing out Bazaar code hosting. "
-    "For more information, see: "
-    "https://blog.launchpad.net/general/phasing-out-bazaar-code-hosting"
-)
 
 for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
@@ -64,12 +53,6 @@ def _register_directory():
         "breezy.plugins.launchpad.lp_directory",
         "LaunchpadDirectory",
         "Launchpad-based directory service",
-    )
-    directories.register_lazy(
-        "lp+bzr:",
-        "breezy.plugins.launchpad.lp_directory",
-        "LaunchpadDirectory",
-        "Bazaar-specific Launchpad directory service",
     )
 
 
@@ -104,33 +87,28 @@ def load_tests(loader, basic_tests, pattern):
 
 _launchpad_help = """Integration with Launchpad.net
 
-Launchpad.net provides free Bazaar branch hosting with integrated bug and
+Launchpad.net provides code hosting with integrated bug and
 specification tracking.
 
-NOTE: Launchpad is phasing out Bazaar code hosting. For more information, see:
-https://blog.launchpad.net/general/phasing-out-bazaar-code-hosting
-
-The bzr client (through the plugin called 'launchpad') has special
+The brz client (through the plugin called 'launchpad') has special
 features to communicate with Launchpad:
 
-    * The launchpad-login command tells Bazaar your Launchpad user name. This
-      is then used by the 'lp:' transport to download your branches using
-      bzr+ssh://.
+    * The launchpad-login command tells Breezy your Launchpad user name.
 
     * The 'lp:' transport uses Launchpad as a directory service: for example
-      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
-      projects and may be branched, logged, etc. You can also use the 'lp:'
-      transport to refer to specific branches, e.g. lp:~bzr/bzr/trunk.
+      'lp:project' refers to the main branch of a project. You can also use
+      the 'lp:' transport to refer to specific repositories, e.g.
+      lp:~user/project/branch.
 
     * The 'lp:' bug tracker alias can expand launchpad bug numbers to their
-      URLs for use with 'bzr commit --fixes', e.g. 'bzr commit --fixes lp:12345'
+      URLs for use with 'brz commit --fixes', e.g. 'brz commit --fixes lp:12345'
       will record a revision property that marks that revision as fixing
-      Launchpad bug 12345. When you push that branch to Launchpad it will
+      Launchpad bug 12345. When you push to Launchpad it will
       automatically be linked to the bug report.
 
 For more information see http://help.launchpad.net/
 """
-topic_registry.register("launchpad", _launchpad_help, "Using Bazaar with Launchpad.net")
+topic_registry.register("launchpad", _launchpad_help, "Using Breezy with Launchpad.net")
 
 
 from ...forge import forges
