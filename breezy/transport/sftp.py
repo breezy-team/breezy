@@ -945,7 +945,7 @@ def get_test_permutations():
     import importlib.util
 
     if importlib.util.find_spec("paramiko") is None:
-        raise ParamikoNotPresent()
+        raise ParamikoNotPresent("paramiko not installed")
 
     from ..tests import stub_sftp
 
