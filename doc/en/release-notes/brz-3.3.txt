@@ -8,7 +8,7 @@ Breezy Release Notes
 brz 3.3.13
 ##########
 
-:3.3.13: UNRELEASED
+:3.3.13: 2025-08-31
 
 * Add warning when accessing Bazaar branches on Launchpad, as Launchpad
   is phasing out Bazaar code hosting. The warning can be suppressed by
@@ -17,6 +17,24 @@ brz 3.3.13
 
 * Fix compatibility with paramiko 4.0.0, which removed DSA key support.
   (Jelmer Vernooĳ)
+
+* Add Python 3.14 support. (Jelmer Vernooĳ)
+
+* Cope with removed ``ast.Str`` in Python 3.14. (Jelmer Vernooĳ)
+
+* Use released dulwich rather than development version. (Jelmer Vernooĳ)
+
+* Fix git object store compatibility issues with dulwich. (Jelmer Vernooĳ)
+
+* git: Ensure tags are pushed for local operations. (Jelmer Vernooĳ)
+
+* Fix typing issues with newer versions of typing-extensions. (Jelmer Vernooĳ)
+
+* Drop support for Bazaar on Launchpad. (Jelmer Vernooĳ)
+
+* Remove references to Bazaar codehosting on Launchpad. (Jelmer Vernooĳ)
+
+* Improve installation instructions for modern Python. (Jelmer Vernooĳ, #2119976)
 
 brz 3.3.12
 ##########
