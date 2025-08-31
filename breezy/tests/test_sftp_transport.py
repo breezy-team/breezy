@@ -168,6 +168,7 @@ class SFTPNonServerTest(TestCase):
         self.assertIsInstance(vendor, ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
+        self.requireFeature(features.paramiko)
         server = stub_sftp.SFTPSiblingAbsoluteServer()
         server.start_server()
         self.addCleanup(server.stop_server)
@@ -218,6 +219,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
 
     def setUp(self):
         super().setUp()
+        self.requireFeature(features.paramiko)
 
         def create_server():
             """Just a wrapper so that when created, it will set _vendor."""
