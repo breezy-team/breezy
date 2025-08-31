@@ -1670,26 +1670,6 @@ class CannotReverseCherrypick(BzrError):
     _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 
 
-class NoCommonAncestor(BzrError):
-    """Revisions have no common ancestor.
-
-    Raised when attempting to find a common ancestor between two revisions
-    that do not share any common history.
-    """
-
-    _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
-
-    def __init__(self, revision_a, revision_b):
-        """Initialize with the two revisions.
-
-        Args:
-            revision_a: The first revision.
-            revision_b: The second revision.
-        """
-        self.revision_a = revision_a
-        self.revision_b = revision_b
-
-
 class NoCommonRoot(BzrError):
     """Revisions are not derived from the same root.
 
@@ -2325,24 +2305,6 @@ class WorkingTreeNotRevision(BzrError):
             tree: The working tree that has uncommitted changes.
         """
         BzrError.__init__(self, basedir=tree.basedir)
-
-
-class GraphCycleError(BzrError):
-    """Cycle detected in graph.
-
-    Raised when a cycle is detected in a directed graph that should be acyclic.
-    """
-
-    _fmt = "Cycle in graph %(graph)r"
-
-    def __init__(self, graph):
-        """Initialize with the graph containing the cycle.
-
-        Args:
-            graph: The graph object that contains a cycle.
-        """
-        BzrError.__init__(self)
-        self.graph = graph
 
 
 class WritingCompleted(InternalBzrError):
@@ -3299,25 +3261,6 @@ class SSHVendorNotFound(BzrError):
         "Don't know how to handle SSH connections."
         " Please set BRZ_SSH environment variable."
     )
-
-
-class GhostRevisionsHaveNoRevno(BzrError):
-    """When searching for revnos, if we encounter a ghost, we are stuck."""
-
-    _fmt = (
-        "Could not determine revno for {%(revision_id)s} because"
-        " its ancestry shows a ghost at {%(ghost_revision_id)s}"
-    )
-
-    def __init__(self, revision_id, ghost_revision_id):
-        """Initialize with revision IDs that cannot determine revno.
-
-        Args:
-            revision_id: The revision ID we were trying to find revno for.
-            ghost_revision_id: The ghost revision ID that blocks the search.
-        """
-        self.revision_id = revision_id
-        self.ghost_revision_id = ghost_revision_id
 
 
 class GhostRevisionUnusableHere(BzrError):

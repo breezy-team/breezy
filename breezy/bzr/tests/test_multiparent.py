@@ -27,7 +27,10 @@ LF_SPLIT_LINES = [b"\x00\n", b"\x00\r\x01\n", b"\x02\r\xff"]
 
 
 class Mock:
+    """Mock object for testing."""
+
     def __init__(self, **kwargs):
+        """Initialize the mock object with the given attributes."""
         self.__dict__ = kwargs
 
 

@@ -21,6 +21,8 @@ tree info.
 import codecs
 import contextlib
 
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
+
 from breezy import errors
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
@@ -148,7 +150,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info.add("revno", 0)
         else:
-            with contextlib.suppress(errors.GhostRevisionsHaveNoRevno):
+            with contextlib.suppress(GhostRevisionsHaveNoRevno):
                 info.add("revno", self._get_revno_str(revision_id))
             info.add("revision_id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)

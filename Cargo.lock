@@ -155,7 +155,6 @@ name = "breezy"
 version = "3.4.0"
 dependencies = [
  "bazaar",
- "breezy-graph",
  "breezy-osutils",
  "chrono",
  "encoding",
@@ -181,15 +180,6 @@ dependencies = [
  "breezy",
  "breezy-osutils",
  "breezy-urlutils",
-]
-
-[[package]]
-name = "breezy-graph"
-version = "3.4.0"
-dependencies = [
- "lazy_static",
- "maplit",
- "pyo3",
 ]
 
 [[package]]
@@ -603,14 +593,6 @@ name = "git-py"
 version = "3.4.0"
 dependencies = [
  "breezy-git",
- "pyo3",
-]
-
-[[package]]
-name = "graph-py"
-version = "3.4.0"
-dependencies = [
- "breezy-graph",
  "pyo3",
 ]
 

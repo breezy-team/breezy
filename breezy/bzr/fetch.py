@@ -247,7 +247,7 @@ class Inter1and2Helper:
         Args:
           revs: the revisions to include
         """
-        from ..tsort import topo_sort
+        from vcsgraph.tsort import topo_sort
 
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)

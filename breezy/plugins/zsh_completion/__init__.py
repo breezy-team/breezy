@@ -1,3 +1,4 @@
+"""ZSH completion support for Breezy."""
 # Copyright (C) 2019 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify

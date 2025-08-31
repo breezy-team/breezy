@@ -30,6 +30,7 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
@@ -2566,12 +2567,12 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         transport = transport.clone("quack")
         branch = self.make_remote_branch(transport, client)
         self.assertRaises(
-            errors.GhostRevisionsHaveNoRevno,
+            GhostRevisionsHaveNoRevno,
             branch.revision_id_to_dotted_revno,
             b"revid",
         )
         self.assertRaises(
-            errors.GhostRevisionsHaveNoRevno,
+            GhostRevisionsHaveNoRevno,
             branch.revision_id_to_dotted_revno,
             b"revid",
         )
@@ -4292,8 +4293,16 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         try:
             raise error_object
         except errors.ErrorFromSmartServer as server_error:
+            # Import vcsgraph.errors.Error for errors that come from vcsgraph
+            from vcsgraph.errors import Error as VcsGraphError
+
+            # Some errors like GhostRevisionsHaveNoRevno come from vcsgraph
+            # and don't inherit from BzrError
             translated_error = self.assertRaises(
-                errors.BzrError, remote._translate_error, server_error, **context
+                (errors.BzrError, VcsGraphError),
+                remote._translate_error,
+                server_error,
+                **context,
             )
         return translated_error
 
@@ -4416,7 +4425,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"GhostRevisionsHaveNoRevno", b"revid1", b"revid2")
         )
-        expected_error = errors.GhostRevisionsHaveNoRevno(b"revid1", b"revid2")
+        expected_error = GhostRevisionsHaveNoRevno(b"revid1", b"revid2")
         self.assertEqual(expected_error, translated_error)
 
     def test_PermissionDenied_no_args(self):

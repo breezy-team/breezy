@@ -21,11 +21,11 @@ import shutil
 import stat
 
 from dulwich.objects import Blob, Tree
+from vcsgraph.graph import DictParentsProvider, Graph
 
 from ...branchbuilder import BranchBuilder
 from ...bzr.inventory import InventoryDirectory, InventoryFile
 from ...errors import NoSuchRevision
-from ...graph import DictParentsProvider, Graph
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import SymlinkFeature
 from ..cache import DictGitShaMap

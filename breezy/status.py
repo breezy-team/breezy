@@ -24,10 +24,12 @@ and report_changes() for comparing two arbitrary trees.
 
 import sys
 
+from vcsgraph import tsort
+
 from . import delta as _mod_delta
 from . import errors as errors
 from . import hooks as _mod_hooks
-from . import log, osutils, tsort
+from . import log, osutils
 from . import revision as _mod_revision
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported

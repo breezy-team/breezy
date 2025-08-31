@@ -53,6 +53,13 @@ from breezy.i18n import gettext, ngettext
 
 import contextlib
 
+from vcsgraph.errors import (
+    GhostRevisionsHaveNoRevno,
+)
+from vcsgraph.errors import (
+    RevisionNotPresent as VcsGraphRevisionNotPresent,
+)
+
 from .commands import Command, builtin_command_registry, display_command
 from .option import ListOption, Option, RegistryOption, _parse_revision_str, custom_help
 from .revisionspec import RevisionInfo, RevisionSpec
@@ -692,7 +699,11 @@ class cmd_revno(Command):  # noqa: D101
                 revid = b.last_revision()
         try:
             revno_t = b.revision_id_to_dotted_revno(revid)
-        except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
+        except (
+            errors.NoSuchRevision,
+            GhostRevisionsHaveNoRevno,
+            VcsGraphRevisionNotPresent,
+        ):
             revno_t = ("???",)
         revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
@@ -756,7 +767,11 @@ class cmd_revision_info(Command):  # noqa: D101
             try:
                 dotted_revno = b.revision_id_to_dotted_revno(revision_id)
                 revno = ".".join(str(i) for i in dotted_revno)
-            except errors.NoSuchRevision:
+            except (
+                errors.NoSuchRevision,
+                GhostRevisionsHaveNoRevno,
+                VcsGraphRevisionNotPresent,
+            ):
                 revno = "???"
             maxlen = max(maxlen, len(revno))
             revinfos.append((revno, revision_id))
@@ -7755,8 +7770,9 @@ class cmd_tags(Command):  # noqa: D101
                         revno = ".".join(map(str, revno))
                 except (
                     errors.NoSuchRevision,
-                    errors.GhostRevisionsHaveNoRevno,
+                    GhostRevisionsHaveNoRevno,
                     errors.UnsupportedOperation,
+                    VcsGraphRevisionNotPresent,
                 ):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...

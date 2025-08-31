@@ -19,6 +19,8 @@
 import inspect
 import re
 
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
+
 from .. import controldir, errors, osutils, tests, urlutils
 
 
@@ -56,10 +58,9 @@ class TestErrors(tests.TestCase):
         )
 
     def test_ghost_revisions_have_no_revno(self):
-        error = errors.GhostRevisionsHaveNoRevno("target", "ghost_rev")
+        error = GhostRevisionsHaveNoRevno("target", "ghost_rev")
         self.assertEqualDiff(
-            "Could not determine revno for {target} because"
-            " its ancestry shows a ghost at {ghost_rev}",
+            "Ghost revision 'ghost_rev' has no revno, cannot determine revno for 'target'",
             str(error),
         )
 

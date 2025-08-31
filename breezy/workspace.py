@@ -84,7 +84,12 @@ def reset_tree(
 
 
 def delete_items(deletables, dry_run: bool = False):
-    """Delete files in the deletables iterable."""
+    """Delete files in the deletables iterable.
+
+    Args:
+        deletables: Iterable of file paths to delete.
+        dry_run: If True, don't actually delete files.
+    """
 
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree."""

@@ -30,6 +30,7 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
@@ -924,12 +925,10 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithMemoryTrans
         branch = self.make_branch(".")
 
         def last_revision_info():
-            raise errors.GhostRevisionsHaveNoRevno(b"revid1", b"revid2")
+            raise GhostRevisionsHaveNoRevno(b"revid1", b"revid2")
 
         self.overrideAttr(branch, "last_revision_info", last_revision_info)
-        self.assertRaises(
-            errors.GhostRevisionsHaveNoRevno, request.do_with_branch, branch
-        )
+        self.assertRaises(GhostRevisionsHaveNoRevno, request.do_with_branch, branch)
 
     def test_not_empty(self):
         """For a non-empty branch, the result is ('ok', 'revno', 'revid')."""
@@ -963,7 +962,7 @@ class TestSmartServerBranchRequestRevisionIdToRevno(tests.TestCaseWithMemoryTran
         branch = self.make_branch(".")
 
         def revision_id_to_dotted_revno(revid):
-            raise errors.GhostRevisionsHaveNoRevno(revid, b"ghost-revid")
+            raise GhostRevisionsHaveNoRevno(revid, b"ghost-revid")
 
         self.overrideAttr(
             branch, "revision_id_to_dotted_revno", revision_id_to_dotted_revno

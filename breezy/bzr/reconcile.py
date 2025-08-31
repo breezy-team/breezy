@@ -23,12 +23,14 @@ __all__ = [
     "VersionedFileRepoReconciler",
 ]
 
+from vcsgraph.errors import RevisionNotPresent as VcsGraphRevisionNotPresent
+from vcsgraph.tsort import topo_sort
+
 from .. import errors, ui
 from .. import revision as _mod_revision
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from ..tsort import topo_sort
 from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
@@ -471,7 +473,7 @@ class BranchReconciler:
                 last_revision_id, (_mod_revision.NULL_REVISION,)
             ):
                 real_history.append(revid)
-        except errors.RevisionNotPresent:
+        except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent):
             pass  # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):

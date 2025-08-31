@@ -22,9 +22,14 @@ from io import BytesIO
 from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
+from vcsgraph import (
+    graph as _mod_graph,
+)
+from vcsgraph import (
+    known_graph as _mod_known_graph,
+)
 
 from .. import check, errors, lock, repository, trace, transactions, ui
-from .. import graph as _mod_graph
 from .. import revision as _mod_revision
 from ..decorators import only_raises
 from ..foreign import ForeignRepository
@@ -540,7 +545,7 @@ class LocalGitRepository(GitRepository):
             for values in this_parent_map.values():
                 pending.update(values)
             pending = pending.difference(parent_map)
-        return _mod_graph.KnownGraph(parent_map)
+        return _mod_known_graph.KnownGraph(parent_map)
 
     def get_signature_text(self, revision_id):
         """Get the GPG signature text for a revision.

@@ -18,6 +18,8 @@ from breezy import errors, tests, workingtree
 
 
 class TestWorkingTree(tests.TestCaseWithTransport):
+    """Test working tree subsume functionality."""
+
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
             format = "development-subtree"

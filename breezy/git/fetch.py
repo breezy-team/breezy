@@ -21,6 +21,7 @@ import stat
 
 from dulwich.object_store import tree_lookup_path
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
+from vcsgraph.tsort import topo_sort
 
 from .. import debug, osutils, trace
 from ..bzr.inventory import (
@@ -37,7 +38,6 @@ from ..errors import BzrError
 from ..revision import NULL_REVISION
 from ..transport import NoSuchFile
 from ..tree import InterTree
-from ..tsort import topo_sort
 from .mapping import (
     DEFAULT_FILE_MODE,
     decode_git_path,

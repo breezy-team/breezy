@@ -31,9 +31,12 @@ lazy_import(
     """
 import patiencediff
 
+from vcsgraph import (
+    graph as _mod_graph,
+    )
+
 from breezy import (
     debug,
-    graph as _mod_graph,
     textfile,
     ui,
     )
@@ -2558,8 +2561,9 @@ class _PlanMerge(_PlanMergeBase):
         return all_texts
 
     def _build_weave(self):
+        from vcsgraph.tsort import merge_sort
+
         from .bzr import weave
-        from .tsort import merge_sort
 
         self._weave = weave.Weave(weave_name="in_memory_weave", allow_reserved=True)
         parent_map = self._find_recursive_lcas()

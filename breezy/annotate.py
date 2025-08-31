@@ -163,7 +163,7 @@ def _expand_annotations(annotations, branch, current_rev: Optional[Revision] = N
     :param revision_id_to_revno: A map from id to revision numbers.
     :param branch: A locked branch to query for revision details.
     """
-    from . import tsort
+    from vcsgraph import tsort
 
     repository = branch.repository
     revision_ids = {o for o, t in annotations}

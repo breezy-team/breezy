@@ -39,12 +39,12 @@ lazy_import(
     """
 from breezy import (
     branch as _mod_branch,,
-    graph,
     lockdir,
     revision as _mod_revision,
     ui,
     urlutils,
     )
+from vcsgraph import graph
 from breezy.bzr import (
     versionedfile,
     weave,
