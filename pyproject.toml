@@ -27,6 +27,7 @@ classifiers = [
 ]
 requires-python = ">=3.9,<3.15"
 dependencies = [
+    "catalogus",
     "configobj",
     "fastbencode",
     "patiencediff",

@@ -5,6 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.4.0
+##########
+
+:Codename: TBD
+:3.4.0: Not yet released
+
+* The ``breezy.pyutils`` module has been removed. Use ``catalogus.pyutils`` 
+  instead. (Jelmer Vernooĳ)
+
 brz 3.3.13
 ##########
 
