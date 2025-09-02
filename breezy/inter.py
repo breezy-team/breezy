@@ -18,9 +18,10 @@
 
 from typing import Generic, TypeVar
 
+from catalogus.pyutils import get_named_object
+
 from .errors import BzrError
 from .lock import LogicalLockResult
-from .pyutils import get_named_object
 
 
 class NoCompatibleInter(BzrError):
