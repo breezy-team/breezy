@@ -44,6 +44,8 @@ from breezy.i18n import gettext
 
 import contextlib
 
+from catalogus.registry import _LazyObjectGetter, _ObjectGetter
+
 from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
 from . import transport as _mod_transport
@@ -1163,15 +1165,15 @@ class ControlComponentFormatRegistry(
         This is mainly useful to allow custom repository formats, such as older
         Bazaar formats and foreign formats, to be tested.
         """
-        self._extra_formats.append(registry._ObjectGetter(format))
+        self._extra_formats.append(_ObjectGetter(format))
 
     def remove_extra(self, format):
         """Remove an extra format."""
-        self._extra_formats.remove(registry._ObjectGetter(format))
+        self._extra_formats.remove(_ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
         """Register a format lazily."""
-        self._extra_formats.append(registry._LazyObjectGetter(module_name, member_name))
+        self._extra_formats.append(_LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
         """Return getters for extra formats, not usable in meta directories."""

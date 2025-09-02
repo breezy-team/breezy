@@ -24,6 +24,9 @@ without modifying core code.
 
 __docformat__ = "google"
 
+from catalogus.registry import _LazyObjectGetter, _ObjectGetter
+from catalogus.pyutils import calc_parent_name, get_named_object
+
 from . import errors, registry
 from .lazy_import import lazy_import
 
@@ -32,7 +35,6 @@ lazy_import(
     """
 from breezy import (
     _format_version_tuple,
-    pyutils,
     )
 from breezy.i18n import gettext
 """,
@@ -103,8 +105,8 @@ class KnownHooksRegistry(registry.Registry[str, "Hooks", None]):
         :return: The parent_object of the hook and the name of the attribute on
             that parent object where the hook is kept.
         """
-        parent_mod, parent_member, attr = pyutils.calc_parent_name(*key)
-        return pyutils.get_named_object(parent_mod, parent_member), attr
+        parent_mod, parent_member, attr = calc_parent_name(*key)
+        return get_named_object(parent_mod, parent_member), attr
 
 
 _builtin_known_hooks = (
@@ -142,7 +144,7 @@ def known_hooks_key_to_object(key):
         the known_hooks registry.
     :return: The object this specifies.
     """
-    return pyutils.get_named_object(*key)
+    return get_named_object(*key)
 
 
 class Hooks(dict):
@@ -378,7 +380,7 @@ class HookPoint:
         :param callback_label: A label to show in the UI while this callback is
             processing.
         """
-        obj_getter = registry._LazyObjectGetter(callback_module, callback_member)
+        obj_getter = _LazyObjectGetter(callback_module, callback_member)
         self._callbacks.append((obj_getter, callback_label))
 
     def hook(self, callback, callback_label):
@@ -388,7 +390,7 @@ class HookPoint:
         :param callback_label: A label to show in the UI while this callback is
             processing.
         """
-        obj_getter = registry._ObjectGetter(callback)
+        obj_getter = _ObjectGetter(callback)
         self._callbacks.append((obj_getter, callback_label))
 
     def uninstall(self, label):
@@ -483,7 +485,7 @@ def hooks_help_text(topic):
 
 # Lazily registered hooks. Maps (module, name, hook_name) tuples
 # to lists of tuples with objectgetters and names
-_lazy_hooks: dict[tuple[str, str, str], list[tuple[registry._ObjectGetter, str]]] = {}
+_lazy_hooks: dict[tuple[str, str, str], list[tuple[_ObjectGetter, str]]] = {}
 
 
 def install_lazy_named_hook(
@@ -499,5 +501,5 @@ def install_lazy_named_hook(
         running.
     """
     key = (hookpoints_module, hookpoints_name, hook_name)
-    obj_getter = registry._ObjectGetter(a_callable)
+    obj_getter = _ObjectGetter(a_callable)
     _lazy_hooks.setdefault(key, []).append((obj_getter, name))

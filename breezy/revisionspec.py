@@ -24,6 +24,7 @@ types and utilities for resolving them to actual revision identifiers.
 
 from typing import Optional
 
+from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 from vcsgraph.errors import NoCommonAncestor
 
 from breezy import revision, workingtree
@@ -367,7 +368,7 @@ class RevisionSpec_dwim(RevisionSpec):
     _revno_regex = lazy_regex.lazy_compile(r"^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$")
 
     # The revspecs to try
-    _possible_revspecs: list[type[registry._ObjectGetter]] = []
+    _possible_revspecs: list[type[_ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
@@ -403,7 +404,7 @@ class RevisionSpec_dwim(RevisionSpec):
 
         :param revspec: Revision spec to try.
         """
-        cls._possible_revspecs.append(registry._ObjectGetter(revspec))
+        cls._possible_revspecs.append(_ObjectGetter(revspec))
 
     @classmethod
     def append_possible_lazy_revspec(cls, module_name, member_name):
@@ -413,7 +414,7 @@ class RevisionSpec_dwim(RevisionSpec):
         :param member_name: Name of the revspec within the module
         """
         cls._possible_revspecs.append(
-            registry._LazyObjectGetter(module_name, member_name)
+            _LazyObjectGetter(module_name, member_name)
         )
 
 

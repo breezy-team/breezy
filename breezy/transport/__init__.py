@@ -33,6 +33,8 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, TypeVar
 
+from catalogus.registry import _ObjectGetter, _LazyObjectGetter
+
 from .. import (
     _transport_rs,  # type: ignore
     errors,
@@ -163,7 +165,7 @@ class TransportListRegistry(registry.Registry):
             key: Protocol prefix (e.g., 'http://').
             obj: Transport class or factory object.
         """
-        self.get(key).insert(0, registry._ObjectGetter(obj))
+        self.get(key).insert(0, _ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
         """Register a transport provider with lazy loading.
@@ -173,7 +175,7 @@ class TransportListRegistry(registry.Registry):
             module_name: Name of the module containing the transport class.
             member_name: Name of the transport class within the module.
         """
-        self.get(key).insert(0, registry._LazyObjectGetter(module_name, member_name))
+        self.get(key).insert(0, _LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None):
         """Register a transport protocol.

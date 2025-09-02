@@ -139,7 +139,7 @@ class _CompatibilityThunkFeature(Feature):
 
     def _ensure(self):
         if self._feature is None:
-            from breezy import pyutils
+            from catalogus import pyutils
 
             depr_msg = self._dep_version % (f"{self._module}.{self._name}")
             use_msg = " Use {}.{} instead.".format(

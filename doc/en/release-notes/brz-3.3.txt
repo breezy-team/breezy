@@ -5,6 +5,19 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.4.0
+##########
+
+:Codename: TBD
+:3.4.0: Not yet released
+
+* The ``breezy.pyutils`` module has been removed. Use ``catalogus.pyutils``
+  instead. (Jelmer Vernooĳ)
+
+* The ``Registry`` class has been removed from ``breezy.registry``. Use
+  ``catalogus.registry.Registry`` instead. The ``FormatRegistry`` class
+  remains in ``breezy.registry``. (Jelmer Vernooĳ)
+
 brz 3.3.13
 ##########
 
@@ -166,7 +179,7 @@ Improvements
 
 * Add supports_auto_merge setting. (Jelmer Vernooĳ)
 
-* Add --auto argument for "brz propose". 
+* Add --auto argument for "brz propose".
   (Jelmer Vernooĳ)
 
 Bug Fixes

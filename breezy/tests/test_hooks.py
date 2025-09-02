@@ -16,7 +16,9 @@
 
 """Tests for the core Hooks logic."""
 
-from .. import branch, errors, pyutils, tests
+from catalogus import pyutils
+
+from .. import branch, errors, tests
 from .. import hooks as _mod_hooks
 from ..hooks import (
     HookPoint,

@@ -51,6 +51,8 @@ from io import BytesIO, StringIO, TextIOWrapper
 from typing import Callable
 from unittest import SkipTest as TestSkipped
 
+from catalogus import pyutils
+
 import testtools
 from testtools import content
 
@@ -66,7 +68,6 @@ from .. import (
     i18n,
     lockdir,
     osutils,
-    pyutils,
     registry,
     symbol_versioning,
     trace,
@@ -4188,7 +4189,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_permissions",
         "breezy.tests.test_plugins",
         "breezy.tests.test_progress",
-        "breezy.tests.test_pyutils",
         "breezy.tests.test_reconcile",
         "breezy.tests.test_reconfigure",
         "breezy.tests.test_registry",
