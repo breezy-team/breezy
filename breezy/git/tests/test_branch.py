@@ -256,7 +256,7 @@ class BranchTests(tests.TestCaseInTempDir):
         )
 
     def test_interbranch_pull(self):
-        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        path, (_gitsha1, gitsha2) = self.make_tworev_branch()
         oldrepo = Repository.open(path)
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         newbranch = self.make_branch("g")
@@ -265,7 +265,7 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual(revid2, newbranch.last_revision())
 
     def test_interbranch_pull_noop(self):
-        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        path, (_gitsha1, gitsha2) = self.make_tworev_branch()
         oldrepo = Repository.open(path)
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         newbranch = self.make_branch("g")
@@ -276,7 +276,7 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual(revid2, newbranch.last_revision())
 
     def test_interbranch_pull_stop_revision(self):
-        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        path, (gitsha1, _gitsha2) = self.make_tworev_branch()
         oldrepo = Repository.open(path)
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
         newbranch = self.make_branch("g")
@@ -301,7 +301,7 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertTrue(newbranch.repository.has_revision(revid2))
 
     def test_bzr_branch_bound_to_git(self):
-        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        path, (_gitsha1, _gitsha2) = self.make_tworev_branch()
         wt = Branch.open(path).create_checkout("co")
         self.build_tree_contents([("co/foobar", b"blah")])
         self.assertRaises(

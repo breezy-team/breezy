@@ -306,7 +306,7 @@ class InventoryTree(Tree):
         :param path: Path to look up
         :return: InventoryEntry
         """
-        inv, ie = self._path2inv_ie(path)
+        _inv, ie = self._path2inv_ie(path)
         if ie is None:
             raise _mod_transport.NoSuchFile(path)
         return ie
@@ -1647,7 +1647,7 @@ class InterInventoryTree(InterTree):
                 (
                     target_kind,
                     target_executable,
-                    target_stat,
+                    _target_stat,
                 ) = self.target._comparison_data(fake_entry, unversioned_path[1])
                 yield InventoryTreeChange(
                     None,
@@ -1692,7 +1692,7 @@ class InterInventoryTree(InterTree):
         while all_unversioned:
             # yield any trailing unversioned paths
             unversioned_path = all_unversioned.popleft()
-            to_kind, to_executable, to_stat = self.target._comparison_data(
+            to_kind, to_executable, _to_stat = self.target._comparison_data(
                 fake_entry, unversioned_path[1]
             )
             yield InventoryTreeChange(
@@ -1718,7 +1718,7 @@ class InterInventoryTree(InterTree):
             versioned = (True, False)
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)
-            from_kind, from_executable, stat_value = self.source._comparison_data(
+            from_kind, from_executable, _stat_value = self.source._comparison_data(
                 from_entry, path
             )
             kind = (from_kind, None)

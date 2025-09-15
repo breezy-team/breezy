@@ -36,7 +36,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
 
     def test_dump_btree_smoke(self):
         self.create_sample_btree_index()
-        out, err = self.run_bzr("dump-btree test.btree")
+        out, _err = self.run_bzr("dump-btree test.btree")
         self.assertEqualDiff(
             "(('test', 'key1'), 'value', ((('ref', 'entry'),),))\n"
             "(('test', 'key2'), 'value2', ((('ref', 'entry2'),),))\n"
@@ -48,7 +48,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
         self.transport_readonly_server = http_server.HttpServer
         self.create_sample_btree_index()
         url = self.get_readonly_url("test.btree")
-        out, err = self.run_bzr(["dump-btree", url])
+        out, _err = self.run_bzr(["dump-btree", url])
         self.assertEqualDiff(
             "(('test', 'key1'), 'value', ((('ref', 'entry'),),))\n"
             "(('test', 'key2'), 'value2', ((('ref', 'entry2'),),))\n"
@@ -58,7 +58,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
 
     def test_dump_btree_raw_smoke(self):
         self.create_sample_btree_index()
-        out, err = self.run_bzr("dump-btree test.btree --raw")
+        out, _err = self.run_bzr("dump-btree test.btree --raw")
         self.assertEqualDiff(
             "Root node:\n"
             "B+Tree Graph Index 2\n"
@@ -86,7 +86,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
             self.build_tree_contents([("test.btree", out_f.read())])
         finally:
             out_f.close()
-        out, err = self.run_bzr("dump-btree test.btree")
+        _out, _err = self.run_bzr("dump-btree test.btree")
 
     def create_sample_empty_btree_index(self):
         builder = btree_index.BTreeBuilder(reference_lists=1, key_elements=2)
@@ -98,19 +98,19 @@ class TestDumpBtree(tests.TestCaseWithTransport):
 
     def test_dump_empty_btree_smoke(self):
         self.create_sample_empty_btree_index()
-        out, err = self.run_bzr("dump-btree test.btree")
+        out, _err = self.run_bzr("dump-btree test.btree")
         self.assertEqualDiff("", out)
 
     def test_dump_empty_btree_http_smoke(self):
         self.transport_readonly_server = http_server.HttpServer
         self.create_sample_empty_btree_index()
         url = self.get_readonly_url("test.btree")
-        out, err = self.run_bzr(["dump-btree", url])
+        out, _err = self.run_bzr(["dump-btree", url])
         self.assertEqualDiff("", out)
 
     def test_dump_empty_btree_raw_smoke(self):
         self.create_sample_empty_btree_index()
-        out, err = self.run_bzr("dump-btree test.btree --raw")
+        out, _err = self.run_bzr("dump-btree test.btree --raw")
         self.assertEqualDiff(
             "Root node:\n"
             "B+Tree Graph Index 2\n"

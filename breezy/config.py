@@ -1773,7 +1773,7 @@ def extract_email_address(e):
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    name, email = parse_username(e)
+    _name, email = parse_username(e)
     if not email:
         raise NoEmailInUsername(e)
     return email
@@ -4316,7 +4316,7 @@ class LocationMatcher(SectionMatcher):
             location: The location path to match against.
         """
         super().__init__(store)
-        url, params = urlutils.split_segment_parameters(location)
+        _url, params = urlutils.split_segment_parameters(location)
         if location.startswith("file://"):
             location = urlutils.local_path_from_url(location)
         self.location = location

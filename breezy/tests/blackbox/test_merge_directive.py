@@ -139,8 +139,8 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         return result + (connect_calls, sendmail_calls)
 
     def test_mail_default(self):
-        tree1, tree2 = self.prepare_merge_directive()
-        md_text, errr, connect_calls, sendmail_calls = self.run_bzr_fakemail(
+        _tree1, _tree2 = self.prepare_merge_directive()
+        md_text, _errr, connect_calls, sendmail_calls = self.run_bzr_fakemail(
             [
                 "merge-directive",
                 "--mail-to",
@@ -250,10 +250,10 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(b"bar-id", wt.get_parent_ids()[1])
 
     def test_mail_uses_config(self):
-        tree1, tree2 = self.prepare_merge_directive()
+        tree1, _tree2 = self.prepare_merge_directive()
         br = tree1.branch
         br.get_config_stack().set("smtp_server", "bogushost")
-        md_text, errr, connect_calls, sendmail_calls = self.run_bzr_fakemail(
+        _md_text, _errr, connect_calls, _sendmail_calls = self.run_bzr_fakemail(
             "merge-directive --mail-to pqm@example.com --plain ../tree2 ."
         )
         call = connect_calls[0]
@@ -273,7 +273,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         )
 
     def test_encoding_exact(self):
-        tree1, tree2 = self.prepare_merge_directive()
+        tree1, _tree2 = self.prepare_merge_directive()
         tree1.commit("messag\xe9")
         self.run_bzr("merge-directive ../tree2")  # no exception raised
 

@@ -88,9 +88,8 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_SKIP: "*cp314* *musllinux*"
+          CIBW_SKIP: "*cp314* *musllinux* *-win32"
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-          CIBW_SKIP: '*-win32'
           CIBW_SKIP_LINUX: '*-musllinux_*'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1"'
           CIBW_BEFORE_BUILD: >

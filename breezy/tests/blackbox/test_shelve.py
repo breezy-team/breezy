@@ -121,7 +121,7 @@ class TestUnshelvePreview(TestCaseWithTransport):
         tree.commit(message="committed")
         self.build_tree_contents([("a_file", next_content)])
         self.run_bzr(["shelve", "--all"])
-        out, err = self.run_bzr_raw(["unshelve", "--preview"], encoding="latin-1")
+        out, _err = self.run_bzr_raw(["unshelve", "--preview"], encoding="latin-1")
 
         self.assertContainsString(out, diff_part)
 

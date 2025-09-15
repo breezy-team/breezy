@@ -1560,7 +1560,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_key_count_no_reload(self):
-        idx, reload_counter = self.make_combined_index_with_missing()
+        idx, _reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
         # Without a _reload_func we just raise the exception
         self.assertRaises(transport.NoSuchFile, idx.key_count)
@@ -1584,7 +1584,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         # The first index still looks present, so we get interrupted mid-way
         # through
         index, reload_counter = self.make_combined_index_with_missing(["2"])
-        index1, index2 = index._indices
+        index1, _index2 = index._indices
         result = list(index.iter_entries([(b"1",), (b"2",), (b"3",)]))
         index3 = index._indices[0]
         # We had already yielded b'1', so we just go on to the next, we should
@@ -1593,7 +1593,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_iter_entries_no_reload(self):
-        index, reload_counter = self.make_combined_index_with_missing()
+        index, _reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
         # Without a _reload_func we just raise the exception
         self.assertListRaises(transport.NoSuchFile, index.iter_entries, [("3",)])
@@ -1612,7 +1612,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_all_entries_reloads_midway(self):
         index, reload_counter = self.make_combined_index_with_missing(["2"])
-        index1, index2 = index._indices
+        index1, _index2 = index._indices
         result = list(index.iter_all_entries())
         index3 = index._indices[0]
         # We had already yielded '1', so we just go on to the next, we should
@@ -1621,12 +1621,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_iter_all_entries_no_reload(self):
-        index, reload_counter = self.make_combined_index_with_missing()
+        index, _reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
         self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_all_entries_reloads_and_fails(self):
-        index, reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
+        index, _reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
         self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_entries_prefix_reloads(self):
@@ -1638,7 +1638,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_entries_prefix_reloads_midway(self):
         index, reload_counter = self.make_combined_index_with_missing(["2"])
-        index1, index2 = index._indices
+        index1, _index2 = index._indices
         result = list(index.iter_entries_prefix([(b"1",)]))
         index._indices[0]
         # We had already yielded b'1', so we just go on to the next, we should
@@ -1647,14 +1647,14 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_iter_entries_prefix_no_reload(self):
-        index, reload_counter = self.make_combined_index_with_missing()
+        index, _reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
         self.assertListRaises(
             transport.NoSuchFile, index.iter_entries_prefix, [(b"1",)]
         )
 
     def test_iter_entries_prefix_reloads_and_fails(self):
-        index, reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
+        index, _reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
         self.assertListRaises(
             transport.NoSuchFile, index.iter_entries_prefix, [(b"1",)]
         )
@@ -1710,16 +1710,16 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_validate_reloads_midway(self):
-        idx, reload_counter = self.make_combined_index_with_missing(["2"])
+        idx, _reload_counter = self.make_combined_index_with_missing(["2"])
         idx.validate()
 
     def test_validate_no_reload(self):
-        idx, reload_counter = self.make_combined_index_with_missing()
+        idx, _reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
         self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_validate_reloads_and_fails(self):
-        idx, reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
+        idx, _reload_counter = self.make_combined_index_with_missing(["1", "2", "3"])
         self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_find_ancestors_across_indexes(self):
@@ -2062,7 +2062,7 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
         _mod_index.GraphIndexPrefixAdapter(idx, (b"prefix",), 1, idx.add_nodes)
 
     def test_iter_all_entries_cross_prefix_map_errors(self):
-        index, adapter = self.make_index(
+        _index, adapter = self.make_index(
             nodes=[((b"prefix", b"key1"), b"data1", (((b"prefixaltered", b"key2"),),))]
         )
         self.assertRaises(_mod_index.BadIndexData, list, adapter.iter_all_entries())
@@ -2153,13 +2153,13 @@ class TestGraphIndexPrefixAdapter(tests.TestCaseWithMemoryTransport):
         )
 
     def test_key_count_no_matching_keys(self):
-        index, adapter = self.make_index(
+        _index, adapter = self.make_index(
             nodes=[((b"notprefix", b"key1"), b"data", ((),))]
         )
         self.assertEqual(0, adapter.key_count())
 
     def test_key_count_some_keys(self):
-        index, adapter = self.make_index(
+        _index, adapter = self.make_index(
             nodes=[
                 ((b"notprefix", b"key1"), b"data", ((),)),
                 ((b"prefix", b"key1"), b"data1", ((),)),

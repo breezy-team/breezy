@@ -513,7 +513,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         return tree, subtree
 
     def test_iter_entries_with_unfollowed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [("", "directory"), ("subtree", "tree-reference")]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir(recurse_nested=False))
@@ -521,7 +521,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(expected, actual)
 
     def test_iter_entries_with_followed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [("", "directory"), ("subtree", "directory"), ("subtree/a", "file")]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir(recurse_nested=True))
@@ -529,7 +529,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(expected, actual)
 
     def test_iter_entries_with_missing_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         shutil.rmtree("wt/subtree")
         with tree.lock_read():
             self.assertRaises(

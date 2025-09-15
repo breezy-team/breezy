@@ -474,7 +474,7 @@ class cmd_replay(Command):
                 if revision[0] is not None:
                     todo = [revision[0].as_revision_id(from_branch)]
             elif len(revision) == 2:
-                from_revno, from_revid = revision[0].in_history(from_branch)
+                from_revno, _from_revid = revision[0].in_history(from_branch)
                 to_revno, to_revid = revision[1].in_history(from_branch)
                 if to_revid is None:
                     to_revno = from_branch.revno()

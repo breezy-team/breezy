@@ -246,7 +246,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
     def test_multiple_authors(self):
         wt = self.make_branch_and_tree(".", format="git")
         self.assertRaises(
-            Exception,
+            ValueError,
             wt.commit,
             "base",
             allow_pointless=True,

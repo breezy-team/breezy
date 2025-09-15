@@ -47,7 +47,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         """Return the current date and time formatted for a message header."""
         if timestamp is None:
             timestamp = time.time()
-        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(timestamp)
+        year, month, day, hh, mm, ss, wd, _y, _z = time.gmtime(timestamp)
         s = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             self.weekdayname[wd],
             day,
@@ -223,7 +223,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         if url_to is None:
             self.send_error(400, "Destination header missing")
             return
-        (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
+        (_scheme, _netloc, rel_to, _params, _query, _fragment) = urllib.parse.urlparse(
             url_to
         )
         trace.mutter(f"urlparse: ({url_to}) [{rel_to}]")
@@ -281,7 +281,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             should_overwrite = False
         elif overwrite_header == "T":
             should_overwrite = True
-        (scheme, netloc, rel_to, params, query, fragment) = urllib.parse.urlparse(
+        (_scheme, _netloc, rel_to, _params, _query, _fragment) = urllib.parse.urlparse(
             url_to
         )
         trace.mutter(f"urlparse: ({url_to}) [{rel_to}]")

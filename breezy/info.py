@@ -239,7 +239,7 @@ def _show_missing_revisions_branch(branch, outfile):
     # Try with inaccessible branch ?
     master = branch.get_master_branch()
     if master:
-        local_extra, remote_extra = find_unmerged(branch, master)
+        _local_extra, remote_extra = find_unmerged(branch, master)
         if remote_extra:
             outfile.write("\n")
             outfile.write(

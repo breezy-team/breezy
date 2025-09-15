@@ -487,19 +487,19 @@ A  f4
         return d, long_status, short_status
 
     def test_short_status(self):
-        d, long_status, short_status = self._get_delta()
+        d, _long_status, short_status = self._get_delta()
         out = StringIO()
         _mod_delta.report_delta(out, d, short_status=True)
         self.assertEqual(short_status, out.getvalue())
 
     def test_long_status(self):
-        d, long_status, short_status = self._get_delta()
+        d, long_status, _short_status = self._get_delta()
         out = StringIO()
         _mod_delta.report_delta(out, d, short_status=False)
         self.assertEqual(long_status, out.getvalue())
 
     def test_predicate_always(self):
-        d, long_status, short_status = self._get_delta()
+        d, _long_status, short_status = self._get_delta()
         out = StringIO()
 
         def always(path):
@@ -509,7 +509,7 @@ A  f4
         self.assertEqual(short_status, out.getvalue())
 
     def test_short_status_path_predicate(self):
-        d, long_status, short_status = self._get_delta()
+        d, _long_status, _short_status = self._get_delta()
         out = StringIO()
 
         def only_f2(path):
@@ -519,7 +519,7 @@ A  f4
         self.assertEqual("A  f2\n", out.getvalue())
 
     def test_long_status_path_predicate(self):
-        d, long_status, short_status = self._get_delta()
+        d, _long_status, _short_status = self._get_delta()
         out = StringIO()
 
         def only_f2(path):

@@ -168,13 +168,13 @@ class TestMergeImplementation(TestCaseWithTransport):
     def test_merge_with_existing_limbo_empty(self):
         """Empty limbo dir is just cleaned up - see bug 427773."""
         wt = self.make_branch_and_tree("this")
-        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
+        (limbodir, _deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
         self.do_merge(wt, wt)
 
     def test_merge_with_existing_limbo_non_empty(self):
         wt = self.make_branch_and_tree("this")
-        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
+        (limbodir, _deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
         os.mkdir(os.path.join(limbodir, "something"))
         self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
@@ -182,14 +182,14 @@ class TestMergeImplementation(TestCaseWithTransport):
 
     def test_merge_with_pending_deletion_empty(self):
         wt = self.make_branch_and_tree("this")
-        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
+        (_limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
         self.do_merge(wt, wt)
 
     def test_merge_with_pending_deletion_non_empty(self):
         """Also see bug 427773."""
         wt = self.make_branch_and_tree("this")
-        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
+        (_limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
         os.mkdir(os.path.join(deletiondir, "something"))
         self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)

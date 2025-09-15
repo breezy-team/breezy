@@ -86,7 +86,7 @@ class TestFetch(TestFetchBase):
         )
 
     def test_sprout_from_smart_stacked_with_short_history(self):
-        content, source_b = self.make_source_branch()
+        _content, source_b = self.make_source_branch()
         transport = self.make_smart_server("server")
         transport.ensure_base()
         url = transport.abspath("")
@@ -134,11 +134,11 @@ class TestFetch(TestFetchBase):
         return source_b, base, stacked
 
     def test_fetch_with_ghost_stacked(self):
-        (source_b, base, stacked) = self.make_source_with_ghost_and_stacked_target()
+        (source_b, _base, stacked) = self.make_source_with_ghost_and_stacked_target()
         stacked.pull(source_b, stop_revision=b"B-id")
 
     def test_fetch_into_smart_stacked_with_ghost(self):
-        (source_b, base, stacked) = self.make_source_with_ghost_and_stacked_target()
+        (source_b, _base, stacked) = self.make_source_with_ghost_and_stacked_target()
         # Now, create a smart server on 'stacked' and re-open to force the
         # target to be a smart target
         trans = self.make_smart_server("stacked")
@@ -148,7 +148,7 @@ class TestFetch(TestFetchBase):
         stacked.pull(source_b, stop_revision=b"B-id")
 
     def test_fetch_to_stacked_from_smart_with_ghost(self):
-        (source_b, base, stacked) = self.make_source_with_ghost_and_stacked_target()
+        (source_b, _base, stacked) = self.make_source_with_ghost_and_stacked_target()
         # Now, create a smart server on 'source' and re-open to force the
         # target to be a smart target
         trans = self.make_smart_server("source")

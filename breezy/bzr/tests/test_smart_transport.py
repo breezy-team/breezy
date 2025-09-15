@@ -64,7 +64,7 @@ def portable_socket_pair():
     listen_sock.listen(1)
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_sock.connect(listen_sock.getsockname())
-    server_sock, addr = listen_sock.accept()
+    server_sock, _addr = listen_sock.accept()
     listen_sock.close()
     return server_sock, client_sock
 
@@ -191,7 +191,7 @@ class SmartClientMediumTests(tests.TestCase):
         """
 
         def _receive_bytes_on_server():
-            connection, address = sock.accept()
+            connection, _address = sock.accept()
             bytes.append(osutils.recv_all(connection, 3))
             connection.close()
 
@@ -783,7 +783,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
     def test_reset(self):
-        server_sock, client_sock = portable_socket_pair()
+        _server_sock, client_sock = portable_socket_pair()
         # TODO: Use SmartClientAlreadyConnectedSocketMedium for the versions of
         #       bzr where it exists.
         client_medium = medium.SmartTCPClientMedium(None, None, None)
@@ -1154,7 +1154,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test__build_protocol_returns_if_stopping(self):
         # _build_protocol should notice that we are stopping, and return
         # without waiting for bytes from the client.
-        server, client_sock = self.create_socket_context(None)
+        server, _client_sock = self.create_socket_context(None)
         server._stop_gracefully()
         self.assertIs(None, server._build_protocol())
 
@@ -1197,7 +1197,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual(b"", data)
 
     def test_socket_wait_for_bytes_with_shutdown(self):
-        server, client_sock = self.create_socket_context(None)
+        server, _client_sock = self.create_socket_context(None)
         t = time.time()
         # Override the _timer functionality, so that time never increments,
         # this way, we can be sure we stopped because of the flag, and not
@@ -1376,7 +1376,7 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_propagates_timeout(self):
         server = _mod_server.SmartTCPServer(None, client_timeout=1.23)
-        server_sock, client_sock = portable_socket_pair()
+        server_sock, _client_sock = portable_socket_pair()
         handler = server._make_handler(server_sock)
         self.assertEqual(1.23, handler._client_timeout)
 
@@ -1493,7 +1493,7 @@ class TestSmartTCPServer(tests.TestCase):
         server, server_thread = self.make_server()
         client_sock = self.connect_to_server(server)
         self.say_hello(client_sock)
-        server_handler, server_side_thread = server._active_connections[0]
+        server_handler, _server_side_thread = server._active_connections[0]
         self.assertFalse(server_handler.finished)
         server._stop_gracefully()
         self.assertTrue(server_handler.finished)
@@ -1992,7 +1992,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def make_client_protocol(self, input_bytes=None):
         result = self.make_client_protocol_and_output(input_bytes=input_bytes)
-        requester, response_handler, output = result
+        requester, response_handler, _output = result
         return requester, response_handler
 
     def make_server_protocol(self):
@@ -2030,7 +2030,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual(expected_serialised, serialised)
 
     def build_protocol_waiting_for_body(self):
-        smart_protocol, out_stream = self.make_server_protocol()
+        smart_protocol, _out_stream = self.make_server_protocol()
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, "/"
@@ -2091,7 +2091,7 @@ class CommonSmartProtocolTestMixin:
         one with the order of reads not increasing (an out of order read), and
         one that should coalesce.
         """
-        requester, response_handler = self.make_client_protocol()
+        requester, _response_handler = self.make_client_protocol()
         self.assertOffsetSerialisation([], b"", requester)
         self.assertOffsetSerialisation([(1, 2)], b"1,2", requester)
         self.assertOffsetSerialisation([(10, 40), (0, 5)], b"10,40\n0,5", requester)
@@ -3184,7 +3184,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         end = b"e"  # end marker
         simple_response = headers + response_status + args + body + end
         # Feed the request to the decoder one byte at a time.
-        decoder, response_handler = self.make_logging_response_decoder()
+        decoder, _response_handler = self.make_logging_response_decoder()
         for byte in bytearray(simple_response):
             self.assertNotEqual(0, decoder.next_read_size())
             decoder.accept_bytes(bytes([byte]))
@@ -3230,7 +3230,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
 
     def make_client_encoder_and_output(self):
         result = self.make_client_protocol_and_output()
-        requester, response_handler, output = result
+        requester, _response_handler, output = result
         return requester, output
 
     def test_call_smoke_test(self):
@@ -3327,13 +3327,16 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         requester, output = self.make_client_encoder_and_output()
         requester.set_headers({})
 
+        class TestStreamException(Exception):
+            pass
+
         def stream_that_fails():
             yield b"aaa"
             yield b"bbb"
-            raise Exception("Boom!")
+            raise TestStreamException("Boom!")
 
         self.assertRaises(
-            Exception,
+            TestStreamException,
             requester.call_with_body_stream,
             (b"one arg",),
             stream_that_fails(),
@@ -3847,7 +3850,7 @@ class Test_SmartClientRequest(tests.TestCase):
 
     def test__call_doesnt_retry_append(self):
         response = self.make_response(("appended", b"8"))
-        output, vendor, smart_client = self.make_client_with_failing_medium(
+        _output, _vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False, response=response
         )
         smart_request = client._SmartClientRequest(
@@ -3857,7 +3860,7 @@ class Test_SmartClientRequest(tests.TestCase):
 
     def test__call_retries_get_bytes(self):
         response = self.make_response((b"ok",), b"content\n")
-        output, vendor, smart_client = self.make_client_with_failing_medium(
+        _output, _vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False, response=response
         )
         smart_request = client._SmartClientRequest(smart_client, b"get", (b"foo",))
@@ -3868,14 +3871,14 @@ class Test_SmartClientRequest(tests.TestCase):
     def test__call_noretry_get_bytes(self):
         debug.set_debug_flag("noretry")
         response = self.make_response((b"ok",), b"content\n")
-        output, vendor, smart_client = self.make_client_with_failing_medium(
+        _output, _vendor, smart_client = self.make_client_with_failing_medium(
             fail_at_write=False, response=response
         )
         smart_request = client._SmartClientRequest(smart_client, b"get", (b"foo",))
         self.assertRaises(ConnectionResetError, smart_request._call, 3)
 
     def test__send_no_retry_pipes(self):
-        client_read, server_write = create_file_pipes()
+        client_read, _server_write = create_file_pipes()
         server_read, client_write = create_file_pipes()
         client_medium = medium.SmartSimplePipesClientMedium(
             client_read, client_write, base="/"
@@ -3884,7 +3887,7 @@ class Test_SmartClientRequest(tests.TestCase):
         smart_request = client._SmartClientRequest(smart_client, b"hello", ())
         # Close the server side
         server_read.close()
-        encoder, response_handler = smart_request._construct_protocol(3)
+        encoder, _response_handler = smart_request._construct_protocol(3)
         self.assertRaises(ConnectionResetError, smart_request._send_no_retry, encoder)
 
     def test__send_read_response_sockets(self):
@@ -4060,7 +4063,7 @@ class Test_SmartClientRequest(tests.TestCase):
 
     def test__send_disabled_retry(self):
         debug.set_debug_flag("noretry")
-        output, vendor, smart_client = self.make_client_with_failing_medium()
+        _output, vendor, smart_client = self.make_client_with_failing_medium()
         smart_request = client._SmartClientRequest(smart_client, b"hello", ())
         self.assertRaises(ConnectionResetError, smart_request._send, 3)
         self.assertEqual(

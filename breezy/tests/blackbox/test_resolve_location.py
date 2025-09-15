@@ -22,7 +22,7 @@ class TestCatRevision(TestCaseWithTransport):
     def test_already_url(self):
         wt = self.make_branch_and_tree(".")
 
-        out, err = self.run_bzr(f"resolve-location {wt.branch.user_url}")
+        out, _err = self.run_bzr(f"resolve-location {wt.branch.user_url}")
         self.assertEqual(out, f"{wt.branch.user_url.replace('file://', '')}\n")
 
     def test_parent_missing(self):

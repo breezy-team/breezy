@@ -24,7 +24,7 @@ from .. import mergetools, tests
 class TestFilenameSubstitution(tests.TestCaseInTempDir):
     def test_simple_filename(self):
         cmd_list = ["kdiff3", "{base}", "{this}", "{other}", "-o", "{result}"]
-        args, tmpfile = mergetools._subst_filename(cmd_list, "test.txt")
+        args, _tmpfile = mergetools._subst_filename(cmd_list, "test.txt")
         self.assertEqual(
             [
                 "kdiff3",
@@ -39,7 +39,7 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
 
     def test_spaces(self):
         cmd_list = ["kdiff3", "{base}", "{this}", "{other}", "-o", "{result}"]
-        args, tmpfile = mergetools._subst_filename(cmd_list, "file with space.txt")
+        args, _tmpfile = mergetools._subst_filename(cmd_list, "file with space.txt")
         self.assertEqual(
             [
                 "kdiff3",
@@ -54,7 +54,7 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
 
     def test_spaces_and_quotes(self):
         cmd_list = ["kdiff3", "{base}", "{this}", "{other}", "-o", "{result}"]
-        args, tmpfile = mergetools._subst_filename(
+        args, _tmpfile = mergetools._subst_filename(
             cmd_list, 'file with "space and quotes".txt'
         )
         self.assertEqual(
@@ -74,7 +74,7 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
             ("test.txt", "test.txt.BASE", "test.txt.THIS", "test.txt.OTHER")
         )
         cmd_list = ["some_tool", "{this_temp}"]
-        args, tmpfile = mergetools._subst_filename(cmd_list, "test.txt")
+        _args, tmpfile = mergetools._subst_filename(cmd_list, "test.txt")
         self.assertPathExists(tmpfile)
         os.remove(tmpfile)
 

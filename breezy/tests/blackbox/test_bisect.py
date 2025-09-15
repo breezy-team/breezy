@@ -194,7 +194,7 @@ class BisectTestCase(TestCaseWithTransport):
         with open("test_file", "w") as test_file:
             test_file.write("keep me")
 
-        out, err = self.run_bzr(["bisect", "reset"], retcode=3)
+        _out, err = self.run_bzr(["bisect", "reset"], retcode=3)
         self.assertIn("No bisection in progress.", err)
 
         with open("test_file") as test_file:

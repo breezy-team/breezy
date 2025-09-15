@@ -65,7 +65,7 @@ dev = [
     "testscenarios",
     "python-subunit",
     "cython>=0.29",
-    "ruff",
+    "ruff==0.13.0",
     "types-paramiko",
     "types-PyYAML",
 ]

@@ -83,7 +83,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         return trans, root, contents, sha1
 
     def test_existing_limbo(self):
-        transform, root = self.transform()
+        transform, _root = self.transform()
         limbo_name = transform._limbodir
         deletion_path = transform._deletiondir
         os.mkdir(pathjoin(limbo_name, "hehe"))
@@ -94,11 +94,11 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         os.rmdir(pathjoin(limbo_name, "hehe"))
         os.rmdir(limbo_name)
         os.rmdir(deletion_path)
-        transform, root = self.transform()
+        transform, _root = self.transform()
         transform.apply()
 
     def test_existing_pending_deletion(self):
-        transform, root = self.transform()
+        transform, _root = self.transform()
         deletion_path = self._limbodir = urlutils.local_path_from_url(
             transform._tree._transport.abspath("pending-deletion")
         )
@@ -291,13 +291,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertFileEqual(b"new-contents\n", self.wt.abspath("file"))
 
     def test_add_two_roots(self):
-        transform, root = self.transform()
+        transform, _root = self.transform()
         transform.new_directory("", ROOT_PARENT, b"new-root-id")
         transform.new_directory("", ROOT_PARENT, b"alt-root-id")
         self.assertRaises(ValueError, transform.fixup_new_roots)
 
     def test_retain_existing_root(self):
-        tt, root = self.transform()
+        tt, _root = self.transform()
         with tt:
             tt.new_directory("", ROOT_PARENT, b"new-root-id")
             tt.fixup_new_roots()
@@ -307,14 +307,14 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                 self.assertNotEqual(b"new-root-id", tt.final_file_id(tt.root))
 
     def test_retain_existing_root_added_file(self):
-        tt, root = self.transform()
+        tt, _root = self.transform()
         new_trans_id = tt.new_directory("", ROOT_PARENT, b"new-root-id")
         child = tt.new_directory("child", new_trans_id, b"child-id")
         tt.fixup_new_roots()
         self.assertEqual(tt.root, tt.final_parent(child))
 
     def test_add_unversioned_root(self):
-        transform, root = self.transform()
+        transform, _root = self.transform()
         transform.new_directory("", ROOT_PARENT, None)
         transform.delete_contents(transform.root)
         transform.fixup_new_roots()
@@ -902,7 +902,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             oz,
             old_dorothy,
             new_dorothy,
-            munchkincity,
+            _munchkincity,
         ) = self.get_conflicted()
         resolve_conflicts(conflicts)
         self.assertEqual(conflicts.final_name(old_dorothy), "dorothy.moved")
@@ -914,7 +914,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         conflicts.apply()
 
     def test_cook_conflicts(self):
-        tt, emerald, oz, old_dorothy, new_dorothy, munchkincity = self.get_conflicted()
+        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = (
+            self.get_conflicted()
+        )
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         if self.wt.supports_setting_file_ids():
@@ -970,7 +972,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.finalize()
 
     def test_string_conflicts(self):
-        tt, emerald, oz, old_dorothy, new_dorothy, munchkincity = self.get_conflicted()
+        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = (
+            self.get_conflicted()
+        )
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         tt.finalize()
@@ -1708,7 +1712,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_noname_contents(self):
         """TreeTransform should permit deferring naming files."""
-        transform, root = self.transform()
+        transform, _root = self.transform()
         parent = transform.trans_id_tree_path("parent")
         try:
             transform.create_directory(parent)
@@ -1946,7 +1950,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(wt.kind("foo"), "file")
 
     def test_no_final_path(self):
-        transform, root = self.transform()
+        transform, _root = self.transform()
         trans_id = transform.trans_id_tree_path("foo")
         transform.create_file([b"bar"], trans_id)
         transform.cancel_creation(trans_id)

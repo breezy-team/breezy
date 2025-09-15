@@ -980,7 +980,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
-        tree1, revid1 = self.make_minimal_tree()
+        tree1, _revid1 = self.make_minimal_tree()
         inv = tree1.root_inventory
         root_id = inv.path2id("")
         expected_result = (
@@ -1009,7 +1009,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.check_state_with_reopen(expected_result, state)
 
     def test_set_state_from_scratch_no_parents(self):
-        tree1, revid1 = self.make_minimal_tree()
+        tree1, _revid1 = self.make_minimal_tree()
         inv = tree1.root_inventory
         root_id = inv.path2id("")
         expected_result = (
@@ -2448,7 +2448,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_each(self):
         """Find a single record using bisect."""
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
 
         # Bisect should return the rows for the specified files.
         self.assertBisect(expected, [[b""]], state, [b""])
@@ -2462,7 +2462,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_multi(self):
         """Bisect can be used to find multiple records at the same time."""
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         # Bisect should be capable of finding multiple entries at the same time
         self.assertBisect(expected, [[b"a"], [b"b"], [b"f"]], state, [b"a", b"b", b"f"])
         self.assertBisect(
@@ -2474,7 +2474,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_one_page(self):
         """Test bisect when there is only 1 page to read."""
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 5000
         self.assertBisect(expected, [[b""]], state, [b""])
         self.assertBisect(expected, [[b"a"]], state, [b"a"])
@@ -2494,7 +2494,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_duplicate_paths(self):
         """When bisecting for a path, handle multiple entries."""
-        tree, state, expected = self.create_duplicated_dirstate()
+        _tree, state, expected = self.create_duplicated_dirstate()
 
         # Now make sure that both records are properly returned.
         self.assertBisect(expected, [[b""]], state, [b""])
@@ -2508,7 +2508,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_page_size_too_small(self):
         """If the page size is too small, we will auto increase it."""
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         state._bisect_page_size = 50
         self.assertBisect(expected, [None], state, [b"b/e"])
         self.assertBisect(expected, [[b"a"]], state, [b"a"])
@@ -2521,7 +2521,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_missing(self):
         """Test that bisect return None if it cannot find a path."""
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         self.assertBisect(expected, [None], state, [b"foo"])
         self.assertBisect(expected, [None], state, [b"b/foo"])
         self.assertBisect(expected, [None], state, [b"bar/foo"])
@@ -2533,7 +2533,7 @@ class TestBisect(TestCaseWithDirState):
 
     def test_bisect_rename(self):
         """Check that we find a renamed row."""
-        tree, state, expected = self.create_renamed_dirstate()
+        _tree, state, expected = self.create_renamed_dirstate()
 
         # Search for the pre and post renamed entries
         self.assertBisect(expected, [[b"a"]], state, [b"a"])
@@ -2546,7 +2546,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisect(expected, [[b"h/e"]], state, [b"h/e"])
 
     def test_bisect_dirblocks(self):
-        tree, state, expected = self.create_duplicated_dirstate()
+        _tree, state, expected = self.create_duplicated_dirstate()
         self.assertBisectDirBlocks(
             expected,
             [[b"", b"a", b"a2", b"b", b"b2", b"b-c", b"b-c2", b"f", b"f2"]],
@@ -2569,7 +2569,7 @@ class TestBisect(TestCaseWithDirState):
         )
 
     def test_bisect_dirblocks_missing(self):
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         self.assertBisectDirBlocks(
             expected, [[b"b/d/e"], None], state, [b"b/d", b"b/e"]
         )
@@ -2581,7 +2581,7 @@ class TestBisect(TestCaseWithDirState):
         self.assertBisectDirBlocks(expected, [None], state, [b"f"])
 
     def test_bisect_recursive_each(self):
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         self.assertBisectRecursive(expected, [b"a"], state, [b"a"])
         self.assertBisectRecursive(expected, [b"b/c"], state, [b"b/c"])
         self.assertBisectRecursive(expected, [b"b/d/e"], state, [b"b/d/e"])
@@ -2598,21 +2598,21 @@ class TestBisect(TestCaseWithDirState):
         )
 
     def test_bisect_recursive_multiple(self):
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         self.assertBisectRecursive(expected, [b"a", b"b/c"], state, [b"a", b"b/c"])
         self.assertBisectRecursive(
             expected, [b"b/d", b"b/d/e"], state, [b"b/d", b"b/d/e"]
         )
 
     def test_bisect_recursive_missing(self):
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, expected = self.create_basic_dirstate()
         self.assertBisectRecursive(expected, [], state, [b"d"])
         self.assertBisectRecursive(expected, [], state, [b"b/e"])
         self.assertBisectRecursive(expected, [], state, [b"g"])
         self.assertBisectRecursive(expected, [b"a"], state, [b"a", b"g"])
 
     def test_bisect_recursive_renamed(self):
-        tree, state, expected = self.create_renamed_dirstate()
+        _tree, state, expected = self.create_renamed_dirstate()
 
         # Looking for either renamed item should find the other
         self.assertBisectRecursive(expected, [b"a", b"b/g"], state, [b"a"])
@@ -2640,7 +2640,7 @@ class TestDirstateValidation(TestCaseWithDirState):
             state.unlock()
 
     def test_dirblock_not_sorted(self):
-        tree, state, expected = self.create_renamed_dirstate()
+        _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
         last_dirblock = state._dirblocks[-1]
         # we're appending to the dirblock, but this name comes before some of
@@ -2655,7 +2655,7 @@ class TestDirstateValidation(TestCaseWithDirState):
         self.assertContainsRe(str(e), "not sorted")
 
     def test_dirblock_name_mismatch(self):
-        tree, state, expected = self.create_renamed_dirstate()
+        _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
         last_dirblock = state._dirblocks[-1]
         # add an entry with the wrong directory name
@@ -2669,7 +2669,7 @@ class TestDirstateValidation(TestCaseWithDirState):
         self.assertContainsRe(str(e), "doesn't match directory name")
 
     def test_dirblock_missing_rename(self):
-        tree, state, expected = self.create_renamed_dirstate()
+        _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
         last_dirblock = state._dirblocks[-1]
         # make another entry for a-id, without a correct 'r' pointer to
@@ -2911,7 +2911,7 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertEqual(expected, details)
         # details should always allow join() and always be a plain str when
         # finished
-        (minikind, fingerprint, size, executable, tree_data) = details
+        (minikind, fingerprint, _size, _executable, tree_data) = details
         self.assertIsInstance(minikind, bytes)
         self.assertIsInstance(fingerprint, bytes)
         self.assertIsInstance(tree_data, bytes)

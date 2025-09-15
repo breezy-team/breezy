@@ -120,14 +120,14 @@ class TestListFiles(TestCaseWithTree):
         return tree, subtree
 
     def test_list_files_with_unfollowed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [("", "V", "directory"), ("subtree", "V", "tree-reference")]
         self.assertFilesListEqual(
             tree, expected, recursive=True, recurse_nested=False, include_root=True
         )
 
     def test_list_files_with_followed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [
             ("", "V", "directory"),
             ("subtree", "V", "directory"),

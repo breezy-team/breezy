@@ -129,7 +129,7 @@ class TestCat(tests.TestCaseWithTransport):
         wt.commit("Making sure there is a basis_tree available")
 
         url = self.get_readonly_url() + "/README"
-        out, err = self.run_bzr(["cat", url])
+        out, _err = self.run_bzr(["cat", url])
         self.assertEqual("contents of README\n", out)
 
     def test_cat_branch_revspec(self):
@@ -139,7 +139,9 @@ class TestCat(tests.TestCaseWithTransport):
         wt.commit("Making sure there is a basis_tree available")
         wt = self.make_branch_and_tree("b")
 
-        out, err = self.run_bzr(["cat", "-r", "branch:../a", "README"], working_dir="b")
+        out, _err = self.run_bzr(
+            ["cat", "-r", "branch:../a", "README"], working_dir="b"
+        )
         self.assertEqual("contents of a/README\n", out)
 
     def test_cat_filters(self):
@@ -150,11 +152,11 @@ class TestCat(tests.TestCaseWithTransport):
         url = self.get_readonly_url() + "/README"
 
         # Test unfiltered output
-        out, err = self.run_bzr(["cat", url])
+        out, _err = self.run_bzr(["cat", url])
         self.assertEqual("contents of README\n", out)
 
         # Test --filters option is legal but has no impact if no filters
-        out, err = self.run_bzr(["cat", "--filters", url])
+        out, _err = self.run_bzr(["cat", "--filters", url])
         self.assertEqual("contents of README\n", out)
 
     def test_cat_filters_applied(self):
@@ -196,7 +198,7 @@ class TestCat(tests.TestCaseWithTransport):
         wt.branch.controldir.destroy_workingtree()
 
         url = self.get_readonly_url() + "/README"
-        out, err = self.run_bzr(["cat", url])
+        out, _err = self.run_bzr(["cat", url])
         self.assertEqual("contents of README\n", out)
 
     def test_cat_nonexistent_branch(self):
@@ -209,7 +211,7 @@ class TestCat(tests.TestCaseWithTransport):
         wt.add("README")
         wt.commit("Making sure there is a basis_tree available")
 
-        out, err = self.run_bzr(["cat", "--directory=a", "README"])
+        out, _err = self.run_bzr(["cat", "--directory=a", "README"])
         self.assertEqual("contents of a/README\n", out)
 
     def test_cat_remote_directory(self):
@@ -219,5 +221,5 @@ class TestCat(tests.TestCaseWithTransport):
         wt.commit("Making sure there is a basis_tree available")
 
         url = self.get_readonly_url() + "/a"
-        out, err = self.run_bzr(["cat", "-d", url, "README"])
+        out, _err = self.run_bzr(["cat", "-d", url, "README"])
         self.assertEqual("contents of a/README\n", out)

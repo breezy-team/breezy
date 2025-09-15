@@ -55,7 +55,7 @@ Location:
 
         (Malone #38331)
         """
-        out, err = self.run_bzr("init-shared-repository .")
+        _out, _err = self.run_bzr("init-shared-repository .")
         dir = ControlDir.open(".")
         self.assertTrue(dir.open_repository())
 
@@ -148,6 +148,6 @@ Location:
         # when whoami is not available.
         self.overrideEnv("EMAIL", None)
         self.overrideEnv("BRZ_EMAIL", None)
-        out, err = self.run_bzr(["init-shared-repo", "foo"])
+        _out, err = self.run_bzr(["init-shared-repo", "foo"])
         self.assertEqual(err, "")
         self.assertTrue(os.path.exists("foo"))

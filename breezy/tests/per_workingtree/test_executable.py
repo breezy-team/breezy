@@ -121,7 +121,7 @@ class TestExecutable(TestCaseWithWorkingTree):
     def test_06_branch(self):
         """Branch b1=>b2 should preserve the executable bits."""
         # TODO: Maybe this should be a blackbox test
-        wt2, r1 = self.commit_and_branch()
+        wt2, _r1 = self.commit_and_branch()
 
         self.check_exist(wt2)
 

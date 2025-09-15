@@ -140,7 +140,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_custom_without_template(self):
         self.make_branch_and_tree("branch")
-        out, err = self.run_bzr("version-info --custom", retcode=3)
+        _out, err = self.run_bzr("version-info --custom", retcode=3)
         self.assertContainsRe(err, r"ERROR: No template specified\.")
 
     def test_custom_implies_all(self):
@@ -177,7 +177,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(["a_file"])
         tree.add("a_file")
         tree.commit(commit_message)
-        out, err = self.run_bzr_raw(
+        _out, _err = self.run_bzr_raw(
             ["version-info", "--include-history"], encoding="latin-1"
         )
 

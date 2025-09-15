@@ -259,7 +259,7 @@ class cmd_propose_merge(Command):  # noqa: D101
             delete_source_after_merge: Whether to delete source after merge.
             revision: Specific revision to propose.
         """
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _tree, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         if submit_branch is None:
@@ -351,7 +351,7 @@ class cmd_find_merge_proposal(Command):  # noqa: D101
             directory: Working directory path.
             submit_branch: Target branch URL to find proposals for.
         """
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _tree, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         public_location = branch.get_public_branch()

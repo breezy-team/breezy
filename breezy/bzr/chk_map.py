@@ -567,7 +567,7 @@ class CHKMap:
                 # heaps. Applies to both internal nodes and leafnodes.
                 if self_pending[0][0] < basis_pending[0][0]:
                     # expand self
-                    prefix, key, node, path = heapq.heappop(self_pending)
+                    _prefix, key, node, path = heapq.heappop(self_pending)
                     if check_excluded(path):
                         continue
                     if key is not None:
@@ -578,7 +578,7 @@ class CHKMap:
                         continue
                 elif self_pending[0][0] > basis_pending[0][0]:
                     # expand basis
-                    prefix, key, node, path = heapq.heappop(basis_pending)
+                    _prefix, key, node, path = heapq.heappop(basis_pending)
                     if check_excluded(path):
                         continue
                     if key is not None:
@@ -632,12 +632,12 @@ class CHKMap:
                         )
                         continue
                     if read_self:
-                        prefix, key, node, path = heapq.heappop(self_pending)
+                        _prefix, key, node, path = heapq.heappop(self_pending)
                         if check_excluded(path):
                             continue
                         process_node(node, path, self, self_pending)
                     if read_basis:
-                        prefix, key, node, path = heapq.heappop(basis_pending)
+                        _prefix, key, node, path = heapq.heappop(basis_pending)
                         if check_excluded(path):
                             continue
                         process_node(node, path, basis, basis_pending)

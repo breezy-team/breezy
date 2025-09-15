@@ -73,7 +73,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
         todo.sort()
 
     while todo:
-        cum_time, cur = todo.pop()
+        _cum_time, cur = todo.pop()
         children = _total_stack[cur]
 
         c_times = []

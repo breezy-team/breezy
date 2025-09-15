@@ -275,7 +275,7 @@ class ReadVFile:
 
     def _next(self):
         if self._string is None or self._string.tell() == self._string_length:
-            offset, data = next(self.readv_result)
+            _offset, data = next(self.readv_result)
             self._string_length = len(data)
             self._string = BytesIO(data)
 

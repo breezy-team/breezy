@@ -476,7 +476,7 @@ class TestMergeDirectiveBranch:
         return tree_a, tree_b, branch_c
 
     def test_empty_target(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, _tree_b, _branch_c = self.make_trees()
         tree_d = self.make_branch_and_tree("tree_d")
         self.from_objects(
             tree_a.branch.repository,
@@ -489,7 +489,7 @@ class TestMergeDirectiveBranch:
         )
 
     def test_disk_name(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         tree_a.branch.nick = "fancy <name>"
         md = self.from_objects(
             tree_a.branch.repository, b"rev2a", 500, 120, tree_b.branch.base
@@ -497,7 +497,7 @@ class TestMergeDirectiveBranch:
         self.assertEqual("fancy-name-2", md.get_disk_name(tree_a.branch))
 
     def test_disk_name_old_revno(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         tree_a.branch.nick = "fancy-name"
         md = self.from_objects(
             tree_a.branch.repository, b"rev1", 500, 120, tree_b.branch.base
@@ -505,7 +505,7 @@ class TestMergeDirectiveBranch:
         self.assertEqual("fancy-name-1", md.get_disk_name(tree_a.branch))
 
     def test_generate_patch(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md2 = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -670,7 +670,7 @@ class TestMergeDirectiveBranch:
         self.assertContainsRe(signed, b"booga")
 
     def test_email(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -687,7 +687,7 @@ class TestMergeDirectiveBranch:
         self.assertContainsRe(message.as_string(), self.EMAIL2)
 
     def test_install_revisions_branch(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -703,7 +703,7 @@ class TestMergeDirectiveBranch:
         self.assertTrue(tree_b.branch.repository.has_revision(b"rev2a"))
 
     def test_get_merge_request(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -766,7 +766,7 @@ class TestMergeDirectiveBranch:
             self.assertEqual("failed", verified)
 
     def test_install_revisions_bundle(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -782,7 +782,7 @@ class TestMergeDirectiveBranch:
         self.assertTrue(tree_b.branch.repository.has_revision(b"rev2a"))
 
     def test_get_target_revision_nofetch(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         tree_b.branch.fetch(tree_a.branch)
         md = self.from_objects(
             tree_a.branch.repository,
@@ -962,7 +962,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
         )
 
     def test_base_revision(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -990,7 +990,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport, TestMergeDirectiveB
         self.assertEqual(md2.base_revision_id, md.base_revision_id)
 
     def test_patch_verification(self):
-        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a, tree_b, _branch_c = self.make_trees()
         md = self.from_objects(
             tree_a.branch.repository,
             b"rev2a",
@@ -1098,7 +1098,7 @@ class TestBodyHook(tests.TestCaseWithTransport):
 
         trace.warning = warn
         try:
-            client, directive = self.compose_with_hooks(
+            _client, _directive = self.compose_with_hooks(
                 [test_hook], supports_body=False
             )
         finally:

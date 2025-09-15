@@ -56,7 +56,7 @@ class TestCheckout(TestCaseWithTransport):
         )
 
     def test_checkout_dash_r(self):
-        out, err = self.run_bzr(["checkout", "-r", "-2", "branch", "checkout"])
+        _out, _err = self.run_bzr(["checkout", "-r", "-2", "branch", "checkout"])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open("checkout")
@@ -64,7 +64,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertPathDoesNotExist("checkout/added_in_2")
 
     def test_checkout_light_dash_r(self):
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             ["checkout", "--lightweight", "-r", "-2", "branch", "checkout"]
         )
         # the working tree should now be at revision '1' with the content
@@ -75,7 +75,7 @@ class TestCheckout(TestCaseWithTransport):
 
     def test_checkout_into_empty_dir(self):
         self.make_controldir("checkout")
-        out, err = self.run_bzr(["checkout", "branch", "checkout"])
+        _out, _err = self.run_bzr(["checkout", "branch", "checkout"])
         result = controldir.ControlDir.open("checkout")
         result.open_workingtree()
         result.open_branch()
@@ -90,11 +90,11 @@ class TestCheckout(TestCaseWithTransport):
         )
         # check no tree was created
         self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
-        out, err = self.run_bzr("checkout treeless-branch")
+        _out, _err = self.run_bzr("checkout treeless-branch")
         # we should have a tree now
         branch.controldir.open_workingtree()
         # with no diff
-        out, err = self.run_bzr("diff treeless-branch")
+        _out, _err = self.run_bzr("diff treeless-branch")
 
         # now test with no parameters
         branch = controldir.ControlDir.create_branch_convenience(
@@ -102,11 +102,11 @@ class TestCheckout(TestCaseWithTransport):
         )
         # check no tree was created
         self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
-        out, err = self.run_bzr("checkout")
+        _out, _err = self.run_bzr("checkout")
         # we should have a tree now
         branch.controldir.open_workingtree()
         # with no diff
-        out, err = self.run_bzr("diff")
+        _out, _err = self.run_bzr("diff")
 
     def _test_checkout_existing_dir(self, lightweight):
         source = self.make_branch_and_tree("source")
@@ -160,7 +160,7 @@ class TestCheckout(TestCaseWithTransport):
         self.build_tree(["source/file1"])
         source.add("file1")
         source.commit("added file")
-        out, err = self.run_bzr("checkout source target --hardlink")
+        _out, _err = self.run_bzr("checkout source target --hardlink")
         source_stat = os.stat("source/file1")
         target_stat = os.stat("target/file1")
         self.assertEqual(source_stat, target_stat)
@@ -172,7 +172,9 @@ class TestCheckout(TestCaseWithTransport):
         source.add("file1")
         source.commit("added file")
         source.controldir.sprout("second")
-        out, err = self.run_bzr("checkout source target --hardlink --files-from second")
+        _out, _err = self.run_bzr(
+            "checkout source target --hardlink --files-from second"
+        )
         second_stat = os.stat("second/file1")
         target_stat = os.stat("target/file1")
         self.assertEqual(second_stat, target_stat)
@@ -185,7 +187,7 @@ class TestCheckout(TestCaseWithTransport):
         target = source.controldir.sprout(
             "file:second,branch=somebranch", create_tree_if_local=False
         )
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "checkout file:,branch=somebranch .", working_dir="second"
         )
         # We should always be creating a lighweight checkout for colocated

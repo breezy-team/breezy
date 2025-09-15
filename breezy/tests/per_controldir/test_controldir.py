@@ -843,7 +843,7 @@ class TestControlDir(TestCaseWithControlDir):
         # when sprouting a branch all revisions named in the tags are copied
         # too.
         builder = self.make_branch_builder("source")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         try:
             source.tags.set_tag("tag-a", rev2)
         except errors.TagsNotSupported as e:
@@ -1139,7 +1139,7 @@ class TestControlDir(TestCaseWithControlDir):
         repo = repo_fmt.initialize_on_transport_ex(
             t, repo_format_name=repo_name, shared_repo=True
         )[0]
-        made_repo, control = self.assertInitializeEx(
+        made_repo, _control = self.assertInitializeEx(
             t.clone("branch"), force_new_repo=True, repo_format_name=repo_name
         )
         self.assertNotEqual(
@@ -1165,7 +1165,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport("dir")
-        repo, control = self.assertInitializeEx(t)
+        repo, _control = self.assertInitializeEx(t)
         self.assertEqual(None, repo)
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_followed(self):
@@ -1173,7 +1173,7 @@ class TestControlDir(TestCaseWithControlDir):
         # 1.6 is likely to never be default
         fmt = controldir.format_registry.make_controldir("1.6")
         repo_name = fmt.repository_format.network_name()
-        repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
+        repo, _control = self.assertInitializeEx(t, repo_format_name=repo_name)
         if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
@@ -1195,8 +1195,8 @@ class TestControlDir(TestCaseWithControlDir):
         (
             repo,
             control,
-            require_stacking,
-            repo_policy,
+            _require_stacking,
+            _repo_policy,
         ) = self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         if repo is not None:
             # Repositories are open write-locked

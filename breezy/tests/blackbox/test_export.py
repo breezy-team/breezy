@@ -365,7 +365,7 @@ class TestExport(TestCaseWithTransport):
         self.build_tree(["branch/subdir/", "branch/subdir/foo.txt"])
         tree.smart_add(["branch"])
         tree.commit("more setup")
-        out, err = self.run_bzr("export exported branch/subdir")
+        _out, _err = self.run_bzr("export exported branch/subdir")
         self.assertEqual(["foo.txt"], os.listdir("exported"))
 
     def test_dir_export_per_file_timestamps(self):

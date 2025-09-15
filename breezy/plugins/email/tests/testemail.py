@@ -100,7 +100,7 @@ class TestGetTo(TestCaseInTempDir):
         )
 
     def test_command_line(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual(
             ["mail", "-s", sender.subject(), "-a", "From: " + sender.from_address()]
             + sender.to(),
@@ -108,35 +108,35 @@ class TestGetTo(TestCaseInTempDir):
         )
 
     def test_to(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual(["demo@example.com"], sender.to())
 
     def test_from(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual("Sample <foo@example.com>", sender.from_address())
 
     def test_from_default(self):
-        sender, revid = self.get_sender(unconfigured_config)
+        sender, _revid = self.get_sender(unconfigured_config)
         self.assertEqual("Robert <foo@example.com>", sender.from_address())
 
     def test_should_send(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual(True, sender.should_send())
 
     def test_should_not_send(self):
-        sender, revid = self.get_sender(unconfigured_config)
+        sender, _revid = self.get_sender(unconfigured_config)
         self.assertEqual(False, sender.should_send())
 
     def test_should_not_send_sender_configured(self):
-        sender, revid = self.get_sender(sender_configured_config)
+        sender, _revid = self.get_sender(sender_configured_config)
         self.assertEqual(False, sender.should_send())
 
     def test_should_not_send_to_configured(self):
-        sender, revid = self.get_sender(to_configured_config)
+        sender, _revid = self.get_sender(to_configured_config)
         self.assertEqual(True, sender.should_send())
 
     def test_send_to_multiple(self):
-        sender, revid = self.get_sender(multiple_to_configured_config)
+        sender, _revid = self.get_sender(multiple_to_configured_config)
         self.assertEqual(
             ["Sample <foo@example.com>", "Other <baz@bar.com>"], sender.to()
         )
@@ -146,12 +146,12 @@ class TestGetTo(TestCaseInTempDir):
         )
 
     def test_url_set(self):
-        sender, revid = self.get_sender(with_url_config)
+        sender, _revid = self.get_sender(with_url_config)
         self.assertEqual(sender.url(), "http://some.fake/url/")
 
     def test_public_url_set(self):
         config = b"[DEFAULT]\npublic_branch=http://the.publication/location/\n"
-        sender, revid = self.get_sender(config)
+        sender, _revid = self.get_sender(config)
         self.assertEqual(sender.url(), "http://the.publication/location/")
 
     def test_url_precedence(self):
@@ -160,29 +160,29 @@ class TestGetTo(TestCaseInTempDir):
             b"post_commit_url=http://some.fake/url/\n"
             b"public_branch=http://the.publication/location/\n"
         )
-        sender, revid = self.get_sender(config)
+        sender, _revid = self.get_sender(config)
         self.assertEqual(sender.url(), "http://some.fake/url/")
 
     def test_url_unset(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual(sender.url(), sender.branch.base)
 
     def test_subject(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual(
             f"Rev 1: foo bar baz in {sender.branch.base}", sender.subject()
         )
 
     def test_custom_subject(self):
-        sender, revid = self.get_sender(customized_mail_config)
+        sender, _revid = self.get_sender(customized_mail_config)
         self.assertEqual(f"[commit] {sender.revision.get_summary()}", sender.subject())
 
     def test_diff_filename(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual("patch-1.diff", sender.diff_filename())
 
     def test_headers(self):
-        sender, revid = self.get_sender()
+        sender, _revid = self.get_sender()
         self.assertEqual({"X-Cheese": "to the rescue!"}, sender.extra_headers())
 
     def get_sender(self, text=sample_config):

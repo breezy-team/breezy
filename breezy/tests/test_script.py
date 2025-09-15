@@ -338,29 +338,29 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.assertRaises(SyntaxError, self.run_script, "cat foo <bar")
 
     def test_cat_input_to_output(self):
-        retcode, out, err = self.run_command(["cat"], "content\n", "content\n", None)
+        _retcode, out, err = self.run_command(["cat"], "content\n", "content\n", None)
         self.assertEqual("content\n", out)
         self.assertEqual(None, err)
 
     def test_cat_file_to_output(self):
         self.build_tree_contents([("file", b"content\n")])
-        retcode, out, err = self.run_command(["cat", "file"], None, "content\n", None)
+        _retcode, out, err = self.run_command(["cat", "file"], None, "content\n", None)
         self.assertEqual("content\n", out)
         self.assertEqual(None, err)
 
     def test_cat_input_to_file(self):
-        retcode, out, err = self.run_command(["cat", ">file"], "content\n", None, None)
+        _retcode, out, err = self.run_command(["cat", ">file"], "content\n", None, None)
         self.assertFileEqual("content\n", "file")
         self.assertEqual(None, out)
         self.assertEqual(None, err)
-        retcode, out, err = self.run_command(["cat", ">>file"], "more\n", None, None)
+        _retcode, out, err = self.run_command(["cat", ">>file"], "more\n", None, None)
         self.assertFileEqual("content\nmore\n", "file")
         self.assertEqual(None, out)
         self.assertEqual(None, err)
 
     def test_cat_file_to_file(self):
         self.build_tree_contents([("file", b"content\n")])
-        retcode, out, err = self.run_command(
+        _retcode, _out, _err = self.run_command(
             ["cat", "file", ">file2"], None, None, None
         )
         self.assertFileEqual(b"content\n", "file2")
@@ -368,7 +368,7 @@ class TestCat(script.TestCaseWithTransportAndScript):
     def test_cat_files_to_file(self):
         self.build_tree_contents([("cat", b"cat\n")])
         self.build_tree_contents([("dog", b"dog\n")])
-        retcode, out, err = self.run_command(
+        _retcode, _out, _err = self.run_command(
             ["cat", "cat", "dog", ">file"], None, None, None
         )
         self.assertFileEqual(b"cat\ndog\n", "file")
@@ -473,30 +473,30 @@ $ echo foo
         )
 
     def test_echo_to_output(self):
-        retcode, out, err = self.run_command(["echo"], None, "\n", None)
+        _retcode, out, err = self.run_command(["echo"], None, "\n", None)
         self.assertEqual("\n", out)
         self.assertEqual(None, err)
 
     def test_echo_some_to_output(self):
-        retcode, out, err = self.run_command(["echo", "hello"], None, "hello\n", None)
+        _retcode, out, err = self.run_command(["echo", "hello"], None, "hello\n", None)
         self.assertEqual("hello\n", out)
         self.assertEqual(None, err)
 
     def test_echo_more_output(self):
-        retcode, out, err = self.run_command(
+        _retcode, out, err = self.run_command(
             ["echo", "hello", "happy", "world"], None, "hello happy world\n", None
         )
         self.assertEqual("hello happy world\n", out)
         self.assertEqual(None, err)
 
     def test_echo_appended(self):
-        retcode, out, err = self.run_command(
+        _retcode, out, err = self.run_command(
             ["echo", "hello", ">file"], None, None, None
         )
         self.assertEqual(None, out)
         self.assertEqual(None, err)
         self.assertFileEqual(b"hello\n", "file")
-        retcode, out, err = self.run_command(
+        _retcode, out, err = self.run_command(
             ["echo", "happy", ">>file"], None, None, None
         )
         self.assertEqual(None, out)

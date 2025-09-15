@@ -587,7 +587,7 @@ class TreeTransformBase(TreeTransform):
                     # splitting stuff
                     from_name = os.path.basename(from_path)
             if from_path is not None:
-                from_kind, from_executable, from_stats = self._tree._comparison_data(
+                from_kind, from_executable, _from_stats = self._tree._comparison_data(
                     from_entry, from_path
                 )
             else:
@@ -1507,7 +1507,7 @@ class GitTreeTransform(DiskTreeTransform):
                 if trans_id in self._new_executability:
                     self._set_executability(path, trans_id)
                 if trans_id in self._observed_sha1s:
-                    o_sha1, o_st_val = self._observed_sha1s[trans_id]
+                    o_sha1, _o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
                 if trans_id in self._new_reference_revision:

@@ -1361,7 +1361,7 @@ class TestSetUnsetEnv(tests.TestCase):
 
         So Unicode strings must be encoded.
         """
-        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        uni_val, _env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
                 f"Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}"
@@ -1609,7 +1609,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
-        warnings, result = self.callCatchWarnings(
+        warnings, _result = self.callCatchWarnings(
             osutils.report_extension_load_failures
         )
         # it used to give a Python warning; it no longer does
@@ -1753,7 +1753,7 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
-        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        uni_val, _env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
                 f"Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}"

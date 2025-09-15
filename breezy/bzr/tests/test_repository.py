@@ -1064,7 +1064,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertContainsRe(repr(packs), "RepositoryPackCollection(.*Repository(.*))")
 
     def test__obsolete_packs(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, _r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         names = packs.names()
         pack = packs.get_pack_by_name(names[0])
         # Schedule this one for removal
@@ -1093,7 +1093,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         )
 
     def test__obsolete_packs_missing_directory(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         r.control_transport.rmdir("obsolete_packs")
         names = packs.names()
         pack = packs.get_pack_by_name(names[0])
@@ -1292,7 +1292,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_reload_pack_names_preserves_pending(self):
         # TODO: Update this to also test for pending-deleted names
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         # We will add one pack (via start_write_group + insert_record_stream),
         # and remove another pack (via _remove_pack_from_memory)
         orig_names = packs.names()
@@ -1333,7 +1333,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([to_remove_name], sorted([x[0] for x in deleted_nodes]))
 
     def test_autopack_obsoletes_new_pack(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         packs._max_pack_count = lambda x: 1
         packs.pack_distribution = lambda x: [10]
         r.start_write_group()
@@ -1352,7 +1352,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([names[0] + ".pack"], packs._pack_transport.list_dir("."))
 
     def test_autopack_reloads_and_stops(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        tree, _r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         # After we have determined what needs to be autopacked, trigger a
         # full-pack via the other repo which will cause us to re-evaluate and
         # decide we don't need to do anything
@@ -1370,7 +1370,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(tree.branch.repository._pack_collection.names(), packs.names())
 
     def test__save_pack_names(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, _r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         names = packs.names()
         pack = packs.get_pack_by_name(names[0])
         packs._remove_pack_from_memory(pack)
@@ -1383,7 +1383,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([pack.name], sorted(obsolete_names))
 
     def test__save_pack_names_already_obsoleted(self):
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, _r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         names = packs.names()
         pack = packs.get_pack_by_name(names[0])
         packs._remove_pack_from_memory(pack)
@@ -1403,7 +1403,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         """Bug #314314, don't fail if obsolete_packs directory does
         not exist.
         """
-        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        _tree, r, packs, _revs = self.make_packs_and_alt_repo(write_lock=True)
         r.control_transport.rmdir("obsolete_packs")
         packs._clear_obsolete_packs()
 
@@ -1634,7 +1634,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         (
             repo,
             rev_a_pack_name,
-            inv_a_pack_name,
+            _inv_a_pack_name,
             rev_c_pack_name,
         ) = self.make_branch_with_disjoint_inventory_and_revision()
         a_pack = repo._pack_collection.get_pack_by_name(rev_a_pack_name)
@@ -1651,9 +1651,9 @@ class TestGCCHKPacker(TestCaseWithTransport):
         # the A inventory to actually be gone from the repository.
         (
             repo,
-            rev_a_pack_name,
+            _rev_a_pack_name,
             inv_a_pack_name,
-            rev_c_pack_name,
+            _rev_c_pack_name,
         ) = self.make_branch_with_disjoint_inventory_and_revision()
         inv_a_pack = repo._pack_collection.get_pack_by_name(inv_a_pack_name)
         repo._pack_collection._remove_pack_from_memory(inv_a_pack)

@@ -72,5 +72,5 @@ class TestModified(TestCaseWithTransport):
         tree.add("README")
         tree.commit("r1")
         self.build_tree_contents([("a/README", b"changed\n")])
-        out, err = self.run_bzr(["modified", "--directory=a"])
+        out, _err = self.run_bzr(["modified", "--directory=a"])
         self.assertEqual("README\n", out)

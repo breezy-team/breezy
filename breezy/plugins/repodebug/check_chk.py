@@ -45,7 +45,7 @@ class cmd_check_chk(commands.Command):
         Returns:
             None. Warnings are printed for any CHK pages not in canonical form.
         """
-        wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _wt, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         factory = groupcompress.make_pack_factory(False, False, 1)

@@ -44,5 +44,5 @@ class TestIgnored(TestCaseWithTransport):
         self.build_tree_contents(
             [("a/README", b"contents"), ("a/.bzrignore", b"README")]
         )
-        out, err = self.run_bzr(["ignored", "--directory=a"])
+        out, _err = self.run_bzr(["ignored", "--directory=a"])
         self.assertStartsWith(out, "README")

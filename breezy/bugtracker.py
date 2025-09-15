@@ -266,7 +266,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
             MalformedBugIdentifier: If the bug_id format is invalid.
         """
         try:
-            (project, bug_id) = bug_id.rsplit("/", 1)
+            (_project, bug_id) = bug_id.rsplit("/", 1)
         except ValueError as exc:
             raise MalformedBugIdentifier(bug_id, "Expected format: project/id") from exc
         try:

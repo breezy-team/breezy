@@ -757,7 +757,7 @@ class TestHandleResponse(tests.TestCase):
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
-        code, raw_headers, body = a_response
+        code, raw_headers, _body = a_response
         getheader = self._build_HTTPMessage(raw_headers)
         return response.handle_response(
             "http://foo", code, getheader, BytesIO(a_response[2])

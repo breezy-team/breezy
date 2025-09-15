@@ -175,7 +175,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         )
 
     def test_commit_with_ghosts_fails(self):
-        base_tree, stacked_tree = self.make_stacked_target()
+        _base_tree, stacked_tree = self.make_stacked_target()
         stacked_tree.set_parent_ids([stacked_tree.last_revision(), b"ghost-rev-id"])
         self.assertRaises(errors.BzrError, stacked_tree.commit, "failed_commit")
 
@@ -218,7 +218,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
 
 class TestCommitStackedFailsAppropriately(TestCaseWithStackedTarget):
     def test_stacked_commit_fails_on_old_formats(self):
-        base_tree, stacked_tree = self.make_stacked_target()
+        _base_tree, stacked_tree = self.make_stacked_target()
         format = stacked_tree.branch.repository._format
         if format.supports_chks:
             stacked_tree.commit("should succeed")

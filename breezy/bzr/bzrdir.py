@@ -1544,7 +1544,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 stack_on_pwd,
                 require_stacking=require_stacking,
             )
-            result_repo, is_new_repo = repository_policy.acquire_repository(
+            result_repo, _is_new_repo = repository_policy.acquire_repository(
                 make_working_trees, shared_repo
             )
             if not require_stacking and repository_policy._require_stacking:

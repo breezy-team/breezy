@@ -201,7 +201,7 @@ class RecordingServer:
     def _accept_read_and_reply(self):
         self._sock.listen(1)
         self._ready.set()
-        conn, address = self._sock.accept()
+        conn, _address = self._sock.accept()
         if self._expect_body_tail is not None:
             while not self.received_bytes.endswith(self._expect_body_tail):
                 self.received_bytes += conn.recv(4096)
@@ -260,7 +260,7 @@ class TestAuthHeader(tests.TestCase):
         self.assertNotIn("\n", header)
 
     def test_basic_extract_realm(self):
-        scheme, remainder = self.parse_header(
+        _scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"', BasicAuthHandler
         )
         match, realm = self.auth_handler.extract_realm(remainder)
@@ -492,7 +492,7 @@ class TestPost(tests.TestCase):
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
         http_transport = transport.get_transport_from_url(url)
-        code, response = http_transport._post(b"abc def end-of-body")
+        _code, _response = http_transport._post(b"abc def end-of-body")
         self.assertTrue(server.received_bytes.startswith(b"POST /.bzr/smart HTTP/1."))
         self.assertIn(b"content-length: 19\r", server.received_bytes.lower())
         self.assertIn(
@@ -2210,7 +2210,7 @@ lalala whatever as long as itsssss
         t = self.get_transport()
         # We must send a single line of body bytes, see
         # PredefinedRequestHandler._handle_one_request
-        code, f = t._post(b"abc def end-of-body\n")
+        _code, f = t._post(b"abc def end-of-body\n")
         self.assertEqual(b"lalala whatever as long as itsssss\n", f.read())
         self.assertActivitiesMatch()
 

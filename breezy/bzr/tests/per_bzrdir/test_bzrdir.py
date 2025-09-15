@@ -715,8 +715,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         (
             repo,
             control,
-            require_stacking,
-            repo_policy,
+            _require_stacking,
+            _repo_policy,
         ) = self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         if repo is not None:
             # Repositories are open write-locked

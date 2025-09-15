@@ -435,7 +435,7 @@ class LocalGitRepository(GitRepository):
                 except ValueError as err:
                     raise errors.RevisionNotPresent((fileid, revid), self) from err
                 try:
-                    mode, item_id = tree_lookup_path(
+                    _mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__,
                         root_tree,
                         encode_git_path(path),
@@ -559,7 +559,7 @@ class LocalGitRepository(GitRepository):
         Raises:
             NoSuchRevision: If revision not found or has no signature.
         """
-        git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
+        git_commit_id, _mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.object_store[git_commit_id]
         except KeyError as err:
@@ -606,7 +606,7 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        _unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
         if not isinstance(peeled, Commit):
             raise NotCommitError(peeled.id)
         revid = mapping.get_revision_id(peeled)
@@ -636,7 +636,7 @@ class LocalGitRepository(GitRepository):
         from breezy import gpg
 
         with self.lock_read():
-            git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
+            git_commit_id, _mapping = self.lookup_bzr_revision_id(revision_id)
             try:
                 commit = self._git.object_store[git_commit_id]
             except KeyError as err:
@@ -648,7 +648,7 @@ class LocalGitRepository(GitRepository):
             without_sig = Commit.from_string(commit.as_raw_string())
             without_sig.gpgsig = None
 
-            (result, key, plain_text) = gpg_strategy.verify(
+            (result, key, _plain_text) = gpg_strategy.verify(
                 without_sig.as_raw_string(), commit.gpgsig
             )
             return (result, key)
@@ -688,7 +688,7 @@ class LocalGitRepository(GitRepository):
             commit = self._git.object_store[git_commit_id]
         except KeyError as err:
             raise errors.NoSuchRevision(self, revision_id) from err
-        revision, roundtrip_revid, verifiers = mapping.import_commit(
+        revision, roundtrip_revid, _verifiers = mapping.import_commit(
             commit, self.lookup_foreign_revision_id, strict=False
         )
         if revision is None:
@@ -703,7 +703,7 @@ class LocalGitRepository(GitRepository):
         if revision_id == _mod_revision.NULL_REVISION:
             return True
         try:
-            git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
+            git_commit_id, _mapping = self.lookup_bzr_revision_id(revision_id)
         except errors.NoSuchRevision:
             return False
         return git_commit_id in self._git

@@ -439,13 +439,13 @@ class TestAutoResolve(TestCaseWithTransport):
             [_mod_bzr_conflicts.TextConflict("hello", b"hello_id")], this.conflicts()
         )
         self.build_tree_contents([("this/hello", "\n>>>>>>>")])
-        remaining, resolved = this.auto_resolve()
+        _remaining, resolved = this.auto_resolve()
         self.assertEqual(
             [_mod_bzr_conflicts.TextConflict("hello", b"hello_id")], this.conflicts()
         )
         self.assertEqual([], resolved)
         self.build_tree_contents([("this/hello", b"hELLO wORLD")])
-        remaining, resolved = this.auto_resolve()
+        _remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
         self.assertEqual(
             [_mod_bzr_conflicts.TextConflict("hello", b"hello_id")], resolved

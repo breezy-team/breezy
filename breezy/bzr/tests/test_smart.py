@@ -1556,7 +1556,7 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         root = self.get_transport().clone("/")
         path = urlutils.relative_url(root.base, self.get_transport().base)
         response = request.execute(path.encode("utf-8"))
-        error_name, lock_str, why_str = response.args
+        error_name, _lock_str, _why_str = response.args
         self.assertFalse(response.is_successful())
         self.assertEqual(b"LockFailed", error_name)
 
@@ -1566,7 +1566,7 @@ class TestSmartServerBranchRequestGetPhysicalLockStatus(TestLockedBranch):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestGetPhysicalLockStatus(backing)
         branch = self.make_branch(".")
-        branch_token, repo_token = self.get_lock_tokens(branch)
+        _branch_token, _repo_token = self.get_lock_tokens(branch)
         self.assertEqual(True, branch.get_physical_lock_status())
         response = request.execute(b"")
         self.assertEqual(smart_req.SmartServerResponse((b"yes",)), response)
@@ -1925,7 +1925,7 @@ class TestSmartServerRepositoryGetStream(GetStreamTestBase):
         """The search argument may be a 'ancestry-of' some heads'."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGetStream(backing)
-        repo, r1, r2 = self.make_two_commit_repo()
+        repo, _r1, r2 = self.make_two_commit_repo()
         fetch_spec = [b"ancestry-of", r2]
         lines = b"\n".join(fetch_spec)
         request.execute(b"", repo._format.network_name())
@@ -1951,7 +1951,7 @@ class TestSmartServerRepositoryGetStream(GetStreamTestBase):
         """A search of 'everything' returns a stream."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGetStream_1_19(backing)
-        repo, r1, r2 = self.make_two_commit_repo()
+        repo, _r1, _r2 = self.make_two_commit_repo()
         serialised_fetch_spec = b"everything"
         request.execute(b"", repo._format.network_name())
         response = request.do_body(serialised_fetch_spec)
@@ -2929,7 +2929,7 @@ class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
         """The search argument may be a 'ancestry-of' some heads'."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(backing)
-        repo, r1, r2 = self.make_two_commit_repo()
+        repo, r1, _r2 = self.make_two_commit_repo()
         request.execute(b"", repo._format.network_name())
         lines = b"inventories\t" + r1
         response = request.do_body(lines)
@@ -2941,7 +2941,7 @@ class TestSmartServerRepositoryGetStreamForMissingKeys(GetStreamTestBase):
         """The format may not be known by the remote server."""
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryGetStreamForMissingKeys(backing)
-        repo, r1, r2 = self.make_two_commit_repo()
+        _repo, _r1, _r2 = self.make_two_commit_repo()
         request.execute(b"", b"yada yada yada")
         smart_req.FailedSmartServerResponse(
             (b"UnknownFormat", b"repository", b"yada yada yada")

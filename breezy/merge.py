@@ -1418,9 +1418,9 @@ class Merge3Merger:
 
     def _merge_names(self, trans_id, file_id, paths, parents, names, resolver):
         """Perform a merge on file names and parents."""
-        base_name, other_name, this_name = names
-        base_parent, other_parent, this_parent = parents
-        unused_base_path, other_path, this_path = paths
+        _base_name, other_name, this_name = names
+        _base_parent, other_parent, this_parent = parents
+        _unused_base_path, other_path, _this_path = paths
 
         name_winner = resolver(*names)
 
@@ -1861,7 +1861,7 @@ class WeaveMerger(Merge3Merger):
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        base_path, other_path, this_path = paths
+        _base_path, _other_path, this_path = paths
         lines, base_lines = self._merged_lines(this_path)
         lines = list(lines)
         # Note we're checking whether the OUTPUT is binary in this case,

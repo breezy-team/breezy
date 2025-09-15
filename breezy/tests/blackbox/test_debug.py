@@ -22,7 +22,7 @@ from breezy import tests
 class TestDebugOption(tests.TestCaseInTempDir):
     def test_dash_derror(self):
         """With -Derror, tracebacks are shown even for user errors."""
-        out, err = self.run_bzr("-Derror branch nonexistent-location", retcode=3)
+        _out, err = self.run_bzr("-Derror branch nonexistent-location", retcode=3)
         # error output should contain a traceback; we used to look for code in
         # here but it may be missing if the source is not in sync with the
         # pyc file.
@@ -44,7 +44,7 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         # I would like to avoid run_brz_subprocess here, but we need it to be
         # connected to a real TextUIFactory. The NullProgressView always
         # ignores transport activity.
-        out, err = self.run_brz_subprocess(
+        _out, err = self.run_brz_subprocess(
             f"branch -Dbytes -Oprogress_bar=text {remote_trans.base}/tree target"
         )
         self.assertContainsRe(err, b"Branched 1 revision")

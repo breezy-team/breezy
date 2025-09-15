@@ -3372,7 +3372,7 @@ class Test_BytesToTextKey(tests.TestCase):
         # These are invalid bytes, and we want to make sure the code under test
         # raises an exception rather than segfaults, etc. We don't particularly
         # care what exception.
-        self.assertRaises(Exception, _bytes_to_text_key, bytes)
+        self.assertRaises((ValueError, IndexError), _bytes_to_text_key, bytes)
 
     def test_file(self):
         self.assertBytesToTextKey(

@@ -395,8 +395,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Exception is not a great thing to raise, but this test is
         # very short, and code is used to sanity check other tests, so
         # a full error object is YAGNI.
-        self.assertRaises(Exception, workingtree_4.InterDirStateTree, rev_tree, tree)
-        self.assertRaises(Exception, workingtree_4.InterDirStateTree, tree, rev_tree)
+        self.assertRaises(TypeError, workingtree_4.InterDirStateTree, rev_tree, tree)
+        self.assertRaises(TypeError, workingtree_4.InterDirStateTree, tree, rev_tree)
 
     def test_revtree_to_revtree_not_interdirstate(self):
         # we should not get a dirstate optimiser for two repository sourced

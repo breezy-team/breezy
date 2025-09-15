@@ -204,11 +204,11 @@ tabs: \t\t\t
 
     def test_read_nul_byte(self):
         """File consisting of a nul byte causes an error."""
-        self.assertRaises(Exception, _mod_rio.read_stanza, [b"\0"])
+        self.assertRaises(ValueError, _mod_rio.read_stanza, [b"\0"])
 
     def test_read_nul_bytes(self):
         """File consisting of many nul bytes causes an error."""
-        self.assertRaises(Exception, _mod_rio.read_stanza, [b"\0" * 100])
+        self.assertRaises(ValueError, _mod_rio.read_stanza, [b"\0" * 100])
 
     def test_read_iter(self):
         """Read several stanzas from file."""

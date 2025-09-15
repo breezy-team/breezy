@@ -75,7 +75,7 @@ class TestPack(tests.TestCaseWithTransport):
         for i in range(5):
             self._update_file("file0.txt", "HELLO %d\n" % i)
 
-        out, err = self.run_bzr(["pack", "--clean-obsolete-packs"])
+        _out, _err = self.run_bzr(["pack", "--clean-obsolete-packs"])
 
         pack_names = t.list_dir("repository/obsolete_packs")
         self.assertEqual(len(pack_names), 0)

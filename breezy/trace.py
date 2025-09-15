@@ -233,7 +233,7 @@ def pop_log_file(entry):
 
     Takes the memento returned from _push_log_file.
     """
-    (magic, old_handlers, new_handler, old_trace_handler) = entry
+    (_magic, old_handlers, new_handler, old_trace_handler) = entry
     global _trace_handler
     _trace_handler = old_trace_handler
     brz_logger = logging.getLogger("brz")
@@ -373,7 +373,7 @@ def report_exception(exc_info, err_file):
     if debug.debug_flag_enabled("error"):
         print_exception(exc_info, err_file)
         return errors.EXIT_ERROR
-    exc_type, exc_object, exc_tb = exc_info
+    _exc_type, exc_object, _exc_tb = exc_info
     if isinstance(exc_object, KeyboardInterrupt):
         err_file.write("brz: interrupted\n")
         return errors.EXIT_ERROR

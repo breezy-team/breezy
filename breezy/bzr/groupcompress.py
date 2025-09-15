@@ -372,7 +372,7 @@ class GroupCompressBlock:
 
     def to_bytes(self):
         """Encode the information into a byte stream."""
-        total_len, chunks = self.to_chunks()
+        _total_len, chunks = self.to_chunks()
         return b"".join(chunks)
 
     def _dump(self, include_text=False):
@@ -607,7 +607,7 @@ class _LazyGroupContentManager:
             chunks_len = factory.size
             if chunks_len is None:
                 chunks_len = sum(map(len, chunks))
-            (found_sha1, start_point, end_point, type) = compressor.compress(
+            (found_sha1, start_point, end_point, _type) = compressor.compress(
                 factory.key, chunks, chunks_len, factory.sha1
             )
             # Now update this factory with the new offsets, etc
@@ -684,7 +684,7 @@ class _LazyGroupContentManager:
             # groups - don't look deeper. Even larger than max size groups
             # could compress well with adjacent versions of the same thing.
             return False
-        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
+        _action, _last_byte_used, total_bytes_used = self._check_rebuild_action()
         block_size = self._block._content_length
         if total_bytes_used < block_size * self._max_cut_fraction:
             # This block wants to trim itself small enough that we want to
@@ -736,7 +736,7 @@ class _LazyGroupContentManager:
         return False
 
     def _check_rebuild_block(self):
-        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
+        action, last_byte_used, _total_bytes_used = self._check_rebuild_action()
         if action is None:
             return
         if action == "trim":
@@ -1007,7 +1007,7 @@ class PyrexGroupCompressor:
         :param key: The key to extract.
         :return: An iterable over chunks and the sha1.
         """
-        (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
+        (_start_byte, start_chunk, _end_byte, end_chunk) = self.labels_deltas[key]
         delta_chunks = self.chunks[start_chunk:end_chunk]
         stored_bytes = b"".join(delta_chunks)
         kind = stored_bytes[:1]
@@ -1806,7 +1806,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            index, start, length = self._access.add_raw_record(None, bytes_len, chunks)
+            _index, start, length = self._access.add_raw_record(None, bytes_len, chunks)
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
@@ -1903,7 +1903,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if max_fulltext_len < chunks_len:
                 max_fulltext_len = chunks_len
                 max_fulltext_prefix = prefix
-            (found_sha1, start_point, end_point, type) = self._compressor.compress(
+            (found_sha1, start_point, end_point, _type) = self._compressor.compress(
                 record.key,
                 chunks,
                 chunks_len,
@@ -1931,7 +1931,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if start_new_block:
                 flush(self._compressor.flush_without_last())
                 max_fulltext_len = chunks_len
-                (found_sha1, start_point, end_point, type) = self._compressor.compress(
+                (found_sha1, start_point, end_point, _type) = self._compressor.compress(
                     record.key, chunks, chunks_len, record.sha1
                 )
             if record.key[-1] is None:
