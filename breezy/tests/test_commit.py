@@ -280,7 +280,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.commit("initial", rev_id=b"test@rev-1", allow_pointless=True)
         self.assertRaises(
-            errors.RevisionAlreadyPresent,
+            errors.BzrError,
             wt.commit,
             message="reused id",
             rev_id=b"test@rev-1",

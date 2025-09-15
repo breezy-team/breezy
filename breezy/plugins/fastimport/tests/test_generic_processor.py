@@ -495,7 +495,7 @@ class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
+        revtree0, revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
         self.assertContent(branch, revtree1, path, b"aaa")
         self.assertRevisionRoot(revtree1, path)
 
@@ -1220,7 +1220,7 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(new_path,)]
         )
         self.assertRevisionRoot(revtree1, new_path)
@@ -1230,7 +1230,7 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(new_path,)]
         )
         self.assertRevisionRoot(revtree1, new_path)
@@ -2075,7 +2075,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a"
         dest_path = b"b"
         handler.process(self.file_command_iter(src_path, dest_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(src_path,), (dest_path,)]
         )
         self.assertContent(branch, revtree1, src_path, b"aaa")
@@ -2088,7 +2088,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a/a"
         dest_path = b"a/b"
         handler.process(self.file_command_iter(src_path, dest_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (src_path,), (dest_path,)]
         )
         self.assertContent(branch, revtree1, src_path, b"aaa")
@@ -2099,7 +2099,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a/a"
         dest_path = b"b/a"
         handler.process(self.file_command_iter(src_path, dest_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (src_path,), (b"b",), (dest_path,)]
         )
         self.assertContent(branch, revtree1, src_path, b"aaa")
@@ -2110,7 +2110,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a"
         dest_path = b"b"
         handler.process(self.file_command_iter(src_path, dest_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(src_path,), (dest_path,)]
         )
         self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")
@@ -2123,7 +2123,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a/a"
         dest_path = b"a/b"
         handler.process(self.file_command_iter(src_path, dest_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (src_path,), (dest_path,)]
         )
         self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")
@@ -2134,7 +2134,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         src_path = b"a/a"
         dest_path = b"b/a"
         handler.process(self.file_command_iter(src_path, dest_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (src_path,), (b"b",), (dest_path,)]
         )
         self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")

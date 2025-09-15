@@ -1663,8 +1663,8 @@ class TestGrep(GrepTestBase):
         self._update_file("file1.txt", "text 2\n")  # revno 1.1.4
         os.chdir(osutils.pathjoin("..", wd0))
 
-        out, _err = self.run_bzr(["merge", osutils.pathjoin("..", wd1)])
-        out, _err = self.run_bzr(["ci", "-m", "merged"])
+        self.run_bzr(["merge", osutils.pathjoin("..", wd1)])
+        self.run_bzr(["ci", "-m", "merged"])
 
         out, _err = self.run_bzr(
             ["grep", "--color=never", "-r", "1.1.1..1.1.4", "text"]
@@ -1687,7 +1687,7 @@ class TestGrep(GrepTestBase):
         self._update_file("file0.bin", "\x00lineNN\x00\n")
 
         # note: set --verbose/-v flag to get the skip message.
-        out, _err = self.run_bzr(
+        out, err = self.run_bzr(
             ["grep", "--color=never", "-v", "-r", "last:1", "lineNN", "file0.bin"]
         )
         self.assertNotContainsRe(out, "file0.bin", flags=TestGrep._reflags)
@@ -1697,7 +1697,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 0)
         self.assertEqual(len(err.splitlines()), 1)
 
-        out, _err = self.run_bzr(
+        out, err = self.run_bzr(
             ["grep", "--color=never", "-v", "-r", "last:1", "line.N", "file0.bin"]
         )
         self.assertNotContainsRe(out, "file0.bin", flags=TestGrep._reflags)
@@ -1716,14 +1716,14 @@ class TestGrep(GrepTestBase):
         self._update_file("file0.bin", "\x00lineNN\x00\n")
 
         # note: set --verbose/-v flag to get the skip message.
-        out, _err = self.run_bzr(["grep", "--color=never", "-v", "lineNN", "file0.bin"])
+        out, err = self.run_bzr(["grep", "--color=never", "-v", "lineNN", "file0.bin"])
         self.assertNotContainsRe(out, "file0.bin:line1", flags=TestGrep._reflags)
         self.assertContainsRe(
             err, "Binary file.*file0.bin.*skipped", flags=TestGrep._reflags
         )
 
         # binary warning should not be shown without --verbose
-        out, _err = self.run_bzr(["grep", "--color=never", "lineNN", "file0.bin"])
+        out, err = self.run_bzr(["grep", "--color=never", "lineNN", "file0.bin"])
         self.assertNotContainsRe(out, "file0.bin:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(err, "Binary file", flags=TestGrep._reflags)
 
@@ -2185,7 +2185,7 @@ class TestGrep(GrepTestBase):
         out, _err = self.run_bzr(["branch", "--no-tree", wd0, wd1])
         os.chdir(wd1)
 
-        out, _err = self.run_bzr(["grep", "--color=never", "line1"], 3)
+        out, err = self.run_bzr(["grep", "--color=never", "line1"], 3)
         self.assertContainsRe(
             err, "Cannot search working tree", flags=TestGrep._reflags
         )
@@ -2251,7 +2251,7 @@ class TestColorGrep(GrepTestBase):
 
     def test_color_option(self):
         """Ensure options for color are valid."""
-        out, _err = self.run_bzr(["grep", "--color", "foo", "bar"], 3)
+        out, err = self.run_bzr(["grep", "--color", "foo", "bar"], 3)
         self.assertEqual(out, "")
         self.assertContainsRe(
             err, "Valid values for --color are", flags=TestGrep._reflags
@@ -2466,7 +2466,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
-        out, _err = self.run_bzr(["grep", "--color=never", "-p", "hello"])
+        out, err = self.run_bzr(["grep", "--color=never", "-p", "hello"])
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -2488,7 +2488,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
-        out, _err = self.run_bzr(["grep", "--color=never", "-p", "-r", "3", "hello"])
+        out, err = self.run_bzr(["grep", "--color=never", "-p", "-r", "3", "hello"])
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -2513,7 +2513,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
             f.write("hello world!3\n")
         # self.build_tree_contents([('hello', 'hello world!3\n')]) # rev 5
         tree.commit("rev5")
-        out, _err = self.run_bzr(["grep", "--color=never", "-p", "-r", "2..5", "hello"])
+        out, err = self.run_bzr(["grep", "--color=never", "-p", "-r", "2..5", "hello"])
         self.assertEqual(err, "")
         self.assertEqualDiff(
             subst_dates(out),
@@ -2539,7 +2539,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         tree = self.make_example_branch()
         self.build_tree_contents([("hello", b"hello world!\n")])
         tree.commit("updated hello")
-        out, _err = self.run_bzr(
+        out, err = self.run_bzr(
             ["grep", "--diff", "-r", "3", "--color", "always", "hello"]
         )
         self.assertEqual(err, "")
@@ -2558,7 +2558,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
 
     def test_grep_norevs(self):
         """Grep -p with zero revisions."""
-        out, _err = self.run_bzr(["init"])
-        out, _err = self.run_bzr(["grep", "--color=never", "--diff", "foo"], 3)
+        self.run_bzr(["init"])
+        out, err = self.run_bzr(["grep", "--color=never", "--diff", "foo"], 3)
         self.assertEqual(out, "")
         self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")

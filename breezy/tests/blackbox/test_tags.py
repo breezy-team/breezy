@@ -68,7 +68,7 @@ class TestTagging(TestCaseWithTransport):
         # can also delete an existing tag
         _out, _err = self.run_bzr("tag --delete -d branch tag2")
         # cannot replace an existing tag normally
-        _out, _err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
+        _out, err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")
         # ... but can if you use --force
         _out, err = self.run_bzr("tag -d branch NEWTAG --force -r0")
@@ -79,7 +79,7 @@ class TestTagging(TestCaseWithTransport):
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")
         t.commit(allow_pointless=True, message="second commit", rev_id=b"second-revid")
         _out, _err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
-        _out, _err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
+        _out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
         self.assertContainsRe(err, "Tag NEWTAG already exists for that revision\\.")
         _out, err = self.run_bzr("tag -rrevid:second-revid -d branch NEWTAG", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")

@@ -2611,7 +2611,7 @@ class InterDirStateTree(InterInventoryTree):
         """
         super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception(f"invalid source {source!r} and target {target!r}")
+            raise TypeError(f"invalid source {source!r} and target {target!r}")
 
     @staticmethod
     def make_source_parent_tree(source, target):

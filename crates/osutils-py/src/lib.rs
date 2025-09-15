@@ -16,6 +16,7 @@ use std::io::{BufRead, Read};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+#[cfg(unix)]
 use termion::color::Color;
 
 create_exception!(
@@ -1120,6 +1121,7 @@ fn get_user_encoding() -> Option<String> {
     breezy_osutils::get_user_encoding()
 }
 
+#[cfg(unix)]
 fn string_to_color(name: &str) -> PyResult<&dyn Color> {
     match name {
         "darkblack" => Ok(&termion::color::Black),
@@ -1147,7 +1149,14 @@ fn string_to_color(name: &str) -> PyResult<&dyn Color> {
 
 #[pyfunction]
 fn color_exists(name: &str) -> bool {
-    string_to_color(name).is_ok()
+    #[cfg(unix)]
+    {
+        string_to_color(name).is_ok()
+    }
+    #[cfg(windows)]
+    {
+        false
+    }
 }
 
 #[pyfunction]
@@ -1158,13 +1167,21 @@ fn colorstring<'a>(
     fgcolor: Option<&'a str>,
     bgcolor: Option<&'a str>,
 ) -> PyResult<Bound<'a, PyBytes>> {
-    let fgcolor = fgcolor.map(string_to_color).transpose()?;
-    let bgcolor = bgcolor.map(string_to_color).transpose()?;
-
-    Ok(PyBytes::new(
-        py,
-        &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
-    ))
+    #[cfg(unix)]
+    {
+        let fgcolor = fgcolor.map(string_to_color).transpose()?;
+        let bgcolor = bgcolor.map(string_to_color).transpose()?;
+        
+        Ok(PyBytes::new(
+            py,
+            &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
+        ))
+    }
+    #[cfg(windows)]
+    {
+        // On Windows, just return the text without colors
+        Ok(PyBytes::new(py, text))
+    }
 }
 
 #[pyfunction]
@@ -1391,6 +1408,7 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pathjoin))?;
     m.add_wrapped(wrap_pyfunction!(joinpath))?;
     m.add_wrapped(wrap_pyfunction!(splitpath))?;
+    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
     m.add_wrapped(wrap_pyfunction!(get_user_name))?;
     m.add_wrapped(wrap_pyfunction!(compare_files))?;

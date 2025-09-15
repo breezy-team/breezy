@@ -1205,7 +1205,7 @@ class BTreeGraphIndex:
             node = nodes[node_index]
             for next_sub_key in sub_keys:
                 if next_sub_key in node:
-                    _value, refs = node[next_sub_key]
+                    value, refs = node[next_sub_key]
                     if self.node_ref_lists:
                         yield (self, next_sub_key, value, refs)
                     else:

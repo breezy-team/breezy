@@ -20,7 +20,6 @@ regex = "1.5.4"
 hostname = "0.4.1"
 num_cpus = "1.13.0"
 path-clean = "1"
-termion = ">=1"
 dirs = "6"
 encoding_rs = ">=0.8"
 whoami = { workspace = true }
@@ -30,6 +29,7 @@ pyo3 = { workspace = true, optional = true }
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["user", "process", "signal"] }
 termios = "0.3"
+termion = ">=1"
 
 [features]
 pyo3 = ["dep:pyo3"]
