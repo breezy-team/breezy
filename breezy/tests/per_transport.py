@@ -27,7 +27,9 @@ import stat
 import sys
 from io import BytesIO
 
-from .. import errors, osutils, pyutils, urlutils
+from catalogus import pyutils
+
+from .. import errors, osutils, urlutils
 from .. import transport as _mod_transport
 from ..errors import PathError, TransportNotPossible
 from ..osutils import getcwd

@@ -265,7 +265,7 @@ class TestImportTariffs(ImportTariffTestCase):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        (out, err) = self.finish_brz_subprocess(process, universal_newlines=False)
+        (_out, err) = self.finish_brz_subprocess(process, universal_newlines=False)
         stderr_file.close()
         with open("bzr-serve.stderr", "rb") as stderr_file:
             err = stderr_file.read()

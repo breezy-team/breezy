@@ -1422,7 +1422,7 @@ def _filter_revisions_touching_path(branch, path, view_revisions, include_merges
     # with 'None' when they have been added to result
     current_merge_stack = [None]
     for info in view_revisions:
-        rev_id, revno, depth = info
+        rev_id, _revno, depth = info
         if depth == len(current_merge_stack):
             current_merge_stack.append(info)
         else:

@@ -155,6 +155,6 @@ class TestMultibyteCodecs(tests.TestCaseWithTransport):
     def test_plugins_mbcs(self):
         """Ensure the plugins command works with cjkcodecs, see lp:754082."""
         self.disable_missing_extensions_warning()
-        out, err = self.run_bzr(["plugins"], encoding="EUC-JP")
+        _out, err = self.run_bzr(["plugins"], encoding="EUC-JP")
         # The output is tested in bt.test_plugins rather than here
         self.assertEqual("", err)

@@ -157,7 +157,7 @@ def internal_size_sha_file_byname(name, filters):
     """
     with open(name, "rb", 65000) as f:
         if filters:
-            f, size = filtered_input_file(f, filters)
+            f, _size = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
 
 

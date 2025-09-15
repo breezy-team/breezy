@@ -157,7 +157,7 @@ class AnnotateProvider:
         self.store = self.change_scanner.repository._git.object_store
 
     def _get_parents(self, path, text_revision):
-        commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
+        commit_id, _mapping = self.change_scanner.repository.lookup_bzr_revision_id(
             text_revision
         )
         text_parents = []
@@ -165,7 +165,7 @@ class AnnotateProvider:
         for commit_parent in self.store[commit_id].parents:
             try:
                 (
-                    store,
+                    _store,
                     path,
                     text_parent,
                 ) = self.change_scanner.find_last_change_revision(path, commit_parent)
@@ -221,7 +221,7 @@ class AnnotateProvider:
             try:
                 (
                     commit_id,
-                    mapping,
+                    _mapping,
                 ) = self.change_scanner.repository.lookup_bzr_revision_id(text_revision)
             except NoSuchRevision:
                 yield GitAbsentContentFactory(store, path, text_revision)
@@ -233,7 +233,7 @@ class AnnotateProvider:
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue
             try:
-                (mode, blob_sha) = tree_lookup_path(
+                (_mode, blob_sha) = tree_lookup_path(
                     store.__getitem__, tree_id, encode_git_path(path)
                 )
             except KeyError:

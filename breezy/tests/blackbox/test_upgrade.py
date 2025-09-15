@@ -75,7 +75,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def test_readonly_url_error(self):
         self.make_branch_and_tree("old_format_branch", format="knit")
-        (out, err) = self.run_bzr(
+        (_out, err) = self.run_bzr(
             ["upgrade", self.get_readonly_url("old_format_branch")], retcode=3
         )
         err_msg = "Upgrade URL cannot work with readonly URLs."
@@ -87,7 +87,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         self.make_current_format_branch_and_checkout()
         # when up to date we should get a message to that effect
         burl = self.get_transport("current_format_branch").local_abspath(".")
-        (out, err) = self.run_bzr("upgrade current_format_branch", retcode=0)
+        (out, _err) = self.run_bzr("upgrade current_format_branch", retcode=0)
         self.assertEqual(
             "Upgrading branch {}/ ...\n"
             "The branch format {} is already at the most recent format.\n".format(
@@ -103,7 +103,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # date
         burl = self.get_transport("current_format_branch").local_abspath(".")
         curl = self.get_transport("current_format_checkout").local_abspath(".")
-        (out, err) = self.run_bzr("upgrade current_format_checkout", retcode=0)
+        (out, _err) = self.run_bzr("upgrade current_format_checkout", retcode=0)
         self.assertEqual(
             "Upgrading branch {}/ ...\nThis is a checkout."
             " The branch ({}/) needs to be upgraded separately.\n"
@@ -285,7 +285,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
     def test_recommend_upgrade_wt4(self):
         # using a deprecated format gives a warning
         self.run_bzr("init --format=knit a")
-        out, err = self.run_bzr("status a")
+        _out, err = self.run_bzr("status a")
         self.assertContainsRe(err, "brz upgrade .*[/\\\\]a")
 
     def test_no_upgrade_recommendation_from_bzrdir(self):
@@ -293,7 +293,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         # the actual workingtree, not when we only open a bzrdir that contains
         # an old workngtree
         self.run_bzr("init --format=knit a")
-        out, err = self.run_bzr("revno a")
+        _out, err = self.run_bzr("revno a")
         if err.find("upgrade") > -1:
             self.fail(f"message shouldn't suggest upgrade:\n{err}")
 
@@ -301,4 +301,4 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         self.make_repository("repo", format="2a", shared=True)
         self.make_branch_and_tree("repo/branch", format="pack-0.92")
         self.get_transport("repo/branch/.bzr/repository").delete_tree(".")
-        out, err = self.run_bzr(["upgrade"], working_dir="repo/branch")
+        _out, _err = self.run_bzr(["upgrade"], working_dir="repo/branch")

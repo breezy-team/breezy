@@ -402,7 +402,7 @@ def main():
         sys.exit(2)
     import runpy
 
-    result, stats = profile(runpy.run_path, sys.argv[0], run_name="__main__")
+    _result, stats = profile(runpy.run_path, sys.argv[0], run_name="__main__")
     stats.sort()
     stats.pprint()
 

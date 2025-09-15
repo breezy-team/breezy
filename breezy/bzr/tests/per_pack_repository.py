@@ -749,7 +749,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Damage the repository on the filesystem
         self.get_transport("").rename("repo", "foo")
         # abort_write_group will not raise an error
-        self.assertRaises(Exception, repo.abort_write_group)
+        self.assertRaises(errors.BzrError, repo.abort_write_group)
         if token is not None:
             repo.leave_lock_in_place()
 

@@ -2551,7 +2551,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertContainsRe(content, b"this test will fail")
 
     def test_error_has_log(self):
-        content, result = self.run_subunit_stream("test_error")
+        content, _result = self.run_subunit_stream("test_error")
         self.assertContainsRe(content, b"(?m)^log$")
         self.assertContainsRe(content, b"this test errored")
 
@@ -2649,7 +2649,7 @@ class TestRunBzr(tests.TestCase):
         self.out = ""
         self.err = "bzr: ERROR: foobarbaz is not versioned"
         self.result = 3
-        out, err = self.run_bzr_error(
+        _out, _err = self.run_bzr_error(
             ["bzr: ERROR: foobarbaz is not versioned"], ["file-id", "foobarbaz"]
         )
 
@@ -4128,7 +4128,7 @@ class TestSelftestExcludePatterns(tests.TestCase):
     def assertTestList(self, expected, *selftest_args):
         # We rely on setUp installing the right test suite factory so we can
         # test at the command level without loading the whole test suite
-        out, err = self.run_bzr(("selftest", "--list") + selftest_args)
+        out, _err = self.run_bzr(("selftest", "--list") + selftest_args)
         actual = out.splitlines()
         self.assertEqual(expected, actual)
 

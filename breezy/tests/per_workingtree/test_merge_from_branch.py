@@ -183,7 +183,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         return outer, inner, revs
 
     def test_file1_deleted_in_dir(self):
-        outer, inner, revs = self.make_outer_tree()
+        outer, inner, _revs = self.make_outer_tree()
         outer.remove(["dir-outer/dir/file1"], keep_files=False)
         outer.commit("delete file1")
         outer.merge_from_branch(inner)
@@ -214,7 +214,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def test_file3_deleted_in_root(self):
         # Reproduce bug #375898
-        outer, inner, revs = self.make_outer_tree()
+        outer, inner, _revs = self.make_outer_tree()
         outer.remove(["dir-outer/file3"], keep_files=False)
         outer.commit("delete file3")
         outer.merge_from_branch(inner)

@@ -116,7 +116,7 @@ def main():
     check_mfc71 = False
 
     try:
-        opts, args = getopt.getopt(
+        opts, _args = getopt.getopt(
             sys.argv[1:],
             "hvnq",
             [

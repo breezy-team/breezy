@@ -367,7 +367,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                minikind, link_or_sha1, size, executable, stat = entry[0]
+                minikind, link_or_sha1, _size, executable, _stat = entry[0]
                 if minikind in (b"a", b"r"):  # absent, relocated
                     # a parent tree only entry
                     continue
@@ -761,7 +761,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             (
                 to_entry_block_index,
                 to_entry_entry_index,
-                dir_present,
+                _dir_present,
                 entry_present,
             ) = state._get_block_entry_index(to_entry_dirname, to_basename, 0)
             if not entry_present:
@@ -908,8 +908,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     (
                         old_block_index,
                         old_entry_index,
-                        dir_present,
-                        file_present,
+                        _dir_present,
+                        _file_present,
                     ) = state._get_block_entry_index(from_dirname, from_tail_utf8, 0)
                     old_block = state._dirblocks[old_block_index][1]
                     old_entry = old_block[old_entry_index]
@@ -2611,7 +2611,7 @@ class InterDirStateTree(InterInventoryTree):
         """
         super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
-            raise Exception(f"invalid source {source!r} and target {target!r}")
+            raise TypeError(f"invalid source {source!r} and target {target!r}")
 
     @staticmethod
     def make_source_parent_tree(source, target):

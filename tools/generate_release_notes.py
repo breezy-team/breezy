@@ -134,7 +134,7 @@ def main(argv):
     """
     # Check usage
     parser = OptionParser(usage="%prog OUTPUT_FILE NEWS_FILE [NEWS_FILE ...]")
-    (options, args) = parser.parse_args(argv)
+    (_options, args) = parser.parse_args(argv)
     if len(args) < 2:
         parser.print_help()
         sys.exit(1)

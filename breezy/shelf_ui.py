@@ -212,7 +212,7 @@ class Shelver:
             directory = "."
         elif file_list:
             file_list = [osutils.pathjoin(directory, f) for f in file_list]
-        tree, path = workingtree.WorkingTree.open_containing(directory)
+        tree, _path = workingtree.WorkingTree.open_containing(directory)
         # Ensure that tree is locked for the lifetime of target_tree, as
         # target tree may be reading from the same dirstate.
         with tree.lock_tree_write():
@@ -443,7 +443,7 @@ class Unshelver:
         :param directory: The directory to unshelve changes into.
         :param write_diff_to: See Unshelver.__init__().
         """
-        tree, path = workingtree.WorkingTree.open_containing(directory)
+        tree, _path = workingtree.WorkingTree.open_containing(directory)
         tree.lock_tree_write()
         try:
             manager = tree.get_shelf_manager()

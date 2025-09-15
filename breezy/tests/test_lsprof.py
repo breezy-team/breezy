@@ -37,7 +37,7 @@ def _junk_callable():
 
 def _collect_stats():
     """Collect and return some dummy profile data."""
-    ret, stats = lsprof.profile(_junk_callable)
+    _ret, stats = lsprof.profile(_junk_callable)
     return stats
 
 

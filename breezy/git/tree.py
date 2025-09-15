@@ -582,7 +582,7 @@ class GitTree(_mod_tree.Tree):
         """
         from ..branch import Branch
 
-        (url, section) = self._submodule_info()[encode_git_path(path)]
+        (url, _section) = self._submodule_info()[encode_git_path(path)]
         return Branch.open(url.decode("utf-8"))
 
 
@@ -741,7 +741,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
-        (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+        (_store, _unused_path, commit_id) = change_scanner.find_last_change_revision(
             encode_git_path(path), self.commit_id
         )
         return self.mapping.revision_id_foreign_to_bzr(commit_id)
@@ -762,7 +762,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
         try:
-            (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+            (store, _unused_path, commit_id) = change_scanner.find_last_change_revision(
                 encode_git_path(path), self.commit_id
             )
         except KeyError as err:
@@ -851,7 +851,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         Returns:
             bool: True if the file is executable, False otherwise.
         """
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, _hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return False
@@ -866,7 +866,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         Returns:
             str: The kind of entry ('file', 'directory', 'symlink', etc.).
         """
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, _hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
@@ -1114,7 +1114,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         Returns:
             tuple: ("GIT", hexsha) verifier tuple.
         """
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, _mode, hexsha) = self._lookup_path(path)
         return ("GIT", hexsha)
 
     def get_file_size(self, path):
@@ -1149,7 +1149,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
 
     def get_reference_revision(self, path):
         """See RevisionTree.get_symlink_target."""
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
             try:
                 nested_repo = self._get_submodule_repository(encode_git_path(path))
@@ -2428,7 +2428,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                         from_rel, to_rel, _mod_transport.NoSuchFile(to_rel)
                     ) from err
             if kind != "directory":
-                (index, from_index_path) = self._lookup_index(from_path)
+                (index, _from_index_path) = self._lookup_index(from_path)
                 with contextlib.suppress(KeyError):
                     self._index_del_entry(index, from_path)
                 self._index_add_entry(to_rel, kind)
@@ -2658,7 +2658,7 @@ def snapshot_workingtree(
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
-            extra, accessible = osutils.normalized_filename(extra)
+            extra, _accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
                 continue

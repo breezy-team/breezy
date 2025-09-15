@@ -52,6 +52,7 @@ from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools
+from catalogus import pyutils
 from testtools import content
 
 import breezy
@@ -66,7 +67,6 @@ from .. import (
     i18n,
     lockdir,
     osutils,
-    pyutils,
     registry,
     symbol_versioning,
     trace,
@@ -3667,7 +3667,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                pid, status = os.waitpid(self.pid, 0)
+                _pid, _status = os.waitpid(self.pid, 0)
             # GZ 2011-10-18: If status is nonzero, should report to the result
             #                that something went wrong.
 
@@ -4188,10 +4188,8 @@ def _test_suite_testmod_names():
         "breezy.tests.test_permissions",
         "breezy.tests.test_plugins",
         "breezy.tests.test_progress",
-        "breezy.tests.test_pyutils",
         "breezy.tests.test_reconcile",
         "breezy.tests.test_reconfigure",
-        "breezy.tests.test_registry",
         "breezy.tests.test_rename_map",
         "breezy.tests.test_revert",
         "breezy.tests.test_revision",
@@ -4260,7 +4258,6 @@ def _test_suite_modules_to_doctest():
         "breezy.decorators",
         "breezy.lockdir",
         "breezy.option",
-        "breezy.pyutils",
         "breezy.symbol_versioning",
         "breezy.tests",
         "breezy.tests.fixtures",

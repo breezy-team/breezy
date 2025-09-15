@@ -2088,7 +2088,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_structure((b"error",))
                 self._write_end()
                 self._medium_request.finished_writing()
-                (exc_type, exc_val, exc_tb) = exc_info
+                (_exc_type, exc_val, _exc_tb) = exc_info
                 try:
                     raise exc_val
                 finally:

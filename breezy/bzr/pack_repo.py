@@ -1716,9 +1716,9 @@ class RepositoryPackCollection:
             builder = self._index_builder_class()
             (
                 disk_nodes,
-                deleted_nodes,
+                _deleted_nodes,
                 new_nodes,
-                orig_disk_nodes,
+                _orig_disk_nodes,
             ) = self._diff_pack_names()
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
@@ -1772,8 +1772,8 @@ class RepositoryPackCollection:
         # out the new value.
         (
             disk_nodes,
-            deleted_nodes,
-            new_nodes,
+            _deleted_nodes,
+            _new_nodes,
             orig_disk_nodes,
         ) = self._diff_pack_names()
         # _packs_at_load is meant to be the explicit list of names in

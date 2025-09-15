@@ -107,11 +107,11 @@ log_format=line
         wt.commit(
             "revision with a long author", committer="Person with long name SENTINEL"
         )
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertNotContainsString(log, "SENTINEL")
         self.overrideEnv("BRZ_COLUMNS", "116")
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertContainsString(log, "SENT...")
         self.overrideEnv("BRZ_COLUMNS", "0")
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertContainsString(log, "SENTINEL")

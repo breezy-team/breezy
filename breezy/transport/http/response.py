@@ -329,7 +329,7 @@ class RangeFile(ResponseFile):
             # We don't need total, but note that it may be either the file size
             # or '*' if the server can't or doesn't want to return the file
             # size.
-            start_end, total = values.split("/")
+            start_end, _total = values.split("/")
             start, end = start_end.split("-")
             start = int(start)
             end = int(end)

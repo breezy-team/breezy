@@ -569,7 +569,9 @@ class BazaarObjectStore(BaseObjectStore):
             rev, root_tree.id, lossy=lossy, verifiers=verifiers
         )
         try:
-            foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+            foreign_revid, _mapping = mapping_registry.parse_revision_id(
+                rev.revision_id
+            )
         except errors.InvalidRevisionId:
             pass
         else:

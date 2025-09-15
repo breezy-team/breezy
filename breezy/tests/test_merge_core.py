@@ -918,6 +918,6 @@ class TestMerger(TestCaseWithTransport):
             timezone=0,
             target_branch="this",
         )
-        merger, verified = Merger.from_mergeable(this, md)
+        merger, _verified = Merger.from_mergeable(this, md)
         self.assertEqual(b"rev3", merger.other_rev_id)
         self.assertEqual(b"rev1", merger.base_rev_id)

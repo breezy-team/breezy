@@ -21,7 +21,7 @@ from breezy.tests import TestCaseWithTransport
 
 class TestViewUI(TestCaseWithTransport):
     def test_view_command_help(self):
-        out, err = self.run_bzr("help view")
+        out, _err = self.run_bzr("help view")
         self.assertContainsRe(out, "Manage filtered views")
 
     def test_define_view(self):

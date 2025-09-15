@@ -642,7 +642,7 @@ def import_git_objects(
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev, roundtrip_revid, verifiers = mapping.import_commit(
+            rev, roundtrip_revid, _verifiers = mapping.import_commit(
                 o, mapping.revision_id_foreign_to_bzr, strict=True
             )
             if repo.has_revision(rev.revision_id) or (

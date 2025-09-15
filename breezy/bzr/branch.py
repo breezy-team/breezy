@@ -736,7 +736,7 @@ class BzrBranch8(BzrBranch):
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision."""
-        last_revno, last_revision = self.last_revision_info()
+        last_revno, _last_revision = self.last_revision_info()
         self._extend_partial_history(stop_index=last_revno - 1)
         return list(reversed(self._partial_revision_history_cache))
 
@@ -876,7 +876,7 @@ class BzrBranch8(BzrBranch):
             return _mod_revision.NULL_REVISION
 
         with self.lock_read():
-            last_revno, last_revision_id = self.last_revision_info()
+            last_revno, _last_revision_id = self.last_revision_info()
             if revno <= 0 or revno > last_revno:
                 raise errors.RevnoOutOfBounds(revno, (0, last_revno))
 

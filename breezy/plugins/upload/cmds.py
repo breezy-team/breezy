@@ -773,7 +773,7 @@ class cmd_upload(commands.Command):
         if directory is None:
             directory = "."
 
-        (wt, branch, relpath) = controldir.ControlDir.open_containing_tree_or_branch(
+        (wt, branch, _relpath) = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
 

@@ -366,7 +366,7 @@ class _MPDiffGenerator:
             self.chunks[key] = this_chunks
 
     def _extract_diffs(self):
-        needed_keys, refcounts = self._find_needed_keys()
+        needed_keys, _refcounts = self._find_needed_keys()
         for record in self.vf.get_record_stream(needed_keys, "topological", True):
             if record.storage_kind == "absent":
                 raise errors.RevisionNotPresent(record.key, self.vf)
@@ -1679,7 +1679,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         else:
             relpaths = set()
             for quoted_relpath in self._transport.iter_files_recursive():
-                path, ext = os.path.splitext(quoted_relpath)
+                path, _ext = os.path.splitext(quoted_relpath)
                 relpaths.add(path)
             paths = list(relpaths)
             prefixes = [self._mapper.unmap(path) for path in paths]

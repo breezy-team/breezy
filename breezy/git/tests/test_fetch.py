@@ -469,7 +469,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.add(b"foo", stat.S_IFREG | 0o664, blob.id)
         objects = {blob.id: blob, tree.id: tree}
-        ret, child_modes = import_git_tree(
+        _ret, child_modes = import_git_tree(
             self._texts,
             self._mapping,
             b"bla",

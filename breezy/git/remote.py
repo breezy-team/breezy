@@ -601,7 +601,7 @@ class DefaultProgressReporter:
             trace.mutter("git: %s", text)
             g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
             if g is not None:
-                (text, pct, current, total) = g.groups()
+                (text, _pct, current, total) = g.groups()
                 self.pb.update(text, int(current), int(total))
             else:
                 g = self._GIT_PROGRESS_TOTAL_RE.match(text)
@@ -914,7 +914,7 @@ class RemoteGitDir(GitDir):
         """
         ref = self._get_selected_ref(name)
         try:
-            ref_chain, unused_sha = self.get_refs_container().follow(ref)
+            ref_chain, _unused_sha = self.get_refs_container().follow(ref)
         except SymrefLoop as err:
             raise BranchReferenceLoop(self) from err
         if len(ref_chain) == 1:

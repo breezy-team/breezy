@@ -546,7 +546,7 @@ def parse_github_url(url):
         >>> parse_github_url("https://github.com/owner/repo.git")
         ('owner', 'repo')
     """
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if host != GITHUB_HOST:
         raise NotGitHubUrl(url)
     (owner, repo_name) = path.strip("/").split("/")
@@ -589,7 +589,7 @@ def parse_github_pr_url(url):
         >>> parse_github_pr_url("https://github.com/owner/repo/pull/123")
         ('owner', 'repo', '123')
     """
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if host != GITHUB_HOST:
         raise NotGitHubUrl(url)
     try:
@@ -1235,7 +1235,7 @@ class GitHub(Forge):
             def tag_selector(t):
                 return False
 
-        base_owner, base_project, base_branch_name = parse_github_branch_url(
+        base_owner, base_project, _base_branch_name = parse_github_branch_url(
             base_branch
         )
         base_repo = self._get_repo(base_owner, base_project)
@@ -1328,7 +1328,7 @@ class GitHub(Forge):
         Raises:
             NotBranchError: If the derived repository doesn't exist.
         """
-        base_owner, base_project, base_branch_name = parse_github_branch_url(
+        base_owner, base_project, _base_branch_name = parse_github_branch_url(
             base_branch
         )
         base_repo = self._get_repo(base_owner, base_project)
@@ -1613,7 +1613,7 @@ class GitHub(Forge):
         Raises:
             UnexpectedHttpStatus: If the API request fails with an unexpected status.
         """
-        owner, name = path.split("/")
+        _owner, _name = path.split("/")
         path = "repos"
         data = {
             "name": "name",

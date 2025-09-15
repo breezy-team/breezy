@@ -1,10 +1,22 @@
 use std::io::Read;
 use std::io::{stdout, Write};
+
+#[cfg(unix)]
 use termion::color::{Bg, Color, Fg, Reset};
+#[cfg(unix)]
 use termion::is_tty;
 
 pub fn terminal_size() -> std::io::Result<(u16, u16)> {
-    termion::terminal_size()
+    #[cfg(unix)]
+    {
+        termion::terminal_size()
+    }
+    #[cfg(windows)]
+    {
+        // Windows terminal size detection
+        // For now, return a default size
+        Ok((80, 24))
+    }
 }
 
 pub fn has_ansi_colors() -> bool {
@@ -13,12 +25,12 @@ pub fn has_ansi_colors() -> bool {
         return false;
     }
 
-    if !is_tty(&stdout()) {
-        return false;
-    }
-
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
+        if !is_tty(&stdout()) {
+            return false;
+        }
+
         use termion::color::DetectColors;
         use termion::raw::IntoRawMode;
 
@@ -32,6 +44,7 @@ pub fn has_ansi_colors() -> bool {
     }
 }
 
+#[cfg(unix)]
 pub fn colorstring<F: Color, B: Color>(
     text: &[u8],
     fgcolor: Option<F>,
@@ -53,6 +66,16 @@ pub fn colorstring<F: Color, B: Color>(
     ret.write_all(Bg(Reset).to_string().as_bytes()).unwrap();
 
     ret
+}
+
+#[cfg(windows)]
+pub fn colorstring(
+    text: &[u8],
+    _fgcolor: Option<()>,
+    _bgcolor: Option<()>,
+) -> Vec<u8> {
+    // On Windows, just return the text without colors for now
+    text.to_vec()
 }
 
 #[cfg(unix)]
@@ -79,4 +102,12 @@ pub fn getchar() -> Result<char, std::io::Error> {
     // Convert the read byte to a char
     let ch = buffer[0] as char;
     Ok(ch)
+}
+
+#[cfg(windows)]
+pub fn getchar() -> Result<char, std::io::Error> {
+    // Simple Windows implementation - just read from stdin
+    let mut buffer = [0u8; 1];
+    std::io::stdin().read_exact(&mut buffer)?;
+    Ok(buffer[0] as char)
 }

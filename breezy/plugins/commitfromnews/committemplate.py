@@ -92,7 +92,7 @@ class CommitTemplate:
             )
             new_lines = []
             for group in sequence_matcher.get_opcodes():
-                tag, i1, i2, j1, j2 = group
+                tag, _i1, _i2, j1, j2 = group
                 if tag == "equal":
                     continue
                 if tag == "delete":

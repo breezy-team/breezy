@@ -377,7 +377,7 @@ def parse_gitlab_url(url):
     Raises:
         NotGitLabUrl: If the URL scheme is not supported or hostname is missing
     """
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if scheme not in ("git+ssh", "https", "http"):
         raise NotGitLabUrl(url)
     if not host:
@@ -421,7 +421,7 @@ def parse_gitlab_merge_request_url(url):
         NotGitLabUrl: If the URL scheme is not supported or hostname is missing
         NotMergeRequestUrl: If the URL is not a valid merge request URL
     """
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if scheme not in ("git+ssh", "https", "http"):
         raise NotGitLabUrl(url)
     if not host:
@@ -1433,7 +1433,7 @@ class GitLab(Forge):
             NotGitLabUrl: If the branch URL is not a valid GitLab URL
             NoSuchProject: If the project does not exist
         """
-        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        (_host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self._get_project(project_name)
         return gitlab_url_to_bzr_url(project["ssh_url_to_repo"], branch_name)
 
@@ -1455,7 +1455,7 @@ class GitLab(Forge):
             The branch-specific URL is constructed manually as GitLab doesn't
             provide an API endpoint for this information.
         """
-        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        (_host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self._get_project(project_name)
         if branch_name:
             # TODO(jelmer): Use API to get this URL
@@ -1510,7 +1510,7 @@ class GitLab(Forge):
             def tag_selector(t):
                 return False
 
-        (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(
+        (_host, base_project_name, _base_branch_name) = parse_gitlab_branch_url(
             base_branch
         )
         if owner is None:
@@ -1574,7 +1574,7 @@ class GitLab(Forge):
             This method assumes the fork already exists and tries to open
             the specified branch within it.
         """
-        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        (_host, base_project, _base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self.get_current_user()
         if project is None:
@@ -1666,7 +1666,7 @@ class GitLab(Forge):
             True if this GitLab instance hosts the branch, False otherwise
         """
         try:
-            (host, project, branch_name) = parse_gitlab_branch_url(branch)
+            (host, _project, _branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
         return self.base_hostname == host

@@ -113,7 +113,7 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
     def test_kind_parent_tree(self):
         (
             tree,
-            [base_revid, this_revid, other_revid],
+            [_base_revid, this_revid, other_revid],
         ) = self.make_branch_with_merged_deletions()
         tree.lock_read()
         self.addCleanup(tree.unlock)

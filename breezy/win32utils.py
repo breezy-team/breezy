@@ -135,17 +135,17 @@ def get_console_size(defaultx=80, defaulty=25):
 
     if res:
         (
-            bufx,
-            bufy,
-            curx,
-            cury,
-            wattr,
+            _bufx,
+            _bufy,
+            _curx,
+            _cury,
+            _wattr,
             left,
             top,
             right,
             bottom,
-            maxx,
-            maxy,
+            _maxx,
+            _maxy,
         ) = struct.unpack("hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1

@@ -45,7 +45,7 @@ class TestHooks(TestCaseWithTransport):
             return
 
         Branch.hooks.install_named_hook("post_push", foo, None)
-        out, err = self.run_bzr("hooks")
+        out, _err = self.run_bzr("hooks")
         self._check_hooks_output(out, {"post_push": ["No hook name"]})
 
     def test_hooks_with_named_hook(self):
@@ -56,7 +56,7 @@ class TestHooks(TestCaseWithTransport):
 
         name = "Foo Bar Hook"
         Branch.hooks.install_named_hook("post_push", foo, name)
-        out, err = self.run_bzr("hooks")
+        out, _err = self.run_bzr("hooks")
         self._check_hooks_output(out, {"post_push": [name]})
 
     def test_hooks_no_branch(self):
@@ -71,7 +71,7 @@ class TestHooks(TestCaseWithTransport):
         Branch.hooks.install_named_hook_lazy(
             "post_push", "breezy.tests.blackbox.test_hooks", "_foo_hook", None
         )
-        out, err = self.run_bzr("hooks")
+        out, _err = self.run_bzr("hooks")
         self._check_hooks_output(out, {"post_push": ["No hook name"]})
 
     def test_hooks_lazy_with_named_hook(self):
@@ -86,5 +86,5 @@ class TestHooks(TestCaseWithTransport):
             "_foo_hook",
             "hook has a name",
         )
-        out, err = self.run_bzr("hooks")
+        out, _err = self.run_bzr("hooks")
         self._check_hooks_output(out, {"post_push": ["hook has a name"]})

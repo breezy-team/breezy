@@ -58,12 +58,12 @@ class TestGitBlackBox(ExternalBase):
         GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
-        output, error = self.run_bzr(["nick"])
+        output, _error = self.run_bzr(["nick"])
         self.assertEqual("master\n", output)
 
     def test_branches(self):
         self.simple_commit()
-        output, error = self.run_bzr(["branches"])
+        output, _error = self.run_bzr(["branches"])
         self.assertEqual("* master\n", output)
 
     def test_info(self):
@@ -104,7 +104,7 @@ class TestGitBlackBox(ExternalBase):
         builder.finish()
         os.chdir("..")
 
-        output, error = self.run_bzr(["branch", "gitbranch", "bzrbranch"])
+        _output, error = self.run_bzr(["branch", "gitbranch", "bzrbranch"])
         errlines = error.splitlines(False)
         self.assertTrue(
             "Branched 1 revision(s)." in errlines or "Branched 1 revision." in errlines,
@@ -246,7 +246,7 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
 
         # Check that bzr log does not fail and includes the revision.
-        output, error = self.run_bzr(["log", "-v"])
+        output, _error = self.run_bzr(["log", "-v"])
         self.assertContainsRe(output, "revno: 1")
 
     def test_log_without_revno(self):
@@ -254,16 +254,16 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
 
         # Check that bzr log does not fail and includes the revision.
-        output, error = self.run_bzr(["log", "-Ocalculate_revnos=no"])
+        output, _error = self.run_bzr(["log", "-Ocalculate_revnos=no"])
         self.assertNotContainsRe(output, "revno: 1")
 
     def test_commit_without_revno(self):
         GitRepo.init(self.test_dir)
-        output, error = self.run_bzr(
+        _output, error = self.run_bzr(
             ["commit", "-Ocalculate_revnos=yes", "--unchanged", "-m", "one"]
         )
         self.assertContainsRe(error, "Committed revision 1.")
-        output, error = self.run_bzr(
+        _output, error = self.run_bzr(
             ["commit", "-Ocalculate_revnos=no", "--unchanged", "-m", "two"]
         )
         self.assertNotContainsRe(error, "Committed revision 2.")
@@ -728,7 +728,7 @@ class StatsTests(ExternalBase):
         self.build_tree_contents([("a", "text for a\n")])
         tree.add(["a"])
         tree.commit("a commit", committer="Somebody <somebody@example.com>")
-        output, error = self.run_bzr("stats")
+        output, _error = self.run_bzr("stats")
         self.assertEqual(output, "   1 Somebody <somebody@example.com>\n")
 
 
@@ -781,5 +781,5 @@ index 0000000..05ec0b1
 +Fixed-Lintian-Tags: out-of-date-standards-version
 """
             )
-        output, error = self.run_bzr("git-apply foo.patch")
+        _output, error = self.run_bzr("git-apply foo.patch")
         self.assertContainsRe(error, "Committing to: .*\nCommitted revision 1.\n")

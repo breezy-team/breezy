@@ -692,7 +692,7 @@ class BundleInfoV4:
                 if repo_kind == "info":
                     (
                         revision_serializer,
-                        inventory_serializer,
+                        _inventory_serializer,
                     ) = self._serializer.get_source_serializer(metadata)
                 if repo_kind == "revision":
                     rev = revision_serializer.read_revision_from_string(bytes)

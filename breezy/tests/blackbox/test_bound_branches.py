@@ -160,7 +160,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
     def test_commit_remote_bound(self):
         # It is not possible to commit to a branch
         # which is bound to a branch which is bound
-        base_tree, child_tree = self.create_branches()
+        base_tree, _child_tree = self.create_branches()
         base_tree.controldir.sprout("newbase")
 
         # There is no way to know that B has already

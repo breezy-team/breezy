@@ -1409,7 +1409,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 self._host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, 0
             )
         except socket.gaierror as e:
-            (err_num, err_msg) = e.args
+            (_err_num, err_msg) = e.args
             raise ConnectionError(
                 "failed to lookup %s:%d: %s" % (self._host, port, err_msg)
             ) from e

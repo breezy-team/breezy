@@ -28,7 +28,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
-        out, err = self.run_brz_subprocess(
+        _out, err = self.run_brz_subprocess(
             ["assert-fail"], universal_newlines=True, retcode=errors.EXIT_INTERNAL_ERROR
         )
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
@@ -40,7 +40,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         """In the C locale brz treats a posix filesystem as UTF-8 encoded."""
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
-        out, err = self.run_brz_subprocess(
+        out, _err = self.run_brz_subprocess(
             ["init", "file:%C2%A7"], env_changes={"LANG": "C", "LC_ALL": "C"}
         )
         self.assertContainsRe(out, b"^Created a standalone tree .*$")
@@ -111,7 +111,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         """Old formats give a warning."""
         self.make_obsolete_repo("foo")
         self.enable_deprecation_warning()
-        out, err = self.run_bzr("status", working_dir="foo")
+        _out, _err = self.run_bzr("status", working_dir="foo")
         self.check_warning(True)
 
     def test_repository_deprecation_warning_suppressed_global(self):
@@ -120,7 +120,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         conf.set("suppress_warnings", "format_deprecation")
         self.make_obsolete_repo("foo")
         self.enable_deprecation_warning()
-        out, err = self.run_bzr("status", working_dir="foo")
+        _out, _err = self.run_bzr("status", working_dir="foo")
         self.check_warning(False)
 
     def test_repository_deprecation_warning_suppressed_locations(self):
@@ -129,7 +129,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         conf = config.LocationStack(osutils.pathjoin(self.test_dir, "foo"))
         conf.set("suppress_warnings", "format_deprecation")
         self.enable_deprecation_warning()
-        out, err = self.run_bzr("status", working_dir="foo")
+        _out, _err = self.run_bzr("status", working_dir="foo")
         self.check_warning(False)
 
     def test_repository_deprecation_warning_suppressed_branch(self):
@@ -138,5 +138,5 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         conf = tree.branch.get_config_stack()
         conf.set("suppress_warnings", "format_deprecation")
         self.enable_deprecation_warning()
-        out, err = self.run_bzr("status", working_dir="foo")
+        _out, _err = self.run_bzr("status", working_dir="foo")
         self.check_warning(False)

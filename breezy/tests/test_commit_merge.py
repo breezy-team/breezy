@@ -23,7 +23,7 @@ including handling of merge parents, file conflicts, and special file types.
 import os
 
 from .. import check, osutils
-from ..commit import PointlessCommit
+from ..commit import CannotCommitSelectedFileMerge, PointlessCommit
 from . import TestCaseWithTransport
 from .features import SymlinkFeature
 from .matchers import RevisionHistoryMatches
@@ -91,7 +91,7 @@ class TestCommitMerge(TestCaseWithTransport):
         # it would give different merge graphs for each file which
         # might be complex.  it can be allowed in the future.
         self.assertRaises(
-            Exception,
+            CannotCommitSelectedFileMerge,
             wty.commit,
             "partial commit",
             allow_pointless=False,

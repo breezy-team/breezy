@@ -87,7 +87,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             self._references_unsupported(tree)
 
     def test_add_non_subtree(self):
-        tree, sub_tree = self.make_trees()
+        tree, _sub_tree = self.make_trees()
         os.rename("tree/sub-tree", "sibling")
         sibling = workingtree.WorkingTree.open("sibling")
         try:

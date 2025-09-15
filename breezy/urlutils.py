@@ -249,7 +249,7 @@ def rebase_url(url, old_base, new_base):
     The result will be a relative path.
     Absolute paths and full URLs are returned unaltered.
     """
-    scheme, separator = _find_scheme_and_separator(url)
+    scheme, _separator = _find_scheme_and_separator(url)
     if scheme is not None:
         return url
     if _is_absolute(url):
@@ -370,7 +370,7 @@ class URL:
                 raise InvalidURL(url) from err
         else:
             raise InvalidURL(url)
-        (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(
+        (scheme, netloc, path, _params, _query, _fragment) = urlparse.urlparse(
             url, allow_fragments=False
         )
         user = password = host = port = None

@@ -2933,7 +2933,7 @@ class TestRepositoryGetGraph(TestRemoteRepository):
     def test_get_graph(self):
         # get_graph returns a graph with a custom parents provider.
         transport_path = "quack"
-        repo, client = self.setup_fake_client_and_repository(transport_path)
+        repo, _client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
         self.assertNotEqual(graph._parents_provider, repo)
 
@@ -3419,7 +3419,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         )
         repo, client = self.setup_fake_client_and_repository("quack")
         repo._format = format
-        fallback_repo, ignored = self.setup_fake_client_and_repository("fallback")
+        fallback_repo, _ignored = self.setup_fake_client_and_repository("fallback")
         fallback_repo._client = client
         fallback_repo._format = format
         repo.add_fallback_repository(fallback_repo)
@@ -3727,7 +3727,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
 
     def test_suspend_write_group(self):
         transport_path = "quack"
-        repo, client = self.setup_fake_client_and_repository(transport_path)
+        repo, _client = self.setup_fake_client_and_repository(transport_path)
         self.assertEqual([], repo.suspend_write_group())
 
     def test_resume_write_group(self):
@@ -5008,7 +5008,7 @@ class TestRepositoryIterInventories(TestRemoteRepository):
 
     def test_empty(self):
         transport_path = "quack"
-        repo, client = self.setup_fake_client_and_repository(transport_path)
+        repo, _client = self.setup_fake_client_and_repository(transport_path)
         ret = list(repo.iter_inventories([]))
         self.assertEqual(ret, [])
 

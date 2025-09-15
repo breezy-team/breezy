@@ -397,7 +397,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.
-            escaped_message, escape_count = re.subn(
+            escaped_message, _escape_count = re.subn(
                 "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",
                 lambda match: match.group(0).encode("unicode_escape").decode("ascii"),
                 message,

@@ -359,13 +359,13 @@ $ brz update -r 1
         master.commit("merge", rev_id=b"merge")
 
         # Switch to o2. file3 was added only in o3 and should be deleted.
-        out, err = self.run_bzr("update -r revid:o2")
+        _out, err = self.run_bzr("update -r revid:o2")
         self.assertContainsRe(err, "-D\\s+file3")
         self.assertContainsRe(err, "All changes applied successfully\\.")
         self.assertContainsRe(err, "Updated to revision 1.1.1 of branch .*")
 
         # Switch back to latest
-        out, err = self.run_bzr("update")
+        _out, err = self.run_bzr("update")
         self.assertContainsRe(err, "\\+N\\s+file3")
         self.assertContainsRe(err, "All changes applied successfully\\.")
         self.assertContainsRe(err, "Updated to revision 2 of branch .*")
@@ -420,7 +420,7 @@ $ brz update -r revid:m2
         with open("hello", "w") as f:
             f.write("fie")
 
-        out, err = self.run_bzr(["update", "--show-base"], retcode=1)
+        _out, err = self.run_bzr(["update", "--show-base"], retcode=1)
 
         # check for conflict notification
         self.assertContainsString(
@@ -462,7 +462,7 @@ $ brz update -r revid:m2
         self.build_tree_contents([("lightweight/file", b"lightweight local changes\n")])
 
         # now update (and get conflicts)
-        out, err = self.run_bzr("update lightweight", retcode=1)
+        out, _err = self.run_bzr("update lightweight", retcode=1)
         self.assertEqual("", out)
         # NB: these conflicts are actually in the source code
         self.assertFileEqual(
@@ -481,7 +481,7 @@ checkout
         self.run_bzr("resolve lightweight/file")
 
         # check we get the second conflict
-        out, err = self.run_bzr("update lightweight", retcode=1)
+        out, _err = self.run_bzr("update lightweight", retcode=1)
         self.assertEqual("", out)
         # NB: these conflicts are actually in the source code
         self.assertFileEqual(

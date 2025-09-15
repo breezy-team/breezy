@@ -521,7 +521,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         """The default acquisition policy should create a standalone branch."""
         my_bzrdir = self.make_controldir(".")
         repo_policy = my_bzrdir.determine_repository_policy()
-        repo, is_new = repo_policy.acquire_repository()
+        repo, _is_new = repo_policy.acquire_repository()
         self.assertEqual(
             repo.controldir.root_transport.base, my_bzrdir.root_transport.base
         )
@@ -580,8 +580,8 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         (
             repo,
             control,
-            require_stacking,
-            repo_policy,
+            _require_stacking,
+            _repo_policy,
         ) = old_fmt.initialize_on_transport_ex(
             t, repo_format_name=repo_name, stacked_on="../trunk", stack_on_pwd=t.base
         )
@@ -724,9 +724,9 @@ class ChrootedTests(TestCaseWithTransport):
             self.get_readonly_url("g/p/q"),
         )
         bzrdir.BzrDir.create(self.get_url())
-        branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url(""))
+        _branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url(""))
         self.assertEqual("", relpath)
-        branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url("g/p/q"))
+        _branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url("g/p/q"))
         self.assertEqual("g/p/q", relpath)
 
     def test_open_containing_tree_branch_or_repository_empty(self):
@@ -849,11 +849,11 @@ class ChrootedTests(TestCaseWithTransport):
             _mod_transport.get_transport_from_url(self.get_readonly_url("g/p/q")),
         )
         bzrdir.BzrDir.create(self.get_url())
-        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
+        _branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             _mod_transport.get_transport_from_url(self.get_readonly_url(""))
         )
         self.assertEqual("", relpath)
-        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
+        _branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             _mod_transport.get_transport_from_url(self.get_readonly_url("g/p/q"))
         )
         self.assertEqual("g/p/q", relpath)
@@ -1018,7 +1018,7 @@ class ChrootedTests(TestCaseWithTransport):
             self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
 
     def test_find_controldirs_permission_denied(self):
-        foo, bar, baz = self.make_foo_bar_baz()
+        _foo, _bar, _baz = self.make_foo_bar_baz()
         t = self.get_transport()
         (
             path_filter_server,
@@ -1038,7 +1038,7 @@ class ChrootedTests(TestCaseWithTransport):
         def list_current(transport):
             return [s for s in transport.list_dir("") if s != "baz"]
 
-        foo, bar, baz = self.make_foo_bar_baz()
+        foo, bar, _baz = self.make_foo_bar_baz()
         t = self.get_transport()
         self.assertEqualBzrdirs(
             [foo, bar], bzrdir.BzrDir.find_controldirs(t, list_current=list_current)
@@ -1053,7 +1053,7 @@ class ChrootedTests(TestCaseWithTransport):
             else:
                 return False, bzrdir.root_transport.base
 
-        foo, bar, baz = self.make_foo_bar_baz()
+        foo, _bar, baz = self.make_foo_bar_baz()
         t = self.get_transport()
         self.assertEqual(
             [baz.root_transport.base, foo.root_transport.base],

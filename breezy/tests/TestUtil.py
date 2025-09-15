@@ -20,7 +20,7 @@ import logging
 import unittest
 import weakref
 
-from .. import pyutils
+from catalogus import pyutils
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last

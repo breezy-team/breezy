@@ -405,7 +405,7 @@ class TestLogErrors(TestLog):
         self.make_minimal_branch()
         # files that don't exist in either the basis tree or working tree
         # should give an error
-        out, err = self.run_bzr("log does-not-exist", retcode=3)
+        _out, err = self.run_bzr("log does-not-exist", retcode=3)
         self.assertContainsRe(
             err, "Path unknown at end or start of revision range: does-not-exist"
         )
@@ -690,7 +690,7 @@ class TestLogDiff(TestLogWithLogCatcher):
         # Now check the diffs, adding the revno  in case of failure
         fmt = "In revno %s\n%s"
         for expected_rev, actual_rev in zip(expected, self.get_captured_revisions()):
-            revno, depth, expected_diff = expected_rev
+            revno, _depth, expected_diff = expected_rev
             actual_diff = actual_rev.diff
             self.assertEqualDiff(
                 fmt % (revno, expected_diff), fmt % (revno, actual_diff)
@@ -790,7 +790,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         try:
             osutils.get_user_encoding = lambda: "ascii"
             # We should be able to handle any encoding
-            out, err = brz("log", encoding=encoding)
+            out, _err = brz("log", encoding=encoding)
             if not fail:
                 # Make sure we wrote mu as we expected it to exist
                 self.assertNotEqual(-1, out.find(self._message))
@@ -819,7 +819,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         self.build_tree(["a"])
         brz("add a")
         brz(["commit", "-m", "\u0422\u0435\u0441\u0442"])
-        stdout, stderr = self.run_bzr_raw("log", encoding="cp866")
+        stdout, _stderr = self.run_bzr_raw("log", encoding="cp866")
 
         message = stdout.splitlines()[-1]
 
@@ -1010,7 +1010,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        (stdout, stderr) = self.run_bzr(["log", "-r..2"], retcode=3)
+        (_stdout, stderr) = self.run_bzr(["log", "-r..2"], retcode=3)
         self.assertEqual(["2", "1"], [r.revno for r in self.get_captured_revisions()])
         self.assertEqual("brz: ERROR: Further revision history missing.\n", stderr)
 

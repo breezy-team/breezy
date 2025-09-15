@@ -181,7 +181,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_branch_source_filtered_target_not(self):
         # Create a source branch with content filtering
-        source, txt_path, bin_path = self.create_cf_tree(
+        source, txt_path, _bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir="source"
         )
         if not source.supports_content_filtering():
@@ -200,7 +200,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_branch_source_not_filtered_target_is(self):
         # Create a source branch with content filtering
-        source, txt_path, bin_path = self.create_cf_tree(
+        source, txt_path, _bin_path = self.create_cf_tree(
             txt_reader=None, txt_writer=None, dir="source"
         )
         if not source.supports_content_filtering():
@@ -224,7 +224,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         #
         # set up a tree where the canonical form has a string added to the
         # end
-        source, txt_path, bin_path = self.create_cf_tree(
+        source, txt_path, _bin_path = self.create_cf_tree(
             txt_reader=_append_text, txt_writer=_remove_appended_text, dir="source"
         )
         if not source.supports_content_filtering():
@@ -278,7 +278,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_merge(self):
         # Create a source branch with two revisions
-        source, path1, path2, path3, path4 = self.create_cf_tree_with_two_revisions(
+        source, path1, path2, _path3, path4 = self.create_cf_tree_with_two_revisions(
             txt_reader=None, txt_writer=None, dir="source"
         )
         if not source.supports_content_filtering():
@@ -310,7 +310,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_switch(self):
         # Create a source branch with two revisions
-        source, path1, path2, path3, path4 = self.create_cf_tree_with_two_revisions(
+        source, _path1, _path2, _path3, _path4 = self.create_cf_tree_with_two_revisions(
             txt_reader=None, txt_writer=None, dir="branch-a"
         )
         if not source.supports_content_filtering():
@@ -332,7 +332,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_revert_delete(self):
         # Create a source branch with content filtering
-        source, txt_path, bin_path = self.create_cf_tree(
+        source, txt_path, _bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir="source"
         )
         if not source.supports_content_filtering():
@@ -351,7 +351,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_revert_rename(self):
         # Create a source branch with content filtering
-        source, txt_path, bin_path = self.create_cf_tree(
+        source, txt_path, _bin_path = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=_lowercase, dir="source"
         )
         if not source.supports_content_filtering():

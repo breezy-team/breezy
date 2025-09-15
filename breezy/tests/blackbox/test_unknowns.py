@@ -47,5 +47,5 @@ class TestUnknowns(TestCaseWithTransport):
         """Test --directory option."""
         self.make_branch_and_tree("a")
         self.build_tree(["a/README"])
-        out, err = self.run_bzr(["unknowns", "--directory=a"])
+        out, _err = self.run_bzr(["unknowns", "--directory=a"])
         self.assertEqual("README\n", out)

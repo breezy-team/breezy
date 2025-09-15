@@ -349,7 +349,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
             diffcmd.extend(diff_opts)
 
         pipe = _spawn_external_diff(diffcmd, capture_errors=True)
-        out, err = pipe.communicate()
+        out, _err = pipe.communicate()
         rc = pipe.returncode
 
         # internal_diff() adds a trailing newline, add one here for consistency
@@ -363,7 +363,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
 
             # Since we got here, we want to make sure to give an i18n error
             pipe = _spawn_external_diff(diffcmd, capture_errors=False)
-            out, err = pipe.communicate()
+            out, _err = pipe.communicate()
 
             # Write out the new i18n diff response
             to_file.write(out + b"\n")

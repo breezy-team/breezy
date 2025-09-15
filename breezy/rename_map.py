@@ -262,7 +262,7 @@ class RenameMap:
             if parent_id is None:
                 parent_id = self.tree.path2id(parent_path)
                 if parent_id is None:
-                    added, ignored = self.tree.smart_add([parent_path], recurse=False)
+                    _added, ignored = self.tree.smart_add([parent_path], recurse=False)
                     if len(ignored) > 0 and ignored[0] == parent_path:
                         continue
                     else:

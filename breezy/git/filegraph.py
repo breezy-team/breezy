@@ -136,7 +136,7 @@ class GitFileParentProvider:
         for commit_parent in self.store[commit_id].parents:
             try:
                 (
-                    store,
+                    _store,
                     path,
                     text_parent,
                 ) = self.change_scanner.find_last_change_revision(path, commit_parent)

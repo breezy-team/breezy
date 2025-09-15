@@ -1018,7 +1018,7 @@ def connect_socket(address):
     err = socket.error("getaddrinfo returns an empty list")
     host, port = address
     for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-        af, socktype, proto, canonname, sa = res
+        af, socktype, proto, _canonname, sa = res
         sock = None
         try:
             sock = socket.socket(af, socktype, proto)

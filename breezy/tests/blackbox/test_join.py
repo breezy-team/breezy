@@ -35,17 +35,17 @@ class TestJoin(tests.TestCaseWithTransport):
         self.assertEqual(b"file1-id", base_tree.path2id("subtree/file1"))
 
     def test_join(self):
-        base_tree, sub_tree = self.make_trees()
+        _base_tree, _sub_tree = self.make_trees()
         self.run_bzr("join tree/subtree")
         self.check_success("tree")
 
     def test_join_dot(self):
-        base_tree, sub_tree = self.make_trees()
+        _base_tree, _sub_tree = self.make_trees()
         self.run_bzr("join .", working_dir="tree/subtree")
         self.check_success("tree")
 
     def test_join_error(self):
-        base_tree, sub_tree = self.make_trees()
+        _base_tree, _sub_tree = self.make_trees()
         os.mkdir("tree/subtree2")
         osutils.rename("tree/subtree", "tree/subtree2/subtree")
         self.run_bzr_error(
@@ -90,6 +90,6 @@ class TestJoin(tests.TestCaseWithTransport):
         # cannot.
         self.make_branch_and_tree("tree", format="dirstate")
         self.make_branch_and_tree("tree/subtree")
-        out, err = self.run_bzr("join --reference tree/subtree", retcode=3)
+        _out, err = self.run_bzr("join --reference tree/subtree", retcode=3)
         self.assertContainsRe(err, r"Can't join trees")
         self.assertContainsRe(err, r"use brz upgrade")

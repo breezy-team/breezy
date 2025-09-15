@@ -1287,7 +1287,7 @@ class BTreeGraphIndex:
                     # This one is just not present in the index at all
                     missing_keys.add(next_sub_key)
                 else:
-                    value, refs = node[next_sub_key]
+                    _value, refs = node[next_sub_key]
                     parent_keys = refs[ref_list_num]
                     parent_map[next_sub_key] = parent_keys
                     parents_to_check.update(parent_keys)
@@ -1301,7 +1301,7 @@ class BTreeGraphIndex:
                 next_parents_to_check = set()
                 for key in parents_to_check:
                     if key in node:
-                        value, refs = node[key]
+                        _value, refs = node[key]
                         parent_keys = refs[ref_list_num]
                         parent_map[key] = parent_keys
                         next_parents_to_check.update(parent_keys)

@@ -24,6 +24,7 @@ types and utilities for resolving them to actual revision identifiers.
 
 from typing import Optional
 
+from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 from vcsgraph.errors import NoCommonAncestor
 
 from breezy import revision, workingtree
@@ -228,7 +229,7 @@ class RevisionSpec:
             raise TypeError("revision spec needs to be text")
         match = revspec_registry.get_prefix(spec)
         if match is not None:
-            spectype, specsuffix = match
+            spectype, _specsuffix = match
             trace.mutter("Returning RevisionSpec %s for %s", spectype.__name__, spec)
             return spectype(spec, _internal=True)
         else:
@@ -367,7 +368,7 @@ class RevisionSpec_dwim(RevisionSpec):
     _revno_regex = lazy_regex.lazy_compile(r"^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$")
 
     # The revspecs to try
-    _possible_revspecs: list[type[registry._ObjectGetter]] = []
+    _possible_revspecs: list[type[_ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
@@ -403,7 +404,7 @@ class RevisionSpec_dwim(RevisionSpec):
 
         :param revspec: Revision spec to try.
         """
-        cls._possible_revspecs.append(registry._ObjectGetter(revspec))
+        cls._possible_revspecs.append(_ObjectGetter(revspec))
 
     @classmethod
     def append_possible_lazy_revspec(cls, module_name, member_name):
@@ -412,9 +413,7 @@ class RevisionSpec_dwim(RevisionSpec):
         :param module_name: Name of the module with the revspec
         :param member_name: Name of the revspec within the module
         """
-        cls._possible_revspecs.append(
-            registry._LazyObjectGetter(module_name, member_name)
-        )
+        cls._possible_revspecs.append(_LazyObjectGetter(module_name, member_name))
 
 
 class RevisionSpec_revno(RevisionSpec):
@@ -493,7 +492,7 @@ class RevisionSpec_revno(RevisionSpec):
                 # so for API compatibility we return None.
                 return branch, None, revision_id
         else:
-            last_revno, last_revision_id = branch.last_revision_info()
+            last_revno, _last_revision_id = branch.last_revision_info()
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
@@ -506,7 +505,7 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _as_revision_id(self, context_branch):
         # We would have the revno here, but we don't really care
-        branch, revno, revision_id = self._lookup(context_branch)
+        _branch, _revno, revision_id = self._lookup(context_branch)
         return revision_id
 
     def needs_branch(self):
@@ -616,7 +615,7 @@ class RevisionSpec_last(RevisionSpec):
     def _as_revision_id(self, context_branch):
         # We compute the revno as part of the process, but we don't really care
         # about it.
-        revno, revision_id = self._revno_and_revision_id(context_branch)
+        _revno, revision_id = self._revno_and_revision_id(context_branch)
         return revision_id
 
 

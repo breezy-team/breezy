@@ -60,7 +60,7 @@ def check_availability(command_line):
         exe = _get_executable_path(exe)
         if exe is None:
             return False
-        base, ext = os.path.splitext(exe)
+        _base, ext = os.path.splitext(exe)
         path_ext = [s.lower() for s in os.getenv("PATHEXT", "").split(os.pathsep)]
         return os.path.exists(exe) and ext in path_ext
     else:

@@ -543,7 +543,7 @@ class Launchpad(Forge):
             A tuple of (repository, reference) Launchpad objects.
         """
         url, params = urlutils.split_segment_parameters(branch.user_url)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+        (_scheme, _user, _password, _host, _port, path) = urlutils.parse_url(url)
         repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip("/"))
         try:
             ref_path = params["ref"]
@@ -652,7 +652,7 @@ class Launchpad(Forge):
         Raises:
             AssertionError: If the branch URL doesn't match a known VCS pattern.
         """
-        (vcs, user, password, path, params) = self._split_url(branch.user_url)
+        (vcs, _user, _password, path, params) = self._split_url(branch.user_url)
         if vcs == "git":
             return urlutils.join_segment_parameters(
                 GIT_SCHEME_MAP["ssh"] + path, params
@@ -674,7 +674,7 @@ class Launchpad(Forge):
             ValueError: If the host doesn't match a known VCS pattern.
         """
         url, params = urlutils.split_segment_parameters(url)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+        (_scheme, user, password, host, _port, path) = urlutils.parse_url(url)
         path = path.strip("/")
         if host.startswith("git."):
             vcs = "git"
@@ -705,8 +705,8 @@ class Launchpad(Forge):
         """
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            base_branch.user_url
+        (base_vcs, _base_user, _base_password, base_path, _base_params) = (
+            self._split_url(base_branch.user_url)
         )
         # TODO(jelmer): Prevent publishing to development focus
         if base_vcs == "git":
@@ -746,8 +746,8 @@ class Launchpad(Forge):
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            base_branch.user_url
+        (base_vcs, _base_user, _base_password, base_path, _base_params) = (
+            self._split_url(base_branch.user_url)
         )
         if base_vcs == "git":
             to_path = self._get_derived_git_path(base_path.strip("/"), owner, project)
@@ -778,8 +778,8 @@ class Launchpad(Forge):
         Raises:
             AssertionError: If the target branch URL is not a valid Launchpad URL.
         """
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            target_branch.user_url
+        (base_vcs, _base_user, _base_password, _base_path, _base_params) = (
+            self._split_url(target_branch.user_url)
         )
         statuses = status_to_lp_mp_statuses(status)
         if base_vcs == "git":
@@ -814,8 +814,8 @@ class Launchpad(Forge):
         Raises:
             AssertionError: If the target branch URL is not a valid Launchpad URL.
         """
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            target_branch.user_url
+        (base_vcs, _base_user, _base_password, _base_path, _base_params) = (
+            self._split_url(target_branch.user_url)
         )
         if base_vcs == "git":
             return LaunchpadGitMergeProposalBuilder(self, source_branch, target_branch)
@@ -891,9 +891,9 @@ class Launchpad(Forge):
         Raises:
             AssertionError: If the branch URL doesn't match a known VCS pattern.
         """
-        (vcs, user, password, path, params) = self._split_url(branch.user_url)
+        (vcs, _user, _password, _path, _params) = self._split_url(branch.user_url)
         if vcs == "git":
-            (repo_lp, ref_lp) = self._get_lp_git_ref_from_branch(branch)
+            (_repo_lp, ref_lp) = self._get_lp_git_ref_from_branch(branch)
             return ref_lp.web_link
         else:
             raise AssertionError("Only git repositories are supported")
@@ -911,7 +911,7 @@ class Launchpad(Forge):
             UnsupportedForge: If the URL is not a Launchpad code domain.
         """
         # Launchpad doesn't have a way to find a merge proposal by URL.
-        (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+        (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
         LAUNCHPAD_CODE_DOMAINS = [
             f"code.{domain}" for domain in lp_uris.LAUNCHPAD_DOMAINS.values()
         ]
@@ -1103,7 +1103,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             (
-                prereq_repo_lp,
+                _prereq_repo_lp,
                 prereq_branch_lp,
             ) = self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch)
         else:

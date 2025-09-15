@@ -28,15 +28,15 @@ from ...workingtree import WorkingTree
 
 class TestTagging(TestCaseWithTransport):
     def test_tag_command_help(self):
-        out, err = self.run_bzr("help tag")
+        out, _err = self.run_bzr("help tag")
         self.assertContainsRe(out, "Create, remove or modify a tag")
 
     def test_cannot_tag_range(self):
-        out, err = self.run_bzr("tag -r1..10 name", retcode=3)
+        _out, err = self.run_bzr("tag -r1..10 name", retcode=3)
         self.assertContainsRe(err, "Tags can only be placed on a single revision")
 
     def test_no_tag_name(self):
-        out, err = self.run_bzr("tag -d branch", retcode=3)
+        _out, err = self.run_bzr("tag -d branch", retcode=3)
         self.assertContainsRe(err, "Please specify a tag name.")
 
     def test_automatic_tag_name(self):
@@ -46,14 +46,14 @@ class TestTagging(TestCaseWithTransport):
         Branch.hooks.install_named_hook(
             "automatic_tag_name", get_tag_name, "get tag name"
         )
-        out, err = self.run_bzr("tag -d branch")
+        _out, err = self.run_bzr("tag -d branch")
         self.assertContainsRe(err, "Created tag mytag.")
 
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree("branch")
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")
         # make a tag through the command line
-        out, err = self.run_bzr("tag -d branch NEWTAG")
+        _out, err = self.run_bzr("tag -d branch NEWTAG")
         self.assertContainsRe(err, "Created tag NEWTAG.")
         # tag should be observable through the api
         self.assertEqual(t.branch.tags.get_tag_dict(), {"NEWTAG": b"first-revid"})
@@ -66,26 +66,26 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr(["tag", "-d", "branch", "tag3", "-rrevid:first-revid"])
         self.assertEqual(t.branch.tags.lookup_tag("tag3"), b"first-revid")
         # can also delete an existing tag
-        out, err = self.run_bzr("tag --delete -d branch tag2")
+        _out, _err = self.run_bzr("tag --delete -d branch tag2")
         # cannot replace an existing tag normally
-        out, err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
+        _out, err = self.run_bzr("tag -d branch NEWTAG -r0", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")
         # ... but can if you use --force
-        out, err = self.run_bzr("tag -d branch NEWTAG --force -r0")
+        _out, err = self.run_bzr("tag -d branch NEWTAG --force -r0")
         self.assertEqual("Updated tag NEWTAG.\n", err)
 
     def test_tag_same_revision(self):
         t = self.make_branch_and_tree("branch")
         t.commit(allow_pointless=True, message="initial commit", rev_id=b"first-revid")
         t.commit(allow_pointless=True, message="second commit", rev_id=b"second-revid")
-        out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
-        out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
+        _out, _err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
+        _out, err = self.run_bzr("tag -rrevid:first-revid -d branch NEWTAG")
         self.assertContainsRe(err, "Tag NEWTAG already exists for that revision\\.")
-        out, err = self.run_bzr("tag -rrevid:second-revid -d branch NEWTAG", retcode=3)
+        _out, err = self.run_bzr("tag -rrevid:second-revid -d branch NEWTAG", retcode=3)
         self.assertContainsRe(err, "Tag NEWTAG already exists\\.")
 
     def test_tag_delete_requires_name(self):
-        out, err = self.run_bzr("tag -d branch", retcode=3)
+        _out, err = self.run_bzr("tag -d branch", retcode=3)
         self.assertContainsRe(err, "Please specify a tag name\\.")
 
     def test_branch_push_pull_merge_copies_tags(self):
@@ -139,7 +139,7 @@ class TestTagging(TestCaseWithTransport):
         (If the user runs 'brz commit', then that is when the tags from the
         merge are propagated.)
         """
-        master, child = self.make_master_and_checkout()
+        master, _child = self.make_master_and_checkout()
         fork = self.make_fork(master)
         fork.tags.set_tag("new-tag", fork.last_revision())
         self.run_bzr(["merge", "../fork"], working_dir="child")
@@ -315,7 +315,7 @@ class TestTagging(TestCaseWithTransport):
         self.assertFileEqual("Trimmed Branch", "branch/.bzr/branch/format")
         rev1 = tree.commit("rev1")
         tree.branch.tags.set_tag("mytag", rev1)
-        out, err = self.run_bzr("tags -d branch", encoding="utf-8")
+        out, _err = self.run_bzr("tags -d branch", encoding="utf-8")
         self.assertEqual(out, "mytag                ?\n")
 
     def test_list_tags_revision_filtering(self):
@@ -415,10 +415,10 @@ class TestTagging(TestCaseWithTransport):
         b1.tags.set_tag(tagname, b"revid1")
         b2.tags.set_tag(tagname, b"revid2")
         # push should give a warning about the tags
-        out, err = self.run_bzr("push -d one two", encoding="utf-8")
+        out, _err = self.run_bzr("push -d one two", encoding="utf-8")
         self.assertContainsRe(out, "Conflicting tags:\n.*" + tagname)
         # pull should give a warning about the tags
-        out, err = self.run_bzr("pull -d one two", encoding="utf-8", retcode=1)
+        out, _err = self.run_bzr("pull -d one two", encoding="utf-8", retcode=1)
         self.assertContainsRe(out, "Conflicting tags:\n.*" + tagname)
         # merge should give a warning about the tags -- not implemented yet
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')

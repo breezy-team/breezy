@@ -63,7 +63,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
     def test_view_on_diff(self):
         self.make_abc_tree_with_ab_view()
         self.run_bzr("add")
-        out, err = self.run_bzr("diff --color=never", retcode=1)
+        _out, err = self.run_bzr("diff --color=never", retcode=1)
         self.assertEqual("*** Ignoring files outside view. View is a, b\n", err)
 
     def test_view_on_diff_selected(self):
@@ -171,7 +171,7 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         return wt1, wt2
 
     def test_view_on_pull(self):
-        tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
+        _tree_1, _tree_2 = self.make_abc_tree_and_clone_with_ab_view()
         out, err = self.run_bzr("pull -d tree_2 tree_1")
         self.assertEqualDiff(
             "Operating on whole tree but only reporting on 'my' view.\n"
@@ -182,7 +182,7 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         self.assertEqualDiff("Now on revision 2.\n", out)
 
     def test_view_on_update(self):
-        tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
+        _tree_1, _tree_2 = self.make_abc_tree_and_clone_with_ab_view()
         self.run_bzr("bind ../tree_1", working_dir="tree_2")
         out, err = self.run_bzr("update", working_dir="tree_2")
         self.assertEqualDiff(
@@ -196,7 +196,7 @@ Updated to revision 2 of branch {osutils.pathjoin(self.test_dir, "tree_1")}
         self.assertEqual("", out)
 
     def test_view_on_merge(self):
-        tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
+        _tree_1, _tree_2 = self.make_abc_tree_and_clone_with_ab_view()
         out, err = self.run_bzr("merge -d tree_2 tree_1")
         self.assertEqualDiff(
             "Operating on whole tree but only reporting on 'my' view.\n"
