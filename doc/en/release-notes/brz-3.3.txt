@@ -10,6 +10,9 @@ brz 3.3.14
 
 :3.3.14: UNRELEASED
 
+* Migrate Rust code to modern PyO3 0.26 API to eliminate deprecation warnings.
+  (Jelmer Vernooĳ)
+
 brz 3.3.13
 ##########
 
