@@ -10,6 +10,8 @@ brz 3.3.14
 
 :3.3.14: UNRELEASED
 
+* Add Python 3.14 support. (Jelmer Vernooĳ)
+
 * Migrate Rust code to modern PyO3 0.26 API to eliminate deprecation warnings.
   (Jelmer Vernooĳ)
 
