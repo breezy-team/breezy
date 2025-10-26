@@ -6,12 +6,11 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
-    let breezy = PyModule::import(py, "breezy").map_err(|e| {
+    let breezy = PyModule::import(py, "breezy").inspect_err(|_e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
              Please check the directory containing breezy is on your PYTHONPATH.\n"
         );
-        e
     })?;
 
     let ver = breezy
@@ -43,9 +42,13 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
 }
 
 // TODO: Does not actually work? Upstream has been messing around again.
-fn ensure_sane_fs_enc() -> () {
-    let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
+// NOTE: Py_FileSystemDefaultEncoding and Py_HasFileSystemDefaultEncoding are deprecated in Python 3.12+
+// and no longer have any effect. Python 3.12+ always uses UTF-8 for filesystem encoding.
+fn ensure_sane_fs_enc() {
+    // No-op on Python 3.12+, left for compatibility with older versions
+    #[allow(deprecated)]
     unsafe {
+        let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
         pyo3::ffi::Py_FileSystemDefaultEncoding = new_enc;
         pyo3::ffi::Py_HasFileSystemDefaultEncoding = 1;
     }
@@ -95,9 +98,9 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 }
 
 fn main() -> PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         posix_setup(py)?;
 
         update_path(py)?;
@@ -114,7 +117,7 @@ fn main() -> PyResult<()> {
         }
 
         let sys = PyModule::import(py, "sys")?;
-        sys.setattr("argv", PyList::new_bound(py, args))?;
+        sys.setattr("argv", PyList::new(py, args)?)?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())?;
