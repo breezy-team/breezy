@@ -20,6 +20,7 @@
 import posixpath
 import stat
 from collections.abc import Iterable, Iterator
+from typing import Optional
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -797,7 +798,7 @@ class BazaarObjectStore(BaseObjectStore):
         self,
         haves: Iterable[ObjectID],
         wants: Iterable[ObjectID],
-        shallow: Iterable[ObjectID] | None = None,
+        shallow: Optional[Iterable[ObjectID]] = None,
         progress=None,
         get_tagged=None,
         get_parents=None,
