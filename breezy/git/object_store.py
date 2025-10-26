@@ -918,8 +918,8 @@ class BazaarObjectStore(BaseObjectStore):
         # because self[oid] would reconstruct them with the wrong lossy setting
         objects = []
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
-        for commit_sha in have:
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(haves) + list(wants))
+        for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for type, type_data in ret[commit_sha]:
@@ -929,8 +929,8 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
-        for commit_sha in want:
-            if commit_sha in have:
+        for commit_sha in wants:
+            if commit_sha in haves:
                 continue
             try:
                 for type, type_data in ret[commit_sha]:

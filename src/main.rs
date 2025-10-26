@@ -89,10 +89,17 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
+<<<<<<< HEAD:src/main.rs
 fn main() {
     pyo3::prepare_freethreaded_python();
 
     fn main(py: Python) -> PyResult<Bound<PyAny>> {
+=======
+fn main() -> PyResult<()> {
+    Python::initialize();
+
+    Python::attach(|py| {
+>>>>>>> 741b3d9dcd13effa8e8c1027605b1cc8f536774e:breezy/main.rs
         posix_setup(py)?;
 
         update_path(py)?;

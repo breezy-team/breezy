@@ -351,15 +351,15 @@ class cmd_fast_import(Command):
         if mode is None:
             mode = "default"
         params = {
-            "info": info,
-            "trees": trees,
-            "count": count,
-            "checkpoint": checkpoint,
-            "autopack": autopack,
-            "inv-cache": inv_cache,
-            "mode": mode,
-            "import-marks": import_marks,
-            "export-marks": export_marks,
+            b"info": info,
+            b"trees": trees,
+            b"count": count,
+            b"checkpoint": checkpoint,
+            b"autopack": autopack,
+            b"inv-cache": inv_cache,
+            b"mode": mode,
+            b"import-marks": import_marks,
+            b"export-marks": export_marks,
         }
         return _run(
             source,

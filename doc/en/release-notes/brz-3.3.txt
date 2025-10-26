@@ -5,18 +5,20 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
-brz 3.4.0
+brz 3.3.15
 ##########
 
-:Codename: TBD
-:3.4.0: Not yet released
+:3.3.15: 2025-10-26
 
-* The ``breezy.pyutils`` module has been removed. Use ``catalogus.pyutils``
-  instead. (Jelmer Vernooĳ)
+* Add Python 3.14 support. (Jelmer Vernooĳ, #2121688)
 
-* The ``Registry`` class has been removed from ``breezy.registry``. Use
-  ``catalogus.registry.Registry`` instead. The ``FormatRegistry`` class
-  remains in ``breezy.registry``. (Jelmer Vernooĳ)
+* Migrate Rust code to modern PyO3 0.26 API to eliminate deprecation warnings.
+  (Jelmer Vernooĳ)
+
+brz 3.3.14
+##########
+
+There was no 3.3.14 release.
 
 brz 3.3.13
 ##########
