@@ -795,22 +795,23 @@ class BazaarObjectStore(BaseObjectStore):
 
     def find_missing_objects(
         self,
-        have,
-        want,
-        shallow=None,
+        haves: Iterable[ObjectID],
+        wants: Iterable[ObjectID],
+        shallow: Iterable[ObjectID] | None = None,
         progress=None,
-        ofs_delta=False,
         get_tagged=None,
-        lossy=False,
-    ):
+        get_parents=None,
+        ofs_delta: bool = False,
+        lossy: bool = False,
+    ) -> Iterator[tuple[ObjectID, tuple[int, str]]]:
         """Iterate over the contents of a pack file.
 
-        :param have: List of SHA1s of objects that should not be sent
-        :param want: List of SHA1s of objects that should be sent
+        :param haves: List of SHA1s of objects that should not be sent
+        :param wants: List of SHA1s of objects that should be sent
         """
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
-        for commit_sha in have:
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(haves) + list(wants))
+        for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for type, type_data in ret[commit_sha]:
@@ -820,8 +821,8 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
-        for commit_sha in want:
-            if commit_sha in have:
+        for commit_sha in wants:
+            if commit_sha in haves:
                 continue
             try:
                 for type, type_data in ret[commit_sha]:
