@@ -1026,7 +1026,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             c = self.source.get_config_stack()
             fetch_tags = c.get("branch.fetch_tags")
 
-        def determine_wants(heads):
+        def determine_wants(heads, depth=None):
             if stop_revision is None:
                 try:
                     head = heads[self.source.ref]
@@ -1540,7 +1540,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             )
         else:
 
-            def determine_wants(refs):
+            def determine_wants(refs, depth=None):
                 wants = []
                 for git_sha, revid in ret:
                     if git_sha is None:

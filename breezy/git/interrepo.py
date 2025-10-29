@@ -408,7 +408,7 @@ class InterFromGitRepository(InterRepository):
     def get_determine_wants_heads(self, wants, include_tags=False, tag_selector=None):
         wants = set(wants)
 
-        def determine_wants(refs):
+        def determine_wants(refs, depth=None):
             unpeel_lookup = {}
             for k, v in refs.items():
                 if k.endswith(PEELED_TAG_SUFFIX):
@@ -487,7 +487,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 revids[revid] = sha
         return {revids[r] for r in self.target.has_revisions(revids)}
 
-    def determine_wants_all(self, refs):
+    def determine_wants_all(self, refs, depth=None):
         potential = set()
         for k, v in refs.items():
             # For non-git target repositories, only worry about peeled
@@ -679,7 +679,7 @@ class InterGitGitRepository(InterFromGitRepository):
         old_refs = self._get_target_either_refs()
         ref_changes = {}
 
-        def determine_wants(heads):
+        def determine_wants(heads, depth=None):
             old_refs = {k: (v, None) for (k, v) in heads.items()}
             new_refs = update_refs(old_refs)
             ret = []
@@ -754,7 +754,7 @@ class InterGitGitRepository(InterFromGitRepository):
         )
 
     def get_determine_wants_branches(self, branches, include_tags=False):
-        def determine_wants(refs):
+        def determine_wants(refs, depth=None):
             ret = []
             for name, value in refs.items():
                 if value == ZERO_SHA:
@@ -769,7 +769,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
         return determine_wants
 
-    def determine_wants_all(self, refs):
+    def determine_wants_all(self, refs, depth=None):
         potential = {
             v
             for k, v in refs.items()

@@ -705,7 +705,11 @@ class RemoteGitDir(GitDir):
 
         with source_store.lock_read():
 
-            def generate_pack_data(have, want, progress=None, ofs_delta=True):
+            def generate_pack_data(have, want, ofs_delta=True, progress=None):
+                # dulwich >= 0.24.3 API: can be called as either
+                # - generate_pack_data(have, want, ofs_delta_bool) or
+                # - generate_pack_data(have, want, ofs_delta=bool)
+                # Accept both as optional keyword arguments for compatibility
                 git_repo = getattr(source.repository, "_git", None)
                 if git_repo:
                     shallow = git_repo.get_shallow()
