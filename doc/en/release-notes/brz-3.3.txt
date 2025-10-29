@@ -12,6 +12,8 @@ brz 3.3.16
 
 * Mark PyO3 0.27 as compatible. (Jelmer Vernooĳ)
 
+* Drop support for Python 3.9. (Jelmer Vernooĳ)
+
 brz 3.3.15
 ##########
 
