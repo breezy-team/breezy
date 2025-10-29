@@ -71,8 +71,8 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def simple_commit_a(self):
         r = GitRepo.init(".")
         self.build_tree(["a"])
-        r.stage(["a"])
-        return r.do_commit(b"a", committer=b"Somebody <foo@example.com>")
+        r.get_worktree().stage(["a"])
+        return r.get_worktree().commit(b"a", committer=b"Somebody <foo@example.com>")
 
     def test_last_revision_is_valid(self):
         head = self.simple_commit_a()
@@ -86,8 +86,8 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.build_tree(["b"])
         r = GitRepo(".")
         self.addCleanup(r.close)
-        r.stage("b")
-        revb = r.do_commit(b"b", committer=b"Somebody <foo@example.com>")
+        r.get_worktree().stage("b")
+        revb = r.get_worktree().commit(b"b", committer=b"Somebody <foo@example.com>")
 
         thebranch = Branch.open(".")
         self.assertEqual(
