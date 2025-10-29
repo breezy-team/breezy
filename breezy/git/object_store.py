@@ -20,10 +20,11 @@
 import posixpath
 import stat
 from collections.abc import Iterable, Iterator
+from typing import AbstractSet
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
-from dulwich.pack import Pack, PackData, pack_objects_to_data
+from dulwich.pack import Pack, PackData, UnpackedObject, pack_objects_to_data
 
 from .. import errors, lru_cache, osutils, trace, ui
 from ..bzr.testament import StrictTestament3
@@ -544,11 +545,10 @@ class BazaarObjectStore(BaseObjectStore):
     def iter_unpacked_subset(
         self,
         shas,
-        *,
         include_comp=False,
         allow_missing: bool = False,
         convert_ofs_delta: bool = True,
-    ) -> Iterator[ShaFile]:
+    ) -> Iterator[UnpackedObject]:
         # We don't store unpacked objects, so...
         if not allow_missing and shas:
             raise KeyError(shas.pop())
@@ -797,13 +797,13 @@ class BazaarObjectStore(BaseObjectStore):
         self,
         haves: Iterable[ObjectID],
         wants: Iterable[ObjectID],
-        shallow: Iterable[ObjectID] | None = None,
+        shallow: AbstractSet[ObjectID] | None = None,
         progress=None,
         get_tagged=None,
         get_parents=None,
         ofs_delta: bool = False,
         lossy: bool = False,
-    ) -> Iterator[tuple[ObjectID, tuple[int, str]]]:
+    ) -> Iterator[tuple[ObjectID, tuple[int, bytes | None] | None]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent
@@ -855,7 +855,9 @@ class BazaarObjectStore(BaseObjectStore):
                     tree = self.tree_cache.revision_tree(revid)
                     for path, obj in self._revision_to_objects(rev, tree, lossy=lossy):
                         if obj.id not in seen:
-                            yield (obj.id, (obj.type_num, path))
+                            # Convert path to bytes for PackHint compatibility
+                            path_bytes = encode_git_path(path) if path is not None else None
+                            yield (obj.id, (obj.type_num, path_bytes))
                             seen.add(obj.id)
 
     def add_thin_pack(self):
