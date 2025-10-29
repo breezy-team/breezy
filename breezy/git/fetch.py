@@ -665,7 +665,7 @@ class DetermineWantsRecorder:
         self.wants = []
         self.remote_refs = {}
 
-    def __call__(self, refs):
+    def __call__(self, refs, depth=None):
         if type(refs) is not dict:
             raise TypeError(refs)
         self.remote_refs = refs
