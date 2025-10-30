@@ -5,10 +5,16 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.17
+##########
+
+ * Fix compatibility with newer versions of Dulwich.
+   (Jelmer Vernooĳ)
+
 brz 3.3.16
 ##########
 
-:3.3.16: 2025-11-29
+:3.3.16: 2025-10-29
 
 * Mark PyO3 0.27 as compatible. (Jelmer Vernooĳ)
 
