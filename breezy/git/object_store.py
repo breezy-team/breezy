@@ -899,13 +899,19 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
 
     def generate_lossy_pack_data(
-        self, have, want, shallow=None, progress=None, get_tagged=None, ofs_delta=False
+        self,
+        haves,
+        wants,
+        shallow=None,
+        progress=None,
+        get_tagged=None,
+        ofs_delta=False,
     ):
         """Generate pack data with potential data loss.
 
         Args:
-            have: Object IDs already available.
-            want: Object IDs that are wanted.
+            haves: Object IDs already available.
+            wants: Object IDs that are wanted.
             shallow: Optional shallow commit list.
             progress: Optional progress callback.
             get_tagged: Optional function to get tagged objects.
@@ -918,8 +924,8 @@ class BazaarObjectStore(BaseObjectStore):
         # because self[oid] would reconstruct them with the wrong lossy setting
         objects = []
         processed = set()
-        ret: dict[ObjectID, list] = self.lookup_git_shas(list(have) + list(want))
-        for commit_sha in have:
+        ret: dict[ObjectID, list] = self.lookup_git_shas(list(haves) + list(wants))
+        for commit_sha in haves:
             commit_sha = self.unpeel_map.peel_tag(commit_sha, commit_sha)
             try:
                 for type, type_data in ret[commit_sha]:
@@ -929,8 +935,8 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 trace.mutter("unable to find remote ref %s", commit_sha)
         pending = set()
-        for commit_sha in want:
-            if commit_sha in have:
+        for commit_sha in wants:
+            if commit_sha in haves:
                 continue
             try:
                 for type, type_data in ret[commit_sha]:

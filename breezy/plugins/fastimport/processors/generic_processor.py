@@ -99,15 +99,15 @@ class GenericProcessor(processor.ImportProcessor):
     """
 
     known_params = [
-        "info",
-        "trees",
-        "count",
-        "checkpoint",
-        "autopack",
-        "inv-cache",
-        "mode",
-        "import-marks",
-        "export-marks",
+        b"info",
+        b"trees",
+        b"count",
+        b"checkpoint",
+        b"autopack",
+        b"inv-cache",
+        b"mode",
+        b"import-marks",
+        b"export-marks",
     ]
 
     def __init__(

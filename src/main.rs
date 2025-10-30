@@ -92,29 +92,28 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 fn main() {
     pyo3::prepare_freethreaded_python();
 
-    fn main(py: Python) -> PyResult<Bound<PyAny>> {
-        posix_setup(py)?;
-
-        update_path(py)?;
-
-        check_version(py)?;
-
-        let args: Vec<String> = std::env::args().collect();
-
-        if args.contains(&String::from("--profile-imports")) {
-            let profile_imports = PyModule::import(py, "profile_imports")?;
-            profile_imports.getattr("install")?.call1(())?;
-        }
-
-        let sys = PyModule::import(py, "sys")?;
-        sys.setattr("argv", PyList::new(py, args)?)?;
-
-        let main = PyModule::import(py, "breezy.__main__")?;
-        main.getattr("main")?.call1(())
-    }
-
     Python::with_gil(|py| {
-        let result = main(py);
+        let result = (|| -> PyResult<Bound<PyAny>> {
+            posix_setup(py)?;
+
+            update_path(py)?;
+
+            check_version(py)?;
+
+            let args: Vec<String> = std::env::args().collect();
+
+            if args.contains(&String::from("--profile-imports")) {
+                let profile_imports = PyModule::import(py, "profile_imports")?;
+                profile_imports.getattr("install")?.call0()?;
+            }
+
+            let sys = PyModule::import(py, "sys")?;
+            sys.setattr("argv", PyList::new(py, args)?)?;
+
+            let main = PyModule::import(py, "breezy.__main__")?;
+            main.getattr("main")?.call0()
+        })();
+
         std::process::exit(match result {
             Ok(_) => 0,
             Err(e) if e.is_instance_of::<PySystemExit>(py) => {

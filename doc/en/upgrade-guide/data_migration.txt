@@ -14,7 +14,7 @@ first:
 A complete backup gives you a safety net in case anything goes wrong.
 
 Purging obsolete branches reduces the amount of data that needs to
-be migrated. See `Finding obsolete branches`_ later for some tips
+be migrated. See `finding-obsolete-branches`_ later for some tips
 on doing this.
 
 
@@ -190,7 +190,7 @@ To migrate branches in a shared repository:
    new directory inside the shared repository.
 
 3. Decide which of your local branches you want to migrate. (If you
-   haven't already, now's a good time for `Finding obsolete branches`_
+   haven't already, now's a good time for `finding-obsolete-branches`_
    and purging them, after backing up first of course.)
 
 4. To migrate each local branch of interest, there are 2 options:
@@ -216,6 +216,8 @@ In contrast, the second approach sets up the parent branch correctly.
 However, it isn't ideal if you're not ready to include all the latest
 revisions from trunk into that branch yet.
 
+
+.. _finding-obsolete-branches:
 
 Finding obsolete branches
 -------------------------
