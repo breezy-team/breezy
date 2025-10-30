@@ -899,13 +899,19 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
 
     def generate_lossy_pack_data(
-        self, have, want, shallow=None, progress=None, get_tagged=None, ofs_delta=False
+        self,
+        haves,
+        wants,
+        shallow=None,
+        progress=None,
+        get_tagged=None,
+        ofs_delta=False,
     ):
         """Generate pack data with potential data loss.
 
         Args:
-            have: Object IDs already available.
-            want: Object IDs that are wanted.
+            haves: Object IDs already available.
+            wants: Object IDs that are wanted.
             shallow: Optional shallow commit list.
             progress: Optional progress callback.
             get_tagged: Optional function to get tagged objects.
