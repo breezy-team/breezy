@@ -4,7 +4,7 @@ version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 default-run = "brz"
-license = "GPL-2.0+"
+license = "GPL-2.0-or-later"
 description = "Friendly distributed version control system"
 repository = "https://github.com/breezy-team/breezy"
 homepage = "https://www.breezy-vcs.org/"
