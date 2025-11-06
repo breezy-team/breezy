@@ -1,60 +1,662 @@
-Dirstate
+=================
+DirState Format
+=================
+
+This document provides a complete technical specification of the DirState file
+format used by Breezy for tracking working directory state. The specification
+is detailed enough to enable third-party implementations that are byte-for-byte
+compatible.
+
+Overview
 ========
 
-Don't really need the hashes of the current versions - just knowing
-whether they've changed or not will generally be enough - and just the
-mtime and ctime of a point in time may be enough?
+The DirState format is a binary file format that efficiently stores the complete
+state of a working directory tree, including file metadata, directory structure,
+and multiple tree states (current working tree plus parent revisions).
 
+Key characteristics:
+* Binary format optimized for fast reading and writing
+* Tracks multiple tree states simultaneously
+* Includes file metadata (size, mtime, permissions)
+* Supports stat caching for performance
+* NULL-separated field encoding
+* CRC32 integrity checking
+* Lock-based concurrency control
 
-``_dirblock_state``
+File Structure
+==============
+
+A DirState file consists of these sequential sections:
+
+1. **Header Line** - Format identification
+2. **CRC32 Line** - Integrity checksum  
+3. **Entry Count Line** - Number of directory entries
+4. **Parent Details** - Parent revision information
+5. **Ghost Details** - Ghost revision information
+6. **Entry Data** - Directory and file records
+
+All sections are UTF-8 encoded with specific field separators.
+
+Header Format
+=============
+
+Format Identification
+---------------------
+
+The file must begin with exactly::
+
+    #bazaar dirstate flat format 3\n
+
+This identifies the format as DirState version 3. The complete header is
+32 bytes including the newline.
+
+Version History
+~~~~~~~~~~~~~~~
+
+* **Format 2**: ``#bazaar dirstate flat format 2\n`` (legacy)
+* **Format 3**: ``#bazaar dirstate flat format 3\n`` (current)
+
+CRC32 Line
+----------
+
+::
+
+    crc32: CHECKSUM\n
+
+Where CHECKSUM is the decimal CRC32 value of all content following this line.
+
+Example::
+
+    crc32: 41262208\n
+
+Entry Count Line
+----------------
+
+::
+
+    num_entries: COUNT\n
+
+Where COUNT is the decimal number of directory entries in the file.
+
+Example::
+
+    num_entries: 15\n
+
+Parent and Ghost Details
+=========================
+
+Parent Details Line
 -------------------
 
-There are currently 4 levels that state can have.
+::
 
- 1. NOT_IN_MEMORY
-    The actual content blocks have not been read at all.
- 2. IN_MEMORY_UNMODIFIED
-    The content blocks have been read and are available for use. They have
-    not been changed at all versus what was written on disk when we read
-    them.
- 3. IN_MEMORY_HASH_MODIFIED
-    We have updated the in-memory state, but only to record the
-    sha1/symlink target value and the stat value that means this
-    information is 'fresh'.
- 4. IN_MEMORY_MODIFIED
-    We have updated an actual record. (Parent lists, added a new file,
-    deleted something, etc.) In this state, we must always write out the
-    dirstate, or some user action will be lost.
+    PARENT_COUNT\0REVISION_ID_1\0REVISION_ID_2\0...\0\n
 
+* **PARENT_COUNT** - Decimal number of parent revisions
+* **REVISION_ID_N** - UTF-8 encoded revision identifier
+* Fields separated by null bytes (``\0``)
+* Line terminated by newline
 
-IN_MEMORY_HASH_MODIFIED
-~~~~~~~~~~~~~~~~~~~~~~~
+Example::
 
-This state is a bit special, so deserves its own topic.  If we are
-IN_MEMORY_HASH_MODIFIED, we only write out the dirstate if enough records
-have been updated. The idea is that if we would save future I/O by writing
-an updated dirstate, then we should do so. The threshold for this is set
-by "worth_saving_limit". The default is that at least 10 entries must be
-updated in order to consider the dirstate file worth updating.
+    1\0revision-20051003-1\0\n
 
-Going one step further, newly added files, symlinks, and directory entries
-updates are treated specially. We know that we will always stat all
-entries in the tree so that we can observe *if* they have changed. In the
-case of directories, all the information we know about them is just from
-that stat value. There is no extra content to read. So an update directory
-entry doesn't cause us to update to IN_MEMORY_HASH_MODIFIED. However, if
-there are other modifications worth saving, we will go ahead and save the
-directory entry update at the same time.
+Ghost Details Line
+------------------
 
-Similarly, symlink targets are commonly stored in the inode entry
-directly. So once we have stat'ed the symlink, we already have its target
-information in memory. The one caveat is if we used to think an object was
-a file, and it became a directory or symlink, then we will treat it as
-worth saving.
+::
 
-In the case of newly added files, we never have to read their content to
-know that they are different from the basis tree. So saving the updated
-information also won't save a future read.
+    GHOST_COUNT\0GHOST_ID_1\0GHOST_ID_2\0...\0\n
 
+Similar format to parent details, but for ghost revisions (parent revisions
+not present in the repository).
 
-.. vim: ft=rst tw=74 et
+Example for no ghosts::
+
+    0\0\n
+
+Entry Data Format
+=================
+
+Entry Structure
+---------------
+
+Each entry represents one file or directory and consists of:
+
+1. **Entry Key** (3 fields) - Path and file identification
+2. **Tree Data** (5 fields per tree) - Metadata for each tree state  
+3. **Newline** - Entry separator
+
+The total number of fields per entry is::
+
+    fields_per_entry = 3 + (5 × tree_count)
+    tree_count = 1 + num_present_parents
+
+Entry Key Fields
+----------------
+
+**Field 1: Directory Name**
+  Path to containing directory (empty string for root directory)
+
+**Field 2: Base Name** 
+  File or directory name within the directory
+
+**Field 3: File ID**
+  Unique identifier for this file/directory across renames
+
+Tree Data Fields
+----------------
+
+For each tree state (current tree plus each parent), there are 5 fields:
+
+**Field 1: Minikind**
+  Single character indicating file type:
+  
+  * ``f`` - Regular file
+  * ``d`` - Directory  
+  * ``l`` - Symbolic link
+  * ``a`` - Absent (not present in this tree)
+  * ``r`` - Relocated (moved elsewhere)
+  * ``t`` - Tree reference (submodule)
+
+**Field 2: Fingerprint**
+  Content-dependent identifier:
+  
+  * **Files**: SHA-1 hash (40 lowercase hex characters)
+  * **Symlinks**: Target path of the symlink
+  * **Directories**: Empty string
+  * **Tree references**: Referenced revision ID
+  * **Absent/Relocated**: Empty string
+
+**Field 3: Size**
+  File size in decimal bytes (``0`` for non-files)
+
+**Field 4: Executable**
+  Executable permission flag:
+  
+  * ``y`` - Executable
+  * ``n`` - Not executable
+
+**Field 5: Tree-Specific Data**
+  Format depends on tree type:
+  
+  * **Current tree**: Packed stat information (see below)
+  * **Parent trees**: Revision ID where this state was recorded
+
+Entry Serialization
+--------------------
+
+All fields are joined with null bytes and terminated with newline::
+
+    dirname\0basename\0file_id\0minikind1\0fingerprint1\0size1\0executable1\0packed_stat1\0...\0\n
+
+Example entry for root directory::
+
+    \0\0root-file-id\0d\0\00\0n\0AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\0\n
+
+Packed Stat Format
+==================
+
+The packed stat field encodes file system metadata as a 32-character base64 string.
+
+Binary Structure
+----------------
+
+The packed stat contains 6 32-bit big-endian values::
+
+    struct PackedStat {
+        size: u32,     // File size & 0xFFFFFFFF
+        mtime: u32,    // Modification time & 0xFFFFFFFF
+        ctime: u32,    // Creation time & 0xFFFFFFFF  
+        dev: u32,      // Device ID & 0xFFFFFFFF
+        ino: u32,      // Inode number & 0xFFFFFFFF
+        mode: u32,     // File mode & 0xFFFFFFFF
+    }
+
+Encoding Process
+----------------
+
+1. Pack 6 values as 24 bytes (6 × 4-byte big-endian integers)
+2. Encode with base64 to produce 32-character string
+3. Store in packed_stat field
+
+Special Values
+--------------
+
+**NULLSTAT**
+  ``xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`` (32 x characters)
+  
+  Used for files that should not be stat-cached:
+  * Files modified within 3 seconds of current time
+  * Files with unreliable stat information
+  * Directories and other non-regular files
+
+Example packed stat::
+
+    AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk
+
+Directory Organization
+======================
+
+Entry Ordering
+--------------
+
+Entries are sorted by:
+
+1. **Directory path** (as list of path components)
+2. **File name** within directory  
+3. **File ID** (for deterministic ordering)
+
+This creates "dirblocks" - consecutive entries from the same directory.
+
+Path Comparison
+---------------
+
+Paths are compared component-wise:
+
+* Split on path separators
+* Compare each component as UTF-8 strings
+* Shorter paths sort before longer paths with same prefix
+
+Example ordering::
+
+    ""             # Root directory
+    "dir1"         # Files in root
+    "dir2"
+    "subdir/"      # Subdirectory marker
+    "subdir/file1" # Files in subdirectory
+    "subdir/file2"
+
+CRC32 Integrity Checking
+=========================
+
+Checksum Calculation
+--------------------
+
+The CRC32 is calculated over all file content after the CRC32 line:
+
+1. Read entire file content after ``crc32: NNNNNNNN\n``
+2. Calculate CRC32 of this content
+3. Compare with stored checksum value
+
+The CRC32 uses the standard polynomial (0xEDB88320) with these parameters:
+* Initial value: 0xFFFFFFFF
+* Final XOR: 0xFFFFFFFF
+* Bit order: LSB first
+
+Validation Process
+------------------
+
+::
+
+    def validate_crc32(file_content, stored_crc):
+        # Find end of CRC32 line
+        crc_end = file_content.find(b'\n', file_content.find(b'crc32:')) + 1
+        
+        # Calculate CRC32 of remaining content  
+        data_content = file_content[crc_end:]
+        calculated_crc = crc32(data_content) & 0xFFFFFFFF
+        
+        return calculated_crc == stored_crc
+
+Locking Mechanism
+=================
+
+Lock Types
+----------
+
+DirState uses file-based locking with these states:
+
+* **Read Lock** - Shared access for reading
+* **Write Lock** - Exclusive access for modifications
+* **Unlocked** - No lock held
+
+Lock Implementation
+-------------------
+
+Locks are implemented using:
+
+* **.bzr/checkout/dirstate.lock** - Lock file
+* **File handle retention** - Keep file open while locked
+* **Process coordination** - Prevent concurrent modifications
+
+Lock States
+-----------
+
+The DirState object tracks lock state internally:
+
+* ``"r"`` - Read locked
+* ``"w"`` - Write locked  
+* ``None`` - Unlocked
+
+Reading Process
+===============
+
+File Loading
+------------
+
+1. **Acquire read lock** on the DirState file
+2. **Read and validate header** - Check format and extract metadata
+3. **Read parent details** - Parse parent revision list
+4. **Read ghost details** - Parse ghost revision list  
+5. **Read entry data** - Parse all directory entries
+6. **Validate CRC32** - Verify file integrity
+7. **Build dirblocks** - Group entries by directory
+
+Parsing Algorithm
+-----------------
+
+::
+
+    def read_dirstate(file_handle):
+        # Read header
+        header = file_handle.readline()
+        validate_format(header)
+        
+        # Read CRC32
+        crc_line = file_handle.readline()
+        stored_crc = extract_crc32(crc_line)
+        
+        # Read entry count
+        count_line = file_handle.readline()
+        entry_count = extract_count(count_line)
+        
+        # Read remaining content for CRC validation
+        remaining_content = file_handle.read()
+        validate_crc32(remaining_content, stored_crc)
+        
+        # Parse parent and ghost details
+        lines = remaining_content.split('\n')
+        parents = parse_parents(lines[0])
+        ghosts = parse_ghosts(lines[1])
+        
+        # Parse entries
+        entries = []
+        for line in lines[2:entry_count+2]:
+            if line:
+                entries.append(parse_entry(line))
+                
+        return DirState(parents, ghosts, entries)
+
+Entry Parsing
+-------------
+
+::
+
+    def parse_entry(line):
+        fields = line.split('\0')
+        
+        # Extract entry key
+        dirname = fields[0]
+        basename = fields[1] 
+        file_id = fields[2]
+        
+        # Extract tree data (5 fields per tree)
+        tree_count = (len(fields) - 3) // 5
+        trees = []
+        
+        for i in range(tree_count):
+            base = 3 + i * 5
+            tree_data = TreeData(
+                minikind=fields[base],
+                fingerprint=fields[base+1], 
+                size=int(fields[base+2]) if fields[base+2] else 0,
+                executable=(fields[base+3] == 'y'),
+                tree_specific=fields[base+4]
+            )
+            trees.append(tree_data)
+            
+        return Entry(dirname, basename, file_id, trees)
+
+Writing Process
+===============
+
+File Creation
+-------------
+
+1. **Acquire write lock** - Get exclusive access
+2. **Prepare data** - Serialize parents, ghosts, and entries
+3. **Calculate CRC32** - Hash the entry content
+4. **Write file** - Output header, metadata, and entries
+5. **Sync to disk** - Force filesystem write (if configured)
+6. **Update lock state** - Convert to read lock or unlock
+
+Serialization Algorithm
+-----------------------
+
+::
+
+    def write_dirstate(dirstate, file_handle):
+        # Prepare entry lines
+        entry_lines = []
+        for entry in sorted(dirstate.entries):
+            fields = [entry.dirname, entry.basename, entry.file_id]
+            
+            for tree_data in entry.trees:
+                fields.extend([
+                    tree_data.minikind,
+                    tree_data.fingerprint,
+                    str(tree_data.size),
+                    'y' if tree_data.executable else 'n',
+                    tree_data.tree_specific
+                ])
+                
+            entry_lines.append('\0'.join(fields) + '\0')
+        
+        # Prepare parent and ghost lines
+        parent_line = prepare_parents_line(dirstate.parents)
+        ghost_line = prepare_ghosts_line(dirstate.ghosts)
+        
+        # Calculate CRC32 of content
+        content = parent_line + ghost_line + '\n'.join(entry_lines) + '\n'
+        crc32_value = calculate_crc32(content)
+        
+        # Write file
+        file_handle.write(HEADER_FORMAT_3)
+        file_handle.write(f'crc32: {crc32_value}\n')
+        file_handle.write(f'num_entries: {len(entry_lines)}\n') 
+        file_handle.write(content)
+        file_handle.flush()
+
+Performance Optimization
+========================
+
+Caching Strategy
+----------------
+
+**Stat Caching**
+* Avoid redundant filesystem stat() calls
+* Compare packed_stat values to detect changes
+* Use NULLSTAT for unreliable data
+
+**Incremental Loading**
+* Load directory blocks on demand
+* Keep frequently accessed blocks in memory
+* Configurable cache size limits
+
+**Bisection Support**
+* Fast directory lookup by path
+* Efficient individual file lookup
+* Binary search on sorted entries
+
+Memory Management
+-----------------
+
+**DirBlock States**
+* **NOT_IN_MEMORY** - Content not loaded
+* **IN_MEMORY_UNMODIFIED** - Loaded, unchanged
+* **IN_MEMORY_HASH_MODIFIED** - Only metadata updates
+* **IN_MEMORY_MODIFIED** - Structural changes
+
+**Save Optimization**
+* **worth_saving_limit** - Minimum changes to trigger save (default: 10)
+* **Cutoff time** - Files modified within 3 seconds use NULLSTAT
+* **Batch updates** - Group multiple changes before saving
+
+Error Handling
+==============
+
+Format Errors
+--------------
+
+**Invalid Header**
+* Wrong format string
+* Unsupported version number
+
+**Corruption Detection**
+* CRC32 checksum mismatch
+* Incorrect field count in entries
+* Malformed null-separated fields
+
+**Lock Errors**
+* LockContention - Another process holds lock
+* LockNotHeld - Operation requires lock but none held
+* ReadOnlyError - Attempt to modify without write lock
+
+Recovery Strategies
+-------------------
+
+**Graceful Degradation**
+* Ignore entries with invalid field counts
+* Use NULLSTAT for unparseable stat data
+* Continue processing after non-critical errors
+
+**Integrity Verification**
+* Always validate CRC32 before using data
+* Check field counts match expected format
+* Verify parent/ghost count consistency
+
+Example Implementation
+======================
+
+Complete Entry Parsing
+-----------------------
+
+::
+
+    def parse_dirstate_entry(line, tree_count):
+        """Parse a single dirstate entry line."""
+        fields = line.split('\0')
+        expected_fields = 3 + (5 * tree_count)
+        
+        if len(fields) != expected_fields + 1:  # +1 for trailing empty
+            raise ValueError(f"Expected {expected_fields} fields, got {len(fields)-1}")
+            
+        # Entry key
+        dirname = fields[0]
+        basename = fields[1]
+        file_id = fields[2]
+        
+        # Tree data
+        trees = []
+        for i in range(tree_count):
+            base = 3 + i * 5
+            minikind = fields[base]
+            fingerprint = fields[base + 1]
+            size = int(fields[base + 2]) if fields[base + 2] else 0
+            executable = fields[base + 3] == 'y'
+            tree_specific = fields[base + 4]
+            
+            trees.append(TreeData(minikind, fingerprint, size, executable, tree_specific))
+            
+        return Entry(dirname, basename, file_id, trees)
+
+Packed Stat Handling
+---------------------
+
+::
+
+    def pack_stat(stat_result):
+        """Pack filesystem stat into base64 string."""
+        import struct
+        import base64
+        
+        # Pack 6 32-bit big-endian values
+        packed = struct.pack('>LLLLLL',
+            stat_result.st_size & 0xFFFFFFFF,
+            int(stat_result.st_mtime) & 0xFFFFFFFF,  
+            int(stat_result.st_ctime) & 0xFFFFFFFF,
+            stat_result.st_dev & 0xFFFFFFFF,
+            stat_result.st_ino & 0xFFFFFFFF,
+            stat_result.st_mode & 0xFFFFFFFF
+        )
+        
+        return base64.b64encode(packed).decode('ascii')
+    
+    def unpack_stat(packed_stat):
+        """Unpack base64 stat string to values."""
+        import struct
+        import base64
+        
+        if packed_stat == 'x' * 32:  # NULLSTAT
+            return None
+            
+        packed = base64.b64decode(packed_stat.encode('ascii'))
+        return struct.unpack('>LLLLLL', packed)
+
+Compatibility Considerations
+============================
+
+Format Evolution
+-----------------
+
+* **Version 3** is current format
+* **Version 2** is legacy but may be encountered
+* Unknown versions should be rejected with clear error messages
+
+Platform Differences
+---------------------
+
+* **Stat precision** - 32-bit truncation for cross-platform compatibility
+* **Path separators** - Always use forward slashes in stored paths
+* **Case sensitivity** - Preserve original case, but handle platform differences
+
+Character Encoding
+------------------
+
+* **UTF-8** encoding for all text fields
+* **Null byte separation** - Fields separated by ``\0`` 
+* **Binary data** - Packed stat uses base64 encoding
+
+Network Considerations
+======================
+
+The DirState format is **not designed for network transmission**. It is a
+local working tree format only. For network operations, use:
+
+* **Inventory Deltas** - For communicating tree state changes
+* **Bundle Format** - For transmitting revision data
+* **Pack Streams** - For repository synchronization
+
+Testing Compatibility
+======================
+
+Validation Tests
+----------------
+
+1. **Round-trip testing** - Write then read same data
+2. **CRC32 verification** - Ensure integrity checking works
+3. **Lock coordination** - Test concurrent access patterns
+4. **Performance testing** - Verify acceptable speed with large trees
+
+Test Cases
+----------
+
+* Empty working trees
+* Large trees with thousands of files
+* Trees with various file types (files, dirs, symlinks)
+* Complex parent relationships
+* Stat caching edge cases
+* Lock contention scenarios
+
+Reference Implementation
+========================
+
+The authoritative implementation is in the Breezy codebase:
+
+* ``breezy/bzr/dirstate.py`` - Main DirState implementation
+* ``breezy/bzr/lockdir.py`` - Locking mechanism
+* ``breezy/bzr/osutils.py`` - Platform-specific stat handling
+
+This specification is based on analysis of Breezy version 4.0+ and should be
+compatible with all standard DirState files created by Bazaar and Breezy.
