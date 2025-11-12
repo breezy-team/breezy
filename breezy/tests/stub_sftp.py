@@ -398,6 +398,9 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
         # to confusing errors like "'NoneType' object has no attribute 'error'".
 
         class FakeChannel:
+            def __init__(self, sock):
+                self._socket = sock
+
             def get_transport(self):
                 return self
 
@@ -411,11 +414,18 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
                 return False
 
             def close(self):
-                pass
+                # Close the underlying socket to ensure that any blocking recv()
+                # calls will be interrupted and return, preventing hangs during
+                # server shutdown.
+                try:
+                    self._socket.close()
+                except OSError:
+                    pass
 
         tcs = self.server.test_case_server
+        fake_channel = FakeChannel(self.request)
         sftp_server = paramiko.SFTPServer(
-            FakeChannel(),
+            fake_channel,
             "sftp",
             StubServer(tcs),
             StubSFTPServer,
