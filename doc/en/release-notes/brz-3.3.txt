@@ -5,6 +5,12 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.18
+##########
+
+ * Add warning about known issues in ``bzr fast-export``
+   (Jelmer Vernooĳ)
+
 brz 3.3.17
 ##########
 

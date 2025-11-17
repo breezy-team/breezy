@@ -518,6 +518,7 @@ class cmd_fast_export(Command):
         Option("no-tags", help="Don't export tags"),
     ]
     encoding_type = "exact"
+    hidden = True
 
     def run(
         self,
@@ -537,7 +538,14 @@ class cmd_fast_export(Command):
     ):
         load_fastimport()
         from ...branch import Branch
+        from ...trace import warning
         from . import exporter
+
+        warning(
+            "the 'brz fast-export' command has known issues that can lead to "
+            "data loss. It has no tests and may be removed in future releases. "
+            "Use with caution!"
+        )
 
         if marks:
             import_marks = export_marks = marks
