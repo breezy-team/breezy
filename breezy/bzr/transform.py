@@ -688,7 +688,7 @@ class TreeTransformBase(TreeTransform):
                 tree_parent = self.get_tree_parent(from_trans_id)
                 from_parent = self.tree_file_id(tree_parent)
         if from_path is not None:
-            from_kind, from_executable, from_stats = self._tree._comparison_data(
+            from_kind, from_executable, _from_stats = self._tree._comparison_data(
                 from_entry, from_path
             )
         else:
@@ -959,7 +959,7 @@ class TreeTransformBase(TreeTransform):
         """
         import fastbencode as bencode
 
-        names, content = next(records)
+        _names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b"_id_number"]
         self._new_name = {
@@ -1755,7 +1755,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                 if trans_id in self._new_executability:
                     self._set_executability(path, trans_id)
                 if trans_id in self._observed_sha1s:
-                    o_sha1, o_st_val = self._observed_sha1s[trans_id]
+                    o_sha1, _o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
         for _path, trans_id in new_paths:
@@ -1994,7 +1994,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return os.lstat(name)
 
     def _comparison_data(self, entry, path):
-        kind, size, executable, link_or_sha1 = self.path_content_summary(path)
+        kind, _size, executable, _link_or_sha1 = self.path_content_summary(path)
         if kind == "missing":
             kind = None
             executable = False
@@ -2081,7 +2081,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             parent = todo.pop()
             parent_file_id = self._transform.final_file_id(parent)
             children = list(self._all_children(parent))
-            paths = dict(zip(children, self._final_paths.get_paths(children)))
+            paths = dict(zip(children, self._final_paths.get_paths(children), strict=False))
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:

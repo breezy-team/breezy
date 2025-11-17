@@ -127,7 +127,7 @@ class cmd_verify_signatures(Command):
                 revno, rev_id = revision[0].in_history(branch)
                 revisions.append(rev_id)
             elif len(revision) == 2:
-                from_revno, from_revid = revision[0].in_history(branch)
+                from_revno, _from_revid = revision[0].in_history(branch)
                 to_revno, to_revid = revision[1].in_history(branch)
                 if to_revid is None:
                     to_revno = branch.revno()

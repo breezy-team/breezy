@@ -111,13 +111,13 @@ class TestBzrServe(TestBzrServeBase):
             "server_exception", hook, "test_server_except_hook hook"
         )
         args = ["--listen", "localhost", "--port", "0", "--quiet"]
-        out, err = self.run_bzr_serve_then_func(args, retcode=0)
+        _out, err = self.run_bzr_serve_then_func(args, retcode=0)
         self.assertEqual("catching KeyboardInterrupt\n", err)
 
     def test_server_exception_no_hook(self):
         """Test exception without hook returns error."""
         args = []
-        out, err = self.run_bzr_serve_then_func(args, retcode=3)
+        _out, _err = self.run_bzr_serve_then_func(args, retcode=3)
 
     def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""

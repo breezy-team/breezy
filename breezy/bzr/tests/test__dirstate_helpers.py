@@ -809,7 +809,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
     def test_smoketest(self):
         """Make sure that we can create and read back a simple file."""
-        tree, state, expected = self.create_basic_dirstate()
+        tree, state, _expected = self.create_basic_dirstate()
         del tree
         state._read_header_if_needed()
         self.assertEqual(dirstate.DirState.NOT_IN_MEMORY, state._dirblock_state)
@@ -818,7 +818,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED, state._dirblock_state)
 
     def test_trailing_garbage(self):
-        tree, state, expected = self.create_basic_dirstate()
+        _tree, state, _expected = self.create_basic_dirstate()
         # On Unix, we can write extra data as long as we haven't read yet, but
         # on Win32, if you've opened the file with FILE_SHARE_READ, trying to
         # open it in append mode will fail.
@@ -1339,7 +1339,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(expected_sha, sha1)
 
     def test_sha1provider_stat_and_sha1_used(self):
-        tree, text = self._prepare_tree()
+        tree, _text = self._prepare_tree()
         tree.lock_write()
         self.addCleanup(tree.unlock)
         state = tree._current_dirstate()

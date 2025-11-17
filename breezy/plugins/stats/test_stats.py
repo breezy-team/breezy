@@ -16,7 +16,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
             rev_id=b"4",
         )
         wt.commit(message="5", committer="Ferko <fero@example.com>", rev_id=b"5")
-        revs, committers = get_revisions_and_committers(
+        _revs, committers = get_revisions_and_committers(
             wt.branch.repository, [b"1", b"2", b"3", b"4", b"5"]
         )
         fero = ("Fero", "fero@example.com")
@@ -32,7 +32,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         wt.commit(message="1", committer="Fero", rev_id=b"1")
         wt.commit(message="2", committer="Fero", rev_id=b"2")
         wt.commit(message="3", committer="Jano", rev_id=b"3")
-        revs, committers = get_revisions_and_committers(
+        _revs, committers = get_revisions_and_committers(
             wt.branch.repository, [b"1", b"2", b"3"]
         )
         self.assertEqual(

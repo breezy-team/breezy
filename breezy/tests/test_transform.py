@@ -194,7 +194,7 @@ class TestTransformMerge(TestCaseInTempDir):
         base_a, this_a, other_a = (
             t.tt.new_directory("a", t.root, b"a") for t in [base, this, other]
         )
-        base_b, this_b, other_b = (
+        _base_b, this_b, other_b = (
             t.tt.new_directory("b", t.root, b"b") for t in [base, this, other]
         )
         base.tt.new_directory("c", base_a, b"c")
@@ -226,10 +226,10 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = (
+        base_a, _this_a, _other_a = (
             t.tt.new_directory("a", t.root, b"a") for t in [base, this, other]
         )
-        base_b, this_b, other_b = (
+        _base_b, this_b, other_b = (
             t.tt.new_directory("b", t.root, b"b") for t in [base, this, other]
         )
 
@@ -605,7 +605,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist(tt._limbodir)
 
     def test_rename_in_limbo_rename_raises_after_rename(self):
-        tt, trans_id = self.create_transform_and_root_trans_id()
+        tt, _trans_id = self.create_transform_and_root_trans_id()
         parent1 = tt.new_directory("parent1", tt.root)
         child1 = tt.new_file("child1", parent1, [b"contents"])
         parent2 = tt.new_directory("parent2", tt.root)
@@ -624,7 +624,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist(tt._limbodir)
 
     def test_rename_in_limbo_rename_raises_before_rename(self):
-        tt, trans_id = self.create_transform_and_root_trans_id()
+        tt, _trans_id = self.create_transform_and_root_trans_id()
         parent1 = tt.new_directory("parent1", tt.root)
         child1 = tt.new_file("child1", parent1, [b"contents"])
         parent2 = tt.new_directory("parent2", tt.root)
@@ -657,7 +657,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         return wt, tt
 
     def test_resolve_create_parent_for_versioned_file(self):
-        wt, tt = self.make_tt_with_versioned_dir()
+        _wt, tt = self.make_tt_with_versioned_dir()
         dir_tid = tt.trans_id_tree_path("dir")
         tt.new_file("file", dir_tid, [b"Contents"], file_id=b"file-id")
         tt.delete_contents(dir_tid)
@@ -668,7 +668,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         self.assertLength(2, conflicts)
 
     def test_non_versioned_file_create_conflict(self):
-        wt, tt = self.make_tt_with_versioned_dir()
+        _wt, tt = self.make_tt_with_versioned_dir()
         dir_tid = tt.trans_id_tree_path("dir")
         tt.new_file("file", dir_tid, [b"Contents"])
         tt.delete_contents(dir_tid)
@@ -996,7 +996,7 @@ class TestOrphan(tests.TestCaseWithTransport):
     def test_never_orphan(self):
         wt = self.make_branch_and_tree(".")
         self._set_orphan_policy(wt, "conflict")
-        tt, orphan_tid = self._prepare_orphan(wt)
+        tt, _orphan_tid = self._prepare_orphan(wt)
         remaining_conflicts = resolve_conflicts(tt)
         self.assertLength(1, remaining_conflicts)
         self.assertEqual(
@@ -1014,7 +1014,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         )
         wt = self.make_branch_and_tree(".")
         self._set_orphan_policy(wt, "bogus")
-        tt, orphan_tid = self._prepare_orphan(wt)
+        tt, _orphan_tid = self._prepare_orphan(wt)
         remaining_conflicts = resolve_conflicts(tt)
         self.assertLength(1, remaining_conflicts)
         self.assertEqual(
@@ -1025,7 +1025,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         # Set a fictional policy nobody ever implemented
         self._set_orphan_policy(wt, "donttouchmypreciouuus")
-        tt, orphan_tid = self._prepare_orphan(wt)
+        tt, _orphan_tid = self._prepare_orphan(wt)
         warnings = []
 
         def warning(*args):

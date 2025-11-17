@@ -28,5 +28,5 @@ class TestDeleted(TestCaseWithTransport):
         tree.add("README")
         tree.commit("r1")
         tree.remove("README")
-        out, err = self.run_bzr(["deleted", "--directory=a"])
+        out, _err = self.run_bzr(["deleted", "--directory=a"])
         self.assertEqual("README\n", out)

@@ -103,7 +103,7 @@ class TestVersionInfo(TestCaseWithTransport):
         """
         lines1 = text1.splitlines(True)
         lines2 = text2.splitlines(True)
-        for line1, line2 in zip(lines1, lines2):
+        for line1, line2 in zip(lines1, lines2, strict=False):
             if line1.startswith("build-date: "):
                 self.assertStartsWith(line2, "build-date: ")
             else:
@@ -140,7 +140,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_custom_without_template(self):
         self.make_branch_and_tree("branch")
-        out, err = self.run_bzr("version-info --custom", retcode=3)
+        _out, err = self.run_bzr("version-info --custom", retcode=3)
         self.assertContainsRe(err, r"ERROR: No template specified\.")
 
     def test_custom_implies_all(self):
@@ -179,7 +179,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(["a_file"])
         tree.add("a_file")
         tree.commit(commit_message)
-        out, err = self.run_bzr_raw(
+        _out, _err = self.run_bzr_raw(
             ["version-info", "--include-history"], encoding="latin-1"
         )
 

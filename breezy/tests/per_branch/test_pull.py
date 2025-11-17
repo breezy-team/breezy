@@ -206,7 +206,7 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder("source")
         except errors.UninitializableFormat:
             raise TestNotApplicable("uninitializeable format")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout("target").open_branch()
         # Add a tag to the source, then pull from source
         try:
@@ -227,7 +227,7 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder("source")
         except errors.UninitializableFormat:
             raise TestNotApplicable("uninitializeable format")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.controldir.sprout("target").open_branch()
         # Add a new commit to the ancestry
         rev_2_again = builder.build_commit(message="Rev 2 again")

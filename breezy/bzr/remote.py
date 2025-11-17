@@ -1032,7 +1032,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         """Return the path to be used for this bzrdir in a remote call."""
         remote_path = client.remote_path_from_transport(self.root_transport)
         remote_path = remote_path.decode("utf-8")
-        base_url, segment_parameters = urlutils.split_segment_parameters_raw(
+        base_url, _segment_parameters = urlutils.split_segment_parameters_raw(
             remote_path
         )
         base_url = base_url.encode("utf-8")
@@ -1695,7 +1695,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb, strict=False))
 
     def has_same_location(self, other):
         # TODO: Move to RepositoryBase and unify with the regular Repository
@@ -1828,7 +1828,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         err_context = {"token": token}
         response = self._call(b"Repository.lock_write", path, token, **err_context)
         if response[0] == b"ok":
-            ok, token = response
+            _ok, token = response
             return token
         else:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -2211,7 +2211,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         lines = self._serializer.write_revision_to_lines(rev)
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
-        self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
+        self._write_group_tokens, _missing_keys = self._get_sink().insert_stream(
             [
                 (
                     "revisions",
@@ -2267,7 +2267,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 "Unexpected stream {!r} received".format(substream_kind)
             )
         for record in substream:
-            (parent_id, new_id, versioned_root, tree_references, invdelta) = (
+            (parent_id, new_id, _versioned_root, _tree_references, invdelta) = (
                 deserializer.parse_text_bytes(record.get_bytes_as("lines"))
             )
             if parent_id != prev_inv.revision_id:
@@ -3242,7 +3242,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         substream that couldn't be sent via an insert_stream verb.
         """
         if response[0][0] == b"missing-basis":
-            tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            tokens, _missing_keys = bencode.bdecode_as_tuple(response[0][1])
             tokens = [token.decode("utf-8") for token in tokens]
             # Ignore missing_keys, we haven't finished inserting yet
         else:
@@ -4185,7 +4185,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             ) from e
         if response[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(response)
-        ok, branch_token, repo_token = response
+        _ok, branch_token, repo_token = response
         return branch_token, repo_token
 
     def lock_write(self, token=None):

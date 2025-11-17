@@ -346,7 +346,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
         :return: norepository or ok, relpath.
         """
         try:
-            path, rich_root, tree_ref, external_lookup, name = self._find(path)
+            path, rich_root, tree_ref, _external_lookup, _name = self._find(path)
             return SuccessfulSmartServerResponse(
                 (b"ok", path.encode("utf-8"), rich_root, tree_ref)
             )
@@ -371,7 +371,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
             external_lookup.
         """
         try:
-            path, rich_root, tree_ref, external_lookup, name = self._find(path)
+            path, rich_root, tree_ref, external_lookup, _name = self._find(path)
             return SuccessfulSmartServerResponse(
                 (b"ok", path.encode("utf-8"), rich_root, tree_ref, external_lookup)
             )

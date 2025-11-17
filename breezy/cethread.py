@@ -145,7 +145,7 @@ class CatchingExceptionThread(threading.Thread):
         """
         super().join(timeout)
         if self.exception is not None:
-            exc_class, exc_value, exc_tb = self.exception
+            _exc_class, exc_value, _exc_tb = self.exception
             self.exception = None  # The exception should be raised only once
             if self.ignored_exceptions is None or not self.ignored_exceptions(
                 exc_value

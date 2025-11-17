@@ -400,7 +400,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
 
-        for expected, (path, ie) in zip(path_and_ids, path_entries):
+        for expected, (path, ie) in zip(path_and_ids, path_entries, strict=False):
             self.assertEqual(expected[0], path)  # Paths should match
             self.assertIsInstance(path, str)
             self.assertEqual(expected[1], ie.file_id)
@@ -470,7 +470,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             path_entries = list(tree.iter_entries_by_dir())
 
         for (epath, efid, eparent, _erev), (path, ie) in zip(
-            path_and_ids, path_entries
+            path_and_ids, path_entries, strict=False
         ):
             self.assertEqual(epath, path)  # Paths should match
             self.assertIsInstance(path, str)
@@ -512,7 +512,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         return tree, subtree
 
     def test_iter_entries_with_unfollowed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [("", "directory"), ("subtree", "tree-reference")]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir(recurse_nested=False))
@@ -520,7 +520,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(expected, actual)
 
     def test_iter_entries_with_followed_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         expected = [("", "directory"), ("subtree", "directory"), ("subtree/a", "file")]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir(recurse_nested=True))
@@ -528,7 +528,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(expected, actual)
 
     def test_iter_entries_with_missing_reference(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         shutil.rmtree("wt/subtree")
         with tree.lock_read():
             self.assertRaises(

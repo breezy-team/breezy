@@ -350,7 +350,7 @@ def find_credits(repository, revid):
         ]
         revs = repository.get_revisions(ancestry)
         with ui.ui_factory.nested_progress_bar() as pb:
-            iterator = zip(revs, repository.get_revision_deltas(revs))
+            iterator = zip(revs, repository.get_revision_deltas(revs), strict=False)
             for i, (rev, delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges

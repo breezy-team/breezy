@@ -181,7 +181,7 @@ def create_upgrade_plan(
     )
 
     def remove_parents(entry):
-        (oldrevid, (newrevid, parents)) = entry
+        (oldrevid, (newrevid, _parents)) = entry
         return (oldrevid, newrevid)
 
     upgrade_map.update(dict(map(remove_parents, plan.iteritems())))

@@ -224,7 +224,7 @@ class CommitHandler(processor.CommitHandler):
                         return id, False
 
         # Doesn't exist yet so create it
-        dirname, basename = osutils.split(path)
+        _dirname, basename = osutils.split(path)
         id = generate_ids.gen_file_id(basename)
         self.debug(
             "Generated new file id %s for '%s' in revision-id '%s'",

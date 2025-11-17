@@ -57,7 +57,7 @@ class TestUncommit(TestCaseWithTransport):
 
         # This should look like we are back in revno 1
         self.assertEqual([b"a1"], wt.get_parent_ids())
-        out, err = self.run_bzr("status")
+        out, _err = self.run_bzr("status")
         self.assertEqual(out, "modified:\n  a\n")
 
     def test_uncommit_interactive(self):
@@ -97,7 +97,7 @@ class TestUncommit(TestCaseWithTransport):
 
         self.assertEqual([b"a2"], checkout_tree.get_parent_ids())
 
-        out, err = self.run_bzr("uncommit --force")
+        out, _err = self.run_bzr("uncommit --force")
         self.assertNotContainsRe(out, "initial commit")
         self.assertContainsRe(out, "second commit")
 
@@ -134,7 +134,7 @@ class TestUncommit(TestCaseWithTransport):
         rev_id3 = t_a.commit("commit 3")
         b = t_a.branch.create_checkout("b").branch
 
-        out, err = self.run_bzr(["uncommit", "--local", "b", "--force"])
+        _out, _err = self.run_bzr(["uncommit", "--local", "b", "--force"])
         self.assertEqual(rev_id3, t_a.last_revision())
         self.assertEqual((3, rev_id3), t_a.branch.last_revision_info())
         self.assertEqual((2, rev_id2), b.last_revision_info())
@@ -143,7 +143,7 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.create_simple_tree()
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit -r1 --force")
+        out, _err = self.run_bzr("uncommit -r1 --force")
 
         self.assertNotContainsRe(out, "initial commit")
         self.assertContainsRe(out, "second commit")
@@ -153,7 +153,7 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_neg_1(self):
         self.create_simple_tree()
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit -r -1", retcode=1)
+        out, _err = self.run_bzr("uncommit -r -1", retcode=1)
         self.assertEqual("No revisions to uncommit.\n", out)
 
     def test_uncommit_merges(self):
@@ -170,7 +170,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a3"], wt.get_parent_ids())
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --force")
+        _out, _err = self.run_bzr("uncommit --force")
 
         self.assertEqual([b"a2", b"b4"], wt.get_parent_ids())
 
@@ -183,7 +183,7 @@ class TestUncommit(TestCaseWithTransport):
         wt.set_pending_merges([b"b3"])
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --force")
+        _out, _err = self.run_bzr("uncommit --force")
         self.assertEqual([b"a1", b"b3"], wt.get_parent_ids())
 
     def test_uncommit_multiple_merge(self):
@@ -204,7 +204,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a4"], wt.get_parent_ids())
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --force -r 2")
+        _out, _err = self.run_bzr("uncommit --force -r 2")
 
         self.assertEqual([b"a2", b"b3", b"c3"], wt.get_parent_ids())
 
@@ -225,7 +225,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual([b"a3", b"c3"], wt.get_parent_ids())
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --force -r 2")
+        _out, _err = self.run_bzr("uncommit --force -r 2")
 
         self.assertEqual([b"a2", b"b3", b"c3"], wt.get_parent_ids())
 
@@ -289,28 +289,28 @@ You can restore the old tip by running:
         self.assertEqual([b"a4"], wt.get_parent_ids())
 
         os.chdir("tree")
-        out, err = self.run_bzr("uncommit --force -r 2")
+        _out, _err = self.run_bzr("uncommit --force -r 2")
 
         self.assertEqual([b"a2", b"c4", b"b4"], wt.get_parent_ids())
 
     def test_uncommit_nonascii(self):
         tree = self.make_branch_and_tree("tree")
         tree.commit("\u1234 message")
-        out, err = self.run_bzr("uncommit --force tree", encoding="ascii")
+        out, _err = self.run_bzr("uncommit --force tree", encoding="ascii")
         self.assertContainsRe(out, r"\? message")
 
     def test_uncommit_removes_tags(self):
         tree = self.make_branch_and_tree("tree")
         revid = tree.commit("message")
         tree.branch.tags.set_tag("atag", revid)
-        out, err = self.run_bzr("uncommit --force tree")
+        _out, _err = self.run_bzr("uncommit --force tree")
         self.assertEqual({}, tree.branch.tags.get_tag_dict())
 
     def test_uncommit_keep_tags(self):
         tree = self.make_branch_and_tree("tree")
         revid = tree.commit("message")
         tree.branch.tags.set_tag("atag", revid)
-        out, err = self.run_bzr("uncommit --keep-tags --force tree")
+        _out, _err = self.run_bzr("uncommit --keep-tags --force tree")
         self.assertEqual({"atag": revid}, tree.branch.tags.get_tag_dict())
 
 

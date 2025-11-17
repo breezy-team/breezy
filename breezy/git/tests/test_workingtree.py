@@ -484,7 +484,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         a = Blob.from_string(b"irrelevant\n")
         self.build_tree_contents([("a/.git/HEAD", a.id)])
         with self.wt.lock_tree_write():
-            (index, index_path) = self.wt._lookup_index(b"a")
+            (index, _index_path) = self.wt._lookup_index(b"a")
             index[b"a"] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id)
             self.wt._index_dirty = True
         t = Tree()
@@ -495,7 +495,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
     def test_submodule_not_checked_out(self):
         a = Blob.from_string(b"irrelevant\n")
         with self.wt.lock_tree_write():
-            (index, index_path) = self.wt._lookup_index(b"a")
+            (index, _index_path) = self.wt._lookup_index(b"a")
             index[b"a"] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id)
             self.wt._index_dirty = True
         os.mkdir(self.wt.abspath("a"))

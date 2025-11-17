@@ -493,7 +493,7 @@ class Commit:
         # Merge local tags to remote
         if self.bound_branch:
             self._set_progress_stage("Merging tags to master branch")
-            tag_updates, tag_conflicts = self.branch.tags.merge_to(
+            _tag_updates, tag_conflicts = self.branch.tags.merge_to(
                 self.master_branch.tags
             )
             if tag_conflicts:

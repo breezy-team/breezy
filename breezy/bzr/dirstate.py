@@ -1006,7 +1006,7 @@ class DirState:
                                 # We already processed this one as a directory,
                                 # we don't need to do the extra work again.
                                 continue
-                            subdir, name, file_id = dir_name_id
+                            subdir, name, _file_id = dir_name_id
                             path = osutils.pathjoin(subdir, name)
                             is_dir = True
                             if path not in processed_dirs:
@@ -1625,7 +1625,7 @@ class DirState:
                 # Remove the current contents of the tree at orig_path, and
                 # reinsert at the correct new path.
                 for entry in new_deletes:
-                    child_dirname, child_basename, child_file_id = entry[0]
+                    child_dirname, child_basename, _child_file_id = entry[0]
                     if child_dirname:
                         source_path = child_dirname + b"/" + child_basename
                     else:
@@ -1672,7 +1672,7 @@ class DirState:
         id_index = self._get_id_index()
         for file_id in new_ids:
             for key in id_index.get(file_id, ()):
-                block_i, entry_i, d_present, f_present = self._get_block_entry_index(
+                block_i, entry_i, _d_present, f_present = self._get_block_entry_index(
                     key[0], key[1], tree_index
                 )
                 if not f_present:
@@ -1800,7 +1800,7 @@ class DirState:
                 # need
                 keys = id_index.get(file_id, ())
                 for key in keys:
-                    block_i, entry_i, d_present, f_present = (
+                    block_i, entry_i, _d_present, f_present = (
                         self._get_block_entry_index(key[0], key[1], 0)
                     )
                     if not f_present:
@@ -1870,7 +1870,7 @@ class DirState:
                 self._raise_invalid(old_path, file_id, "bad delete delta")
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
-            block_index, entry_index, dir_present, file_present = (
+            block_index, entry_index, _dir_present, file_present = (
                 self._get_block_entry_index(dirname, basename, 1)
             )
             if not file_present:
@@ -1924,7 +1924,7 @@ class DirState:
                 # There is still an active record, so just mark this
                 # removed.
                 entry[1][1] = null
-                block_i, entry_i, d_present, f_present = self._get_block_entry_index(
+                block_i, _entry_i, d_present, _f_present = self._get_block_entry_index(
                     old_path, b"", 1
                 )
                 if d_present:
@@ -2246,7 +2246,7 @@ class DirState:
                 )
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
-            block_index, entry_index, dir_present, file_present = (
+            block_index, entry_index, _dir_present, file_present = (
                 self._get_block_entry_index(dirname, basename, tree_index)
             )
             if not file_present:
@@ -3547,7 +3547,7 @@ class DirState:
                         raise AssertionError(
                             "missing block for entry key: %r", entry_key
                         )
-                    entry_index, present = self._find_entry_index(
+                    _entry_index, present = self._find_entry_index(
                         entry_key, self._dirblocks[block_index][1]
                     )
                     if not present:
@@ -3701,7 +3701,7 @@ def py_update_entry(
             # This changed from something into a directory. Make sure we
             # have a directory block for it. This doesn't happen very
             # often, so this doesn't have to be super fast.
-            block_index, entry_index, dir_present, file_present = (
+            block_index, entry_index, _dir_present, _file_present = (
                 state._get_block_entry_index(entry[0][0], entry[0][1], 0)
             )
             state._ensure_block(

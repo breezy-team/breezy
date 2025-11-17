@@ -66,18 +66,18 @@ class OptionTests(TestCase):
 
     def test_option_help(self):
         """Options have help strings."""
-        out, err = self.run_bzr("commit --help")
+        out, _err = self.run_bzr("commit --help")
         self.assertContainsRe(out, r"--file(.|\n)*Take commit message from this file\.")
         self.assertContainsRe(out, r"-h.*--help")
 
     def test_option_help_global(self):
         """Global options have help strings."""
-        out, err = self.run_bzr("help status")
+        out, _err = self.run_bzr("help status")
         self.assertContainsRe(out, r"--show-ids.*Show internal object.")
 
     def test_option_help_global_hidden(self):
         """Hidden global options have no help strings."""
-        out, err = self.run_bzr("help log")
+        out, _err = self.run_bzr("help log")
         self.assertNotContainsRe(out, r"--message")
 
     def test_option_arg_help(self):
@@ -87,7 +87,7 @@ class OptionTests(TestCase):
         self.assertContainsRe(out, r"--file[ =]MSGFILE")
 
     def test_unknown_short_opt(self):
-        out, err = self.run_bzr("help -r", retcode=3)
+        _out, err = self.run_bzr("help -r", retcode=3)
         self.assertContainsRe(err, r"no such option")
 
     def test_set_short_name(self):
@@ -112,7 +112,7 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ["--hello", "--no-hello"])
         self.assertEqual(False, opts.hello)
         options = [option.Option("number", type=int)]
-        opts, args = self.parse(options, ["--number", "6"])
+        opts, _args = self.parse(options, ["--number", "6"])
         self.assertEqual(6, opts.number)
         self.assertRaises(errors.CommandError, self.parse, options, ["--number"])
         self.assertRaises(errors.CommandError, self.parse, options, ["--no-number"])
@@ -146,7 +146,7 @@ class OptionTests(TestCase):
         self.assertEqual({"format": "two"}, opts)
         opts, args = self.parse(options, ["--two", "--one"])
         self.assertEqual({"format": "one"}, opts)
-        opts, args = self.parse(options, ["--two", "--one", "--format", "two"])
+        opts, _args = self.parse(options, ["--two", "--one", "--format", "two"])
         self.assertEqual({"format": "two"}, opts)
         options = [
             option.RegistryOption("format", "", registry, str, enum_switch=False)
@@ -164,7 +164,7 @@ class OptionTests(TestCase):
         self.assertEqual("a", opts.hello)
         opts, args = self.parse(options, ["--hello", "a", "--hi", "b"])
         self.assertEqual("b", opts.hello)
-        opts, args = self.parse(options, ["--hi", "b", "--hello", "a"])
+        opts, _args = self.parse(options, ["--hi", "b", "--hello", "a"])
         self.assertEqual("a", opts.hello)
 
     def test_registry_converter(self):
@@ -176,7 +176,7 @@ class OptionTests(TestCase):
                 controldir.format_registry.make_controldir,
             )
         ]
-        opts, args = self.parse(options, ["--format", "knit"])
+        opts, _args = self.parse(options, ["--format", "knit"])
         self.assertIsInstance(
             opts.format.repository_format, knitrepo.RepositoryFormatKnit1
         )
@@ -190,7 +190,7 @@ class OptionTests(TestCase):
                 converter=str,
             )
         ]
-        opts, args = self.parse(options, ["--format", "knit"])
+        opts, _args = self.parse(options, ["--format", "knit"])
         self.assertEqual({"format": "knit"}, opts)
         self.assertRaises(
             option.BadOptionValue, self.parse, options, ["--format", "BAD"]
@@ -287,12 +287,12 @@ class OptionTests(TestCase):
             cb_calls.append((option, name, value, parser))
 
         options = [option.Option("hello", custom_callback=cb)]
-        opts, args = self.parse(options, ["--hello", "--no-hello"])
+        _opts, _args = self.parse(options, ["--hello", "--no-hello"])
         self.assertEqual(2, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
         self.assertEqual("hello", name)
         self.assertTrue(value)
-        opt, name, value, parser = cb_calls[1]
+        _opt, name, value, _parser = cb_calls[1]
         self.assertEqual("hello", name)
         self.assertFalse(value)
 
@@ -304,12 +304,12 @@ class OptionTests(TestCase):
             cb_calls.append((option, name, value, parser))
 
         options = [option.Option("hello", type=str, custom_callback=cb, short_name="h")]
-        opts, args = self.parse(options, ["--hello", "world", "-h", "mars"])
+        _opts, _args = self.parse(options, ["--hello", "world", "-h", "mars"])
         self.assertEqual(2, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
         self.assertEqual("hello", name)
         self.assertEqual("world", value)
-        opt, name, value, parser = cb_calls[1]
+        _opt, name, value, _parser = cb_calls[1]
         self.assertEqual("hello", name)
         self.assertEqual("mars", value)
 
@@ -323,27 +323,27 @@ class TestListOptions(TestCase):
 
     def test_list_option(self):
         options = [option.ListOption("hello", type=str)]
-        opts, args = self.parse(options, ["--hello=world", "--hello=sailor"])
+        opts, _args = self.parse(options, ["--hello=world", "--hello=sailor"])
         self.assertEqual(["world", "sailor"], opts.hello)
 
     def test_list_option_with_dash(self):
         options = [option.ListOption("with-dash", type=str)]
-        opts, args = self.parse(options, ["--with-dash=world", "--with-dash=sailor"])
+        opts, _args = self.parse(options, ["--with-dash=world", "--with-dash=sailor"])
         self.assertEqual(["world", "sailor"], opts.with_dash)
 
     def test_list_option_no_arguments(self):
         options = [option.ListOption("hello", type=str)]
-        opts, args = self.parse(options, [])
+        opts, _args = self.parse(options, [])
         self.assertEqual([], opts.hello)
 
     def test_list_option_with_int_type(self):
         options = [option.ListOption("hello", type=int)]
-        opts, args = self.parse(options, ["--hello=2", "--hello=3"])
+        opts, _args = self.parse(options, ["--hello=2", "--hello=3"])
         self.assertEqual([2, 3], opts.hello)
 
     def test_list_option_with_int_type_can_be_reset(self):
         options = [option.ListOption("hello", type=int)]
-        opts, args = self.parse(
+        opts, _args = self.parse(
             options, ["--hello=2", "--hello=3", "--hello=-", "--hello=5"]
         )
         self.assertEqual([5], opts.hello)
@@ -351,7 +351,7 @@ class TestListOptions(TestCase):
     def test_list_option_can_be_reset(self):
         """Passing an option of '-' to a list option should reset the list."""
         options = [option.ListOption("hello", type=str)]
-        opts, args = self.parse(
+        opts, _args = self.parse(
             options, ["--hello=a", "--hello=b", "--hello=-", "--hello=c"]
         )
         self.assertEqual(["c"], opts.hello)
@@ -365,7 +365,7 @@ class TestListOptions(TestCase):
             cb_calls.append((option, name, value[:], parser))
 
         options = [option.ListOption("hello", type=str, custom_callback=cb)]
-        opts, args = self.parse(options, ["--hello=world", "--hello=mars", "--hello=-"])
+        _opts, _args = self.parse(options, ["--hello=world", "--hello=mars", "--hello=-"])
         self.assertEqual(3, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
         self.assertEqual("hello", name)
@@ -373,14 +373,14 @@ class TestListOptions(TestCase):
         opt, name, value, parser = cb_calls[1]
         self.assertEqual("hello", name)
         self.assertEqual(["world", "mars"], value)
-        opt, name, value, parser = cb_calls[2]
+        _opt, name, value, _parser = cb_calls[2]
         self.assertEqual("hello", name)
         self.assertEqual([], value)
 
     def test_list_option_param_name(self):
         """Test list options can have their param_name set."""
         options = [option.ListOption("hello", type=str, param_name="greeting")]
-        opts, args = self.parse(options, ["--hello=world", "--hello=sailor"])
+        opts, _args = self.parse(options, ["--hello=world", "--hello=sailor"])
         self.assertEqual(["world", "sailor"], opts.greeting)
 
 
@@ -458,14 +458,14 @@ class TestOptionMisc(TestCase):
         )
         opts, args = parse([ropt], ["--short"])
         self.assertEqual("ShortChoice", opts.choice)
-        opts, args = parse([ropt], ["-s"])
+        opts, _args = parse([ropt], ["-s"])
         self.assertEqual("ShortChoice", opts.choice)
 
 
 class TestVerboseQuietLinkage(TestCase):
     def check(self, parser, level, args):
         option._verbosity_level = 0
-        opts, args = parser.parse_args(args)
+        _opts, args = parser.parse_args(args)
         self.assertEqual(level, option._verbosity_level)
 
     def test_verbose_quiet_linkage(self):

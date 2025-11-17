@@ -519,7 +519,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         for revid in set(revids):
             if self.target.has_revision(revid):
                 continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            git_sha, _mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         return self.get_determine_wants_heads(
             wants, include_tags=include_tags, tag_selector=tag_selector
@@ -685,7 +685,7 @@ class InterGitGitRepository(InterFromGitRepository):
             ret = []
             for name, (sha1, bzr_revid) in list(new_refs.items()):
                 if sha1 is None:
-                    sha1, unused_mapping = self.source.lookup_bzr_revision_id(bzr_revid)
+                    sha1, _unused_mapping = self.source.lookup_bzr_revision_id(bzr_revid)
                 new_refs[name] = (sha1, bzr_revid)
                 ret.append(sha1)
             ref_changes.update(new_refs)
@@ -747,7 +747,7 @@ class InterGitGitRepository(InterFromGitRepository):
         for revid in set(revids):
             if revid == NULL_REVISION:
                 continue
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            git_sha, _mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         return self.get_determine_wants_heads(
             wants, include_tags=include_tags, tag_selector=tag_selector

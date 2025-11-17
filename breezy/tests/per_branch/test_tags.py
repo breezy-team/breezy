@@ -138,7 +138,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual(b2.tags.lookup_tag("conflicts"), revid2)
 
     def test_merge_tags_selector(self):
-        b1, [revid, revid1] = self.make_branch_with_revision_tuple("b1", 2)
+        b1, [revid, _revid1] = self.make_branch_with_revision_tuple("b1", 2)
         w2 = b1.controldir.sprout("b2", revision_id=revid).open_workingtree()
         revid2 = w2.commit("revision 2")
         b2 = w2.branch
@@ -244,7 +244,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual({"one": revids[1]}, b.tags.get_tag_dict())
 
     def test_delete_tag_invalides_cache(self):
-        b, revids = self.make_write_locked_branch_with_one_tag()
+        b, _revids = self.make_write_locked_branch_with_one_tag()
         b.tags.delete_tag("one")
         self.assertEqual({}, b.tags.get_tag_dict())
 

@@ -134,7 +134,7 @@ Using shared repository: {}
 
     def test_init_existing_branch(self):
         self.run_bzr("init")
-        out, err = self.run_bzr("init", retcode=3)
+        _out, err = self.run_bzr("init", retcode=3)
         self.assertContainsRe(err, "Already a branch")
         # don't suggest making a checkout, there's already a working tree
         self.assertFalse(re.search(r"checkout", err))
@@ -146,7 +146,7 @@ Using shared repository: {}
         # make a branch; by default without a working tree
         self.run_bzr("init subdir")
         # fail
-        out, err = self.run_bzr("init subdir", retcode=3)
+        _out, err = self.run_bzr("init subdir", retcode=3)
         # suggests using checkout
         self.assertContainsRe(err, "ontains a branch.*but no working tree.*checkout")
 
@@ -191,19 +191,19 @@ Using shared repository: {}
 default_format = 1.9
 """)
         g_store.save()
-        out, err = self.run_brz_subprocess("init")
+        out, _err = self.run_brz_subprocess("init")
         self.assertContainsRe(out, b"1.9")
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""
-        out, err = self.run_bzr("init --no-tree")
+        out, _err = self.run_bzr("init --no-tree")
         self.assertStartsWith(out, "Created a standalone branch")
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init(self):
         # init on a remote url should succeed.
-        out, err = self.run_bzr(["init", "--format=pack-0.92", self.get_url()])
+        out, _err = self.run_bzr(["init", "--format=pack-0.92", self.get_url()])
         self.assertEqual(out, """Created a standalone branch (format: pack-0.92)\n""")
 
     def test_init_existing_branch(self):
@@ -211,7 +211,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.make_branch(".")
 
         # rely on SFTPServer get_url() pointing at '.'
-        out, err = self.run_bzr_error(["Already a branch"], ["init", self.get_url()])
+        _out, err = self.run_bzr_error(["Already a branch"], ["init", self.get_url()])
 
         # make sure using 'brz checkout' is not suggested
         # for remote locations missing a working tree
@@ -246,6 +246,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # is not available.
         self.overrideEnv("EMAIL", None)
         self.overrideEnv("BRZ_EMAIL", None)
-        out, err = self.run_bzr(["init", "foo"])
+        _out, err = self.run_bzr(["init", "foo"])
         self.assertEqual(err, "")
         self.assertTrue(os.path.exists("foo"))

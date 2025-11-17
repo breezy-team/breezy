@@ -32,7 +32,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
     def test_add_bytes_to_chk_bytes_store(self):
         repo = self.make_repository(".")
         with repo.lock_write(), repository.WriteGroup(repo):
-            sha1, len, _ = repo.chk_bytes.add_lines(
+            sha1, _len, _ = repo.chk_bytes.add_lines(
                 (None,), None, [b"foo\n", b"bar\n"], random_id=True
             )
             self.assertEqual(b"4e48e2c9a3d2ca8a708cb0cc545700544efb5021", sha1)
@@ -87,7 +87,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         with repository.WriteGroup(repo):
-            sha1, len, _ = repo.chk_bytes.add_lines(
+            sha1, _len, _ = repo.chk_bytes.add_lines(
                 (None,), None, [b"foo\n", b"bar\n"], random_id=True
             )
             self.assertEqual(b"4e48e2c9a3d2ca8a708cb0cc545700544efb5021", sha1)

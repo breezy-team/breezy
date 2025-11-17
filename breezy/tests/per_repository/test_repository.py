@@ -397,7 +397,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.
-            escaped_message, escape_count = re.subn(
+            escaped_message, _escape_count = re.subn(
                 "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",
                 lambda match: match.group(0).encode("unicode_escape").decode("ascii"),
                 message,
@@ -439,7 +439,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         revision_ids = [a_rev, b_rev, c_rev]
         revisions = repo.get_revisions(revision_ids)
         self.assertEqual(len(revisions), 3)
-        zipped = list(zip(revisions, revision_ids))
+        zipped = list(zip(revisions, revision_ids, strict=False))
         self.assertEqual(len(zipped), 3)
         for revision, revision_id in zipped:
             self.assertEqual(revision.revision_id, revision_id)

@@ -26,7 +26,7 @@ from . import test_server
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
     def test_read_mergeable_skips_local(self):
         """A local bundle named like the URL should not be read."""
-        out, wt = test_read_bundle.create_bundle_file(self)
+        out, _wt = test_read_bundle.create_bundle_file(self)
 
         class FooService:
             """A directory service that always returns source."""

@@ -329,7 +329,7 @@ class VersionedFileTestMixIn:
             shas.append(sha)
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
-            shas, (empty_text, sample_text_nl, sample_text_no_nl)
+            shas, (empty_text, sample_text_nl, sample_text_no_nl), strict=False
         ):
             self.assertRaises(
                 ExistingContent,
@@ -359,7 +359,7 @@ class VersionedFileTestMixIn:
         except NotImplementedError as e:
             raise TestSkipped("add_lines_with_ghosts is optional") from e
         for sha, (version, lines) in zip(
-            shas, (empty_text, sample_text_nl, sample_text_no_nl)
+            shas, (empty_text, sample_text_nl, sample_text_no_nl), strict=False
         ):
             self.assertRaises(
                 ExistingContent,
@@ -1792,7 +1792,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             shas.append(sha)
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
-            shas, (empty_text, sample_text_nl, sample_text_no_nl)
+            shas, (empty_text, sample_text_nl, sample_text_no_nl), strict=False
         ):
             new_key = self.get_simple_key(version + b"2")
             self.assertRaises(
@@ -2262,7 +2262,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """
         # We make assertions during copying to catch things early for easier
         # debugging. This must use the iterating zip() from the future.
-        for record, ref_record in zip(stream, expected):
+        for record, ref_record in zip(stream, expected, strict=False):
             records.append(record)
             self.assertEqual(ref_record.key, record.key)
             self.assertEqual(ref_record.storage_kind, record.storage_kind)

@@ -38,7 +38,7 @@ class NoTemplate(errors.BzrError):
 
 
 class Template:
-    """A simple template engine.
+    r"""A simple template engine.
 
     >>> t = Template()
     >>> t.add('test', 'xxx')

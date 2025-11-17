@@ -136,7 +136,7 @@ def user_agent_for_github():
 
 
 def is_github_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (_scheme, _user, _password, host, _port, _path) = urlutils.parse_url(url)
     return host in ("github.com", "gopkg.in")
 
 
@@ -250,7 +250,7 @@ def extract_git_foreign_revid(rev):
     except AttributeError:
         from .mapping import mapping_registry
 
-        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+        foreign_revid, _mapping = mapping_registry.parse_revision_id(rev.revision_id)
         return foreign_revid
     else:
         from .mapping import foreign_vcs_git

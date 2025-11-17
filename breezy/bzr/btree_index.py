@@ -1292,7 +1292,7 @@ class BTreeGraphIndex:
                 next_parents_to_check = set()
                 for key in parents_to_check:
                     if key in node:
-                        value, refs = node[key]
+                        _value, refs = node[key]
                         parent_keys = refs[ref_list_num]
                         parent_map[key] = parent_keys
                         next_parents_to_check.update(parent_keys)

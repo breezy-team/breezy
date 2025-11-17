@@ -111,5 +111,5 @@ log_format=line
         log, err = self.run_bzr("log --line")
         self.assertContainsString(log, "SENT...")
         self.overrideEnv("BRZ_COLUMNS", "0")
-        log, err = self.run_bzr("log --line")
+        log, _err = self.run_bzr("log --line")
         self.assertContainsString(log, "SENTINEL")

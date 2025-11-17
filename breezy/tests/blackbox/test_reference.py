@@ -29,7 +29,7 @@ class TestReference(TestCaseWithTransport):
         tree.add_reference(self.make_branch_and_tree("branch/lath"))
         tree.set_reference_info("path", "http://example.org")
         tree.set_reference_info("lath", "http://example.org/2")
-        out, err = self.run_bzr("reference", working_dir="branch")
+        out, _err = self.run_bzr("reference", working_dir="branch")
         lines = out.splitlines()
         self.assertEqual("lath http://example.org/2", lines[0])
         self.assertEqual("path http://example.org", lines[1])
@@ -44,23 +44,23 @@ class TestReference(TestCaseWithTransport):
 
     def test_uses_working_tree_location(self):
         self.make_tree_with_reference()
-        out, err = self.run_bzr("reference", working_dir="tree")
+        out, _err = self.run_bzr("reference", working_dir="tree")
         self.assertContainsRe(out, "newpath http://example.org\n")
 
     def test_uses_basis_tree_location(self):
         tree = self.make_tree_with_reference()
         tree.controldir.destroy_workingtree()
-        out, err = self.run_bzr("reference", working_dir="tree")
+        out, _err = self.run_bzr("reference", working_dir="tree")
         self.assertContainsRe(out, "newpath http://example.org\n")
 
     def test_one_arg_displays(self):
         self.make_tree_with_reference()
-        out, err = self.run_bzr("reference newpath", working_dir="tree")
+        out, _err = self.run_bzr("reference newpath", working_dir="tree")
         self.assertEqual("newpath http://example.org\n", out)
 
     def test_one_arg_uses_containing_tree(self):
         self.make_tree_with_reference()
-        out, err = self.run_bzr("reference -d tree newpath")
+        out, _err = self.run_bzr("reference -d tree newpath")
         self.assertEqual("newpath http://example.org\n", out)
 
     def test_two_args_sets(self):
@@ -75,7 +75,7 @@ class TestReference(TestCaseWithTransport):
 
     def test_missing_file(self):
         self.make_branch_and_tree("tree")
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             "reference file http://example.org", working_dir="tree", retcode=3
         )
         self.assertEqual("brz: ERROR: file is not versioned.\n", err)

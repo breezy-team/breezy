@@ -123,7 +123,7 @@ class TestImportCommit(tests.TestCase):
         c.author = b"Author"
         c.id  # noqa: B018
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(
+        rev, _roundtrip_revid, _verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr
         )
         self.assertIs(rev.message, None)
@@ -271,7 +271,7 @@ class TestImportCommit(tests.TestCase):
         )
         c.mergetag = [tag]
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(
+        rev, _roundtrip_revid, _verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr
         )
         self.assertEqual(
@@ -430,7 +430,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        rev, roundtrip_revid, verifiers = self.mapping.import_commit(
+        rev, _roundtrip_revid, _verifiers = self.mapping.import_commit(
             commit1, self.mapping.revision_id_foreign_to_bzr, strict=True
         )
         commit2 = self.mapping.export_commit(rev, "12341212121212", None, True, None)

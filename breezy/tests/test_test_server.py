@@ -36,7 +36,7 @@ def portable_socket_pair():
     listen_sock.listen(1)
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_sock.connect(listen_sock.getsockname())
-    server_sock, addr = listen_sock.accept()
+    server_sock, _addr = listen_sock.accept()
     listen_sock.close()
     return server_sock, client_sock
 
@@ -96,7 +96,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         elif req == b"ping\n":
             self.request.sendall(b"pong\n")
         else:
-            raise ValueError("[%s] not understood" % req)
+            raise ValueError("[{}] not understood".format(req))
 
 
 class TestTCPServerInAThread(tests.TestCase):
@@ -297,7 +297,7 @@ class TestTestingSmartServer(tests.TestCase):
 
 
 class FakeServer:
-    """Minimal implementation to pass to TestingSmartConnectionHandler"""
+    """Minimal implementation to pass to TestingSmartConnectionHandler."""
 
     backing_transport = None
     root_client_path = "/"
@@ -307,7 +307,7 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
     def test_connection_timeout_suppressed(self):
         self.overrideAttr(test_server, "_DEFAULT_TESTING_CLIENT_TIMEOUT", 0.01)
         s = FakeServer()
-        server_sock, client_sock = portable_socket_pair()
+        server_sock, _client_sock = portable_socket_pair()
         # This should timeout quickly, but not generate an exception.
         test_server.TestingSmartConnectionHandler(
             server_sock, server_sock.getpeername(), s
@@ -315,7 +315,7 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
 
     def test_connection_shutdown_while_serving_no_error(self):
         s = FakeServer()
-        server_sock, client_sock = portable_socket_pair()
+        server_sock, _client_sock = portable_socket_pair()
 
         class ShutdownConnectionHandler(test_server.TestingSmartConnectionHandler):
             def _build_protocol(self):

@@ -19,7 +19,7 @@ class TestBlackbox(TestCaseWithTransport):
         wt.commit(message="5", committer="Ferko <fero@example.com>", rev_id=b"5")
 
     def test_stats(self):
-        (out, err) = self.run_bzr("stats")
+        (out, _err) = self.run_bzr("stats")
         self.assertEqual(
             out,
             """\
@@ -33,7 +33,7 @@ class TestBlackbox(TestCaseWithTransport):
         )
 
     def test_credits(self):
-        (out, err) = self.run_bzr("credits")
+        (out, _err) = self.run_bzr("credits")
         self.assertEqual(
             out,
             """\

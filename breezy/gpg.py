@@ -235,7 +235,7 @@ class GPGStrategy:
 
         plain_text = gpg.Data(content)
         try:
-            output, result = self.context.sign(
+            output, _result = self.context.sign(
                 plain_text,
                 mode={
                     MODE_DETACH: gpg.constants.sig.mode.DETACH,

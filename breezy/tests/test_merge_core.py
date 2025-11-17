@@ -144,7 +144,7 @@ class MergeBuilder:
 
     def remove_file(self, trans_ids, base=False, this=False, other=False):
         for trans_id, (option, tt) in zip(
-            trans_ids, self.selected_transforms(this, base, other)
+            trans_ids, self.selected_transforms(this, base, other), strict=False
         ):
             if option is True:
                 tt.cancel_creation(trans_id)
@@ -174,28 +174,28 @@ class MergeBuilder:
 
     def change_parent(self, trans_ids, base=None, this=None, other=None):
         for trans_id, (parent, tt) in zip(
-            trans_ids, self.selected_transforms(this, base, other)
+            trans_ids, self.selected_transforms(this, base, other), strict=False
         ):
             parent_id = tt.trans_id_file_id(parent)
             tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
     def change_contents(self, trans_id, base=None, this=None, other=None):
         for trans_id, (contents, tt) in zip(
-            trans_id, self.selected_transforms(this, base, other)
+            trans_id, self.selected_transforms(this, base, other), strict=False
         ):
             tt.cancel_creation(trans_id)
             tt.create_file([contents], trans_id)
 
     def change_target(self, trans_ids, base=None, this=None, other=None):
         for trans_id, (target, tt) in zip(
-            trans_ids, self.selected_transforms(this, base, other)
+            trans_ids, self.selected_transforms(this, base, other), strict=False
         ):
             tt.cancel_creation(trans_id)
             tt.create_symlink(target, trans_id)
 
     def change_perms(self, trans_ids, base=None, this=None, other=None):
         for trans_id, (executability, tt) in zip(
-            trans_ids, self.selected_transforms(this, base, other)
+            trans_ids, self.selected_transforms(this, base, other), strict=False
         ):
             tt.set_executability(None, trans_id)
             tt.set_executability(executability, trans_id)
@@ -910,6 +910,6 @@ class TestMerger(TestCaseWithTransport):
         md = merge_directive.MergeDirective.from_objects(
             other.branch.repository, b"rev3", 0, 0, "this"
         )
-        merger, verified = Merger.from_mergeable(this, md)
+        merger, _verified = Merger.from_mergeable(this, md)
         self.assertEqual(b"rev3", merger.other_rev_id)
         self.assertEqual(b"rev1", merger.base_rev_id)

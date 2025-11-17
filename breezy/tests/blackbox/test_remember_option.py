@@ -34,7 +34,7 @@ class TestRememberMixin:
     def do_command(self, *args):
         # We always expect the same result here and care only about the
         # arguments used and their consequences on the remembered locations
-        out, err = self.run_bzr(self.command + list(args), working_dir=self.working_dir)
+        _out, _err = self.run_bzr(self.command + list(args), working_dir=self.working_dir)
 
     def test_first_use_no_option(self):
         self.do_command(*self.first_use_args)

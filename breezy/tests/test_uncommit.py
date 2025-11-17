@@ -85,7 +85,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         self.assertEqual((1, history[0]), child.branch.last_revision_info())
 
     def test_uncommit_unbound_local(self):
-        tree, history = self.make_linear_tree()
+        tree, _history = self.make_linear_tree()
 
         # If this tree isn't bound, local=True raises an exception
         self.assertRaises(

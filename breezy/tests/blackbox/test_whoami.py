@@ -99,7 +99,7 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_not_set(self):
         """Ensure whoami error if username is not set and not inferred."""
         override_whoami(self)
-        out, err = self.run_bzr(["whoami"], 3)
+        _out, err = self.run_bzr(["whoami"], 3)
         self.assertContainsRe(err, "Unable to determine your name")
 
     def test_whoami_directory(self):
@@ -150,5 +150,5 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""
         self.build_tree(["subdir/"])
-        out, err = self.run_bzr("whoami --directory subdir", retcode=3)
+        _out, err = self.run_bzr("whoami --directory subdir", retcode=3)
         self.assertContainsRe(err, "ERROR: Not a branch")

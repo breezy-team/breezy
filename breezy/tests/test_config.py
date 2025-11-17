@@ -884,7 +884,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
 class TestGetUserOptionAs(TestIniConfig):
     def test_get_user_option_as_bool(self):
-        conf, parser = self.make_config_parser("""
+        conf, _parser = self.make_config_parser("""
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
@@ -907,7 +907,7 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         self.assertEqual([], warnings)
 
     def test_get_user_option_as_list(self):
-        conf, parser = self.make_config_parser("""
+        conf, _parser = self.make_config_parser("""
 a_list = a,b,c
 length_1 = 1,
 one_item = x
@@ -922,7 +922,7 @@ one_item = x
 
 class TestSupressWarning(TestIniConfig):
     def make_warnings_config(self, s):
-        conf, parser = self.make_config_parser(s)
+        conf, _parser = self.make_config_parser(s)
         return conf.suppress_warning
 
     def test_suppress_warning_unknown(self):
@@ -3508,7 +3508,7 @@ class TestStackIterSections(tests.TestCase):
         conf = config.Stack([store.get_sections])
         tuples = list(conf.iter_sections())
         self.assertLength(1, tuples)
-        (found_store, found_section) = tuples[0]
+        (found_store, _found_section) = tuples[0]
         self.assertIs(store, found_store)
 
     def test_two_stores(self):

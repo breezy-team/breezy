@@ -63,7 +63,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
-        out, err = self.run_bzr("break-lock --help")
+        _out, err = self.run_bzr("break-lock --help")
         # shouldn't fail and should not produce error output
         self.assertEqual("", err)
 

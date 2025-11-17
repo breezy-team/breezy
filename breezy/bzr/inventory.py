@@ -1735,7 +1735,7 @@ class CHKInventory(CommonInventory):
         # We don't normally care about name, except for times when we want
         # to filter out empty names because of non rich-root...
         sections = data.split(b"\n")
-        kind, file_id = sections[0].split(b": ")
+        _kind, file_id = sections[0].split(b": ")
         return (sections[2], file_id, sections[3])
 
     def _bytes_to_entry(self, bytes):

@@ -95,7 +95,7 @@ class TestTextProgressView(tests.TestCase):
 
     def test_render_progress_nested(self):
         """Tasks proportionally contribute to overall progress."""
-        out, view = self.make_view()
+        _out, view = self.make_view()
         task = self.make_task(None, view, "reticulating splines", 0, 2)
         task2 = self.make_task(task, view, "stage2", 1, 2)
         view.show_progress(task2)
@@ -116,7 +116,7 @@ class TestTextProgressView(tests.TestCase):
 
     def test_render_progress_sub_nested(self):
         """Intermediate tasks don't mess up calculation."""
-        out, view = self.make_view()
+        _out, view = self.make_view()
         view.enable_bar = True
         task_a = ProgressTask(None, progress_view=view)
         task_a.update("a", 0, 2)
@@ -136,7 +136,7 @@ class TestTextProgressView(tests.TestCase):
         # when the bar is too long for the terminal, we prefer not to truncate
         # the counters because they might be interesting, and because
         # truncating the numbers might be misleading
-        out, view = self.make_view()
+        _out, view = self.make_view()
         task_a = ProgressTask(None, progress_view=view)
         task_a.update("start_" + "a" * 200 + "_end", 2000, 5000)
         line = view._render_line()
@@ -148,7 +148,7 @@ class TestTextProgressView(tests.TestCase):
 
     def test_render_with_activity(self):
         # if the progress view has activity, it's shown before the spinner
-        out, view = self.make_view()
+        _out, view = self.make_view()
         task_a = ProgressTask(None, progress_view=view)
         view._last_transport_msg = "   123kB   100kB/s "
         line = view._render_line()

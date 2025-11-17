@@ -51,7 +51,7 @@ class ReSign(tests.TestCaseInTempDir):
 
     def test_resign(self):
         # Test re signing of data.
-        wt, [a, b, c] = self.setup_tree()
+        wt, [a, b, _c] = self.setup_tree()
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()

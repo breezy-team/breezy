@@ -240,7 +240,7 @@ class cmd_git_apply(Command):
 
         from breezy.patch import patch_tree
 
-        (c, diff, version) = git_am_patch_split(f)
+        (c, diff, _version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
         patch_tree(wt, [diff], strip=1, out=self.outf)

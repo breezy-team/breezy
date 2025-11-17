@@ -63,7 +63,7 @@ def best_format_for_objects_in_a_repository(repo):
                 candidates.append((key, format))
     if len(candidates):
         # Assume the first one. Is there any reason not to do that?
-        name, format = candidates[0]
+        _name, format = candidates[0]
         return format
     else:
         return None
@@ -86,7 +86,7 @@ def open_destination_directory(location, format=None, verbose=True):
     from ... import controldir, errors, trace, transport
 
     try:
-        control, relpath = controldir.ControlDir.open_containing(location)
+        control, _relpath = controldir.ControlDir.open_containing(location)
         # XXX: Check the relpath is None here?
         return control
     except errors.NotBranchError:

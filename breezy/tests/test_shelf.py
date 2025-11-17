@@ -647,7 +647,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         manager = tree.get_shelf_manager()
-        shelf_id, shelf_file = manager.new_shelf()
+        _shelf_id, shelf_file = manager.new_shelf()
         try:
             creator.write_shelf(shelf_file)
         finally:
@@ -738,13 +738,13 @@ class TestShelfManager(tests.TestCaseWithTransport):
     def test_active_shelves(self):
         manager = self.get_manager()
         self.assertEqual([], manager.active_shelves())
-        shelf_id, shelf_file = manager.new_shelf()
+        _shelf_id, shelf_file = manager.new_shelf()
         shelf_file.close()
         self.assertEqual([1], manager.active_shelves())
 
     def test_delete_shelf(self):
         manager = self.get_manager()
-        shelf_id, shelf_file = manager.new_shelf()
+        _shelf_id, shelf_file = manager.new_shelf()
         shelf_file.close()
         self.assertEqual([1], manager.active_shelves())
         manager.delete_shelf(1)
@@ -753,7 +753,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
     def test_last_shelf(self):
         manager = self.get_manager()
         self.assertIs(None, manager.last_shelf())
-        shelf_id, shelf_file = manager.new_shelf()
+        _shelf_id, shelf_file = manager.new_shelf()
         shelf_file.close()
         self.assertEqual(1, manager.last_shelf())
 
@@ -764,7 +764,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
             shelf_file.write(b"foo")
         finally:
             shelf_file.close()
-        shelf_id, shelf_file = manager.new_shelf()
+        _shelf_id, shelf_file = manager.new_shelf()
         try:
             shelf_file.write(b"bar")
         finally:

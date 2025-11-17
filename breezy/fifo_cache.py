@@ -17,8 +17,10 @@
 """A simple first-in-first-out (FIFO) cache."""
 
 from collections import deque
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FIFOCache(dict):

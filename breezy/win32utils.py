@@ -134,7 +134,7 @@ def get_console_size(defaultx=80, defaulty=25):
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 
     if res:
-        (bufx, bufy, curx, cury, wattr, left, top, right, bottom, maxx, maxy) = (
+        (_bufx, _bufy, _curx, _cury, _wattr, left, top, right, bottom, _maxx, _maxy) = (
             struct.unpack("hhhhHhhhhhh", csbi.raw)
         )
         sizex = right - left + 1

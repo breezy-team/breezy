@@ -339,7 +339,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr("checkout branch checkout")
         os.chdir("checkout")
         self.assertLength(0, calls)
-        out, err = self.run_bzr("switch ../branch2")
+        _out, _err = self.run_bzr("switch ../branch2")
         self.assertLength(1, calls)
 
     def test_switch_lightweight_co_with_post_switch_hook(self):
@@ -352,7 +352,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr("checkout --lightweight branch checkout")
         os.chdir("checkout")
         self.assertLength(0, calls)
-        out, err = self.run_bzr("switch ../branch2")
+        _out, _err = self.run_bzr("switch ../branch2")
         self.assertLength(1, calls)
 
     def test_switch_lightweight_directory(self):

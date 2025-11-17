@@ -1052,7 +1052,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     dirname = subpath.split("/", 1)[0]
                     file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
                 else:
-                    (unused_parent, name) = posixpath.split(decoded_item_path)
+                    (_unused_parent, name) = posixpath.split(decoded_item_path)
                     file_ie = self._get_file_ie(
                         name, decoded_item_path, value, parent_id
                     )

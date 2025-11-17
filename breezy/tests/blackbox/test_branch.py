@@ -184,7 +184,7 @@ class TestBranch(tests.TestCaseWithTransport):
         #  => new branch will be created and checkout bound to the new branch
         self.example_branch("a")
         self.run_bzr("checkout a current")
-        out, err = self.run_bzr("branch --switch ../a ../b", working_dir="current")
+        _out, err = self.run_bzr("branch --switch ../a ../b", working_dir="current")
         a = branch.Branch.open("a")
         b = branch.Branch.open("b")
         self.assertEqual(a.last_revision(), b.last_revision())
@@ -198,7 +198,7 @@ class TestBranch(tests.TestCaseWithTransport):
         #     the new branch
         self.example_branch("a")
         self.run_bzr("checkout --lightweight a current")
-        out, err = self.run_bzr("branch --switch ../a ../b", working_dir="current")
+        _out, err = self.run_bzr("branch --switch ../a ../b", working_dir="current")
         a = branch.Branch.open("a")
         b = branch.Branch.open("b")
         self.assertEqual(a.last_revision(), b.last_revision())
@@ -250,7 +250,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree(["source/file1"])
         source.add("file1")
         source.commit("added file")
-        out, err = self.run_bzr(["branch", "source", "target", "--hardlink"])
+        _out, _err = self.run_bzr(["branch", "source", "target", "--hardlink"])
         source_stat = os.stat("source/file1")
         target_stat = os.stat("target/file1")
         self.assertEqual(source_stat, target_stat)
@@ -260,7 +260,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.build_tree(["source/file1"])
         source.add("file1")
         source.commit("added file")
-        out, err = self.run_bzr("branch source target --files-from source")
+        _out, _err = self.run_bzr("branch source target --files-from source")
         self.assertPathExists("target/file1")
 
     def test_branch_files_from_hardlink(self):
@@ -270,7 +270,7 @@ class TestBranch(tests.TestCaseWithTransport):
         source.add("file1")
         source.commit("added file")
         source.controldir.sprout("second")
-        out, err = self.run_bzr("branch source target --files-from second --hardlink")
+        _out, _err = self.run_bzr("branch source target --files-from second --hardlink")
         source_stat = os.stat("source/file1")
         second_stat = os.stat("second/file1")
         target_stat = os.stat("target/file1")
@@ -316,7 +316,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_bind(self):
         self.example_branch("a")
-        out, err = self.run_bzr("branch a b --bind")
+        _out, err = self.run_bzr("branch a b --bind")
         self.assertEndsWith(err, "New branch bound to a\n")
         b = branch.Branch.open("b")
         self.assertEndsWith(b.get_bound_location(), "/a/")
@@ -350,7 +350,7 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder("source")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag("tag-a", rev2)
         source.get_config_stack().set("branch.fetch_tags", True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
@@ -505,14 +505,14 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         # We can branch stacking on a smart server
         self.transport_server = test_server.SmartTCPServer_for_testing
         self.make_branch("mainline", format="1.9")
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             ["branch", "--stacked", self.get_url("mainline"), "shallow"]
         )
 
     def test_branch_stacked_from_non_stacked_format(self):
         """The origin format doesn't support stacking."""
         trunk = self.make_branch("trunk", format="pack-0.92")
-        out, err = self.run_bzr(["branch", "--stacked", "trunk", "shallow"])
+        _out, err = self.run_bzr(["branch", "--stacked", "trunk", "shallow"])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             "Source repository format does not support stacking, using format:\n"
@@ -527,7 +527,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
         trunk = self.make_branch("trunk", format="rich-root-pack")
-        out, err = self.run_bzr(["branch", "--stacked", "trunk", "shallow"])
+        _out, err = self.run_bzr(["branch", "--stacked", "trunk", "shallow"])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
             "Source repository format does not support stacking, using format:\n"

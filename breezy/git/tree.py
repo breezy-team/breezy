@@ -338,7 +338,7 @@ class GitTree(_mod_tree.Tree):
     def reference_parent(self, path):
         from ..branch import Branch
 
-        (url, section) = self._submodule_info()[encode_git_path(path)]
+        (url, _section) = self._submodule_info()[encode_git_path(path)]
         return Branch.open(url.decode("utf-8"))
 
 
@@ -427,7 +427,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
-        (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+        (_store, _unused_path, commit_id) = change_scanner.find_last_change_revision(
             encode_git_path(path), self.commit_id
         )
         return self.mapping.revision_id_foreign_to_bzr(commit_id)
@@ -437,7 +437,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
         try:
-            (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+            (store, _unused_path, commit_id) = change_scanner.find_last_change_revision(
                 encode_git_path(path), self.commit_id
             )
         except KeyError:
@@ -495,14 +495,14 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         return (store, mode, hexsha)
 
     def is_executable(self, path):
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, _hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return False
         return mode_is_executable(mode)
 
     def kind(self, path):
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, _hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return "directory"
@@ -688,7 +688,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         return osutils.sha_string(self.get_file_text(path))
 
     def get_file_verifier(self, path, stat_value=None):
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, _mode, hexsha) = self._lookup_path(path)
         return ("GIT", hexsha)
 
     def get_file_size(self, path):
@@ -715,7 +715,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
 
     def get_reference_revision(self, path):
         """See RevisionTree.get_symlink_target."""
-        (store, mode, hexsha) = self._lookup_path(path)
+        (_store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
             try:
                 nested_repo = self._get_submodule_repository(encode_git_path(path))
@@ -1371,7 +1371,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             # caring about the instantaneous file kind within a uncommmitted tree
             #
             self._gather_kinds(files, kinds)
-            for path, kind in zip(files, kinds):
+            for path, kind in zip(files, kinds, strict=False):
                 path, can_access = osutils.normalized_filename(path)
                 if not can_access:
                     raise errors.InvalidNormalization(path)
@@ -1760,7 +1760,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                         )
                     raise
             if kind != "directory":
-                (index, from_index_path) = self._lookup_index(from_path)
+                (index, _from_index_path) = self._lookup_index(from_path)
                 try:
                     self._index_del_entry(index, from_path)
                 except KeyError:
@@ -1947,7 +1947,7 @@ def snapshot_workingtree(
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
-            extra, accessible = osutils.normalized_filename(extra)
+            extra, _accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
                 continue

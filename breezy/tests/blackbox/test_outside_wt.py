@@ -31,12 +31,12 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # We expect a read-to-root attempt to occur.
         self.permit_url("file:///")
         self.addCleanup(osutils.rmtree, tmp_dir)
-        out, err = self.run_bzr("log", retcode=3, working_dir=tmp_dir)
+        _out, err = self.run_bzr("log", retcode=3, working_dir=tmp_dir)
         self.assertEqual('brz: ERROR: Not a branch: "{}/".\n'.format(tmp_dir), err)
 
     def test_url_log(self):
         url = self.get_readonly_url() + "subdir/"
-        out, err = self.run_bzr(["log", url], retcode=3)
+        _out, err = self.run_bzr(["log", url], retcode=3)
         self.assertEqual('brz: ERROR: Not a branch: "{}".\n'.format(url), err)
 
     def test_diff_outside_tree(self):

@@ -32,7 +32,7 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_topics(self):
         """Smoketest for 'brz help topics'."""
-        out, err = self.run_bzr("help topics")
+        out, _err = self.run_bzr("help topics")
         self.assertContainsRe(out, "basic")
         self.assertContainsRe(out, "topics")
         self.assertContainsRe(out, "commands")
@@ -40,7 +40,7 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_revisionspec(self):
         """Smoke test for 'brz help revisionspec'."""
-        out, err = self.run_bzr("help revisionspec")
+        out, _err = self.run_bzr("help revisionspec")
         self.assertContainsRe(out, "revno:")
         self.assertContainsRe(out, "date:")
         self.assertContainsRe(out, "revid:")
@@ -51,13 +51,13 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_checkouts(self):
         """Smoke test for 'brz help checkouts'."""
-        out, err = self.run_bzr("help checkouts")
+        out, _err = self.run_bzr("help checkouts")
         self.assertContainsRe(out, "checkout")
         self.assertContainsRe(out, "lightweight")
 
     def test_help_urlspec(self):
         """Smoke test for 'brz help urlspec'."""
-        out, err = self.run_bzr("help urlspec")
+        out, _err = self.run_bzr("help urlspec")
         self.assertContainsRe(out, "bzr://")
         self.assertContainsRe(out, "bzr\\+ssh://")
         self.assertContainsRe(out, "file://")
@@ -67,7 +67,7 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'."""
-        out, err = self.run_bzr("help repositories")
+        out, _err = self.run_bzr("help repositories")
         from breezy.help_topics import _repositories, help_as_plain_text
 
         expected = help_as_plain_text(_repositories)
@@ -75,7 +75,7 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'."""
-        out, err = self.run_bzr("help working-trees")
+        out, _err = self.run_bzr("help working-trees")
         from breezy.help_topics import _working_trees, help_as_plain_text
 
         expected = help_as_plain_text(_working_trees)
@@ -83,7 +83,7 @@ class TestHelp(tests.TestCaseWithTransport):
 
     def test_help_status_flags(self):
         """Smoke test for 'brz help status-flags'."""
-        out, err = self.run_bzr("help status-flags")
+        out, _err = self.run_bzr("help status-flags")
         from breezy.help_topics import _status_flags, help_as_plain_text
 
         expected = help_as_plain_text(_status_flags)
@@ -186,17 +186,17 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
         self.overrideAttr(i18n, "_translations", ZzzTranslations())
 
     def test_help_command_utf8(self):
-        out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")
+        out, _err = self.run_bzr_raw(["help", "push"], encoding="utf-8")
         self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_switch_utf8(self):
-        out, err = self.run_bzr_raw(["push", "--help"], encoding="utf-8")
+        out, _err = self.run_bzr_raw(["push", "--help"], encoding="utf-8")
         self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_command_ascii(self):
-        out, err = self.run_bzr_raw(["help", "push"], encoding="ascii")
+        out, _err = self.run_bzr_raw(["help", "push"], encoding="ascii")
         self.assertContainsRe(out, b"zz\\?{{:See also:")
 
     def test_help_switch_ascii(self):
-        out, err = self.run_bzr_raw(["push", "--help"], encoding="ascii")
+        out, _err = self.run_bzr_raw(["push", "--help"], encoding="ascii")
         self.assertContainsRe(out, b"zz\\?{{:See also:")

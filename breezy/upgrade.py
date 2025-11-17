@@ -273,7 +273,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
         for i, control_dir in enumerate(items):
             # Do the conversion
             location = control_dir.root_transport.base
-            bzr_object, bzr_label = _get_object_and_label(control_dir)
+            _bzr_object, bzr_label = _get_object_and_label(control_dir)
             type_label = label or bzr_label
             child_pb.update(gettext("Upgrading %s") % (type_label), i + 1, len(items))
             ui.ui_factory.note(

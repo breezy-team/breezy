@@ -91,7 +91,7 @@ class TestStrace(tests.TestCaseWithTransport):
         def function():
             self.build_tree(["myfile"])
 
-        unused, result = self.strace_detailed_or_skip(
+        _unused, result = self.strace_detailed_or_skip(
             function, [], {}, follow_children=False
         )
         self.assertContainsRe(result.raw_log, "myfile")

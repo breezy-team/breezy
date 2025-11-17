@@ -339,7 +339,7 @@ class LocalGitTagDict(GitTags):
 
     def set_tag(self, name, revid):
         try:
-            git_sha, mapping = self.branch.lookup_bzr_revision_id(revid)
+            git_sha, _mapping = self.branch.lookup_bzr_revision_id(revid)
         except errors.NoSuchRevision:
             raise errors.GhostTagsNotSupported(self)
         self.refs[tag_name_to_ref(name)] = git_sha
@@ -1092,7 +1092,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             # We assume that during 'pull' the target repository is closer than
             # the source one.
             (result.old_revno, result.old_revid) = self.target.last_revision_info()
-            result.new_git_head, remote_refs = self._update_revisions(
+            result.new_git_head, _remote_refs = self._update_revisions(
                 stop_revision,
                 overwrite=("history" in overwrite),
                 tag_selector=tag_selector,
@@ -1185,7 +1185,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        result.new_git_head, remote_refs = self._update_revisions(
+        result.new_git_head, _remote_refs = self._update_revisions(
             stop_revision, overwrite=("history" in overwrite), tag_selector=tag_selector
         )
         tags_ret = self.source.tags.merge_to(
@@ -1315,7 +1315,7 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
-        refs, stop_revision = self.update_refs(stop_revision)
+        _refs, stop_revision = self.update_refs(stop_revision)
         _update_tip(self.source, self.target, stop_revision, "history" in overwrite)
         tags_ret = self.source.tags.merge_to(
             self.target.tags, overwrite=("tags" in overwrite), selector=tag_selector
@@ -1373,7 +1373,7 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
-            refs, stop_revision = self.update_refs(stop_revision)
+            _refs, stop_revision = self.update_refs(stop_revision)
             _update_tip(self.source, self.target, stop_revision, "history" in overwrite)
             tags_ret = self.source.tags.merge_to(
                 self.target.tags, overwrite=("tags" in overwrite), selector=tag_selector
@@ -1543,7 +1543,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 wants = []
                 for git_sha, revid in ret:
                     if git_sha is None:
-                        git_sha, mapping = self.target.lookup_bzr_revision_id(revid)
+                        git_sha, _mapping = self.target.lookup_bzr_revision_id(revid)
                     wants.append(git_sha)
                 return wants
 
@@ -1564,7 +1564,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         with self.source.lock_read(), self.target.lock_write():
-            new_refs, main_ref, stop_revinfo = self._get_new_refs(
+            new_refs, main_ref, _stop_revinfo = self._get_new_refs(
                 stop_revision, stop_revno=_stop_revno
             )
 

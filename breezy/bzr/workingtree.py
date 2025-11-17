@@ -839,7 +839,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # function - they should be part of lock_write and unlock.
             # FIXME: nested trees
             inv = self.root_inventory
-            for f, file_id, kind in zip(files, ids, kinds):
+            for f, file_id, kind in zip(files, ids, kinds, strict=False):
                 if file_id is None:
                     inv.add_path(f, kind=kind)
                 else:

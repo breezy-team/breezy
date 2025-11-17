@@ -171,7 +171,7 @@ class PoMerger(merge.PerFileMerger):
             with open(env["other"], "wb") as f:
                 f.writelines(params.other_lines)
             command = self.conf.expand_options(self.command, env)
-            retcode, out, err = self._invoke(command)
+            _retcode, _out, _err = self._invoke(command)
             with open(env["result"], "rb") as f:
                 # FIXME: To avoid the list() construct below which means the
                 # whole 'result' file is kept in memory, there may be a way to

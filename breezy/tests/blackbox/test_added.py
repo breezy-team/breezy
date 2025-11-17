@@ -69,5 +69,5 @@ class TestAdded(TestCaseWithTransport):
         tree = self.make_branch_and_tree("a")
         self.build_tree(["a/README"])
         tree.add("README")
-        out, err = self.run_bzr(["added", "--directory=a"])
+        out, _err = self.run_bzr(["added", "--directory=a"])
         self.assertEqual("README\n", out)

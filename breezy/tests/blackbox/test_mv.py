@@ -476,7 +476,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_auto_two_paths(self):
         self.make_abcd_tree()
-        out, err = self.run_bzr("mv --auto tree tree2", retcode=3)
+        _out, err = self.run_bzr("mv --auto tree tree2", retcode=3)
         self.assertEqual("brz: ERROR: Only one path may be specified to --auto.\n", err)
 
     def test_mv_auto_dry_run(self):
@@ -490,12 +490,12 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_no_auto_dry_run(self):
         self.make_abcd_tree()
-        out, err = self.run_bzr("mv c d --dry-run", working_dir="tree", retcode=3)
+        _out, err = self.run_bzr("mv c d --dry-run", working_dir="tree", retcode=3)
         self.assertEqual("brz: ERROR: --dry-run requires --auto.\n", err)
 
     def test_mv_auto_after(self):
         self.make_abcd_tree()
-        out, err = self.run_bzr("mv --auto --after", working_dir="tree", retcode=3)
+        _out, err = self.run_bzr("mv --auto --after", working_dir="tree", retcode=3)
         self.assertEqual("brz: ERROR: --after cannot be specified with --auto.\n", err)
 
     def test_mv_quiet(self):
@@ -521,7 +521,7 @@ class TestMove(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         self.make_branch_and_tree(".")
         self.build_tree(["\xa7"])
-        out, err = self.run_bzr_error(
+        _out, _err = self.run_bzr_error(
             ["Could not rename", "not versioned"], ["mv", "\xa7", "b"]
         )
 
@@ -533,7 +533,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(["\xa7"])
         tree.commit("Adding \xa7")
         os.remove("\xa7")
-        out, err = self.run_bzr_error(
+        _out, _err = self.run_bzr_error(
             ["Could not rename", "not exist"], ["mv", "\xa7", "b"]
         )
 

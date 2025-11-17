@@ -437,7 +437,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb, strict=False))
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same

@@ -192,7 +192,7 @@ class TestMissing(tests.TestCaseWithTransport):
         self.assertMessages(out, ("b3", "b4"), ("b2", "b5"))
 
         # both
-        out, err = self.run_bzr(
+        out, _err = self.run_bzr(
             "missing ../b --my-revision 3..4 -r 3..4", retcode=1, working_dir="a"
         )
         self.assertMessages(out, ("a3", "a4", "b3", "b4"), ("a2", "a5", "b2", "b5"))
@@ -260,7 +260,7 @@ class TestMissing(tests.TestCaseWithTransport):
             )
             self.assertContainsString(out, "a-tag")
 
-            out, err = self.run_bzr(
+            out, _err = self.run_bzr(
                 f"missing --log-format={log_format} ../b", working_dir="a", retcode=1
             )
             self.assertContainsString(out, "a-tag")

@@ -725,7 +725,7 @@ class Node:
             return prefix
         pos = -1
         # Is there a better way to do this?
-        for pos, (left, right) in enumerate(zip(prefix, key)):
+        for pos, (left, right) in enumerate(zip(prefix, key, strict=False)):
             if left != right:
                 pos -= 1
                 break

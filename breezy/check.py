@@ -93,7 +93,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     an exception raised at the end of the process.
     """
     try:
-        base_tree, branch, repo, relpath = (
+        base_tree, branch, repo, _relpath = (
             ControlDir.open_containing_tree_branch_or_repository(path)
         )
     except errors.NotBranchError:

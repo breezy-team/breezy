@@ -558,7 +558,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
     def test_missing_index_raises_retry(self):
         memos = self.make_pack_file()
         transport = self.get_transport()
-        reload_called, reload_func = self.make_reload_func()
+        _reload_called, reload_func = self.make_reload_func()
         # Note that the index key has changed from 'foo' to 'bar'
         access = pack_repo._DirectPackAccess(
             {"bar": (transport, "packname")}, reload_func=reload_func
@@ -583,7 +583,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
     def test_missing_file_raises_retry(self):
         memos = self.make_pack_file()
         transport = self.get_transport()
-        reload_called, reload_func = self.make_reload_func()
+        _reload_called, reload_func = self.make_reload_func()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess(
             {"foo": (transport, "different-packname")}, reload_func=reload_func
@@ -609,7 +609,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport([transport.get_bytes("packname")])
-        reload_called, reload_func = self.make_reload_func()
+        _reload_called, reload_func = self.make_reload_func()
         access = pack_repo._DirectPackAccess(
             {"foo": (failing_transport, "packname")}, reload_func=reload_func
         )
@@ -631,7 +631,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport([transport.get_bytes("packname")])
-        reload_called, reload_func = self.make_reload_func()
+        _reload_called, _reload_func = self.make_reload_func()
         access = pack_repo._DirectPackAccess({"foo": (failing_transport, "packname")})
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual([b"1234567890"], list(access.get_raw_records(memos[:1])))
@@ -2539,7 +2539,7 @@ class TestStacking(KnitTests):
     def test_check(self):
         # At the moment checking a stacked knit does implicitly check the
         # fallback files.
-        basis, test = self.get_basis_and_test_knit()
+        _basis, test = self.get_basis_and_test_knit()
         test.check()
 
     def test_get_parent_map(self):
@@ -2968,7 +2968,7 @@ class TestNetworkBehaviour(KnitTests):
         # for wire serialisation.
         self.assertEqual(b"", netb[1])
         bytes = netb[0]
-        kind, line_end = network_bytes_to_kind_and_offset(bytes)
+        kind, _line_end = network_bytes_to_kind_and_offset(bytes)
         self.assertEqual("knit-delta-closure", kind)
 
 

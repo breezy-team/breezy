@@ -233,7 +233,7 @@ class BundleInfo:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
 
-        for _rev, rev_info in zip(self.real_revisions, self.revisions):
+        for _rev, rev_info in zip(self.real_revisions, self.revisions, strict=False):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
         count = 0

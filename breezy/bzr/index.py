@@ -1495,7 +1495,7 @@ class CombinedGraphIndex:
 
         Returns a list of names corresponding to the hit_indices param.
         """
-        indices_info = zip(self._index_names, self._indices)
+        indices_info = zip(self._index_names, self._indices, strict=False)
         if "index" in debug.debug_flags:
             indices_info = list(indices_info)
             trace.mutter(
@@ -1534,7 +1534,7 @@ class CombinedGraphIndex:
         """
         # Translate names to index instances, and then call
         # _move_to_front_by_index.
-        indices_info = zip(self._index_names, self._indices)
+        indices_info = zip(self._index_names, self._indices, strict=False)
         hit_indices = []
         for name, idx in indices_info:
             if name in hit_names:

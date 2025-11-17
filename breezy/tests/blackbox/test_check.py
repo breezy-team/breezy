@@ -31,7 +31,7 @@ class TestCheck(TestCaseWithTransport):
     def test_check_one_commit_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.commit("hallelujah")
-        out, err = self.run_bzr("check")
+        _out, err = self.run_bzr("check")
         self.assertContainsRe(err, r"Checking working tree at '.*'\.\n")
         self.assertContainsRe(err, r"Checking repository at '.*'\.\n")
         # the root directory may be in the texts for rich root formats
@@ -44,13 +44,13 @@ class TestCheck(TestCaseWithTransport):
     def test_check_branch(self):
         tree = self.make_branch_and_tree(".")
         tree.commit("foo")
-        out, err = self.run_bzr("check --branch")
+        _out, err = self.run_bzr("check --branch")
         self.assertContainsRe(err, r"^Checking branch at '.*'\.\n" r"checked branch.*")
 
     def test_check_repository(self):
         tree = self.make_branch_and_tree(".")
         tree.commit("foo")
-        out, err = self.run_bzr("check --repo")
+        _out, err = self.run_bzr("check --repo")
         self.assertContainsRe(
             err,
             r"^Checking repository at '.*'\.\n"
@@ -62,13 +62,13 @@ class TestCheck(TestCaseWithTransport):
     def test_check_tree(self):
         tree = self.make_branch_and_tree(".")
         tree.commit("foo")
-        out, err = self.run_bzr("check --tree")
+        _out, err = self.run_bzr("check --tree")
         self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n$")
 
     def test_partial_check(self):
         tree = self.make_branch_and_tree(".")
         tree.commit("foo")
-        out, err = self.run_bzr("check --tree --branch")
+        _out, err = self.run_bzr("check --tree --branch")
         self.assertContainsRe(
             err,
             r"^Checking working tree at '.*'\.\n"
@@ -78,12 +78,12 @@ class TestCheck(TestCaseWithTransport):
 
     def test_check_missing_tree(self):
         self.make_branch(".")
-        out, err = self.run_bzr("check --tree")
+        _out, err = self.run_bzr("check --tree")
         self.assertEqual(err, "No working tree found at specified location.\n")
 
     def test_check_missing_partial(self):
         self.make_branch(".")
-        out, err = self.run_bzr("check --tree --branch")
+        _out, err = self.run_bzr("check --tree --branch")
         self.assertContainsRe(
             err,
             r"Checking branch at '.*'\.\n"
@@ -93,21 +93,21 @@ class TestCheck(TestCaseWithTransport):
 
     def test_check_missing_branch_in_shared_repo(self):
         self.make_repository("shared", shared=True)
-        out, err = self.run_bzr("check --branch shared")
+        _out, err = self.run_bzr("check --branch shared")
         self.assertEqual(err, "No branch found at specified location.\n")
 
 
 class ChrootedCheckTests(ChrootedTestCase):
     def test_check_missing_branch(self):
-        out, err = self.run_bzr("check --branch {}".format(self.get_readonly_url("")))
+        _out, err = self.run_bzr("check --branch {}".format(self.get_readonly_url("")))
         self.assertEqual(err, "No branch found at specified location.\n")
 
     def test_check_missing_repository(self):
-        out, err = self.run_bzr("check --repo {}".format(self.get_readonly_url("")))
+        _out, err = self.run_bzr("check --repo {}".format(self.get_readonly_url("")))
         self.assertEqual(err, "No repository found at specified location.\n")
 
     def test_check_missing_everything(self):
-        out, err = self.run_bzr("check {}".format(self.get_readonly_url("")))
+        _out, err = self.run_bzr("check {}".format(self.get_readonly_url("")))
         self.assertEqual(
             err,
             "No working tree found at specified location.\n"

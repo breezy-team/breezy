@@ -87,7 +87,7 @@ class TestDiff(DiffBase):
 
     def test_diff_illegal_prefix_value(self):
         # There was an error in error reporting for this option
-        out, err = self.run_bzr("diff --prefix old/", retcode=3)
+        _out, err = self.run_bzr("diff --prefix old/", retcode=3)
         self.assertContainsRe(err, "--prefix expects two values separated by a colon")
 
     def test_diff_p1(self):
@@ -132,41 +132,41 @@ class TestDiff(DiffBase):
         # Get an error from a file that does not exist at all
         # (Malone #3619)
         self.make_example_branch()
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "diff does-not-exist",
             retcode=3,
             error_regexes=("not versioned.*does-not-exist",),
         )
 
     def test_diff_illegal_revision_specifiers(self):
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "diff -r 1..23..123",
             retcode=3,
             error_regexes=("one or two revision specifiers",),
         )
 
     def test_diff_using_and_format(self):
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "diff --format=default --using=mydi",
             retcode=3,
             error_regexes=("are mutually exclusive",),
         )
 
     def test_diff_nonexistent_revision(self):
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "diff -r 123",
             retcode=3,
             error_regexes=("Requested revision: '123' does not exist in branch:",),
         )
 
     def test_diff_nonexistent_dotted_revision(self):
-        out, err = self.run_bzr("diff -r 1.1", retcode=3)
+        _out, err = self.run_bzr("diff -r 1.1", retcode=3)
         self.assertContainsRe(
             err, "Requested revision: '1.1' does not exist in branch:"
         )
 
     def test_diff_nonexistent_dotted_revision_change(self):
-        out, err = self.run_bzr("diff -c 1.1", retcode=3)
+        _out, err = self.run_bzr("diff -c 1.1", retcode=3)
         self.assertContainsRe(
             err, "Requested revision: '1.1' does not exist in branch:"
         )
@@ -176,7 +176,7 @@ class TestDiff(DiffBase):
         # (Malone #3619)
         self.make_example_branch()
         self.build_tree(["unversioned-file"])
-        out, err = self.run_bzr("diff unversioned-file", retcode=3)
+        _out, err = self.run_bzr("diff unversioned-file", retcode=3)
         self.assertContainsRe(err, "not versioned.*unversioned-file")
 
     # TODO: What should diff say for a file deleted in working tree?
@@ -391,7 +391,7 @@ class TestDiff(DiffBase):
         tree.rename_one("a", "b")
         self.build_tree_contents([("a", "qwer\n")])
         tree.add("a")
-        output, error = self.run_bzr("diff -p0", retcode=1)
+        output, _error = self.run_bzr("diff -p0", retcode=1)
         self.assertEqualDiff(
             """\
 === added file 'a'

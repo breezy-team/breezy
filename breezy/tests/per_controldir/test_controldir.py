@@ -818,7 +818,7 @@ class TestControlDir(TestCaseWithControlDir):
         # when sprouting a branch all revisions named in the tags are copied
         # too.
         builder = self.make_branch_builder("source")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         try:
             source.tags.set_tag("tag-a", rev2)
         except errors.TagsNotSupported:
@@ -1114,7 +1114,7 @@ class TestControlDir(TestCaseWithControlDir):
         repo = repo_fmt.initialize_on_transport_ex(
             t, repo_format_name=repo_name, shared_repo=True
         )[0]
-        made_repo, control = self.assertInitializeEx(
+        made_repo, _control = self.assertInitializeEx(
             t.clone("branch"), force_new_repo=True, repo_format_name=repo_name
         )
         self.assertNotEqual(
@@ -1140,7 +1140,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport("dir")
-        repo, control = self.assertInitializeEx(t)
+        repo, _control = self.assertInitializeEx(t)
         self.assertEqual(None, repo)
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_followed(self):
@@ -1148,7 +1148,7 @@ class TestControlDir(TestCaseWithControlDir):
         # 1.6 is likely to never be default
         fmt = controldir.format_registry.make_controldir("1.6")
         repo_name = fmt.repository_format.network_name()
-        repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
+        repo, _control = self.assertInitializeEx(t, repo_format_name=repo_name)
         if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
@@ -1167,7 +1167,7 @@ class TestControlDir(TestCaseWithControlDir):
         """
         if not self.bzrdir_format.is_initializable():
             raise TestNotApplicable("control dir format is not initializable")
-        repo, control, require_stacking, repo_policy = (
+        repo, control, _require_stacking, _repo_policy = (
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         )
         if repo is not None:
@@ -1604,10 +1604,10 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertPathExists(old_path)
         self.assertPathExists(new_path)
         for ((dir_relpath1, _), entries1), ((dir_relpath2, _), entries2) in zip(
-            osutils.walkdirs(old_path), osutils.walkdirs(new_path)
+            osutils.walkdirs(old_path), osutils.walkdirs(new_path), strict=False
         ):
             self.assertEqual(dir_relpath1, dir_relpath2)
-            for f1, f2 in zip(entries1, entries2):
+            for f1, f2 in zip(entries1, entries2, strict=False):
                 self.assertEqual(f1[0], f2[0])
                 self.assertEqual(f1[2], f2[2])
                 if f1[2] == "file":

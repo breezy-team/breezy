@@ -204,7 +204,7 @@ class cmd_propose_merge(Command):
         delete_source_after_merge=None,
         revision=None,
     ):
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _tree, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         if submit_branch is None:
@@ -289,7 +289,7 @@ class cmd_find_merge_proposal(Command):
     aliases = ["find-proposal"]
 
     def run(self, directory=".", submit_branch=None):
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _tree, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         public_location = branch.get_public_branch()

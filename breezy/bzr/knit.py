@@ -215,7 +215,7 @@ class FTAnnotatedToUnannotated(KnitAdapter):
         annotated_compressed_bytes = factory._raw_record
         rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
         content = self._annotate_factory.parse_fulltext(contents, rec[1])
-        size, chunks = self._data._record_to_data((rec[1],), rec[3], content.text())
+        _size, chunks = self._data._record_to_data((rec[1],), rec[3], content.text())
         return b"".join(chunks)
 
 
@@ -231,7 +231,7 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
         rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1], plain=True)
         contents = self._plain_factory.lower_line_delta(delta)
-        size, chunks = self._data._record_to_data((rec[1],), rec[3], contents)
+        _size, chunks = self._data._record_to_data((rec[1],), rec[3], contents)
         return b"".join(chunks)
 
 
@@ -240,8 +240,8 @@ class FTAnnotatedToFullText(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         annotated_compressed_bytes = factory._raw_record
-        rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
-        content, delta = self._annotate_factory.parse_record(
+        _rec, contents = self._data._parse_record_unchecked(annotated_compressed_bytes)
+        content, _delta = self._annotate_factory.parse_record(
             factory.key[-1], contents, factory._build_details, None
         )
         if target_storage_kind == "fulltext":
@@ -287,8 +287,8 @@ class FTPlainToFullText(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         compressed_bytes = factory._raw_record
-        rec, contents = self._data._parse_record_unchecked(compressed_bytes)
-        content, delta = self._plain_factory.parse_record(
+        _rec, contents = self._data._parse_record_unchecked(compressed_bytes)
+        content, _delta = self._plain_factory.parse_record(
             factory.key[-1], contents, factory._build_details, None
         )
         if target_storage_kind == "fulltext":
@@ -709,7 +709,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
     def make(self, lines, version_id):
         num_lines = len(lines)
-        return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
+        return AnnotatedKnitContent(zip([version_id] * num_lines, lines, strict=False))
 
     def parse_fulltext(self, content, version_id):
         r"""Convert fulltext to internal representation.
@@ -779,7 +779,7 @@ class KnitAnnotateFactory(_KnitFactory):
             header = header.split(b",")
             count = int(header[2])
             for _ in range(count):
-                origin, text = next(lines).split(b" ", 1)
+                _origin, text = next(lines).split(b" ", 1)
                 yield text
 
     def lower_fulltext(self, content):
@@ -1353,7 +1353,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             current_components = set(pending_components)
             pending_components = set()
             for key, details in build_details.items():
-                (index_memo, compression_parent, parents, record_details) = details
+                (_index_memo, compression_parent, _parents, _record_details) = details
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
                 component_data[key] = self._build_details_to_components(details)
@@ -1465,7 +1465,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 records.sort(key=operator.itemgetter(1))
                 raw_record_map = {}
                 for key, data in self._read_records_iter_unchecked(records):
-                    (record_details, index_memo, next) = position_map[key]
+                    (record_details, _index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
             except pack_repo.RetryWithNewPacks as e:
@@ -1695,7 +1695,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     # this KnitVersionedFiles
                     records = [(key, positions[key][1]) for key in keys]
                     for key, raw_data in self._read_records_iter_unchecked(records):
-                        (record_details, index_memo, _) = positions[key]
+                        (record_details, _index_memo, _) = positions[key]
                         yield KnitContentFactory(
                             key,
                             global_map[key],
@@ -1786,7 +1786,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # Check that the ID in the header of the raw knit bytes matches
                 # the record metadata.
                 raw_data = record._raw_record
-                df, rec = self._parse_record_header(record.key, raw_data)
+                df, _rec = self._parse_record_header(record.key, raw_data)
                 df.close()
             buffered = False
             parents = record.parents
@@ -2142,7 +2142,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             [index_memo for key, index_memo in needed_records]
         )
 
-        for (key, _index_memo), data in zip(needed_records, raw_data):
+        for (key, _index_memo), data in zip(needed_records, raw_data, strict=False):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 
@@ -2323,7 +2323,7 @@ class _ContentMapGenerator:
                 if component_id in self._contents_map:
                     content = self._contents_map[component_id]
                 else:
-                    content, delta = self._factory.parse_record(
+                    content, _delta = self._factory.parse_record(
                         key[-1],
                         record,
                         record_details,
@@ -2900,7 +2900,7 @@ class _KndxIndex:
         else:
             relpaths = set()
             for quoted_relpath in self._transport.iter_files_recursive():
-                path, ext = os.path.splitext(quoted_relpath)
+                path, _ext = os.path.splitext(quoted_relpath)
                 relpaths.add(path)
             prefixes = [self._mapper.unmap(path) for path in relpaths]
         self._load_prefixes(prefixes)
@@ -3559,7 +3559,7 @@ class _KnitAnnotator(annotate.Annotator):
             # new_nodes = self._vf._index._get_entries(this_iteration)
             pending = set()
             for key, details in build_details.items():
-                (index_memo, compression_parent, parent_keys, record_details) = details
+                (index_memo, compression_parent, parent_keys, _record_details) = details
                 self._parent_map[key] = parent_keys
                 self._heads_provider = None
                 records.append((key, index_memo))

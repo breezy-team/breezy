@@ -201,7 +201,7 @@ class TestRepository(TestCaseWithRepository):
         self.addCleanup(tree.unlock)
         revs = (first_revision, second_revision)
         invs = tree.branch.repository.iter_inventories(revs)
-        for rev_id, inv in zip(revs, invs):
+        for rev_id, inv in zip(revs, invs, strict=False):
             self.assertEqual(rev_id, inv.revision_id)
             self.assertIsInstance(inv, inventory.CommonInventory)
 
@@ -345,7 +345,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         trees1 = list(repository.revision_trees(revision_ids))
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         self.assertEqual(len(trees1), len(trees2))
-        for tree1, tree2 in zip(trees1, trees2):
+        for tree1, tree2 in zip(trees1, trees2, strict=False):
             self.assertFalse(tree2.changes_from(tree1).has_changed())
 
     def test_get_revision_deltas(self):

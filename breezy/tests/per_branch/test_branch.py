@@ -497,7 +497,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree("a")
         tree.commit("first commit")
         rev2 = tree.commit("second commit")
-        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        must_fetch, _should_fetch = tree.branch.heads_to_fetch()
         self.assertTrue(rev2 in must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):

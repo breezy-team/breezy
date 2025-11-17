@@ -247,7 +247,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return message
         git_svn_id = lines[-2].split(": ", 1)[1]
         rev.properties["git-svn-id"] = git_svn_id
-        (url, rev, uuid) = parse_git_svn_id(git_svn_id)
+        (_url, rev, _uuid) = parse_git_svn_id(git_svn_id)
         # FIXME: Convert this to converted-from property somehow..
         return "\n".join(lines[:-2])
 
@@ -404,7 +404,7 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding = "utf-8"
         if commit.message is not None:
             try:
-                message, metadata = self._decode_commit_message(
+                _message, metadata = self._decode_commit_message(
                     None, commit.message, encoding
                 )
             except UnicodeDecodeError:
@@ -508,7 +508,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     + "\n"
                 )
             elif k == HG_EXTRA:
-                hgk, hgv = v.split(b":", 1)
+                hgk, _hgv = v.split(b":", 1)
                 if (
                     hgk
                     not in (
@@ -590,7 +590,7 @@ class GitMappingRegistry(VcsMappingRegistry):
             return ZERO_SHA, None
         if not bzr_revid.startswith(b"git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
-        (mapping_version, git_sha) = bzr_revid.split(b":", 1)
+        (mapping_version, _git_sha) = bzr_revid.split(b":", 1)
         mapping = self.get(mapping_version)
         return mapping.revision_id_bzr_to_foreign(bzr_revid)
 
@@ -707,7 +707,7 @@ def entry_mode(entry):
 
 def extract_unusual_modes(rev):
     try:
-        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+        _foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
     except errors.InvalidRevisionId:
         return {}
     else:
