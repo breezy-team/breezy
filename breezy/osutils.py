@@ -21,8 +21,8 @@ import re
 import stat
 import sys
 import time
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 from .lazy_import import lazy_import
 

@@ -107,7 +107,13 @@ class ChangesFromGitChangesTests(TestCase):
                 )
             ],
             self.transform(
-                [DulwichTreeChange(type="modify", old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id), new=TreeEntry(b"a", stat.S_IFLNK, b.id))]
+                [
+                    DulwichTreeChange(
+                        type="modify",
+                        old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                        new=TreeEntry(b"a", stat.S_IFLNK, b.id),
+                    )
+                ]
             ),
         )
 
@@ -238,7 +244,13 @@ class ChangesFromGitChangesTests(TestCase):
                 )
             ],
             self.transform(
-                [DulwichTreeChange(type="add", old=None, new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id))]
+                [
+                    DulwichTreeChange(
+                        type="add",
+                        old=None,
+                        new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                    )
+                ]
             ),
         )
 
@@ -259,7 +271,13 @@ class ChangesFromGitChangesTests(TestCase):
                 )
             ],
             self.transform(
-                [DulwichTreeChange(type="remove", old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id), new=None)]
+                [
+                    DulwichTreeChange(
+                        type="remove",
+                        old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                        new=None,
+                    )
+                ]
             ),
         )
 
@@ -321,7 +339,13 @@ class ChangesFromGitChangesTests(TestCase):
                 )
             ],
             self.transform(
-                [DulwichTreeChange(type="add", old=None, new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id))],
+                [
+                    DulwichTreeChange(
+                        type="add",
+                        old=None,
+                        new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                    )
+                ],
                 target_extras={b"a"},
             ),
         )
@@ -495,7 +519,13 @@ class DeltaFromGitChangesTests(TestCase):
         a = Blob.from_string(b"a")
         b = Blob.from_string(b"b")
         delta = self.transform(
-            [DulwichTreeChange(type="copy", old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id), new=TreeEntry(b"b", stat.S_IFREG | 0o644, b.id))]
+            [
+                DulwichTreeChange(
+                    type="copy",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, b.id),
+                )
+            ]
         )
         expected_delta = TreeDelta()
         expected_delta.copied.append(
@@ -516,7 +546,13 @@ class DeltaFromGitChangesTests(TestCase):
     def test_add(self):
         b = Blob.from_string(b"b")
         delta = self.transform(
-            [DulwichTreeChange(type="add", old=None, new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id))]
+            [
+                DulwichTreeChange(
+                    type="add",
+                    old=None,
+                    new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                )
+            ]
         )
         expected_delta = TreeDelta()
         expected_delta.added.append(
@@ -537,7 +573,13 @@ class DeltaFromGitChangesTests(TestCase):
     def test_delete(self):
         b = Blob.from_string(b"b")
         delta = self.transform(
-            [DulwichTreeChange(type="remove", old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id), new=None)]
+            [
+                DulwichTreeChange(
+                    type="remove",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                    new=None,
+                )
+            ]
         )
         expected_delta = TreeDelta()
         expected_delta.removed.append(
@@ -584,7 +626,13 @@ class DeltaFromGitChangesTests(TestCase):
     def test_unversioned(self):
         b = Blob.from_string(b"b")
         delta = self.transform(
-            [DulwichTreeChange(type="add", old=None, new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id))],
+            [
+                DulwichTreeChange(
+                    type="add",
+                    old=None,
+                    new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                )
+            ],
             target_extras={b"a"},
         )
         expected_delta = TreeDelta()
@@ -603,7 +651,13 @@ class DeltaFromGitChangesTests(TestCase):
         )
         self.assertEqual(delta, expected_delta)
         delta = self.transform(
-            [DulwichTreeChange(type="add", old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id), new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id))],
+            [
+                DulwichTreeChange(
+                    type="add",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                    new=TreeEntry(b"a", stat.S_IFREG | 0o644, b.id),
+                )
+            ],
             source_extras={b"a"},
             target_extras={b"a"},
         )
@@ -627,7 +681,13 @@ class DeltaFromGitChangesTests(TestCase):
         a = Blob.from_string(b"a")
         b = Blob.from_string(b"target")
         delta = self.transform(
-            [DulwichTreeChange(type="modify", old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id), new=TreeEntry(b"a", stat.S_IFLNK, b.id))]
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                    new=TreeEntry(b"a", stat.S_IFLNK, b.id),
+                )
+            ]
         )
         expected_delta = TreeDelta()
         expected_delta.kind_changed.append(

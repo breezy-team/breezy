@@ -19,7 +19,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -934,7 +934,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = None,
+        delete_source_after_merge: bool | None = None,
     ):
         """Perform the submission."""
         if prerequisite_branch is not None:
@@ -946,7 +946,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if title is None:
             title = determine_title(description)
         target_repo = self.gh._get_repo(self.target_owner, self.target_repo_name)
-        assignees: Optional[list[dict[str, Any]]] = []
+        assignees: list[dict[str, Any]] | None = []
         if reviewers:
             assignees = []
             for reviewer in reviewers:

@@ -19,7 +19,6 @@ import difflib
 import os
 import re
 import sys
-from typing import Optional, Union
 
 from .lazy_import import lazy_import
 
@@ -544,7 +543,7 @@ def show_diff_trees(
     new_label: str = "b/",
     extra_trees=None,
     path_encoding: str = "utf8",
-    using: Optional[str] = None,
+    using: str | None = None,
     format_cls=None,
     context=DEFAULT_CONTEXT_AMOUNT,
 ):
@@ -852,7 +851,7 @@ class DiffText(DiffPath):
 class DiffFromTool(DiffPath):
     def __init__(
         self,
-        command_template: Union[str, list[str]],
+        command_template: str | list[str],
         old_tree: Tree,
         new_tree: Tree,
         to_file,
@@ -868,7 +867,7 @@ class DiffFromTool(DiffPath):
     @classmethod
     def from_string(
         klass,
-        command_template: Union[str, list[str]],
+        command_template: str | list[str],
         old_tree: Tree,
         new_tree: Tree,
         to_file,

@@ -41,8 +41,8 @@ Note that context is currently only supported for write converters.
 """
 
 
+from collections.abc import Callable
 from io import BytesIO
-from typing import Callable
 
 from .. import osutils, registry
 

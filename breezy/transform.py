@@ -17,7 +17,7 @@
 import contextlib
 import errno
 import os
-from typing import Callable
+from collections.abc import Callable
 
 from . import config as _mod_config
 from . import errors, lazy_import, lock, osutils, registry, trace

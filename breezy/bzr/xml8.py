@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional
 
 from .. import lazy_regex, trace
 from .. import revision as _mod_revision
@@ -65,14 +64,14 @@ class Serializer_v8(XMLSerializer):
 
     __slots__: list[str] = []
 
-    root_id: Optional[bytes] = None
+    root_id: bytes | None = None
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = {"file", "directory", "symlink"}
     format_num = b"8"
-    revision_format_num: Optional[bytes] = None
+    revision_format_num: bytes | None = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.

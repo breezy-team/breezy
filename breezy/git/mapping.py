@@ -20,7 +20,6 @@
 
 import base64
 import stat
-from typing import Optional
 
 import fastbencode as bencode
 
@@ -154,7 +153,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     experimental = False
 
-    BZR_DUMMY_FILE: Optional[str] = None
+    BZR_DUMMY_FILE: str | None = None
 
     def is_special_file(self, filename):
         return filename in (self.BZR_DUMMY_FILE,)

@@ -18,7 +18,8 @@ import bz2
 import os
 import re
 import zlib
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import fastbencode as bencode
 
@@ -1357,13 +1358,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     """
 
     _format: RemoteRepositoryFormat
-    _real_repository: Optional[_mod_repository.Repository]
+    _real_repository: _mod_repository.Repository | None
 
     def __init__(
         self,
         remote_bzrdir: RemoteBzrDir,
         format: RemoteRepositoryFormat,
-        real_repository: Optional[_mod_repository.Repository] = None,
+        real_repository: _mod_repository.Repository | None = None,
         _client=None,
     ):
         """Create a RemoteRepository instance.
@@ -3739,8 +3740,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         _client=None,
         format=None,
         setup_stacking: bool = True,
-        name: Optional[str] = None,
-        possible_transports: Optional[list[_mod_transport.Transport]] = None,
+        name: str | None = None,
+        possible_transports: list[_mod_transport.Transport] | None = None,
     ):
         """Create a RemoteBranch instance.
 

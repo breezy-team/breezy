@@ -20,7 +20,6 @@ import os
 import posixpath
 import re
 import sys
-from typing import Union
 from urllib import parse as urlparse
 
 from . import errors, osutils
@@ -85,7 +84,7 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-def escape(relpath: Union[bytes, str], safe: str = "/~") -> str:
+def escape(relpath: bytes | str, safe: str = "/~") -> str:
     """Escape relpath to be a valid url."""
     return quote(relpath, safe=safe)
 

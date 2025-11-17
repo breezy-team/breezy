@@ -78,9 +78,9 @@ up=pull
 
 import os
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from io import BytesIO
-from typing import Callable, cast
+from typing import cast
 
 import configobj
 

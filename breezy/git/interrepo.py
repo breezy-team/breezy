@@ -17,7 +17,7 @@
 """InterRepository operations."""
 
 import itertools
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from dulwich.errors import NotCommitError
 from dulwich.object_store import ObjectStoreGraphWalker
@@ -54,7 +54,7 @@ from .remote import RemoteGitError, RemoteGitRepository
 from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
 from .unpeel_map import UnpeelMap
 
-EitherId = tuple[Optional[RevisionID], Optional[ObjectID]]
+EitherId = tuple[RevisionID | None, ObjectID | None]
 EitherRefDict = dict[bytes, EitherId]
 RevidMap = dict[RevisionID, tuple[ObjectID, RevisionID]]
 
@@ -278,7 +278,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     )
         return revidmap, old_refs, result_refs
 
-    def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
+    def fetch_revs(self, revs, lossy: bool, limit: int | None = None) -> RevidMap:
         if not lossy and not self.mapping.roundtripping:
             for _git_sha, bzr_revid in revs:
                 if bzr_revid is not None and needs_roundtripping(

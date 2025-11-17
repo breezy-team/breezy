@@ -51,8 +51,8 @@ import codecs
 import itertools
 import re
 import sys
+from collections.abc import Callable
 from io import BytesIO
-from typing import Callable
 from warnings import warn
 
 from .lazy_import import lazy_import

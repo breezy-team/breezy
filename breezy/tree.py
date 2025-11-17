@@ -19,7 +19,7 @@
 __docformat__ = "google"
 
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
@@ -333,7 +333,7 @@ class Tree:
         raise NotImplementedError(self.all_versioned_paths)
 
     def iter_entries_by_dir(
-        self, specific_files: Optional[list[str]] = None, recurse_nested: bool = False
+        self, specific_files: list[str] | None = None, recurse_nested: bool = False
     ):
         """Walk the tree in 'by_dir' order.
 
@@ -790,8 +790,8 @@ class Tree:
         format: str,
         name: str,
         root: str = "",
-        subdir: Optional[str] = None,
-        force_mtime: Optional[Union[int, float]] = None,
+        subdir: str | None = None,
+        force_mtime: int | float | None = None,
         recurse_nested: bool = False,
     ) -> Iterator[bytes]:
         """Create an archive of this tree.
@@ -860,8 +860,8 @@ class InterTree(InterObject[Tree]):
     def compare(
         self,
         want_unchanged: bool = False,
-        specific_files: Optional[list[str]] = None,
-        extra_trees: Optional[list[Tree]] = None,
+        specific_files: list[str] | None = None,
+        extra_trees: list[Tree] | None = None,
         require_versioned: bool = False,
         include_root: bool = False,
         want_unversioned: bool = False,
@@ -904,9 +904,9 @@ class InterTree(InterObject[Tree]):
     def iter_changes(
         self,
         include_unchanged: bool = False,
-        specific_files: Optional[list[str]] = None,
+        specific_files: list[str] | None = None,
         pb=None,
-        extra_trees: Optional[list[Tree]] = None,
+        extra_trees: list[Tree] | None = None,
         require_versioned: bool = True,
         want_unversioned: bool = False,
     ):
@@ -979,7 +979,7 @@ class InterTree(InterObject[Tree]):
                 target_sha1 = target_verifier_data
             return source_sha1 == target_sha1
 
-    def find_target_path(self, path: str, recurse: str = "none") -> Optional[str]:
+    def find_target_path(self, path: str, recurse: str = "none") -> str | None:
         """Find target tree path.
 
         Args:
@@ -991,7 +991,7 @@ class InterTree(InterObject[Tree]):
         """
         raise NotImplementedError(self.find_target_path)
 
-    def find_source_path(self, path: str, recurse: str = "none") -> Optional[str]:
+    def find_source_path(self, path: str, recurse: str = "none") -> str | None:
         """Find the source tree path.
 
         Args:
@@ -1005,7 +1005,7 @@ class InterTree(InterObject[Tree]):
 
     def find_target_paths(
         self, paths: list[str], recurse="none"
-    ) -> dict[str, Optional[str]]:
+    ) -> dict[str, str | None]:
         """Find target tree paths.
 
         Args:
@@ -1020,7 +1020,7 @@ class InterTree(InterObject[Tree]):
 
     def find_source_paths(
         self, paths: list[str], recurse: str = "none"
-    ) -> dict[str, Optional[str]]:
+    ) -> dict[str, str | None]:
         """Find source tree paths.
 
         Args:
@@ -1036,7 +1036,7 @@ class InterTree(InterObject[Tree]):
 
 def find_previous_paths(
     from_tree: Tree, to_tree: Tree, paths: list[str], recurse: str = "none"
-) -> dict[str, Optional[str]]:
+) -> dict[str, str | None]:
     """Find previous tree paths.
 
     Args:

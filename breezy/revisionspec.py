@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional
 
 from breezy import revision, workingtree
 from breezy.i18n import gettext
@@ -137,7 +136,7 @@ class RevisionSpec:
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix: Optional[str] = None
+    prefix: str | None = None
     dwim_catchable_exceptions: list[type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 

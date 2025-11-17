@@ -20,7 +20,7 @@ Directory services are utilities that provide a mapping from URL-like strings
 to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from . import branch as _mod_branch
 from . import errors, registry
@@ -116,7 +116,7 @@ class AliasDirectory(Directory):
     """
 
     branch_aliases = registry.Registry[
-        str, Callable[[_mod_branch.Branch], Optional[str]]
+        str, Callable[[_mod_branch.Branch], str | None]
     ]()
     branch_aliases.register(
         "parent", lambda b: b.get_parent(), help="The parent of this branch."
