@@ -51,8 +51,8 @@ import codecs
 import itertools
 import re
 import sys
+from collections.abc import Callable
 from io import BytesIO
-from typing import Callable
 from warnings import warn
 
 from .lazy_import import lazy_import
@@ -1010,7 +1010,7 @@ def make_log_rev_iterator(
         # A single batch conversion is faster than many incremental ones.
         # As we have all the data, do a batch conversion.
         nones = [None] * len(view_revisions)
-        log_rev_iterator = iter([list(zip(view_revisions, nones, nones))])
+        log_rev_iterator = iter([list(zip(view_revisions, nones, nones, strict=False))])
     else:
 
         def _convert():
@@ -1126,11 +1126,11 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, files, direction)
         new_revs = []
         if delta_type == "full" and not check_files:
             deltas = repository.get_revision_deltas(revisions)
-            for rev, delta in zip(revs, deltas):
+            for rev, delta in zip(revs, deltas, strict=False):
                 new_revs.append((rev[0], rev[1], delta))
         else:
             deltas = repository.get_revision_deltas(revisions, specific_files=file_set)
-            for rev, delta in zip(revs, deltas):
+            for rev, delta in zip(revs, deltas, strict=False):
                 if check_files:
                     if delta is None or not delta.has_changed():
                         continue
@@ -1221,7 +1221,7 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     for batch in log_rev_iterator:
         batch = iter(batch)
         while True:
-            step = [detail for _, detail in zip(range(num), batch)]
+            step = [detail for _, detail in zip(range(num), batch, strict=False)]
             if len(step) == 0:
                 break
             yield step

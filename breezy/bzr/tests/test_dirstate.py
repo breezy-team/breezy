@@ -2391,7 +2391,7 @@ class TestBisect(TestCaseWithDirState):
         # equality is true
         self.assertEqual(len(map_keys), len(paths))
         expected = {}
-        for path, keys in zip(paths, map_keys):
+        for path, keys in zip(paths, map_keys, strict=False):
             if keys is None:
                 # This should not be present in the output
                 continue
@@ -2416,7 +2416,7 @@ class TestBisect(TestCaseWithDirState):
         result = state._bisect_dirblocks(paths)
         self.assertEqual(len(map_keys), len(paths))
         expected = {}
-        for path, keys in zip(paths, map_keys):
+        for path, keys in zip(paths, map_keys, strict=False):
             if keys is None:
                 # This should not be present in the output
                 continue

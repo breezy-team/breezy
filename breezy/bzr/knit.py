@@ -916,7 +916,7 @@ class KnitAnnotateFactory(_KnitFactory):
             An AnnotatedKnitContent instance.
         """
         num_lines = len(lines)
-        return AnnotatedKnitContent(zip([version_id] * num_lines, lines))
+        return AnnotatedKnitContent(zip([version_id] * num_lines, lines, strict=False))
 
     def parse_fulltext(self, content, version_id):
         r"""Convert fulltext to internal representation.
@@ -2411,7 +2411,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             [index_memo for key, index_memo in needed_records]
         )
 
-        for (key, _index_memo), data in zip(needed_records, raw_data):
+        for (key, _index_memo), data in zip(needed_records, raw_data, strict=False):
             content, digest = self._parse_record(key[-1], data)
             yield key, content, digest
 

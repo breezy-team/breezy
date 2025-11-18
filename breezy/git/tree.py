@@ -24,7 +24,6 @@ import stat
 from collections import deque
 from functools import partial
 from io import BytesIO
-from typing import Union
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -1963,7 +1962,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             # caring about the instantaneous file kind within a uncommmitted tree
             #
             self._gather_kinds(files, kinds)
-            for path, kind in zip(files, kinds):
+            for path, kind in zip(files, kinds, strict=False):
                 path, can_access = osutils.normalized_filename(path)
                 if not can_access:
                     raise errors.InvalidNormalization(path)
@@ -2202,9 +2201,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self,
         name: str,
         path: str,
-        value: Union[IndexEntry, ConflictedIndexEntry],
+        value: IndexEntry | ConflictedIndexEntry,
         parent_id,
-    ) -> Union[GitTreeSymlink, GitTreeDirectory, GitTreeFile, GitTreeSubmodule]:
+    ) -> GitTreeSymlink | GitTreeDirectory | GitTreeFile | GitTreeSubmodule:
         if not isinstance(name, str):
             raise TypeError(name)
         if not isinstance(path, str):
@@ -2663,7 +2662,7 @@ def snapshot_workingtree(
             if np in blobs:
                 continue
             st = target._lstat(extra)  # type: ignore
-            obj: Union[Tree, Blob]
+            obj: Tree | Blob
             if stat.S_ISDIR(st.st_mode):
                 obj = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):

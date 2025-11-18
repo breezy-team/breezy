@@ -16,8 +16,6 @@
 
 """Helper functions for proposing merges."""
 
-from typing import Optional
-
 from . import errors, hooks, registry, urlutils
 
 
@@ -362,7 +360,7 @@ class MergeProposalBuilder:
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = None,
+        delete_source_after_merge: bool | None = None,
     ):
         """Create a proposal to merge a branch for merging.
 
@@ -599,7 +597,7 @@ def get_forge_by_hostname(hostname: str):
     raise UnsupportedForge(hostname)
 
 
-def iter_forge_instances(forge: Optional[type[Forge]] = None):
+def iter_forge_instances(forge: type[Forge] | None = None):
     """Iterate over all known forge instances.
 
     :return: Iterator over Forge instances

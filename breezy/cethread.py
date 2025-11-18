@@ -23,7 +23,7 @@ better error handling in multi-threaded applications.
 
 import sys
 import threading
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 
 class CatchingExceptionThread(threading.Thread):
@@ -33,7 +33,7 @@ class CatchingExceptionThread(threading.Thread):
     re-raised when the thread is joined().
     """
 
-    ignored_exceptions: Optional[Callable[[Exception], bool]]
+    ignored_exceptions: Callable[[Exception], bool] | None
 
     def __init__(self, *args, **kwargs):
         """Initialize a CatchingExceptionThread instance.
@@ -121,9 +121,10 @@ class CatchingExceptionThread(threading.Thread):
 
     def set_ignored_exceptions(
         self,
-        ignored: Union[
-            Callable[[Exception], bool], None, list[type[Exception]], type[Exception]
-        ],
+        ignored: Callable[[Exception], bool]
+        | None
+        | list[type[Exception]]
+        | type[Exception],
     ):
         """Declare which exceptions will be ignored.
 

@@ -36,7 +36,6 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import Optional, Union
 
 from . import i18n, option, trace
 from .lazy_import import lazy_import
@@ -357,7 +356,7 @@ def _get_cmd_object(
     # in a Unicode name. In that case, they should just get a
     # 'command not found' error later.
     # In the future, we may actually support Unicode command names.
-    cmd: Optional[Command] = None
+    cmd: Command | None = None
     # Get a command
     for hook in Command.hooks["get_command"]:
         cmd = hook(cmd, cmd_name)
@@ -521,9 +520,9 @@ class Command:
 
     aliases: list[str] = []
     takes_args: list[str] = []
-    takes_options: list[Union[str, option.Option]] = []
+    takes_options: list[str | option.Option] = []
     encoding_type: str = "strict"
-    invoked_as: Optional[str] = None
+    invoked_as: str | None = None
     l10n: bool = True
     _see_also: list[str]
 

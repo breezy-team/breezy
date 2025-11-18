@@ -301,7 +301,7 @@ class VersionedFileAnnotator(Annotator):
         out = []
         heads = self._get_heads_provider().heads
         append = out.append
-        for annotation, line in zip(annotations, lines):
+        for annotation, line in zip(annotations, lines, strict=False):
             if len(annotation) == 1:
                 head = annotation[0]
             else:

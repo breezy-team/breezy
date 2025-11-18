@@ -20,7 +20,6 @@
 import re
 import shutil
 import tempfile
-from typing import Optional
 
 from ... import branch as _mod_branch
 from ... import controldir, errors, urlutils
@@ -1075,7 +1074,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = False,
+        delete_source_after_merge: bool | None = False,
     ):
         """Create a merge proposal on Launchpad for Git branches.
 

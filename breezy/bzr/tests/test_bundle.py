@@ -557,7 +557,7 @@ class BundleTester:
         base_files = list(base_tree.list_files())
         to_files = list(to_tree.list_files())
         self.assertEqual(len(base_files), len(to_files))
-        for base_file, to_file in zip(base_files, to_files):
+        for base_file, to_file in zip(base_files, to_files, strict=False):
             self.assertEqual(base_file, to_file)
 
         for path, _status, _kind, _entry in base_files:

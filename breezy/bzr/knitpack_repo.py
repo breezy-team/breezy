@@ -813,7 +813,7 @@ class KnitPacker(Packer):
                     self._reload_func()
                 raise
             for (names, read_func), (_1, _2, (key, eol_flag)) in zip(
-                reader.iter_records(), pack_readv_requests
+                reader.iter_records(), pack_readv_requests, strict=False
             ):
                 raw_data = read_func(None)
                 # check the header only
@@ -880,7 +880,7 @@ class KnitPacker(Packer):
                     self._reload_func()
                 raise
             for (names, read_func), (key, eol_flag, references) in zip(
-                reader.iter_records(), node_vector
+                reader.iter_records(), node_vector, strict=False
             ):
                 raw_data = read_func(None)
                 if output_lines:
@@ -1269,7 +1269,7 @@ class KnitReconcilePacker(KnitPacker):
         # are being inserted without having to reference the entire text key
         # space (we only topo sort the revisions, which is smaller).
         topo_order = tsort.topo_sort(ancestors)
-        rev_order = dict(zip(topo_order, range(len(topo_order))))
+        rev_order = dict(zip(topo_order, range(len(topo_order)), strict=False))
         bad_texts.sort(key=lambda key: rev_order.get(key[0][1], 0))
         repo.get_transaction()
         GraphIndexPrefixAdapter(

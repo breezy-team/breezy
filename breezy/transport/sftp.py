@@ -209,7 +209,7 @@ class _SFTPReadvHelper:
         # rather than just because the data stream ended. This lets us detect
         # short readv.
         data_stream = itertools.chain(fp.readv(requests), itertools.repeat(None))
-        for (start, length), data in zip(requests, data_stream):
+        for (start, length), data in zip(requests, data_stream, strict=False):
             if data is None and cur_coalesced is not None:
                 raise errors.ShortReadvError(self.relpath, start, length, len(data))
             if len(data) != length:

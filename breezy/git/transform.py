@@ -1993,7 +1993,9 @@ class GitPreviewTree(PreviewTree, GitTree):
         while len(todo) > 0:
             parent = todo.pop()
             children = list(self._all_children(parent))
-            paths = dict(zip(children, self._final_paths.get_paths(children)))
+            paths = dict(
+                zip(children, self._final_paths.get_paths(children), strict=False)
+            )
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:

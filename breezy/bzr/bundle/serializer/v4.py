@@ -588,7 +588,7 @@ class BundleWriteOperation:
         for (
             mpdiff,
             item_key,
-        ) in zip(mpdiffs, ordered_keys):
+        ) in zip(mpdiffs, ordered_keys, strict=False):
             sha1 = sha1s[item_key]
             parents = [key[-1] for key in parent_map[item_key]]
             text = b"".join(mpdiff.to_patch())

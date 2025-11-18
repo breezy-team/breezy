@@ -21,8 +21,6 @@ It includes support for rich roots and the altered-by hack for efficient
 file ID lookups.
 """
 
-from typing import Optional
-
 from breezy._bzr_rs import revision_serializer_v8  # noqa: F401
 
 from .. import lazy_regex, trace
@@ -81,7 +79,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
 
     __slots__: list[str] = []
 
-    root_id: Optional[bytes] = None
+    root_id: bytes | None = None
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.

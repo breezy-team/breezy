@@ -21,7 +21,7 @@ import itertools
 import os
 from copy import copy
 from io import BytesIO
-from typing import Any, Optional
+from typing import Any
 from zlib import adler32
 
 from ..lazy_import import lazy_import
@@ -143,10 +143,10 @@ class ContentFactory:
 
     def __init__(self) -> None:
         """Create a ContentFactory."""
-        self.sha1: Optional[bytes] = None
-        self.size: Optional[int] = None
-        self.storage_kind: Optional[str] = None
-        self.key: Optional[tuple[bytes, ...]] = None
+        self.sha1: bytes | None = None
+        self.size: int | None = None
+        self.storage_kind: str | None = None
+        self.key: tuple[bytes, ...] | None = None
         self.parents = None
 
     def map_key(self, cb):
@@ -593,7 +593,11 @@ class VersionedFile:
                 raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
-        lines = dict(zip(knit_versions, self._get_lf_split_line_list(knit_versions)))
+        lines = dict(
+            zip(
+                knit_versions, self._get_lf_split_line_list(knit_versions), strict=False
+            )
+        )
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]
@@ -639,11 +643,11 @@ class VersionedFile:
             needed_parents.update(p for p in parent_ids if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(
-            present_parents, self._get_lf_split_line_list(present_parents)
+            present_parents, self._get_lf_split_line_list(present_parents), strict=False
         ):
             mpvf.add_version(lines, parent_id, [])
         for (version, parent_ids, _expected_sha1, mpdiff), lines in zip(
-            records, mpvf.get_line_list(versions)
+            records, mpvf.get_line_list(versions), strict=False
         ):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(
@@ -1306,7 +1310,7 @@ class VersionedFiles:
                 continue
             mpvf.add_version(record.get_bytes_as("lines"), record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
-            records, mpvf.get_line_list(versions)
+            records, mpvf.get_line_list(versions), strict=False
         ):
             if len(parent_keys) == 1:
                 left_matching_blocks = list(
@@ -1683,7 +1687,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                 relpaths.add(path)
             paths = list(relpaths)
             prefixes = [self._mapper.unmap(path) for path in paths]
-        return zip(paths, prefixes)
+        return zip(paths, prefixes, strict=False)
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """See VersionedFiles.get_record_stream()."""

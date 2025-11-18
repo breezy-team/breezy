@@ -401,7 +401,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
 
-        for expected, (path, ie) in zip(path_and_ids, path_entries):
+        for expected, (path, ie) in zip(path_and_ids, path_entries, strict=False):
             self.assertEqual(expected[0], path)  # Paths should match
             self.assertIsInstance(path, str)
             self.assertEqual(expected[1], ie.file_id)
@@ -471,7 +471,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             path_entries = list(tree.iter_entries_by_dir())
 
         for (epath, efid, eparent, _erev), (path, ie) in zip(
-            path_and_ids, path_entries
+            path_and_ids, path_entries, strict=False
         ):
             self.assertEqual(epath, path)  # Paths should match
             self.assertIsInstance(path, str)

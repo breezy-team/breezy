@@ -210,7 +210,7 @@ class TransportTests(TestTransportImplementation):
         self.build_tree(files, transport=t, line_endings="binary")
         self.check_transport_contents(b"contents of a\n", t, "a")
 
-        for content, fname in zip(contents, files):
+        for content, fname in zip(contents, files, strict=False):
             self.assertEqual(content, t.get_bytes(fname))
 
     def test_get_bytes_unknown_file(self):
@@ -980,7 +980,7 @@ class TransportTests(TestTransportImplementation):
         sizes = [14, 0, 16, 0, 18]
         self.build_tree(paths, transport=t, line_endings="binary")
 
-        for path, size in zip(paths, sizes):
+        for path, size in zip(paths, sizes, strict=False):
             st = t.stat(path)
             if path.endswith("/"):
                 self.assertTrue(S_ISDIR(st.st_mode))

@@ -125,7 +125,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See MutableTree._add."""
         with self.lock_tree_write():
             state = self.current_dirstate()
-            for f, file_id, kind in zip(files, ids, kinds):
+            for f, file_id, kind in zip(files, ids, kinds, strict=False):
                 f = f.strip("/")
                 if self.path2id(f):
                     # special case tree root handling.
@@ -1528,6 +1528,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     zip(
                         revision_ids,
                         self.branch.repository.revision_trees(revision_ids),
+                        strict=False,
                     )
                 )
                 base_tree = trees[0][1]

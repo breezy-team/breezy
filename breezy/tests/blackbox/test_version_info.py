@@ -103,7 +103,7 @@ class TestVersionInfo(TestCaseWithTransport):
         """
         lines1 = text1.splitlines(True)
         lines2 = text2.splitlines(True)
-        for line1, line2 in zip(lines1, lines2):
+        for line1, line2 in zip(lines1, lines2, strict=False):
             if line1.startswith("build-date: "):
                 self.assertStartsWith(line2, "build-date: ")
             else:

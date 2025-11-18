@@ -26,7 +26,6 @@ import base64
 import contextlib
 import re
 from io import BytesIO
-from typing import Optional
 
 from . import lazy_import
 
@@ -247,7 +246,7 @@ class BaseMergeDirective:
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        t_revision_id: Optional[_mod_revision.RevisionID] = revision_id
+        t_revision_id: _mod_revision.RevisionID | None = revision_id
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
         from .bzr.testament import StrictTestament3

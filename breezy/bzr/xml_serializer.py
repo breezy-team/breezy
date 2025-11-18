@@ -22,7 +22,6 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-from typing import Optional
 from xml.etree.ElementTree import (  # noqa: F401
     Element,
     ElementTree,
@@ -96,7 +95,7 @@ class XMLInventorySerializer(serializer.InventorySerializer):
     def _unpack_inventory(
         self,
         element,
-        revision_id: Optional[bytes] = None,
+        revision_id: bytes | None = None,
         entry_cache=None,
         return_from_cache=False,
     ):

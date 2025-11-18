@@ -78,9 +78,9 @@ __docformat__ = "google"
 
 import os
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from io import BytesIO
-from typing import Callable, cast
+from typing import cast
 
 import configobj
 
@@ -1375,7 +1375,7 @@ def _iter_for_location_by_parts(sections, location):
         else:
             # Rely on zip truncating in length to the length of the shortest
             # argument sequence.
-            for name in zip(location_parts, section_parts):
+            for name in zip(location_parts, section_parts, strict=False):
                 if not fnmatch.fnmatch(name[0], name[1]):
                     matched = False
                     break

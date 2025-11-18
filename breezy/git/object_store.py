@@ -21,7 +21,6 @@ import contextlib
 import posixpath
 import stat
 from collections.abc import Iterable, Iterator
-from typing import Optional
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
@@ -982,7 +981,7 @@ class BazaarObjectStore(BaseObjectStore):
         progress=None,
         get_tagged=None,
         get_parents=lambda x: [],
-    ) -> Iterator[tuple[ObjectID, Optional[bytes]]]:
+    ) -> Iterator[tuple[ObjectID, bytes | None]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent

@@ -16,10 +16,9 @@
 
 """Classes to provide name-to-object registry-like support."""
 
+from collections.abc import Callable
 from typing import (
-    Callable,
     TypeVar,
-    Union,
 )
 
 from catalogus.registry import Registry
@@ -28,7 +27,7 @@ Format = TypeVar("Format")
 Info = TypeVar("Info")
 
 
-class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]], Info]):
+class FormatRegistry(Registry[str, Format | Callable[[], Format], Info]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):

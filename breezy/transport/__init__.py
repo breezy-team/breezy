@@ -29,9 +29,10 @@ it.
 import contextlib
 import errno
 import sys
+from collections.abc import Callable
 from io import BytesIO
 from stat import S_ISDIR
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 
