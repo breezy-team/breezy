@@ -53,7 +53,7 @@ class Template:
     >>> print(list(t.process('{test}\\\\n')))
     ['xxx', '\\n']
     >>> print(list(t.process('{test}\\n')))
-    ['xxx', '\\n']
+    ['xxx', '\n']
     """
 
     _tag_re = lazy_compile("{(\\w+)}")
