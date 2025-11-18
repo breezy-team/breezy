@@ -134,7 +134,7 @@ fn combine_paths(base_path: &str, relpath: &str) -> String {
 
 #[pyfunction]
 #[pyo3(signature = (text, safe = None))]
-fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
+fn escape(py: Python, text: Py<PyAny>, safe: Option<&str>) -> PyResult<String> {
     if let Ok(text) = text.extract::<String>(py) {
         Ok(breezy_urlutils::escape(text.as_bytes(), safe))
     } else if let Ok(text) = text.extract::<Vec<u8>>(py) {

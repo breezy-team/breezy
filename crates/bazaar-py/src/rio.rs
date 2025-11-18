@@ -190,7 +190,7 @@ impl Stanza {
         Ok(ret.into())
     }
 
-    fn write(&self, file: PyObject) -> PyResult<()> {
+    fn write(&self, file: Py<PyAny>) -> PyResult<()> {
         let mut writer = PyBinaryFile::from(file);
         self.stanza.write(&mut writer)?;
         Ok(())
@@ -205,7 +205,7 @@ struct RioWriter {
 #[pymethods]
 impl RioWriter {
     #[new]
-    fn new(file: PyObject) -> PyResult<RioWriter> {
+    fn new(file: Py<PyAny>) -> PyResult<RioWriter> {
         let fw = PyBinaryFile::from(file);
         let writer = bazaar::rio::RioWriter::new(fw);
         Ok(RioWriter { writer })
@@ -218,7 +218,7 @@ impl RioWriter {
 }
 
 #[pyfunction]
-fn read_stanza_file(file: PyObject) -> PyResult<Option<Stanza>> {
+fn read_stanza_file(file: Py<PyAny>) -> PyResult<Option<Stanza>> {
     let reader = PyBinaryFile::from(file);
 
     let mut reader = BufReader::new(reader);
@@ -278,8 +278,8 @@ fn read_stanza(file: &Bound<PyAny>) -> PyResult<Option<Stanza>> {
 }
 
 #[pyfunction]
-fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
-    Python::with_gil(|py| {
+fn read_stanzas(file: Py<PyAny>) -> PyResult<Py<PyList>> {
+    Python::attach(|py| {
         let reader = PyBinaryFile::from(file);
         let ret = PyList::empty(py);
 
@@ -306,7 +306,7 @@ struct RioReader {
 #[pymethods]
 impl RioReader {
     #[new]
-    fn new(file: PyObject) -> PyResult<RioReader> {
+    fn new(file: Py<PyAny>) -> PyResult<RioReader> {
         let reader = PyBinaryFile::from(file);
         let reader = BufReader::new(reader);
         let reader = bazaar::rio::RioReader::new(reader);

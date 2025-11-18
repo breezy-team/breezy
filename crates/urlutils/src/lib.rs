@@ -70,7 +70,7 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
     let url_base = &url[..first_path_slash.unwrap()]; // http://host, file://
     let mut path = &url[first_path_slash.unwrap()..]; // /file/foo
 
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
     if url.starts_with("file:///") {
         // Strip off the drive letter
         // url_base is currently file://
@@ -724,14 +724,14 @@ pub mod posix {
 }
 
 pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
     return Ok(win32::local_path_to_url(path)?);
     #[cfg(unix)]
     return posix::local_path_to_url(path);
 }
 
 pub fn local_path_from_url(url: &str) -> Result<PathBuf> {
-    #[cfg(target_os = "win32")]
+    #[cfg(target_os = "windows")]
     return Ok(win32::local_path_from_url(url)?);
     #[cfg(unix)]
     return posix::local_path_from_url(url);
@@ -758,10 +758,10 @@ pub fn derive_to_location(from_location: &str) -> String {
     }
 }
 
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "windows")]
 pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///C:".len();
 
-#[cfg(not(target_os = "win32"))]
+#[cfg(not(target_os = "windows"))]
 pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///".len();
 
 /// Compute just the relative sub-portion of a url
