@@ -24,7 +24,7 @@ from collections.abc import Iterable, Iterator
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
-from dulwich.pack import Pack, PackData, pack_objects_to_data
+from dulwich.pack import Pack, PackData, UnpackedObject, pack_objects_to_data
 
 from .. import errors, lru_cache, osutils, trace, ui
 from ..bzr.testament import StrictTestament3
@@ -602,11 +602,10 @@ class BazaarObjectStore(BaseObjectStore):
     def iter_unpacked_subset(
         self,
         shas,
-        *,
         include_comp=False,
         allow_missing: bool = False,
         convert_ofs_delta: bool = True,
-    ) -> Iterator[ShaFile]:
+    ) -> Iterator[UnpackedObject]:
         """Iterate over unpacked objects (not supported in this implementation).
 
         Args:
@@ -981,7 +980,7 @@ class BazaarObjectStore(BaseObjectStore):
         progress=None,
         get_tagged=None,
         get_parents=lambda x: [],
-    ) -> Iterator[tuple[ObjectID, bytes | None]]:
+    ) -> Iterator[tuple[ObjectID, tuple[int, bytes | None] | None]]:
         """Iterate over the contents of a pack file.
 
         :param haves: List of SHA1s of objects that should not be sent
@@ -1035,7 +1034,8 @@ class BazaarObjectStore(BaseObjectStore):
                         rev, tree, lossy=(not self.mapping.roundtripping)
                     ):
                         if obj.id not in seen:
-                            yield (obj.id, path.encode("utf-8") if path else None)
+                            pack_hint = (obj.type_num, path.encode("utf-8") if path else None)
+                            yield (obj.id, pack_hint)
                             seen.add(obj.id)
 
     def add_thin_pack(self):
