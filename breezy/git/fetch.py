@@ -712,11 +712,12 @@ class DetermineWantsRecorder:
         self.wants = []
         self.remote_refs = {}
 
-    def __call__(self, refs):
+    def __call__(self, refs, depth=None):
         """Record refs and determine wants.
 
         Args:
             refs: Dictionary of remote references.
+            depth: Optional depth for shallow clones.
 
         Returns:
             List of wanted refs.
@@ -727,5 +728,5 @@ class DetermineWantsRecorder:
         if not isinstance(refs, dict):
             raise TypeError(refs)
         self.remote_refs = refs
-        self.wants = self.actual(refs)
+        self.wants = self.actual(refs, depth)
         return self.wants

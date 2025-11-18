@@ -9,13 +9,13 @@ use pyo3::types::PyDict;
 /// This struct provides a Rust interface to Python tags objects, implementing
 /// the `Tags` trait. It allows Rust code to interact with Python tag management
 /// implementations.
-pub struct PyTags(pub(crate) PyObject);
+pub struct PyTags(pub(crate) Py<PyAny>);
 
 import_exception!(breezy.errors, NoSuchTag);
 
 impl Tags for PyTags {
     fn get_tag_dict(&self) -> std::collections::HashMap<String, RevisionId> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let dict = self.0.call_method0(py, "get_tag_dict").unwrap();
             let dict = dict.downcast_bound::<PyDict>(py).unwrap();
             let mut map = std::collections::HashMap::new();
@@ -29,7 +29,7 @@ impl Tags for PyTags {
     }
 
     fn delete_tag(&mut self, tag: &str) -> Result<(), Error> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "delete_tag", (tag,)).map_err(|e| {
                 if e.is_instance_of::<NoSuchTag>(py) {
                     Error::NoSuchTag(tag.to_string())

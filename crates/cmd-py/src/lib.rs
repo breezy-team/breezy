@@ -302,7 +302,7 @@ fn log_exception_quietly(py: Python, log: &dyn log::Log, err: &PyErr) -> PyResul
 #[pymethods]
 impl BreezyTraceHandler {
     #[new]
-    fn new(f: PyObject, short: bool) -> PyResult<Self> {
+    fn new(f: Py<PyAny>, short: bool) -> PyResult<Self> {
         let f = PyBinaryFile::from(f);
         Ok(Self(Box::new(std::sync::Arc::new(
             breezy::trace::BreezyTraceLogger::new(Box::new(f), short),
@@ -329,7 +329,7 @@ impl BreezyTraceHandler {
         Ok(())
     }
 
-    fn handle(&self, py: Python, pyr: PyObject) -> PyResult<()> {
+    fn handle(&self, py: Python, pyr: Py<PyAny>) -> PyResult<()> {
         let msg = pyr.call_method0(py, "getMessage");
 
         let mut formatted = if let Err(err) = msg {
@@ -511,7 +511,7 @@ impl TreeBuilder {
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to build tree: {:?}", e)))
     }
 
-    fn start_tree(&mut self, tree: PyObject) {
+    fn start_tree(&mut self, tree: Py<PyAny>) {
         let tree = PyTree::new(tree);
         self.0.start_tree(tree);
     }
@@ -636,8 +636,8 @@ impl LockHeldInfo {
 
 #[pyfunction]
 fn remove_tags(
-    branch: PyObject,
-    graph: PyObject,
+    branch: Py<PyAny>,
+    graph: Py<PyAny>,
     old_tip: RevisionId,
     parents: Vec<RevisionId>,
 ) -> PyResult<Vec<String>> {

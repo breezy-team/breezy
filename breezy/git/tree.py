@@ -1287,8 +1287,15 @@ def tree_delta_from_git_changes(
     ret = delta.TreeDelta()
     added = []
     for change_type, old, new in changes:
-        (oldpath, oldmode, oldsha) = old
-        (newpath, newmode, newsha) = new
+        # Handle both old format (None, None, None) and new format None
+        if old is None:
+            oldpath, oldmode, oldsha = None, None, None
+        else:
+            (oldpath, oldmode, oldsha) = old
+        if new is None:
+            newpath, newmode, newsha = None, None, None
+        else:
+            (newpath, newmode, newsha) = new
         if newpath == b"" and not include_root:
             continue
         copied = change_type == "copy"
@@ -1456,8 +1463,15 @@ def changes_from_git_changes(
     for change_type, old, new in changes:
         if change_type == "unchanged" and not include_unchanged:
             continue
-        (oldpath, oldmode, oldsha) = old
-        (newpath, newmode, newsha) = new
+        # Handle both old format (None, None, None) and new format None
+        if old is None:
+            oldpath, oldmode, oldsha = None, None, None
+        else:
+            (oldpath, oldmode, oldsha) = old
+        if new is None:
+            newpath, newmode, newsha = None, None, None
+        else:
+            (newpath, newmode, newsha) = new
         oldpath_decoded = decode_git_path(oldpath) if oldpath is not None else None
         newpath_decoded = decode_git_path(newpath) if newpath is not None else None
         if not (
@@ -1795,11 +1809,20 @@ class InterGitTrees(_mod_tree.InterTree):
         ret = {}
         changes = self._iter_git_changes(specific_files=paths, include_trees=False)[0]
         for _change_type, old, new in changes:
-            if new[0] is None:
+            # Handle both old format (None, None, None) and new format None
+            if old is None:
+                oldpath, _oldmode, _oldsha = None, None, None
+            else:
+                (oldpath, _oldmode, _oldsha) = old
+            if new is None:
+                newpath_bytes, _newmode, _newsha = None, None, None
+            else:
+                (newpath_bytes, _newmode, _newsha) = new
+            if newpath_bytes is None:
                 continue
-            newpath = decode_git_path(new[0])
+            newpath = decode_git_path(newpath_bytes)
             if newpath in paths:
-                ret[newpath] = decode_git_path(old[0]) if old[0] else None
+                ret[newpath] = decode_git_path(oldpath) if oldpath else None
         for path in paths:
             if path not in ret:
                 if self.target.has_filename(path):

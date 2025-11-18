@@ -9,7 +9,7 @@ use pyo3::types::PyBytes;
 /// This struct provides a Rust interface to Python tree objects, implementing
 /// the various tree traits (`Tree`, `MutableTree`, `WorkingTree`, `RevisionTree`).
 /// It allows Rust code to interact with Python tree implementations.
-pub struct PyTree(PyObject);
+pub struct PyTree(Py<PyAny>);
 
 impl PyTree {
     /// Creates a new `PyTree` wrapper around a Python tree object.
@@ -17,7 +17,7 @@ impl PyTree {
     /// # Arguments
     ///
     /// * `obj` - The Python tree object to wrap.
-    pub fn new(obj: PyObject) -> Self {
+    pub fn new(obj: Py<PyAny>) -> Self {
         PyTree(obj)
     }
 }
@@ -34,7 +34,7 @@ fn map_py_err_to_err(py: Python<'_>, py_err: PyErr) -> Error {
 
 impl Tree for PyTree {
     fn supports_rename_tracking(&self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method0("supports_rename_tracking")
@@ -45,7 +45,7 @@ impl Tree for PyTree {
     }
 
     fn unlock(&mut self) -> Result<(), String> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method0("unlock")
@@ -62,7 +62,7 @@ impl MutableTree for PyTree {
         recurse: Option<bool>,
         save: Option<bool>,
     ) -> (Vec<String>, Vec<String>) {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             let (added, removed) = pytree
                 .call_method1(
@@ -82,7 +82,7 @@ impl MutableTree for PyTree {
     }
 
     fn commit(&mut self, message: Option<&str>) -> RevisionId {
-        let revid: Vec<u8> = Python::with_gil(|py| {
+        let revid: Vec<u8> = Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method1("commit", (message,))
@@ -94,7 +94,7 @@ impl MutableTree for PyTree {
     }
 
     fn mkdir(&mut self, path: &str) -> Result<(), Error> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method1("mkdir", (path,))
@@ -108,7 +108,7 @@ impl MutableTree for PyTree {
         path: &str,
         data: &[u8],
     ) -> std::result::Result<(), Error> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             let data = PyBytes::new(py, data);
             pytree
@@ -119,7 +119,7 @@ impl MutableTree for PyTree {
     }
 
     fn add(&mut self, paths: &[&str]) -> std::result::Result<(), Error> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method1("add", (paths.to_vec(),))
@@ -129,7 +129,7 @@ impl MutableTree for PyTree {
     }
 
     fn lock_tree_write(&mut self) -> Result<(), String> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method0("lock_tree_write")
@@ -141,7 +141,7 @@ impl MutableTree for PyTree {
 
 impl WorkingTree for PyTree {
     fn abspath(&self, path: &str) -> std::path::PathBuf {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method1("abspath", (path,))
@@ -152,7 +152,7 @@ impl WorkingTree for PyTree {
     }
 
     fn last_revision(&self) -> RevisionId {
-        let revid: Vec<u8> = Python::with_gil(|py| {
+        let revid: Vec<u8> = Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method0("last_revision")
@@ -166,7 +166,7 @@ impl WorkingTree for PyTree {
 
 impl RevisionTree for PyTree {
     fn get_revision_id(&self) -> RevisionId {
-        let revid: Vec<u8> = Python::with_gil(|py| {
+        let revid: Vec<u8> = Python::attach(|py| {
             let pytree = self.0.bind(py);
             pytree
                 .call_method0("get_revision_id")

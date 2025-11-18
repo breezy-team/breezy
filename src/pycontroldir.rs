@@ -6,14 +6,14 @@ use pyo3::prelude::*;
 /// This struct provides a Rust interface to Python control directory objects,
 /// implementing the `ControlDir` trait. It allows Rust code to interact with
 /// Python control directory implementations.
-pub struct PyControlDir(PyObject);
+pub struct PyControlDir(Py<PyAny>);
 
 /// A wrapper around a Python control directory prober object.
 ///
 /// This struct provides a Rust interface to Python control directory prober
 /// objects, implementing the `Prober` trait. It allows Rust code to interact
 /// with Python control directory detection implementations.
-pub struct PyProber(PyObject);
+pub struct PyProber(Py<PyAny>);
 
 impl ControlDir for PyControlDir {}
 

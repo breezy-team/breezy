@@ -91,23 +91,23 @@ impl SFTPClient {
 #[pymethods]
 impl SFTPFile {
     fn block(&mut self, py: Python, offset: u64, length: u64, lockmask: u32) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.block(&self.file, offset, length, lockmask))
+        py.detach(|| self.sftp.block(&self.file, offset, length, lockmask))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
     fn unblock(&mut self, py: Python, offset: u64, length: u64) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.unblock(&self.file, offset, length))
+        py.detach(|| self.sftp.unblock(&self.file, offset, length))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
     fn setstat(&mut self, py: Python, attr: &SFTPAttributes) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.fsetstat(&self.file, &attr.0))
+        py.detach(|| self.sftp.fsetstat(&self.file, &attr.0))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
     #[pyo3(signature = (flags = None))]
     fn stat(&mut self, py: Python, flags: Option<u32>) -> PyResult<SFTPAttributes> {
-        py.allow_threads(|| self.sftp.fstat(&self.file, flags).map(SFTPAttributes))
+        py.detach(|| self.sftp.fstat(&self.file, flags).map(SFTPAttributes))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
@@ -116,18 +116,18 @@ impl SFTPFile {
     }
 
     fn pwrite(&mut self, py: Python, offset: u64, data: &[u8]) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.pwrite(&self.file, offset, data))
+        py.detach(|| self.sftp.pwrite(&self.file, offset, data))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
-    fn pread(&mut self, py: Python, offset: u64, length: u32) -> PyResult<PyObject> {
-        py.allow_threads(|| self.sftp.pread(&self.file, offset, length))
+    fn pread(&mut self, py: Python, offset: u64, length: u32) -> PyResult<Py<PyAny>> {
+        py.detach(|| self.sftp.pread(&self.file, offset, length))
             .map_err(|e| sftp_error_to_py_err(e, None))
             .map(|b| PyBytes::new(py, &b).into())
     }
 
     fn close(&mut self, py: Python) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.fclose(&self.file))
+        py.detach(|| self.sftp.fclose(&self.file))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
@@ -182,9 +182,9 @@ impl SFTPFile {
                 slf.into()
             }
 
-            fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+            fn __next__(&mut self, py: Python) -> PyResult<Option<Py<PyAny>>> {
                 if let Some((offset, length)) = self.offsets.pop_front() {
-                    match py.allow_threads(|| self.sftp.pread(&self.file, offset, length)) {
+                    match py.detach(|| self.sftp.pread(&self.file, offset, length)) {
                         Ok(data) => Ok(Some(PyBytes::new(py, &data).into())),
                         Err(sftp::Error::Eof(_, _)) => Ok(Some(PyBytes::new(py, &[]).into())),
                         Err(e) => Err(sftp_error_to_py_err(e, None)),
@@ -209,13 +209,13 @@ impl SFTPFile {
     #[pyo3(signature = (length = None))]
     fn read<'a>(&mut self, py: Python<'a>, length: Option<u32>) -> PyResult<Bound<'a, PyBytes>> {
         let ret = if let Some(length) = length {
-            py.allow_threads(|| self.sftp.pread(&self.file, self.offset, length))
+            py.detach(|| self.sftp.pread(&self.file, self.offset, length))
         } else {
             let length = self.stat(py, None)?.0.size.unwrap();
             if length == 0 {
                 return Ok(PyBytes::new(py, &[]));
             }
-            py.allow_threads(|| {
+            py.detach(|| {
                 self.sftp
                     .pread(&self.file, self.offset, (length - self.offset) as u32)
             })
@@ -231,7 +231,7 @@ impl SFTPFile {
     }
 
     fn write(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
-        py.allow_threads(|| self.sftp.pwrite(&self.file, self.offset, data))
+        py.detach(|| self.sftp.pwrite(&self.file, self.offset, data))
             .map_err(|e| sftp_error_to_py_err(e, None))?;
         self.offset += data.len() as u64;
         Ok(())
@@ -259,7 +259,7 @@ struct SFTPDir(Arc<sftp::SftpClient<std::fs::File>>, sftp::Directory);
 #[pymethods]
 impl SFTPDir {
     fn readdir(&mut self, py: Python) -> PyResult<Option<Vec<(String, String, SFTPAttributes)>>> {
-        match py.allow_threads(|| {
+        match py.detach(|| {
             self.0.readdir(&self.1).map(|e| {
                 e.into_iter()
                     .map(|(k, l, v)| (k, l, SFTPAttributes(v)))
@@ -273,7 +273,7 @@ impl SFTPDir {
     }
 
     fn close(&mut self, py: Python) -> PyResult<()> {
-        py.allow_threads(|| self.0.closedir(&self.1))
+        py.detach(|| self.0.closedir(&self.1))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 }
@@ -282,7 +282,7 @@ impl SFTPDir {
 impl SFTPClient {
     #[new]
     fn new(py: Python, fd: i32) -> PyResult<Self> {
-        let session = py.allow_threads(|| sftp::SftpClient::<std::fs::File>::from_fd(fd))?;
+        let session = py.detach(|| sftp::SftpClient::<std::fs::File>::from_fd(fd))?;
         Ok(Self {
             sftp: Arc::new(session),
             cwd: None,
@@ -294,19 +294,19 @@ impl SFTPClient {
         let path = self._adjust_cwd(path);
         let mut attr = sftp::Attributes::new();
         attr.permissions = Some(mode.unwrap_or(0o777) | 0o40000);
-        py.allow_threads(|| self.sftp.mkdir(path.as_str(), &attr))
+        py.detach(|| self.sftp.mkdir(path.as_str(), &attr))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
     fn extended(&mut self, py: Python, extension: &str, data: &[u8]) -> PyResult<Option<Vec<u8>>> {
-        py.allow_threads(|| self.sftp.extended(extension, data))
+        py.detach(|| self.sftp.extended(extension, data))
             .map_err(|e| sftp_error_to_py_err(e, None))
     }
 
     #[pyo3(signature = (path, flags = None))]
     fn lstat(&mut self, py: Python, path: &str, flags: Option<u32>) -> PyResult<SFTPAttributes> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.lstat(path.as_str(), flags))
+        py.detach(|| self.sftp.lstat(path.as_str(), flags))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
             .map(SFTPAttributes)
     }
@@ -314,7 +314,7 @@ impl SFTPClient {
     #[pyo3(signature = (path, flags = None))]
     fn stat(&mut self, py: Python, path: &str, flags: Option<u32>) -> PyResult<SFTPAttributes> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.stat(path.as_str(), flags))
+        py.detach(|| self.sftp.stat(path.as_str(), flags))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
             .map(SFTPAttributes)
     }
@@ -325,19 +325,19 @@ impl SFTPClient {
             permissions: Some(mode),
             ..Default::default()
         };
-        py.allow_threads(|| self.sftp.setstat(path.as_str(), &attr))
+        py.detach(|| self.sftp.setstat(path.as_str(), &attr))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
     fn setstat(&mut self, py: Python, path: &str, attr: &SFTPAttributes) -> PyResult<()> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.setstat(path.as_str(), &attr.0))
+        py.detach(|| self.sftp.setstat(path.as_str(), &attr.0))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
     fn hardlink(&mut self, py: Python, oldpath: &str, newpath: &str) -> PyResult<()> {
         let newpath = self._adjust_cwd(newpath);
-        py.allow_threads(|| self.sftp.hardlink(oldpath, newpath.as_str()))
+        py.detach(|| self.sftp.hardlink(oldpath, newpath.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(newpath.as_str())))
     }
 
@@ -350,7 +350,7 @@ impl SFTPClient {
         compose_path: Option<&str>,
     ) -> PyResult<String> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| {
+        py.detach(|| {
             self.sftp
                 .realpath(path.as_str(), control_byte, compose_path)
         })
@@ -359,13 +359,13 @@ impl SFTPClient {
 
     fn symlink(&mut self, py: Python, oldpath: &str, newpath: &str) -> PyResult<()> {
         let newpath = self._adjust_cwd(newpath);
-        py.allow_threads(|| self.sftp.symlink(oldpath, newpath.as_str()))
+        py.detach(|| self.sftp.symlink(oldpath, newpath.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(newpath.as_str())))
     }
 
     fn readlink(&mut self, py: Python, path: &str) -> PyResult<String> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.readlink(path.as_str()))
+        py.detach(|| self.sftp.readlink(path.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
@@ -379,19 +379,19 @@ impl SFTPClient {
     ) -> PyResult<()> {
         let newpath = self._adjust_cwd(newpath);
         let oldpath = self._adjust_cwd(oldpath);
-        py.allow_threads(|| self.sftp.rename(oldpath.as_str(), newpath.as_str(), flags))
+        py.detach(|| self.sftp.rename(oldpath.as_str(), newpath.as_str(), flags))
             .map_err(|e| sftp_error_to_py_err(e, Some(newpath.as_str())))
     }
 
     fn remove(&mut self, py: Python, path: &str) -> PyResult<()> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.remove(path.as_str()))
+        py.detach(|| self.sftp.remove(path.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
     fn rmdir(&mut self, py: Python, path: &str) -> PyResult<()> {
         let path = self._adjust_cwd(path);
-        py.allow_threads(|| self.sftp.rmdir(path.as_str()))
+        py.detach(|| self.sftp.rmdir(path.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))
     }
 
@@ -408,7 +408,7 @@ impl SFTPClient {
     ) -> PyResult<SFTPFile> {
         let path = self._adjust_cwd(path);
         let h = py
-            .allow_threads(|| self.sftp.open(path.as_str(), flags, &attr.0))
+            .detach(|| self.sftp.open(path.as_str(), flags, &attr.0))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
         Ok(SFTPFile {
             sftp: Arc::clone(&self.sftp),
@@ -456,7 +456,7 @@ impl SFTPClient {
         };
 
         let h = py
-            .allow_threads(|| self.sftp.open(path.as_str(), flags, &attr))
+            .detach(|| self.sftp.open(path.as_str(), flags, &attr))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
 
         let mut ret = SFTPFile {
@@ -475,7 +475,7 @@ impl SFTPClient {
     fn opendir(&mut self, py: Python, path: &str) -> PyResult<SFTPDir> {
         let path = self._adjust_cwd(path);
         let h = py
-            .allow_threads(|| self.sftp.opendir(path.as_str()))
+            .detach(|| self.sftp.opendir(path.as_str()))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
         Ok(SFTPDir(Arc::clone(&self.sftp), h))
     }

@@ -66,7 +66,7 @@ fn run_patch(
     dry_run: Option<bool>,
     quiet: Option<bool>,
     target_file: Option<&str>,
-    out: Option<PyObject>,
+    out: Option<Py<PyAny>>,
     _patch_cmd: Option<&str>,
 ) -> PyResult<()> {
     let mut out: Box<dyn Write> = if let Some(obj) = out {
@@ -105,9 +105,9 @@ fn invoke_err_to_py_err(err: breezy_patch::invoke::Error) -> PyErr {
 #[pyfunction]
 fn iter_patched_from_hunks(
     py: Python,
-    orig_lines: PyObject,
-    hunks: PyObject,
-) -> PyResult<PyObject> {
+    orig_lines: Py<PyAny>,
+    hunks: Py<PyAny>,
+) -> PyResult<Py<PyAny>> {
     let orig_lines = orig_lines.extract::<Vec<Vec<u8>>>(py)?;
     let hunks = hunks.extract::<Vec<Vec<u8>>>(py)?;
     let patched_lines = breezy_patch::invoke::iter_patched_from_hunks(
@@ -202,7 +202,7 @@ fn parse_patch_date(date: &str) -> PyResult<(i64, i64)> {
 
 #[pyfunction]
 #[pyo3(signature = (secs, offset = None))]
-fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+fn format_patch_date(py: Python, secs: Py<PyAny>, offset: Option<Py<PyAny>>) -> PyResult<String> {
     let secs = if let Ok(secs) = secs.extract::<i64>(py) {
         secs
     } else if let Ok(secs) = secs.extract::<f64>(py) {

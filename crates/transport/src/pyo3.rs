@@ -26,20 +26,20 @@ import_exception!(breezy.errors, ShortReadvError);
 import_exception!(breezy.errors, LockContention);
 import_exception!(breezy.errors, LockFailed);
 
-struct PySmartMedium(PyObject);
+struct PySmartMedium(Py<PyAny>);
 
 impl SmartMedium for PySmartMedium {}
 
-pub struct PyTransport(PyObject);
+pub struct PyTransport(Py<PyAny>);
 
-impl From<PyObject> for PyTransport {
-    fn from(obj: PyObject) -> Self {
+impl From<Py<PyAny>> for PyTransport {
+    fn from(obj: Py<PyAny>) -> Self {
         PyTransport(obj)
     }
 }
 
 fn map_py_err_to_lock_err(e: PyErr) -> LockError {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         if e.is_instance_of::<LockContention>(py) {
             LockError::Contention(e.value(py).getattr("lock").unwrap().extract().unwrap())
         } else if e.is_instance_of::<LockFailed>(py) {
@@ -54,11 +54,11 @@ fn map_py_err_to_lock_err(e: PyErr) -> LockError {
     })
 }
 
-struct PyLock(PyObject);
+struct PyLock(Py<PyAny>);
 
 impl Lock for PyLock {
     fn unlock(&mut self) -> std::result::Result<(), LockError> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method0(py, "unlock")
                 .map_err(map_py_err_to_lock_err)?;
@@ -81,7 +81,7 @@ impl<'py> IntoPyObject<'py> for PyTransport {
 
 impl From<PyErr> for Error {
     fn from(e: PyErr) -> Self {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let arg = |_i| -> Option<String> {
                 let args = e.value(py).getattr("args").unwrap();
                 match args.get_item(0) {
@@ -122,8 +122,8 @@ impl From<PyErr> for Error {
 impl ReadStream for PyBinaryFile {}
 
 // Bit of a hack - this reads the entire buffer, and then streams it
-fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
+fn py_read(r: &mut dyn Read) -> PyResult<Py<PyAny>> {
+    Python::attach(|py| {
         let mut buffer = Vec::new();
         r.read_to_end(&mut buffer)?;
         let io = py.import("io")?;
@@ -132,18 +132,18 @@ fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
     })
 }
 
-struct PyWriteStream(PyObject);
+struct PyWriteStream(Py<PyAny>);
 
 impl Write for PyWriteStream {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "write", (buf,))?;
             Ok(obj.extract::<usize>(py)?)
         })
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method0(py, "flush")?;
             Ok(())
         })
@@ -152,7 +152,7 @@ impl Write for PyWriteStream {
 
 impl WriteStream for PyWriteStream {
     fn sync_data(&self) -> std::io::Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method0(py, "fdatasync")?;
             Ok(())
         })
@@ -167,7 +167,7 @@ impl std::fmt::Debug for PyTransport {
 
 impl Transport for PyTransport {
     fn external_url(&self) -> Result<Url> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method0(py, "external_url")?;
             let s = obj.extract::<String>(py)?;
             Url::parse(&s).map_err(Error::from)
@@ -175,7 +175,7 @@ impl Transport for PyTransport {
     }
 
     fn get_bytes(&self, path: &str) -> Result<Vec<u8>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "get_bytes", (path,))?;
             let bytes = obj.extract::<Bound<PyBytes>>(py)?;
             Ok(bytes.as_bytes().to_vec())
@@ -183,14 +183,14 @@ impl Transport for PyTransport {
     }
 
     fn get(&self, path: &str) -> Result<Box<dyn ReadStream + Send + Sync>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "get", (path,))?;
             Ok(Box::new(PyBinaryFile::from(obj)) as Box<dyn ReadStream + Send + Sync>)
         })
     }
 
     fn base(&self) -> Url {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.getattr(py, "base").unwrap();
             let s = obj.extract::<String>(py).unwrap();
             Url::parse(&s).unwrap()
@@ -198,21 +198,21 @@ impl Transport for PyTransport {
     }
 
     fn has(&self, path: &UrlFragment) -> Result<bool> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "has", (path,))?;
             Ok(obj.extract::<bool>(py)?)
         })
     }
 
     fn has_any(&self, paths: &[&UrlFragment]) -> Result<bool> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "has_any", (paths.to_vec(),))?;
             Ok(obj.extract::<bool>(py)?)
         })
     }
 
     fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode())))?;
             Ok(())
@@ -220,7 +220,7 @@ impl Transport for PyTransport {
     }
 
     fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self
                 .0
                 .call_method1(py, "ensure_base", (perms.map(|p| p.mode()),))?;
@@ -229,9 +229,9 @@ impl Transport for PyTransport {
     }
 
     fn stat(&self, path: &UrlFragment) -> Result<Stat> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "stat", (path,)).unwrap();
-            let stat_result = obj.extract::<PyObject>(py)?;
+            let stat_result = obj.extract::<Py<PyAny>>(py)?;
 
             let mtime = if let Ok(mtime) = stat_result.getattr(py, "mtime") {
                 Some(mtime.extract::<f64>(py)?)
@@ -248,7 +248,7 @@ impl Transport for PyTransport {
     }
 
     fn clone(&self, path: Option<&UrlFragment>) -> Result<Box<dyn Transport>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "clone", (path,))?;
             let transport: Box<dyn Transport> = Box::new(PyTransport(obj));
             Ok(transport)
@@ -256,14 +256,14 @@ impl Transport for PyTransport {
     }
 
     fn relpath(&self, path: &Url) -> Result<String> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "relpath", (path.to_string(),))?;
             Ok(obj.extract::<String>(py)?)
         })
     }
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
-        let s = Python::with_gil(|py| {
+        let s = Python::attach(|py| {
             let obj = self.0.call_method1(py, "abspath", (relpath,))?;
             obj.extract::<String>(py)
         })?;
@@ -277,7 +277,7 @@ impl Transport for PyTransport {
         mode: Option<Permissions>,
     ) -> Result<u64> {
         let f = py_read(f)?;
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let ret = self
                 .0
                 .call_method1(py, "put_file", (relpath, f, mode.map(|p| p.mode())))?;
@@ -291,7 +291,7 @@ impl Transport for PyTransport {
         bytes: &[u8],
         mode: Option<Permissions>,
     ) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| p.mode())))?;
             Ok(())
@@ -307,7 +307,7 @@ impl Transport for PyTransport {
         parent_mode: Option<Permissions>,
     ) -> Result<()> {
         let f = py_read(f)?;
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(
                 py,
                 "put_file_non_atomic",
@@ -331,7 +331,7 @@ impl Transport for PyTransport {
         create_parent: Option<bool>,
         parent_mode: Option<Permissions>,
     ) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(
                 py,
                 "put_bytes_non_atomic",
@@ -348,28 +348,28 @@ impl Transport for PyTransport {
     }
 
     fn delete(&self, relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "delete", (relpath,))?;
             Ok(())
         })
     }
 
     fn rmdir(&self, relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "rmdir", (relpath,))?;
             Ok(())
         })
     }
 
     fn rename(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "rename", (relpath, new_relpath))?;
             Ok(())
         })
     }
 
     fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method1(py, "set_segment_parameter", (key, value))?;
             Ok(())
@@ -377,7 +377,7 @@ impl Transport for PyTransport {
     }
 
     fn get_segment_parameters(&self) -> Result<HashMap<String, String>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(self
                 .0
                 .call_method0(py, "get_segment_parameters")?
@@ -386,7 +386,7 @@ impl Transport for PyTransport {
     }
 
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
             Ok(())
@@ -394,7 +394,7 @@ impl Transport for PyTransport {
     }
 
     fn recommended_page_size(&self) -> usize {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .getattr(py, "recommended_page_size")
                 .unwrap()
@@ -404,7 +404,7 @@ impl Transport for PyTransport {
     }
 
     fn is_readonly(&self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .getattr(py, "is_readonly")
                 .unwrap()
@@ -420,14 +420,14 @@ impl Transport for PyTransport {
         adjust_for_latency: bool,
         upper_limit: Option<u64>,
     ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + Send> {
-        let iter = Python::with_gil(|py| {
+        let iter = Python::attach(|py| {
             self.0
                 .call_method1(
                     py,
                     "readv",
                     (relpath, offsets, adjust_for_latency, upper_limit),
                 )?
-                .extract::<PyObject>(py)
+                .extract::<Py<PyAny>>(py)
         });
 
         if let Err(e) = iter {
@@ -435,7 +435,7 @@ impl Transport for PyTransport {
         }
 
         Box::new(std::iter::from_fn(move || {
-            Python::with_gil(|py| -> Option<Result<(u64, Vec<u8>)>> {
+            Python::attach(|py| -> Option<Result<(u64, Vec<u8>)>> {
                 let iter = iter.as_ref().unwrap();
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
@@ -458,7 +458,7 @@ impl Transport for PyTransport {
         bytes: &[u8],
         permissions: Option<Permissions>,
     ) -> Result<u64> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pos = self.0.call_method1(
                 py,
                 "append_bytes",
@@ -475,7 +475,7 @@ impl Transport for PyTransport {
         permissions: Option<Permissions>,
     ) -> Result<u64> {
         let f = py_read(f)?;
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let pos = self.0.call_method1(
                 py,
                 "append_file",
@@ -486,7 +486,7 @@ impl Transport for PyTransport {
     }
 
     fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(self
                 .0
                 .call_method1(py, "readlink", (relpath,))?
@@ -495,7 +495,7 @@ impl Transport for PyTransport {
     }
 
     fn hardlink(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method1(py, "hardlink", (relpath, new_relpath))?;
             Ok(())
@@ -503,17 +503,17 @@ impl Transport for PyTransport {
     }
 
     fn symlink(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "symlink", (relpath, new_relpath))?;
             Ok(())
         })
     }
 
     fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
-        let iter = Python::with_gil(|py| {
+        let iter = Python::attach(|py| {
             self.0
                 .call_method0(py, "iter_files_recursive")?
-                .extract::<PyObject>(py)
+                .extract::<Py<PyAny>>(py)
         });
 
         if let Err(e) = iter {
@@ -521,7 +521,7 @@ impl Transport for PyTransport {
         }
 
         Box::new(std::iter::from_fn(move || {
-            Python::with_gil(|py| -> Option<Result<String>> {
+            Python::attach(|py| -> Option<Result<String>> {
                 let iter = iter.as_ref().unwrap();
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
@@ -543,7 +543,7 @@ impl Transport for PyTransport {
         relpath: &UrlFragment,
         permissions: Option<Permissions>,
     ) -> Result<Box<dyn WriteStream + Send + Sync>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(
                 py,
                 "open_write_stream",
@@ -555,21 +555,21 @@ impl Transport for PyTransport {
     }
 
     fn delete_tree(&self, relpath: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "delete_tree", (relpath,))?;
             Ok(())
         })
     }
 
     fn r#move(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "move", (src, dst))?;
             Ok(())
         })
     }
 
     fn copy_tree(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "copy_tree", (src, dst))?;
             Ok(())
         })
@@ -589,7 +589,7 @@ impl Transport for PyTransport {
     }
 
     fn can_roundtrip_unix_modebits(&self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .getattr(py, "can_roundtrip_unix_modebits")
                 .unwrap()
@@ -599,17 +599,17 @@ impl Transport for PyTransport {
     }
 
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "local_abspath", (relpath,))?;
             Ok(obj.extract::<PathBuf>(py)?)
         })
     }
 
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
-        let iter = Python::with_gil(|py| {
+        let iter = Python::attach(|py| {
             self.0
                 .call_method1(py, "list_dir", (relpath,))?
-                .extract::<PyObject>(py)
+                .extract::<Py<PyAny>>(py)
         });
 
         if let Err(e) = iter {
@@ -617,7 +617,7 @@ impl Transport for PyTransport {
         }
 
         Box::new(std::iter::from_fn(move || {
-            Python::with_gil(|py| -> Option<Result<String>> {
+            Python::attach(|py| -> Option<Result<String>> {
                 let iter = iter.as_ref().unwrap();
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
@@ -634,7 +634,7 @@ impl Transport for PyTransport {
     }
 
     fn listable(&self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method0(py, "listable")
                 .unwrap()
@@ -644,7 +644,7 @@ impl Transport for PyTransport {
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "lock_write", (relpath,))?;
             let file: Box<dyn Lock + Send + Sync> = Box::new(PyLock(obj));
             Ok(file)
@@ -652,7 +652,7 @@ impl Transport for PyTransport {
     }
 
     fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method1(py, "lock_read", (relpath,))?;
             let file: Box<dyn Lock + Send + Sync> = Box::new(PyLock(obj));
             Ok(file)
@@ -660,19 +660,19 @@ impl Transport for PyTransport {
     }
 
     fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let obj = self.0.call_method0(py, "get_smart_medium").unwrap();
             if obj.is_none(py) {
                 return Err(Error::NoSmartMedium);
             }
-            let obj = obj.extract::<PyObject>(py).unwrap();
+            let obj = obj.extract::<Py<PyAny>>(py).unwrap();
             let medium = PySmartMedium(obj);
             Ok(Box::new(medium) as Box<dyn SmartMedium>)
         })
     }
 
     fn copy(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0.call_method1(py, "copy", (src, dst))?;
             Ok(())
         })

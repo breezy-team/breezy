@@ -10,7 +10,7 @@ pyo3::import_exception!(breezy.bzr.versionedfile, UnavailableRepresentation);
 #[pymethods]
 impl AbstractContentFactory {
     #[getter]
-    fn sha1(&self, py: Python) -> Option<PyObject> {
+    fn sha1(&self, py: Python) -> Option<Py<PyAny>> {
         self.0.sha1().map(|x| PyBytes::new(py, &x).into())
     }
 
@@ -34,7 +34,7 @@ impl AbstractContentFactory {
         self.0.size()
     }
 
-    fn get_bytes_as(&self, py: Python, storage_kind: &str) -> PyResult<PyObject> {
+    fn get_bytes_as(&self, py: Python, storage_kind: &str) -> PyResult<Py<PyAny>> {
         if self.0.storage_kind() == "absent" {
             return Err(UnavailableRepresentation::new_err(
                 "Absent content has no bytes".to_string(),
@@ -47,7 +47,7 @@ impl AbstractContentFactory {
                 .to_lines()
                 .map(|b| PyBytes::new(py, b.as_ref()))
                 .map(|b| b.unbind().into())
-                .collect::<Vec<PyObject>>()
+                .collect::<Vec<Py<PyAny>>>()
                 .into_pyobject(py)?
                 .unbind()),
             "chunked" => Ok(self
@@ -55,7 +55,7 @@ impl AbstractContentFactory {
                 .to_chunks()
                 .map(|b| PyBytes::new(py, b.as_ref()))
                 .map(|b| b.unbind().into())
-                .collect::<Vec<PyObject>>()
+                .collect::<Vec<Py<PyAny>>>()
                 .into_pyobject(py)?
                 .unbind()),
             _ => Err(UnavailableRepresentation::new_err(format!(
@@ -65,7 +65,7 @@ impl AbstractContentFactory {
         }
     }
 
-    fn map_key(&mut self, py: Python, cb: PyObject) -> PyResult<()> {
+    fn map_key(&mut self, py: Python, cb: Py<PyAny>) -> PyResult<()> {
         self.0
             .map_key(&|k| cb.call1(py, (k,)).unwrap().extract::<Key>(py).unwrap());
         Ok(())
@@ -111,7 +111,7 @@ impl ChunkedContentFactory {
 }
 
 #[pyfunction]
-pub fn record_to_fulltext_bytes(py: Python, record: PyObject) -> PyResult<PyObject> {
+pub fn record_to_fulltext_bytes(py: Python, record: Py<PyAny>) -> PyResult<Py<PyAny>> {
     let record = record.extract::<bazaar::pyversionedfile::PyContentFactory>(py)?;
 
     let mut s = Vec::new();

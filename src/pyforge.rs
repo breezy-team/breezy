@@ -6,6 +6,6 @@ use pyo3::prelude::*;
 /// This struct provides a Rust interface to Python forge objects, implementing
 /// the `Forge` trait. It allows Rust code to interact with Python forge
 /// implementations.
-pub struct PyForge(PyObject);
+pub struct PyForge(Py<PyAny>);
 
 impl Forge for PyForge {}

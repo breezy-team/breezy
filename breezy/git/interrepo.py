@@ -484,7 +484,7 @@ class InterFromGitRepository(InterRepository):
         """
         wants = set(wants)
 
-        def determine_wants(refs):
+        def determine_wants(refs, depth=None):
             unpeel_lookup = {}
             for k, v in refs.items():
                 if k.endswith(PEELED_TAG_SUFFIX):
@@ -507,11 +507,12 @@ class InterFromGitRepository(InterRepository):
 
         return determine_wants
 
-    def determine_wants_all(self, refs):
+    def determine_wants_all(self, refs, depth=None):
         """Determine all objects to fetch from refs.
 
         Args:
             refs: Dictionary of ref names to object IDs.
+            depth: Optional depth for shallow clones.
 
         Returns:
             List of object IDs to fetch.
@@ -582,11 +583,12 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 revids[revid] = sha
         return {revids[r] for r in self.target.has_revisions(revids)}
 
-    def determine_wants_all(self, refs):
+    def determine_wants_all(self, refs, depth=None):
         """Determine all objects to fetch from refs.
 
         Args:
             refs: Dictionary of ref names to object IDs.
+            depth: Optional depth for shallow clones.
 
         Returns:
             List of object IDs to fetch.
@@ -818,7 +820,7 @@ class InterGitGitRepository(InterFromGitRepository):
         old_refs = self._get_target_either_refs()
         ref_changes = {}
 
-        def determine_wants(heads):
+        def determine_wants(heads, depth=None):
             old_refs = {k: (v, None) for (k, v) in heads.items()}
             new_refs = update_refs(old_refs)
             ret = []
@@ -946,7 +948,7 @@ class InterGitGitRepository(InterFromGitRepository):
             Function that determines what objects to fetch.
         """
 
-        def determine_wants(refs):
+        def determine_wants(refs, depth=None):
             ret = []
             for name, value in refs.items():
                 if value == ZERO_SHA:
@@ -961,11 +963,12 @@ class InterGitGitRepository(InterFromGitRepository):
 
         return determine_wants
 
-    def determine_wants_all(self, refs):
+    def determine_wants_all(self, refs, depth=None):
         """Determine all objects to fetch from refs.
 
         Args:
             refs: Dictionary of ref names to object IDs.
+            depth: Optional depth for shallow clones.
 
         Returns:
             List of object IDs to fetch.

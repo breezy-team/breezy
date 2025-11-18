@@ -55,7 +55,7 @@ fn gen_root_id() -> bazaar::FileId {
 fn gen_revision_id(
     py: Python,
     username: &str,
-    timestamp: Option<PyObject>,
+    timestamp: Option<Py<PyAny>>,
 ) -> PyResult<bazaar::RevisionId> {
     let timestamp = match timestamp {
         Some(timestamp) => {
@@ -101,14 +101,14 @@ impl Replacer {
     /// replaced with the match, or a function that will get the matching text
     /// as argument. It does not get match object, because capturing is
     /// forbidden anyway.
-    fn add(&mut self, py: Python, pattern: &str, func: PyObject) -> PyResult<()> {
+    fn add(&mut self, py: Python, pattern: &str, func: Py<PyAny>) -> PyResult<()> {
         if let Ok(func) = func.extract::<String>(py) {
             self.replacer
                 .add(pattern, bazaar::globbing::Replacement::String(func));
             Ok(())
         } else {
             let callable = Box::new(move |t: String| -> String {
-                Python::with_gil(|py| match func.call1(py, (t,)) {
+                Python::attach(|py| match func.call1(py, (t,)) {
                     Ok(result) => result.extract::<String>(py).unwrap(),
                     Err(e) => {
                         e.restore(py);
@@ -169,7 +169,7 @@ impl Revision {
         parent_ids: Vec<RevisionId>,
         committer: Option<String>,
         message: String,
-        properties: Option<HashMap<String, PyObject>>,
+        properties: Option<HashMap<String, Py<PyAny>>>,
         inventory_sha1: Option<Vec<u8>>,
         timestamp: f64,
         timezone: Option<i32>,
@@ -260,7 +260,7 @@ impl Revision {
     }
 
     #[setter]
-    fn set_inventory_sha1(&mut self, py: Python, value: PyObject) -> PyResult<()> {
+    fn set_inventory_sha1(&mut self, py: Python, value: Py<PyAny>) -> PyResult<()> {
         if let Ok(value) = value.extract::<Bound<PyBytes>>(py) {
             self.0.inventory_sha1 = Some(value.as_bytes().to_vec());
             Ok(())
@@ -370,8 +370,8 @@ impl RevisionSerializer {
         self.0.squashes_xml_invalid_characters()
     }
 
-    fn read_revision(&self, py: Python, file: PyObject) -> PyResult<Revision> {
-        py.allow_threads(|| {
+    fn read_revision(&self, py: Python, file: Py<PyAny>) -> PyResult<Revision> {
+        py.detach(|| {
             let mut file = PyBinaryFile::from(file);
             Ok(Revision(
                 self.0
@@ -388,7 +388,7 @@ impl RevisionSerializer {
     ) -> PyResult<Bound<'py, PyBytes>> {
         Ok(PyBytes::new(
             py,
-            py.allow_threads(|| self.0.write_revision_to_string(&revision.0))
+            py.detach(|| self.0.write_revision_to_string(&revision.0))
                 .map_err(serializer_err_to_py_err)?
                 .as_slice(),
         ))
@@ -412,7 +412,7 @@ impl RevisionSerializer {
 
     fn read_revision_from_string(&self, py: Python, string: &[u8]) -> PyResult<Revision> {
         Ok(Revision(
-            py.allow_threads(|| self.0.read_revision_from_string(string))
+            py.detach(|| self.0.read_revision_from_string(string))
                 .map_err(serializer_err_to_py_err)?,
         ))
     }
@@ -459,7 +459,7 @@ fn escape_invalid_chars(message: Option<&str>) -> (Option<String>, usize) {
 }
 
 #[pyfunction]
-fn encode_and_escape(py: Python, unicode_or_utf8_str: PyObject) -> PyResult<Bound<PyBytes>> {
+fn encode_and_escape(py: Python, unicode_or_utf8_str: Py<PyAny>) -> PyResult<Bound<PyBytes>> {
     let ret = if let Ok(text) = unicode_or_utf8_str.extract::<String>(py) {
         bazaar::xml_serializer::encode_and_escape_string(&text)
     } else if let Ok(bytes) = unicode_or_utf8_str.extract::<Vec<u8>>(py) {

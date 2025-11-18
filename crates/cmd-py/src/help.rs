@@ -82,17 +82,17 @@ impl HelpTopicRegistry {
         &mut self,
         py: Python,
         name: &str,
-        contents: PyObject,
+        contents: Py<PyAny>,
         summary: &str,
         section: Option<&str>,
     ) -> PyResult<()> {
         let contents = if let Ok(contents) = contents.extract::<String>(py) {
             breezy::help::HelpContents::Closure(Box::new(move |_| contents.clone()))
         } else {
-            let f = contents.extract::<PyObject>(py)?;
+            let f = contents.extract::<Py<PyAny>>(py)?;
             let name = name.to_string();
             breezy::help::HelpContents::Closure(Box::new(move |h| {
-                Python::with_gil(|py| match f.call1(py, (h,)) {
+                Python::attach(|py| match f.call1(py, (h,)) {
                     Ok(s) => s.extract::<String>(py).unwrap(),
                     Err(e) => {
                         e.print(py);

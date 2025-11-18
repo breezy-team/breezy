@@ -182,7 +182,7 @@ impl GroupCompressBlock {
     fn extract<'a>(
         &mut self,
         py: Python<'a>,
-        _key: PyObject,
+        _key: Py<PyAny>,
         offset: usize,
         length: usize,
     ) -> PyResult<Vec<Bound<'a, PyBytes>>> {
@@ -229,7 +229,7 @@ impl GroupCompressBlock {
     }
 
     #[pyo3(signature = (include_text = None))]
-    fn _dump(&mut self, py: Python, include_text: Option<bool>) -> PyResult<PyObject> {
+    fn _dump(&mut self, py: Python, include_text: Option<bool>) -> PyResult<Py<PyAny>> {
         let ret = self
             .0
             .dump(include_text)
@@ -293,7 +293,7 @@ impl TraditionalGroupCompressor {
     #[new]
     #[allow(unused_variables)]
     #[pyo3(signature = (settings = None))]
-    fn new(settings: Option<PyObject>) -> Self {
+    fn new(settings: Option<Py<PyAny>>) -> Self {
         Self(Some(
             bazaar::groupcompress::compressor::TraditionalGroupCompressor::new(),
         ))

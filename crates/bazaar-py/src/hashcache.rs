@@ -12,7 +12,7 @@ struct HashCache {
 }
 
 pub struct PyContentFilter {
-    content_filter: PyObject,
+    content_filter: Py<PyAny>,
 }
 
 #[pyclass]
@@ -47,7 +47,7 @@ impl PyContentFilter {
         input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync>,
         worker: &str,
     ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send + Sync> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let worker = self.content_filter.getattr(py, worker);
             let py_input = PyChunkIterator { input };
             let py_output = worker.unwrap().call1(py, (py_input,));
@@ -56,7 +56,7 @@ impl PyContentFilter {
             }
             let py_output = py_output.unwrap();
             let next = move || {
-                Python::with_gil(|py| {
+                Python::attach(|py| {
                     let item = py_output.call_method0(py, "__next__");
                     match item {
                         Err(e) => Some(Err(map_py_err_to_io_err(e))),
@@ -92,10 +92,10 @@ impl ContentFilter for PyContentFilter {
 }
 
 fn content_filter_to_fn(
-    content_filter_provider: PyObject,
+    content_filter_provider: Py<PyAny>,
 ) -> Box<dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send + Sync> {
     Box::new(move |path, ctime| {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Box::new(PyContentFilter {
                 content_filter: content_filter_provider.call1(py, (path, ctime)).unwrap(),
             })
@@ -128,7 +128,7 @@ impl HashCache {
         root: &str,
         cache_file_name: &str,
         mode: Option<u32>,
-        content_filter_provider: Option<PyObject>,
+        content_filter_provider: Option<Py<PyAny>>,
     ) -> Self {
         Self {
             hashcache: Box::new(bazaar::hashcache::HashCache::new(

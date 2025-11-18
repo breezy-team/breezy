@@ -277,7 +277,7 @@ impl SHA1Provider {
         &mut self,
         py: Python<'a>,
         path: &Bound<PyAny>,
-    ) -> PyResult<(PyObject, Bound<'a, PyBytes>)> {
+    ) -> PyResult<(Py<PyAny>, Bound<'a, PyBytes>)> {
         let path = extract_path(path)?;
         let (md, sha1) = self.provider.stat_and_sha1(&path)?;
         let pmd = StatResult { metadata: md };

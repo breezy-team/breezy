@@ -35,6 +35,26 @@ from ..mapping import default_mapping
 from ..tree import tree_delta_from_git_changes
 
 
+def _normalize_tree_change(change):
+    """Normalize a tree change to tuple format for comparison.
+
+    Handles both old format (tuples) and new format (TreeEntry objects).
+    """
+    change_type, old, new = change
+
+    # Handle both old format (None, None, None) and new format None
+    if old is None:
+        oldpath, oldmode, oldsha = None, None, None
+    else:
+        (oldpath, oldmode, oldsha) = old
+    if new is None:
+        newpath, newmode, newsha = None, None, None
+    else:
+        (newpath, newmode, newsha) = new
+
+    return (change_type, (oldpath, oldmode, oldsha), (newpath, newmode, newsha))
+
+
 def changes_between_git_tree_and_working_copy(
     source_store,
     from_tree_sha,
@@ -47,7 +67,7 @@ def changes_between_git_tree_and_working_copy(
     """Determine the changes between a git tree and a working tree with index."""
     to_tree_sha, extras = target.git_snapshot(want_unversioned=want_unversioned)
     store = OverlayObjectStore([source_store, target.store])
-    return tree_changes(
+    changes = tree_changes(
         store,
         from_tree_sha,
         to_tree_sha,
@@ -55,7 +75,9 @@ def changes_between_git_tree_and_working_copy(
         rename_detector=rename_detector,
         want_unchanged=want_unchanged,
         change_type_same=True,
-    ), extras
+    )
+    # Normalize changes to tuple format for test compatibility
+    return (_normalize_tree_change(c) for c in changes), extras
 
 
 class GitWorkingTreeTests(TestCaseWithTransport):
