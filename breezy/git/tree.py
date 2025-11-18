@@ -1811,13 +1811,13 @@ class InterGitTrees(_mod_tree.InterTree):
         for _change_type, old, new in changes:
             # Handle both old format (None, None, None) and new format None
             if old is None:
-                oldpath, oldmode, oldsha = None, None, None
+                oldpath, _oldmode, _oldsha = None, None, None
             else:
-                (oldpath, oldmode, oldsha) = old
+                (oldpath, _oldmode, _oldsha) = old
             if new is None:
-                newpath_bytes, newmode, newsha = None, None, None
+                newpath_bytes, _newmode, _newsha = None, None, None
             else:
-                (newpath_bytes, newmode, newsha) = new
+                (newpath_bytes, _newmode, _newsha) = new
             if newpath_bytes is None:
                 continue
             newpath = decode_git_path(newpath_bytes)
