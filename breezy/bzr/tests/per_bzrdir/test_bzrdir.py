@@ -146,7 +146,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
             rev_trees_a = sorted(left_repo.revision_trees(all_revs), key=sort_key)
             rev_trees_b = sorted(right_repo.revision_trees(all_revs), key=sort_key)
-            for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
+            for tree_a, tree_b in zip(rev_trees_a, rev_trees_b, strict=False):
                 self.assertEqual([], list(tree_a.iter_changes(tree_b)))
             # texts
             text_index = left_repo._generate_text_key_index()

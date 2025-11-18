@@ -21,8 +21,6 @@ and transactions for a set of related files. It also includes TransportLock
 for transport-dependent file locking operations.
 """
 
-from typing import Optional
-
 from .. import counted_lock, errors, lock, transactions, urlutils
 from ..decorators import only_raises
 from ..transport import Transport
@@ -52,9 +50,9 @@ class LockableFiles:
 
     _lock_count: int
     # TODO(jelmer): str -> Literal['r', 'w']
-    _lock_mode: Optional[str]
-    _token_from_lock: Optional[lock.LockToken]
-    _transaction: Optional[transactions.Transaction]
+    _lock_mode: str | None
+    _token_from_lock: lock.LockToken | None
+    _transaction: transactions.Transaction | None
 
     def __init__(
         self, transport: Transport, lock_name: str, lock_class: type[lock.Lock]
@@ -141,9 +139,7 @@ class LockableFiles:
         """Set this LockableFiles to clear the physical lock on unlock."""
         self._lock.dont_leave_in_place()
 
-    def lock_write(
-        self, token: Optional[lock.LockToken] = None
-    ) -> Optional[lock.LockToken]:
+    def lock_write(self, token: lock.LockToken | None = None) -> lock.LockToken | None:
         """Lock this group of files for writing.
 
         :param token: if this is already locked, then lock_write will fail

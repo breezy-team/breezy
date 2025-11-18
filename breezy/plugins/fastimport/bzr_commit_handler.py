@@ -16,7 +16,6 @@
 """CommitHandlers that build and save revisions & their inventories."""
 
 import contextlib
-from typing import Optional
 
 from fastimport import processor
 
@@ -190,9 +189,7 @@ class CommitHandler(processor.CommitHandler):
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid: dict[
             inventory.FileId,
-            tuple[
-                Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
-            ],
+            tuple[str | None, str | None, inventory.FileId, inventory.InventoryEntry],
         ] = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             old_path = "" if self.parents else None
@@ -519,7 +516,7 @@ class CommitHandler(processor.CommitHandler):
         path: str,
         kind: str,
         is_executable: bool,
-        data: Optional[bytes],
+        data: bytes | None,
         inv: inventory.Inventory,
     ) -> None:
         """Add or modify an item in the inventory.
@@ -865,9 +862,7 @@ class CommitHandler(processor.CommitHandler):
             InventoryDelta: The complete delta for this commit.
         """
         delta: list[
-            tuple[
-                Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
-            ]
+            tuple[str | None, str | None, inventory.FileId, inventory.InventoryEntry]
         ] = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = self._dirs_that_might_become_empty
@@ -951,7 +946,7 @@ class CommitHandler(processor.CommitHandler):
     def _add_entry(
         self,
         entry: tuple[
-            Optional[str], Optional[str], inventory.FileId, inventory.InventoryEntry
+            str | None, str | None, inventory.FileId, inventory.InventoryEntry
         ],
     ) -> None:
         """Add an entry to the delta, handling entry combination.

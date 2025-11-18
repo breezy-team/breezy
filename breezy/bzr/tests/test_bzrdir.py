@@ -1064,7 +1064,7 @@ class ChrootedTests(TestCaseWithTransport):
         first = list(first)
         second = list(second)
         self.assertEqual(len(first), len(second))
-        for x, y in zip(first, second):
+        for x, y in zip(first, second, strict=False):
             self.assertEqual(x.root_transport.base, y.root_transport.base)
 
     def test_find_branches(self):

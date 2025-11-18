@@ -23,7 +23,7 @@ import os
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
-from typing import Any, Optional
+from typing import Any
 
 from .. import (
     annotate,
@@ -1226,7 +1226,7 @@ def iter_cook_conflicts(raw_conflicts, tt):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    _deletiondir: Optional[str]
+    _deletiondir: str | None
 
     def __init__(self, tree, limbodir, pb=None, case_sensitive: bool = True) -> None:
         """Constructor.
@@ -1251,7 +1251,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names: dict[str, dict[str, str]] = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename: set[str] = set()
-        self._creation_mtime: Optional[float] = None
+        self._creation_mtime: float | None = None
         self._create_symlinks: bool = osutils.supports_symlinks(self._limbodir)
 
     def finalize(self):
@@ -2240,7 +2240,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         while len(todo) > 0:
             parent = todo.pop()
             children = list(self._all_children(parent))
-            paths = dict(zip(children, self._final_paths.get_paths(children)))
+            paths = dict(
+                zip(children, self._final_paths.get_paths(children), strict=False)
+            )
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:

@@ -865,7 +865,7 @@ class TestChunksToLines(tests.TestCase):
         self.assertEqual(list(lines), result)
         if already_lines:
             self.assertEqual(len(chunks), len(result))
-            for a, b in zip(chunks, result):
+            for a, b in zip(chunks, result, strict=False):
                 self.assertIs(a, b)
 
     def test_fulltext_chunk_to_lines(self):
@@ -945,7 +945,7 @@ class TestChunksToLinesIter(tests.TestCase):
         self.assertEqual(list(lines), result)
         if already_lines:
             self.assertEqual(len(chunks), len(result))
-            for a, b in zip(chunks, result):
+            for a, b in zip(chunks, result, strict=False):
                 self.assertIs(a, b)
 
 

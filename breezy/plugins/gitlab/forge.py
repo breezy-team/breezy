@@ -21,7 +21,6 @@ import os
 import re
 import time
 from datetime import datetime
-from typing import Optional
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -1819,7 +1818,7 @@ class GitLab(Forge):
         for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_forks(self, owner: Optional[str] = None):
+    def iter_my_forks(self, owner: str | None = None):
         """Iterate over forked projects for a user.
 
         Args:
@@ -1957,7 +1956,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = None,
+        delete_source_after_merge: bool | None = None,
     ):
         """Create a merge request on GitLab.
 

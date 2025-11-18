@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .. import conflicts, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
@@ -140,6 +141,7 @@ class TestConflictList(tests.TestCase):
         for text, o in zip(
             bzr_conflicts.ConflictList(example_conflicts).to_strings(),
             example_conflicts,
+            strict=False,
         ):
             self.assertEqual(text, str(o))
 

@@ -18,7 +18,6 @@
 """GPG signing and checking logic."""
 
 import os
-from typing import Optional
 
 from . import config, errors, trace, ui
 from .i18n import gettext, ngettext
@@ -248,7 +247,7 @@ def _set_gpg_tty():
 class GPGStrategy:
     """GPG Signing and checking facilities."""
 
-    acceptable_keys: Optional[list[str]] = None
+    acceptable_keys: list[str] | None = None
 
     def __init__(self, config_stack):
         """Initialize GPGStrategy with a configuration stack.

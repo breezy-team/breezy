@@ -1205,7 +1205,9 @@ class Merge3Merger:
                     base_sha1 = get_sha1(self.base_tree, base_path)
                     lca_sha1s = [
                         get_sha1(tree, lca_path)
-                        for tree, lca_path in zip(self._lca_trees, lca_paths)
+                        for tree, lca_path in zip(
+                            self._lca_trees, lca_paths, strict=False
+                        )
                     ]
                     this_sha1 = get_sha1(self.this_tree, this_path)
                     other_sha1 = get_sha1(self.other_tree, other_path)
@@ -1242,7 +1244,7 @@ class Merge3Merger:
                     lca_targets = [
                         get_target(ie, tree, lca_path)
                         for ie, tree, lca_path in zip(
-                            lca_entries, self._lca_trees, lca_paths
+                            lca_entries, self._lca_trees, lca_paths, strict=False
                         )
                     ]
                     this_target = get_target(this_ie, self.this_tree, this_path)
@@ -1499,7 +1501,7 @@ class Merge3Merger:
             base_pair = contents_pair(self.base_tree, base_path)
             lca_pairs = [
                 contents_pair(tree, path)
-                for tree, path in zip(self._lca_trees, lca_paths)
+                for tree, path in zip(self._lca_trees, lca_paths, strict=False)
             ]
             winner = self._lca_multi_way(
                 (base_pair, lca_pairs),

@@ -21,7 +21,6 @@ import contextlib
 from collections import defaultdict
 from functools import partial
 from io import BytesIO
-from typing import Optional
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
@@ -172,7 +171,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
         self,
         overwrite: bool = False,
         ignore_master: bool = False,
-        selector: Optional[TagSelector] = None,
+        selector: TagSelector | None = None,
     ) -> tuple[TagUpdates, set[TagConflict]]:
         """Merge tags from source to target remote Git repository.
 

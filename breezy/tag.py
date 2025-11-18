@@ -27,7 +27,7 @@ import itertools
 import re
 import sys
 from collections import defaultdict
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from . import branch as _mod_branch
 from . import errors
@@ -47,7 +47,7 @@ def _reconcile_tags(
     source_dict: dict[str, bytes],
     dest_dict: dict[str, bytes],
     overwrite: bool,
-    selector: Optional[TagSelector],
+    selector: TagSelector | None,
 ) -> tuple[dict[str, RevisionID], TagUpdates, list[TagConflict]]:
     """Do a two-way merge of two tag dictionaries.
 
@@ -106,7 +106,7 @@ class Tags:
         to_tags: "Tags",
         overwrite: bool = False,
         ignore_master: bool = False,
-        selector: Optional[TagSelector] = None,
+        selector: TagSelector | None = None,
     ) -> tuple[TagUpdates, set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
@@ -264,7 +264,7 @@ class InterTags(InterObject[Tags]):
         self,
         overwrite: bool = False,
         ignore_master: bool = False,
-        selector: Optional[TagSelector] = None,
+        selector: TagSelector | None = None,
     ) -> tuple[TagUpdates, set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 

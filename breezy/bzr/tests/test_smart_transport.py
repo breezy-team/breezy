@@ -27,7 +27,6 @@ import sys
 import threading
 import time
 from io import BytesIO
-from typing import Optional
 
 from testtools.matchers import DocTestMatches
 
@@ -1965,7 +1964,7 @@ class TestSmartProtocol(tests.TestCase):
     request_encoder: object
     response_decoder: type[protocol._StatefulDecoder]
     server_protocol_class: type[protocol.SmartProtocolBase]
-    client_protocol_class: Optional[type[protocol.SmartProtocolBase]] = None
+    client_protocol_class: type[protocol.SmartProtocolBase] | None = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """:returns: a Request"""

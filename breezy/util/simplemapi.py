@@ -229,7 +229,7 @@ def _sendMail(session, recipient, subject, body, attach):
     if attach:
         MapiFileDesc_A = MapiFileDesc * len(attach)
         fda = MapiFileDesc_A()
-        for fd, fa in zip(fda, attach):
+        for fd, fa in zip(fda, attach, strict=False):
             fd.ulReserved = 0
             fd.flFlags = 0
             fd.nPosition = -1
@@ -244,7 +244,7 @@ def _sendMail(session, recipient, subject, body, attach):
     RecipCnt = len(RecipWork)
     MapiRecipDesc_A = MapiRecipDesc * len(RecipWork)
     rda = MapiRecipDesc_A()
-    for rd, ra in zip(rda, RecipWork):
+    for rd, ra in zip(rda, RecipWork, strict=False):
         rd.ulReserved = 0
         rd.ulRecipClass = MAPI_TO
         try:

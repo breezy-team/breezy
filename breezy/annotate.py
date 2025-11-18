@@ -27,7 +27,7 @@
 
 import sys
 import time
-from typing import Optional, TextIO
+from typing import TextIO
 
 from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
@@ -153,7 +153,7 @@ def _show_id_annotations(
         last_rev_id = origin
 
 
-def _expand_annotations(annotations, branch, current_rev: Optional[Revision] = None):
+def _expand_annotations(annotations, branch, current_rev: Revision | None = None):
     """Expand a file's annotations into command line UI ready tuples.
 
     Each tuple includes detailed information, such as the author name, and date
@@ -273,7 +273,7 @@ def reannotate(
             _reannotate(p, new_lines, new_revision_id) for p in parents_lines[1:]
         )
         lines = []
-        for annos in zip(*reannotations):
+        for annos in zip(*reannotations, strict=False):
             origins = {a for a, l in annos}
             if len(origins) == 1:
                 # All the parents agree, so just return the first one

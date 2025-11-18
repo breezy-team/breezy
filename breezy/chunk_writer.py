@@ -18,7 +18,6 @@
 """ChunkWriter: write compressed data out with a fixed upper bound."""
 
 import zlib
-from typing import Optional
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 
@@ -115,12 +114,12 @@ class ChunkWriter:
         self.unflushed_in_bytes = 0
         self.num_repack = 0
         self.num_zsync = 0
-        self.unused_bytes: Optional[bytes] = None
+        self.unused_bytes: bytes | None = None
         self.reserved_size = reserved
         # Default is to make building fast rather than compact
         self.set_optimize(for_size=optimize_for_size)
 
-    def finish(self) -> tuple[list[bytes], Optional[bytes], int]:
+    def finish(self) -> tuple[list[bytes], bytes | None, int]:
         """Finish the chunk.
 
         This returns the final compressed chunk, and either None, or the
@@ -165,7 +164,7 @@ class ChunkWriter:
         self._max_repack, self._max_zsync = opts
 
     def _recompress_all_bytes_in(
-        self, extra_bytes: Optional[bytes] = None
+        self, extra_bytes: bytes | None = None
     ) -> tuple[list[bytes], int, "zlib._Compress"]:
         """Recompress the current bytes_in, and optionally more.
 

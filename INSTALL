@@ -4,7 +4,7 @@ Breezy install instructions
 Dependencies
 ------------
 
-Breezy requires Python 3.9 or newer as well as the rust compiler.
+Breezy requires Python 3.10 or newer as well as the rust compiler.
 
 It also requires the `setuptools`, `setuptools_rust`, ``setuptools_gettext``,
 `configobj`, `fastbencode` and `patiencediff` Python modules to be installed.

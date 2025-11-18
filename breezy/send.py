@@ -23,7 +23,7 @@ diff patches, and merge directives that can be sent via email or written to file
 
 import os
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from . import controldir, errors, osutils, registry, trace
 from .branch import Branch

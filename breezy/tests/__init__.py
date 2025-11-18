@@ -47,8 +47,8 @@ import time
 import traceback
 import unittest
 import warnings
+from collections.abc import Callable
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools

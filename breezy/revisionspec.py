@@ -22,8 +22,6 @@ tag, etc.). It includes RevisionSpec classes for different revision specificatio
 types and utilities for resolving them to actual revision identifiers.
 """
 
-from typing import Optional
-
 from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 from vcsgraph.errors import NoCommonAncestor
 
@@ -205,7 +203,7 @@ class RevisionSpec:
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix: Optional[str] = None
+    prefix: str | None = None
     dwim_catchable_exceptions: list[type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 

@@ -35,7 +35,6 @@ unlock() method.
 
 import contextlib
 import warnings
-from typing import Optional
 
 from . import _transport_rs, debug, errors, trace
 from .hooks import Hooks
@@ -139,7 +138,7 @@ class Lock:
         """Configure the lock to be removed when released."""
         ...
 
-    def validate_token(self, token: Optional[LockToken]) -> None:
+    def validate_token(self, token: LockToken | None) -> None:
         """Validate a lock token.
 
         Args:
@@ -147,7 +146,7 @@ class Lock:
         """
         ...
 
-    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]:
+    def lock_write(self, token: LockToken | None) -> LockToken | None:
         """Acquire a write lock.
 
         Args:

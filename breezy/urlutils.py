@@ -270,6 +270,7 @@ def determine_relative_path(from_path, to_path):
         zip(
             from_segments,
             to_segments,
+            strict=False,
         )
     ):
         if from_element != to_element:

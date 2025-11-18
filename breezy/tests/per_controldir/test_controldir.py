@@ -1636,10 +1636,10 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertPathExists(old_path)
         self.assertPathExists(new_path)
         for ((dir_relpath1, _), entries1), ((dir_relpath2, _), entries2) in zip(
-            osutils.walkdirs(old_path), osutils.walkdirs(new_path)
+            osutils.walkdirs(old_path), osutils.walkdirs(new_path), strict=False
         ):
             self.assertEqual(dir_relpath1, dir_relpath2)
-            for f1, f2 in zip(entries1, entries2):
+            for f1, f2 in zip(entries1, entries2, strict=False):
                 self.assertEqual(f1[0], f2[0])
                 self.assertEqual(f1[2], f2[2])
                 if f1[2] == "file":

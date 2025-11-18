@@ -21,7 +21,6 @@
 import base64
 import contextlib
 import stat
-from typing import Optional
 
 import fastbencode as bencode
 
@@ -213,7 +212,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     experimental = False
 
-    BZR_DUMMY_FILE: Optional[str] = None
+    BZR_DUMMY_FILE: str | None = None
 
     def is_special_file(self, filename):
         """Check if a filename is special for this mapping.
