@@ -23,7 +23,7 @@ import stat
 from collections.abc import Iterable, Iterator
 
 from dulwich.object_store import BaseObjectStore
-from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree, sha_to_hex
+from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, Tree, sha_to_hex
 from dulwich.pack import Pack, PackData, UnpackedObject, pack_objects_to_data
 
 from .. import errors, lru_cache, osutils, trace, ui
@@ -1034,7 +1034,10 @@ class BazaarObjectStore(BaseObjectStore):
                         rev, tree, lossy=(not self.mapping.roundtripping)
                     ):
                         if obj.id not in seen:
-                            pack_hint = (obj.type_num, path.encode("utf-8") if path else None)
+                            pack_hint = (
+                                obj.type_num,
+                                path.encode("utf-8") if path else None,
+                            )
                             yield (obj.id, pack_hint)
                             seen.add(obj.id)
 
