@@ -86,7 +86,7 @@ impl<R: BufRead> RioReader<R> {
         read_stanza_file(&mut self.from_file)
     }
 
-    pub fn iter(&mut self) -> RioReaderIter<R> {
+    pub fn iter(&mut self) -> RioReaderIter<'_, R> {
         RioReaderIter { reader: self }
     }
 }

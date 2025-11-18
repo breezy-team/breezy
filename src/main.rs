@@ -90,9 +90,9 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 }
 
 fn main() {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
 
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let result = (|| -> PyResult<Bound<PyAny>> {
             posix_setup(py)?;
 

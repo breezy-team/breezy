@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use std::borrow::Cow;
 
-pub struct PyContentFactory(PyObject);
+pub struct PyContentFactory(Py<PyAny>);
 
 impl<'py> IntoPyObject<'py> for PyContentFactory {
     type Target = PyAny;
@@ -25,18 +25,18 @@ impl FromPyObject<'_> for PyContentFactory {
 
 impl ContentFactory for PyContentFactory {
     fn size(&self) -> Option<usize> {
-        Python::with_gil(|py| self.0.getattr(py, "size").unwrap().extract(py).unwrap())
+        Python::attach(|py| self.0.getattr(py, "size").unwrap().extract(py).unwrap())
     }
 
     fn key(&self) -> Key {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_key = self.0.getattr(py, "key").unwrap();
             py_key.extract(py).unwrap()
         })
     }
 
     fn parents(&self) -> Option<Vec<Key>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_parents = self.0.getattr(py, "parents").unwrap();
             py_parents.extract(py).unwrap()
         })
@@ -46,7 +46,7 @@ impl ContentFactory for PyContentFactory {
     where
         'a: 'b,
     {
-        Cow::Owned(Python::with_gil(|py| {
+        Cow::Owned(Python::attach(|py| {
             let py_content = self
                 .0
                 .call_method1(py, "get_bytes_as", ("fulltext",))
@@ -59,7 +59,7 @@ impl ContentFactory for PyContentFactory {
     where
         'a: 'b,
     {
-        let py_content = Python::with_gil(|py| {
+        let py_content = Python::attach(|py| {
             self.0
                 .call_method1(py, "get_bytes_as", ("lines",))
                 .unwrap()
@@ -74,7 +74,7 @@ impl ContentFactory for PyContentFactory {
     where
         'a: 'b,
     {
-        let py_content = Python::with_gil(|py| {
+        let py_content = Python::attach(|py| {
             self.0
                 .call_method1(py, "get_bytes_as", ("chunks",))
                 .unwrap()
@@ -90,7 +90,7 @@ impl ContentFactory for PyContentFactory {
     }
 
     fn into_lines(self) -> Box<dyn Iterator<Item = Vec<u8>>> {
-        let lines = Python::with_gil(|py| {
+        let lines = Python::attach(|py| {
             let py_content = self.0.call_method1(py, "get_bytes", ("lines",)).unwrap();
             py_content.extract::<Vec<Vec<u8>>>(py).unwrap()
         });
@@ -99,7 +99,7 @@ impl ContentFactory for PyContentFactory {
     }
 
     fn into_chunks(self) -> Box<dyn Iterator<Item = Vec<u8>>> {
-        let chunks = Python::with_gil(|py| {
+        let chunks = Python::attach(|py| {
             let py_content = self.0.call_method1(py, "get_bytes", ("chunks",)).unwrap();
             py_content.extract::<Vec<Vec<u8>>>(py).unwrap()
         });
@@ -108,14 +108,14 @@ impl ContentFactory for PyContentFactory {
     }
 
     fn sha1(&self) -> Option<Vec<u8>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_content = self.0.call_method0(py, "get_bytes").unwrap();
             py_content.extract(py).unwrap()
         })
     }
 
     fn storage_kind(&self) -> String {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .getattr(py, "storage_kind")
                 .unwrap()
@@ -129,15 +129,15 @@ impl ContentFactory for PyContentFactory {
     }
 }
 
-pub struct PyVersionedFile(PyObject);
+pub struct PyVersionedFile(Py<PyAny>);
 
-pub struct PyRecordStreamIter(PyObject);
+pub struct PyRecordStreamIter(Py<PyAny>);
 
 impl Iterator for PyRecordStreamIter {
     type Item = PyContentFactory;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_record_stream_iter = self.0.bind(py);
             let py_content_factory = py_record_stream_iter.call_method0("next").unwrap();
             let content_factory = PyContentFactory(py_content_factory.unbind());
@@ -146,9 +146,9 @@ impl Iterator for PyRecordStreamIter {
     }
 }
 
-impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
+impl VersionedFile<PyContentFactory, Py<PyAny>> for PyVersionedFile {
     fn check_not_reserved_id(version_id: &VersionId) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let m = py.import("breezy.bzr.versionedfile").unwrap();
             let c = m.getattr("VersionedFile").unwrap();
             c.call_method1("check_not_reserved_id", (version_id,))
@@ -159,7 +159,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     }
 
     fn has_version(&self, version_id: &VersionId) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_versioned_file = self.0.bind(py);
             py_versioned_file
                 .call_method1("has_version", (version_id,))
@@ -170,7 +170,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     }
 
     fn get_format_signature(&self) -> String {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             self.0
                 .call_method0(py, "get_format_signature")
                 .unwrap()
@@ -185,7 +185,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
         ordering: Ordering,
         include_delta_closure: bool,
     ) -> Box<dyn Iterator<Item = PyContentFactory>> {
-        Box::new(Python::with_gil(|py| {
+        Box::new(Python::attach(|py| {
             let py_versioned_file = self.0.bind(py);
             let version_ids = version_ids.iter().collect::<Vec<_>>();
             let py_record_stream = py_versioned_file
@@ -201,12 +201,12 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
     fn add_lines<'a>(
         &mut self,
         version_id: &VersionId,
-        parent_texts: Option<std::collections::HashMap<VersionId, PyObject>>,
+        parent_texts: Option<std::collections::HashMap<VersionId, Py<PyAny>>>,
         lines: impl Iterator<Item = &'a [u8]>,
         nostore_sha: Option<bool>,
         random_id: bool,
-    ) -> Result<(Vec<u8>, usize, PyObject), Error> {
-        Python::with_gil(|py| {
+    ) -> Result<(Vec<u8>, usize, Py<PyAny>), Error> {
+        Python::attach(|py| {
             let py_versioned_file = self.0.bind(py);
             let py_lines = lines.map(|l| PyBytes::new(py, l)).collect::<Vec<_>>();
             let py_parent_texts = match parent_texts {
@@ -229,7 +229,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
                     random_id,
                 ),
             )?;
-            let py_result = py_result.extract::<(Vec<u8>, usize, PyObject)>()?;
+            let py_result = py_result.extract::<(Vec<u8>, usize, Py<PyAny>)>()?;
             Ok(py_result)
         })
     }
@@ -254,7 +254,7 @@ impl VersionedFile<PyContentFactory, PyObject> for PyVersionedFile {
             }
         }
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_versioned_file = self.0.bind(py);
             let stream = stream.collect::<Vec<_>>();
             let py_stream = stream.into_iter().map(PyContentFactory).collect::<Vec<_>>();

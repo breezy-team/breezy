@@ -8,7 +8,7 @@ use std::collections::HashSet;
 /// This struct provides a Rust interface to Python graph objects, allowing
 /// Rust code to interact with Python graph implementations for version control
 /// history.
-pub struct Graph(PyObject);
+pub struct Graph(Py<PyAny>);
 
 impl Graph {
     /// Creates a new `Graph` wrapper around a Python graph object.
@@ -16,7 +16,7 @@ impl Graph {
     /// # Arguments
     ///
     /// * `o` - The Python graph object to wrap.
-    pub fn new(o: PyObject) -> Self {
+    pub fn new(o: Py<PyAny>) -> Self {
         Graph(o)
     }
 
@@ -38,7 +38,7 @@ impl Graph {
         old_tip: RevisionId,
         parents: &[RevisionId],
     ) -> HashSet<RevisionId> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let parents = PyTuple::new(py, parents).unwrap();
             let result = self
                 .0

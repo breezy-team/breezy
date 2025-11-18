@@ -167,25 +167,25 @@ pub fn cvs_to_url(location: &str) -> Result<Url, Error> {
 /// A trait for converting types to Python location objects.
 pub trait AsLocation {
     /// Converts the implementing type to a Python location object.
-    fn as_location(&self) -> PyObject;
+    fn as_location(&self) -> Py<PyAny>;
 }
 
 impl AsLocation for &url::Url {
-    fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_string().as_str()).unbind())
+    fn as_location(&self) -> Py<PyAny> {
+        Python::attach(|py| pyo3::types::PyString::new(py, self.to_string().as_str()).unbind())
             .into_any()
     }
 }
 
 impl AsLocation for &str {
-    fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| pyo3::types::PyString::new(py, self).unbind()).into_any()
+    fn as_location(&self) -> Py<PyAny> {
+        Python::attach(|py| pyo3::types::PyString::new(py, self).unbind()).into_any()
     }
 }
 
 impl AsLocation for &std::path::Path {
-    fn as_location(&self) -> PyObject {
-        Python::with_gil(|py| pyo3::types::PyString::new(py, self.to_str().unwrap()).unbind())
+    fn as_location(&self) -> Py<PyAny> {
+        Python::attach(|py| pyo3::types::PyString::new(py, self.to_str().unwrap()).unbind())
             .into_any()
     }
 }

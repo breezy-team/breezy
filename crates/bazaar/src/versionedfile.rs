@@ -41,7 +41,7 @@ impl From<pyo3::PyErr> for Error {
     fn from(e: pyo3::PyErr) -> Error {
         pyo3::import_exception!(breezy.errors, RevisionNotPresent);
         pyo3::import_exception!(breezy.bzr.versionedfile, ExistingContent);
-        pyo3::Python::with_gil(|py| {
+        pyo3::Python::attach(|py| {
             if e.is_instance_of::<RevisionNotPresent>(py) {
                 Error::VersionNotPresent(
                     e.value(py)

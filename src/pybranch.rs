@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 /// This struct provides a Rust interface to Python branch objects, implementing
 /// the `Branch` trait. It allows Rust code to interact with Python branch
 /// implementations.
-pub struct PyBranch(PyObject);
+pub struct PyBranch(Py<PyAny>);
 
 impl PyBranch {
     /// Creates a new `PyBranch` wrapper around a Python branch object.
@@ -15,14 +15,14 @@ impl PyBranch {
     /// # Arguments
     ///
     /// * `o` - The Python branch object to wrap.
-    pub fn new(o: PyObject) -> Self {
+    pub fn new(o: Py<PyAny>) -> Self {
         PyBranch(o)
     }
 }
 
 impl Branch for PyBranch {
     fn last_revision(&self) -> RevisionId {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_branch = self.0.bind(py);
             let py_revision_id = py_branch.call_method0("last_revision_id").unwrap();
             let revision_id = py_revision_id.extract::<Vec<u8>>().unwrap();
@@ -31,7 +31,7 @@ impl Branch for PyBranch {
     }
 
     fn name(&self) -> String {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_branch = self.0.bind(py);
             let py_name = py_branch.getattr("name").unwrap();
             py_name.extract::<String>().unwrap()
@@ -39,7 +39,7 @@ impl Branch for PyBranch {
     }
 
     fn tags(&self) -> Box<dyn crate::tags::Tags> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let py_branch = self.0.bind(py);
             let py_tags = py_branch.getattr("tags").unwrap();
             let tags = crate::pytags::PyTags(py_tags.unbind());
