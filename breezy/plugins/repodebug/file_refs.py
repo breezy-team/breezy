@@ -27,7 +27,7 @@ class cmd_file_refs(commands.Command):
     def run(self, file_id, rev_id, directory="."):
         file_id = file_id.encode()
         rev_id = rev_id.encode()
-        bd, relpath = controldir.ControlDir.open_containing(directory)
+        bd, _relpath = controldir.ControlDir.open_containing(directory)
         repo = bd.find_repository()
         self.add_cleanup(repo.lock_read().unlock)
         inv_vf = repo.inventories

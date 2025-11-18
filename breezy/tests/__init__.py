@@ -48,8 +48,8 @@ import time
 import traceback
 import unittest
 import warnings
+from collections.abc import Callable
 from io import BytesIO, StringIO, TextIOWrapper
-from typing import Callable
 from unittest import SkipTest as TestSkipped
 
 import testtools
@@ -3712,7 +3712,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                pid, status = os.waitpid(self.pid, 0)
+                _pid, _status = os.waitpid(self.pid, 0)
             # GZ 2011-10-18: If status is nonzero, should report to the result
             #                that something went wrong.
 

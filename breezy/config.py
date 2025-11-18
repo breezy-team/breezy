@@ -78,9 +78,9 @@ up=pull
 
 import os
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from io import BytesIO
-from typing import Callable, cast
+from typing import cast
 
 import configobj
 
@@ -1120,7 +1120,7 @@ def _iter_for_location_by_parts(sections, location):
         else:
             # Rely on zip truncating in length to the length of the shortest
             # argument sequence.
-            for name in zip(location_parts, section_parts):
+            for name in zip(location_parts, section_parts, strict=False):
                 if not fnmatch.fnmatch(name[0], name[1]):
                     matched = False
                     break
@@ -1440,7 +1440,7 @@ def extract_email_address(e):
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    name, email = parse_username(e)
+    _name, email = parse_username(e)
     if not email:
         raise NoEmailInUsername(e)
     return email
@@ -3547,7 +3547,7 @@ class StartingPathMatcher(SectionMatcher):
 class LocationMatcher(SectionMatcher):
     def __init__(self, store, location):
         super().__init__(store)
-        url, params = urlutils.split_segment_parameters(location)
+        _url, params = urlutils.split_segment_parameters(location)
         if location.startswith("file://"):
             location = urlutils.local_path_from_url(location)
         self.location = location

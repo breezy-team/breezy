@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import TYPE_CHECKING, Optional, TextIO, Union, cast
+from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 from .lazy_import import lazy_import
 
@@ -89,13 +89,13 @@ class Branch(ControlComponent):
 
     controldir: ControlDir
 
-    name: Optional[str]
+    name: str | None
 
     base: str
 
     _format: "BranchFormat"
 
-    _last_revision_info_cache: Optional[tuple[int, RevisionID]]
+    _last_revision_info_cache: tuple[int, RevisionID] | None
 
     repository: repository.Repository
 
@@ -105,7 +105,7 @@ class Branch(ControlComponent):
     def user_transport(self) -> Transport:
         return self.controldir.user_transport
 
-    def __init__(self, possible_transports: Optional[list[Transport]] = None) -> None:
+    def __init__(self, possible_transports: list[Transport] | None = None) -> None:
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -148,8 +148,8 @@ class Branch(ControlComponent):
 
     def _extend_partial_history(
         self,
-        stop_index: Optional[int] = None,
-        stop_revision: Optional[RevisionID] = None,
+        stop_index: int | None = None,
+        stop_revision: RevisionID | None = None,
     ) -> None:
         """Extend the partial history to include a given index.
 
@@ -200,7 +200,7 @@ class Branch(ControlComponent):
     @staticmethod
     def open_from_transport(
         transport: Transport,
-        name: Optional[str] = None,
+        name: str | None = None,
         _unsupported: bool = False,
         possible_transports=None,
     ):
@@ -717,7 +717,7 @@ class Branch(ControlComponent):
                 stop_revision, limit=limit, lossy=lossy
             )
 
-    def get_bound_location(self) -> Optional[str]:
+    def get_bound_location(self) -> str | None:
         """Return the URL of the branch we are bound to.
 
         Older format branches cannot bind, please be sure to use a metadir
@@ -769,7 +769,7 @@ class Branch(ControlComponent):
         )
 
     def get_master_branch(
-        self, possible_transports: Optional[list[Transport]] = None
+        self, possible_transports: list[Transport] | None = None
     ) -> Optional["Branch"]:
         """Return the branch we are bound to.
 
@@ -788,7 +788,7 @@ class Branch(ControlComponent):
         raise NotImplementedError(self.get_stacked_on_url)
 
     def set_last_revision_info(
-        self, revno: Optional[int], revision_id: RevisionID
+        self, revno: int | None, revision_id: RevisionID
     ) -> None:
         """Set the last revision of this branch.
 
@@ -805,7 +805,7 @@ class Branch(ControlComponent):
     def generate_revision_history(
         self,
         revision_id: RevisionID,
-        last_rev: Optional[RevisionID] = None,
+        last_rev: RevisionID | None = None,
         other_branch: Optional["Branch"] = None,
     ) -> None:
         """See Branch.generate_revision_history."""
@@ -823,10 +823,10 @@ class Branch(ControlComponent):
             revno = graph.find_distance_to_null(revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
-    def _set_parent_location(self, url: Optional[str]) -> None:
+    def _set_parent_location(self, url: str | None) -> None:
         raise NotImplementedError(self._set_parent_location)
 
-    def set_parent(self, url: Optional[str]) -> None:
+    def set_parent(self, url: str | None) -> None:
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
         # URLs should never be unicode, even on the local fs,
@@ -976,7 +976,7 @@ class Branch(ControlComponent):
             raise errors.NoSuchRevision(self, revision_id) from exc
 
     def get_rev_id(
-        self, revno: int, history: Optional[list[RevisionID]] = None
+        self, revno: int, history: list[RevisionID] | None = None
     ) -> RevisionID:
         """Find the revision id of the specified revno."""
         with self.lock_read():
@@ -997,8 +997,8 @@ class Branch(ControlComponent):
         source: "Branch",
         *,
         overwrite: bool = False,
-        stop_revision: Optional[RevisionID] = None,
-        possible_transports: Optional[list[Transport]] = None,
+        stop_revision: RevisionID | None = None,
+        possible_transports: list[Transport] | None = None,
         **kwargs,
     ) -> "PullResult":
         """Mirror source into this branch.
@@ -1019,7 +1019,7 @@ class Branch(ControlComponent):
         target: "Branch",
         *,
         overwrite: bool = False,
-        stop_revision: Optional[RevisionID] = None,
+        stop_revision: RevisionID | None = None,
         lossy: bool = False,
         **kwargs,
     ):
@@ -1035,7 +1035,7 @@ class Branch(ControlComponent):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
-    def get_parent(self) -> Optional[str]:
+    def get_parent(self) -> str | None:
         """Return the parent location of the branch.
 
         This is the default location for pull/missing.  The usual
@@ -1066,26 +1066,26 @@ class Branch(ControlComponent):
             url = urlutils.relative_url(self.base, url)
         config.set(name, url)
 
-    def _get_config_location(self, name: str, *, config=None) -> Optional[str]:
+    def _get_config_location(self, name: str, *, config=None) -> str | None:
         if config is None:
             config = self.get_config_stack()
         location = config.get(name)
         if location == "":
             location = None
-        return cast("Optional[str]", location)
+        return cast("str | None", location)
 
-    def get_child_submit_format(self) -> Optional[str]:
+    def get_child_submit_format(self) -> str | None:
         """Return the preferred format of submissions to this branch."""
-        return cast("Optional[str]", self.get_config_stack().get("child_submit_format"))
+        return cast("str | None", self.get_config_stack().get("child_submit_format"))
 
-    def get_submit_branch(self) -> Optional[str]:
+    def get_submit_branch(self) -> str | None:
         """Return the submit location of the branch.
 
         This is the default location for bundle.  The usual
         pattern is that the user can override it by specifying a
         location.
         """
-        return cast("Optional[str]", self.get_config_stack().get("submit_branch"))
+        return cast("str | None", self.get_config_stack().get("submit_branch"))
 
     def set_submit_branch(self, location: str) -> None:
         """Return the submit location of the branch.
@@ -1096,7 +1096,7 @@ class Branch(ControlComponent):
         """
         self.get_config_stack().set("submit_branch", location)
 
-    def get_public_branch(self) -> Optional[str]:
+    def get_public_branch(self) -> str | None:
         """Return the public location of the branch.
 
         This is used by merge directives.
@@ -1112,7 +1112,7 @@ class Branch(ControlComponent):
         """
         self._set_config_location("public_branch", location)
 
-    def get_push_location(self) -> Optional[str]:
+    def get_push_location(self) -> str | None:
         """Return None or the location to push this branch to."""
         return cast("str", self.get_config_stack().get("push_location"))
 
@@ -1167,8 +1167,8 @@ class Branch(ControlComponent):
         self,
         to_controldir: ControlDir,
         *,
-        revision_id: Optional[RevisionID] = None,
-        name: Optional[str] = None,
+        revision_id: RevisionID | None = None,
+        name: str | None = None,
         repository_policy=None,
         tag_selector=None,
     ) -> "Branch":
@@ -2013,13 +2013,13 @@ class PullResult(_Result):
       tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
-    old_revno: Union[int, property]
-    new_revno: Union[int, property]
+    old_revno: int | property
+    new_revno: int | property
     old_revid: RevisionID
     new_revid: RevisionID
     source_branch: Branch
     master_branch: Branch
-    local_branch: Optional[Branch]
+    local_branch: Branch | None
     target_branch: Branch
     tag_conflicts: list["TagConflict"]
     tag_updates: "TagUpdates"
@@ -2067,7 +2067,7 @@ class BranchPushResult(_Result):
     source_branch: Branch
     master_branch: Branch
     target_branch: Branch
-    local_branch: Optional[Branch]
+    local_branch: Branch | None
 
     def report(self, to_file: TextIO) -> None:
         from breezy.i18n import gettext, ngettext
@@ -2152,8 +2152,8 @@ class InterBranch(InterObject[Branch]):
     def pull(
         self,
         overwrite: bool = False,
-        stop_revision: Optional[RevisionID] = None,
-        possible_transports: Optional[list[Transport]] = None,
+        stop_revision: RevisionID | None = None,
+        possible_transports: list[Transport] | None = None,
         local: bool = False,
         tag_selector=None,
     ) -> PullResult:
@@ -2168,9 +2168,9 @@ class InterBranch(InterObject[Branch]):
     def push(
         self,
         overwrite: bool = False,
-        stop_revision: Optional[RevisionID] = None,
+        stop_revision: RevisionID | None = None,
         lossy: bool = False,
-        _override_hook_source_branch: Optional[Branch] = None,
+        _override_hook_source_branch: Branch | None = None,
         tag_selector=None,
     ):
         """Mirror the source branch into the target branch.
@@ -2193,8 +2193,8 @@ class InterBranch(InterObject[Branch]):
 
     def fetch(
         self,
-        stop_revision: Optional[RevisionID] = None,
-        limit: Optional[int] = None,
+        stop_revision: RevisionID | None = None,
+        limit: int | None = None,
         lossy: bool = False,
     ) -> repository.FetchResult:
         """Fetch revisions.

@@ -131,7 +131,7 @@ class TestPull(tests.TestCaseWithTransport):
         """
         # Make a source, sprout a target off it
         builder = self.make_branch_builder("source")
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, _rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set("branch.fetch_tags", True)
         target_bzrdir = source.controldir.sprout("target")
         source.tags.set_tag("tag-a", rev2)
@@ -413,7 +413,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree = self.make_branch_and_tree("from", format="2a")
         self.make_branch_and_tree("to", format="1.14-rich-root")
         from_tree.commit(message="first commit")
-        out, err = self.run_bzr(["pull", "-d", "to", "from"])
+        _out, err = self.run_bzr(["pull", "-d", "to", "from"])
         self.assertContainsRe(err, "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_warning_no_IDS(self):
@@ -427,7 +427,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree = self.make_branch_and_tree("from", format="2a")
         self.make_branch_and_tree("to", format="1.14-rich-root")
         from_tree.commit(message="first commit")
-        out, err = self.run_bzr(["pull", "-d", "to", "from"])
+        _out, err = self.run_bzr(["pull", "-d", "to", "from"])
         self.assertContainsRe(err, "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_from_network(self):
@@ -436,7 +436,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.make_branch_and_tree("to", format="1.14-rich-root")
         self.assertIsInstance(from_tree.branch, remote.RemoteBranch)
         from_tree.commit(message="first commit")
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             ["pull", "-d", "to", from_tree.branch.controldir.root_transport.base]
         )
         self.assertContainsRe(err, "(?m)Doing on-the-fly conversion")
@@ -446,7 +446,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree = self.make_branch_and_tree("from", format="development-subtree")
         self.make_branch_and_tree("to", format="development-subtree")
         from_tree.commit(message="first commit")
-        out, err = self.run_bzr(["pull", "-d", "to", "from"])
+        _out, err = self.run_bzr(["pull", "-d", "to", "from"])
         self.assertContainsRe(err, "(?m)Fetching into experimental format")
 
     def test_pull_cross_to_experimental_format_warning(self):
@@ -454,7 +454,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree = self.make_branch_and_tree("from", format="2a")
         self.make_branch_and_tree("to", format="development-subtree")
         from_tree.commit(message="first commit")
-        out, err = self.run_bzr(["pull", "-d", "to", "from"])
+        _out, err = self.run_bzr(["pull", "-d", "to", "from"])
         self.assertContainsRe(err, "(?m)Fetching into experimental format")
 
     def test_pull_show_base(self):
@@ -474,7 +474,7 @@ class TestPull(tests.TestCaseWithTransport):
         with open(osutils.pathjoin("b", "hello"), "w") as f:
             f.write("fie")
 
-        out, err = self.run_bzr(["pull", "-d", "b", "a", "--show-base"])
+        _out, err = self.run_bzr(["pull", "-d", "b", "a", "--show-base"])
 
         # check for message here
         self.assertEqual(

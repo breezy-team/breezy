@@ -111,7 +111,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See MutableTree._add."""
         with self.lock_tree_write():
             state = self.current_dirstate()
-            for f, file_id, kind in zip(files, ids, kinds):
+            for f, file_id, kind in zip(files, ids, kinds, strict=False):
                 f = f.strip("/")
                 if self.path2id(f):
                     # special case tree root handling.
@@ -337,7 +337,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
-                minikind, link_or_sha1, size, executable, stat = entry[0]
+                minikind, link_or_sha1, _size, executable, _stat = entry[0]
                 if minikind in (b"a", b"r"):  # absent, relocated
                     # a parent tree only entry
                     continue
@@ -811,7 +811,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         )
                     # finally do the rename in the dirstate, which is a little
                     # tricky to rollback, but least likely to need it.
-                    old_block_index, old_entry_index, dir_present, file_present = (
+                    old_block_index, old_entry_index, _dir_present, _file_present = (
                         state._get_block_entry_index(from_dirname, from_tail_utf8, 0)
                     )
                     old_block = state._dirblocks[old_block_index][1]
@@ -1424,7 +1424,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 trees = list(
                     zip(
                         revision_ids,
-                        self.branch.repository.revision_trees(revision_ids),
+                        self.branch.repository.revision_trees(revision_ids), strict=False,
                     )
                 )
                 base_tree = trees[0][1]

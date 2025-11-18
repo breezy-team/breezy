@@ -24,7 +24,6 @@ import errno
 import os
 import shutil
 from contextlib import ExitStack
-from typing import Optional
 
 from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
@@ -47,7 +46,7 @@ class WorkspaceDirty(BzrError):
 # TODO(jelmer): Move to .clean_tree?
 def reset_tree(
     local_tree: WorkingTree,
-    basis_tree: Optional[Tree] = None,
+    basis_tree: Tree | None = None,
     subpath: str = "",
     dirty_tracker=None,
 ) -> None:
@@ -101,7 +100,7 @@ def delete_items(deletables, dry_run: bool = False):
 
 # TODO(jelmer): Move to .clean_tree?
 def check_clean_tree(
-    local_tree: WorkingTree, basis_tree: Optional[Tree] = None, subpath: str = ""
+    local_tree: WorkingTree, basis_tree: Tree | None = None, subpath: str = ""
 ) -> None:
     """Check that a tree is clean and has no pending changes or unknown files.
 
@@ -220,8 +219,8 @@ class Workspace:
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> Optional[list[str]]:
-        changed: Optional[list[str]]
+    def _stage(self) -> list[str] | None:
+        changed: list[str] | None
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

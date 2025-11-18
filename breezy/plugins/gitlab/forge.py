@@ -21,7 +21,6 @@ import os
 import re
 import time
 from datetime import datetime
-from typing import Optional
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -196,7 +195,7 @@ def get_credentials_by_url(url):
 
 
 def parse_gitlab_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if scheme not in ("git+ssh", "https", "http"):
         raise NotGitLabUrl(url)
     if not host:
@@ -214,7 +213,7 @@ def parse_gitlab_branch_url(branch):
 
 
 def parse_gitlab_merge_request_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if scheme not in ("git+ssh", "https", "http"):
         raise NotGitLabUrl(url)
     if not host:
@@ -701,12 +700,12 @@ class GitLab(Forge):
         return json.loads(response.data)
 
     def get_push_url(self, branch):
-        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        (_host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self._get_project(project_name)
         return gitlab_url_to_bzr_url(project["ssh_url_to_repo"], branch_name)
 
     def get_web_url(self, branch):
-        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        (_host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self._get_project(project_name)
         if branch_name:
             # TODO(jelmer): Use API to get this URL
@@ -731,7 +730,7 @@ class GitLab(Forge):
             def tag_selector(t):
                 return False
 
-        (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(
+        (_host, base_project_name, _base_branch_name) = parse_gitlab_branch_url(
             base_branch
         )
         if owner is None:
@@ -774,7 +773,7 @@ class GitLab(Forge):
     def get_derived_branch(
         self, base_branch, name, project=None, owner=None, preferred_schemes=None
     ):
-        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        (_host, base_project, _base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self.get_current_user()
         if project is None:
@@ -828,7 +827,7 @@ class GitLab(Forge):
 
     def hosts(self, branch):
         try:
-            (host, project, branch_name) = parse_gitlab_branch_url(branch)
+            (host, _project, _branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
         return self.base_hostname == host
@@ -914,7 +913,7 @@ class GitLab(Forge):
         for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_forks(self, owner: Optional[str] = None):
+    def iter_my_forks(self, owner: str | None = None):
         if owner is None:
             owner = self.get_current_user()
         for project in self._list_projects(owner=owner):
@@ -987,7 +986,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = None,
+        delete_source_after_merge: bool | None = None,
     ):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr

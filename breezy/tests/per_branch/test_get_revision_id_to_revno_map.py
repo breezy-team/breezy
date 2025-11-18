@@ -68,7 +68,7 @@ class TestCaching(TestCaseWithBranch):
 
     def test_unlocked(self):
         """Repeated calls will call _gen_revno_map each time."""
-        branch, revmap, calls = self.get_instrumented_branch()
+        branch, _revmap, calls = self.get_instrumented_branch()
         # Repeatedly call revision_history.
         branch.get_revision_id_to_revno_map()
         branch.get_revision_id_to_revno_map()
@@ -77,7 +77,7 @@ class TestCaching(TestCaseWithBranch):
 
     def test_locked(self):
         """Repeated calls will only call _gen_revno_map once."""
-        branch, revmap, calls = self.get_instrumented_branch()
+        branch, _revmap, calls = self.get_instrumented_branch()
         # Lock the branch, then repeatedly call revision_history.
         with branch.lock_read():
             branch.get_revision_id_to_revno_map()

@@ -518,7 +518,7 @@ class GetBundleRequest(SmartServerRequest):
     def do(self, path, revision_id):
         # open transport relative to our base
         t = self.transport_from_client_path(path)
-        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
+        control, _extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
         repo = control.open_repository()
         tmpf = tempfile.TemporaryFile()
         base_revision = revision.NULL_REVISION

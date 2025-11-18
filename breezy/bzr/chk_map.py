@@ -39,7 +39,7 @@ Densely packed upper nodes.
 import heapq
 import threading
 from collections.abc import Callable, Generator, Iterator
-from typing import Callable, Optional, Union
+from typing import Union
 
 from .. import errors, lru_cache, osutils, registry, trace
 
@@ -104,8 +104,8 @@ class CHKMap:
     def __init__(
         self,
         store,
-        root_key: Optional[Key],
-        search_key_func: Optional[SearchKeyFunc] = None,
+        root_key: Key | None,
+        search_key_func: SearchKeyFunc | None = None,
     ):
         """Create a CHKMap object.
 
@@ -252,7 +252,7 @@ class CHKMap:
         initial_value,
         maximum_size: int = 0,
         key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        search_key_func: SearchKeyFunc | None = None,
     ):
         """Create a CHKMap in store with initial_value as the content.
 
@@ -289,7 +289,7 @@ class CHKMap:
         initial_value,
         maximum_size: int = 0,
         key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        search_key_func: SearchKeyFunc | None = None,
     ):
         result = cls(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
@@ -307,7 +307,7 @@ class CHKMap:
         initial_value,
         maximum_size: int = 0,
         key_width: int = 1,
-        search_key_func: Optional[SearchKeyFunc] = None,
+        search_key_func: SearchKeyFunc | None = None,
     ):
         node: Node
         node = LeafNode(search_key_func=search_key_func)
@@ -560,7 +560,7 @@ class CHKMap:
         # print loop_counter
 
     def iteritems(
-        self, key_filter: Optional[KeyFilter] = None
+        self, key_filter: KeyFilter | None = None
     ) -> Iterator[tuple[Key, bytes]]:
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
@@ -725,7 +725,7 @@ class Node:
             return prefix
         pos = -1
         # Is there a better way to do this?
-        for pos, (left, right) in enumerate(zip(prefix, key)):
+        for pos, (left, right) in enumerate(zip(prefix, key, strict=False)):
             if left != right:
                 pos -= 1
                 break
@@ -760,7 +760,7 @@ class Node:
         raise NotImplementedError("serialise must be implemented in subclasses")
 
     def iteritems(
-        self, store, key_filter: Optional[KeyFilter] = None
+        self, store, key_filter: KeyFilter | None = None
     ) -> Iterator[tuple[Key, bytes]]:
         """Iterate over items in the node.
 
@@ -1175,7 +1175,7 @@ class InternalNode(Node):
         )
 
     @classmethod
-    def deserialise(cls, bytes, key, search_key_func: Optional[SearchKeyFunc] = None):
+    def deserialise(cls, bytes, key, search_key_func: SearchKeyFunc | None = None):
         """Deserialise bytes to an InternalNode, with key key.
 
         :param bytes: The bytes of the node.
@@ -1186,7 +1186,7 @@ class InternalNode(Node):
         return _deserialise_internal_node(bytes, key, search_key_func=search_key_func)
 
     def iteritems(
-        self, store, key_filter: Optional[list[Key]] = None
+        self, store, key_filter: list[Key] | None = None
     ) -> Generator[tuple[Key, bytes]]:
         for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
             yield from node.iteritems(store, key_filter=node_filter)
@@ -1194,9 +1194,9 @@ class InternalNode(Node):
     def _iter_nodes(
         self,
         store,
-        key_filter: Optional[KeyFilter] = None,
-        batch_size: Optional[int] = None,
-    ) -> Generator[tuple[Node, Optional[list[Key]]]]:
+        key_filter: KeyFilter | None = None,
+        batch_size: int | None = None,
+    ) -> Generator[tuple[Node, list[Key] | None]]:
         """Iterate over node objects which match key_filter.
 
         :param store: A store to use for accessing content.
@@ -1211,7 +1211,7 @@ class InternalNode(Node):
         # Map from chk key ('sha1:...',) to (prefix, key_filter)
         # prefix is the key in self._items to use, key_filter is the key_filter
         # entries that would match this node
-        keys: dict[Key, tuple[SerialisedKey, Optional[list[Key]]]] = {}
+        keys: dict[Key, tuple[SerialisedKey, list[Key] | None]] = {}
         shortcut = False
         if key_filter is None:
             # yielding all nodes, yield whatever we have, and queue up a read
@@ -1269,7 +1269,7 @@ class InternalNode(Node):
             # Aggregate common prefixes, and track the keys they come from
             prefix_to_keys: dict[SerialisedKey, list[Key]] = {}
             length_filters: dict[int, set[SerialisedKey]] = {}
-            node_key_filter: Optional[list[Key]] = None
+            node_key_filter: list[Key] | None = None
             if key_filter is None:
                 raise AssertionError("key_filter must not be None")
             for key in key_filter:
@@ -1562,7 +1562,7 @@ class InternalNode(Node):
         else:
             raise KeyError(key)
         self._len -= 1
-        unmapped: Optional[Node]
+        unmapped: Node | None
         unmapped = child.unmap(store, key)
         self._key = None
         search_key = self._search_key(key)

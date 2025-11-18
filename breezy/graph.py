@@ -286,7 +286,7 @@ class Graph:
         3. The length of the shortest path between a border ancestor and an
            ancestor of all border ancestors.
         """
-        border_common, common, sides = self._find_border_ancestors(revisions)
+        border_common, _common, _sides = self._find_border_ancestors(revisions)
         # We may have common ancestors that can be reached from each other.
         # - ask for the heads of them to filter it down to only ones that
         # cannot be reached from each other - phase 2.
@@ -294,7 +294,7 @@ class Graph:
 
     def find_difference(self, left_revision, right_revision):
         """Determine the graph difference between two revisions."""
-        border, common, searchers = self._find_border_ancestors(
+        _border, common, searchers = self._find_border_ancestors(
             [left_revision, right_revision]
         )
         self._search_for_extra_common(common, searchers)
@@ -1397,7 +1397,7 @@ class _BreadthFirstSearcher:
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
             # results of the search.
-            found, ghosts, next, parents = self._do_query(self._next_query)
+            _found, ghosts, next, _parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
             self.seen.difference_update(next)

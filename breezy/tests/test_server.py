@@ -411,7 +411,7 @@ class TestingTCPServer(TestingTCPServerMixin, socketserver.TCPServer):
     # The following methods are called by the main thread
 
     def shutdown_client(self, client):
-        sock, addr = client
+        sock, _addr = client
         self.shutdown_socket(sock)
 
 
@@ -470,7 +470,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin, socketserver.ThreadingTCP
     # The following methods are called by the main thread
 
     def shutdown_client(self, client):
-        sock, addr, connection_thread = client
+        sock, _addr, connection_thread = client
         self.shutdown_socket(sock)
         if connection_thread is not None:
             # The thread has been created only if the request is processed but

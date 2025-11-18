@@ -19,7 +19,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
@@ -287,7 +287,7 @@ mutation ($pullRequestId: ID!) {
 
 
 def parse_github_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if host != GITHUB_HOST:
         raise NotGitHubUrl(url)
     (owner, repo_name) = path.strip("/").split("/")
@@ -303,7 +303,7 @@ def parse_github_branch_url(branch):
 
 
 def parse_github_pr_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(url)
+    (_scheme, _user, _password, host, _port, path) = urlutils.parse_url(url)
     if host != GITHUB_HOST:
         raise NotGitHubUrl(url)
     try:
@@ -634,7 +634,7 @@ class GitHub(Forge):
             def tag_selector(t):
                 return False
 
-        base_owner, base_project, base_branch_name = parse_github_branch_url(
+        base_owner, base_project, _base_branch_name = parse_github_branch_url(
             base_branch
         )
         base_repo = self._get_repo(base_owner, base_project)
@@ -696,7 +696,7 @@ class GitHub(Forge):
     def get_derived_branch(
         self, base_branch, name, project=None, owner=None, preferred_schemes=None
     ):
-        base_owner, base_project, base_branch_name = parse_github_branch_url(
+        base_owner, base_project, _base_branch_name = parse_github_branch_url(
             base_branch
         )
         base_repo = self._get_repo(base_owner, base_project)
@@ -866,7 +866,7 @@ class GitHub(Forge):
         has_wiki=False,
         summary=None,
     ):
-        owner, name = path.split("/")
+        _owner, _name = path.split("/")
         path = "repos"
         data = {
             "name": "name",
@@ -934,7 +934,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         commit_message=None,
         work_in_progress=False,
         allow_collaboration=False,
-        delete_source_after_merge: Optional[bool] = None,
+        delete_source_after_merge: bool | None = None,
     ):
         """Perform the submission."""
         if prerequisite_branch is not None:
@@ -946,7 +946,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if title is None:
             title = determine_title(description)
         target_repo = self.gh._get_repo(self.target_owner, self.target_repo_name)
-        assignees: Optional[list[dict[str, Any]]] = []
+        assignees: list[dict[str, Any]] | None = []
         if reviewers:
             assignees = []
             for reviewer in reviewers:

@@ -18,7 +18,6 @@
 
 import re
 from collections.abc import Iterator
-from typing import Optional
 
 from .rio import Stanza
 
@@ -31,7 +30,7 @@ def _valid_tag(tag: str) -> bool:
     return bool(_tag_re.match(tag))
 
 
-def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
+def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Stanza | None:
     stanza = Stanza()
     tag = None
     accum_value = None

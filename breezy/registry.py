@@ -16,12 +16,10 @@
 
 """Classes to provide name-to-object registry-like support."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import (
     Any,
-    Callable,
     Generic,
-    Optional,
     TypeVar,
     Union,
     cast,
@@ -125,9 +123,7 @@ class Registry(Generic[K, V]):
         self._default_key = None
         self._dict: dict[K, _ObjectGetter[V]] = {}
         self._aliases: dict[K, K] = {}
-        self._help_dict: dict[
-            K, Union[Callable[[Registry[K, V], Optional[K]], str], str]
-        ] = {}
+        self._help_dict: dict[K, Callable[[Registry[K, V], K | None], str] | str] = {}
         self._info_dict: dict[K, Any] = {}
 
     def aliases(self) -> dict[K, K]:
@@ -144,8 +140,8 @@ class Registry(Generic[K, V]):
         self,
         key: K,
         obj: V,
-        help: Optional[str] = None,
-        info: Optional[Any] = None,
+        help: str | None = None,
+        info: Any | None = None,
         override_existing: bool = False,
     ):
         """Register a new object to a name.
@@ -174,8 +170,8 @@ class Registry(Generic[K, V]):
         key: K,
         module_name: str,
         member_name: str,
-        help: Optional[str] = None,
-        info: Optional[Any] = None,
+        help: str | None = None,
+        info: Any | None = None,
         override_existing: bool = False,
     ) -> None:
         """Register a new object to be loaded on request.
@@ -199,7 +195,7 @@ class Registry(Generic[K, V]):
         self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_alias(self, key: K, target: K, info: Optional[Any] = None):
+    def register_alias(self, key: K, target: K, info: Any | None = None):
         """Register an alias.
 
         :param key: Alias name
@@ -218,7 +214,7 @@ class Registry(Generic[K, V]):
         self._help_dict[key] = help
         self._info_dict[key] = info
 
-    def get(self, key: Optional[K] = None) -> V:
+    def get(self, key: K | None = None) -> V:
         """Return the object register()'ed to the given key.
 
         May raise ImportError if the object was registered lazily and
@@ -265,7 +261,7 @@ class Registry(Generic[K, V]):
         else:
             return self.default_key
 
-    def get_help(self, key: Optional[K] = None) -> Optional[str]:
+    def get_help(self, key: K | None = None) -> str | None:
         """Get the help text associated with the given key."""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):

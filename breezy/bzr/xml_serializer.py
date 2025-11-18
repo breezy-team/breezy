@@ -39,7 +39,6 @@ __all__ = [
 ]
 
 import re
-from typing import Union
 from xml.etree.ElementTree import (
     Element,
     ElementTree,
@@ -201,7 +200,7 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
         )
 
 
-_to_escaped_map: dict[Union[bytes, str], str] = {}
+_to_escaped_map: dict[bytes | str, str] = {}
 
 
 def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
@@ -370,7 +369,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
     """
     entries = inv.iter_entries()
     # Skip the root
-    root_path, root_ie = next(entries)
+    _root_path, _root_ie = next(entries)
     for _path, ie in entries:
         if ie.parent_id != root_id:
             parent_str = b"".join(

@@ -231,7 +231,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         return checkout, parent, reconfiguration
 
     def test_unsynced_checkout_to_lightweight(self):
-        checkout, parent, reconfiguration = self.make_unsynced_checkout()
+        _checkout, _parent, reconfiguration = self.make_unsynced_checkout()
         self.assertRaises(reconfigure.UnsyncedBranches, reconfiguration.apply)
 
     def test_synced_checkout_to_lightweight(self):
@@ -266,7 +266,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.assertRaises(errors.NoRepositoryPresent, child.controldir.open_repository)
 
     def test_branch_to_lightweight_checkout_failure(self):
-        parent, child, reconfiguration = self.prepare_branch_to_lightweight_checkout()
+        _parent, child, reconfiguration = self.prepare_branch_to_lightweight_checkout()
         old_Repository_fetch = vf_repository.VersionedFileRepository.fetch
         vf_repository.VersionedFileRepository.fetch = None
         try:

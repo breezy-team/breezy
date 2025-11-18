@@ -42,7 +42,7 @@ class NetrcCredentialStore(config.CredentialStore):
         auth = self._netrc.authenticators(credentials["host"])
         password = None
         if auth is not None:
-            user, account, password = auth
+            user, _account, password = auth
             cred_user = credentials.get("user", None)
             if cred_user is None or user != cred_user:
                 # We don't use the netrc ability to provide a user since there

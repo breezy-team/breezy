@@ -41,8 +41,8 @@ Note that context is currently only supported for write converters.
 """
 
 
+from collections.abc import Callable
 from io import BytesIO
-from typing import Callable
 
 from .. import osutils, registry
 
@@ -155,7 +155,7 @@ def internal_size_sha_file_byname(name, filters):
     """
     with open(name, "rb", 65000) as f:
         if filters:
-            f, size = filtered_input_file(f, filters)
+            f, _size = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
 
 

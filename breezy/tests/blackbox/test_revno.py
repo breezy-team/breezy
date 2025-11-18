@@ -157,7 +157,7 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr("revno -r-2 .")
         self.assertEqual("1\n", out)
 
-        out, err = self.run_bzr("revno -rrevid:{} .".format(revid1.decode("utf-8")))
+        out, _err = self.run_bzr("revno -rrevid:{} .".format(revid1.decode("utf-8")))
         self.assertEqual("1\n", out)
 
     def test_revno_and_tree_mutually_exclusive(self):

@@ -89,7 +89,7 @@ class _SmartClient:
                 raise TypeError("args must be byte strings, not {!r}".format(args))
         if not isinstance(body, bytes):
             raise TypeError("body must be byte string, not {!r}".format(body))
-        response, response_handler = self._call_and_read_response(
+        response, _response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False
         )
         return response

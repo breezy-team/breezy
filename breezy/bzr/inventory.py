@@ -29,7 +29,6 @@ ROOT_ID = b"TREE_ROOT"
 
 from collections import deque
 from collections.abc import Iterable
-from typing import Optional, Union
 
 from .. import errors, lazy_regex, osutils, trace
 from . import chk_map
@@ -1736,7 +1735,7 @@ class CHKInventory(CommonInventory):
         # We don't normally care about name, except for times when we want
         # to filter out empty names because of non rich-root...
         sections = data.split(b"\n")
-        kind, file_id = sections[0].split(b": ")
+        _kind, file_id = sections[0].split(b": ")
         return (sections[2], file_id, sections[3])
 
     def _bytes_to_entry(self, bytes):
@@ -2356,7 +2355,7 @@ class CHKInventory(CommonInventory):
             delta.append((old_path, new_path, file_id, entry))
         return delta
 
-    def path2id(self, relpath: Union[str, list[str]]) -> Optional[FileId]:
+    def path2id(self, relpath: str | list[str]) -> FileId | None:
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
         if isinstance(relpath, str):

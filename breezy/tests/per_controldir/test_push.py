@@ -32,7 +32,7 @@ class TestPush(TestCaseWithControlDir):
         return tree, rev_1
 
     def test_push_new_branch(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         dir = self.make_repository("dir").controldir
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.branch, result.source_branch)
@@ -40,7 +40,7 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base, tree.branch.get_push_location())
 
     def test_push_to_colocated_active(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         dir = self.make_repository("dir").controldir
         try:
             result = dir.push_branch(tree.branch, name="colo")
@@ -53,7 +53,7 @@ class TestPush(TestCaseWithControlDir):
         )
 
     def test_push_to_colocated_new_inactive(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         target_tree = self.make_branch_and_tree("dir")
         rev_o = target_tree.commit("another")
         try:
@@ -69,7 +69,7 @@ class TestPush(TestCaseWithControlDir):
         self.assertNotEqual(target_branch.controldir.open_branch(name="").name, "colo")
 
     def test_push_to_colocated_existing_inactive(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         target_tree = self.make_branch_and_tree("dir")
         rev_o = target_tree.commit("another")
         try:
@@ -89,7 +89,7 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(target_branch.base, tree.branch.get_push_location())
 
     def test_push_no_such_revision(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         dir = self.make_repository("dir").controldir
         self.assertRaises(
             NoSuchRevision, dir.push_branch, tree.branch, revision_id=b"idonotexist"
@@ -128,7 +128,7 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual({"atag": rev_2}, result.source_branch.tags.get_tag_dict())
 
     def test_push_new_branch_lossy(self):
-        tree, rev_1 = self.create_simple_tree()
+        tree, _rev_1 = self.create_simple_tree()
         dir = self.make_repository("dir").controldir
         self.assertRaises(LossyPushToSameVCS, dir.push_branch, tree.branch, lossy=True)
 
@@ -140,7 +140,7 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
 
     def test_push_incremental(self):
-        tree, rev1 = self.create_simple_tree()
+        tree, _rev1 = self.create_simple_tree()
         dir = self.make_repository("dir").controldir
         dir.push_branch(tree.branch)
         self.build_tree(["tree/b"])

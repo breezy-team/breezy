@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .. import conflicts, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
@@ -139,7 +140,7 @@ class TestConflictList(tests.TestCase):
     def test_stringification(self):
         for text, o in zip(
             bzr_conflicts.ConflictList(example_conflicts).to_strings(),
-            example_conflicts,
+            example_conflicts, strict=False,
         ):
             self.assertEqual(text, str(o))
 
@@ -1366,17 +1367,17 @@ class TestResolveActionOption(tests.TestCase):
         )
 
     def test_done(self):
-        opts, args = self.parse(["--action", "done"])
+        opts, _args = self.parse(["--action", "done"])
         self.assertEqual({"action": "done"}, opts)
 
     def test_take_this(self):
         opts, args = self.parse(["--action", "take-this"])
         self.assertEqual({"action": "take_this"}, opts)
-        opts, args = self.parse(["--take-this"])
+        opts, _args = self.parse(["--take-this"])
         self.assertEqual({"action": "take_this"}, opts)
 
     def test_take_other(self):
         opts, args = self.parse(["--action", "take-other"])
         self.assertEqual({"action": "take_other"}, opts)
-        opts, args = self.parse(["--take-other"])
+        opts, _args = self.parse(["--take-other"])
         self.assertEqual({"action": "take_other"}, opts)

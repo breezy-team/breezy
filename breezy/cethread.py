@@ -16,7 +16,7 @@
 
 import sys
 import threading
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 
 class CatchingExceptionThread(threading.Thread):
@@ -26,7 +26,7 @@ class CatchingExceptionThread(threading.Thread):
     re-raised when the thread is joined().
     """
 
-    ignored_exceptions: Optional[Callable[[Exception], bool]]
+    ignored_exceptions: Callable[[Exception], bool] | None
 
     def __init__(self, *args, **kwargs):
         # There are cases where the calling thread must wait, yet, if an
@@ -100,9 +100,10 @@ class CatchingExceptionThread(threading.Thread):
 
     def set_ignored_exceptions(
         self,
-        ignored: Union[
-            Callable[[Exception], bool], None, list[type[Exception]], type[Exception]
-        ],
+        ignored: Callable[[Exception], bool]
+        | None
+        | list[type[Exception]]
+        | type[Exception],
     ):
         """Declare which exceptions will be ignored.
 
@@ -144,7 +145,7 @@ class CatchingExceptionThread(threading.Thread):
         """
         super().join(timeout)
         if self.exception is not None:
-            exc_class, exc_value, exc_tb = self.exception
+            _exc_class, exc_value, _exc_tb = self.exception
             self.exception = None  # The exception should be raised only once
             if self.ignored_exceptions is None or not self.ignored_exceptions(
                 exc_value

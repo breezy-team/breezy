@@ -27,7 +27,7 @@ class cmd_check_chk(commands.Command):
     takes_options = ["directory", "revision"]
 
     def run(self, directory=".", revision=None):
-        wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        _wt, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         factory = groupcompress.make_pack_factory(False, False, 1)

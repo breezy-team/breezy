@@ -54,7 +54,7 @@ def call_or_fail(*args, **kwargs):
     if DEBUG_SUBPROCESS:
         print('  calling: "{}"'.format(" ".join(args[0])))
     p = subprocess.Popen(*args, **kwargs)
-    (out, err) = p.communicate()
+    (out, _err) = p.communicate()
     if p.returncode != 0:
         raise RuntimeError("Failed to run: {}, {}".format(args, kwargs))
     return out
@@ -196,7 +196,7 @@ def main(args):
     import optparse
 
     p = optparse.OptionParser(usage="%prog [OPTIONS]")
-    opts, args = p.parse_args(args)
+    _opts, args = p.parse_args(args)
 
     update_brz()
     update_tbzr()

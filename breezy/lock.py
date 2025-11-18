@@ -38,7 +38,7 @@ import errno
 import os
 import sys
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from . import debug, errors, osutils, trace
 from .hooks import Hooks
@@ -88,9 +88,9 @@ class Lock:
 
     def dont_leave_in_place(self) -> None: ...
 
-    def validate_token(self, token: Optional[LockToken]) -> None: ...
+    def validate_token(self, token: LockToken | None) -> None: ...
 
-    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]: ...
+    def lock_write(self, token: LockToken | None) -> LockToken | None: ...
 
     def lock_read(self) -> None: ...
 

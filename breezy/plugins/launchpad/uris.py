@@ -63,7 +63,7 @@ def lookup_service_root(root):
         return service_roots[root]
 
     # It's not an alias. Is it a valid URL?
-    (scheme, netloc, path, parameters, query, fragment) = urlparse(root)
+    (scheme, netloc, _path, _parameters, _query, _fragment) = urlparse(root)
     if scheme != "" and netloc != "":
         return root
 

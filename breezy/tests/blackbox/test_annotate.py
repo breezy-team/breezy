@@ -61,7 +61,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_help_annotate(self):
         """Annotate command exists."""
-        out, err = self.run_bzr("--no-plugins annotate --help")
+        _out, _err = self.run_bzr("--no-plugins annotate --help")
 
     def test_annotate_cmd(self):
         out, err = self.run_bzr("annotate hello.txt")
@@ -199,7 +199,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotate_edited_file(self):
         self._setup_edited_file()
         self.overrideEnv("BRZ_EMAIL", "current@host2")
-        out, err = self.run_bzr("annotate file")
+        out, _err = self.run_bzr("annotate file")
         self.assertEqual(
             "1   test@ho | foo\n2?  current | bar\n1   test@ho | gam\n", out
         )
@@ -208,7 +208,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         # Ensure that when no username is available annotate still works.
         override_whoami(self)
         self._setup_edited_file()
-        out, err = self.run_bzr("annotate file")
+        out, _err = self.run_bzr("annotate file")
         self.assertEqual(
             "1   test@ho | foo\n2?  local u | bar\n1   test@ho | gam\n", out
         )
@@ -216,7 +216,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotate_edited_file_show_ids(self):
         self._setup_edited_file()
         self.overrideEnv("BRZ_EMAIL", "current@host2")
-        out, err = self.run_bzr("annotate file --show-ids")
+        out, _err = self.run_bzr("annotate file --show-ids")
         self.assertEqual("    rev1 | foo\ncurrent: | bar\n    rev1 | gam\n", out)
 
     def _create_merged_file(self):
@@ -240,7 +240,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotated_edited_merged_file_revnos(self):
         wt = self._create_merged_file()
-        out, err = self.run_bzr(["annotate", "file"])
+        out, _err = self.run_bzr(["annotate", "file"])
         email = config.extract_email_address(wt.branch.get_config_stack().get("email"))
         self.assertEqual(
             "3?    %-7s | local\n"
@@ -253,7 +253,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotated_edited_merged_file_ids(self):
         self._create_merged_file()
-        out, err = self.run_bzr(["annotate", "file", "--show-ids"])
+        out, _err = self.run_bzr(["annotate", "file", "--show-ids"])
         self.assertEqual(
             "current: | local\n"
             "    rev1 | foo\n"
@@ -268,7 +268,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([("empty", b"")])
         tree.add("empty")
         tree.commit("add empty file")
-        out, err = self.run_bzr(["annotate", "empty"])
+        out, _err = self.run_bzr(["annotate", "empty"])
         self.assertEqual("", out)
 
     def test_annotate_removed_file(self):
@@ -279,7 +279,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         # delete the file.
         tree.remove("empty")
         tree.commit("remove empty file")
-        out, err = self.run_bzr(["annotate", "-r1", "empty"])
+        out, _err = self.run_bzr(["annotate", "-r1", "empty"])
         self.assertEqual("", out)
 
     def test_annotate_empty_file_show_ids(self):
@@ -287,7 +287,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([("empty", b"")])
         tree.add("empty")
         tree.commit("add empty file")
-        out, err = self.run_bzr(["annotate", "--show-ids", "empty"])
+        out, _err = self.run_bzr(["annotate", "--show-ids", "empty"])
         self.assertEqual("", out)
 
     def test_annotate_nonexistant_file(self):
@@ -307,7 +307,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         bzrdir = tree.branch.controldir
         bzrdir.destroy_workingtree()
         self.assertFalse(bzrdir.has_workingtree())
-        out, err = self.run_bzr(["annotate", "empty"])
+        out, _err = self.run_bzr(["annotate", "empty"])
         self.assertEqual("", out)
 
     def test_annotate_directory(self):
@@ -316,5 +316,5 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([("a/hello.txt", b"my helicopter\n")])
         wt.add(["hello.txt"])
         wt.commit("commit", committer="test@user")
-        out, err = self.run_bzr(["annotate", "-d", "a", "hello.txt"])
+        out, _err = self.run_bzr(["annotate", "-d", "a", "hello.txt"])
         self.assertEqualDiff("1   test@us | my helicopter\n", out)

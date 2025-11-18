@@ -21,7 +21,7 @@ __docformat__ = "google"
 
 import optparse
 import re
-from typing import Callable
+from collections.abc import Callable
 
 from . import errors, revisionspec
 from . import registry as _mod_registry

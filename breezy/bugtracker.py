@@ -289,7 +289,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
 
     def check_bug_id(self, bug_id):
         try:
-            (project, bug_id) = bug_id.rsplit("/", 1)
+            (_project, bug_id) = bug_id.rsplit("/", 1)
         except ValueError as exc:
             raise MalformedBugIdentifier(bug_id, "Expected format: project/id") from exc
         try:

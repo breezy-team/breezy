@@ -261,7 +261,7 @@ def reannotate(
             _reannotate(p, new_lines, new_revision_id) for p in parents_lines[1:]
         )
         lines = []
-        for annos in zip(*reannotations):
+        for annos in zip(*reannotations, strict=False):
             origins = {a for a, l in annos}
             if len(origins) == 1:
                 # All the parents agree, so just return the first one

@@ -153,7 +153,7 @@ brz: ERROR: No changes to commit.\
             with open(file_name, "w") as f:
                 f.write("hello world")
             self.run_bzr(["add"])
-            out, err = self.run_bzr(["commit", "-m", file_name])
+            _out, err = self.run_bzr(["commit", "-m", file_name])
             reflags = re.MULTILINE | re.DOTALL | re.UNICODE
             osutils.get_terminal_encoding()
             self.assertContainsRe(
@@ -167,7 +167,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr_raw(
+        _out, err = self.run_bzr_raw(
             ["commit", "-m", "Wrong filename", "\xa7"], encoding="utf-8", retcode=3
         )
         self.assertContainsRe(err, b'(?m)not versioned: "\xc2\xa7"$')
@@ -177,7 +177,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr_raw(
+        _out, err = self.run_bzr_raw(
             ["commit", "-m", "Wrong filename", "\xa7"], encoding="iso-8859-5", retcode=3
         )
         self.assertNotContainsString(err, b"\xc2\xa7")
@@ -188,7 +188,7 @@ brz: ERROR: No changes to commit.\
         wt = self.make_branch_and_tree(".")
         self.build_tree(["one", "two"])
         wt.add(["two"])
-        out, err = self.run_bzr("commit -m one two")
+        _out, err = self.run_bzr("commit -m one two")
         self.assertContainsRe(err, "The commit message is a file name")
 
     def test_verbose_commit_renamed(self):
@@ -259,7 +259,7 @@ brz: ERROR: No changes to commit.\
 
         a_tree.branch.create_checkout("b")
         expected = "{}/".format(osutils.abspath("a"))
-        out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
+        _out, err = self.run_bzr("commit -m blah --unchanged", working_dir="b")
         self.assertEqual(
             err, "Committing to: {}\nCommitted revision 2.\n".format(expected)
         )
@@ -757,7 +757,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr("commit -m hello --author='John Doe' tree/hello.txt")
+        _out, _err = self.run_bzr("commit -m hello --author='John Doe' tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual("John Doe", properties["authors"])
@@ -767,7 +767,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "commit -m hello --author='John Doe' --author='Jane Rey' tree/hello.txt"
         )
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
@@ -778,7 +778,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr(
+        _out, _err = self.run_bzr(
             "commit -m hello --commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt"
         )
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
@@ -791,7 +791,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             "commit -m hello --commit-time='NOT A TIME' tree/hello.txt", retcode=3
         )
         self.assertStartsWith(err, "brz: ERROR: Could not parse --commit-time:")
@@ -800,7 +800,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             "commit -m hello --commit-time='2009-10-10 08:00:00' tree/hello.txt",
             retcode=3,
         )
@@ -835,7 +835,7 @@ altered in u2
             self.get_readonly_transport("master")
         ).open_branch()
         master.create_checkout("checkout")
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             ["commit", "--unchanged", "-mfoo", "checkout"], retcode=3
         )
         self.assertContainsRe(err, r"^brz: ERROR: Cannot lock.*readonly transport")
@@ -869,19 +869,19 @@ altered in u2
         self.setup_editor()
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr("commit tree/hello.txt", retcode=3, stdin="y\n")
+        _out, err = self.run_bzr("commit tree/hello.txt", retcode=3, stdin="y\n")
         self.assertContainsRe(err, "brz: ERROR: Empty commit message specified")
 
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()
-        out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
+        _out, _err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual("save me some typing\n", last_rev.message)
 
     def test_commit_hook_template_rejected(self):
         tree = self.setup_commit_with_template()
         expected = tree.last_revision()
-        out, err = self.run_bzr_error(
+        _out, _err = self.run_bzr_error(
             [
                 "Empty commit message specified."
                 " Please specify a commit message with either"
@@ -900,7 +900,7 @@ altered in u2
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/hello.txt"])
         tree.add("hello.txt")
-        out, err = self.run_bzr("commit tree/hello.txt")
+        _out, _err = self.run_bzr("commit tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual("save me some typing\n", last_rev.message)
 
@@ -926,7 +926,7 @@ altered in u2
         with open("test_checkout/foo.txt", "w") as f:
             f.write("hello")
         self.run_bzr(["add"], working_dir="test_checkout")
-        out, err = self.run_bzr_error(
+        _out, _err = self.run_bzr_error(
             ["Branch.*test_checkout.*appears to be bound to itself"],
             ["commit", "-m", "addedfoo"],
             working_dir="test_checkout",

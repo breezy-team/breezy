@@ -245,7 +245,7 @@ class _GrepDiffOutputter:
 
 
 def grep_diff(opts):
-    wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
+    _wt, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
     with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
@@ -264,7 +264,7 @@ def grep_diff(opts):
             end_rev = opts.revision[1]
             end_revid = end_rev.as_revision_id(branch)
             if end_revid is None:
-                end_revno, end_revid = branch.last_revision_info()
+                _end_revno, end_revid = branch.last_revision_info()
             erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
 
             grep_mainline = _rev_on_mainline(srevno_tuple) and _rev_on_mainline(
@@ -339,7 +339,7 @@ def grep_diff(opts):
 
 
 def versioned_grep(opts):
-    wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
+    _wt, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
     with branch.lock_read():
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
@@ -352,7 +352,7 @@ def versioned_grep(opts):
             end_rev = opts.revision[1]
             end_revid = end_rev.as_revision_id(branch)
             if end_revid is None:
-                end_revno, end_revid = branch.last_revision_info()
+                _end_revno, end_revid = branch.last_revision_info()
             erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
 
             grep_mainline = _rev_on_mainline(srevno_tuple) and _rev_on_mainline(
@@ -407,7 +407,7 @@ def versioned_grep(opts):
 def workingtree_grep(opts):
     revno = opts.print_revno = None  # for working tree set revno to None
 
-    tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
+    tree, _branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(".")
     if not tree:
         msg = (
             "Cannot search working tree. Working tree not found.\n"

@@ -585,7 +585,7 @@ class TestReannotate(tests.TestCase):
             annotate.reannotate(parents, newlines, revision_id, blocks)
         )
         self.assertEqual(len(expected), len(annotate_list))
-        for e, a in zip(expected, annotate_list):
+        for e, a in zip(expected, annotate_list, strict=False):
             self.assertEqual(e, a)
 
     def test_reannotate(self):

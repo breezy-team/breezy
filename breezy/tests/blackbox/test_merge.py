@@ -125,7 +125,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertTrue(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
         a_tree.revert(backups=False)
-        out, err = self.run_bzr("merge -r revno:1:./hello", retcode=3, working_dir="a")
+        _out, err = self.run_bzr("merge -r revno:1:./hello", retcode=3, working_dir="a")
         self.assertTrue("Not a branch" in err)
         self.run_bzr(
             "merge -r revno:%d:./..revno:%d:../b" % (ancestor, b.revno()),
@@ -145,7 +145,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual([a_tip], a.get_parent_ids())
 
     def test_merge_defaults_to_reprocess(self):
-        tree, other = self.create_conflicting_branches()
+        tree, _other = self.create_conflicting_branches()
         # The default merge algorithm should enable 'reprocess' because
         # 'show-base' is not set
         self.run_bzr("merge ../other", working_dir="tree", retcode=1)
@@ -155,7 +155,7 @@ class TestMerge(tests.TestCaseWithTransport):
         )
 
     def test_merge_explicit_reprocess_show_base(self):
-        tree, other = self.create_conflicting_branches()
+        _tree, _other = self.create_conflicting_branches()
         # Explicitly setting --reprocess, and --show-base is an error
         self.run_bzr_error(
             ["Cannot do conflict reduction and show base"],
@@ -164,7 +164,7 @@ class TestMerge(tests.TestCaseWithTransport):
         )
 
     def test_merge_override_reprocess(self):
-        tree, other = self.create_conflicting_branches()
+        tree, _other = self.create_conflicting_branches()
         # Explicitly disable reprocess
         self.run_bzr("merge ../other --no-reprocess", working_dir="tree", retcode=1)
         self.assertEqualDiff(
@@ -173,7 +173,7 @@ class TestMerge(tests.TestCaseWithTransport):
         )
 
     def test_merge_override_show_base(self):
-        tree, other = self.create_conflicting_branches()
+        tree, _other = self.create_conflicting_branches()
         # Setting '--show-base' will auto-disable '--reprocess'
         self.run_bzr("merge ../other --show-base", working_dir="tree", retcode=1)
         self.assertEqualDiff(
@@ -237,14 +237,14 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertPathExists("a/sub/a.txt.BASE")
 
     def test_conflict_leaves_base_this_other_files(self):
-        tree, other = self.create_conflicting_branches()
+        _tree, _other = self.create_conflicting_branches()
         self.run_bzr("merge ../other", working_dir="tree", retcode=1)
         self.assertFileEqual(b"a\nb\nc\n", "tree/fname.BASE")
         self.assertFileEqual(b"a\nB\nD\n", "tree/fname.OTHER")
         self.assertFileEqual(b"a\nB\nC\n", "tree/fname.THIS")
 
     def test_weave_conflict_leaves_base_this_other_files(self):
-        tree, other = self.create_conflicting_branches()
+        _tree, _other = self.create_conflicting_branches()
         self.run_bzr("merge ../other --weave", working_dir="tree", retcode=1)
         self.assertFileEqual(b"a\nb\nc\n", "tree/fname.BASE")
         self.assertFileEqual(b"a\nB\nD\n", "tree/fname.OTHER")
@@ -411,14 +411,14 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_merge_pull(self):
         self.pullable_branch()
-        (out, err) = self.run_bzr("merge --pull ../b", working_dir="a")
+        (out, _err) = self.run_bzr("merge --pull ../b", working_dir="a")
         self.assertContainsRe(out, "Now on revision 2\\.")
         tree_a = workingtree.WorkingTree.open("a")
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 
     def test_merge_pull_preview(self):
         self.pullable_branch()
-        (out, err) = self.run_bzr("merge --pull --preview -d a b")
+        (out, _err) = self.run_bzr("merge --pull --preview -d a b")
         self.assertThat(
             out,
             matchers.DocTestMatches(
@@ -472,7 +472,7 @@ class TestMerge(tests.TestCaseWithTransport):
         source.commit("Added b", rev_id=b"rev2")
         target.commit("empty commit")
         self.write_directive("directive", source.branch, "target", b"rev2", b"rev1")
-        out, err = self.run_bzr("merge -d target directive")
+        _out, err = self.run_bzr("merge -d target directive")
         self.assertPathDoesNotExist("target/a")
         self.assertPathExists("target/b")
         self.assertContainsRe(err, "Performing cherrypick")
@@ -591,7 +591,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.commit("", rev_id=b"rev3a")
         tree_b.commit("", rev_id=b"rev3b")
         tree_a.branch.repository.get_graph(tree_b.branch.repository)
-        out, err = self.run_bzr(["merge", "-d", "a", "b"])
+        _out, err = self.run_bzr(["merge", "-d", "a", "b"])
         self.assertContainsRe(err, "Warning: criss-cross merge encountered.")
 
     def test_merge_from_submit(self):
@@ -603,7 +603,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertContainsRe(err, "Merging from remembered parent location .*a\\/")
         with tree_c.branch.lock_write():
             tree_c.branch.set_submit_branch(tree_b.controldir.root_transport.base)
-        out, err = self.run_bzr(["merge", "-d", "c"])
+        _out, err = self.run_bzr(["merge", "-d", "c"])
         self.assertContainsRe(err, "Merging from remembered submit location .*b\\/")
 
     def test_remember_sets_submit(self):
@@ -618,7 +618,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertIs(refreshed.branch.get_submit_branch(), None)
 
         # Remember should happen if user supplies location
-        out, err = self.run_bzr(["merge", "-d", "b", "a"])
+        _out, _err = self.run_bzr(["merge", "-d", "b", "a"])
         refreshed = workingtree.WorkingTree.open("b")
         self.assertEqual(
             refreshed.branch.get_submit_branch(), tree_a.controldir.root_transport.base
@@ -638,7 +638,7 @@ class TestMerge(tests.TestCaseWithTransport):
 
         # Remember should not happen if user supplies location but ask for not
         # remembering it
-        out, err = self.run_bzr(["merge", "-d", "b", "--no-remember", "a"])
+        _out, _err = self.run_bzr(["merge", "-d", "b", "--no-remember", "a"])
         self.assertEqual(None, tree_b.branch.get_submit_branch())
 
     def test_weave_cherrypick(self):
@@ -672,7 +672,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.set_conflicts([])
         tree_a.commit("", rev_id=b"rev3a")
         tree_b.commit("", rev_id=b"rev3b")
-        out, err = self.run_bzr(["merge", "-d", "a", "b", "--lca"], retcode=1)
+        _out, _err = self.run_bzr(["merge", "-d", "a", "b", "--lca"], retcode=1)
         self.assertFileEqual(
             b"base-contents\n<<<<<<< TREE\nthis-contents\n"
             b"=======\nother-contents\n>>>>>>> MERGE-SOURCE\n",

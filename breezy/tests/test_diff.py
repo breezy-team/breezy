@@ -409,7 +409,7 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         with open("new", "wb") as f:
             f.write(b"foo\x00bar\n")
         pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        out, err = pipe.communicate()
+        out, _err = pipe.communicate()
         # We should output whatever diff tells us, plus a trailing newline
         self.assertEqual(out.splitlines(True) + [b"\n"], lines)
 
@@ -1082,7 +1082,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
         proc = subprocess.Popen(["attrib", relpath], stdout=subprocess.PIPE, cwd=cwd)
-        (result, err) = proc.communicate()
+        (result, _err) = proc.communicate()
         self.assertContainsRe(result.replace("\r\n", "\n"), regex)
 
     def test_prepare_files(self):

@@ -448,7 +448,7 @@ class BundleTester:
 
         :return: The in-memory bundle
         """
-        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        bundle_txt, _rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = bundle_txt.getvalue().replace(b"executable:no", b"executable:yes")
         bundle_txt = BytesIO(new_text)
         bundle = read_bundle(bundle_txt)
@@ -561,7 +561,7 @@ class BundleTester:
         base_files = list(base_tree.list_files())
         to_files = list(to_tree.list_files())
         self.assertEqual(len(base_files), len(to_files))
-        for base_file, to_file in zip(base_files, to_files):
+        for base_file, to_file in zip(base_files, to_files, strict=False):
             self.assertEqual(base_file, to_file)
 
         for path, _status, _kind, _entry in base_files:
@@ -993,7 +993,7 @@ class BundleTester:
         tree.add([""], ids=[b"TREE_ROOT"])
         tree.commit("One", revprops={"one": "two", "empty": ""}, rev_id=b"rev1")
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
         self.assertEqual(b"rev1", revision_info.revision_id)
@@ -1013,7 +1013,7 @@ class BundleTester:
             "One", rev_id=b"rev1", revprops={"a": "4", "b": "3", "c": "2", "d": "1"}
         )
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
         self.assertEqual(b"rev1", revision_info.revision_id)
@@ -1039,7 +1039,7 @@ class BundleTester:
             "One", rev_id=b"rev1", revprops={"omega": "\u03a9", "alpha": "\u03b1"}
         )
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
         self.assertEqual(b"rev1", revision_info.revision_id)
@@ -1195,7 +1195,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.add([""], ids=[b"TREE_ROOT"])
         tree.commit("One", revprops={"one": "two", "empty": ""}, rev_id=b"rev1")
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         self.assertContainsRe(
             bundle_sio.getvalue(),
             b"# properties:\n#   branch-nick: tree\n#   empty: \n#   one: two\n",
@@ -1226,7 +1226,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.add([""], ids=[b"TREE_ROOT"])
         tree.commit("One", revprops={"one": "two", "empty": ""}, rev_id=b"rev1")
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         txt = bundle_sio.getvalue()
         loc = txt.find(b"#   empty: ") + len(b"#   empty:")
         # Create a new bundle, which strips the trailing space after empty
@@ -1255,7 +1255,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
             "One", rev_id=b"rev1", revprops={"a": "4", "b": "3", "c": "2", "d": "1"}
         )
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         self.assertContainsRe(
             bundle_sio.getvalue(),
             b"# properties:\n"
@@ -1290,7 +1290,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
             "One", rev_id=b"rev1", revprops={"omega": "\u03a9", "alpha": "\u03b1"}
         )
         self.b1 = tree.branch
-        bundle_sio, revision_ids = self.create_bundle_text(b"null:", b"rev1")
+        bundle_sio, _revision_ids = self.create_bundle_text(b"null:", b"rev1")
         self.assertContainsRe(
             bundle_sio.getvalue(),
             b"# properties:\n"
@@ -1373,7 +1373,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         """
         from ..bundle import serializer
 
-        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        bundle_txt, _rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b"".join(bundle_txt)))
         new_text = new_text.replace(
             b'<file file_id="exe-1"', b'<file executable="y" file_id="exe-1"'
@@ -1505,7 +1505,7 @@ class V4_2aBundleTester(V4BundleTester):
         """
         from ..bundle import serializer
 
-        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        bundle_txt, _rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b"".join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a
         # file. Make sure the text replacement actually works correctly.

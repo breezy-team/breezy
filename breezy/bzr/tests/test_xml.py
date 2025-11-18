@@ -512,7 +512,7 @@ class TestSerializer(TestCase):
         for (exp_path, exp_file_id, exp_parent_id, exp_rev_id), (
             act_path,
             act_ie,
-        ) in zip(expected, actual):
+        ) in zip(expected, actual, strict=False):
             self.assertEqual(exp_path, act_path)
             self.assertIsInstance(act_path, str)
             self.assertEqual(exp_file_id, act_ie.file_id)

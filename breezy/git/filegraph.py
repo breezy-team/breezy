@@ -109,7 +109,7 @@ class GitFileParentProvider:
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (store, path, text_parent) = (
+                (_store, path, text_parent) = (
                     self.change_scanner.find_last_change_revision(path, commit_parent)
                 )
             except KeyError:

@@ -19,8 +19,7 @@
 # ruff: noqa: D212
 # ruff: noqa: D415
 
-from collections.abc import Iterable, Iterator
-from typing import Callable, Optional
+from collections.abc import Callable, Iterable, Iterator
 
 
 class IterableFileBase:
@@ -46,7 +45,7 @@ class IterableFileBase:
 
         return self._read(test_length)
 
-    def read_to(self, sequence: bytes, length: Optional[int] = None) -> bytes:
+    def read_to(self, sequence: bytes, length: int | None = None) -> bytes:
         """
         >>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.read_to(b'\\n')
@@ -66,7 +65,7 @@ class IterableFileBase:
 
         return self._read(test_contents)
 
-    def _read(self, result_length: Callable[[bytes], Optional[int]]) -> bytes:
+    def _read(self, result_length: Callable[[bytes], int | None]) -> bytes:
         """
         Read data until result satisfies the condition result_length.
         result_length is a callable that returns None until the condition
@@ -200,7 +199,7 @@ class IterableFile:
         """
         return self
 
-    def read(self, length: Optional[int] = None) -> bytes:
+    def read(self, length: int | None = None) -> bytes:
         """
         >>> IterableFile([b'This ', b'is ', b'a ', b'test.']).read()
         b'This is a test.'
@@ -219,7 +218,7 @@ class IterableFile:
         else:
             return self._file_base.read_n(length)
 
-    def read_to(self, sequence: bytes, size: Optional[int] = None) -> bytes:
+    def read_to(self, sequence: bytes, size: int | None = None) -> bytes:
         """
         Read characters until a sequence is found, with optional max size.
         The specified sequence, if found, will be included in the result
@@ -237,7 +236,7 @@ class IterableFile:
         self._check_closed()
         return self._file_base.read_to(sequence, size)
 
-    def readline(self, size: Optional[int] = None) -> bytes:
+    def readline(self, size: int | None = None) -> bytes:
         """
         >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readline()

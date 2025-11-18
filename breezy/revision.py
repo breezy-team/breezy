@@ -19,7 +19,6 @@
 
 __docformat__ = "google"
 
-from typing import Optional
 
 from . import errors, osutils
 
@@ -48,7 +47,7 @@ class Revision:
     parent_ids: list[RevisionID]
     revision_id: RevisionID
     parent_sha1s: list[str]
-    committer: Optional[str]
+    committer: str | None
     message: str
     properties: dict[str, bytes]
     inventory_sha1: str

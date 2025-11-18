@@ -222,7 +222,7 @@ class LinesDeltaIndex:
                 # enough bytes.
                 if block[-1] < min_match_bytes:
                     # This block may be a 'short' block, check
-                    old_start, new_start, range_len = block
+                    _old_start, new_start, range_len = block
                     matched_bytes = sum(
                         map(len, lines[new_start : new_start + range_len])
                     )

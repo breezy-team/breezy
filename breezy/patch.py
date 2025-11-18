@@ -91,7 +91,7 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
     if output_filename is not None:
         args.extend(("-o", output_filename))
     args.append(filename)
-    stdout, stderr, status = write_to_cmd(args, patch_contents)
+    _stdout, _stderr, status = write_to_cmd(args, patch_contents)
     return status
 
 

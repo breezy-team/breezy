@@ -3656,7 +3656,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
 class TestMergeInto(TestMergeIntoBase):
     def test_newdir_with_unique_roots(self):
         """Merge a branch with a unique root into a new directory."""
-        project_wt, lib_wt = self.setup_two_branches()
+        project_wt, _lib_wt = self.setup_two_branches()
         self.do_merge_into("lib1", "project/lib1")
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
@@ -3678,7 +3678,7 @@ class TestMergeInto(TestMergeIntoBase):
 
     def test_subdir(self):
         """Merge a branch into a subdirectory of an existing directory."""
-        project_wt, lib_wt = self.setup_two_branches()
+        project_wt, _lib_wt = self.setup_two_branches()
         self.do_merge_into("lib1", "project/dir/lib1")
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
@@ -3702,7 +3702,7 @@ class TestMergeInto(TestMergeIntoBase):
         """If the file-id of the dir to be merged already exists a new ID will
         be allocated to let the merge happen.
         """
-        project_wt, lib_wt = self.setup_two_branches(custom_root_ids=False)
+        project_wt, _lib_wt = self.setup_two_branches(custom_root_ids=False)
         root_id = project_wt.path2id("")
         self.do_merge_into("lib1", "project/lib1")
         project_wt.lock_read()

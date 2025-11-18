@@ -17,7 +17,7 @@
 __docformat__ = "google"
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .lazy_import import lazy_import
 
@@ -437,7 +437,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb))
+        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb, strict=False))
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -1542,9 +1542,7 @@ class InterRepository(InterObject[Repository]):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    def copy_content(
-        self, revision_id: Optional[_mod_revision.RevisionID] = None
-    ) -> None:
+    def copy_content(self, revision_id: _mod_revision.RevisionID | None = None) -> None:
         """Make a complete copy of the content in self into destination.
 
         This is a destructive operation! Do not use it on existing
@@ -1563,7 +1561,7 @@ class InterRepository(InterObject[Repository]):
 
     def fetch(
         self,
-        revision_id: Optional[_mod_revision.RevisionID] = None,
+        revision_id: _mod_revision.RevisionID | None = None,
         find_ghosts: bool = False,
         lossy: bool = False,
     ) -> FetchResult:
@@ -1581,9 +1579,9 @@ class InterRepository(InterObject[Repository]):
     def search_missing_revision_ids(
         self,
         find_ghosts: bool = True,
-        revision_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
-        if_present_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
-        limit: Optional[int] = None,
+        revision_ids: Iterable[_mod_revision.RevisionID] | None = None,
+        if_present_ids: Iterable[_mod_revision.RevisionID] | None = None,
+        limit: int | None = None,
     ) -> AbstractSearchResult:
         """Return the revision ids that source has that target does not.
 

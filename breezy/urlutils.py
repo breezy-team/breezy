@@ -20,7 +20,6 @@ import os
 import posixpath
 import re
 import sys
-from typing import Union
 from urllib import parse as urlparse
 
 from . import errors, osutils
@@ -85,7 +84,7 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-def escape(relpath: Union[bytes, str], safe: str = "/~") -> str:
+def escape(relpath: bytes | str, safe: str = "/~") -> str:
     """Escape relpath to be a valid url."""
     return quote(relpath, safe=safe)
 
@@ -373,7 +372,7 @@ def relative_url(base, other):
     if base_first_slash is None:
         return other
 
-    dummy, other_first_slash = _find_scheme_and_separator(other)
+    _dummy, other_first_slash = _find_scheme_and_separator(other)
     if other_first_slash is None:
         return other
 
@@ -403,7 +402,7 @@ def relative_url(base, other):
         other_sections = []
 
     output_sections = []
-    for b, o in zip(base_sections, other_sections):
+    for b, o in zip(base_sections, other_sections, strict=False):
         if b != o:
             break
         output_sections.append(b)
@@ -517,7 +516,7 @@ def strip_segment_parameters(url):
       url: A relative or absolute URL
     Returns: url
     """
-    base_url, subsegments = split_segment_parameters_raw(url)
+    base_url, _subsegments = split_segment_parameters_raw(url)
     return base_url
 
 
@@ -778,7 +777,7 @@ def rebase_url(url, old_base, new_base):
     The result will be a relative path.
     Absolute paths and full URLs are returned unaltered.
     """
-    scheme, separator = _find_scheme_and_separator(url)
+    scheme, _separator = _find_scheme_and_separator(url)
     if scheme is not None:
         return url
     if _is_absolute(url):
@@ -795,7 +794,7 @@ def determine_relative_path(from_path, to_path):
     from_segments = osutils.splitpath(from_path)
     to_segments = osutils.splitpath(to_path)
     count = -1
-    for count, (from_element, to_element) in enumerate(zip(from_segments, to_segments)):
+    for count, (from_element, to_element) in enumerate(zip(from_segments, to_segments, strict=False)):
         if from_element != to_element:
             break
     else:
@@ -871,7 +870,7 @@ class URL:
                 raise InvalidURL(url)
         else:
             raise InvalidURL(url)
-        (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(
+        (scheme, netloc, path, _params, _query, _fragment) = urlparse.urlparse(
             url, allow_fragments=False
         )
         user = password = host = port = None

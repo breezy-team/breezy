@@ -427,7 +427,7 @@ class _MPDiffGenerator:
             self.chunks[key] = this_chunks
 
     def _extract_diffs(self):
-        needed_keys, refcounts = self._find_needed_keys()
+        needed_keys, _refcounts = self._find_needed_keys()
         for record in self.vf.get_record_stream(needed_keys, "topological", True):
             if record.storage_kind == "absent":
                 raise errors.RevisionNotPresent(record.key, self.vf)
@@ -645,7 +645,7 @@ class VersionedFile:
                 raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
-        lines = dict(zip(knit_versions, self._get_lf_split_line_list(knit_versions)))
+        lines = dict(zip(knit_versions, self._get_lf_split_line_list(knit_versions), strict=False))
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]
@@ -691,11 +691,11 @@ class VersionedFile:
             needed_parents.update(p for p in parent_ids if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(
-            present_parents, self._get_lf_split_line_list(present_parents)
+            present_parents, self._get_lf_split_line_list(present_parents), strict=False
         ):
             mpvf.add_version(lines, parent_id, [])
         for (version, parent_ids, _expected_sha1, mpdiff), lines in zip(
-            records, mpvf.get_line_list(versions)
+            records, mpvf.get_line_list(versions), strict=False
         ):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(
@@ -1272,7 +1272,7 @@ class VersionedFiles:
                 continue
             mpvf.add_version(record.get_bytes_as("lines"), record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
-            records, mpvf.get_line_list(versions)
+            records, mpvf.get_line_list(versions), strict=False
         ):
             if len(parent_keys) == 1:
                 left_matching_blocks = list(
@@ -1631,11 +1631,11 @@ class ThunkedVersionedFiles(VersionedFiles):
         else:
             relpaths = set()
             for quoted_relpath in self._transport.iter_files_recursive():
-                path, ext = os.path.splitext(quoted_relpath)
+                path, _ext = os.path.splitext(quoted_relpath)
                 relpaths.add(path)
             paths = list(relpaths)
             prefixes = [self._mapper.unmap(path) for path in paths]
-        return zip(paths, prefixes)
+        return zip(paths, prefixes, strict=False)
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """See VersionedFiles.get_record_stream()."""

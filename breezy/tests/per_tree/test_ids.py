@@ -67,7 +67,7 @@ class Path2IdTests(TestCaseWithTree):
         return tree, subtree
 
     def test_path2id_nested_tree(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         self.assertIsNot(None, tree.path2id("subtree"))
         self.assertIsNot(None, tree.path2id("subtree/a"))
         self.assertEqual("subtree", tree.id2path(tree.path2id("subtree")))

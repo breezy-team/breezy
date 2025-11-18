@@ -84,7 +84,7 @@ class TestGraph(TestCaseWithRepository):
         if not isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             raise tests.TestNotApplicable("only for RemoteRepository")
         # bug #388269
-        master_b, stacked_b = self.make_stacked_branch_with_long_history()
+        _master_b, stacked_b = self.make_stacked_branch_with_long_history()
         self.addCleanup(stacked_b.lock_read().unlock)
         self.make_repository("target_repo", shared=True)
         target_b = self.make_branch("target_repo/branch")

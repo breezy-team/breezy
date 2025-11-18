@@ -753,7 +753,7 @@ def _byte_stream_to_stream(byte_stream, record_counter=None):
     for bytes in byte_stream:
         decoder.stream_decoder.accept_bytes(bytes)
         for record in decoder.stream_decoder.read_pending_records(max=1):
-            record_names, src_format_name = record
+            _record_names, src_format_name = record
             src_format = network_format_registry.get(src_format_name)
             return src_format, decoder.record_stream()
 
@@ -805,7 +805,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     """
 
     def do_repository_request(self, repository, compression):
-        tmp_dirname, tmp_repo = self._copy_to_tempdir(repository)
+        tmp_dirname, _tmp_repo = self._copy_to_tempdir(repository)
         try:
             controldir_name = tmp_dirname + "/.bzr"
             return self._tarfile_response(controldir_name, compression)
@@ -897,7 +897,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
-            (exc_type, exc_val, exc_tb) = self.insert_exception
+            (_exc_type, exc_val, _exc_tb) = self.insert_exception
             try:
                 raise exc_val
             finally:

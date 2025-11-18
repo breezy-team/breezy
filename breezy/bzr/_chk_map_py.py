@@ -165,5 +165,5 @@ def _deserialise_internal_node(data, key, search_key_func=None):
 def _bytes_to_text_key(data):
     """Take a CHKInventory value string and return a (file_id, rev_id) tuple."""
     sections = data.split(b"\n")
-    kind, file_id = sections[0].split(b": ")
+    _kind, file_id = sections[0].split(b": ")
     return (file_id, sections[3])

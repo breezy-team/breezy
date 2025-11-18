@@ -275,7 +275,7 @@ class GitDir(ControlDir):
             format = LocalGitControlDirFormat()
         if stacked_on is not None:
             raise _mod_branch.UnstackableBranchFormat(format, self.user_url)
-        (target_repo, target_controldir, stacking, repo_policy) = (
+        (target_repo, target_controldir, _stacking, _repo_policy) = (
             format.initialize_on_transport_ex(
                 transport,
                 use_existing_dir=use_existing_dir,
@@ -293,7 +293,7 @@ class GitDir(ControlDir):
             )
         else:
             determine_wants = interrepo.determine_wants_all
-        (pack_hint, _, refs) = interrepo.fetch_objects(
+        (_pack_hint, _, refs) = interrepo.fetch_objects(
             determine_wants, mapping=default_mapping
         )
         for name, val in refs.items():
@@ -606,7 +606,7 @@ class LocalGitDir(GitDir):
         self._mode_check_done = None
 
     def _get_symref(self, ref):
-        ref_chain, unused_sha = self._git.refs.follow(ref)
+        ref_chain, _unused_sha = self._git.refs.follow(ref)
         if len(ref_chain) == 1:
             return None
         return ref_chain[1]
@@ -635,7 +635,7 @@ class LocalGitDir(GitDir):
                 self._git._commontransport.clone(OBJECTDIR)
             )
             self._git.refs.transport = self._git._commontransport
-            target_ref_chain, unused_sha = target_branch.controldir._git.refs.follow(
+            target_ref_chain, _unused_sha = target_branch.controldir._git.refs.follow(
                 target_branch.ref
             )
             for target_ref in target_ref_chain:
@@ -722,7 +722,7 @@ class LocalGitDir(GitDir):
         if not nascent_ok and ref not in self._git.refs:
             raise brz_errors.NotBranchError(self.root_transport.base, controldir=self)
         try:
-            ref_chain, unused_sha = self._git.refs.follow(ref)
+            ref_chain, _unused_sha = self._git.refs.follow(ref)
         except SymrefLoop:
             raise BranchReferenceLoop(self)
         if ref_chain[-1] == b"HEAD":
@@ -787,7 +787,7 @@ class LocalGitDir(GitDir):
             raise brz_errors.AlreadyBranchError(self.user_url)
         repo = self.open_repository()
         if refname in self._git.refs:
-            ref_chain, unused_sha = self._git.refs.follow(self._get_selected_ref(None))
+            ref_chain, _unused_sha = self._git.refs.follow(self._get_selected_ref(None))
             if ref_chain[0] == b"HEAD":
                 refname = ref_chain[1]
         from .branch import LocalGitBranch

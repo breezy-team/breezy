@@ -26,20 +26,20 @@ class TestBranches(TestCaseWithTransport):
         # Listing the branches in a control directory without colocated branch
         # support.
         self.run_bzr("init a")
-        out, err = self.run_bzr("branches a")
+        out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "* (default)\n")
 
     def test_no_branch(self):
         # Listing the branches in a control directory without branches.
         self.run_bzr("init-shared-repo a")
-        out, err = self.run_bzr("branches a")
+        out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "")
 
     def test_default_current_dir(self):
         # "brz branches" list the branches in the current directory
         # if no location was specified.
         self.run_bzr("init-shared-repo a")
-        out, err = self.run_bzr("branches", working_dir="a")
+        out, _err = self.run_bzr("branches", working_dir="a")
         self.assertEqual(out, "")
 
     def test_recursive_current(self):
@@ -63,7 +63,7 @@ class TestBranches(TestCaseWithTransport):
         t = self.make_branch_and_tree("a", format="development-colo")
         t.controldir.create_branch(name="another")
         t.controldir.create_branch(name="colocated")
-        out, err = self.run_bzr("branches a")
+        out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "* (default)\n  another\n  colocated\n")
 
     def test_indicates_branch(self):
@@ -71,7 +71,7 @@ class TestBranches(TestCaseWithTransport):
         t.controldir.create_branch(name="another")
         branch = t.controldir.create_branch(name="colocated")
         t.controldir.set_branch_reference(target_branch=branch)
-        out, err = self.run_bzr("branches a")
+        out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "  another\n* colocated\n")
 
     def test_shared_repos(self):
@@ -79,10 +79,10 @@ class TestBranches(TestCaseWithTransport):
         ControlDir.create_branch_convenience("a/branch1")
         b = ControlDir.create_branch_convenience("a/branch2")
         b.create_checkout(lightweight=True, to_location="b")
-        out, err = self.run_bzr("branches b")
+        out, _err = self.run_bzr("branches b")
         self.assertEqual(out, "  branch1\n* branch2\n")
 
     def test_standalone_branch(self):
         self.make_branch("a")
-        out, err = self.run_bzr("branches a")
+        out, _err = self.run_bzr("branches a")
         self.assertEqual(out, "* (default)\n")

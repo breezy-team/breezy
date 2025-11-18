@@ -92,7 +92,7 @@ class TestReference(TestCaseWithTree):
         )
 
     def test_iter_references(self):
-        tree, subtree = self.create_nested()
+        tree, _subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(["subtree"], list(tree.iter_references()))

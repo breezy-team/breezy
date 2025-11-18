@@ -75,7 +75,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         """Parent location is used as a basis by default."""
         errmsg = self.run_send([], rc=3, wd="grandparent")[1]
         self.assertContainsRe(errmsg, "No submit branch known or specified")
-        stdout, stderr = self.run_send([])
+        _stdout, stderr = self.run_send([])
         self.assertEqual(stderr.count("Using saved parent location"), 1)
         self.assertBundleContains([b"rev3"], [])
 
@@ -83,7 +83,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         """Bundle works like send, except -o is not required."""
         errmsg = self.run_send([], cmd=["bundle"], rc=3, wd="grandparent")[1]
         self.assertContainsRe(errmsg, "No submit branch known or specified")
-        stdout, stderr = self.run_send([], cmd=["bundle"])
+        _stdout, stderr = self.run_send([], cmd=["bundle"])
         self.assertEqual(stderr.count("Using saved parent location"), 1)
         self.assertBundleContains([b"rev3"], [], cmd=["bundle"])
 
@@ -295,7 +295,7 @@ class TestSendStrictMixin(TestSendMixin):
         br.get_config_stack().set("send_strict", value)
 
     def assertSendFails(self, args):
-        out, err = self.run_send(args, rc=3, err_re=self._default_errors)
+        _out, err = self.run_send(args, rc=3, err_re=self._default_errors)
         self.assertContainsRe(err, self._default_additional_error)
 
     def assertSendSucceeds(self, args, revs=None, with_warning=False):

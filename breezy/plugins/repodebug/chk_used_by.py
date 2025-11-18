@@ -29,7 +29,7 @@ class cmd_chk_used_by(Command):
         key_list = [(k,) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)
-        bd, relpath = controldir.ControlDir.open_containing(directory)
+        bd, _relpath = controldir.ControlDir.open_containing(directory)
         repo = bd.find_repository()
         self.add_cleanup(repo.lock_read().unlock)
         inv_vf = repo.inventories

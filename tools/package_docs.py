@@ -83,7 +83,7 @@ def main(argv):
     # the Sphinx _build directory. It will typically be 'doc/xx'.
     # The second argument is the website build directory.
     parser = OptionParser(usage="%prog SOURCE-DIR WEBSITE-BUILD-DIR")
-    (options, args) = parser.parse_args(argv)
+    (_options, args) = parser.parse_args(argv)
     if len(args) != 2:
         parser.print_help()
         sys.exit(1)

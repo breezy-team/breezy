@@ -1212,7 +1212,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         And the changes in 4 have been removed from the WT.
         """
         builder, tip, revids = self.make_diverged_master_branch()
-        wt, master = self.make_checkout_and_master(
+        wt, _master = self.make_checkout_and_master(
             builder,
             "checkout",
             "master",
@@ -1232,7 +1232,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
 
     def test_update_revision(self):
         builder, tip, revids = self.make_diverged_master_branch()
-        wt, master = self.make_checkout_and_master(
+        wt, _master = self.make_checkout_and_master(
             builder,
             "checkout",
             "master",

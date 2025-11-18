@@ -208,9 +208,9 @@ class ControlDir(ControlComponent):
 
     def create_branch(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         repository: Optional["Repository"] = None,
-        append_revisions_only: Optional[bool] = None,
+        append_revisions_only: bool | None = None,
     ) -> "Branch":
         """Create a branch in this ControlDir.
 
@@ -225,7 +225,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self, name: Optional[str] = None) -> None:
+    def destroy_branch(self, name: str | None = None) -> None:
         """Destroy a branch in this ControlDir.
 
         Args:
@@ -1301,7 +1301,7 @@ class ControlDirFormat:
     def find_format(
         klass,
         transport: _mod_transport.Transport,
-        probers: Optional[list[type["Prober"]]] = None,
+        probers: list[type["Prober"]] | None = None,
     ) -> "ControlDirFormat":
         """Return the format present at transport."""
         if probers is None:

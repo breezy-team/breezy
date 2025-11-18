@@ -19,8 +19,6 @@
 See MutableTree for more details.
 """
 
-from typing import Optional, Union
-
 from . import errors, hooks, trace, tree
 
 
@@ -73,8 +71,8 @@ class MutableTree(tree.Tree):
 
     def add(
         self,
-        files: Union[str, list[str]],
-        kinds: Optional[Union[str, list[str]]] = None,
+        files: str | list[str],
+        kinds: str | list[str] | None = None,
     ):
         """Add paths to the set of versioned paths.
 

@@ -123,7 +123,7 @@ class TestCommands(TestCaseWithTransport):
 
         # test wildcards
         tree.add("b")
-        out, err = self.run_bzr("ignore *")
+        out, _err = self.run_bzr("ignore *")
         self.assertEqual(
             out,
             "Warning: the following files are version controlled"
@@ -140,7 +140,7 @@ class TestCommands(TestCaseWithTransport):
 
         # If only the given pattern is used then only 'b' should match in
         # this case.
-        out, err = self.run_bzr("ignore b")
+        out, _err = self.run_bzr("ignore b")
         self.assertEqual(
             out,
             "Warning: the following files are version controlled"

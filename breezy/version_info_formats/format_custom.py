@@ -38,7 +38,7 @@ class NoTemplate(errors.BzrError):
 
 
 class Template:
-    """A simple template engine.
+    r"""A simple template engine.
 
     >>> t = Template()
     >>> t.add('test', 'xxx')
@@ -53,7 +53,7 @@ class Template:
     >>> print(list(t.process('{test}\\\\n')))
     ['xxx', '\\n']
     >>> print(list(t.process('{test}\\n')))
-    ['xxx', '\\n']
+    ['xxx', '\n']
     """
 
     _tag_re = lazy_compile("{(\\w+)}")

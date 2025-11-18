@@ -361,7 +361,7 @@ class HookPoint:
         """
         entries_to_remove = []
         for entry in self._callbacks:
-            (entry_callback, entry_label) = entry
+            (_entry_callback, entry_label) = entry
             if entry_label == label:
                 entries_to_remove.append(entry)
         if entries_to_remove == []:

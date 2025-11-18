@@ -284,7 +284,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch("stack-on", format="1.9")
         self.make_controldir(".").get_config().set_default_stack_on("/stack-on")
         self.make_branch("from", format="1.9")
-        out, err = self.run_bzr(["push", "-d", "from", self.get_url("to")])
+        _out, _err = self.run_bzr(["push", "-d", "from", self.get_url("to")])
         b = branch.Branch.open(self.get_url("to"))
         self.assertEqual("/extra/stack-on", b.get_stacked_on_url())
 
@@ -296,7 +296,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch("stack-on", format="1.9")
         self.make_controldir(".").get_config().set_default_stack_on("stack-on")
         self.make_branch("from", format="1.9")
-        out, err = self.run_bzr(["push", "-d", "from", self.get_url("to")])
+        _out, _err = self.run_bzr(["push", "-d", "from", self.get_url("to")])
         b = branch.Branch.open(self.get_url("to"))
         self.assertEqual("../stack-on", b.get_stacked_on_url())
 
@@ -518,7 +518,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch_and_tree("branch", format="1.9")
         # now we do a stacked push, which should fail as the place to refer too
         # cannot be determined.
-        out, err = self.run_bzr_error(
+        out, _err = self.run_bzr_error(
             ["Could not determine branch to refer to\\."],
             ["push", "--stacked", self.get_url("published")],
             working_dir="branch",
@@ -530,14 +530,14 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch("stack_on", format="1.6")
         self.make_controldir(".").get_config().set_default_stack_on("stack_on")
         self.make_branch("from", format="1.6")
-        out, err = self.run_bzr("push -d from to")
+        _out, err = self.run_bzr("push -d from to")
         self.assertContainsRe(err, "Using default stacking branch stack_on at .*")
 
     def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
         self.make_branch("stack_on", format="1.6")
         self.make_controldir(".").get_config().set_default_stack_on("stack_on")
         self.make_branch("from", format="pack-0.92")
-        out, err = self.run_bzr("push -d from to")
+        _out, _err = self.run_bzr("push -d from to")
         b = branch.Branch.open("to")
         self.assertEqual("../stack_on", b.get_stacked_on_url())
 
@@ -545,7 +545,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch("stack_on", format="pack-0.92")
         self.make_controldir(".").get_config().set_default_stack_on("stack_on")
         self.make_branch("from", format="pack-0.92")
-        out, err = self.run_bzr("push -d from to")
+        _out, _err = self.run_bzr("push -d from to")
         b = branch.Branch.open("to")
         self.assertRaises(branch.UnstackableBranchFormat, b.get_stacked_on_url)
 
@@ -586,7 +586,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertContainsRe(err, "Using default stacking branch trunk at .*")
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
-        out, err = self.run_bzr("push -d repo/local remote -r 3")
+        _out, err = self.run_bzr("push -d repo/local remote -r 3")
 
     def test_push_verbose_shows_log(self):
         tree = self.make_branch_and_tree("source")
@@ -595,7 +595,7 @@ class TestPush(tests.TestCaseWithTransport):
         # initial push contains log
         self.assertContainsRe(out, "rev1")
         tree.commit("rev2")
-        out, err = self.run_bzr("push -v -d source target")
+        out, _err = self.run_bzr("push -v -d source target")
         # subsequent push contains log
         self.assertContainsRe(out, "rev2")
         # subsequent log is accurate
@@ -707,7 +707,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         redirects.
         """
         destination_url = self.memory_server.get_url() + "infinite-loop"
-        out, err = self.run_bzr_error(
+        out, _err = self.run_bzr_error(
             [
                 "Too many redirections trying to make {}\\.\n".format(
                     re.escape(destination_url)
@@ -741,7 +741,7 @@ class TestPushStrictMixin:
     _default_additional_warning = "Uncommitted changes will not be pushed."
 
     def assertPushFails(self, args):
-        out, err = self.run_bzr_error(
+        _out, err = self.run_bzr_error(
             self._default_errors,
             self._default_command + args,
             working_dir=self._default_wd,
@@ -754,7 +754,7 @@ class TestPushStrictMixin:
             error_regexes = self._default_errors
         else:
             error_regexes = []
-        out, err = self.run_bzr(
+        _out, err = self.run_bzr(
             self._default_command + args,
             working_dir=self._default_wd,
             error_regexes=error_regexes,

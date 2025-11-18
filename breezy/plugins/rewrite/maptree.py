@@ -25,7 +25,7 @@ def map_file_ids(repository, old_parents, new_parents):
     """
     assert len(old_parents) == len(new_parents)
     ret = {}
-    for oldp, newp in zip(old_parents, new_parents):
+    for oldp, newp in zip(old_parents, new_parents, strict=False):
         oldtree = repository.revision_tree(oldp)
         newtree = repository.revision_tree(newp)
         for path, ie in oldtree.iter_entries_by_dir():

@@ -542,7 +542,7 @@ class BranchStatus(TestCaseWithTransport):
             tree.commit("add test file")
             # simulate what happens after a remote push
             tree.set_last_revision(b"0")
-        out, err = self.run_bzr("status")
+        _out, err = self.run_bzr("status")
         self.assertEqual("working tree is out of date, run 'brz update'\n", err)
 
     def test_status_on_ignored(self):
@@ -594,7 +594,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit("Empty commit 1")
         wt2 = b.controldir.sprout("branch2").open_workingtree()
         wt2.commit("Empty commit 2")
-        out, err = self.run_bzr("status branch1 -rbranch:branch2")
+        out, _err = self.run_bzr("status branch1 -rbranch:branch2")
         self.assertEqual("", out)
 
     def test_status_with_shelves(self):
@@ -776,7 +776,7 @@ class TestStatus(TestCaseWithTransport):
         self.assertStatusContains("RD  file => directory", short=True)
 
     def test_status_illegal_revision_specifiers(self):
-        out, err = self.run_bzr("status -r 1..23..123", retcode=3)
+        _out, err = self.run_bzr("status -r 1..23..123", retcode=3)
         self.assertContainsRe(err, "one or two revision specifiers")
 
     def test_status_no_pending(self):
@@ -790,7 +790,7 @@ class TestStatus(TestCaseWithTransport):
         b_tree.commit("b")
 
         self.run_bzr("merge ../b", working_dir="a")
-        out, err = self.run_bzr("status --no-pending", working_dir="a")
+        out, _err = self.run_bzr("status --no-pending", working_dir="a")
         self.assertEqual(out, "added:\n  b\n")
 
     def test_pending_specific_files(self):
@@ -806,7 +806,7 @@ class TestStatus(TestCaseWithTransport):
         output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
         self.assertContainsRe(output.getvalue(), b"pending merge")
-        out, err = self.run_bzr("status tree/a")
+        out, _err = self.run_bzr("status tree/a")
         self.assertNotContainsRe(out, "pending merge")
 
 
@@ -829,7 +829,7 @@ class TestStatusEncodings(TestCaseWithTransport):
     def test_stdout_ascii(self):
         self.overrideAttr(osutils, "_cached_user_encoding", "ascii")
         self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr("status")
+        stdout, _stderr = self.run_bzr("status")
 
         self.assertEqual(
             stdout,
@@ -842,7 +842,7 @@ added:
     def test_stdout_latin1(self):
         self.overrideAttr(osutils, "_cached_user_encoding", "latin-1")
         self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr("status")
+        stdout, _stderr = self.run_bzr("status")
 
         expected = """\
 added:

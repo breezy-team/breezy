@@ -103,11 +103,11 @@ class GioTransport(ConnectedTransport):
         if not base.startswith("gio+"):
             raise ValueError(base)
 
-        (scheme, netloc, path, params, query, fragment) = urlparse(
+        (scheme, netloc, path, _params, _query, _fragment) = urlparse(
             base[len("gio+") :], allow_fragments=False
         )
         if "@" in netloc:
-            user, netloc = netloc.rsplit("@", 1)
+            _user, netloc = netloc.rsplit("@", 1)
         # Seems it is not possible to list supported backends for GIO
         # so a hardcoded list it is then.
         gio_backends = ["dav", "file", "ftp", "obex", "sftp", "ssh", "smb"]

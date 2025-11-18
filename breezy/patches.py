@@ -18,7 +18,6 @@
 import os
 import re
 from collections.abc import Iterator
-from typing import Optional
 
 from .errors import BzrError
 
@@ -479,8 +478,8 @@ def iter_lines_handle_nl(iter_lines: Iterator[bytes]) -> Iterator[bytes]:
     applied at any point up until hunk line parsing, and is safe to apply
     repeatedly.
     """
-    last_line: Optional[bytes] = None
-    line: Optional[bytes]
+    last_line: bytes | None = None
+    line: bytes | None
     for line in iter_lines:
         if line == NO_NL:
             if last_line is None or not last_line.endswith(b"\n"):

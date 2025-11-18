@@ -433,7 +433,7 @@ class TestBytesRecordReader(tests.TestCase):
             # We don't use assertRaises to make diagnosing failures easier
             # (assertRaises doesn't allow a custom failure message).
             try:
-                names, read_bytes = reader.read()
+                _names, read_bytes = reader.read()
                 read_bytes(None)
             except pack.UnexpectedEndOfContainerError:
                 pass
@@ -503,7 +503,7 @@ class TestBytesRecordReader(tests.TestCase):
         None, then no more than that many bytes will be read.
         """
         reader = self.get_reader_for(b"6\n\nabcdef")
-        names, get_bytes = reader.read()
+        _names, get_bytes = reader.read()
         self.assertEqual(b"abc", get_bytes(3))
 
     def test_read_no_max_length(self):
@@ -511,7 +511,7 @@ class TestBytesRecordReader(tests.TestCase):
         then all the bytes in the record will be read.
         """
         reader = self.get_reader_for(b"6\n\nabcdef")
-        names, get_bytes = reader.read()
+        _names, get_bytes = reader.read()
         self.assertEqual(b"abcdef", get_bytes(None))
 
     def test_repeated_read_calls(self):
@@ -519,7 +519,7 @@ class TestBytesRecordReader(tests.TestCase):
         will not read beyond the end of the record.
         """
         reader = self.get_reader_for(b"6\n\nabcdefB3\nnext-record\nXXX")
-        names, get_bytes = reader.read()
+        _names, get_bytes = reader.read()
         self.assertEqual(b"abcdef", get_bytes(None))
         self.assertEqual(b"", get_bytes(None))
         self.assertEqual(b"", get_bytes(99))

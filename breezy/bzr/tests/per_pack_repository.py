@@ -160,7 +160,7 @@ class TestPackRepository(TestCaseWithTransport):
         # the pack sizes should be listed in the index
         pack_value = node[2]
         sizes = [int(digits) for digits in pack_value.split(b" ")]
-        for size, suffix in zip(sizes, [".rix", ".iix", ".tix", ".six"]):
+        for size, suffix in zip(sizes, [".rix", ".iix", ".tix", ".six"], strict=False):
             stat = trans.stat("indices/{}{}".format(name.decode("ascii"), suffix))
             self.assertEqual(size, stat.st_size)
 

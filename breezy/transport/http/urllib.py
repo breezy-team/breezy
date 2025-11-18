@@ -1417,7 +1417,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     requires_username = False
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = self._parse_auth_header(header)
+        scheme, _raw_auth = self._parse_auth_header(header)
         if scheme != self.scheme:
             return False
         self.update_auth(auth, "scheme", scheme)
@@ -1556,7 +1556,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         if qop != "auth":  # No auth-int so far
             return False
 
-        H, KD = get_digest_algorithm_impls(req_auth.get("algorithm", "MD5"))
+        H, _KD = get_digest_algorithm_impls(req_auth.get("algorithm", "MD5"))
         if H is None:
             return False
 
@@ -1994,7 +1994,7 @@ class HttpTransport(ConnectedTransport):
 
         :param relpath: The relative path to the file
         """
-        code, response_file = self._get(relpath, None)
+        _code, response_file = self._get(relpath, None)
         return response_file
 
     def _get(self, relpath, offsets, tail_amount=0):
@@ -2224,7 +2224,7 @@ class HttpTransport(ConnectedTransport):
                 # errors.InvalidHttpRange. It's the caller's responsibility to
                 # decide how to retry since it may provide different coalesced
                 # offsets.
-                code, rfile = self._get(relpath, coalesced)
+                _code, rfile = self._get(relpath, coalesced)
                 for coal in coalesced:
                     yield coal, rfile
 

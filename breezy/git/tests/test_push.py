@@ -49,7 +49,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
-        revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
+        _revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
         self.assertEqual(old_refs, {b"HEAD": (b"ref: refs/heads/master", None)})
         self.assertEqual(new_refs, {})
 
@@ -92,7 +92,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
             return {b"refs/heads/master": (None, last_revid)}
 
         interrepo = self._get_interrepo()
-        revidmap, old_refs, new_refs = interrepo.fetch_refs(decide, lossy=True)
+        revidmap, _old_refs, _new_refs = interrepo.fetch_refs(decide, lossy=True)
         gitid = revidmap[last_revid][0]
         store = self.git_repo._git.object_store
         commit = store[gitid]

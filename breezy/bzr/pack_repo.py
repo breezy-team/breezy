@@ -1615,7 +1615,7 @@ class RepositoryPackCollection:
         self.lock_names()
         try:
             builder = self._index_builder_class()
-            (disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes) = (
+            (disk_nodes, _deleted_nodes, new_nodes, _orig_disk_nodes) = (
                 self._diff_pack_names()
             )
             # TODO: handle same-name, index-size-changes here -
@@ -1668,7 +1668,7 @@ class RepositoryPackCollection:
         if first_read:
             return True
         # out the new value.
-        (disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes) = (
+        (disk_nodes, _deleted_nodes, _new_nodes, orig_disk_nodes) = (
             self._diff_pack_names()
         )
         # _packs_at_load is meant to be the explicit list of names in

@@ -63,7 +63,7 @@ class MemoryTree(MutableInventoryTree):
     def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
-            for f, file_id, kind in zip(files, ids, kinds):
+            for f, file_id, kind in zip(files, ids, kinds, strict=False):
                 if kind is None:
                     st_mode = self._file_transport.stat(f).st_mode
                     if stat.S_ISREG(st_mode):

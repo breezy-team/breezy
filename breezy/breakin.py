@@ -16,10 +16,9 @@
 
 import os
 import signal
-from typing import Optional
 
-_breakin_signal_number: Optional[int] = None
-_breakin_signal_name: Optional[str] = None
+_breakin_signal_number: int | None = None
+_breakin_signal_name: str | None = None
 
 
 def _debug(signal_number, interrupted_frame):

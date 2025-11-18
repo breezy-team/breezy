@@ -798,7 +798,7 @@ class cmd_add(Command):
 
         if base_tree:
             self.enter_context(base_tree.lock_read())
-        added, ignored = tree.smart_add(
+        _added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run
         )
         self.cleanup_now()
@@ -868,7 +868,7 @@ class cmd_relpath(Command):
     def run(self, filename):
         # TODO: jam 20050106 Can relpath return a munged path if
         #       sys.stdout encoding cannot represent it?
-        tree, relpath = WorkingTree.open_containing(filename)
+        _tree, relpath = WorkingTree.open_containing(filename)
         self.outf.write(relpath)
         self.outf.write("\n")
 
@@ -1094,7 +1094,7 @@ class cmd_mv(Command):
             raise errors.CommandError(
                 gettext("--after cannot be specified with --auto.")
             )
-        work_tree, file_list = WorkingTree.open_containing_paths(
+        work_tree, _file_list = WorkingTree.open_containing_paths(
             names_list, default_directory="."
         )
         self.enter_context(work_tree.lock_tree_write())
@@ -1307,7 +1307,7 @@ class cmd_pull(Command):
                     gettext("Cannot use -r with merge directives or bundles")
                 )
             mergeable.install_revisions(branch_to.repository)
-            base_revision_id, revision_id, verified = mergeable.get_merge_request(
+            _base_revision_id, revision_id, _verified = mergeable.get_merge_request(
                 branch_to.repository
             )
             branch_from = branch_to
@@ -1897,7 +1897,7 @@ class cmd_clone(Command):
     def run(
         self, from_location, to_location=None, revision=None, no_recurse_nested=False
     ):
-        accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
+        _accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location
         )
         if no_recurse_nested:
@@ -2482,7 +2482,7 @@ class cmd_init_shared_repository(Command):
         else:
             repo_format_name = format.repository_format.get_format_string()
 
-        (repo, newdir, require_stacking, repository_policy) = (
+        (_repo, newdir, _require_stacking, _repository_policy) = (
             format.initialize_on_transport_ex(
                 to_transport,
                 create_prefix=True,
@@ -2694,7 +2694,7 @@ class cmd_diff(Command):
                 )
             )
 
-        (old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees) = (
+        (old_tree, new_tree, _old_branch, _new_branch, specific_files, extra_trees) = (
             get_trees_and_branches_to_diff_locked(
                 file_list, revision, old, new, self._exit_stack, apply_view=True
             )
@@ -3600,7 +3600,7 @@ class cmd_ignore(Command):
                 raise errors.CommandError(
                     gettext("NAME_PATTERN should not be an absolute path")
                 )
-        tree, relpath = WorkingTree.open_containing(directory)
+        tree, _relpath = WorkingTree.open_containing(directory)
         ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
@@ -5223,7 +5223,7 @@ class cmd_merge(Command):
         if base_loc == other_loc:
             base_branch = other_branch
         else:
-            base_branch, base_path = Branch.open_containing(
+            base_branch, _base_path = Branch.open_containing(
                 base_loc, possible_transports
             )
         # Find the revision ids
@@ -5945,7 +5945,7 @@ class cmd_re_sign(Command):
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
                 # revision paths. hmm.
-                from_revno, from_revid = revision[0].in_history(b)
+                from_revno, _from_revid = revision[0].in_history(b)
                 to_revno, to_revid = revision[1].in_history(b)
                 if to_revid is None:
                     to_revno = b.revno()
@@ -5979,7 +5979,7 @@ class cmd_bind(Command):
     takes_options = ["directory"]
 
     def run(self, location=None, directory="."):
-        b, relpath = Branch.open_containing(directory)
+        b, _relpath = Branch.open_containing(directory)
         if location is None:
             try:
                 location = b.get_old_bound_location()
@@ -6024,7 +6024,7 @@ class cmd_unbind(Command):
     takes_options = ["directory"]
 
     def run(self, directory="."):
-        b, relpath = Branch.open_containing(directory)
+        b, _relpath = Branch.open_containing(directory)
         if not b.unbind():
             raise errors.CommandError(gettext("Local branch is not bound"))
 
@@ -6076,7 +6076,7 @@ class cmd_uncommit(Command):
     ):
         if location is None:
             location = "."
-        control, relpath = controldir.ControlDir.open_containing(location)
+        control, _relpath = controldir.ControlDir.open_containing(location)
         try:
             tree = control.open_workingtree()
             b = tree.branch
@@ -6206,7 +6206,7 @@ class cmd_break_lock(Command):
             conf = _mod_config.LockableConfig(file_name=location)
             conf.break_lock()
         else:
-            control, relpath = controldir.ControlDir.open_containing(location)
+            control, _relpath = controldir.ControlDir.open_containing(location)
             try:
                 control.break_lock()
             except NotImplementedError:
@@ -6782,7 +6782,7 @@ class cmd_tag(Command):
         force=None,
         revision=None,
     ):
-        branch, relpath = Branch.open_containing(directory)
+        branch, _relpath = Branch.open_containing(directory)
         self.enter_context(branch.lock_write())
         if delete:
             if tag_name is None:
@@ -6844,7 +6844,7 @@ class cmd_tags(Command):
     def run(self, directory=".", sort=None, show_ids=False, revision=None):
         from .tag import tag_sort_methods
 
-        branch, relpath = Branch.open_containing(directory)
+        branch, _relpath = Branch.open_containing(directory)
 
         tags = list(branch.tags.get_tag_dict().items())
         if not tags:
@@ -7604,7 +7604,7 @@ class cmd_reference(Command):
     ]
 
     def run(self, path=None, directory=".", location=None, force_unversioned=False):
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+        tree, branch, _relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory
         )
         if tree is None:
