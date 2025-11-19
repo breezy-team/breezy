@@ -351,7 +351,12 @@ class CHKMap:
 
     @classmethod
     def from_dict(
-        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
+        cls,
+        store,
+        initial_value,
+        maximum_size: int = 0,
+        key_width: int = 1,
+        search_key_func: SearchKeyFunc | None = None,
     ):
         """Create a CHKMap in store with initial_value as the content.
 
@@ -368,7 +373,7 @@ class CHKMap:
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        root_key = klass._create_directly(
+        root_key = cls._create_directly(
             store,
             initial_value,
             maximum_size=maximum_size,
@@ -381,9 +386,17 @@ class CHKMap:
 
     @classmethod
     def _create_via_map(
-        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
+        cls,
+        store,
+        initial_value,
+        maximum_size: int = 0,
+        key_width: int = 1,
+        search_key_func: SearchKeyFunc | None = None,
     ):
-        result = klass(store, None, search_key_func=search_key_func)
+        result = cls(store, None, search_key_func=search_key_func)
+        # root_key=None means _root_node is a LeafNode, not a tuple
+        if not isinstance(result._root_node, Node):
+            raise AssertionError("expected root node to be Node")
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
@@ -394,27 +407,41 @@ class CHKMap:
 
     @classmethod
     def _create_directly(
-        klass, store, initial_value, maximum_size=0, key_width=1, search_key_func=None
+        cls,
+        store,
+        initial_value,
+        maximum_size: int = 0,
+        key_width: int = 1,
+        search_key_func: SearchKeyFunc | None = None,
     ):
-        node = LeafNode(search_key_func=search_key_func)
-        node.set_maximum_size(maximum_size)
-        node._key_width = key_width
-        node._items = {tuple(key): val for key, val in initial_value.items()}
-        node._raw_size = sum(
-            node._key_value_len(key, value) for key, value in node._items.items()
+        leaf_node = LeafNode(search_key_func=search_key_func)
+        leaf_node.set_maximum_size(maximum_size)
+        leaf_node._key_width = key_width
+        leaf_node._items = {tuple(key): val for key, val in initial_value.items()}
+        leaf_node._raw_size = sum(
+            leaf_node._key_value_len(key, value)
+            for key, value in leaf_node._items.items()
         )
-        node._len = len(node._items)
-        node._compute_search_prefix()
-        node._compute_serialised_prefix()
-        if node._len > 1 and maximum_size and node._current_size() > maximum_size:
-            prefix, node_details = node._split(store)
+        leaf_node._len = len(leaf_node._items)
+        leaf_node._compute_search_prefix()
+        leaf_node._compute_serialised_prefix()
+        node: LeafNode | InternalNode
+        if (
+            leaf_node._len > 1
+            and maximum_size
+            and leaf_node._current_size() > maximum_size
+        ):
+            prefix, node_details = leaf_node._split(store)
             if len(node_details) == 1:
                 raise AssertionError("Failed to split using node._split")
-            node = InternalNode(prefix, search_key_func=search_key_func)
-            node.set_maximum_size(maximum_size)
-            node._key_width = key_width
+            internal_node = InternalNode(prefix, search_key_func=search_key_func)
+            internal_node.set_maximum_size(maximum_size)
+            internal_node._key_width = key_width
             for split, subnode in node_details:
-                node.add_node(split, subnode)
+                internal_node.add_node(split, subnode)
+            node = internal_node
+        else:
+            node = leaf_node
         keys = list(node.serialise(store))
         return keys[-1]
 

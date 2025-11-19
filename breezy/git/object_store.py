@@ -20,7 +20,7 @@
 import contextlib
 import posixpath
 import stat
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Set
 
 from dulwich.object_store import BaseObjectStore
 from dulwich.objects import ZERO_SHA, Blob, Commit, ObjectID, Tree, sha_to_hex
@@ -898,14 +898,16 @@ class BazaarObjectStore(BaseObjectStore):
 
     def generate_lossy_pack_data(
         self,
-        haves,
-        wants,
-        shallow=None,
+        haves: Iterable[ObjectID],
+        wants: Iterable[ObjectID],
+        shallow: Set[ObjectID] | None = None,
         progress=None,
         get_tagged=None,
-        ofs_delta=False,
-    ):
-        """Generate pack data with potential data loss.
+        get_parents=None,
+        ofs_delta: bool = False,
+        lossy: bool = False,
+    ) -> tuple[int, Iterator[UnpackedObject]]:
+        """Iterate over the contents of a pack file.
 
         Args:
             haves: Object IDs already available.
@@ -913,7 +915,9 @@ class BazaarObjectStore(BaseObjectStore):
             shallow: Optional shallow commit list.
             progress: Optional progress callback.
             get_tagged: Optional function to get tagged objects.
+            get_parents: Optional function to get parent objects.
             ofs_delta: Whether to use offset deltas.
+            lossy: Whether to allow lossy conversion.
 
         Returns:
             Generator yielding pack data.
@@ -1034,11 +1038,11 @@ class BazaarObjectStore(BaseObjectStore):
                         rev, tree, lossy=(not self.mapping.roundtripping)
                     ):
                         if obj.id not in seen:
-                            pack_hint = (
-                                obj.type_num,
-                                path.encode("utf-8") if path else None,
+                            # Convert path to bytes for PackHint compatibility
+                            path_bytes = (
+                                encode_git_path(path) if path is not None else None
                             )
-                            yield (obj.id, pack_hint)
+                            yield (obj.id, (obj.type_num, path_bytes))
                             seen.add(obj.id)
 
     def add_thin_pack(self):

@@ -650,7 +650,7 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree("from")
         for count in range(9):
-            t.commit(message="commit %d" % count)
+            t.commit(message=f"commit {count}")
         _out, _err = self.run_bzr(
             ["checkout", "--lightweight", self.get_url("from"), "target"]
         )

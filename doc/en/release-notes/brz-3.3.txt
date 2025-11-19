@@ -5,6 +5,27 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.18
+##########
+
+ * Add warning about known issues in ``bzr fast-export``
+   (Jelmer Vernooĳ)
+
+brz 3.3.17
+##########
+
+ * Fix compatibility with newer versions of Dulwich.
+   (Jelmer Vernooĳ)
+
+brz 3.3.16
+##########
+
+:3.3.16: 2025-10-29
+
+* Mark PyO3 0.27 as compatible. (Jelmer Vernooĳ)
+
+* Drop support for Python 3.9. (Jelmer Vernooĳ)
+
 brz 3.3.15
 ##########
 

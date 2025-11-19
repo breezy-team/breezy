@@ -210,8 +210,9 @@ class _SFTPReadvHelper:
         # short readv.
         data_stream = itertools.chain(fp.readv(requests), itertools.repeat(None))
         for (start, length), data in zip(requests, data_stream, strict=False):
-            if data is None and cur_coalesced is not None:
-                raise errors.ShortReadvError(self.relpath, start, length, len(data))
+            if data is None:
+                if cur_coalesced is not None:
+                    raise errors.ShortReadvError(self.relpath, start, length, len(data))
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath, start, length, len(data))
             self._report_activity(length, "read")

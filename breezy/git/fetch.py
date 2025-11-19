@@ -725,7 +725,7 @@ class DetermineWantsRecorder:
         Raises:
             TypeError: If refs is not a dictionary.
         """
-        if not isinstance(refs, dict):
+        if type(refs) is not dict:
             raise TypeError(refs)
         self.remote_refs = refs
         self.wants = self.actual(refs, depth)

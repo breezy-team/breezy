@@ -353,14 +353,14 @@ class TestGitBlackBox(ExternalBase):
     def test_git_import_uncolocated(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.commit(
+        wt.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -371,14 +371,14 @@ class TestGitBlackBox(ExternalBase):
     def test_git_import(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.commit(
+        wt.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -392,9 +392,9 @@ class TestGitBlackBox(ExternalBase):
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -408,9 +408,9 @@ class TestGitBlackBox(ExternalBase):
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        cid = worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        cid = wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -427,14 +427,14 @@ class TestGitBlackBox(ExternalBase):
     def test_git_import_colo(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
         )
-        worktree.commit(
+        wt.commit(
             ref=b"refs/heads/bbranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -449,9 +449,9 @@ class TestGitBlackBox(ExternalBase):
     def test_git_refs_from_git(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
-        worktree = r.get_worktree()
-        worktree.stage("file")
-        cid = worktree.commit(
+        wt = r.get_worktree()
+        wt.stage("file")
+        cid = wt.commit(
             ref=b"refs/heads/abranch",
             committer=b"Joe <joe@example.com>",
             message=b"Dummy",
@@ -479,9 +479,9 @@ class TestGitBlackBox(ExternalBase):
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents([("gitr/foo", b"hello from git")])
-        worktree = r.get_worktree()
-        worktree.stage("foo")
-        worktree.commit(b"message", committer=b"Somebody <user@example.com>")
+        wt = r.get_worktree()
+        wt.stage("foo")
+        wt.commit(b"message", committer=b"Somebody <user@example.com>")
         out, err = self.run_bzr(["check", "gitr"])
         self.maxDiff = None
         self.assertEqual(out, "")
@@ -546,9 +546,9 @@ class ShallowTests(ExternalBase):
         # Smoke test for "bzr log" in a git repository with shallow depth.
         self.repo = GitRepo.init("gitr", mkdir=True)
         self.build_tree_contents([("gitr/foo", b"hello from git")])
-        worktree = self.repo.get_worktree()
-        worktree.stage("foo")
-        worktree.commit(
+        wt = self.repo.get_worktree()
+        wt.stage("foo")
+        wt.commit(
             b"message",
             committer=b"Somebody <user@example.com>",
             author=b"Somebody <user@example.com>",
@@ -616,8 +616,7 @@ class SwitchTests(ExternalBase):
 
         repo.refs.set_symbolic_ref(b"HEAD", b"refs/heads/newbranch")
 
-        worktree = repo.get_worktree()
-        worktree.reset_index()
+        repo.get_worktree().reset_index()
 
         output, error = self.run_bzr("switch oldbranch")
         self.assertEqual(output, "")
