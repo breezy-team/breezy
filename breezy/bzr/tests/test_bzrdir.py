@@ -583,7 +583,10 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
             _require_stacking,
             _repo_policy,
         ) = old_fmt.initialize_on_transport_ex(
-            t, repo_format_name=repo_name, stacked_on="../trunk", stack_on_pwd=t.base
+            t,
+            repo_format_name=repo_name,
+            stacked_on="../trunk",
+            stack_on_pwd=t.base,
         )
         if repo is not None:
             # Repositories are open write-locked

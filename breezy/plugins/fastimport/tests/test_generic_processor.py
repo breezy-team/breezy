@@ -355,7 +355,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
+        _revtree0, revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
         revtree1, revtree2 = self.assertChanges(branch, 2, expected_modified=[(path,)])
         self.assertContent(branch, revtree1, path, b"aaa")
         self.assertContent(branch, revtree2, path, b"bbb")
@@ -366,7 +366,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(branch, 2, expected_modified=[(path,)])
@@ -387,7 +387,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path, kind="symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(branch, 2, expected_modified=[(path,)])
@@ -398,7 +398,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path, kind="file", to_kind="symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -411,7 +411,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path, kind="symlink", to_kind="file"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -428,7 +428,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
                 path, executable=False, to_executable=True, to_content=b"aaa"
             )
         )
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(branch, 2, expected_modified=[(path,)])
@@ -443,7 +443,7 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
                 path, executable=True, to_executable=False, to_content=b"aaa"
             )
         )
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(branch, 2, expected_modified=[(path,)])
@@ -536,7 +536,7 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
         path1 = b"a/b"
         path2 = b"a/b/c"
         handler.process(self.file_command_iter(path1, path2))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path1,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -553,7 +553,7 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
         path1 = b"a/b/c"
         path2 = b"a/b"
         handler.process(self.file_command_iter(path1, path2))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (b"a/b",), (path1,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -572,7 +572,7 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
         path1 = b"a/b"
         path2 = b"a/b/c"
         handler.process(self.file_command_iter(path1, path2, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path1,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -589,7 +589,7 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
         path1 = b"a/b/c"
         path2 = b"a/b"
         handler.process(self.file_command_iter(path1, path2, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (b"a/b",), (path1,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -634,7 +634,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
+        _revtree0, revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
         revtree1, _revtree2 = self.assertChanges(branch, 2, expected_removed=[(path,)])
         self.assertContent(branch, revtree1, path, b"aaa")
         self.assertRevisionRoot(revtree1, path)
@@ -643,7 +643,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, _revtree2 = self.assertChanges(
@@ -663,7 +663,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path, kind="symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, _revtree2 = self.assertChanges(
@@ -675,7 +675,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/b/c/d"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (b"a/b",), (b"a/b/c",), (path,)]
         )
         revtree1, _revtree2 = self.assertChanges(
@@ -918,7 +918,7 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
+        _revtree0, revtree1 = self.assertChanges(branch, 1, expected_added=[(path,)])
         revtree1, revtree2 = self.assertChanges(
             branch, 2, expected_removed=[(path,)], expected_added=[(path,)]
         )
@@ -931,7 +931,7 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -956,7 +956,7 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
         handler, branch = self.get_handler()
         path = b"a/a"
         handler.process(self.file_command_iter(path, kind="symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1291,7 +1291,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1311,7 +1311,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1331,7 +1331,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1349,7 +1349,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1367,7 +1367,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,), (b"d2",), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1385,7 +1385,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,), (b"d2",), (new_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1435,7 +1435,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1453,7 +1453,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1471,7 +1471,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1487,7 +1487,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1503,7 +1503,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1523,7 +1523,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1575,7 +1575,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1593,7 +1593,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1609,7 +1609,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1629,7 +1629,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1647,7 +1647,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1663,7 +1663,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (old_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1719,7 +1719,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1742,7 +1742,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1762,7 +1762,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (b"d2",), (old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1782,7 +1782,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"a"
         new_path = b"b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1805,7 +1805,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d/a"
         new_path = b"d/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1825,7 +1825,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
         old_path = b"d1/a"
         new_path = b"d2/b"
         handler.process(self.get_command_iter(old_path, new_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d1",), (b"d2",), (old_path,), (new_path,)]
         )
         # Note: the delta doesn't show the modification?
@@ -1879,7 +1879,7 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
         path1 = b"a/b"
         new_path2 = b"a/b/c"
         handler.process(self.file_command_iter(path1, old_path2, new_path2))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path1,), (old_path2,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1897,7 +1897,7 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
         path1 = b"a/b/c"
         new_path2 = b"a/b"
         handler.process(self.file_command_iter(path1, old_path2, new_path2))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (b"a/b",), (path1,), (old_path2,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1915,7 +1915,7 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
         path1 = b"a/b"
         new_path2 = b"a/b/c"
         handler.process(self.file_command_iter(path1, old_path2, new_path2, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (path1,), (old_path2,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -1933,7 +1933,7 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
         path1 = b"a/b/c"
         new_path2 = b"a/b"
         handler.process(self.file_command_iter(path1, old_path2, new_path2, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"a",), (b"a/b",), (path1,), (old_path2,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -2176,7 +2176,7 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
         src_path = b"a"
         dest_path = b"b"
         handler.process(self.file_command_iter(src_path, dest_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(src_path,), (dest_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -2194,7 +2194,7 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
         src_path = b"a"
         dest_path = b"b"
         handler.process(self.file_command_iter(src_path, dest_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(src_path,), (dest_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -2212,7 +2212,7 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
         src_path = b"d/a"
         dest_path = b"d/b"
         handler.process(self.file_command_iter(src_path, dest_path))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (src_path,), (dest_path,)]
         )
         revtree1, revtree2 = self.assertChanges(
@@ -2228,7 +2228,7 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
         src_path = b"d/a"
         dest_path = b"d/b"
         handler.process(self.file_command_iter(src_path, dest_path, "symlink"))
-        _revtree0, _revtree1 = self.assertChanges(
+        _revtree0, revtree1 = self.assertChanges(
             branch, 1, expected_added=[(b"d",), (src_path,), (dest_path,)]
         )
         revtree1, revtree2 = self.assertChanges(

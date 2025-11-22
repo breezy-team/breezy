@@ -1411,7 +1411,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
         except socket.gaierror as e:
             (_err_num, err_msg) = e.args
             raise ConnectionError(
-                "failed to lookup %s:%d: %s" % (self._host, port, err_msg)
+                f"failed to lookup {self._host}:{port}: {err_msg}"
             ) from e
         # Initialize err in case there are no addresses returned:
         last_err = socket.error(f"no address found for {self._host}")

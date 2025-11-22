@@ -86,6 +86,7 @@ class InventorySerializer_v8(XMLInventorySerializer):
 
     supported_kinds = {"file", "directory", "symlink"}
     format_num = b"8"
+    revision_format_num: bytes | None = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.

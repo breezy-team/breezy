@@ -55,7 +55,7 @@ nix = { workspace = true, features = ["fs"] }
 
 [workspace.dependencies]
 nix = ">=0.26"
-pyo3 = "=0.26"
+pyo3 = ">=0.26,<0.28"
 pyo3-filelike = "0.5.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"

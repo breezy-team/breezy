@@ -60,15 +60,13 @@ class TestGitDir(tests.TestCaseInTempDir):
 
     def test_open_ref_parent(self):
         r = GitRepo.init(".")
-        worktree = r.get_worktree()
-        worktree.commit(message=b"message", ref=b"refs/heads/foo/bar")
+        r.get_worktree().commit(message=b"message", ref=b"refs/heads/foo/bar")
         gd = controldir.ControlDir.open(".")
         self.assertRaises(errors.NotBranchError, gd.open_branch, "foo")
 
     def test_open_workingtree(self):
         r = GitRepo.init(".")
-        worktree = r.get_worktree()
-        worktree.commit(message=b"message")
+        r.get_worktree().commit(message=b"message")
 
         gd = controldir.ControlDir.open(".")
         wt = gd.open_workingtree()

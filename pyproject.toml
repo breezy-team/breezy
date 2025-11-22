@@ -73,7 +73,7 @@ testing = [
     "testtools",
     "testscenarios",
     "python-subunit",
-    "dulwich>=0.24",
+    "dulwich>=0.24.3",
 ]
 
 [tool.setuptools]
