@@ -20,7 +20,6 @@
 import os
 import stat
 
-from dulwich import __version__ as dulwich_version
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.diff_tree import TreeChange as DulwichTreeChange
 from dulwich.index import ConflictedIndexEntry, IndexEntry
@@ -264,23 +263,22 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
             ],
             tree_id=oldt.id,
         )
-        if dulwich_version >= (0, 19, 15):
-            self.expectDelta(
-                [
-                    DulwichTreeChange(
-                        type="modify",
-                        old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
-                        new=TreeEntry(b"", stat.S_IFDIR, newt.id),
-                    ),
-                    DulwichTreeChange(
-                        type="rename",
-                        old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
-                        new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
-                    ),
-                ],
-                tree_id=oldt.id,
-                rename_detector=RenameDetector(self.store),
-            )
+        self.expectDelta(
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
+                ),
+                DulwichTreeChange(
+                    type="rename",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
+                ),
+            ],
+            tree_id=oldt.id,
+            rename_detector=RenameDetector(self.store),
+        )
 
     def test_copied_file(self):
         self.build_tree(["a"])
@@ -311,39 +309,38 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
             tree_id=oldt.id,
         )
 
-        if dulwich_version >= (0, 19, 15):
-            self.expectDelta(
-                [
-                    DulwichTreeChange(
-                        type="modify",
-                        old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
-                        new=TreeEntry(b"", stat.S_IFDIR, newt.id),
-                    ),
-                    DulwichTreeChange(
-                        type="copy",
-                        old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
-                        new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
-                    ),
-                ],
-                tree_id=oldt.id,
-                rename_detector=RenameDetector(self.store, find_copies_harder=True),
-            )
-            self.expectDelta(
-                [
-                    DulwichTreeChange(
-                        type="modify",
-                        old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
-                        new=TreeEntry(b"", stat.S_IFDIR, newt.id),
-                    ),
-                    DulwichTreeChange(
-                        type="add",
-                        old=None,
-                        new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
-                    ),
-                ],
-                tree_id=oldt.id,
-                rename_detector=RenameDetector(self.store, find_copies_harder=False),
-            )
+        self.expectDelta(
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
+                ),
+                DulwichTreeChange(
+                    type="copy",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
+                ),
+            ],
+            tree_id=oldt.id,
+            rename_detector=RenameDetector(self.store, find_copies_harder=True),
+        )
+        self.expectDelta(
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
+                ),
+                DulwichTreeChange(
+                    type="add",
+                    old=None,
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
+                ),
+            ],
+            tree_id=oldt.id,
+            rename_detector=RenameDetector(self.store, find_copies_harder=False),
+        )
 
     def test_added_unknown_file(self):
         self.build_tree(["a"])
