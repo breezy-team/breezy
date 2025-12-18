@@ -20,7 +20,6 @@ import contextlib
 import os
 import posixpath
 import sys
-from io import BytesIO
 
 from dulwich.errors import NoIndexPresent
 from dulwich.file import FileLocked, _GitFile
@@ -50,7 +49,7 @@ from dulwich.repo import (
     OBJECTDIR,
     SYMREF,
     BaseRepo,
-    InfoRefsContainer,
+    DictRefsContainer,
     RefsContainer,
     check_ref_format,
     read_packed_refs,
@@ -577,15 +576,27 @@ class TransportRepo(BaseRepo):
         )
         refs_container: RefsContainer
         if refs_text is not None:
-            refs_container = InfoRefsContainer(BytesIO(refs_text))
+            # Parse info/refs format manually (InfoRefsContainer was removed in dulwich 0.25)
+            refs_dict = {}
+            for line in refs_text.split(b"\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(b"\t")
+                if len(parts) == 2:
+                    sha, refname = parts
+                    refs_dict[refname] = sha
+
+            # Try to get HEAD
             try:
                 head = TransportRefsContainer(self._commontransport).read_loose_ref(
                     b"HEAD"
                 )
+                refs_dict[b"HEAD"] = head
             except KeyError:
                 pass
-            else:
-                refs_container._refs[b"HEAD"] = head
+
+            refs_container = DictRefsContainer(refs_dict)
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport
@@ -752,8 +763,12 @@ class TransportObjectStore(PackBasedObjectStore):
 
         :param transport: Transport to open data from
         """
-        super().__init__()
-        self.pack_compression_level = pack_compression_level
+        from dulwich.object_format import DEFAULT_OBJECT_FORMAT
+
+        super().__init__(
+            pack_compression_level=pack_compression_level,
+            object_format=DEFAULT_OBJECT_FORMAT,
+        )
         self.loose_compression_level = loose_compression_level
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
@@ -848,9 +863,16 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
                     size = None
-                pd = PackData(pack_name, self.pack_transport.get(pack_name), size=size)
+                pd = PackData(
+                    pack_name,
+                    self.object_format,
+                    file=self.pack_transport.get(pack_name),
+                    size=size,
+                )
                 idxname = basename + ".idx"
-                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
+                idx = load_pack_index_file(
+                    idxname, self.pack_transport.get(idxname), self.object_format
+                )
                 pack = Pack.from_objects(pd, idx)
                 pack._basename = basename
                 self._pack_cache[basename] = pack
@@ -982,7 +1004,8 @@ class TransportObjectStore(PackBasedObjectStore):
         pack_sha, extra_entries = extend_pack(
             f,
             indexer.ext_refs(),
-            get_raw=self.get_raw,
+            self.get_raw,
+            self.object_format,
             compression_level=self.pack_compression_level,
             progress=progress,
         )
@@ -1036,9 +1059,15 @@ class TransportObjectStore(PackBasedObjectStore):
 
         # Add the pack to the store and return it.
         final_pack = Pack.from_objects(
-            PackData(target_pack_name, self.pack_transport.get(target_pack_name)),
+            PackData(
+                target_pack_name,
+                self.object_format,
+                file=self.pack_transport.get(target_pack_name),
+            ),
             load_pack_index_file(
-                target_pack_index, self.pack_transport.get(target_pack_index)
+                target_pack_index,
+                self.pack_transport.get(target_pack_index),
+                self.object_format,
             ),
         )
         final_pack._basename = pack_base_name
@@ -1074,8 +1103,12 @@ class TransportObjectStore(PackBasedObjectStore):
             path = f.name
 
         try:
-            indexer = PackIndexer(f, resolve_ext_ref=self.get_raw)
-            copier = PackStreamCopier(read_all, read_some, f, delta_iter=indexer)
+            indexer = PackIndexer(
+                f, self.object_format.hash_func, resolve_ext_ref=self.get_raw
+            )
+            copier = PackStreamCopier(
+                self.object_format.hash_func, read_all, read_some, f, delta_iter=indexer
+            )
             copier.verify(progress=progress)
             if f.name:
                 os.chmod(f.name, PACK_MODE)
@@ -1107,7 +1140,7 @@ class TransportObjectStore(PackBasedObjectStore):
         def commit():
             if f.tell() > 0:
                 f.seek(0)
-                with PackData(path, f) as pd:
+                with PackData(path, self.object_format, file=f) as pd:
                     indexer = PackIndexer.for_pack_data(
                         pd, resolve_ext_ref=self.get_raw
                     )
