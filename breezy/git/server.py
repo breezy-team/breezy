@@ -56,6 +56,7 @@ class BzrBackendRepo(BackendRepo):
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
         self.refs = get_refs_container(self.repo_dir, self.object_store)
+        self.object_format = self.object_store.object_format
 
     def get_refs(self):
         with self.object_store.lock_read():

@@ -308,52 +308,17 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
             tree_id=oldt.id,
         )
 
-<<<<<<< HEAD
-        if dulwich_version >= (0, 19, 15):
-            self.expectDelta(
-                [
-                    DulwichTreeChange(
-                        type="modify",
-                        old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
-                        new=TreeEntry(b"", stat.S_IFDIR, newt.id),
-                    ),
-                    DulwichTreeChange(
-                        type="copy",
-                        old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
-                        new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
-                    ),
-                ],
-                tree_id=oldt.id,
-                rename_detector=RenameDetector(self.store, find_copies_harder=True),
-            )
-            self.expectDelta(
-                [
-                    DulwichTreeChange(
-                        type="modify",
-                        old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
-                        new=TreeEntry(b"", stat.S_IFDIR, newt.id),
-                    ),
-                    DulwichTreeChange(
-                        type="add",
-                        old=None,
-                        new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
-                    ),
-                ],
-                tree_id=oldt.id,
-                rename_detector=RenameDetector(self.store, find_copies_harder=False),
-            )
-=======
         self.expectDelta(
             [
-                (
-                    "modify",
-                    (b"", stat.S_IFDIR, oldt.id),
-                    (b"", stat.S_IFDIR, newt.id),
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
                 ),
-                (
-                    "copy",
-                    (b"a", stat.S_IFREG | 0o644, a.id),
-                    (b"b", stat.S_IFREG | 0o644, a.id),
+                DulwichTreeChange(
+                    type="copy",
+                    old=TreeEntry(b"a", stat.S_IFREG | 0o644, a.id),
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
                 ),
             ],
             tree_id=oldt.id,
@@ -361,17 +326,20 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         )
         self.expectDelta(
             [
-                (
-                    "modify",
-                    (b"", stat.S_IFDIR, oldt.id),
-                    (b"", stat.S_IFDIR, newt.id),
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
                 ),
-                ("add", (None, None, None), (b"b", stat.S_IFREG | 0o644, a.id)),
+                DulwichTreeChange(
+                    type="add",
+                    old=None,
+                    new=TreeEntry(b"b", stat.S_IFREG | 0o644, a.id),
+                ),
             ],
             tree_id=oldt.id,
             rename_detector=RenameDetector(self.store, find_copies_harder=False),
         )
->>>>>>> 2ae5b6d191 (Drop dulwich compatibility code)
 
     def test_added_unknown_file(self):
         self.build_tree(["a"])
