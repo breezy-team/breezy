@@ -780,9 +780,30 @@ class EmptyObjectStoreIterator(dict):
 
 
 class TemporaryPackIterator(Pack):
-    def __init__(self, path, resolve_ext_ref):
-        super().__init__(path, resolve_ext_ref=resolve_ext_ref)
+    """Pack iterator for temporary pack files.
+
+    Handles pack files that may not have pre-generated indexes, creating
+    indexes on demand when needed.
+    """
+
+    def __init__(self, path, resolve_ext_ref, object_format):
+        """Initialize TemporaryPackIterator.
+
+        Args:
+            path: Path to the pack file (without .pack extension).
+            resolve_ext_ref: Function to resolve external references.
+            object_format: Object format to use.
+        """
+        super().__init__(
+            path, object_format=object_format, resolve_ext_ref=resolve_ext_ref
+        )
         self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
+        # Override _data_load to ensure PackData gets object_format correctly
+        from dulwich.pack import PackData
+
+        self._data_load = lambda: PackData(
+            self._data_path, self.object_format, file=open(self._data_path, "rb")
+        )
 
     def _idx_load_or_generate(self, path):
         if not os.path.exists(path):
@@ -791,8 +812,11 @@ class TemporaryPackIterator(Pack):
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
 
-                self.data.create_index(path, progress=report_progress)
-        return load_pack_index(path)
+                # Access _data directly to avoid circular dependency with self.data property
+                if self._data is None:
+                    self._data = self._data_load()
+                self._data.create_index(path, progress=report_progress)
+        return load_pack_index(path, self.object_format)
 
     def __del__(self):
         if self._idx is not None:
@@ -1024,14 +1048,19 @@ class RemoteGitRepository(GitRepository):
 
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
-            self.fetch_pack(
+            result = self.fetch_pack(
                 determine_wants, graph_walker, lambda x: os.write(fd, x), progress
             )
         finally:
             os.close(fd)
         if os.path.getsize(path) == 0:
             return EmptyObjectStoreIterator()
-        return TemporaryPackIterator(path[: -len(".pack")], resolve_ext_ref)
+        from dulwich.object_format import get_object_format
+
+        object_format = get_object_format(result.object_format)
+        return TemporaryPackIterator(
+            path[: -len(".pack")], resolve_ext_ref, object_format
+        )
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
         # This won't work for any round-tripped bzr revisions, but it's a

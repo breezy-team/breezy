@@ -26,11 +26,8 @@ from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
 from dulwich.refs import SYMREF
 
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:  # dulwich < 0.21.3
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
-
+from dulwich.protocol import CAPABILITY_THIN_PACK, PEELED_TAG_SUFFIX, ZERO_SHA
+from dulwich.refs import SYMREF
 from dulwich.walk import Walker
 
 from .. import config, trace, ui

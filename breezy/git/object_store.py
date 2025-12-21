@@ -381,6 +381,14 @@ class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
     def __init__(self, repository, mapping=None):
+        """Initialize BazaarObjectStore.
+
+        Args:
+            repository: The Bazaar repository to wrap.
+            mapping: Optional mapping for Git/Bazaar conversion.
+        """
+        from dulwich.object_format import DEFAULT_OBJECT_FORMAT
+
         self.repository = repository
         self._map_updated = False
         self._locked = None
@@ -395,6 +403,7 @@ class BazaarObjectStore(BaseObjectStore):
         self.commit_write_group = self._cache.idmap.commit_write_group
         self.tree_cache = LRUTreeCache(self.repository)
         self.unpeel_map = UnpeelMap.from_repository(self.repository)
+        self.object_format = DEFAULT_OBJECT_FORMAT
 
     def _missing_revisions(self, revisions):
         return self._cache.idmap.missing_revisions(revisions)
