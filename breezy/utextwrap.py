@@ -25,6 +25,7 @@
 
 """Text wrapping utilities with support for East Asian character widths."""
 
+import sys
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
@@ -219,8 +220,16 @@ class UTextWrapper(textwrap.TextWrapper):
                 cur_len = sum(map(len, cur_line))
 
             # If the last chunk on this line is all whitespace, drop it.
-            if self.drop_whitespace and cur_line and not cur_line[-1].strip():
-                del cur_line[-1]
+            # Python 3.13+ uses a while loop to drop multiple trailing whitespace chunks
+            # Python < 3.13 uses an if statement to drop only one trailing whitespace chunk
+            if sys.version_info >= (3, 13):
+                while self.drop_whitespace and cur_line and cur_line[-1].strip() == "":
+                    cur_len -= len(cur_line[-1])
+                    del cur_line[-1]
+            else:
+                if self.drop_whitespace and cur_line and cur_line[-1].strip() == "":
+                    cur_len -= len(cur_line[-1])
+                    del cur_line[-1]
 
             # Convert current line back to a string and store it in list
             # of all lines (return value).
