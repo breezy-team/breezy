@@ -211,13 +211,10 @@ class BranchTests(tests.TestCaseInTempDir):
         r.refs[b"refs/tags/lala"] = b"aa" * 20
         oldrepo = Repository.open(path)
         oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
-        warnings, newbranch = self.callCatchWarnings(self.clone_git_branch, path, "f")
+        newbranch = self.clone_git_branch(path, "f")
         self.assertEqual({}, newbranch.tags.get_tag_dict())
-        # Dulwich raises a UserWarning for tags with invalid target
-        self.assertIn(
-            ("ref refs/tags/lala points at non-present sha " + ("aa" * 20),),
-            [w.args for w in warnings],
-        )
+        # Check that a warning was logged for the tag with invalid target
+        self.assertIn("lala does not point to a valid object", self.get_log())
 
     def test_interbranch_pull_submodule(self):
         path = "d"
