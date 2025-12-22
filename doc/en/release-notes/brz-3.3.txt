@@ -5,6 +5,13 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.20
+##########
+
+ * Fix ``UTextWrapper`` to properly drop trailing whitespace when wrapping
+   long words, matching Python 3.13's ``textwrap`` behavior.
+   (Jelmer Vernooĳ)
+
 brz 3.3.19
 ##########
 
