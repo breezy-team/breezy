@@ -76,7 +76,9 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def test_allocate(self):
         def allocate():
-            "." * BIG_FILE_SIZE
+            # In Python 3.14+, string multiplication is optimized and may not
+            # immediately allocate memory. Use bytearray which always allocates.
+            bytearray(BIG_FILE_SIZE)
 
         self.assertRaises(MemoryError, allocate)
 
