@@ -76,6 +76,7 @@ class TreeTransformBase(TreeTransform):
         # Whether the target is case sensitive
         self._case_sensitive_target = case_sensitive
         self._symlink_target = {}
+        self._non_present_file_ids = {}
 
     @property
     def mapping(self):
@@ -159,7 +160,15 @@ class TreeTransformBase(TreeTransform):
         if file_id is None:
             raise ValueError("None is not a valid file id")
         path = self.mapping.parse_file_id(file_id)
-        return self.trans_id_tree_path(path)
+        if self._tree.is_versioned(path):
+            return self.trans_id_tree_path(path)
+        else:
+            if file_id in self._non_present_file_ids:
+                return self._non_present_file_ids[file_id]
+            else:
+                trans_id = self.assign_id()
+                self._non_present_file_ids[file_id] = trans_id
+                return trans_id
 
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
