@@ -612,7 +612,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         self._revision_id = revision_id
         self._repository = repository
         self._submodules = None
-        self.store = repository._git.object_store
         if not isinstance(revision_id, bytes):
             raise TypeError(revision_id)
         self.commit_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
@@ -625,6 +624,15 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             except KeyError as err:
                 raise errors.NoSuchRevision(repository, revision_id) from err
             self.tree = commit.tree
+
+    @property
+    def store(self):
+        """Get the Git object store for this tree.
+
+        Returns:
+            The object store from the repository.
+        """
+        return self._repository._git.object_store
 
     def git_snapshot(self, want_unversioned=False):
         """Get a snapshot of this tree as Git objects.

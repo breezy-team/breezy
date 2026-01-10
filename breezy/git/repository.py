@@ -238,8 +238,10 @@ class GitRepository(ForeignRepository):
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
-            if hasattr(self, "_git"):
-                self._git.close()
+            # Don't close _git here - with the property-based store access,
+            # trees may access the object store after unlock. The object store
+            # will be closed when _git is garbage collected, and Pack objects
+            # will warn via ResourceWarning if not properly closed.
 
     def is_write_locked(self):
         """Check if the repository is write locked.
