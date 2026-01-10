@@ -667,6 +667,19 @@ class TransportObjectStore(PackBasedObjectStore):
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, self.transport)
 
+    def __del__(self):
+        """Ensure object store is closed when garbage collected."""
+        if self._pack_cache:
+            import warnings
+
+            warnings.warn(
+                f"unclosed packs in {self!r}",
+                ResourceWarning,
+                stacklevel=2,
+                source=self,
+            )
+            self.close()
+
     @property
     def alternates(self):
         if self._alternates is not None:
