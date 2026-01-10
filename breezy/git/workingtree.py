@@ -423,7 +423,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self.basedir = osutils.realpath(basedir)
         self.controldir = controldir
         self.repository = repo
-        self.store = self.repository._git.object_store
         self.mapping = self.repository.get_mapping()
         self._branch = branch
         self._transport = self.repository._git._controltransport
@@ -434,6 +433,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._rules_searcher = None
         self._detect_case_handling()
         self._reset_data()
+
+    @property
+    def store(self):
+        """Get the Git object store for this tree.
+
+        Returns:
+            The object store from the repository.
+        """
+        return self.repository._git.object_store
 
     def supports_tree_reference(self):
         """Return True if this tree supports tree references (submodules).
