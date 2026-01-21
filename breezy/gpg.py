@@ -257,7 +257,7 @@ class GPGStrategy:
         """
         self._config_stack = config_stack
         try:
-            import gpg
+            import gpgme as gpg
 
             self.context = gpg.Context()
             self.context.armor = True
@@ -266,7 +266,7 @@ class GPGStrategy:
             pass  # can't use verify()
 
     def _get_signing_keys(self):
-        import gpg
+        import gpgme as gpg
 
         keyname = self._config_stack.get("gpg_signing_key")
         if keyname == "default":
@@ -298,7 +298,7 @@ class GPGStrategy:
         :return: boolean if this strategy can verify signatures
         """
         try:
-            import gpg  # noqa: F401
+            import gpgme as gpg  # noqa: F401
 
             return True
         except ModuleNotFoundError:
@@ -320,7 +320,7 @@ class GPGStrategy:
             BzrBadParameterUnicode: If content is a string instead of bytes.
         """
         try:
-            import gpg
+            import gpgme as gpg
         except ModuleNotFoundError as err:
             raise GpgNotInstalled(
                 "Set create_signatures=no to disable creating signatures."
@@ -355,7 +355,7 @@ class GPGStrategy:
         :return: SIGNATURE_VALID or a failed SIGNATURE_ value, key uid if valid, plain text
         """
         try:
-            import gpg
+            import gpgme as gpg
         except ModuleNotFoundError as err:
             raise GpgNotInstalled(
                 "Set check_signatures=ignore to disable verifying signatures."
