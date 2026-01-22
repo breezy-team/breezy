@@ -1,0 +1,394 @@
+=============
+Knit Format
+=============
+
+This document provides a complete technical specification of the Knit file
+format for versioned text storage. The specification is detailed enough to
+enable third-party implementations that are byte-for-byte compatible.
+
+Overview
+========
+
+The Knit format stores multiple versions of text files using delta compression
+and gzip compression. It consists of two files per versioned file collection:
+
+* **Index file** (`.kndx`) - Contains metadata and file pointers
+* **Data file** (`.knit`) - Contains compressed content records
+
+The format supports both full text storage and delta compression against parent
+versions, with optional line-by-line annotation tracking.
+
+Index File Format (.kndx)
+==========================
+
+Structure
+---------
+
+::
+
+    # bzr knit index 8\n
+    RECORD_1\n
+    RECORD_2\n
+    ...
+
+Header
+------
+
+The file must start with exactly::
+
+    # bzr knit index 8\n
+
+This identifies the format as knit index version 8.
+
+Record Format
+-------------
+
+Each record is a single line::
+
+    VERSION_ID FLAGS OFFSET LENGTH PARENTS :\n
+
+Where:
+
+* **VERSION_ID** - UTF-8 encoded version identifier
+* **FLAGS** - Comma-separated options (see below)
+* **OFFSET** - Decimal byte offset in data file
+* **LENGTH** - Decimal byte length of compressed data  
+* **PARENTS** - Space-separated parent references
+* **:** - Literal colon marking end of record
+
+Flags
+-----
+
+* `fulltext` - Record contains complete content
+* `line-delta` - Record contains delta instructions
+* `no-eol` - Content doesn't end with newline
+
+Parent References
+-----------------
+
+Parents are referenced in two ways:
+
+* **Full reference**: `.VERSION_ID` (literal dot prefix)
+* **Sequence number**: Integer position in index (0-based)
+
+This creates dictionary compression where earlier versions can be referenced
+by position rather than full ID.
+
+Example
+-------
+
+::
+
+    # bzr knit index 8
+    rev-1 fulltext 0 156 :
+    rev-2 line-delta 156 78 0 :
+    rev-3 fulltext 234 203 .external-rev 1 :
+
+Data File Format (.knit)
+=========================
+
+Structure
+---------
+
+The data file contains concatenated gzip-compressed records::
+
+    GZIP_RECORD_1 + GZIP_RECORD_2 + ...
+
+Each record when decompressed has this format::
+
+    version VERSION_ID LINE_COUNT SHA1\n
+    CONTENT_LINES
+    end VERSION_ID\n
+
+Record Header
+-------------
+
+::
+
+    version VERSION_ID LINE_COUNT SHA1\n
+
+* **VERSION_ID** - Must match the index entry
+* **LINE_COUNT** - Number of content lines following
+* **SHA1** - 40-character hex digest of reconstructed full text
+
+Record Trailer
+--------------
+
+::
+
+    end VERSION_ID\n
+
+The VERSION_ID must match the header.
+
+Content Encoding
+================
+
+Full Text Records
+-----------------
+
+Content lines contain the literal file content::
+
+    line 1 content\n
+    line 2 content\n
+    final line content\n
+
+If the `no-eol` flag is set, the final line has no newline.
+
+Annotated Full Text
+-------------------
+
+Each line is prefixed with its origin version::
+
+    rev-1 line 1 content\n
+    rev-2 line 2 content\n
+    rev-1 final line content\n
+
+Delta Records
+-------------
+
+Delta records describe changes as a series of replacement operations::
+
+    START,END,COUNT\n
+    replacement line 1\n
+    replacement line 2\n
+    ...
+
+* **START** - First line number to replace (1-based)
+* **END** - Last line number to replace (1-based)
+* **COUNT** - Number of replacement lines
+
+Multiple delta operations can appear in sequence.
+
+Annotated Deltas
+----------------
+
+Delta replacement lines include origin information::
+
+    1,1,2\n
+    rev-2 new first line\n
+    rev-2 inserted line\n
+
+SHA-1 Calculation
+=================
+
+The SHA-1 digest is calculated over the complete reconstructed text:
+
+1. Reconstruct the full content (applying deltas if needed)
+2. Concatenate all lines without separators
+3. Calculate SHA-1 of the byte sequence
+4. Format as lowercase hexadecimal
+
+Example::
+
+    content = b''.join(all_lines)
+    sha1 = hashlib.sha1(content).hexdigest()
+
+Network Format
+==============
+
+For transmission, records are serialized as::
+
+    STORAGE_KIND\n
+    KEY_DATA\n
+    PARENT_DATA\n
+    FLAGS + COMPRESSED_DATA
+
+Storage Kinds
+-------------
+
+* `knit-ft-gz` - Full text, gzip compressed
+* `knit-delta-gz` - Delta, gzip compressed
+* `knit-annotated-ft-gz` - Annotated full text
+* `knit-annotated-delta-gz` - Annotated delta
+
+Key and Parent Encoding
+-----------------------
+
+* Key components joined by null bytes (`\x00`)
+* Parent keys separated by tabs (`\t`)
+* Parent key components joined by null bytes
+
+Flag Encoding
+-------------
+
+Single character prefix:
+* `N` if `no-eol` flag set
+* ` ` (space) otherwise
+
+Implementation Guidelines
+=========================
+
+Reading Process
+---------------
+
+1. Parse index file completely into memory
+2. Build lookup tables for version ID to metadata mapping
+3. For each content request:
+   a. Look up offset and length in index
+   b. Read and decompress data at offset
+   c. Parse record format
+   d. Reconstruct content (apply deltas if needed)
+   e. Verify SHA-1 checksum
+
+Writing Process
+---------------
+
+1. Determine storage method (fulltext vs delta)
+2. Calculate SHA-1 of final content
+3. Format record according to type
+4. Compress with gzip
+5. Append to data file, recording offset
+6. Add index entry with metadata
+
+Delta Reconstruction
+--------------------
+
+To apply a delta:
+
+1. Start with parent's full text as array of lines
+2. For each delta operation (START,END,COUNT):
+   a. Remove lines START through END (inclusive)
+   b. Insert COUNT replacement lines at position START
+3. Result is the reconstructed content
+
+Error Conditions
+================
+
+Index Parsing
+--------------
+
+* Invalid header format
+* Malformed record lines
+* Missing colon terminators
+* Invalid parent references
+
+Data File Issues
+----------------
+
+* Gzip decompression failures
+* Invalid record headers/trailers
+* SHA-1 verification failures
+* Missing parent content for deltas
+
+Robustness Features
+===================
+
+Partial Write Recovery
+----------------------
+
+Index records without the final `:` are ignored as incomplete writes.
+This allows safe append-only operation even with crashes.
+
+Integrity Checking
+------------------
+
+SHA-1 checksums detect data corruption during reconstruction.
+All content should be verified before use.
+
+Format Compatibility
+====================
+
+Version Support
+---------------
+
+Only index format version 8 is specified here. Implementations should
+reject other versions rather than guess at compatibility.
+
+Character Encoding
+------------------
+
+* Version IDs are UTF-8 text
+* File content is arbitrary bytes
+* Line endings are always `\n` in the format
+
+Extension Points
+================
+
+Unknown Flags
+-------------
+
+Index records may contain unknown flags. These should be preserved
+when rewriting but may affect processing behavior.
+
+Storage Methods
+---------------
+
+New storage kinds may be added. Unknown kinds should be treated
+as errors rather than ignored.
+
+Performance Considerations
+==========================
+
+Caching
+-------
+
+* Index data should be kept in memory
+* Reconstructed content can be cached
+* Gzip decompression results may be cached
+
+I/O Patterns
+------------
+
+* Sequential index reading on startup
+* Random access to data file records
+* Append-only writes to both files
+
+Memory Usage
+------------
+
+* Delta chains require parent content in memory
+* Long chains should be avoided
+* Fulltext snapshots can break chains
+
+Example Implementation
+======================
+
+Index Parsing
+--------------
+
+::
+
+    def parse_index_line(line):
+        parts = line.rstrip().split(' ')
+        version_id = parts[0]
+        flags = parts[1].split(',') if parts[1] else []
+        offset = int(parts[2])
+        length = int(parts[3])
+        
+        parents = []
+        for i in range(4, len(parts) - 1):  # Exclude final ':'
+            parent = parts[i]
+            if parent.startswith('.'):
+                parents.append(parent[1:])  # Remove dot prefix
+            else:
+                parents.append(sequence_to_version_id(int(parent)))
+                
+        return IndexRecord(version_id, flags, offset, length, parents)
+
+Record Reading
+--------------
+
+::
+
+    def read_record(data_file, offset, length):
+        data_file.seek(offset)
+        compressed = data_file.read(length)
+        content = gzip.decompress(compressed).decode('utf-8')
+        
+        lines = content.split('\n')
+        header = lines[0].split(' ')
+        version_id = header[1]
+        line_count = int(header[2])
+        expected_sha1 = header[3]
+        
+        content_lines = lines[1:1+line_count]
+        trailer = lines[1+line_count]
+        
+        if not trailer.startswith('end '):
+            raise FormatError("Invalid trailer")
+            
+        return Record(version_id, content_lines, expected_sha1)
+
+This specification provides the complete format definition needed for
+compatible implementations while focusing on the format itself rather
+than any particular codebase.
