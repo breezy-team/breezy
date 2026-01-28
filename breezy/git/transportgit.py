@@ -822,6 +822,19 @@ class TransportObjectStore(PackBasedObjectStore):
         """Return string representation of the object store."""
         return f"{self.__class__.__name__}({self.transport!r})"
 
+    def __del__(self):
+        """Ensure object store is closed when garbage collected."""
+        if self._pack_cache:
+            import warnings
+
+            warnings.warn(
+                f"unclosed packs in {self!r}",
+                ResourceWarning,
+                stacklevel=2,
+                source=self,
+            )
+            self.close()
+
     @property
     def alternates(self):
         """Get alternate object stores.
