@@ -689,7 +689,9 @@ class TestLogDiff(TestLogWithLogCatcher):
         )
         # Now check the diffs, adding the revno  in case of failure
         fmt = "In revno %s\n%s"
-        for expected_rev, actual_rev in zip(expected, self.get_captured_revisions(), strict=False):
+        for expected_rev, actual_rev in zip(
+            expected, self.get_captured_revisions(), strict=False
+        ):
             revno, _depth, expected_diff = expected_rev
             actual_diff = actual_rev.diff
             self.assertEqualDiff(

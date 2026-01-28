@@ -365,7 +365,9 @@ class TestListOptions(TestCase):
             cb_calls.append((option, name, value[:], parser))
 
         options = [option.ListOption("hello", type=str, custom_callback=cb)]
-        _opts, _args = self.parse(options, ["--hello=world", "--hello=mars", "--hello=-"])
+        _opts, _args = self.parse(
+            options, ["--hello=world", "--hello=mars", "--hello=-"]
+        )
         self.assertEqual(3, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
         self.assertEqual("hello", name)

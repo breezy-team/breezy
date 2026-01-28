@@ -59,7 +59,9 @@ class TestSmartServerAnnotate(TestCaseWithTransport):
         wt.add(["hello.txt"])
         wt.commit("commit", committer="test@user")
         self.reset_smart_call_log()
-        _out, _err = self.run_bzr(["annotate", "-d", self.get_url("branch"), "hello.txt"])
+        _out, _err = self.run_bzr(
+            ["annotate", "-d", self.get_url("branch"), "hello.txt"]
+        )
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

@@ -23,9 +23,6 @@ from dulwich.errors import NotCommitError
 from dulwich.object_store import ObjectStoreGraphWalker
 from dulwich.objects import ObjectID
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
-from dulwich.refs import SYMREF
-
 from dulwich.protocol import CAPABILITY_THIN_PACK, PEELED_TAG_SUFFIX, ZERO_SHA
 from dulwich.refs import SYMREF
 from dulwich.walk import Walker
@@ -682,7 +679,9 @@ class InterGitGitRepository(InterFromGitRepository):
             ret = []
             for name, (sha1, bzr_revid) in list(new_refs.items()):
                 if sha1 is None:
-                    sha1, _unused_mapping = self.source.lookup_bzr_revision_id(bzr_revid)
+                    sha1, _unused_mapping = self.source.lookup_bzr_revision_id(
+                        bzr_revid
+                    )
                 new_refs[name] = (sha1, bzr_revid)
                 ret.append(sha1)
             ref_changes.update(new_refs)

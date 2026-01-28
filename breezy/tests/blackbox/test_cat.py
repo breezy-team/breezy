@@ -139,7 +139,9 @@ class TestCat(tests.TestCaseWithTransport):
         wt.commit("Making sure there is a basis_tree available")
         wt = self.make_branch_and_tree("b")
 
-        out, _err = self.run_bzr(["cat", "-r", "branch:../a", "README"], working_dir="b")
+        out, _err = self.run_bzr(
+            ["cat", "-r", "branch:../a", "README"], working_dir="b"
+        )
         self.assertEqual("contents of a/README\n", out)
 
     def test_cat_filters(self):

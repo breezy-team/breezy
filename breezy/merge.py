@@ -1099,7 +1099,9 @@ class Merge3Merger:
                     base_sha1 = get_sha1(self.base_tree, base_path)
                     lca_sha1s = [
                         get_sha1(tree, lca_path)
-                        for tree, lca_path in zip(self._lca_trees, lca_paths, strict=False)
+                        for tree, lca_path in zip(
+                            self._lca_trees, lca_paths, strict=False
+                        )
                     ]
                     this_sha1 = get_sha1(self.this_tree, this_path)
                     other_sha1 = get_sha1(self.other_tree, other_path)

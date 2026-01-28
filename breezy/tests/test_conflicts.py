@@ -140,7 +140,8 @@ class TestConflictList(tests.TestCase):
     def test_stringification(self):
         for text, o in zip(
             bzr_conflicts.ConflictList(example_conflicts).to_strings(),
-            example_conflicts, strict=False,
+            example_conflicts,
+            strict=False,
         ):
             self.assertEqual(text, str(o))
 

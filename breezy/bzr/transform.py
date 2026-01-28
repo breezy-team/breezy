@@ -2081,7 +2081,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             parent = todo.pop()
             parent_file_id = self._transform.final_file_id(parent)
             children = list(self._all_children(parent))
-            paths = dict(zip(children, self._final_paths.get_paths(children), strict=False))
+            paths = dict(
+                zip(children, self._final_paths.get_paths(children), strict=False)
+            )
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:
