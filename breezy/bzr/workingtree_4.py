@@ -1424,7 +1424,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 trees = list(
                     zip(
                         revision_ids,
-                        self.branch.repository.revision_trees(revision_ids), strict=False,
+                        self.branch.repository.revision_trees(revision_ids),
+                        strict=False,
                     )
                 )
                 base_tree = trees[0][1]

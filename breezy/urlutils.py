@@ -794,7 +794,9 @@ def determine_relative_path(from_path, to_path):
     from_segments = osutils.splitpath(from_path)
     to_segments = osutils.splitpath(to_path)
     count = -1
-    for count, (from_element, to_element) in enumerate(zip(from_segments, to_segments, strict=False)):
+    for count, (from_element, to_element) in enumerate(
+        zip(from_segments, to_segments, strict=False)
+    ):
         if from_element != to_element:
             break
     else:

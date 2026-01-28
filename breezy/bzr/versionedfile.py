@@ -645,7 +645,11 @@ class VersionedFile:
                 raise errors.RevisionNotPresent(version_id, self) from e
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
-        lines = dict(zip(knit_versions, self._get_lf_split_line_list(knit_versions), strict=False))
+        lines = dict(
+            zip(
+                knit_versions, self._get_lf_split_line_list(knit_versions), strict=False
+            )
+        )
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]

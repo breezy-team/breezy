@@ -2104,7 +2104,7 @@ class TestTestCloning(tests.TestCase):
         orig_test = Test("test_foo")
         cloned_test = tests.clone_test(orig_test, orig_test.id() + "(cloned)")
         orig_test.run(unittest.TestResult())
-        self.assertEqual("foo", orig_test.getDetails()["foo"].iter_bytes())
+        self.assertEqual("foo", "".join(orig_test.getDetails()["foo"].iter_bytes()))
         self.assertEqual(None, cloned_test.getDetails().get("foo"))
 
     def test_double_apply_scenario_preserves_first_scenario(self):

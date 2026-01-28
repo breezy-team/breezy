@@ -429,8 +429,8 @@ class Launchpad(Forge):
         """
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, _base_user, _base_password, base_path, _base_params) = self._split_url(
-            base_branch.user_url
+        (base_vcs, _base_user, _base_password, base_path, _base_params) = (
+            self._split_url(base_branch.user_url)
         )
         # TODO(jelmer): Prevent publishing to development focus
         if base_vcs == "git":
@@ -455,8 +455,8 @@ class Launchpad(Forge):
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, _base_user, _base_password, base_path, _base_params) = self._split_url(
-            base_branch.user_url
+        (base_vcs, _base_user, _base_password, base_path, _base_params) = (
+            self._split_url(base_branch.user_url)
         )
         if base_vcs == "git":
             to_path = self._get_derived_git_path(base_path.strip("/"), owner, project)
@@ -474,8 +474,8 @@ class Launchpad(Forge):
             raise AssertionError("Only git repositories are supported")
 
     def iter_proposals(self, source_branch, target_branch, status="open"):
-        (base_vcs, _base_user, _base_password, _base_path, _base_params) = self._split_url(
-            target_branch.user_url
+        (base_vcs, _base_user, _base_password, _base_path, _base_params) = (
+            self._split_url(target_branch.user_url)
         )
         statuses = status_to_lp_mp_statuses(status)
         if base_vcs == "git":
@@ -498,8 +498,8 @@ class Launchpad(Forge):
             raise AssertionError("Only git repositories are supported")
 
     def get_proposer(self, source_branch, target_branch):
-        (base_vcs, _base_user, _base_password, _base_path, _base_params) = self._split_url(
-            target_branch.user_url
+        (base_vcs, _base_user, _base_password, _base_path, _base_params) = (
+            self._split_url(target_branch.user_url)
         )
         if base_vcs == "git":
             return LaunchpadGitMergeProposalBuilder(self, source_branch, target_branch)

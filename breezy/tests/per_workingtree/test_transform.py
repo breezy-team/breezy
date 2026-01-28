@@ -914,7 +914,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         conflicts.apply()
 
     def test_cook_conflicts(self):
-        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = self.get_conflicted()
+        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = (
+            self.get_conflicted()
+        )
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         if self.wt.supports_setting_file_ids():
@@ -970,7 +972,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.finalize()
 
     def test_string_conflicts(self):
-        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = self.get_conflicted()
+        tt, _emerald, _oz, _old_dorothy, _new_dorothy, _munchkincity = (
+            self.get_conflicted()
+        )
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         tt.finalize()

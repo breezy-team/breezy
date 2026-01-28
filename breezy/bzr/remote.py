@@ -1695,7 +1695,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
             return False
-        return all(f.has_same_location(g) for f, g in zip(my_fb, other_fb, strict=False))
+        return all(
+            f.has_same_location(g) for f, g in zip(my_fb, other_fb, strict=False)
+        )
 
     def has_same_location(self, other):
         # TODO: Move to RepositoryBase and unify with the regular Repository
