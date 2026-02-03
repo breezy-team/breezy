@@ -58,7 +58,7 @@ github = ["github"]
 paramiko = ["paramiko"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools",
+    "testtools>=2.8",
     "testscenarios",
     "python-subunit",
     "flake8",
