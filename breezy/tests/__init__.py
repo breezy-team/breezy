@@ -486,14 +486,6 @@ class ExtendedTestResult(testtools.TextTestResult):
                     "{} {}\n".format(self._formatTime(benchmark_time), test.id())
                 )
         self.report_success(test)
-        # In testtools >= 2.8, TextTestResult.addSuccess() writes "." or "ok"
-        # to the stream, which conflicts with our custom output formatting.
-        # We handle all output ourselves via report_success(), so we don't
-        # need to call the parent method for 2.8+.
-        # For older versions, call super() which was a no-op but may have
-        # been used for side effects.
-        if testtools.__version__ < (2, 8):
-            super().addSuccess(test, details)
         test._log_contents = ""
 
     def addExpectedFailure(self, test, err):

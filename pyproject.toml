@@ -31,7 +31,7 @@ dependencies = [
     "fastbencode",
     "patiencediff",
     "merge3",
-    "dulwich>=0.25.0,<2",
+    "dulwich>=1,<2",
     "urllib3>=1.24.1",
     "pyyaml",
 ]
@@ -44,7 +44,7 @@ Repository = "https://github.com/breezy-team/breezy"
 
 [project.optional-dependencies]
 fastimport = ["fastimport>=0.9.8"]
-git = ["dulwich>=0.24.3"]
+git = ["dulwich>=1,<2"]
 launchpad = ["launchpadlib>=1.6.3"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
 doc = [
@@ -58,7 +58,7 @@ github = ["github"]
 paramiko = ["paramiko"]
 subunit = ["python-subunit"]
 dev = [
-    "testtools",
+    "testtools>=2.8",
     "testscenarios",
     "python-subunit",
     "flake8",
