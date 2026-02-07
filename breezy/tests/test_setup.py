@@ -28,6 +28,5 @@ class TestDistutilsVersion(tests.TestCase):
         """Test version comparison for pyrex-specific version strings."""
         # We really care about two pyrex specific versions and our ability to
         # detect them
-        lv = version.Version
-        self.assertLess(lv("0.9.4.1"), lv("0.17.beta1"))
-        self.assertLess(lv("0.9.6.3"), lv("0.10"))
+        self.assertLess(version.Version("0.9.4.1"), version.Version("0.17.beta1"))
+        self.assertLess(version.Version("0.9.6.3"), version.Version("0.10"))
