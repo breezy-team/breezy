@@ -361,7 +361,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
                     keyfile=self.key_file, certfile=self.cert_file
                 )
             ssl_context.verify_mode = cert_reqs
-            ssl_sock = ssl_context.wrap_socket(self.sock, server_hostname=self.host)
+            ssl_sock = ssl_context.wrap_socket(self.sock, server_hostname=host)
         except ssl.SSLError:
             trace.note(
                 "\n"
