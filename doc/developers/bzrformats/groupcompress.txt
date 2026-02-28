@@ -1,0 +1,618 @@
+==================
+GroupCompress Format
+==================
+
+This document provides a complete technical specification of the GroupCompress 
+file format used by Breezy for efficient repository storage. The specification 
+is detailed enough to enable third-party implementations that are byte-for-byte 
+compatible.
+
+Overview
+========
+
+GroupCompress is Breezy's modern repository storage format that combines multiple
+related files into compressed blocks with cross-file delta compression. It uses
+a pack container format with B-tree indexing for efficient access.
+
+Key characteristics:
+* Pack container format for structured storage
+* Compressed blocks grouping related content
+* Cross-file delta compression for space efficiency
+* B-tree indexing for fast random access
+* Network-optimized serialization
+* Support for both zlib and lzma compression
+
+Architecture
+============
+
+A GroupCompress repository consists of:
+
+1. **Pack files** - Container format holding compressed blocks
+2. **Index files** - B-tree indices for locating content  
+3. **Metadata files** - Repository configuration and state
+
+The format builds on several foundational formats:
+* Pack container format for structured file storage
+* GroupCompress block format for compressed content
+* B-tree index format for efficient lookups
+* Base128 integer encoding for variable-length numbers
+
+Pack Container Format
+=====================
+
+GroupCompress uses the Bazaar pack container format as its foundation.
+
+Container Structure
+-------------------
+
+::
+
+    CONTAINER := HEADER RECORDS* END_MARKER
+    HEADER := "Bazaar pack format 1 (introduced in 0.18)\n"
+    RECORDS := RECORD*
+    END_MARKER := "E"
+
+Record Format
+-------------
+
+Each record in the container::
+
+    RECORD := KIND_MARKER CONTENT
+    KIND_MARKER := "B"
+    CONTENT := LENGTH "\n" NAMES* "\n" DATA
+
+Where:
+* **LENGTH** - Decimal integer followed by newline
+* **NAMES** - Name tuples, one per line, newline terminated
+* **DATA** - Raw bytes of specified LENGTH
+
+For GroupCompress, the primary record type is "B" (bytes) containing
+compressed content blocks.
+
+GroupCompress Block Format
+===========================
+
+Block Structure
+---------------
+
+Each GroupCompress block has this format::
+
+    GC_BLOCK := SIGNATURE Z_LENGTH "\n" CONTENT_LENGTH "\n" COMPRESSED_DATA
+
+Header Fields
+~~~~~~~~~~~~~
+
+**SIGNATURE**
+  Block type identifier:
+  
+  * ``gcb1z\n`` - zlib compression
+  * ``gcb1l\n`` - lzma compression
+
+**Z_LENGTH**
+  Decimal integer specifying compressed data length in bytes
+
+**CONTENT_LENGTH**  
+  Decimal integer specifying uncompressed content length in bytes
+
+**COMPRESSED_DATA**
+  Raw compressed bytes (format depends on signature)
+
+Content Format
+--------------
+
+When decompressed, block content contains a sequence of records::
+
+    CONTENT := RECORD*
+    RECORD := TYPE LENGTH CONTENT_DATA
+
+Record Types
+~~~~~~~~~~~~
+
+**TYPE**
+  Single character record type:
+  
+  * ``f`` - Full text content
+  * ``d`` - Delta compressed content
+
+**LENGTH**
+  Variable-length base128 encoded integer specifying content data length
+
+**CONTENT_DATA**
+  Raw content bytes or delta instructions (depends on type)
+
+Base128 Integer Encoding
+=========================
+
+GroupCompress uses base128 encoding for variable-length integers.
+
+Encoding Algorithm
+------------------
+
+1. Split integer into 7-bit groups (little-endian)
+2. Set bit 7 (0x80) if more bytes follow
+3. Clear bit 7 (0x00-0x7F) for final byte
+
+Examples::
+
+    0 → [0x00]
+    127 → [0x7F] 
+    128 → [0x80, 0x01]
+    16384 → [0x80, 0x80, 0x01]
+
+Decoding Algorithm
+------------------
+
+::
+
+    value = 0
+    shift = 0
+    for each byte:
+        value |= (byte & 0x7F) << shift
+        shift += 7
+        if (byte & 0x80) == 0:
+            break
+    return value
+
+Delta Compression Format
+========================
+
+Delta records contain instructions for reconstructing content from a base text.
+
+Delta Structure
+---------------
+
+::
+
+    DELTA := TARGET_LENGTH INSTRUCTIONS*
+    TARGET_LENGTH := base128_integer
+    INSTRUCTIONS := (COPY_INSTRUCTION | INSERT_INSTRUCTION)*
+
+Copy Instructions
+-----------------
+
+Copy instructions reference existing content::
+
+    COPY_INSTRUCTION := COMMAND OFFSET_BYTES* LENGTH_BYTES*
+    COMMAND := 0x80 | OFFSET_FLAGS | LENGTH_FLAGS
+
+**Command Byte Breakdown:**
+* Bit 7: Always set (0x80) to identify copy instruction
+* Bits 0-3: OFFSET_FLAGS - which offset bytes are present
+* Bits 4-6: LENGTH_FLAGS - which length bytes are present
+
+**Flag Encoding:**
+* 0x01, 0x02, 0x04, 0x08 - offset byte 0, 1, 2, 3 present
+* 0x10, 0x20, 0x40 - length byte 0, 1, 2 present
+
+**Special Cases:**
+* If no length bytes specified, length = 0 means length = 65536
+* Maximum copy length is 65536 bytes
+
+Insert Instructions
+-------------------
+
+Insert instructions add new content::
+
+    INSERT_INSTRUCTION := LENGTH DATA
+    LENGTH := byte_value (0x01 to 0x7F)
+    DATA := raw_bytes[LENGTH]
+
+**Constraints:**
+* Length must be 1-127 (bit 7 clear to distinguish from copy)
+* Maximum insert length is 127 bytes
+
+Delta Application
+-----------------
+
+To reconstruct content:
+
+1. Read target length
+2. Initialize empty output buffer
+3. For each instruction:
+   
+   * **Copy**: Copy LENGTH bytes from source at OFFSET to output
+   * **Insert**: Append LENGTH bytes of literal data to output
+
+4. Verify output length matches target length
+
+B-Tree Index Format
+===================
+
+GroupCompress uses B-tree indices for efficient content lookup.
+
+Index File Structure
+--------------------
+
+::
+
+    BTREE_INDEX := SIGNATURE OPTIONS NODE_DATA*
+    SIGNATURE := "B+Tree Graph Index 2\n"
+
+Options Section
+---------------
+
+::
+
+    OPTIONS := REF_LISTS KEY_ELEMENTS LENGTH ROW_LENGTHS "\n"
+    REF_LISTS := "node_ref_lists=" DIGITS "\n"
+    KEY_ELEMENTS := "key_elements=" DIGITS "\n" 
+    LENGTH := "len=" DIGITS "\n"
+    ROW_LENGTHS := "row_lengths=" DIGITS ("," DIGITS)* "\n"
+
+Where:
+* **node_ref_lists** - Number of reference lists per key
+* **key_elements** - Number of elements in each key tuple
+* **len** - Total number of keys in index
+* **row_lengths** - Byte lengths of each data field
+
+Node Format
+-----------
+
+Each node starts with a type declaration::
+
+    NODE := NODE_HEADER NODE_CONTENT
+    NODE_HEADER := "type=" NODE_TYPE "\n"
+    NODE_TYPE := "internal" | "leaf"
+
+Internal Nodes
+~~~~~~~~~~~~~~
+
+::
+
+    INTERNAL_NODE := POINTER*
+    POINTER := KEY "\0" CHILD_REFERENCE "\n"
+
+Leaf Nodes
+~~~~~~~~~~
+
+::
+
+    LEAF_NODE := ROW*
+    ROW := KEY "\0" ABSENT_FLAG "\0" REFERENCES "\0" VALUE "\n"
+
+**Field Descriptions:**
+
+**KEY**
+  Key tuple elements joined by null bytes
+
+**ABSENT_FLAG**
+  Literal ``a`` if key is absent, empty otherwise
+
+**REFERENCES**
+  Reference lists separated by tabs:
+  
+  * Multiple lists: ``list1\tlist2\tlist3``
+  * Within list: references separated by ``\r``
+  * Empty list: empty string between separators
+
+**VALUE**
+  Space-separated: ``pack_offset pack_length block_start block_end``
+
+Node Size Limits
+-----------------
+
+* Maximum node size: 4096 bytes
+* Nodes split when approaching size limit
+* Keys distributed to maintain B-tree properties
+
+Key and Reference Encoding
+===========================
+
+Key Format
+----------
+
+Keys are tuples of byte strings:
+
+* **File content**: ``(file_id, revision_id)``
+* **Revisions**: ``(revision_id,)``
+* **Inventories**: ``(revision_id,)``
+* **Signatures**: ``(revision_id,)``
+
+Serialization joins tuple elements with null bytes (``\x00``).
+
+Reference Lists
+---------------
+
+Different content types use different reference schemes:
+
+================== =================== ===========================
+Content Type       Reference Lists     Reference Meaning
+================== =================== ===========================
+Revisions          1                   Parent revisions
+Inventories        1                   Basis inventory  
+File texts         1                   File parent versions
+Signatures         0                   (no references)
+CHK nodes          0                   (no references)
+================== =================== ===========================
+
+Network Serialization
+======================
+
+For network transmission, GroupCompress blocks use a specialized format.
+
+Wire Format
+-----------
+
+::
+
+    NETWORK_BLOCK := FORMAT_ID HEADER_INFO GC_BLOCK
+    FORMAT_ID := "groupcompress-block\n"
+    HEADER_INFO := Z_HEADER_LEN "\n" HEADER_LEN "\n" BLOCK_LEN "\n" COMPRESSED_HEADER
+    GC_BLOCK := standard_groupcompress_block
+
+Header Information
+------------------
+
+**Z_HEADER_LEN**
+  Length of compressed header in bytes
+
+**HEADER_LEN**
+  Length of uncompressed header in bytes
+
+**BLOCK_LEN**
+  Length of GroupCompress block in bytes
+
+**COMPRESSED_HEADER**
+  Zlib-compressed header data containing record metadata
+
+Header Data Format
+------------------
+
+When decompressed, header contains metadata for each record::
+
+    HEADER_DATA := RECORD_METADATA*
+    RECORD_METADATA := KEY_LINE PARENTS_LINE OFFSET_LINE END_LINE
+
+**Line Formats:**
+* **KEY_LINE**: Key elements joined by null, terminated by newline
+* **PARENTS_LINE**: ``None:\n`` or parent keys separated by tabs
+* **OFFSET_LINE**: Decimal start offset in block
+* **END_LINE**: Decimal end offset in block
+
+Compression Algorithms
+======================
+
+Block Compression
+-----------------
+
+GroupCompress supports two compression algorithms:
+
+**Zlib (gcb1z)**
+* Standard zlib compression (RFC 1950)
+* Default compression level varies by implementation
+* Good balance of speed and compression ratio
+
+**LZMA (gcb1l)**  
+* LZMA compression for better ratios
+* Higher CPU cost than zlib
+* Optional alternative format
+
+Content Grouping
+-----------------
+
+Optimal compression requires grouping related content:
+
+1. **Reverse topological ordering** - Children before parents
+2. **File-ID grouping** - Related file versions together  
+3. **Content similarity** - Similar content in same blocks
+
+The grouping algorithm:
+
+::
+
+    def sort_gc_optimal(parent_map):
+        per_prefix_map = group_by_file_id(parent_map)
+        result = []
+        for file_id in sorted(per_prefix_map):
+            file_versions = reverse_topo_sort(per_prefix_map[file_id])
+            result.extend(file_versions)
+        return result
+
+Delta Strategy
+--------------
+
+* Delta compression within blocks only
+* Against most similar content in block
+* Limited chain depth to control reconstruction cost
+* Fallback to fulltext if delta would be inefficient
+
+Implementation Guidelines
+=========================
+
+Reading Process
+---------------
+
+1. **Open pack container**
+   
+   a. Validate container header
+   b. Build record directory
+
+2. **Load B-tree indices**
+   
+   a. Parse index options
+   b. Load root node
+   c. Cache frequently accessed nodes
+
+3. **Content access**
+   
+   a. Look up key in B-tree index
+   b. Extract pack offset and block position
+   c. Read and decompress GroupCompress block
+   d. Extract individual record using delta application
+   e. Cache decompressed blocks
+
+Writing Process
+---------------
+
+1. **Content grouping**
+   
+   a. Sort keys for optimal compression
+   b. Group related content together
+   c. Plan block boundaries
+
+2. **Block creation**
+   
+   a. Apply delta compression within groups
+   b. Format records with type and length
+   c. Compress block content
+   d. Add block headers
+
+3. **Container assembly**
+   
+   a. Write blocks to pack container
+   b. Record block positions and sizes
+   c. Build B-tree index entries
+
+4. **Index writing**
+   
+   a. Sort keys for B-tree construction
+   b. Build leaf nodes with record locations
+   c. Build internal nodes for navigation
+   d. Write index file
+
+Error Handling
+==============
+
+Format Validation
+-----------------
+
+Implementations should validate:
+
+* Container format headers and structure
+* Block signatures and length consistency  
+* Base128 integer encoding validity
+* Delta instruction bounds checking
+* B-tree node structure and key ordering
+
+Common Errors
+-------------
+
+**Compression Errors**
+* Invalid zlib/lzma streams
+* Length mismatches after decompression
+* Unsupported compression formats
+
+**Delta Errors**
+* Copy operations beyond source bounds
+* Insert operations with invalid lengths
+* Target length mismatches
+
+**Index Errors**
+* Malformed B-tree structure
+* Invalid key encoding
+* Inconsistent reference lists
+
+Recovery Strategies
+-------------------
+
+* Validate all headers before processing content
+* Check bounds on all array accesses
+* Verify checksums where available
+* Provide detailed error messages for debugging
+
+Performance Optimization
+=========================
+
+Caching Strategy
+----------------
+
+**Block Cache**
+* LRU cache of decompressed blocks
+* Size limit based on available memory
+* Prefer caching blocks with multiple records
+
+**Index Cache**
+* Keep frequently accessed B-tree nodes in memory
+* Cache search paths for common lookups
+* Preload root and high-level internal nodes
+
+**Delta Cache**
+* Cache reconstructed content for delta chains
+* Balance memory usage vs. reconstruction cost
+* Prioritize content used by multiple deltas
+
+I/O Optimization
+----------------
+
+**Sequential Access**
+* Prefetch related blocks during sequential reads
+* Group writes to minimize seeks
+* Use memory mapping for large index files
+
+**Random Access**
+* Optimize B-tree structure for access patterns
+* Minimize block fragmentation
+* Use appropriate block sizes for storage medium
+
+Memory Management
+-----------------
+
+**Streaming Processing**
+* Process large datasets without loading entirely
+* Use iterators for bulk operations  
+* Release resources promptly after use
+
+**Compression Buffers**
+* Reuse compression/decompression buffers
+* Size buffers appropriately for content
+* Pool buffers to avoid repeated allocation
+
+Compatibility Considerations
+============================
+
+Format Evolution
+----------------
+
+* Block format allows new compression types via signature
+* Delta format has reserved command bits for extensions
+* B-tree format supports variable numbers of reference lists
+* Container format allows new record types
+
+Version Detection
+-----------------
+
+* Signature strings identify format versions
+* Implementations should check signatures before processing
+* Unknown formats should be rejected gracefully
+* Provide clear error messages for unsupported formats
+
+Interoperability
+----------------
+
+* All integers use consistent byte ordering
+* Text encoding is UTF-8 where applicable
+* Binary data is treated as opaque byte sequences
+* Network format is platform-independent
+
+Testing Compatibility
+======================
+
+Validation Tests
+----------------
+
+1. **Round-trip testing** - Write then read same content
+2. **Cross-implementation testing** - Read files from other tools
+3. **Corruption testing** - Handle invalid/corrupted files gracefully
+4. **Performance testing** - Verify acceptable speed and memory usage
+
+Test Cases
+----------
+
+* Empty repositories and single-record cases
+* Large repositories with complex histories  
+* Mixed content types with various reference patterns
+* Network serialization round-trips
+* Error conditions and edge cases
+
+Reference Implementation
+========================
+
+The authoritative implementation is in the Breezy codebase:
+
+* ``breezy/bzr/groupcompress.py`` - Main GroupCompress implementation
+* ``breezy/bzr/pack.py`` - Pack container format
+* ``breezy/bzr/btree_index.py`` - B-tree indexing
+* ``breezy/_bzr_rs/groupcompress/`` - Rust implementation of core algorithms
+
+This specification is based on analysis of Breezy version 4.0+ and should be
+compatible with all standard GroupCompress repositories created by Bazaar and Breezy.

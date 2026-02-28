@@ -1,0 +1,86 @@
+===============================
+Bazaar Storage Format Reference
+===============================
+
+This directory contains documentation about Bazaar's various storage formats,
+data structures, and internal file formats used for version control.
+
+Contents
+========
+
+Core Storage Formats
+--------------------
+
+* `weave.txt`_ - The original weave-based storage format
+* `knit.txt`_ - Knit format for storing versioned files
+* `groupcompress.txt`_ - Group compression format for efficient storage
+* `groupcompress-design.txt`_ - Design documentation for group compression
+* `versionedfiles.txt`_ - Abstract interface for versioned file storage
+
+Repository Formats
+------------------
+
+* `repository.txt`_ - Repository format documentation
+* `packrepo.txt`_ - Pack-based repository format
+* `repository-stream.txt`_ - Repository streaming format
+
+Index and Tree Structures
+-------------------------
+
+* `btree_index_prefetch.txt`_ - BTree index prefetching optimization
+* `chk-map.txt`_ - Content Hash Key (CHK) map format
+* `chk_map.txt`_ - Additional CHK map documentation
+* `improved_chk_index.txt`_ - Improved CHK index design
+* `index-plain.txt`_ - Plain index format
+
+Container and Bundle Formats
+----------------------------
+
+* `container-format.txt`_ - Container format for data transmission
+* `bundle-format4.txt`_ - Bundle format version 4 specification
+
+Inventory Format
+----------------
+
+* `inventory.txt`_ - Directory and file inventory storage format
+
+Overview
+========
+
+Bazaar uses various storage formats to efficiently store version control data.
+These formats have evolved over time to improve performance, reduce storage
+requirements, and support new features.
+
+The formats can be broadly categorized into:
+
+1. **Version storage formats** - How file contents and their history are stored
+   (weave, knit, groupcompress)
+
+2. **Repository formats** - How repositories organize and store data
+   (pack repositories, streaming)
+
+3. **Index structures** - How data is indexed for fast retrieval
+   (btree, CHK maps)
+
+4. **Container formats** - How data is packaged for transmission
+   (containers, bundles)
+
+Each format is designed with specific trade-offs between storage efficiency,
+access speed, and feature support.
+
+.. _weave.txt: weave.txt
+.. _knit.txt: knit.txt
+.. _groupcompress.txt: groupcompress.txt
+.. _groupcompress-design.txt: groupcompress-design.txt
+.. _versionedfiles.txt: versionedfiles.txt
+.. _repository.txt: repository.txt
+.. _packrepo.txt: packrepo.txt
+.. _repository-stream.txt: repository-stream.txt
+.. _btree_index_prefetch.txt: btree_index_prefetch.txt
+.. _chk-map.txt: chk-map.txt
+.. _chk_map.txt: chk_map.txt
+.. _improved_chk_index.txt: improved_chk_index.txt
+.. _index-plain.txt: index-plain.txt
+.. _container-format.txt: container-format.txt
+.. _bundle-format4.txt: bundle-format4.txt
+.. _inventory.txt: inventory.txt

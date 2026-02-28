@@ -1,0 +1,447 @@
+==============
+Versioned Files
+==============
+
+This document describes the VersionedFiles API and its implementations in Breezy.
+The VersionedFiles API provides a unified interface for storing and retrieving
+versioned text content with support for multiple storage formats, delta compression,
+and distributed access patterns.
+
+Overview
+========
+
+The VersionedFiles API is the foundation of Breezy's versioned content storage
+system. It provides:
+
+* Storage of multiple versions of text files with full history
+* Efficient delta compression between related versions
+* Support for merge operations and conflict resolution
+* Network-efficient streaming of versioned content
+* Fallback mechanisms for distributed repositories
+* Multiple storage format implementations optimized for different use cases
+
+The API is designed around the concept of "keys" - tuples that uniquely identify
+versions of content, and "records" - the actual versioned content with metadata.
+
+Key Concepts
+============
+
+Keys and Versioning
+-------------------
+
+Keys are tuples that uniquely identify a version of content. For repository
+storage, keys are typically (file-id, revision-id) tuples::
+
+    key = (b'file-20051003-1', b'revision-20051003-1')
+
+The key system allows for:
+* Hierarchical organization of content
+* Efficient lookups and batch operations
+* Clean separation between different types of versioned data
+
+Parent Relationships
+--------------------
+
+Each version can have zero or more parent versions, forming a directed acyclic
+graph (DAG) of content history::
+
+    parents = ((b'file-id', b'parent-rev-1'), (b'file-id', b'parent-rev-2'))
+
+Parent relationships enable:
+* Merge detection and three-way merging
+* Delta compression against parent versions
+* Ancestry queries and graph operations
+
+Storage Kinds and Content Representation
+-----------------------------------------
+
+Content can be represented in multiple storage formats:
+
+Basic formats:
+* ``fulltext`` - Complete content as bytes
+* ``chunked`` - Content as a list of byte chunks
+* ``lines`` - Content as a list of lines (preserving newlines)
+* ``file`` - Content from a file object
+
+Compressed formats:
+* ``knit-ft-gz`` - Knit fulltext, gzip compressed
+* ``knit-delta-gz`` - Knit delta format, gzip compressed
+* ``knit-annotated-ft-gz`` - Knit fulltext with line annotations
+* ``knit-annotated-delta-gz`` - Knit delta with line annotations
+* ``groupcompress-block`` - GroupCompress bulk compression format
+
+Special formats:
+* ``mpdiff`` - Multi-parent diff format for complex merges
+* ``absent`` - Indicates missing/unavailable content
+
+ContentFactory Classes
+----------------------
+
+ContentFactory objects provide a uniform interface for accessing content in
+different storage formats. They handle format conversion transparently::
+
+    factory = FulltextContentFactory(key, parents, sha1, content_bytes)
+    lines = factory.get_bytes_as('lines')
+    chunks = factory.get_bytes_as('chunked')
+
+ContentFactory types:
+* ``FulltextContentFactory`` - Stores complete content
+* ``ChunkedContentFactory`` - Stores content as chunks
+* ``AbsentContentFactory`` - Represents missing content
+* ``FileContentFactory`` - Streams content from files
+
+Core API Classes
+================
+
+VersionedFile
+-------------
+
+Base class for single versioned files. Provides methods for:
+* Adding new versions with ``add_lines()``
+* Retrieving content with ``get_lines()`` and ``get_text()``
+* Querying relationships with ``get_parent_map()``
+* Generating annotations with ``annotate()``
+
+VersionedFiles
+--------------
+
+Base class for collections of versioned files sharing a keyspace::
+
+    # Add content
+    vf.add_lines(key, parents, lines)
+    
+    # Retrieve content
+    for record in vf.get_record_stream(keys, 'topological', True):
+        content = record.get_bytes_as('lines')
+    
+    # Query relationships
+    parent_map = vf.get_parent_map(keys)
+
+Key methods:
+* ``add_lines(key, parents, lines)`` - Add a new version
+* ``get_record_stream(keys, ordering, include_delta_closure)`` - Stream records
+* ``insert_record_stream(stream)`` - Insert streamed records
+* ``get_parent_map(keys)`` - Get parent relationships
+* ``get_sha1s(keys)`` - Get content checksums
+
+VersionedFilesWithFallbacks
+---------------------------
+
+Extends VersionedFiles with support for fallback sources::
+
+    vf.add_fallback_versioned_files(fallback_vf)
+
+Enables distributed architectures like stacked branches and shared repositories.
+
+Record Streams
+==============
+
+Record streams provide efficient, streaming access to versioned content.
+
+Getting Records
+---------------
+
+The ``get_record_stream()`` method returns an iterator of ContentFactory objects::
+
+    stream = vf.get_record_stream(keys, ordering='topological', 
+                                  include_delta_closure=True)
+    for record in stream:
+        print(f"Key: {record.key}")
+        print(f"Parents: {record.parents}")
+        print(f"Storage: {record.storage_kind}")
+        content = record.get_bytes_as('fulltext')
+
+Parameters:
+* ``keys`` - Keys to retrieve
+* ``ordering`` - 'unordered' or 'topological' (parents before children)
+* ``include_delta_closure`` - Include compression dependencies
+
+Inserting Records
+-----------------
+
+The ``insert_record_stream()`` method accepts an iterator of ContentFactory objects::
+
+    def generate_records():
+        for key, parents, content in my_data:
+            yield FulltextContentFactory(key, parents, None, content)
+    
+    vf.insert_record_stream(generate_records())
+
+Network Serialization
+----------------------
+
+Records can be serialized for network transmission::
+
+    # Serialize
+    for record in source_vf.get_record_stream(keys, 'unordered', True):
+        bytes_data = record.get_bytes_as(record.storage_kind)
+        send_over_network(bytes_data)
+    
+    # Deserialize
+    stream = NetworkRecordStream(bytes_iterator)
+    target_vf.insert_record_stream(stream.read())
+
+Storage Implementations
+=======================
+
+Knit Format
+-----------
+
+**File**: ``breezy/bzr/knit.py``
+
+Knit format provides efficient append-only storage with:
+* Delta compression against single parents
+* Gzip compression of individual records
+* Annotation support for line-by-line history
+* Index-based random access
+
+Storage characteristics:
+* Good for linear development patterns
+* Efficient single-parent deltas
+* Supports both fulltext and delta records
+* Annotation data embedded in storage
+
+Use cases:
+* Traditional repository formats (pack-0.92)
+* Scenarios requiring detailed line history
+
+For complete technical details of the Knit file format, including
+byte-level specifications for third-party implementations, see
+``knit.txt``.
+
+Weave Format
+------------
+
+**File**: ``breezy/bzr/weave.py``
+
+Legacy format with:
+* Interleaved storage of multiple versions
+* Built-in merge conflict resolution
+* Complete version history in single file
+
+Note: Weave format is largely deprecated in favor of Knit and GroupCompress.
+
+GroupCompress Format
+--------------------
+
+**File**: ``breezy/bzr/groupcompress.py``
+
+Modern format optimized for bulk operations:
+* Cross-file delta compression
+* Efficient storage of many small files
+* Batch processing of related content
+* Optimal for distributed workflows
+
+Storage characteristics:
+* Groups related content for bulk compression
+* Efficient network transfer
+* Reduced storage overhead
+* Optimized for repository-wide operations
+
+Use cases:
+* Modern repository formats (2a, 2.0)
+* Distributed development workflows
+* Large repositories with many files
+
+For complete technical details of the GroupCompress file format, including
+byte-level specifications for third-party implementations, see
+``groupcompress.txt``.
+
+Fallback and Stacking
+=====================
+
+The fallback mechanism enables layered access to versioned content across
+multiple storage locations.
+
+Basic Stacking
+--------------
+
+A VersionedFiles object can have fallback sources::
+
+    # Primary storage
+    primary_vf = KnitVersionedFiles(...)
+    
+    # Add fallback
+    fallback_vf = KnitVersionedFiles(...)
+    primary_vf.add_fallback_versioned_files(fallback_vf)
+    
+    # Lookups cascade through fallback chain
+    content = primary_vf.get_record_stream(keys, 'unordered', True)
+
+Transitive Fallbacks
+--------------------
+
+Fallback chains can be arbitrarily deep::
+
+    primary -> fallback1 -> fallback2 -> fallback3
+
+The ``_transitive_fallbacks()`` method returns the complete chain::
+
+    all_fallbacks = vf._transitive_fallbacks()
+
+Lookup Cascade
+--------------
+
+When content is requested:
+1. Check local storage first
+2. If not found, check immediate fallbacks in order
+3. Recursively check transitive fallbacks
+4. Return ``AbsentContentFactory`` for missing content
+
+Repository Integration
+----------------------
+
+Stacking is commonly used for:
+* **Lightweight checkouts** - Working tree references remote branch
+* **Shared repositories** - Multiple branches share common history
+* **Stacked branches** - Branch contains only new revisions, inherits history
+
+Performance Considerations
+==========================
+
+Ordering and Batching
+----------------------
+
+For optimal performance:
+* Use 'topological' ordering when delta compression is important
+* Use 'unordered' for fastest network transfer
+* Set ``include_delta_closure=True`` to ensure self-contained records
+* Batch related keys together in single operations
+
+Memory Management
+-----------------
+
+Record streams are designed for streaming processing:
+* Process records one at a time to minimize memory usage
+* Don't collect entire streams into lists
+* Use appropriate storage kinds for your use case
+
+Caching
+-------
+
+Implementations include various caches:
+* Content caches for recently accessed data
+* Index caches for metadata lookups
+* Compression caches for delta operations
+
+Network Efficiency
+------------------
+
+For distributed operations:
+* Group related requests together
+* Use appropriate storage kinds for network transfer
+* Leverage fallback mechanisms to minimize data transfer
+
+Error Handling
+==============
+
+Common exceptions:
+* ``RevisionNotPresent`` - Requested key doesn't exist
+* ``ExistingContent`` - Attempting to add duplicate content
+* ``UnavailableRepresentation`` - Requested storage format unavailable
+
+Example usage::
+
+    try:
+        records = list(vf.get_record_stream(keys, 'topological', True))
+    except RevisionNotPresent as e:
+        print(f"Missing key: {e.revision_id}")
+
+Testing and Debugging
+======================
+
+Testing Implementations
+-----------------------
+
+Use ``RecordingVersionedFilesDecorator`` to test interactions::
+
+    recording_vf = RecordingVersionedFilesDecorator(real_vf)
+    # ... perform operations ...
+    print(recording_vf.calls)  # Shows all method calls made
+
+Performance Testing
+-------------------
+
+Use ``OrderingVersionedFilesDecorator`` to test ordering behavior::
+
+    ordered_vf = OrderingVersionedFilesDecorator(vf, key_priority)
+
+Debugging
+---------
+
+Enable debug flags for detailed tracing:
+* ``debug.debug_flags.add('index')`` - Index operations
+* ``debug.debug_flags.add('knit')`` - Knit operations
+* ``debug.debug_flags.add('pack')`` - Pack operations
+
+Advanced Topics
+===============
+
+Multi-Parent Diffs
+-------------------
+
+For complex merge scenarios, use ``make_mpdiffs()``::
+
+    diffs = vf.make_mpdiffs(version_ids)
+    vf.add_mpdiffs([(version, parents, sha1, diff) for ...])
+
+Custom Mappers
+--------------
+
+Implement ``KeyMapper`` subclasses for custom key routing::
+
+    class CustomMapper(KeyMapper):
+        def map(self, key):
+            return custom_mapping_logic(key)
+
+Annotation
+----------
+
+Generate line-by-line annotations::
+
+    annotated_lines = vf.annotate(key)
+    for (version_key, line) in annotated_lines:
+        print(f"{version_key}: {line}")
+
+Integration Examples
+====================
+
+Repository Storage
+------------------
+
+::
+
+    class MyRepository:
+        def __init__(self, transport):
+            self.texts = KnitVersionedFiles(...)
+            self.inventories = KnitVersionedFiles(...)
+            self.revisions = KnitVersionedFiles(...)
+        
+        def add_fallback_repository(self, repo):
+            self.texts.add_fallback_versioned_files(repo.texts)
+            self.inventories.add_fallback_versioned_files(repo.inventories)
+            self.revisions.add_fallback_versioned_files(repo.revisions)
+
+Network Synchronization
+-----------------------
+
+::
+
+    def sync_repositories(source_repo, target_repo, revision_ids):
+        # Get all needed keys
+        keys = []
+        for rev_id in revision_ids:
+            keys.extend(source_repo.texts.keys())
+        
+        # Stream content
+        source_stream = source_repo.texts.get_record_stream(
+            keys, 'topological', True)
+        target_repo.texts.insert_record_stream(source_stream)
+
+See Also
+========
+
+* ``breezy/bzr/repository.py`` - Repository implementations using VersionedFiles
+* ``breezy/bzr/pack_repo.py`` - Pack-based repository format
+* ``breezy/bzr/index.py`` - Index structures for metadata storage
+* ``breezy/bzr/btree_index.py`` - B-tree index implementation
