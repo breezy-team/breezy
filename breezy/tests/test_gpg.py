@@ -34,7 +34,7 @@ gpg_signing_key=amy@example.com
 
 class TestVerify(TestCase):
     def import_keys(self):
-        import gpg
+        import gpgme as gpg
 
         context = gpg.Context()
 
