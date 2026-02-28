@@ -1,0 +1,13 @@
+Things to consider:
+  * python_escape (maybe called string_escape) ala xml_escape?
+  * some sort of block construct so easier to include in ReST and properties
+    files, e.g.
+    .. $begin-keywords$
+    :name1: value1
+    :name2: value2
+    .. $end-keywords$
+
+* Add tests for:
+  * untested keyword values (including date formatting)
+  * escaping
+  * style formatting
