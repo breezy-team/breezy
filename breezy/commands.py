@@ -391,6 +391,7 @@ def probe_for_provider(cmd_name):
 
 def _get_bzr_command(cmd_or_none, cmd_name):
     """Get a command from bzr's core."""
+    _register_builtin_commands()
     try:
         cmd_class = builtin_command_registry.get(cmd_name)
     except KeyError:
