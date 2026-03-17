@@ -38,7 +38,7 @@ from dulwich.index import (
     index_entry_from_stat,
 )
 from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, ObjectID, Tree
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Commit, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
 from .. import (
@@ -365,6 +365,11 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 commit = self.store[self.commit_id]
             except KeyError:
                 raise errors.NoSuchRevision(repository, revision_id)
+            if not isinstance(commit, Commit):
+                raise AssertionError(
+                    f"expected Commit object for {revision_id!r}, "
+                    f"got {type(commit).__name__}"
+                )
             self.tree = commit.tree
 
     def git_snapshot(self, want_unversioned=False):

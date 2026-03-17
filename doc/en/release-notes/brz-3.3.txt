@@ -5,6 +5,13 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.22
+##########
+
+ * Fix ``revision_tree()`` crash when a bzr revision id
+   embeds a git tag SHA rather than a commit SHA.
+   (Jelmer Vernooĳ)
+
 brz 3.3.21
 ##########
 
