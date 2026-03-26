@@ -16,6 +16,8 @@
 
 """Knit-based pack repository formats."""
 
+from dromedary.errors import NoSuchFile
+
 from .. import controldir, debug, errors, trace
 from .. import transport as _mod_transport
 from ..lazy_import import lazy_import
@@ -808,7 +810,7 @@ class KnitPacker(Packer):
                 reader = pack.make_readv_reader(
                     transport, path, [offset[0:2] for offset in pack_readv_requests]
                 )
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
@@ -875,7 +877,7 @@ class KnitPacker(Packer):
             transport, path = pack_obj.access_tuple()
             try:
                 reader = pack.make_readv_reader(transport, path, readv_vector)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 if self._reload_func is not None:
                     self._reload_func()
                 raise

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import conflicts, errors, osutils, revisiontree, tests
-from breezy import transport as _mod_transport
+from dromedary.errors import NoSuchFile
 from breezy.bzr import workingtree_4
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -241,7 +241,7 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertEqual(b"bar", extracted["id2"])
         self.assertEqual(b"baz", extracted["id3"])
         self.assertRaises(
-            _mod_transport.NoSuchFile,
+            NoSuchFile,
             lambda: list(tree.iter_files_bytes([("qux", "file1-notpresent")])),
         )
 
@@ -282,9 +282,7 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(["a/"])
         work_tree.add(["a"])
         tree = self._convert_tree(work_tree)
-        self.assertRaises(
-            _mod_transport.NoSuchFile, lambda: list(tree.iter_child_entries("unknown"))
-        )
+        self.assertRaises(NoSuchFile, lambda: list(tree.iter_child_entries("unknown")))
 
 
 class TestExtras(TestCaseWithTree):

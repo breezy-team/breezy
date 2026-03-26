@@ -28,6 +28,8 @@ __all__ = [
 from typing import TYPE_CHECKING
 
 from catalogus import pyutils
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
 
 from .. import config, controldir, errors, registry
 from .. import transport as _mod_transport
@@ -75,9 +77,9 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.NotBranchError(path=transport.base) from e
-        except errors.BadHttpRequest as e:
+        except transport_errors.BadHttpRequest as e:
             if e.reason == "no such method: .bzr":
                 # hgweb
                 raise errors.NotBranchError(path=transport.base) from e
@@ -130,9 +132,9 @@ class RemoteBzrProber(controldir.Prober):
         except (
             NotImplementedError,
             AttributeError,
-            errors.TransportNotPossible,
-            errors.NoSmartMedium,
-            errors.SmartProtocolError,
+            transport_errors.TransportNotPossible,
+            transport_errors.NoSmartMedium,
+            transport_errors.SmartProtocolError,
         ) as e:
             # no smart server, so not a branch for this format type.
             raise errors.NotBranchError(path=transport.base) from e
@@ -142,7 +144,7 @@ class RemoteBzrProber(controldir.Prober):
             if medium.should_probe():
                 try:
                     server_version = medium.protocol_version()
-                except errors.SmartProtocolError as e:
+                except transport_errors.SmartProtocolError as e:
                     # Apparently there's no usable smart server there, even though
                     # the medium supports the smart protocol.
                     raise errors.NotBranchError(path=transport.base) from e
@@ -595,3 +597,9 @@ controldir.format_registry.register_alias("bzr", "2a")
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get("default_format")
 controldir.format_registry.set_default(format_name)
+
+# Add smart protocol support to HTTP transports
+from .smart.http import install as _install_smart_http
+
+_install_smart_http()
+del _install_smart_http

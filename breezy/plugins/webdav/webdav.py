@@ -29,8 +29,10 @@ import xml.sax
 import xml.sax.handler
 from io import StringIO
 
-from breezy import errors, osutils, trace, transport
-from breezy.transport.http import urllib
+from breezy import osutils, trace, transport
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+from dromedary.http import urllib
 
 
 class DavResponseHandler(xml.sax.handler.ContentHandler):
@@ -73,7 +75,7 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         """
         self._validate_handling()
         if not self.expected_content_handled:
-            raise errors.InvalidHttpResponse(self.url, msg="Unknown xml response")
+            raise transport_errors.InvalidHttpResponse(self.url, msg="Unknown xml response")
 
     def startElement(self, name, attrs):
         """Handle the start of an XML element.
@@ -233,7 +235,7 @@ class DavStatHandler(DavResponseHandler):
         """A additional response element inside a multistatus begins."""
         sname = self._strip_ns(name)
         if sname != "multistatus":
-            raise errors.InvalidHttpResponse(self.url, msg=f"Unexpected {name} element")
+            raise transport_errors.InvalidHttpResponse(self.url, msg=f"Unexpected {name} element")
 
     def _href_end(self):
         """Check if we're at the end of an href element.
@@ -345,7 +347,7 @@ def _extract_stat_info(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
+        raise transport_errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
     if handler.is_dir:
         size = -1  # directory sizes are meaningless for bzr
         is_exec = True
@@ -412,12 +414,12 @@ def _extract_dir_content(url, infile):
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
-        raise errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
+        raise transport_errors.InvalidHttpResponse(url, msg=f"Malformed xml response: {e}") from e
     # Reformat for bzr needs
     dir_content = handler.dir_content
     (dir_name, is_dir) = dir_content[0][:2]
     if not is_dir:
-        raise errors.NotADirectory(url)
+        raise transport_errors.NotADirectory(url)
     dir_len = len(dir_name)
     elements = []
     for href, is_dir, size, is_exec in dir_content[1:]:  # Ignore first element
@@ -558,7 +560,7 @@ class HttpDavTransport(urllib.HttpTransport):
             InvalidHttpResponse: Always raised with formatted error message.
         """
         msg = "" if info is None else ": " + info
-        raise errors.InvalidHttpResponse(
+        raise transport_errors.InvalidHttpResponse(
             url, "Unable to handle http code %d%s" % (response.status, msg)
         )
 
@@ -689,13 +691,13 @@ class HttpDavTransport(urllib.HttpTransport):
 
             if code in (403, 404, 409):
                 # Intermediate directories missing
-                raise transport.NoSuchFile(abspath)
+                raise NoSuchFile(abspath)
             elif code not in (200, 201, 204):
                 raise self._raise_http_error(abspath, response, "put file failed")
 
         try:
             bare_put_file_non_atomic()
-        except transport.NoSuchFile:
+        except NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
@@ -755,7 +757,7 @@ class HttpDavTransport(urllib.HttpTransport):
         code = response.status
 
         if code in (403, 404, 409):
-            raise transport.NoSuchFile(abspath)  # Intermediate directories missing
+            raise NoSuchFile(abspath)  # Intermediate directories missing
 
         if code not in (200, 201, 204):
             raise self._raise_http_error(abspath, response, "put file failed")
@@ -778,10 +780,10 @@ class HttpDavTransport(urllib.HttpTransport):
             raise self._raise_http_error(abspath, response, "mkdir failed")
         elif code == 405:
             # Not allowed (generally already exists)
-            raise transport.FileExists(abspath)
+            raise FileExists(abspath)
         elif code in (404, 409):
             # Conflict (intermediate directories do not exist)
-            raise transport.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         elif code != 201:  # Created
             raise self._raise_http_error(abspath, response, "mkdir failed")
 
@@ -796,12 +798,12 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise transport.NoSuchFile(abs_from)
+            raise NoSuchFile(abs_from)
         if code == 412:
-            raise transport.FileExists(abs_to)
+            raise FileExists(abs_to)
         if code == 409:
             # More precisely some intermediate directories are missing
-            raise transport.NoSuchFile(abs_to)
+            raise NoSuchFile(abs_to)
         if code != 201:
             # As we don't want  to accept overwriting abs_to, 204
             # (meaning  abs_to  was   existing  (but  empty,  the
@@ -823,9 +825,9 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise transport.NoSuchFile(abs_from)
+            raise NoSuchFile(abs_from)
         if code == 409:
-            raise errors.DirectoryNotEmpty(abs_to)
+            raise transport_errors.DirectoryNotEmpty(abs_to)
         # Overwriting  allowed, 201 means  abs_to did  not exist,
         # 204 means it did exist.
         if code not in (201, 204):
@@ -851,7 +853,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise transport.NoSuchFile(abs_path)
+            raise NoSuchFile(abs_path)
         if code not in (200, 204):
             self._raise_http_error(abs_path, response, "unable to delete")
 
@@ -864,7 +866,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code in (404, 409):
-            raise transport.NoSuchFile(abs_from)
+            raise NoSuchFile(abs_from)
         # XXX: our test server returns 201 but apache2 returns 204, needs
         # investivation.
         if code not in (201, 204):
@@ -953,10 +955,10 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise transport.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if code == 409:
             # More precisely some intermediate directories are missing
-            raise transport.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(
                 abspath, response, f"unable to list  {abspath!r} directory"
@@ -999,7 +1001,7 @@ class HttpDavTransport(urllib.HttpTransport):
         """
         content = self.list_dir(relpath)
         if len(content) > 0:
-            raise errors.DirectoryNotEmpty(self._remote_path(relpath))
+            raise transport_errors.DirectoryNotEmpty(self._remote_path(relpath))
         self.delete(relpath)
 
     def stat(self, relpath):
@@ -1022,11 +1024,11 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise transport.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if code == 409:
             # FIXME: Could this really occur ?
             # More precisely some intermediate directories are missing
-            raise transport.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(
                 abspath, response, f"unable to list  {abspath!r} directory"
@@ -1145,7 +1147,7 @@ class HttpDavTransport(urllib.HttpTransport):
         try:
             data = self.get(relpath)
             full_data.write(data.read())
-        except transport.NoSuchFile:
+        except NoSuchFile:
             # Good, just do the put then
             pass
 
@@ -1168,7 +1170,7 @@ class HttpDavTransport(urllib.HttpTransport):
         """
         # smart server and webdav are exclusive. There is really no point to
         # use webdav if a smart server is available
-        raise errors.NoSmartMedium(self)
+        raise transport_errors.NoSmartMedium(self)
 
 
 def get_test_permutations():

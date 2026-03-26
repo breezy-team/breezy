@@ -34,6 +34,7 @@ from breezy.terminal import color_string, FG
 """,
 )
 from . import controldir, errors, osutils, trace
+from dromedary import errors as transport_errors
 from . import revision as _mod_revision
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 

@@ -21,6 +21,7 @@ import stat
 
 from dulwich.object_store import tree_lookup_path
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
+
 from vcsgraph.tsort import topo_sort
 
 from .. import debug, osutils, trace
@@ -36,7 +37,7 @@ from ..bzr.testament import StrictTestament3
 from ..bzr.versionedfile import ChunkedContentFactory
 from ..errors import BzrError
 from ..revision import NULL_REVISION
-from ..transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 from ..tree import InterTree
 from .mapping import (
     DEFAULT_FILE_MODE,

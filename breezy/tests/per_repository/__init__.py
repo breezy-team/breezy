@@ -26,7 +26,7 @@ rather than in tests/per_branch/*.py.
 
 from breezy import repository
 from breezy.tests import default_transport, multiply_tests, test_server
-from breezy.transport import memory
+from dromedary import memory
 
 from ...bzr.remote import RemoteRepositoryFormat
 from ..per_controldir.test_controldir import TestCaseWithControlDir

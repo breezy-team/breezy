@@ -36,6 +36,9 @@ from testtools.content_type import ContentType
 from testtools.matchers import DocTestMatches, Equals
 
 import breezy
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.errors import NoSuchFile
 
 from .. import (
     branchbuilder,
@@ -55,7 +58,6 @@ from ..bzr import bzrdir, groupcompress_repo, remote, workingtree_3, workingtree
 from ..git import workingtree as git_workingtree
 from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 from ..trace import mutter, note
-from ..transport import memory
 from . import TestUtil, features, test_server
 
 
@@ -130,7 +132,8 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from ..transport import _get_transport_modules
+        from dromedary import _get_transport_modules
+
         from .per_transport import transport_test_permutations
 
         modules = _get_transport_modules()
@@ -798,7 +801,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from ..transport.readonly import ReadonlyTransportDecorator
+        from dromedary.readonly import ReadonlyTransportDecorator
 
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
@@ -813,7 +816,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath("foo/bar"))
 
     def test_get_readonly_url_http(self):
-        from ..transport.http.urllib import HttpTransport
+        from dromedary.http.urllib import HttpTransport
+
         from .http_server import HttpServer
 
         self.transport_server = test_server.LocalURLServer
@@ -2519,7 +2523,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
         # Provide a list with one test - this test.
         # And generate a list of the tests in  the suite.
         self.assertRaises(
-            transport.NoSuchFile,
+            NoSuchFile,
             self.run_selftest,
             load_list="missing file name",
             list_only=True,
@@ -3490,7 +3494,7 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
 
     def test_load_unknown(self):
         self.assertRaises(
-            transport.NoSuchFile, tests.load_test_id_list, "i_do_not_exist"
+            NoSuchFile, tests.load_test_id_list, "i_do_not_exist"
         )
 
     def test_load_test_list(self):
@@ -3593,7 +3597,9 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_resolve_unknown_alias(self):
         tpr = self._get_registry()
-        self.assertRaises(errors.CommandError, tpr.resolve_alias, "I am not a prefix")
+        self.assertRaises(
+            errors.CommandError, tpr.resolve_alias, "I am not a prefix"
+        )
 
     def test_predefined_prefixes(self):
         tpr = tests.test_prefix_alias_registry

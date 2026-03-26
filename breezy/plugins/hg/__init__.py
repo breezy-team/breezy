@@ -19,6 +19,9 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from ... import (
     controldir,
     errors,
@@ -168,9 +171,9 @@ class LocalHgProber(controldir.Prober):
         try:
             return transport.has_any([".hg/requires", ".hg/00changelog.i"])
         except (
-            _mod_transport.NoSuchFile,
-            errors.PermissionDenied,
-            errors.InvalidHttpResponse,
+            NoSuchFile,
+            transport_errors.PermissionDenied,
+            transport_errors.InvalidHttpResponse,
         ):
             return False
 
@@ -368,7 +371,7 @@ class SmartHgProber(controldir.Prober):
         """
         try:
             external_url = transport.external_url()
-        except errors.InProcessTransport as e:
+        except transport_errors.InProcessTransport as e:
             raise errors.NotBranchError(path=transport.base) from e
         scheme = external_url.split(":")[0]
         if scheme not in klass._supported_schemes:

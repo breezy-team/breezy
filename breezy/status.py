@@ -28,6 +28,7 @@ from vcsgraph import tsort
 
 from . import delta as _mod_delta
 from . import errors as errors
+from dromedary import errors as transport_errors
 from . import hooks as _mod_hooks
 from . import log, osutils
 from . import revision as _mod_revision

@@ -30,7 +30,7 @@ from breezy.tests import (
     multiply_tests,
     test_server,
 )
-from breezy.transport import memory
+from dromedary import memory
 
 from ...controldir import ControlDirFormat
 

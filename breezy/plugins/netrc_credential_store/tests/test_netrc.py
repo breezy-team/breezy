@@ -16,6 +16,8 @@
 
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+
 from .... import config, osutils, tests
 from .... import transport as _mod_transport
 
@@ -23,7 +25,7 @@ from .... import transport as _mod_transport
 class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
     def test_home_netrc_does_not_exist(self):
         self.assertRaises(
-            _mod_transport.NoSuchFile,
+            NoSuchFile,
             config.credential_store_registry.get_credential_store,
             "netrc",
         )

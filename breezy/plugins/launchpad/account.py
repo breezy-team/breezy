@@ -20,6 +20,8 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
+from dromedary.errors import NoSuchFile
+
 from ... import errors, trace, transport
 from ...config import AuthenticationConfig, GlobalStack
 from ...i18n import gettext
@@ -113,7 +115,7 @@ def check_lp_login(username, _transport=None):
 
     try:
         data = _transport.get_bytes(f"~{username}/+sshkeys")
-    except transport.NoSuchFile as e:
+    except NoSuchFile as e:
         raise UnknownLaunchpadUsername(user=username) from e
 
     if not data:

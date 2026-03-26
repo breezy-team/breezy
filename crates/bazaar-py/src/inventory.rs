@@ -28,7 +28,6 @@ import_exception!(breezy.errors, InvalidNormalization);
 import_exception!(breezy.errors, InconsistentDelta);
 import_exception!(breezy.errors, AlreadyVersionedError);
 import_exception!(breezy.errors, BzrError);
-import_exception!(breezy.errors, NotADirectory);
 import_exception!(breezy.errors, NotVersionedError);
 create_exception!(breezy.inventory_delta, IncompatibleInventoryDelta, BzrError);
 create_exception!(breezy.inventory_delta, InventoryDeltaError, BzrError);
@@ -1535,7 +1534,9 @@ impl IterEntriesByDirIterator {
             let e = e.unwrap();
 
             if e.kind() != Kind::Directory {
-                return Err(NotADirectory::new_err(from_dir));
+                return Err(pyo3::exceptions::PyNotADirectoryError::new_err(
+                    format!("{:?} is not a directory", from_dir),
+                ));
             }
             Some(from_dir)
         } else {

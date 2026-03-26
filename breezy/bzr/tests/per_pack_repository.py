@@ -25,7 +25,7 @@ from stat import S_ISDIR
 from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
-from ...transport import memory
+from dromedary import memory
 from .. import inventory
 from ..btree_index import BTreeGraphIndex
 from ..groupcompress_repo import RepositoryFormat2a

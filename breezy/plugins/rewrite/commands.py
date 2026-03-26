@@ -21,7 +21,7 @@ from ...errors import CommandError, ConflictsInTree, NoWorkingTree, UncommittedC
 from ...i18n import gettext
 from ...option import Option
 from ...trace import note
-from ...transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 
 
 def finish_rebase(state, wt, replace_map, replayer):

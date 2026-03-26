@@ -20,7 +20,7 @@ import os
 import sys
 
 from .. import commit, config, msgeditor, osutils, trace
-from .. import transport as _mod_transport
+from dromedary.errors import NoSuchFile
 from ..msgeditor import (
     edit_commit_message_encoded,
     make_commit_message_template_encoded,
@@ -266,7 +266,7 @@ if len(sys.argv) == 2:
         self.overrideEnv("BRZ_EDITOR", editor)
 
         self.assertRaises(
-            (EnvironmentError, _mod_transport.NoSuchFile),
+            (EnvironmentError, NoSuchFile),
             msgeditor.edit_commit_message,
             "",
         )

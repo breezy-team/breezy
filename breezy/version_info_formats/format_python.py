@@ -19,9 +19,8 @@
 import contextlib
 import pprint
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
-
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ..revision import NULL_REVISION
 

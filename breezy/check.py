@@ -37,6 +37,7 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 import contextlib
 
 from . import errors
+from dromedary import errors as transport_errors
 from .controldir import ControlDir
 from .i18n import gettext
 from .trace import note
@@ -138,7 +139,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                         try:
                             tree = branch.controldir.open_workingtree()
                             saw_tree = True
-                        except (errors.NotLocalUrl, errors.NoWorkingTree):
+                        except (transport_errors.NotLocalUrl, errors.NoWorkingTree):
                             pass
                         else:
                             scan_tree(base_tree, tree, needed_refs, exit_stack)

@@ -26,6 +26,7 @@ import time
 from collections.abc import Callable
 
 from . import controldir, errors, osutils, registry, trace
+from dromedary import errors as transport_errors
 from .branch import Branch
 from .i18n import gettext
 from .revision import NULL_REVISION

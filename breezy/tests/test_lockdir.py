@@ -20,15 +20,15 @@ import os
 import time
 
 import breezy
+from dromedary import errors as transport_errors
 
 from .. import config, errors, lock, lockdir, osutils, tests, transport
 from ..errors import (
     LockBreakMismatch,
     LockBroken,
-    LockContention,
-    LockFailed,
     LockNotHeld,
 )
+from dromedary.errors import LockContention, LockFailed
 from ..lockdir import LockDir, LockHeldInfo
 from . import TestCaseInTempDir, TestCaseWithTransport, features
 
@@ -437,7 +437,7 @@ class TestLockDir(TestCaseWithTransport):
         lock_path = ld1.transport.local_abspath("test_lock")
         os.mkdir(lock_path)
         osutils.make_readonly(lock_path)
-        self.assertRaises(errors.LockFailed, ld1.attempt_lock)
+        self.assertRaises(transport_errors.LockFailed, ld1.attempt_lock)
 
     def test_lock_by_token(self):
         ld1 = self.get_lock()
@@ -458,7 +458,7 @@ class TestLockDir(TestCaseWithTransport):
         ld1.attempt_lock()
         ld2 = LockDir(t, "test_lock")
         # we should fail to lock
-        self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        self.assertRaises(transport_errors.LockContention, ld2.attempt_lock)
         # now the original caller should succeed in unlocking
         ld1.unlock()
         # and there should be nothing left over
@@ -482,7 +482,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(ld1.unlock)
         check_dir(["held"])
         # second guy should fail
-        self.assertRaises(errors.LockContention, ld2.attempt_lock)
+        self.assertRaises(transport_errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(["held"])
 
@@ -523,7 +523,9 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockCorrupt, lf.peek)
         # Currently attempt_lock gives LockContention, but LockCorrupt would be
         # a reasonable result too.
-        self.assertRaises((errors.LockCorrupt, errors.LockContention), lf.attempt_lock)
+        self.assertRaises(
+            (errors.LockCorrupt, transport_errors.LockContention), lf.attempt_lock
+        )
         self.assertRaises(errors.LockCorrupt, lf.validate_token, "fake token")
 
     def test_missing_lockdir_info(self):
@@ -589,7 +591,7 @@ class TestLockDirHooks(TestCaseWithTransport):
         LockDir.hooks.install_named_hook(
             "lock_acquired", self.record_hook, "record_hook"
         )
-        self.assertRaises(errors.LockContention, ld.attempt_lock)
+        self.assertRaises(transport_errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
         self.assertEqual([], self._calls)

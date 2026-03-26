@@ -27,8 +27,8 @@ import time
 import paramiko
 
 from .. import osutils, trace, urlutils
-from ..transport import ssh
-from ..transport.ssh.paramiko import ParamikoVendor
+from dromedary import ssh
+from dromedary.ssh.paramiko import ParamikoVendor
 from . import test_server
 
 

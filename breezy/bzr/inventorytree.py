@@ -21,13 +21,16 @@ import re
 import stat
 from collections import deque
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind, file_stat
+
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
 from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
 from ..revisiontree import RevisionTree
-from ..transport.local import file_kind, file_stat
 
 lazy_import.lazy_import(
     globals(),
@@ -308,7 +311,7 @@ class InventoryTree(Tree):
         """
         _inv, ie = self._path2inv_ie(path)
         if ie is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         return ie
 
     def _path2inv_ie(self, path):
@@ -592,7 +595,7 @@ def _find_children_across_trees(specified_ids, trees):
                     for child in tree.iter_child_entries(path):
                         if child.file_id not in interesting_ids:
                             new_pending.add(child.file_id)
-                except errors.NotADirectory:
+                except transport_errors.NotADirectory:
                     pass
         interesting_ids.update(new_pending)
         pending = new_pending
@@ -1359,7 +1362,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         """See Tree.path_content_summary."""
         try:
             entry = self._path2ie(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return ("missing", None, None, None)
         kind = entry.kind
         if kind == "file":
@@ -1413,7 +1416,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         try:
             yield from self._repository.iter_files_bytes(repo_desired_files)
         except errors.RevisionNotPresent as e:
-            raise _mod_transport.NoSuchFile(e.file_id) from e
+            raise NoSuchFile(e.file_id) from e
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter."""
@@ -1855,7 +1858,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.source.path2id(path)
         if file_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         try:
             return self.target.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:
@@ -1870,7 +1873,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.target.path2id(path)
         if file_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         try:
             return self.source.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:

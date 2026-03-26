@@ -53,6 +53,7 @@ from breezy import (
 )
 
 from . import debug, errors, registry
+from dromedary import errors as transport_errors
 from .hooks import Hooks
 from .plugin import disable_plugins, load_plugins, plugin_name
 

@@ -18,6 +18,7 @@
 
 from breezy import errors, tests
 from breezy.tests import lock_helpers, per_branch
+from dromedary import errors as transport_errors
 
 from ..matchers import *  # noqa: F403
 
@@ -468,7 +469,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                 return
             branch.leave_lock_in_place()
         # We should be unable to relock the repo.
-        self.assertRaises(errors.LockContention, branch.lock_write)
+        self.assertRaises(transport_errors.LockContention, branch.lock_write)
         # Cleanup
         branch.lock_write(token)
         branch.dont_leave_lock_in_place()
@@ -553,7 +554,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             # Now the branch.repository is physically locked, so we can't lock
             # it with a new repository instance.
             new_repo = branch.controldir.open_repository()
-            self.assertRaises(errors.LockContention, new_repo.lock_write)
+            self.assertRaises(transport_errors.LockContention, new_repo.lock_write)
             # We can call lock_write on the original repository object though,
             # because it is already locked.
             branch.repository.lock_write()

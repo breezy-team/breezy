@@ -25,11 +25,12 @@ import os
 import shutil
 from contextlib import ExitStack
 
-from .errors import BzrError, DependencyNotPresent
+from .errors import BzrError
+from breezy.errors import DependencyNotPresent
 from .osutils import is_inside
 from .trace import warning
 from .transform import revert
-from .transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 from .tree import Tree
 from .workingtree import WorkingTree
 

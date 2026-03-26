@@ -33,6 +33,7 @@ from breezy.i18n import gettext
 )
 
 from . import errors, urlutils
+from dromedary import errors as transport_errors
 from .trace import note
 from .transport import do_catching_redirections, get_transport, get_transport_from_url
 
@@ -107,11 +108,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         bytef, transport = do_catching_redirections(
             get_bundle, transport, redirected_transport
         )
-    except errors.TooManyRedirections as e:
+    except transport_errors.TooManyRedirections as e:
         raise errors.NotABundle(transport.clone(filename).base) from e
     except (ConnectionResetError, ConnectionError):
         raise
-    except (errors.TransportError, errors.PathError) as e:
+    except (transport_errors.TransportError, transport_errors.PathError) as e:
         raise errors.NotABundle(str(e)) from e
     except OSError as e:
         # jam 20060707

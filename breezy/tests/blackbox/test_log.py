@@ -21,6 +21,7 @@ import os
 
 from breezy import branchbuilder, errors, log, osutils, tests
 from breezy.tests import features, test_log
+from dromedary import errors as transport_errors
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):

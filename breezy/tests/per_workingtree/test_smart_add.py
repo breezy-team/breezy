@@ -20,6 +20,8 @@ import os
 import sys
 from io import StringIO
 
+from dromedary.errors import NoSuchFile
+
 from ... import add as _mod_add
 from ... import errors, ignores, osutils, tests, trace, transport, workingtree
 from .. import features, per_workingtree, test_smart_add
@@ -52,7 +54,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree("tree")
         try:
             self.build_tree(["tree/" + filename])
-        except transport.NoSuchFile as err:
+        except NoSuchFile as err:
             if sys.platform == "win32":
                 raise tests.TestNotApplicable(
                     f"Cannot create files named {filename!r} on win32"
@@ -190,7 +192,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         wt = self.make_branch_and_tree(".")
-        self.assertRaises(transport.NoSuchFile, wt.smart_add, ["non-existant-file"])
+        self.assertRaises(NoSuchFile, wt.smart_add, ["non-existant-file"])
 
     def test_returns_and_ignores(self):
         """Correctly returns added/ignored files."""
@@ -372,7 +374,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         ):
             if not osutils.normalizes_filenames():
                 self.skipTest("Filesystem does not normalize filenames")
-            self.assertRaises(transport.NoSuchFile, self.wt.smart_add, ["a\u030a"])
+            self.assertRaises(NoSuchFile, self.wt.smart_add, ["a\u030a"])
         else:
             if not osutils.normalizes_filenames():
                 self.skipTest("Filesystem does not normalize filenames")

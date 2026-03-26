@@ -25,15 +25,18 @@ from dulwich import porcelain
 from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
+from dromedary.errors import (
+    PermissionDenied,
+    TransportError,
+    UnexpectedHttpStatus,
+)
+
 from ...branch import Branch
 from ...controldir import ControlDir
 from ...errors import (
     DivergedBranches,
     NoSuchTag,
     NotBranchError,
-    PermissionDenied,
-    TransportError,
-    UnexpectedHttpStatus,
 )
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import ExecutableFeature

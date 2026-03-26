@@ -31,7 +31,7 @@ from catalogus import pyutils
 
 from breezy import transport
 from breezy.tests import TestSkipped, default_transport, multiply_tests
-from breezy.transport import FileExists
+from dromedary.errors import FileExists
 
 from ...bzr.vf_repository import InterDifferingSerializer
 from ...errors import UninitializableFormat

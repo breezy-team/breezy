@@ -23,6 +23,7 @@ to point to a different branch.
 """
 
 from . import errors, merge, revision
+from dromedary import errors as transport_errors
 from .branch import Branch
 from .i18n import gettext
 from .trace import note

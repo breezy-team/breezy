@@ -29,9 +29,11 @@ from io import StringIO
 
 from . import branch as _mod_branch
 from . import controldir, errors, osutils, urlutils
+from dromedary import errors as transport_errors
 from . import hooks as _mod_hooks
 from .bzr import bzrdir
-from .errors import NoRepositoryPresent, NotBranchError, NotLocalUrl, NoWorkingTree
+from .errors import NoRepositoryPresent, NotBranchError, NoWorkingTree
+from dromedary.errors import NotLocalUrl
 from .missing import find_unmerged
 
 
@@ -64,7 +66,7 @@ class LocationList:
         """Add a path, converting it to a relative path if possible."""
         try:
             path = osutils.relpath(self.base_path, path)
-        except errors.PathNotChild:
+        except (transport_errors.PathNotChild, ValueError):
             pass
         else:
             if path == "":

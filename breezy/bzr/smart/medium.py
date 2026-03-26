@@ -49,9 +49,11 @@ from breezy import (
     )
 from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
-from breezy.transport import ssh
+from dromedary import ssh
 """,
 )
+from dromedary import errors as transport_errors
+
 from ... import debug, errors, osutils, trace
 
 # Throughout this module buffer size parameters are either limited to be at
@@ -1002,7 +1004,7 @@ class SmartClientMedium(SmartMedium):
                 client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
-            except errors.SmartProtocolError as e:
+            except transport_errors.SmartProtocolError as e:
                 # Cache the error, just like we would cache a successful
                 # result.
                 self._protocol_version_error = e

@@ -21,9 +21,12 @@ and transactions for a set of related files. It also includes TransportLock
 for transport-dependent file locking operations.
 """
 
+from dromedary import Transport
+from dromedary import errors as transport_errors
+
+
 from .. import counted_lock, errors, lock, transactions, urlutils
 from ..decorators import only_raises
-from ..transport import Transport
 
 
 class LockableFiles:
@@ -119,7 +122,7 @@ class LockableFiles:
         # -- mbp 20080512
         try:
             st = self._transport.stat(".")
-        except errors.TransportNotPossible:
+        except transport_errors.TransportNotPossible:
             self._dir_mode = 0o755
             self._file_mode = 0o644
         else:
@@ -249,13 +252,15 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise errors.LockError(f"Branch {self} is in a transaction already.")
+            raise transport_errors.LockError(
+                f"Branch {self} is in a transaction already."
+            )
         self._transaction = new_transaction
 
     def _finish_transaction(self):
         """Exit the current transaction."""
         if self._transaction is None:
-            raise errors.LockError(f"Branch {self} is not in a transaction")
+            raise transport_errors.LockError(f"Branch {self} is not in a transaction")
         transaction = self._transaction
         self._transaction = None
         transaction.finish()

@@ -24,6 +24,8 @@ import sys
 import tempfile
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from .. import errors, osutils, tests, trace
 from . import features, file_utils
 from .scenarios import load_tests_apply_scenarios
@@ -633,8 +635,10 @@ class TestRelpath(tests.TestCase):
         self.assertEqual("sub/subsubdir", osutils.relpath(cwd, subdir))
 
     def test_not_relative(self):
-        self.assertRaises(errors.PathNotChild, osutils.relpath, "C:/path", "H:/path")
-        self.assertRaises(errors.PathNotChild, osutils.relpath, "C:/", "H:/path")
+        from dromedary.errors import PathNotChild
+
+        self.assertRaises(PathNotChild, osutils.relpath, "C:/path", "H:/path")
+        self.assertRaises(PathNotChild, osutils.relpath, "C:/", "H:/path")
 
 
 class TestSafeUnicode(tests.TestCase):

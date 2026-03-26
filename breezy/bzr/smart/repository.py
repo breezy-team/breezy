@@ -27,6 +27,8 @@ import zlib
 
 import fastbencode as bencode
 
+from dromedary import errors as transport_errors
+
 from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
 from ...repository import _strip_NULL_ghosts, network_format_registry
@@ -574,11 +576,11 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except errors.LockContention:
+        except transport_errors.LockContention:
             return FailedSmartServerResponse((b"LockContention",))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b"UnlockableTransport",))
-        except errors.LockFailed as e:
+        except transport_errors.LockFailed as e:
             return FailedSmartServerResponse((b"LockFailed", str(e.lock), str(e.why)))
         if token is not None:
             repository.leave_lock_in_place()

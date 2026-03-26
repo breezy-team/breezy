@@ -52,8 +52,8 @@ from ...transform import (
     create_from_tree,
     resolve_conflicts,
 )
-from ...transport import FileExists
-from ...transport.local import file_kind
+from dromedary.errors import FileExists
+from dromedary.local import file_kind
 from ...tree import TreeChange
 from .. import TestSkipped, features
 from ..features import HardlinkFeature, SymlinkFeature

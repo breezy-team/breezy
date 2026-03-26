@@ -25,6 +25,12 @@ import sys
 
 import breezy.branch
 import breezy.bzr.branch
+import dromedary as _mod_transport
+from dromedary import errors as transport_errors
+from dromedary import memory, pathfilter
+from dromedary.http.urllib import HttpTransport
+from dromedary.nosmart import NoSmartTransportDecorator
+from dromedary.readonly import ReadonlyTransportDecorator
 
 from ... import (
     branch,
@@ -39,7 +45,6 @@ from ... import (
     urlutils,
 )
 from ... import revision as _mod_revision
-from ... import transport as _mod_transport
 from ...errors import NotBranchError, UnknownFormatError, UnsupportedFormatError
 from ...tests import (
     TestCase,
@@ -48,10 +53,6 @@ from ...tests import (
     http_server,
     http_utils,
 )
-from ...transport import memory, pathfilter
-from ...transport.http.urllib import HttpTransport
-from ...transport.nosmart import NoSmartTransportDecorator
-from ...transport.readonly import ReadonlyTransportDecorator
 from .. import bzrdir, knitpack_repo, knitrepo, remote, workingtree_3, workingtree_4
 from ..fullhistory import BzrBranchFormat5
 
@@ -411,7 +412,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # note this is deliberately readonly, as this failure should
         # occur before any writes.
         self.assertRaises(
-            errors.NotLocalUrl,
+            transport_errors.NotLocalUrl,
             bzrdir.BzrDir.create_standalone_workingtree,
             self.get_readonly_url(),
             format=format,
@@ -426,7 +427,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # note this is deliberately readonly, as this failure should
         # occur before any writes.
         self.assertRaises(
-            errors.NotLocalUrl,
+            transport_errors.NotLocalUrl,
             bzrdir.BzrDir.create_standalone_workingtree,
             self.get_readonly_url("child"),
             format=format,
@@ -1004,7 +1005,7 @@ class ChrootedTests(TestCaseWithTransport):
 
         def filter(path):
             if path in paths:
-                raise errors.PermissionDenied(path)
+                raise transport_errors.PermissionDenied(path)
             return path
 
         path_filter_server = pathfilter.PathFilteringServer(transport, filter)
@@ -1198,7 +1199,7 @@ class NonLocalTests(TestCaseWithTransport):
         # outside a repo the default convenience output is a repo+branch_tree
         format = controldir.format_registry.make_controldir("knit")
         self.assertRaises(
-            errors.NotLocalUrl,
+            transport_errors.NotLocalUrl,
             bzrdir.BzrDir.create_branch_convenience,
             self.get_url("foo"),
             force_new_tree=True,

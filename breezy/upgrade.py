@@ -17,6 +17,7 @@
 """brz upgrade logic."""
 
 from . import errors, trace, ui, urlutils
+from dromedary import errors as transport_errors
 from .bzr.remote import RemoteBzrDir
 from .controldir import ControlDir, format_registry
 from .i18n import gettext
@@ -264,7 +265,7 @@ def _get_object_and_label(control_dir):
         return repo, "repository"
     try:
         wt = control_dir.open_workingtree()
-    except (errors.NoWorkingTree, errors.NotLocalUrl):
+    except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
         pass
     else:
         return wt, "tree"

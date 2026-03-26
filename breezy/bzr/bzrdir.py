@@ -57,10 +57,13 @@ from breezy.i18n import gettext
 """,
 )
 
+from dromedary import do_catching_redirections, local
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+
 from .. import config, controldir, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..trace import mutter, note, warning
-from ..transport import do_catching_redirections, local
 
 
 class MissingFeature(errors.BzrError):
@@ -121,7 +124,7 @@ class BzrDir(controldir.ControlDir):
         # belongs in this class.
         try:
             thing_to_unlock = self.open_workingtree()
-        except (errors.NotLocalUrl, errors.NoWorkingTree):
+        except (transport_errors.NotLocalUrl, errors.NoWorkingTree):
             try:
                 thing_to_unlock = self.open_branch()
             except errors.NotBranchError:
@@ -268,7 +271,7 @@ class BzrDir(controldir.ControlDir):
             result.root_transport.local_abspath(".")
             if result_repo is None or result_repo.make_working_trees():
                 self.open_workingtree().clone(result, revision_id=revision_id)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             pass
         return result
 
@@ -594,7 +597,11 @@ class BzrDir(controldir.ControlDir):
                     )
                 )
                 return
-            except (errors.TransportError, OSError, errors.PathError):
+            except (
+                transport_errors.TransportError,
+                OSError,
+                transport_errors.PathError,
+            ):
                 i += 1
                 if i > limit:
                     raise
@@ -668,7 +675,7 @@ class BzrDir(controldir.ControlDir):
         self._mode_check_done = True
         try:
             st = self.transport.stat(".")
-        except errors.TransportNotPossible:
+        except transport_errors.TransportNotPossible:
             self._dir_mode = None
             self._file_mode = None
         else:
@@ -768,7 +775,7 @@ class BzrDir(controldir.ControlDir):
             # rather than opening the whole tree?  It would be a little
             # faster. mbp 20070401
             tree = self.open_workingtree(recommend_upgrade=False)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             result_format.workingtree_format = None
         else:
             result_format.workingtree_format = tree._format.__class__()
@@ -915,7 +922,7 @@ class BzrDirMeta1(BzrDir):
         """
         try:
             f = self.control_transport.get("branch-list")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return []
 
         ret = []
@@ -982,7 +989,7 @@ class BzrDirMeta1(BzrDir):
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.NotBranchError(
                 path=urlutils.join(self.transport.base, path), controldir=self
             ) from e
@@ -995,7 +1002,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree("repository")
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.NoRepositoryPresent(self) from e
 
     def create_workingtree(
@@ -1095,7 +1102,7 @@ class BzrDirMeta1(BzrDir):
         branch_transport = self.transport.clone(path)
         mode = self._get_mkdir_mode()
         branch_transport.create_prefix(mode=mode)
-        with contextlib.suppress(_mod_transport.FileExists):
+        with contextlib.suppress(FileExists):
             self.transport.mkdir(path, mode=mode)
         return self.transport.clone(path)
 
@@ -1107,7 +1114,7 @@ class BzrDirMeta1(BzrDir):
             repository_format.get_format_string()
         except NotImplementedError as e:
             raise errors.IncompatibleFormat(repository_format, self._format) from e
-        with contextlib.suppress(_mod_transport.FileExists):
+        with contextlib.suppress(FileExists):
             self.transport.mkdir("repository", mode=self._get_mkdir_mode())
         return self.transport.clone("repository")
 
@@ -1119,7 +1126,7 @@ class BzrDirMeta1(BzrDir):
             workingtree_format.get_format_string()
         except NotImplementedError as e:
             raise errors.IncompatibleFormat(workingtree_format, self._format) from e
-        with contextlib.suppress(_mod_transport.FileExists):
+        with contextlib.suppress(FileExists):
             self.transport.mkdir("checkout", mode=self._get_mkdir_mode())
         return self.transport.clone("checkout")
 
@@ -1186,7 +1193,7 @@ class BzrDirMeta1(BzrDir):
             if not isinstance(my_wt._format, format.workingtree_format.__class__):
                 # the workingtree needs an upgrade.
                 return True
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             pass
         return False
 
@@ -1421,7 +1428,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # can we hand off the request to the smart server rather than using
             # vfs calls?
             transport.get_smart_medium()
-        except errors.NoSmartMedium:
+        except transport_errors.NoSmartMedium:
             return self._initialize_on_transport_vfs(transport)
         else:
             # Current RPC's only know how to create bzr metadir1 instances, so
@@ -1480,7 +1487,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
             # Try to hand off to a smart server
             try:
                 transport.get_smart_medium()
-            except errors.NoSmartMedium:
+            except transport_errors.NoSmartMedium:
                 pass
             else:
                 from .remote import RemoteBzrDirFormat
@@ -1514,10 +1521,10 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
 
         try:
             transport = do_catching_redirections(make_directory, transport, redirected)
-        except _mod_transport.FileExists:
+        except FileExists:
             if not use_existing_dir:
                 raise
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -1574,7 +1581,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 # the covers
                 mode=temp_control._dir_mode,
             )
-        except _mod_transport.FileExists as e:
+        except FileExists as e:
             raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == "win32" and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath(".bzr"))
@@ -2063,7 +2070,7 @@ class ConvertMetaToMeta(controldir.Converter):
                     old = branch._format.__class__
             try:
                 tree = self.controldir.open_workingtree(recommend_upgrade=False)
-            except (errors.NoWorkingTree, errors.NotLocalUrl):
+            except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
                 pass
             else:
                 # TODO: conversions of Branch and Tree should be done by

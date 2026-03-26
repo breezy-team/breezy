@@ -20,6 +20,8 @@ from io import BytesIO
 
 from testtools.matchers import Equals, MatchesAny
 
+from dromedary import errors as transport_errors
+
 from ... import branch, check, controldir, errors, push, tests
 from ...branch import BindingUnsupported, Branch
 from ...bzr import branch as bzrbranch
@@ -209,7 +211,7 @@ class TestPush(TestCaseWithInterBranch):
         except errors.UnsupportedOperation:
             self.assertFalse(a_branch.controldir._format.supports_workingtrees)
             tree = a_branch.create_checkout("repo/tree", lightweight=True)
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
@@ -314,7 +316,10 @@ class TestPush(TestCaseWithInterBranch):
             raise tests.TestSkipped("BranchBuilder can't make reference branches.")
         try:
             builder = self.make_from_branch_builder("local")
-        except (errors.TransportNotPossible, errors.UninitializableFormat) as err:
+        except (
+            transport_errors.TransportNotPossible,
+            errors.UninitializableFormat,
+        ) as err:
             raise tests.TestNotApplicable("format not directly constructable") from err
         builder.start_series()
         first = builder.build_snapshot(None, [("add", ("", None, "directory", ""))])

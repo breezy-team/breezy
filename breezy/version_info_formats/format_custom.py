@@ -21,10 +21,9 @@ tree info.
 import codecs
 import contextlib
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
-
 from breezy import errors
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ..lazy_regex import lazy_compile
 from ..revision import NULL_REVISION

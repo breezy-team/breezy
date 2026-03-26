@@ -20,6 +20,7 @@ from breezy import controldir, errors, gpg, repository
 from breezy.bzr import remote
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
+from dromedary import errors as transport_errors
 
 from ...bzr.inventory import ROOT_ID
 
@@ -83,10 +84,10 @@ class TestFetchSameRepository(TestCaseWithRepository):
         b_branch.pull(tree_a.branch)
         try:
             tree_b = b_bzrdir.create_workingtree()
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             try:
                 tree_b = b_branch.create_checkout("b", lightweight=True)
-            except errors.NotLocalUrl as err:
+            except transport_errors.NotLocalUrl as err:
                 raise TestSkipped(
                     "cannot make working tree with transport {!r}".format(
                         b_bzrdir.transport

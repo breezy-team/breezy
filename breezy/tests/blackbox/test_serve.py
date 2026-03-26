@@ -22,13 +22,15 @@ import sys
 import threading
 from _thread import interrupt_main  # type: ignore
 
-from ... import builtins, config, errors, osutils, trace, transport, urlutils
+from dromedary import errors as transport_errors
+from dromedary import remote
+
+from ... import builtins, config, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision
 from ...branch import Branch
 from ...bzr.smart import client, medium
 from ...bzr.smart.server import BzrServerFactory, SmartTCPServer
 from ...controldir import ControlDir
-from ...transport import remote
 from .. import TestCaseWithMemoryTransport, TestCaseWithTransport
 
 
@@ -197,7 +199,9 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_inet_readonly(self):
         """Brz server should provide a read only filesystem by default."""
         process, transport = self.start_server_inet()
-        self.assertRaises(errors.TransportNotPossible, transport.mkdir, "adir")
+        self.assertRaises(
+            transport_errors.TransportNotPossible, transport.mkdir, "adir"
+        )
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_inet_readwrite(self):
@@ -216,7 +220,7 @@ class TestBzrServe(TestBzrServeBase):
         """Brz server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
         t = transport.get_transport_from_url(url)
-        self.assertRaises(errors.TransportNotPossible, t.mkdir, "adir")
+        self.assertRaises(transport_errors.TransportNotPossible, t.mkdir, "adir")
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_port_readwrite(self):
@@ -365,7 +369,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         resp = smart_client.call("BzrDirFormat.initialize", "foo/")
         try:
             resp = smart_client.call("BzrDir.find_repositoryV3", "foo/")
-        except errors.ErrorFromSmartServer as e:
+        except transport_errors.ErrorFromSmartServer as e:
             resp = e.error_tuple
         self.client_resp = resp
         client_medium.disconnect()

@@ -228,8 +228,10 @@ import sys
 import time
 from stat import S_IEXEC
 
+from dromedary import _transport_rs
+from dromedary import errors as transport_errors
+
 from .. import (
-    _transport_rs,
     cache_utf8,
     config,
     debug,
@@ -3404,7 +3406,7 @@ class DirState:
     def lock_read(self):
         """Acquire a read lock on the dirstate."""
         if self._lock_token is not None:
-            raise errors.LockContention(self._lock_token)
+            raise transport_errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
@@ -3418,7 +3420,7 @@ class DirState:
     def lock_write(self):
         """Acquire a write lock on the dirstate."""
         if self._lock_token is not None:
-            raise errors.LockContention(self._lock_token)
+            raise transport_errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things

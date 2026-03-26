@@ -24,7 +24,7 @@ rather than in tests/per_workingtree/*.py.
 
 from breezy import branchbuilder, tests, transport, workingtree
 from breezy.tests import per_controldir, test_server
-from breezy.transport import memory
+from dromedary import memory
 
 
 def make_scenarios(

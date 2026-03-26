@@ -33,8 +33,8 @@ from ..transform import (
     _FileMover,
     resolve_conflicts,
 )
-from ..transport import FileExists
-from ..transport.local import file_kind
+from dromedary.errors import FileExists
+from dromedary.local import file_kind
 from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 

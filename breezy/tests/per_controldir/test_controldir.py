@@ -37,9 +37,11 @@ from breezy.bzr import bzrdir as _mod_bzrdir
 from breezy.tests import ChrootedTestCase, TestNotApplicable, TestSkipped, fixtures
 from breezy.tests.per_controldir import TestCaseWithControlDir
 from breezy.ui import CannedInputUIFactory
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+from dromedary.local import LocalTransport
 
 from ...bzr.remote import RemoteBzrDir, RemoteBzrDirFormat, RemoteRepository
-from ...transport.local import LocalTransport
 
 
 class TestControlDir(TestCaseWithControlDir):
@@ -50,7 +52,7 @@ class TestControlDir(TestCaseWithControlDir):
         """
         try:
             a_controldir.open_workingtree()
-        except (errors.NotLocalUrl, errors.NoWorkingTree) as e:
+        except (transport_errors.NotLocalUrl, errors.NoWorkingTree) as e:
             raise TestSkipped(
                 "bzrdir on transport {!r} has no working tree".format(
                     a_controldir.transport
@@ -72,7 +74,7 @@ class TestControlDir(TestCaseWithControlDir):
         """
         try:
             return a_controldir.create_workingtree()
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
                 "cannot make working tree with transport {!r}".format(
                     a_controldir.transport
@@ -132,7 +134,7 @@ class TestControlDir(TestCaseWithControlDir):
         dir.create_branch()
         try:
             wt = dir.create_workingtree(revision_id=_mod_revision.NULL_REVISION)
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
                 "cannot make working tree with transport {!r}".format(dir.transport)
             ) from e
@@ -161,7 +163,10 @@ class TestControlDir(TestCaseWithControlDir):
         bzrdir = branch.controldir
         try:
             bzrdir.destroy_branch()
-        except (errors.UnsupportedOperation, errors.TransportNotPossible) as e:
+        except (
+            errors.UnsupportedOperation,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise TestNotApplicable("Format does not support destroying branch") from e
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         bzrdir.create_branch()
@@ -172,7 +177,10 @@ class TestControlDir(TestCaseWithControlDir):
         bzrdir = branch.controldir
         try:
             self.assertRaises(errors.NotBranchError, bzrdir.destroy_branch)
-        except (errors.UnsupportedOperation, errors.TransportNotPossible) as e:
+        except (
+            errors.UnsupportedOperation,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise TestNotApplicable("Format does not support destroying branch") from e
 
     def test_destroy_repository(self):
@@ -180,7 +188,10 @@ class TestControlDir(TestCaseWithControlDir):
         bzrdir = repo.controldir
         try:
             bzrdir.destroy_repository()
-        except (errors.UnsupportedOperation, errors.TransportNotPossible) as e:
+        except (
+            errors.UnsupportedOperation,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise TestNotApplicable(
                 "Format does not support destroying repository"
             ) from e
@@ -1114,7 +1125,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport("dir")
         t.ensure_base()
         self.assertRaises(
-            transport.FileExists,
+            FileExists,
             self.bzrdir_format.initialize_on_transport_ex,
             t,
             use_existing_dir=False,
@@ -1129,7 +1140,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("format is not initializable")
         t = self.get_transport("missing/dir")
         self.assertRaises(
-            transport.NoSuchFile, self.assertInitializeEx, t, create_prefix=False
+            NoSuchFile, self.assertInitializeEx, t, create_prefix=False
         )
 
     def test_format_initialize_on_transport_ex_force_new_repo_True(self):
@@ -1419,7 +1430,7 @@ class TestControlDir(TestCaseWithControlDir):
         source.branch.clone(made_control)
         try:
             made_tree = made_control.create_workingtree(revision_id=a)
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(f"Can't make working tree on transport {t!r}") from e
         self.assertEqual([a], made_tree.get_parent_ids())
 
@@ -1434,7 +1445,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_control.create_repository()
             made_control.create_branch()
             made_tree = made_control.create_workingtree()
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
                 f"Can't initialize {self.bzrdir_format!r} on transport {t!r}"
             ) from e
@@ -1451,7 +1462,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport()
         try:
             self.bzrdir_format.initialize(t.base)
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
                 f"Can't initialize {self.bzrdir_format!r} on transport {t!r}"
             ) from e
@@ -1466,7 +1477,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport()
         try:
             self.bzrdir_format.initialize(t.base)
-        except (errors.NotLocalUrl, errors.UnsupportedOperation) as e:
+        except (transport_errors.NotLocalUrl, errors.UnsupportedOperation) as e:
             raise TestSkipped(
                 f"Can't initialize {self.bzrdir_format!r} on transport {t!r}"
             ) from e
@@ -1740,7 +1751,7 @@ class TestBreakLock(TestCaseWithControlDir):
                 # its still held by the explicit lock we took, and the break
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
-                self.assertRaises(errors.LockContention, repo.lock_write)
+                self.assertRaises(transport_errors.LockContention, repo.lock_write)
         self.assertRaises(errors.LockBroken, master.unlock)
 
     def test_break_lock_tree(self):

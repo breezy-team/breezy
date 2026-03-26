@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use breezy_osutils::Kind;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyIOError, PyOSError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyString, PyTuple};
@@ -26,9 +26,9 @@ create_exception!(
 );
 
 import_exception!(breezy.errors, IllegalPath);
-import_exception!(breezy.errors, PathNotChild);
-import_exception!(breezy.errors, DirectoryNotEmpty);
 import_exception!(breezy.errors, BinaryFile);
+import_exception!(breezy.osutils, DirectoryNotEmpty);
+import_exception!(dromedary.errors, PathNotChild);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -921,7 +921,10 @@ fn contains_whitespace(py: Python, text: Py<PyAny>) -> PyResult<bool> {
 #[pyfunction]
 fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<Py<PyAny>> {
     let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
-        None => Err(PathNotChild::new_err((start, path))),
+        None => Err(PathNotChild::new_err((
+            path.to_string_lossy().to_string(),
+            start.to_string_lossy().to_string(),
+        ))),
         Some(p) => Ok(p),
     }?;
 
@@ -1098,7 +1101,9 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
         Err(ref e)
             if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
         {
-            Err(DirectoryNotEmpty::new_err(path))
+            Err(DirectoryNotEmpty::new_err((
+                path.to_string_lossy().to_string(),
+            )))
         }
         Err(e) => Err(e.into()),
     }

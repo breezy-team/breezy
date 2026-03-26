@@ -18,6 +18,7 @@
 
 from breezy import branchbuilder, errors, tests, urlutils
 from breezy.tests import per_controldir
+from dromedary import errors as transport_errors
 
 from ...branch import Branch
 from ...controldir import BranchReferenceLoop
@@ -39,7 +40,10 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.create_branch(bzrdir, "colo")
         try:
             bzrdir.destroy_branch("colo")
-        except (errors.UnsupportedOperation, errors.TransportNotPossible) as e:
+        except (
+            errors.UnsupportedOperation,
+            transport_errors.TransportNotPossible,
+        ) as e:
             raise tests.TestNotApplicable(
                 "Format does not support destroying branch"
             ) from e

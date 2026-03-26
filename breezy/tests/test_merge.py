@@ -32,7 +32,7 @@ from ..bzr.conflicts import (
 from ..errors import NoCommits, UnrelatedBranches
 from ..merge import _PlanMerge, merge_inner, transform_tree
 from ..osutils import basename, pathjoin
-from ..transport.local import file_kind
+from dromedary.local import file_kind
 from ..workingtree import PointlessMerge, WorkingTree
 from . import (
     TestCaseWithMemoryTransport,

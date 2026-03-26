@@ -20,6 +20,8 @@ import sys
 import tempfile
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+
 from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
@@ -144,7 +146,7 @@ class MockTree(InventoryTree):
         try:
             result.write(self.contents[path])
         except KeyError as err:
-            raise _mod_transport.NoSuchFile(path) from err
+            raise NoSuchFile(path) from err
         result.seek(0, 0)
         return result
 
@@ -499,7 +501,7 @@ class BundleTester:
                 for path in old.all_versioned_paths():
                     try:
                         old_file = old.get_file(path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         continue
                     self.assertEqual(old_file.read(), new.get_file(path).read())
         if not _mod_revision.is_null(rev_id):

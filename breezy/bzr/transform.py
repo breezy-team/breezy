@@ -25,6 +25,10 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
+
 from .. import (
     annotate,
     controldir,
@@ -36,7 +40,6 @@ from .. import (
     urlutils,
 )
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
 from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree
@@ -59,7 +62,6 @@ from ..transform import (
     resolve_conflicts,
     unique_add,
 )
-from ..transport.local import file_kind
 from ..tree import find_previous_path
 from . import inventory, inventorytree, multiparent
 from .conflicts import Conflict
@@ -885,7 +887,7 @@ class TreeTransformBase(TreeTransform):
         try:
             if path is None or self._tree.kind(path) != "file":
                 return None
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         return path
 
@@ -1544,14 +1546,14 @@ class InventoryTreeTransform(DiskTreeTransform):
             limbodir = urlutils.local_path_from_url(tree._transport.abspath("limbo"))
             try:
                 osutils.ensure_empty_directory_exists(limbodir)
-            except errors.DirectoryNotEmpty as e:
+            except osutils.DirectoryNotEmpty as e:
                 raise errors.ExistingLimbo(limbodir) from e
             deletiondir = urlutils.local_path_from_url(
                 tree._transport.abspath("pending-deletion")
             )
             try:
                 osutils.ensure_empty_directory_exists(deletiondir)
-            except errors.DirectoryNotEmpty as e:
+            except osutils.DirectoryNotEmpty as e:
                 raise errors.ExistingPendingDeletion(deletiondir) from e
         except BaseException:
             tree.unlock()
@@ -1578,7 +1580,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             return None
         try:
             return file_kind(self._tree.abspath(path))
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -2039,7 +2041,7 @@ class TransformPreview(InventoryTreeTransform):
             for child in self._tree.iter_child_entries(path):
                 childpath = joinpath(path, child.name)
                 yield self.trans_id_tree_path(childpath)
-        except (errors.NotADirectory, _mod_transport.NoSuchFile):
+        except (transport_errors.NotADirectory, NoSuchFile):
             pass
 
     def new_orphan(self, trans_id, parent_id):
@@ -2260,7 +2262,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         todo = [
             (child_trans_id, trans_id)
             for child_trans_id in self._all_children(trans_id)
@@ -2343,7 +2345,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         """See Tree.get_file_mtime."""
         file_id = self.path2id(path)
         if file_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                 self._transform._tree.id2path(file_id)

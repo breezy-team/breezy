@@ -25,7 +25,7 @@ from .. import osutils, transform
 from .. import revision as _mod_revision
 from ..controldir import ControlDir
 from ..export import export
-from ..transport.local import file_kind
+from dromedary.local import file_kind
 from ..upstream_import import (
     NotArchiveType,
     ZipFileWrapper,

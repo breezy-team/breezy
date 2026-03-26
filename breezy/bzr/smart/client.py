@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import breezy
+from dromedary import errors as transport_errors
 
 from ... import debug, errors, hooks, trace
 from . import message, protocol
@@ -330,7 +331,7 @@ class _SmartClientRequest:
                 self.client._medium.disconnect()
                 last_err = err
                 continue
-            except errors.ErrorFromSmartServer:
+            except transport_errors.ErrorFromSmartServer:
                 # If we received an error reply from the server, then it
                 # must be ok with this protocol version.
                 self.client._medium._protocol_version = protocol_version
@@ -338,7 +339,7 @@ class _SmartClientRequest:
             else:
                 self.client._medium._protocol_version = protocol_version
                 return response_tuple, response_handler
-        raise errors.SmartProtocolError(
+        raise transport_errors.SmartProtocolError(
             "Server is not a Bazaar server: " + str(last_err)
         )
 

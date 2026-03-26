@@ -18,7 +18,7 @@
 
 from breezy import errors
 from breezy.tests import per_repository, test_server
-from breezy.transport import memory
+from dromedary import memory
 
 
 class TestWriteGroup(per_repository.TestCaseWithRepository):

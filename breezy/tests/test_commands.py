@@ -18,6 +18,8 @@ import errno
 import inspect
 import sys
 
+from dromedary import errors as transport_errors
+
 from .. import builtins, commands, config, errors, option, tests
 from ..commands import display_command
 from . import TestSkipped
@@ -329,7 +331,9 @@ class TestCommandNotFound(tests.TestCase):
         self.assertEqual('unknown command "idontexistand"', str(e))
 
     def test_not_found_with_suggestion(self):
-        e = self.assertRaises(errors.CommandError, commands.get_cmd_object, "statue")
+        e = self.assertRaises(
+            errors.CommandError, commands.get_cmd_object, "statue"
+        )
         self.assertEqual('unknown command "statue". Perhaps you meant "status"', str(e))
 
 

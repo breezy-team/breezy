@@ -19,9 +19,9 @@ import os
 from io import BytesIO
 
 import breezy
+from dromedary.errors import LockContention, NoSuchFile
 
 from .. import config, controldir, errors, osutils, trace
-from .. import transport as _mod_transport
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
 from ..commit import (
@@ -31,7 +31,7 @@ from ..commit import (
     PointlessCommit,
     filter_excluded,
 )
-from ..errors import BzrError, LockContention
+from ..errors import BzrError
 from ..tree import TreeChange
 from . import TestCase, TestCaseWithTransport, test_foreign
 from .features import SymlinkFeature
@@ -828,11 +828,11 @@ create_signatures=when-possible
         # simulate network failure
 
         def raise_(self, arg, arg2, arg3=None, arg4=None):
-            raise _mod_transport.NoSuchFile("foo")
+            raise NoSuchFile("foo")
 
         repository.add_inventory = raise_
         repository.add_inventory_by_delta = raise_
-        self.assertRaises(_mod_transport.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertRaises(NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):

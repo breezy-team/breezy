@@ -34,6 +34,9 @@ from vcsgraph.errors import (
     RevisionNotPresent as VcsGraphRevisionNotPresent,
 )
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from .. import (
     branch,
     config,
@@ -1697,7 +1700,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                         url.decode("utf-8"),
                         decode_git_path(path),
                     )
-        except transport.NoSuchFile:
+        except NoSuchFile:
             pass
 
     def _basic_pull(
@@ -1795,7 +1798,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 try:
                     relpath = self.source.user_transport.relpath(normalized)
                     source_is_master = relpath == ""
-                except (errors.PathNotChild, urlutils.InvalidURL):
+                except (transport_errors.PathNotChild, urlutils.InvalidURL):
                     source_is_master = False
             if not local and bound_location and not source_is_master:
                 # not pulling from master, so we need to update master.

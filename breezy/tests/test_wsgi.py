@@ -20,8 +20,8 @@ from io import BytesIO
 
 from .. import tests
 from ..bzr.smart import medium, protocol
-from ..transport import chroot, memory
-from ..transport.http import wsgi
+from dromedary import chroot, memory
+from dromedary.http import wsgi
 
 
 class WSGITestMixin:

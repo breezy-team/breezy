@@ -42,6 +42,7 @@ from . import (
     workingtree,
 )
 from .i18n import gettext
+from dromedary import errors as transport_errors
 
 
 class UseEditor(Exception):

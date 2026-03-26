@@ -94,7 +94,7 @@ from ..bzr.versionedfile import (
 )
 from ..errors import InternalBzrError, InvalidRevisionId, RevisionNotPresent
 from ..osutils import contains_whitespace, sha_string, sha_strings
-from ..transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 from . import index as _mod_index
 from .annotate import VersionedFileAnnotator
 
@@ -2990,7 +2990,7 @@ class _KndxIndex:
         if line == b"":
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise _mod_transport.NoSuchFile(self)
+            raise NoSuchFile(self)
         if line != self.HEADER:
             raise KnitHeaderError(badline=line, filename=self)
 
@@ -3667,7 +3667,7 @@ class _KnitKeyAccess:
         path = self._mapper.map(key)
         try:
             base = self._transport.append_bytes(path + ".knit", b"".join(raw_data))
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             self._transport.mkdir(osutils.dirname(path))
             base = self._transport.append_bytes(path + ".knit", b"".join(raw_data))
         # if base == 0:

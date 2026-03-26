@@ -33,7 +33,8 @@ from breezy import (
 )
 from breezy.bzr import bzrdir, knitrepo
 from breezy.tests import http_server, scenarios, script, test_foreign
-from breezy.transport import memory
+from dromedary import errors as transport_errors
+from dromedary import memory
 
 load_tests = scenarios.load_tests_apply_scenarios
 
@@ -630,11 +631,11 @@ class TestPush(tests.TestCaseWithTransport):
 class RedirectingMemoryTransport(memory.MemoryTransport):
     def mkdir(self, relpath, mode=None):
         if self._cwd == "/source/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath), self.abspath("../target"), is_permanent=True
             )
         elif self._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,
@@ -644,7 +645,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def get(self, relpath):
         if self.clone(relpath)._cwd == "/infinite-loop/":
-            raise errors.RedirectRequested(
+            raise transport_errors.RedirectRequested(
                 self.abspath(relpath),
                 self.abspath("../infinite-loop"),
                 is_permanent=True,

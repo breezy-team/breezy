@@ -20,6 +20,7 @@ import os
 
 from breezy import branch, errors, switch, tests, workingtree
 from breezy import merge as _mod_merge
+from dromedary import errors as transport_errors
 
 
 class TestSwitch(tests.TestCaseWithTransport):
@@ -142,7 +143,10 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout.merge_from_branch(tree2.branch)
         # Check the error reporting is as expected
         err = self.assertRaises(
-            errors.CommandError, switch.switch, checkout.controldir, tree2.branch
+            errors.CommandError,
+            switch.switch,
+            checkout.controldir,
+            tree2.branch,
         )
         self.assertContainsRe(
             str(err), "Pending merges must be committed or reverted before using switch"

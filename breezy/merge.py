@@ -43,9 +43,10 @@ from breezy import (
 from breezy.i18n import gettext
 """,
 )
+from dromedary.errors import NoSuchFile
+
 from . import decorators, errors, hooks, osutils, registry, trace, transform
 from . import revision as _mod_revision
-from . import transport as _mod_transport
 from . import tree as _mod_tree
 
 # TODO: Report back as changes are merged in
@@ -1199,7 +1200,7 @@ class Merge3Merger:
                             return None
                         try:
                             return tree.get_file_sha1(path)
-                        except _mod_transport.NoSuchFile:
+                        except NoSuchFile:
                             return None
 
                     base_sha1 = get_sha1(self.base_tree, base_path)
@@ -1332,7 +1333,7 @@ class Merge3Merger:
         """Determine the sha1 of the file contents (used as a key method)."""
         try:
             return tree.get_file_sha1(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     @staticmethod
@@ -1341,7 +1342,7 @@ class Merge3Merger:
         try:
             if tree.kind(path) != "file":
                 return False
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         return tree.is_executable(path)
 
@@ -1350,7 +1351,7 @@ class Merge3Merger:
         """Determine the kind of a file-id (used as a key method)."""
         try:
             return tree.kind(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     @staticmethod
@@ -1480,7 +1481,7 @@ class Merge3Merger:
                 return (None, None)
             try:
                 kind = tree.kind(path)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 return (None, None)
             if kind == "file":
                 contents = tree.get_file_sha1(path)
@@ -1665,7 +1666,7 @@ class Merge3Merger:
             return []
         try:
             kind = tree.kind(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return []
         else:
             if kind != "file":

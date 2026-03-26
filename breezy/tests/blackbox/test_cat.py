@@ -18,7 +18,7 @@
 """Black-box tests for brz cat."""
 
 from ... import tests
-from ...transport import memory
+from dromedary import memory
 
 
 class TestCat(tests.TestCaseWithTransport):

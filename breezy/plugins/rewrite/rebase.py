@@ -42,7 +42,7 @@ from ...errors import BzrError, UnknownFormatError, UnrelatedBranches
 from ...merge import Merger
 from ...revision import NULL_REVISION
 from ...trace import mutter
-from ...transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 from .maptree import MapTree, map_file_ids
 
 REBASE_PLAN_FILENAME = "rebase-plan"

@@ -16,6 +16,8 @@
 
 """Serializer factory for reading and writing bundles."""
 
+from dromedary.errors import NoSuchFile
+
 from .... import errors, ui
 from .... import transport as _mod_transport
 from ....diff import internal_diff
@@ -373,7 +375,7 @@ class BundleSerializerV08(BundleSerializer):
             def tree_lines(tree, path, require_text=False):
                 try:
                     tree_file = tree.get_file(path)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return []
                 else:
                     if require_text is True:

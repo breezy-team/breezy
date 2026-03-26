@@ -32,6 +32,8 @@ from http.server import SimpleHTTPRequestHandler
 
 import breezy
 
+from dromedary import errors as transport_errors
+
 from .. import (
     config,
     controldir,
@@ -45,9 +47,9 @@ from .. import (
     urlutils,
 )
 from ..bzr import remote as _mod_remote
-from ..transport import remote
-from ..transport.http import urllib
-from ..transport.http.urllib import (
+from dromedary import remote
+from dromedary.http import urllib
+from dromedary.http.urllib import (
     AbstractAuthHandler,
     BasicAuthHandler,
     HTTPAuthHandler,
@@ -576,13 +578,13 @@ class TestWallServer(TestSpecificRequestHandler):
         # just test for ConnectionError, we have to test
         # InvalidHttpResponse too.
         self.assertRaises(
-            (ConnectionError, errors.InvalidHttpResponse), t.has, "foo/bar"
+            (ConnectionError, transport_errors.InvalidHttpResponse), t.has, "foo/bar"
         )
 
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -619,7 +621,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_has(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.has,
             "foo/bar",
         )
@@ -627,7 +629,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -677,11 +679,11 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
 
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.has, "foo/bar")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.has, "foo/bar")
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "foo/bar")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "foo/bar")
 
 
 class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -701,11 +703,11 @@ class TestForbiddenServer(TestSpecificRequestHandler):
 
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.TransportError, t.has, "foo/bar")
+        self.assertRaises(transport_errors.TransportError, t.has, "foo/bar")
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.TransportError, t.get, "foo/bar")
+        self.assertRaises(transport_errors.TransportError, t.get, "foo/bar")
 
 
 class TestRecordingServer(tests.TestCase):
@@ -771,8 +773,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # since we are sure that it cannot get there
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -783,8 +785,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # also raise a special error
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -1341,12 +1343,12 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
         )
 
     def test_semantically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
         )
 
 
@@ -1365,7 +1367,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         )
 
     def test_redirected(self):
-        self.assertRaises(errors.RedirectRequested, self.get_old_transport().get, "a")
+        self.assertRaises(transport_errors.RedirectRequested, self.get_old_transport().get, "a")
         self.assertEqual(b"0123456789", self.get_new_transport().get("a").read())
 
 
@@ -1526,7 +1528,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
             return self.old_transport.clone(exception.target)
 
         self.assertRaises(
-            errors.TooManyRedirections,
+            transport_errors.TooManyRedirections,
             transport.do_catching_redirections,
             self.get_a,
             self.old_transport,
@@ -1608,7 +1610,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_no_user(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport(None, None)
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1629,7 +1631,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_unknown_user(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport("bill", "foo")
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'I don't know you, who are
         # you').
@@ -1638,7 +1640,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_wrong_pass(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport("joe", "bar")
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'this is not you, who are you')
         self.assertEqual(2, self.server.auth_required_errors)
@@ -1938,7 +1940,7 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(
-            errors.SmartProtocolError,
+            transport_errors.SmartProtocolError,
             t.get_smart_medium().send_http_smart_request,
             b"whatever",
         )

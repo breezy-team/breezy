@@ -23,6 +23,8 @@ import os
 import signal
 import subprocess
 
+from dromedary.errors import NoSuchFile
+
 from ... import errors, osutils, trace
 from ... import transport as _mod_transport
 
@@ -261,7 +263,7 @@ def quilt_applied(tree):
             for patch in tree.get_file_lines(".pc/applied-patches")
             if patch.strip() != b""
         ]
-    except _mod_transport.NoSuchFile:
+    except NoSuchFile:
         return []
     except FileNotFoundError:
         # File has already been removed
@@ -310,5 +312,5 @@ def quilt_series(tree, series_path):
     except FileNotFoundError:
         # File has already been removed
         return []
-    except _mod_transport.NoSuchFile:
+    except NoSuchFile:
         return []

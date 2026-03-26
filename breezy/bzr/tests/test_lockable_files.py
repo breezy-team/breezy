@@ -18,6 +18,7 @@ import contextlib
 
 import breezy
 import breezy.branch
+from dromedary import errors as transport_errors
 
 from ... import errors, lockdir, osutils, transport
 from ...tests import TestCaseInTempDir, TestNotApplicable
@@ -228,7 +229,7 @@ class _TestLockableFiles_mixin:
         finally:
             self.lockable.unlock()
         # At this point, the lock is still in place on disk
-        self.assertRaises(errors.LockContention, self.lockable.lock_write)
+        self.assertRaises(transport_errors.LockContention, self.lockable.lock_write)
         # But should be relockable with a token.
         self.lockable.lock_write(token=token)
         self.lockable.unlock()

@@ -52,6 +52,8 @@ from email.utils import parseaddr
 import breezy.branch
 import breezy.revision
 
+from dromedary.errors import NoSuchFile
+
 from ... import builtins, lazy_import, lru_cache, osutils, progress, trace
 from ... import transport as _mod_transport
 from . import helpers, marks_file
@@ -444,7 +446,7 @@ class BzrFastExporter:
         try:
             if tree.kind(path) != "directory":
                 return False
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             self.warning(f"Skipping empty_dir detection - no file_id for {path}")
             return False
 

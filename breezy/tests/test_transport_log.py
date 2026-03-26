@@ -21,7 +21,7 @@ from breezy import transport
 from breezy.tests import TestCaseWithMemoryTransport
 
 from ..trace import mutter
-from ..transport.log import TransportLogDecorator
+from dromedary.log import TransportLogDecorator
 
 
 class TestTransportLog(TestCaseWithMemoryTransport):

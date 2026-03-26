@@ -22,7 +22,7 @@ import threading
 
 from breezy import cethread, errors, osutils, transport, urlutils
 from breezy.bzr.smart import medium, server
-from breezy.transport import chroot, pathfilter
+from dromedary import chroot, pathfilter
 
 
 def debug_threads():
@@ -138,7 +138,7 @@ class FakeNFSServer(DecoratorServer):
     """Server for the FakeNFSTransportDecorator for testing with."""
 
     def get_decorator_class(self):
-        from breezy.transport import fakenfs
+        from dromedary import fakenfs
 
         return fakenfs.FakeNFSTransportDecorator
 
@@ -150,7 +150,7 @@ class FakeVFATServer(DecoratorServer):
     """
 
     def get_decorator_class(self):
-        from breezy.transport import fakevfat
+        from dromedary import fakevfat
 
         return fakevfat.FakeVFATTransportDecorator
 
@@ -159,7 +159,7 @@ class LogDecoratorServer(DecoratorServer):
     """Server for testing."""
 
     def get_decorator_class(self):
-        from breezy.transport import log
+        from dromedary import log
 
         return log.TransportLogDecorator
 
@@ -177,7 +177,7 @@ class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 
     def get_decorator_class(self):
-        from breezy.transport import readonly
+        from dromedary import readonly
 
         return readonly.ReadonlyTransportDecorator
 
@@ -681,11 +681,9 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         if not client_path_extra.startswith("/"):
             raise ValueError(client_path_extra)
         self.root_client_path = self.client_path_extra = client_path_extra
-        from ..transport.chroot import ChrootServer
-
         if backing_transport_server is None:
             backing_transport_server = LocalURLServer()
-        self.chroot_server = ChrootServer(
+        self.chroot_server = chroot.ChrootServer(
             self.get_backing_transport(backing_transport_server)
         )
         self.chroot_server.start_server()

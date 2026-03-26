@@ -19,6 +19,9 @@
 import fastbencode as bencode
 from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from ... import errors
 from ... import revision as _mod_revision
 from ... import transport as _mod_transport
@@ -127,7 +130,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         """
         try:
             content = branch.control_transport.get_bytes("branch.conf")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             content = b""
         return SuccessfulSmartServerResponse((b"ok",), content)
 
@@ -639,13 +642,13 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             finally:
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()
-        except errors.LockContention:
+        except transport_errors.LockContention:
             return FailedSmartServerResponse((b"LockContention",))
         except errors.TokenMismatch:
             return FailedSmartServerResponse((b"TokenMismatch",))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b"UnlockableTransport",))
-        except errors.LockFailed as e:
+        except transport_errors.LockFailed as e:
             return FailedSmartServerResponse(
                 (b"LockFailed", str(e.lock).encode("utf-8"), str(e.why).encode("utf-8"))
             )

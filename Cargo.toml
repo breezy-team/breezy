@@ -16,7 +16,7 @@ include = [
 ]
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "dromedary", "dromedary/_transport_rs", "dromedary/_urlutils_rs"]
 
 [workspace.package]
 version = "3.4.0"

@@ -23,6 +23,8 @@ and for applying a changeset.
 
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from ... import errors
 from ...commands import Command
 

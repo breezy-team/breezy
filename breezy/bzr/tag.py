@@ -26,6 +26,8 @@ import contextlib
 
 import fastbencode as bencode
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, trace
 from .. import transport as _mod_transport
 from ..tag import Tags
@@ -66,7 +68,7 @@ class BasicTags(Tags):
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning(
                     f"No branch/tags file in {self.branch}.  "

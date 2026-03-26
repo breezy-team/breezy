@@ -179,7 +179,7 @@ version = "3.4.0"
 dependencies = [
  "breezy",
  "breezy-osutils",
- "breezy-urlutils",
+ "dromedary",
 ]
 
 [[package]]
@@ -218,24 +218,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "tempfile",
-]
-
-[[package]]
-name = "breezy-transport"
-version = "3.4.0"
-dependencies = [
- "breezy-osutils",
- "breezy-urlutils",
- "lazy_static",
- "log",
- "nix",
- "path-clean",
- "pyo3",
- "pyo3-filelike",
- "sftp",
- "tempfile",
- "url",
- "walkdir",
 ]
 
 [[package]]
@@ -386,6 +368,38 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
+]
+
+[[package]]
+name = "dromedary"
+version = "3.4.0"
+dependencies = [
+ "breezy-osutils",
+ "lazy_static",
+ "log",
+ "nix",
+ "path-clean",
+ "percent-encoding",
+ "pyo3",
+ "pyo3-filelike",
+ "regex",
+ "sftp",
+ "tempfile",
+ "url",
+ "walkdir",
+]
+
+[[package]]
+name = "dromedary-transport-rs"
+version = "3.4.0"
+dependencies = [
+ "dromedary",
+ "log",
+ "nix",
+ "pyo3",
+ "pyo3-filelike",
+ "sftp",
+ "url",
 ]
 
 [[package]]
@@ -1499,19 +1513,6 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
-
-[[package]]
-name = "transport-py"
-version = "3.4.0"
-dependencies = [
- "breezy-transport",
- "log",
- "nix",
- "pyo3",
- "pyo3-filelike",
- "sftp",
- "url",
-]
 
 [[package]]
 name = "typenum"

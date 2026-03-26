@@ -24,7 +24,7 @@ from testtools import content
 from .. import trace
 from ..bzr.smart import medium
 from ..controldir import ControlDir
-from ..transport import remote
+from dromedary import remote
 from . import TestCaseWithTransport
 
 old_format_modules = [

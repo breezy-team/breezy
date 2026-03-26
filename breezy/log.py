@@ -80,8 +80,8 @@ from vcsgraph.errors import (
 )
 
 from . import errors, registry, revisionspec, trace
+from dromedary.errors import NoSuchFile
 from . import revision as _mod_revision
-from . import transport as _mod_transport
 from .osutils import (
     UnsupportedTimezoneFormat,
     format_date,
@@ -2509,7 +2509,7 @@ def _get_kind_for_file(tree, path):
     with tree.lock_read():
         try:
             return tree.stored_kind(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
 

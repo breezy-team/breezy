@@ -43,6 +43,8 @@ from vcsgraph import (
     known_graph as _mod_known_graph,
 )
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, osutils, revision, urlutils
 from .. import transport as _mod_transport
 from .._bzr_rs import versionedfile as _versionedfile_rs
@@ -1590,7 +1592,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                     random_id=random_id,
                     check_content=check_content,
                 )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # parent directory may be missing, try again.
             self._transport.mkdir(osutils.dirname(path))
             try:

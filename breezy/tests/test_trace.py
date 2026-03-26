@@ -26,6 +26,8 @@ import sys
 import tempfile
 from io import StringIO
 
+from dromedary import errors as transport_errors
+
 from .. import debug, errors, trace
 from ..trace import (
     _rollover_trace_maybe,

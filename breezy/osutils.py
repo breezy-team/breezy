@@ -48,6 +48,7 @@ __all__ = [
     "copy_tree",
     "delete_any",
     "dereference_path",
+    "DirectoryNotEmpty",
     "ensure_empty_directory_exists",
     "file_iterator",
     "file_kind_from_stat_mode",
@@ -218,6 +219,14 @@ from ._osutils_rs.win32 import (
 from ._osutils_rs.win32 import (
     normpath as _win32_normpath,
 )
+class DirectoryNotEmpty(OSError):
+    """Raised when a directory is expected to be empty but is not."""
+
+    def __init__(self, path: str):
+        self.path = path
+        super().__init__(f'Directory not empty: "{path}"')
+
+
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -256,7 +265,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param unlink_func: A way to delete the target file if the full rename
         succeeds
     """
-    from .transport import NoSuchFile
+    from dromedary.errors import NoSuchFile
 
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)

@@ -16,6 +16,8 @@
 
 """Weave-era branch implementations."""
 
+from dromedary import errors as transport_errors
+
 from ... import controldir as _mod_controldir
 from ... import errors
 from ...branch import BindingUnsupported, BranchFormat, BranchWriteLockResult
@@ -247,7 +249,7 @@ class BzrBranchFormat4(BranchFormat):
         control_files.create_lock()
         try:
             control_files.lock_write()
-        except errors.LockContention:
+        except transport_errors.LockContention:
             lock_taken = False
         else:
             lock_taken = True

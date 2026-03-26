@@ -19,7 +19,8 @@
 from breezy import branch, errors, tests
 from breezy.bzr import remote
 from breezy.tests import per_branch
-from breezy.transport import FileExists, NoSuchFile
+from dromedary.errors import FileExists, NoSuchFile
+from dromedary import errors as transport_errors
 
 
 class TestCreateClone(per_branch.TestCaseWithBranch):
@@ -105,7 +106,10 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
     def test_create_clone_of_multiple_roots(self):
         try:
             builder = self.make_branch_builder("local")
-        except (errors.TransportNotPossible, errors.UninitializableFormat) as e:
+        except (
+            transport_errors.TransportNotPossible,
+            errors.UninitializableFormat,
+        ) as e:
             raise tests.TestNotApplicable("format not directly constructable") from e
         builder.start_series()
         rev1 = builder.build_snapshot(None, [("add", ("", None, "directory", ""))])

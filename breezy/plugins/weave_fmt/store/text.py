@@ -26,7 +26,7 @@ import os
 from io import BytesIO
 
 from .... import osutils
-from ....transport import FileExists, NoSuchFile
+from dromedary.errors import FileExists, NoSuchFile
 from . import TransportStore
 
 

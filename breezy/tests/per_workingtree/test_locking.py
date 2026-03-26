@@ -21,6 +21,7 @@ import sys
 from breezy import branch, errors
 from breezy.tests import TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from dromedary import errors as transport_errors
 
 from ..matchers import *  # noqa: F403
 
@@ -230,7 +231,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_read()
-            except errors.LockError:
+            except transport_errors.LockError:
                 # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())
@@ -256,7 +257,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         branch_copy.lock_write()
         try:
             try:
-                self.assertRaises(errors.LockError, wt.lock_write)
+                self.assertRaises(transport_errors.LockError, wt.lock_write)
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())
             finally:
@@ -280,7 +281,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_tree_write()
-            except errors.LockError:
+            except transport_errors.LockError:
                 # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())

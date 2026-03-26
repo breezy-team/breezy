@@ -26,10 +26,13 @@ from io import BytesIO
 from dulwich import __version__ as dulwich_version
 from dulwich.objects import Blob
 
+from dromedary import errors as transport_errors
+
 from .. import __version__ as brz_version
 from .. import branch as _mod_branch
+from .. import errors
 from .. import diff as _mod_diff
-from .. import errors, osutils
+from .. import osutils
 from .. import revision as _mod_revision
 from ..merge_directive import BaseMergeDirective
 from .mapping import object_mode
@@ -299,9 +302,13 @@ def send_git(
         CommandError: If no_patch or no_bundle are True.
     """
     if no_patch:
-        raise errors.CommandError("no patch not supported for git-am style patches")
+        raise errors.CommandError(
+            "no patch not supported for git-am style patches"
+        )
     if no_bundle:
-        raise errors.CommandError("no bundle not supported for git-am style patches")
+        raise errors.CommandError(
+            "no bundle not supported for git-am style patches"
+        )
     return GitMergeDirective.from_objects(
         repository=branch.repository,
         revision_id=revision_id,

@@ -16,6 +16,8 @@
 
 import re
 
+from dromedary import errors as transport_errors
+
 from .. import bzr, commands, controldir, errors, option, registry
 from ..builtins import cmd_commit
 from ..bzr import knitrepo
@@ -114,9 +116,15 @@ class OptionTests(TestCase):
         options = [option.Option("number", type=int)]
         opts, _args = self.parse(options, ["--number", "6"])
         self.assertEqual(6, opts.number)
-        self.assertRaises(errors.CommandError, self.parse, options, ["--number"])
-        self.assertRaises(errors.CommandError, self.parse, options, ["--no-number"])
-        self.assertRaises(errors.CommandError, self.parse, options, ["--number", "a"])
+        self.assertRaises(
+            errors.CommandError, self.parse, options, ["--number"]
+        )
+        self.assertRaises(
+            errors.CommandError, self.parse, options, ["--no-number"]
+        )
+        self.assertRaises(
+            errors.CommandError, self.parse, options, ["--number", "a"]
+        )
 
     def test_is_hidden(self):
         self.assertTrue(option.Option("foo", hidden=True).is_hidden("foo"))
@@ -151,7 +159,9 @@ class OptionTests(TestCase):
         options = [
             option.RegistryOption("format", "", registry, str, enum_switch=False)
         ]
-        self.assertRaises(errors.CommandError, self.parse, options, ["--format", "two"])
+        self.assertRaises(
+            errors.CommandError, self.parse, options, ["--format", "two"]
+        )
 
     def test_override(self):
         options = [

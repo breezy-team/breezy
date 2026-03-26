@@ -20,9 +20,8 @@ import os
 import platform
 import sys
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
-
 import breezy
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from . import bedding, controldir, errors, osutils, trace
 

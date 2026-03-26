@@ -23,6 +23,8 @@ from vcsgraph.errors import GhostRevisionsHaveNoRevno
 from breezy import errors, transport
 from breezy.bzr.smart import request
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
 
 from ..bzrdir import BzrDir
 
@@ -38,7 +40,7 @@ class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
 
     def do(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class DoUnexpectedErrorRequest(request.SmartServerRequest):
@@ -56,7 +58,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
         pass
 
     def do_chunk(self, bytes):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class EndErrorRequest(request.SmartServerRequest):
@@ -71,7 +73,7 @@ class EndErrorRequest(request.SmartServerRequest):
         pass
 
     def do_end(self):
-        raise transport.NoSuchFile("xyzzy")
+        raise NoSuchFile("xyzzy")
 
 
 class CheckJailRequest(request.SmartServerRequest):
@@ -193,7 +195,7 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_NoSuchFile(self):
         self.assertTranslationEqual(
-            (b"NoSuchFile", b"path"), transport.NoSuchFile("path")
+            (b"NoSuchFile", b"path"), NoSuchFile("path")
         )
 
     def test_LockContention(self):
@@ -201,7 +203,7 @@ class TestRequestHanderErrorTranslation(TestCase):
         # Eventually they should include a relpath or url or something else to
         # identify which lock is busy.
         self.assertTranslationEqual(
-            (b"LockContention",), errors.LockContention("lock", "msg")
+            (b"LockContention",), transport_errors.LockContention("lock", "msg")
         )
 
     def test_TokenMismatch(self):

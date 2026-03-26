@@ -17,6 +17,7 @@
 """Command that signs unsigned commits by the current user."""
 
 from . import controldir, errors, gpg
+from dromedary import errors as transport_errors
 from . import repository as _mod_repository
 from . import revision as _mod_revision
 from .commands import Command

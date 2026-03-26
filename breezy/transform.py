@@ -42,7 +42,7 @@ from .errors import BzrError, DuplicateKey, InternalBzrError
 from .filters import ContentFilterContext, filtered_output_bytes
 from .osutils import delete_any, pathjoin
 from .progress import ProgressPhase
-from .transport import FileExists, NoSuchFile
+from dromedary.errors import FileExists, NoSuchFile
 from .tree import InterTree
 
 ROOT_PARENT = "root-parent"

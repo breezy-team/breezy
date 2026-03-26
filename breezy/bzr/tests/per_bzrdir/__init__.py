@@ -33,7 +33,7 @@ from breezy.tests import (
     test_server,
 )
 from breezy.tests.per_controldir import make_scenarios
-from breezy.transport import memory
+from dromedary import memory
 
 from ....controldir import ControlDirFormat
 from ...bzrdir import BzrDirFormat

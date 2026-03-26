@@ -17,10 +17,10 @@
 """A generator which creates a yaml stanza of the current tree info."""
 
 import yaml
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from breezy import hooks
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ..revision import NULL_REVISION
 

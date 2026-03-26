@@ -30,6 +30,8 @@ from dulwich.server import (
     UploadPackHandler,
 )
 
+from dromedary import errors as transport_errors
+
 from .. import errors, trace
 from ..controldir import ControlDir
 from .mapping import decode_git_path, default_mapping

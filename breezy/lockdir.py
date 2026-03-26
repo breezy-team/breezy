@@ -83,7 +83,7 @@ update the timestamp within it.
 
 Example usage:
 
->>> from breezy.transport.memory import MemoryTransport
+>>> from dromedary.memory import MemoryTransport
 >>> # typically will be obtained from a BzrDir, Branch, etc
 >>> t = MemoryTransport()
 >>> l = LockDir(t, 'sample-lock')
@@ -110,16 +110,19 @@ but helps protect against colliding host names.
 import time
 
 from . import config, debug, errors, lock, ui, urlutils
+from dromedary import errors as transport_errors
 from ._cmd_rs import LockHeldInfo
 from .decorators import only_raises
 from .errors import (
-    DirectoryNotEmpty,
     LockBreakMismatch,
     LockBroken,
-    LockContention,
     LockCorrupt,
-    LockFailed,
     LockNotHeld,
+)
+from dromedary.errors import (
+    DirectoryNotEmpty,
+    LockContention,
+    LockFailed,
     PathError,
     ResourceBusy,
     TransportError,
@@ -127,7 +130,7 @@ from .errors import (
 from .i18n import gettext
 from .osutils import rand_chars
 from .trace import mutter, note
-from .transport import FileExists, NoSuchFile
+from dromedary.errors import FileExists, NoSuchFile
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -227,7 +230,7 @@ class LockDir(lock.Lock):
         start_time = time.time()
         try:
             tmpname = self._create_pending_dir()
-        except (errors.TransportError, PathError) as e:
+        except (transport_errors.TransportError, PathError) as e:
             self._trace("... failed to create pending dir, %s", e)
             raise LockFailed(self, e) from e
         while True:
@@ -235,7 +238,7 @@ class LockDir(lock.Lock):
                 self.transport.rename(tmpname, self._held_dir)
                 break
             except (
-                errors.TransportError,
+                transport_errors.TransportError,
                 PathError,
                 DirectoryNotEmpty,
                 FileExists,

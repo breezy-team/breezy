@@ -57,19 +57,22 @@ from dulwich.repo import (
     write_packed_refs,
 )
 
-from .. import osutils, urlutils
-from .. import transport as _mod_transport
-from ..errors import (
-    AlreadyControlDirError,
-    LockBroken,
+from dromedary.errors import FileExists, NoSuchFile
+from dromedary.errors import (
     LockContention,
     NotLocalUrl,
     ReadError,
     TransportNotPossible,
 )
+
+from .. import osutils, urlutils
+from .. import transport as _mod_transport
+from ..errors import (
+    AlreadyControlDirError,
+    LockBroken,
+)
 from ..lock import LogicalLockResult
 from ..trace import warning
-from ..transport import FileExists, NoSuchFile
 
 
 class _RemoteGitFile:

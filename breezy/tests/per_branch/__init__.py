@@ -26,7 +26,7 @@ rather than in `tests/per_branch/*.py`.
 
 from breezy import errors, tests
 from breezy.tests import test_server
-from breezy.transport import memory
+from dromedary import memory
 
 from ...branch import format_registry
 from ...bzr.remote import RemoteBranchFormat

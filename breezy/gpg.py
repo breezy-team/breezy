@@ -20,6 +20,7 @@
 import os
 
 from . import config, errors, trace, ui
+from dromedary import errors as transport_errors
 from .i18n import gettext, ngettext
 
 # verification results

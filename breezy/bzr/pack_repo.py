@@ -48,6 +48,9 @@ from breezy.bzr.index import (
     )
 """,
 )
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+
 from .. import debug, errors, lockdir, osutils
 from .. import transport as _mod_transport
 from ..bzr import btree_index, lockable_files
@@ -1444,7 +1447,7 @@ class RepositoryPackCollection:
                 self,
                 chk_index=chk_index,
             )
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e)) from e
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
@@ -1524,15 +1527,15 @@ class RepositoryPackCollection:
                     pack.pack_transport.move(
                         pack.file_name(), "../obsolete_packs/" + pack.file_name()
                     )
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
-                    with contextlib.suppress(_mod_transport.FileExists):
+                    with contextlib.suppress(FileExists):
                         pack.pack_transport.mkdir("../obsolete_packs/")
                     pack.pack_transport.move(
                         pack.file_name(), "../obsolete_packs/" + pack.file_name()
                     )
-            except (errors.PathError, errors.TransportError) as e:
+            except (transport_errors.PathError, transport_errors.TransportError) as e:
                 # TODO: Should these be warnings or mutters?
                 mutter(f"couldn't rename obsolete pack, skipping it:\n{e}")
             # TODO: Probably needs to know all possible indices for this pack
@@ -1546,7 +1549,10 @@ class RepositoryPackCollection:
                     self._index_transport.move(
                         pack.name + suffix, "../obsolete_packs/" + pack.name + suffix
                     )
-                except (errors.PathError, errors.TransportError) as e:
+                except (
+                    transport_errors.PathError,
+                    transport_errors.TransportError,
+                ) as e:
                     mutter(f"couldn't rename obsolete index, skipping it:\n{e}")
 
     def pack_distribution(self, total_revisions):
@@ -1813,7 +1819,7 @@ class RepositoryPackCollection:
             preserve = set()
         try:
             obsolete_pack_files = obsolete_pack_transport.list_dir(".")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return found
         for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
@@ -1823,7 +1829,7 @@ class RepositoryPackCollection:
                 continue
             try:
                 obsolete_pack_transport.delete(filename)
-            except (errors.PathError, errors.TransportError) as e:
+            except (transport_errors.PathError, transport_errors.TransportError) as e:
                 warning(f"couldn't delete obsolete pack, skipping it:\n{e}")
         return found
 
@@ -2442,7 +2448,7 @@ class _DirectPackAccess:
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for _names, read_func in reader.iter_records():
                     yield read_func(None)
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:

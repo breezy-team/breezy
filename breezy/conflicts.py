@@ -40,6 +40,7 @@ from breezy.i18n import gettext, ngettext
 import contextlib
 
 from . import commands, errors, option, osutils, registry, trace
+from dromedary import errors as transport_errors
 
 
 class cmd_conflicts(commands.Command):

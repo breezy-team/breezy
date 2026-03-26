@@ -16,8 +16,8 @@
 
 """Tests for temporarily upgrading to a WriteLock."""
 
-from breezy import errors
 from breezy.tests.per_lock import TestCaseWithLock
+from dromedary import errors as transport_errors
 
 
 class TestTemporaryWriteLock(TestCaseWithLock):
@@ -50,11 +50,13 @@ class TestTemporaryWriteLock(TestCaseWithLock):
             success, t_write_lock = a_lock.temporary_write_lock()
             self.assertTrue(success, "We failed to grab a write lock.")
             try:
-                self.assertRaises(errors.LockContention, self.write_lock, "a-file")
+                self.assertRaises(
+                    transport_errors.LockContention, self.write_lock, "a-file"
+                )
                 # TODO: jam 20070319 fcntl read locks are not currently fully
                 #       mutually exclusive with write locks. This will be fixed
                 #       in the next release.
-                # self.assertRaises(errors.LockContention,
+                # self.assertRaises(transport_errors.LockContention,
                 #                   self.read_lock, 'a-file')
             finally:
                 a_lock = t_write_lock.restore_read_lock()
@@ -63,7 +65,7 @@ class TestTemporaryWriteLock(TestCaseWithLock):
             # TODO: jam 20070319 fcntl write locks are not currently fully
             #       mutually exclusive with read locks. This will be fixed
             #       in the next release.
-            # self.assertRaises(errors.LockContention,
+            # self.assertRaises(transport_errors.LockContention,
             #                   self.write_lock, 'a-file')
             b_lock = self.read_lock("a-file")
             b_lock.unlock()
@@ -91,7 +93,7 @@ class TestTemporaryWriteLock(TestCaseWithLock):
                 # TODO: jam 20070319 fcntl write locks are not currently fully
                 #       mutually exclusive with read locks. This will be fixed
                 #       in the next release.
-                # self.assertRaises(errors.LockContention,
+                # self.assertRaises(transport_errors.LockContention,
                 #                   self.write_lock, 'a-file')
                 c_lock = self.read_lock("a-file")
                 c_lock.unlock()

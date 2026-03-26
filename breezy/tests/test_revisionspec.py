@@ -17,11 +17,10 @@
 import datetime
 import time
 
-from vcsgraph.errors import NoCommonAncestor
-
 from breezy import errors
 from breezy import revision as _mod_revision
 from breezy.tests import TestCaseWithTransport
+from vcsgraph.errors import NoCommonAncestor
 
 from ..revisionspec import (
     InvalidRevisionSpec,

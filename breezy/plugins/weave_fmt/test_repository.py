@@ -29,7 +29,7 @@ from ...bzr.serializer import revision_format_registry
 from ...errors import IllegalPath
 from ...repository import InterRepository, Repository
 from ...tests import TestCase, TestCaseWithTransport
-from ...transport import NoSuchFile
+from dromedary.errors import NoSuchFile
 from . import xml4
 from .bzrdir import BzrDirFormat6
 from .repository import (

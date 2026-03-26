@@ -24,7 +24,7 @@ from typing import Any
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
-from ...errors import PermissionDenied, UnexpectedHttpStatus
+from dromedary.errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
     AutoMergeUnavailable,
     Forge,

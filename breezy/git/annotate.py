@@ -19,6 +19,7 @@
 import contextlib
 
 from dulwich.object_store import tree_lookup_path
+
 from vcsgraph.graph import Graph
 
 from .. import osutils

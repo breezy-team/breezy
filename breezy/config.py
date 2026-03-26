@@ -105,6 +105,9 @@ from breezy import (
 from breezy.i18n import gettext
 """,
 )
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from . import (
     bedding,
     commands,
@@ -2478,9 +2481,9 @@ class TransportConfig:
             for hook in OldConfigHooks["load"]:
                 hook(self)
             return f
-        except transport.NoSuchFile:
+        except NoSuchFile:
             return BytesIO()
-        except errors.PermissionDenied:
+        except transport_errors.PermissionDenied:
             trace.warning(
                 "Permission denied while trying to open configuration file %s.",
                 urlutils.unescape_for_display(
@@ -3400,12 +3403,59 @@ option_registry.register(
         help="""Whether to validate signatures in brz log.""",
     )
 )
-option_registry.register_lazy(
-    "ssl.ca_certs", "breezy.transport.http", "opt_ssl_ca_certs"
+def _ca_certs_from_store(path):
+    import dromedary.http
+
+    if not os.path.exists(path):
+        raise ValueError(f"ca certs path {path} does not exist")
+    dromedary.http.ssl_ca_certs = path
+    return path
+
+
+def _cert_reqs_from_store(unicode_str):
+    import ssl
+
+    import dromedary.http
+
+    try:
+        value = {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
+    except KeyError as e:
+        raise ValueError(f"invalid value {unicode_str}") from e
+    dromedary.http.ssl_cert_reqs = value
+    return value
+
+
+option_registry.register(
+    Option(
+        "ssl.ca_certs",
+        from_unicode=_ca_certs_from_store,
+        default=lambda: __import__("dromedary.http", fromlist=["default_ca_certs"]).default_ca_certs(),
+        invalid="warning",
+        help="""\
+Path to certification authority certificates to trust.
+
+This should be a valid path to a bundle containing all root Certificate
+Authorities used to verify an https server certificate.
+
+Use ssl.cert_reqs=none to disable certificate verification.
+""",
+    )
 )
 
-option_registry.register_lazy(
-    "ssl.cert_reqs", "breezy.transport.http", "opt_ssl_cert_reqs"
+option_registry.register(
+    Option(
+        "ssl.cert_reqs",
+        default=lambda: __import__("dromedary.http", fromlist=["default_ca_reqs"]).default_ca_reqs(),
+        from_unicode=_cert_reqs_from_store,
+        invalid="error",
+        help="""\
+Whether to require a certificate from the remote side. (default:required)
+
+Possible values:
+ * none: Certificates ignored
+ * required: Certificates required and validated
+""",
+    )
 )
 
 
@@ -3852,7 +3902,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except (transport.NoSuchFile, errors.PermissionDenied):
+        except (NoSuchFile, transport_errors.PermissionDenied):
             # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
@@ -3873,7 +3923,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except transport.NoSuchFile:
+        except NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string(b"")
         if section_id in self.dirty_sections:
@@ -3962,7 +4012,7 @@ class TransportIniFileStore(IniFileStore):
         """
         try:
             return self.transport.get_bytes(self.file_name)
-        except errors.PermissionDenied:
+        except transport_errors.PermissionDenied:
             trace.warning(
                 "Permission denied while trying to load configuration store %s.",
                 self.external_url(),

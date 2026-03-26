@@ -50,6 +50,7 @@ from breezy import (
 )
 
 from . import errors, mutabletree, osutils
+from dromedary import errors as transport_errors
 from . import revision as _mod_revision
 from .controldir import (
     ControlComponent,
@@ -59,8 +60,8 @@ from .controldir import (
 )
 from .i18n import gettext
 from .trace import mutter, note
-from .transport import NoSuchFile
-from .transport.local import file_kind
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -289,7 +290,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
           A list of relative paths.
 
         Raises:
-          errors.PathNotChild: When a provided path is in a different self than
+          transport_errors.PathNotChild: When a provided path is in a different self than
              self
         """
         if file_list is None:

@@ -16,9 +16,9 @@
 
 """Ping plugin for brz."""
 
-from breezy import errors
 from breezy.transport import get_transport
 
+from ... import errors
 from ...commands import Command
 
 
@@ -45,7 +45,7 @@ class cmd_ping(Command):
         transport = get_transport(location)
         try:
             medium = transport.get_smart_medium()
-        except errors.NoSmartMedium as e:
+        except transport_errors.NoSmartMedium as e:
             raise errors.CommandError(str(e)) from e
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that

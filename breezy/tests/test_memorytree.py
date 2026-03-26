@@ -17,6 +17,8 @@
 
 """Tests for the MemoryTree class."""
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, transport
 from ..treebuilder import TreeBuilder
 from . import TestCaseWithTransport
@@ -191,10 +193,10 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.rename_one("foo", "bar")
         self.assertEqual("bar", tree.id2path(b"foo-id"))
         self.assertEqual(b"content\n", tree._file_transport.get_bytes("bar"))
-        self.assertRaises(transport.NoSuchFile, tree._file_transport.get_bytes, "foo")
+        self.assertRaises(NoSuchFile, tree._file_transport.get_bytes, "foo")
         tree.commit("two", rev_id=b"rev-two")
         self.assertEqual(b"content\n", tree._file_transport.get_bytes("bar"))
-        self.assertRaises(transport.NoSuchFile, tree._file_transport.get_bytes, "foo")
+        self.assertRaises(NoSuchFile, tree._file_transport.get_bytes, "foo")
 
         rev_tree2 = tree.branch.repository.revision_tree(b"rev-two")
         self.assertEqual("bar", rev_tree2.id2path(b"foo-id"))

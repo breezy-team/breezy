@@ -21,7 +21,7 @@ import time
 from ... import errors, filters, osutils, rules
 from ...controldir import ControlDir
 from ...tests import UnavailableFeature, features
-from ...transport.local import file_kind
+from dromedary.local import file_kind
 from ..conflicts import DuplicateEntry
 from ..transform import build_tree
 from . import TestCaseWithTransport

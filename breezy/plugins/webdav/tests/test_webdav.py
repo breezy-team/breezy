@@ -20,9 +20,10 @@ import stat
 from http.client import parse_headers
 from io import StringIO
 
-from breezy import errors, tests
+from breezy import tests
 from breezy.plugins.webdav import webdav
 from breezy.tests import http_server
+from dromedary import errors as transport_errors
 
 
 def _get_list_dir_apache2_depth_1_prop():
@@ -202,7 +203,7 @@ class TestDavSaxParser(tests.TestCase):
         # Valid but unrelated xml
         example = """<document/>"""
         self.assertRaises(
-            errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
+            transport_errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
         )
 
     def test_list_dir_malformed_response(self):
@@ -212,7 +213,7 @@ class TestDavSaxParser(tests.TestCase):
 <D:response>
 <D:href>http://localhost/</D:href>"""
         self.assertRaises(
-            errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
+            transport_errors.InvalidHttpResponse, self._extract_dir_content_from_str, example
         )
 
     def test_list_dir_incomplete_format_response(self):
@@ -228,13 +229,13 @@ class TestDavSaxParser(tests.TestCase):
 <D:href>http://localhost/toto</D:href>
 </D:multistatus>"""
         self.assertRaises(
-            errors.NotADirectory, self._extract_dir_content_from_str, example
+            transport_errors.NotADirectory, self._extract_dir_content_from_str, example
         )
 
     def test_list_dir_apache2_example(self):
         example = _get_list_dir_apache2_depth_1_prop()
         self.assertRaises(
-            errors.NotADirectory, self._extract_dir_content_from_str, example
+            transport_errors.NotADirectory, self._extract_dir_content_from_str, example
         )
 
     def test_list_dir_lighttpd_example(self):
@@ -251,7 +252,7 @@ class TestDavSaxParser(tests.TestCase):
 </D:response>
 </D:multistatus>"""
         self.assertRaises(
-            errors.NotADirectory, self._extract_dir_content_from_str, example
+            transport_errors.NotADirectory, self._extract_dir_content_from_str, example
         )
 
     def test_list_dir_apache2_dir_depth_1_example(self):
@@ -273,7 +274,7 @@ class TestDavSaxParser(tests.TestCase):
 <D:response>
 <D:href>http://localhost/</D:href>"""
         self.assertRaises(
-            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+            transport_errors.InvalidHttpResponse, self._extract_stat_from_str, example
         )
 
     def test_stat_incomplete_format_response(self):
@@ -288,7 +289,7 @@ class TestDavSaxParser(tests.TestCase):
 <D:href>http://localhost/toto</D:href>
 </D:multistatus>"""
         self.assertRaises(
-            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+            transport_errors.InvalidHttpResponse, self._extract_stat_from_str, example
         )
 
     def test_stat_apache2_file_example(self):
@@ -329,7 +330,7 @@ class TestDavSaxParser(tests.TestCase):
     def test_stat_apache2_dir_depth_1_example(self):
         example = _get_list_dir_apache2_depth_1_allprop()
         self.assertRaises(
-            errors.InvalidHttpResponse, self._extract_stat_from_str, example
+            transport_errors.InvalidHttpResponse, self._extract_stat_from_str, example
         )
 
     def test_stat_apache2_dir_depth_0_example(self):
@@ -421,4 +422,4 @@ Date: Tue, 10 Aug 2013 14:38:56 GMT\r
 Server: Apache/42 (Wonderland)\r
 """
         t = self.get_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.delete, "whatever")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.delete, "whatever")

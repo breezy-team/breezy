@@ -20,6 +20,7 @@ import os
 from breezy import branch, controldir, errors, mutabletree, osutils, tests, ui
 from breezy import revision as _mod_revision
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from dromedary import errors as transport_errors
 
 from ...commit import CannotCommitSelectedFileMerge, PointlessCommit
 from ..matchers import HasPathRelations
@@ -222,7 +223,9 @@ class TestCommit(TestCaseWithWorkingTree):
         def fail_message(obj):
             raise errors.CommandError("empty commit message")
 
-        self.assertRaises(errors.CommandError, wt.commit, message_callback=fail_message)
+        self.assertRaises(
+            errors.CommandError, wt.commit, message_callback=fail_message
+        )
         self.assertTrue(wt.is_versioned("a"))
         if wt.supports_setting_file_ids():
             self.assertEqual("a", wt.id2path(a_id))

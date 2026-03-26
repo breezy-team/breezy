@@ -16,11 +16,10 @@
 
 """Tests for Branch.dotted_revno_to_revision_id()."""
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
-
 from breezy import errors
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_branch import TestCaseWithBranch
+from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ...bzr.fullhistory import FullHistoryBzrBranch
 

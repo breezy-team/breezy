@@ -18,7 +18,7 @@ from breezy import config
 from breezy.tests import TestCase, TestCaseWithTransport
 
 from ..errors import SSHVendorNotFound, UnknownSSH
-from ..transport.ssh import (
+from dromedary.ssh import (
     LSHSubprocessVendor,
     OpenSSHSubprocessVendor,
     PLinkSubprocessVendor,

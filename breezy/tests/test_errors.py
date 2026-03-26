@@ -21,6 +21,8 @@ import re
 
 from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
+from dromedary import errors as transport_errors
+
 from .. import controldir, errors, osutils, tests, urlutils
 
 
@@ -88,13 +90,13 @@ class TestErrors(tests.TestCase):
         )
 
     def test_in_process_transport(self):
-        error = errors.InProcessTransport("fpp")
+        error = transport_errors.InProcessTransport("fpp")
         self.assertEqualDiff(
             "The transport 'fpp' is only accessible within this process.", str(error)
         )
 
     def test_invalid_http_range(self):
-        error = errors.InvalidHttpRange(
+        error = transport_errors.InvalidHttpRange(
             "path", "Content-Range: potatoes 0-00/o0oo0", "bad range"
         )
         self.assertEqual(
@@ -105,7 +107,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_invalid_range(self):
-        error = errors.InvalidRange("path", 12, "bad range")
+        error = transport_errors.InvalidRange("path", 12, "bad range")
         self.assertEqual("Invalid range access in path at 12: bad range", str(error))
 
     def test_jail_break(self):
@@ -136,7 +138,7 @@ class TestErrors(tests.TestCase):
         self.assertEqualDiff("The medium 'a medium' is not connected.", str(error))
 
     def test_no_smart_medium(self):
-        error = errors.NoSmartMedium("a transport")
+        error = transport_errors.NoSmartMedium("a transport")
         self.assertEqualDiff(
             "The transport 'a transport' cannot tunnel the smart protocol.",
             str(error),
@@ -166,7 +168,9 @@ class TestErrors(tests.TestCase):
         )
 
     def test_lock_failed(self):
-        error = errors.LockFailed("http://canonical.com/", "readonly transport")
+        error = transport_errors.LockFailed(
+            "http://canonical.com/", "readonly transport"
+        )
         self.assertEqualDiff(
             "Cannot lock http://canonical.com/: readonly transport", str(error)
         )
@@ -196,7 +200,7 @@ class TestErrors(tests.TestCase):
     def test_read_error(self):
         # a unicode path to check that %r is being used.
         path = "a path"
-        error = errors.ReadError(path)
+        error = transport_errors.ReadError(path)
         self.assertContainsRe(str(error), "^Error reading from 'a path'")
 
     def test_bzrerror_from_literal_string(self):
@@ -237,7 +241,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_transport_not_possible(self):
-        error = errors.TransportNotPossible("readonly", "original error")
+        error = transport_errors.TransportNotPossible("readonly", "original error")
         self.assertEqualDiff(
             "Transport operation not possible: readonly original error", str(error)
         )
@@ -302,7 +306,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_unexpected_smart_server_response(self):
-        e = errors.UnexpectedSmartServerResponse(("not yes",))
+        e = transport_errors.UnexpectedSmartServerResponse(("not yes",))
         self.assertEqual(
             "Could not understand response from smart server: ('not yes',)", str(e)
         )
@@ -353,7 +357,7 @@ class TestErrors(tests.TestCase):
 
     def test_error_from_smart_server(self):
         error_tuple = ("error", "tuple")
-        err = errors.ErrorFromSmartServer(error_tuple)
+        err = transport_errors.ErrorFromSmartServer(error_tuple)
         self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err)
         )

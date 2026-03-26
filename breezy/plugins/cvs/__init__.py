@@ -24,7 +24,7 @@ from ... import (
     errors,
     version_info,  # noqa: F401
 )
-from ...transport import register_transport_proto
+from dromedary import register_transport_proto
 
 
 class CVSUnsupportedError(errors.UnsupportedVcs):

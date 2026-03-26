@@ -21,6 +21,8 @@ import sys
 
 import breezy.bzr
 import breezy.git
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
 
 from . import controldir, errors, lazy_import, osutils, transport
 
@@ -104,7 +106,7 @@ def _is_colocated(control_dir, possible_transports=None):
     else:
         try:
             control_dir.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             return (False, this_url)
         else:
             return (
@@ -556,7 +558,7 @@ class cmd_remove_tree(Command):  # noqa: D101
                 working = d.open_workingtree()
             except errors.NoWorkingTree as exc:
                 raise errors.CommandError(gettext("No working tree to remove")) from exc
-            except errors.NotLocalUrl as exc:
+            except transport_errors.NotLocalUrl as exc:
                 raise errors.CommandError(
                     gettext("You cannot remove the working tree of a remote path")
                 ) from exc
@@ -679,7 +681,7 @@ class cmd_revno(Command):  # noqa: D101
             try:
                 wt = WorkingTree.open_containing(location)[0]
                 self.enter_context(wt.lock_read())
-            except (errors.NoWorkingTree, errors.NotLocalUrl) as exc:
+            except (errors.NoWorkingTree, transport_errors.NotLocalUrl) as exc:
                 raise errors.NoWorkingTree(location) from exc
             b = wt.branch
             revid = wt.last_revision()
@@ -741,7 +743,7 @@ class cmd_revision_info(Command):  # noqa: D101
             wt = WorkingTree.open_containing(directory)[0]
             b = wt.branch
             self.enter_context(wt.lock_read())
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             wt = None
             b = Branch.open_containing(directory)[0]
             self.enter_context(b.lock_read())
@@ -1147,7 +1149,7 @@ class cmd_cp(Command):  # noqa: D101
         for src, dst in pairs:
             try:
                 src_kind = tree.stored_kind(src)
-            except transport.NoSuchFile as exc:
+            except NoSuchFile as exc:
                 raise errors.CommandError(
                     gettext("Could not copy %s => %s: %s is not versioned.")
                     % (src, dst, src)
@@ -1166,7 +1168,7 @@ class cmd_cp(Command):  # noqa: D101
             if dst_parent != "":
                 try:
                     dst_parent_kind = tree.stored_kind(dst_parent)
-                except transport.NoSuchFile as exc:
+                except NoSuchFile as exc:
                     raise errors.CommandError(
                         gettext("Could not copy %s => %s: %s is not versioned.")
                         % (src, dst, dst_parent)
@@ -1865,7 +1867,7 @@ class cmd_branch(Command):  # noqa: D101
         to_transport = transport.get_transport(to_location, purpose="write")
         try:
             to_transport.mkdir(".")
-        except transport.FileExists:
+        except FileExists:
             try:
                 to_dir = controldir.ControlDir.open_from_transport(to_transport)
             except errors.NotBranchError as exc:
@@ -1882,7 +1884,7 @@ class cmd_branch(Command):  # noqa: D101
                     pass
                 else:
                     raise errors.AlreadyBranchError(to_location)
-        except transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.CommandError(
                 gettext('Parent of "%s" does not exist.') % to_location
             ) from exc
@@ -2642,7 +2644,7 @@ class cmd_init(Command):  # noqa: D101
         # locations if the user supplies an extended path
         try:
             to_transport.ensure_base()
-        except transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             if not create_prefix:
                 raise errors.CommandError(
                     gettext(
@@ -2669,7 +2671,7 @@ class cmd_init(Command):  # noqa: D101
             )
             a_controldir = branch.controldir
         else:
-            from .transport.local import LocalTransport
+            from dromedary.local import LocalTransport
 
             if a_controldir.has_branch():
                 if (
@@ -2696,7 +2698,7 @@ class cmd_init(Command):  # noqa: D101
 
             try:
                 tree = a_controldir.open_workingtree(recommend_upgrade=False)
-            except (errors.NoWorkingTree, errors.NotLocalUrl):
+            except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
                 tree = None
             repository = branch.repository
             layout = describe_layout(repository, branch, tree).lower()
@@ -4345,7 +4347,7 @@ class cmd_cat(Command):  # noqa: D101
         else:
             try:
                 rev_tree_path = _mod_tree.find_previous_path(tree, rev_tree, relpath)
-            except transport.NoSuchFile:
+            except NoSuchFile:
                 rev_tree_path = None
 
             if rev_tree_path is None:
@@ -5152,7 +5154,7 @@ def get_transport_type(typestring):
 
         return stub_sftp.SFTPAbsoluteServer
     elif typestring == "memory":
-        from breezy.transport import memory
+        from dromedary import memory
 
         from .tests import test_server
 
@@ -6891,7 +6893,7 @@ class cmd_uncommit(Command):  # noqa: D101
         try:
             tree = control.open_workingtree()
             b = tree.branch
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             tree = None
             b = control.open_branch()
 
