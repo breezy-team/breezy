@@ -956,7 +956,7 @@ def get_test_permutations():
     if importlib.util.find_spec("paramiko") is None:
         raise ParamikoNotPresent("paramiko not installed")
 
-    from breezy.tests import stub_sftp
+    from dromedary.tests import stub_sftp
 
     return [
         (SFTPTransport, stub_sftp.SFTPAbsoluteServer),

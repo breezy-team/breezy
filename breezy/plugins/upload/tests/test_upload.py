@@ -755,7 +755,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
     def _will_escape_isolation(transport_server):
         if not features.paramiko.available():
             return False
-        from ....tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         return transport_server is stub_sftp.SFTPHomeDirServer
 

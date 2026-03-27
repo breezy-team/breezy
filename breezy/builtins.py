@@ -5150,7 +5150,7 @@ def get_transport_type(typestring):
         alternative transport implementations.
     """
     if typestring == "sftp":
-        from .tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         return stub_sftp.SFTPAbsoluteServer
     elif typestring == "memory":

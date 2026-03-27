@@ -29,7 +29,7 @@ from ..osutils import lexists
 from .http_server import HttpServer
 
 if features.paramiko.available():
-    from breezy.tests import stub_sftp
+    from dromedary.tests import stub_sftp
     from dromedary import sftp as _mod_sftp
 
 

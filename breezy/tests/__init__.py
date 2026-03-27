@@ -4220,7 +4220,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_test_server",
         "breezy.tests.test_textfile",
         "breezy.tests.test_textmerge",
-        "breezy.tests.test_cethread",
         "breezy.tests.test_timestamp",
         "breezy.tests.test_trace",
         "breezy.tests.test_transactions",

@@ -1060,7 +1060,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         # Start an SSH server
         self.command_executed = []

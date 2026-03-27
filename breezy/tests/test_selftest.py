@@ -2500,7 +2500,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 

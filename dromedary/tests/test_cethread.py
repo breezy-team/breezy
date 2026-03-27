@@ -16,10 +16,12 @@
 
 import threading
 
-from .. import cethread, tests
+import unittest
+
+from dromedary import cethread
 
 
-class TestCatchingExceptionThread(tests.TestCase):
+class TestCatchingExceptionThread(unittest.TestCase):
     def test_start_and_join_smoke_test(self):
         def do_nothing():
             pass

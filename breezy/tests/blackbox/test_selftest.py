@@ -54,7 +54,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
         self.requireFeature(features.paramiko)
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         params = self.get_params_passed_to_core("selftest --transport=sftp")
         self.assertEqual(stub_sftp.SFTPAbsoluteServer, params[1]["transport"])
