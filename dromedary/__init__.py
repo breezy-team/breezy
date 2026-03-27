@@ -38,8 +38,8 @@ from typing import Any, TypeVar
 from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 
 from breezy import (
-    hooks,
     ui,
+    hooks,
 )
 from catalogus import registry
 import os
@@ -50,14 +50,26 @@ from . import errors, osutils, urlutils
 logger = logging.getLogger("dromedary")
 
 # Import the Rust extension
-try:
-    from . import _transport_rs
-except ImportError:
-    _transport_rs = None
+from . import _transport_rs
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
 _file_streams: dict[str, Any] = {}
+
+
+class TransportHooks(hooks.Hooks):
+    """Mapping of hook names to registered callbacks for transport hooks."""
+
+    def __init__(self):
+        """Initialize TransportHooks."""
+        super().__init__()
+        self.add_hook(
+            "post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.",
+            (2, 5),
+        )
 
 
 def _get_protocol_handlers():
@@ -410,21 +422,6 @@ class AppendBasedFileStream(FileStream):
     def flush(self):
         """Flush any buffered data (no-op for append-based streams)."""
         pass
-
-
-class TransportHooks(hooks.Hooks):
-    """Mapping of hook names to registered callbacks for transport hooks."""
-
-    def __init__(self):
-        """Initialize TransportHooks."""
-        super().__init__()
-        self.add_hook(
-            "post_connect",
-            "Called after a new connection is established or a reconnect "
-            "occurs. The sole argument passed is either the connected "
-            "transport or smart medium instance.",
-            (2, 5),
-        )
 
 
 class Transport:

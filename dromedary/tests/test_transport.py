@@ -33,10 +33,12 @@ from dromedary import (
     memory,
     pathfilter,
     readonly,
+    test_server,
 )
 from dromedary.errors import FileExists, NoSuchFile, UnsupportedProtocol
 from dromedary.local import file_kind
-from breezy.tests import features, test_server
+import sys
+import unittest
 
 # TODO: Should possibly split transport-specific tests into their own files.
 
@@ -870,7 +872,8 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 
 class TestWin32LocalTransport(tests.TestCase):
     def test_unc_clone_to_root(self):
-        self.requireFeature(features.win32_feature)
+        if sys.platform != "win32":
+            raise tests.TestNotApplicable("requires win32")
         # Win32 UNC path like \\HOST\path
         # clone to root should stop at least at \\HOST part
         # not on \\
@@ -1056,7 +1059,10 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # A reasonable evolution for this would be to simply check inside
         # check_channel_exec_request that the command is appropriate, and then
         # satisfy requests in-process.
-        self.requireFeature(features.paramiko)
+        try:
+            import paramiko  # noqa: F401
+        except ModuleNotFoundError:
+            raise tests.TestNotApplicable("paramiko not available")
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.

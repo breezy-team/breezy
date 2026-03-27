@@ -23,7 +23,9 @@ import sys
 
 from breezy import osutils
 from dromedary.errors import PathNotChild
-from breezy.tests import TestCase, TestCaseInTempDir, TestSkipped, features
+import sys
+
+from breezy.tests import TestCase, TestCaseInTempDir, TestSkipped
 from dromedary import urlutils
 
 
@@ -431,7 +433,8 @@ class TestUrlToPath(TestCase):
         self.assertIsInstance(result, str)
 
     def test_win32_unc_path_to_url(self):
-        self.requireFeature(features.win32_feature)
+        if sys.platform != "win32":
+            raise TestSkipped("requires win32")
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual("file://HOST/path", to_url(r"\\HOST\path"))
         self.assertEqual("file://HOST/path", to_url("//HOST/path"))

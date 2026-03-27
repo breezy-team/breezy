@@ -3023,14 +3023,16 @@ class HttpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import features
     from dromedary.tests import http_server
 
     permutations = [
         (HttpTransport, http_server.HttpServer),
     ]
-    if features.HTTPSServerFeature.available():
+    try:
         from breezy.tests import https_server, ssl_certs
+    except ModuleNotFoundError:
+        pass
+    else:
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
