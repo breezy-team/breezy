@@ -21,6 +21,7 @@ This shim provides backward compatibility for code that imports from breezy.tran
 """
 
 # Re-export everything from dromedary for backward compatibility
+from catalogus import registry
 from dromedary import *  # noqa: F403
 
 import breezy
@@ -86,6 +87,16 @@ register_lazy_transport(
 )
 register_transport_proto("ssh:")
 register_lazy_transport("ssh:", "breezy.transport.remote", "HintingSSHTransport")
+
+
+transport_server_registry = registry.Registry[str, Callable, None]()
+transport_server_registry.register_lazy(
+    "bzr",
+    "breezy.bzr.smart.server",
+    "serve_bzr",
+    help="The Bazaar smart server protocol over TCP. (default port: 4155)",
+)
+transport_server_registry.default_key = "bzr"
 
 
 def get_transport(base, possible_transports=None, purpose=None):

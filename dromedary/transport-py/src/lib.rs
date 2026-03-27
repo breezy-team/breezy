@@ -866,7 +866,7 @@ impl LocalTransport {
 
 #[pyfunction]
 fn get_test_permutations(py: Python) -> PyResult<Bound<PyList>> {
-    let test_server_module = py.import("breezy.tests.test_server")?;
+    let test_server_module = py.import("dromedary.tests.test_server")?;
     let local_url_server = test_server_module.getattr("LocalURLServer")?;
     let local_transport = py
         .import("dromedary.local")?

@@ -324,6 +324,6 @@ class PathFilteringTransport(Transport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from dromedary.tests import test_server
 
     return [(PathFilteringTransport, test_server.TestingPathFilteringServer)]

@@ -183,6 +183,6 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from dromedary.tests import test_server
 
     return [(TransportLogDecorator, test_server.LogDecoratorServer)]

@@ -45,7 +45,6 @@ content = transport.get('filename').read()
 ## Requirements
 
 - Python 3.8+
-- breezy (core dependency)
 
 Optional dependencies:
 - paramiko (for SFTP support)

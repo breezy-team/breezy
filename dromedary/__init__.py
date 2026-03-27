@@ -1772,13 +1772,3 @@ register_lazy_transport(
 
 register_transport_proto("vfat+")
 register_lazy_transport("vfat+", "dromedary.fakevfat", "FakeVFATTransportDecorator")
-
-
-transport_server_registry = registry.Registry[str, Callable, None]()
-transport_server_registry.register_lazy(
-    "bzr",
-    "breezy.bzr.smart.server",
-    "serve_bzr",
-    help="The Bazaar smart server protocol over TCP. (default port: 4155)",
-)
-transport_server_registry.default_key = "bzr"

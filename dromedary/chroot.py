@@ -70,6 +70,6 @@ class ChrootTransport(pathfilter.PathFilteringTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from dromedary.tests import test_server
 
     return [(ChrootTransport, test_server.TestingChrootServer)]

@@ -108,7 +108,7 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import test_server
+    from dromedary.tests import test_server
 
     return [
         (LocalTransport, test_server.LocalURLServer),

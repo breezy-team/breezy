@@ -36,7 +36,7 @@ from breezy import config, ui
 from dromedary import errors
 from dromedary.osutils import pumpfile
 from dromedary.errors import TransportError, PathError, PermissionDenied
-from breezy.tests.test_server import TestServer
+from dromedary.tests.test_server import TestServer
 from dromedary import (
     ConnectedTransport,
     FileStream,
