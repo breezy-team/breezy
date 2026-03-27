@@ -216,6 +216,14 @@ class SocketConnectionError(ConnectionError):
         TransportError.__init__(self, self.msg)
 
 
+class PrefixCreateError(TransportError):
+    """Failed to create a path prefix for a transport."""
+
+    def __init__(self, base):
+        self.base = base
+        TransportError.__init__(self, f"Failed to create path prefix for {base}.")
+
+
 class UnusableRedirect(TransportError):
     _fmt = "Unable to follow redirect from %(source)s to %(target)s: %(reason)s."
 

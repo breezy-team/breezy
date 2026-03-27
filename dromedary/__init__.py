@@ -506,11 +506,9 @@ class Transport:
         while True:
             new_transport = cur_transport.clone("..")
             if new_transport.base == cur_transport.base:
-                from breezy.errors import CommandError
+                from dromedary.errors import PrefixCreateError
 
-                raise CommandError(
-                    f"Failed to create path prefix for {cur_transport.base}."
-                )
+                raise PrefixCreateError(cur_transport.base)
             try:
                 new_transport.mkdir(".", mode=mode)
             except errors.NoSuchFile:
@@ -675,7 +673,7 @@ class Transport:
         start with our base, but still be a relpath once aliasing is
         resolved.
         """
-        # TODO: This might want to use breezy.osutils.relpath
+        # TODO: This might want to use dromedary.osutils.relpath
         #       but we have to watch out because of the prefix issues
         if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)

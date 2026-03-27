@@ -535,7 +535,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
-        """See breezy.transport.Server.get_bogus_url."""
+        """See dromedary.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns, etc
         # we bind a random socket, so that we get a guaranteed unused port
         # we just never listen on that port
@@ -548,7 +548,7 @@ class SFTPFullAbsoluteServer(SFTPServer):
     """A test server for sftp transports, using absolute urls and ssh."""
 
     def get_url(self):
-        """See breezy.transport.Server.get_url."""
+        """See dromedary.Server.get_url."""
         homedir = self._homedir
         if sys.platform != "win32":
             # Remove the initial '/' on all platforms but win32
@@ -572,7 +572,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
     """A test server for sftp transports, using absolute urls."""
 
     def get_url(self):
-        """See breezy.transport.Server.get_url."""
+        """See dromedary.Server.get_url."""
         homedir = self._homedir
         if sys.platform != "win32":
             # Remove the initial '/' on all platforms but win32
@@ -584,7 +584,7 @@ class SFTPHomeDirServer(SFTPServerWithoutSSH):
     """A test server for sftp transports, using homedir relative urls."""
 
     def get_url(self):
-        """See breezy.transport.Server.get_url."""
+        """See dromedary.Server.get_url."""
         return self._get_sftp_url("%7E/")
 
 

@@ -29,8 +29,8 @@ from dromedary import urlutils
 
 class TestUrlToPath(TestCase):
     def test_basename(self):
-        # breezy.urlutils.basename
-        # Test breezy.urlutils.split()
+        # dromedary.urlutils.basename
+        # Test dromedary.urlutils.split()
         basename = urlutils.basename
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, basename, "file:///path/to/foo")
@@ -167,7 +167,7 @@ class TestUrlToPath(TestCase):
         test_one("ab://foo", ("ab", "ab://foo"))
 
     def test_dirname(self):
-        # Test breezy.urlutils.dirname()
+        # Test dromedary.urlutils.dirname()
         dirname = urlutils.dirname
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, dirname, "file:///path/to/foo")
@@ -492,7 +492,7 @@ class TestUrlToPath(TestCase):
         self.assertRaises(urlutils.InvalidURL, extract, "file://", "/C:ool")
 
     def test_split(self):
-        # Test breezy.urlutils.split()
+        # Test dromedary.urlutils.split()
         split = urlutils.split
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, split, "file:///path/to/foo")
