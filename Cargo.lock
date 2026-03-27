@@ -363,7 +363,7 @@ dependencies = [
 name = "dromedary"
 version = "3.4.0"
 dependencies = [
- "breezy-osutils",
+ "dromedary-osutils",
  "lazy_static",
  "log",
  "nix",
@@ -376,6 +376,15 @@ dependencies = [
  "tempfile",
  "url",
  "walkdir",
+]
+
+[[package]]
+name = "dromedary-osutils"
+version = "3.4.0"
+dependencies = [
+ "lazy_static",
+ "path-clean",
+ "regex",
 ]
 
 [[package]]
@@ -395,7 +404,7 @@ dependencies = [
 name = "dromedary-urlutils"
 version = "3.4.0"
 dependencies = [
- "breezy-osutils",
+ "dromedary-osutils",
  "lazy_static",
  "percent-encoding",
  "regex",

@@ -1,0 +1,13 @@
+[package]
+name = "dromedary-osutils"
+version = { workspace = true }
+edition = "2021"
+description = "Path utilities for dromedary"
+license = "GPL-2.0+"
+
+[lib]
+
+[dependencies]
+lazy_static = "1.4.0"
+regex = "1.5.4"
+path-clean = "1"

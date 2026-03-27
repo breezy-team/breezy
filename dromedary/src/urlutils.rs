@@ -616,7 +616,7 @@ pub mod win32 {
         if path.as_ref().as_os_str() == "/" {
             return Ok("file:///".to_string());
         }
-        let win32_path = breezy_osutils::path::win32::abspath(path.as_ref())?;
+        let win32_path = dromedary_osutils::path::win32::abspath(path.as_ref())?;
         let win32_path = win32_path.as_path().to_str().unwrap();
         if win32_path.starts_with("//") {
             Ok(format!(
@@ -702,7 +702,7 @@ pub mod posix {
     ///
     /// This also handles transforming escaping unicode characters, etc.
     pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
-        let abs_path = breezy_osutils::path::posix::abspath(path.as_ref())?;
+        let abs_path = dromedary_osutils::path::posix::abspath(path.as_ref())?;
         let escaped_path = super::escape(abs_path.as_path().as_os_str().as_bytes(), Some("/~"));
         Ok(format!("file://{}", escaped_path))
     }
@@ -771,10 +771,10 @@ pub fn file_relpath(base: &str, path: &str) -> Result<String> {
     if base.len() < MIN_ABS_FILEURL_LENGTH {
         return Err(Error::UrlTooShort(base.to_string()));
     }
-    let base: PathBuf = breezy_osutils::path::normpath(local_path_from_url(base)?);
-    let path: PathBuf = breezy_osutils::path::normpath(local_path_from_url(path)?);
+    let base: PathBuf = dromedary_osutils::path::normpath(local_path_from_url(base)?);
+    let path: PathBuf = dromedary_osutils::path::normpath(local_path_from_url(path)?);
 
-    let relpath = breezy_osutils::path::relpath(base.as_path(), path.as_path());
+    let relpath = dromedary_osutils::path::relpath(base.as_path(), path.as_path());
     if relpath.is_none() {
         return Err(Error::PathNotChild(
             path.display().to_string(),

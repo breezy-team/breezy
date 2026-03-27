@@ -175,7 +175,7 @@ impl Transport for LocalTransport {
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
         let path = self.path.join(unescape(relpath)?);
-        let path = breezy_osutils::path::normpath(path);
+        let path = dromedary_osutils::path::normpath(path);
 
         let url_str = crate::urlutils::local_path_to_url(path.as_path())
             .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;

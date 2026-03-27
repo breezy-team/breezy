@@ -12,7 +12,7 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 [lib]
 
 [dependencies]
-breezy-osutils = { path = "../crates/osutils" }
+dromedary-osutils = { path = "osutils-rs" }
 url = { workspace = true }
 tempfile = "3"
 pyo3 = { workspace = true, optional = true }
