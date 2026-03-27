@@ -40,7 +40,7 @@ from dromedary import (
 )
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
-from dromedary.remote import RemoteTransport
+from breezy.transport.remote import RemoteTransport
 from breezy.tests import TestNotApplicable, TestSkipped, multiply_tests, test_server
 from .test_transport import TestTransportImplementation
 

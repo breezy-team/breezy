@@ -1774,37 +1774,6 @@ register_transport_proto("vfat+")
 register_lazy_transport("vfat+", "dromedary.fakevfat", "FakeVFATTransportDecorator")
 
 
-register_transport_proto(
-    "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
-)
-
-register_lazy_transport("bzr://", "dromedary.remote", "RemoteTCPTransport")
-register_transport_proto("bzr-v2://", register_netloc=True)
-
-register_lazy_transport("bzr-v2://", "dromedary.remote", "RemoteTCPTransportV2Only")
-register_transport_proto(
-    "bzr+http://",
-    #                help="Fast access using the Bazaar smart server over HTTP."
-    register_netloc=True,
-)
-register_lazy_transport("bzr+http://", "dromedary.remote", "RemoteHTTPTransport")
-register_transport_proto(
-    "bzr+https://",
-    #                help="Fast access using the Bazaar smart server over HTTPS."
-    register_netloc=True,
-)
-register_lazy_transport("bzr+https://", "dromedary.remote", "RemoteHTTPTransport")
-register_transport_proto(
-    "bzr+ssh://",
-    help="Fast access using the Bazaar smart server over SSH.",
-    register_netloc=True,
-)
-register_lazy_transport("bzr+ssh://", "dromedary.remote", "RemoteSSHTransport")
-
-register_transport_proto("ssh:")
-register_lazy_transport("ssh:", "dromedary.remote", "HintingSSHTransport")
-
-
 transport_server_registry = registry.Registry[str, Callable, None]()
 transport_server_registry.register_lazy(
     "bzr",

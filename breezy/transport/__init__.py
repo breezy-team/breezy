@@ -60,6 +60,33 @@ register_lazy_transport(
     "nosmart+", "breezy.transport.nosmart", "NoSmartTransportDecorator"
 )
 
+register_transport_proto(
+    "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
+)
+register_lazy_transport("bzr://", "breezy.transport.remote", "RemoteTCPTransport")
+register_transport_proto("bzr-v2://", register_netloc=True)
+register_lazy_transport(
+    "bzr-v2://", "breezy.transport.remote", "RemoteTCPTransportV2Only"
+)
+register_transport_proto("bzr+http://", register_netloc=True)
+register_lazy_transport(
+    "bzr+http://", "breezy.transport.remote", "RemoteHTTPTransport"
+)
+register_transport_proto("bzr+https://", register_netloc=True)
+register_lazy_transport(
+    "bzr+https://", "breezy.transport.remote", "RemoteHTTPTransport"
+)
+register_transport_proto(
+    "bzr+ssh://",
+    help="Fast access using the Bazaar smart server over SSH.",
+    register_netloc=True,
+)
+register_lazy_transport(
+    "bzr+ssh://", "breezy.transport.remote", "RemoteSSHTransport"
+)
+register_transport_proto("ssh:")
+register_lazy_transport("ssh:", "breezy.transport.remote", "HintingSSHTransport")
+
 
 def get_transport(base, possible_transports=None, purpose=None):
     """Open a transport to access a URL or directory.

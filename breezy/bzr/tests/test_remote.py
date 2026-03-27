@@ -43,7 +43,7 @@ from ...branch import Branch
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
-from dromedary.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
+from breezy.transport.remote import RemoteSSHTransport, RemoteTCPTransport, RemoteTransport
 from .. import (
     RemoteBzrProber,
     bzrdir,
