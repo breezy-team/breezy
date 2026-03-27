@@ -28,7 +28,7 @@ import time
 import urllib.parse  # FIXME: Can't we use breezy.urlutils ?
 
 from breezy import trace, urlutils
-from breezy.tests import http_server
+from dromedary.tests import http_server
 
 
 class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):

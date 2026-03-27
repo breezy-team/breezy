@@ -27,7 +27,7 @@ import stat
 import sys
 from io import BytesIO
 
-from breezy import errors
+from dromedary import errors
 from catalogus import pyutils
 from dromedary import urlutils, osutils
 import dromedary as _mod_transport

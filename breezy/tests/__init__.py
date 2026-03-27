@@ -3184,7 +3184,7 @@ class ChrootedTestCase(TestCaseWithTransport):
     """
 
     def setUp(self):
-        from breezy.tests import http_server
+        from dromedary.tests import http_server
 
         super().setUp()
         if self.vfs_transport_factory != memory.MemoryServer:

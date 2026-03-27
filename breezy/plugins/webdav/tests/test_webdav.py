@@ -22,7 +22,7 @@ from io import StringIO
 
 from breezy import tests
 from breezy.plugins.webdav import webdav
-from breezy.tests import http_server
+from dromedary.tests import http_server
 from dromedary import errors as transport_errors
 
 

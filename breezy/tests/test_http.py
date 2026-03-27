@@ -135,7 +135,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
-        from . import ssl_certs
+        from dromedary.tests import ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
@@ -2062,7 +2062,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from . import https_server
+    from dromedary.tests import https_server
 
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass

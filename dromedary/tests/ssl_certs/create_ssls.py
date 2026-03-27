@@ -51,7 +51,7 @@ sys.path.insert(0, our_bzr)
 
 import contextlib
 
-from breezy.tests import ssl_certs
+from dromedary.tests import ssl_certs
 
 
 def error(s):

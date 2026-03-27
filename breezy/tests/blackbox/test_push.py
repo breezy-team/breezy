@@ -32,7 +32,8 @@ from breezy import (
     workingtree,
 )
 from breezy.bzr import bzrdir, knitrepo
-from breezy.tests import http_server, scenarios, script, test_foreign
+from breezy.tests import scenarios, script, test_foreign
+from dromedary.tests import http_server
 from dromedary import errors as transport_errors
 from dromedary import memory
 
