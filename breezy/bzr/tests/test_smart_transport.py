@@ -33,7 +33,8 @@ from testtools.matchers import DocTestMatches
 import breezy
 import dromedary as _mod_transport
 from dromedary import errors as transport_errors
-from dromedary import local, memory, remote, ssh
+from dromedary import local, memory, ssh
+from breezy.transport import remote
 from dromedary.errors import NoSuchFile
 from dromedary.http import urllib
 

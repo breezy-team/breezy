@@ -23,7 +23,7 @@ import threading
 from _thread import interrupt_main  # type: ignore
 
 from dromedary import errors as transport_errors
-from dromedary import remote
+from breezy.transport import remote
 
 from ... import builtins, config, osutils, trace, transport, urlutils
 from ... import revision as _mod_revision

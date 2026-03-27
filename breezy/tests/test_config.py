@@ -26,7 +26,7 @@ import configobj
 from testtools import matchers
 
 from dromedary import errors as transport_errors
-from dromedary import remote as transport_remote
+from breezy.transport import remote as transport_remote
 
 from .. import (
     bedding,

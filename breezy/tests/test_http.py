@@ -47,7 +47,7 @@ from .. import (
     urlutils,
 )
 from ..bzr import remote as _mod_remote
-from dromedary import remote
+from breezy.transport import remote
 from dromedary.http import urllib
 from dromedary.http.urllib import (
     AbstractAuthHandler,
