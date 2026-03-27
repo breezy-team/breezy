@@ -25,7 +25,7 @@ from stat import S_ISDIR
 from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
-from dromedary import memory
+from dromedary import errors as transport_errors, memory
 from .. import inventory
 from ..btree_index import BTreeGraphIndex
 from ..groupcompress_repo import RepositoryFormat2a
@@ -749,7 +749,10 @@ class TestPackRepository(TestCaseWithTransport):
         # Damage the repository on the filesystem
         self.get_transport("").rename("repo", "foo")
         # abort_write_group will not raise an error
-        self.assertRaises(errors.BzrError, repo.abort_write_group)
+        self.assertRaises(
+            (errors.BzrError, transport_errors.TransportError),
+            repo.abort_write_group,
+        )
         if token is not None:
             repo.leave_lock_in_place()
 

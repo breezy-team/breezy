@@ -922,8 +922,8 @@ fn contains_whitespace(py: Python, text: Py<PyAny>) -> PyResult<bool> {
 fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<Py<PyAny>> {
     let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => Err(PathNotChild::new_err((
-            path.to_string_lossy().to_string(),
             start.to_string_lossy().to_string(),
+            path.to_string_lossy().to_string(),
         ))),
         Some(p) => Ok(p),
     }?;

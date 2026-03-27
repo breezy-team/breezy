@@ -55,6 +55,12 @@ def _breezy_credential_lookup(
 set_credential_lookup(_breezy_credential_lookup)
 
 
+register_transport_proto("nosmart+")
+register_lazy_transport(
+    "nosmart+", "breezy.transport.nosmart", "NoSmartTransportDecorator"
+)
+
+
 def get_transport(base, possible_transports=None, purpose=None):
     """Open a transport to access a URL or directory.
 

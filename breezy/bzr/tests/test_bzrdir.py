@@ -29,7 +29,7 @@ import dromedary as _mod_transport
 from dromedary import errors as transport_errors
 from dromedary import memory, pathfilter
 from dromedary.http.urllib import HttpTransport
-from dromedary.nosmart import NoSmartTransportDecorator
+from breezy.transport.nosmart import NoSmartTransportDecorator
 from dromedary.readonly import ReadonlyTransportDecorator
 
 from ... import (

@@ -1773,8 +1773,6 @@ register_lazy_transport(
 register_transport_proto("vfat+")
 register_lazy_transport("vfat+", "dromedary.fakevfat", "FakeVFATTransportDecorator")
 
-register_transport_proto("nosmart+")
-register_lazy_transport("nosmart+", "dromedary.nosmart", "NoSmartTransportDecorator")
 
 register_transport_proto(
     "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
