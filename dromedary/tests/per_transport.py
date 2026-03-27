@@ -41,7 +41,9 @@ from dromedary import (
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
 from breezy.transport.remote import RemoteTransport
-from breezy.tests import TestNotApplicable, TestSkipped, multiply_tests, test_server
+import testscenarios
+
+from breezy.tests import TestNotApplicable, TestSkipped, test_server
 from .test_transport import TestTransportImplementation
 
 
@@ -79,10 +81,11 @@ def transport_test_permutations():
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Multiply tests for tranport implementations."""
-    result = loader.suiteClass()
-    scenarios = transport_test_permutations()
-    return multiply_tests(standard_tests, scenarios, result)
+    """Multiply tests for transport implementations."""
+    TransportTests.scenarios = transport_test_permutations()
+    return testscenarios.load_tests_apply_scenarios(
+        loader, standard_tests, pattern
+    )
 
 
 class TransportTests(TestTransportImplementation):
