@@ -19,8 +19,8 @@
 
 import logging
 
-from breezy.tests import TestCaseWithMemoryTransport
 import dromedary as transport
+from dromedary.tests import TestCaseWithMemoryTransport
 from dromedary.log import TransportLogDecorator
 
 
@@ -34,8 +34,8 @@ class TestTransportLog(TestCaseWithMemoryTransport):
             logging_transport.mkdir("subdir")
 
         log_output = "\n".join(cm.output)
-        self.assertContainsRe(log_output, r"mkdir subdir")
-        self.assertContainsRe(log_output, "  --> None")
+        self.assertRegex(log_output, r"mkdir subdir")
+        self.assertRegex(log_output, "  --> None")
         # they have the expected effect
         self.assertTrue(logging_transport.has("subdir"))
         # and they operate on the underlying transport

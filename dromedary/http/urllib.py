@@ -3029,7 +3029,7 @@ def get_test_permutations():
         (HttpTransport, http_server.HttpServer),
     ]
     try:
-        from breezy.tests import https_server, ssl_certs
+        from dromedary.tests import https_server, ssl_certs
     except ModuleNotFoundError:
         pass
     else:

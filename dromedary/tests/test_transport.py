@@ -22,7 +22,9 @@ import sys
 import threading
 from io import BytesIO
 
-from breezy import osutils, tests
+import sys
+import unittest
+
 from dromedary import errors
 import dromedary as transport
 from dromedary import urlutils
@@ -31,19 +33,23 @@ from dromedary import (
     fakenfs,
     local,
     memory,
+    osutils,
     pathfilter,
     readonly,
     test_server,
 )
 from dromedary.errors import FileExists, NoSuchFile, UnsupportedProtocol
 from dromedary.local import file_kind
-import sys
-import unittest
+from dromedary.tests import (
+    TestCaseInTempDir,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+)
 
 # TODO: Should possibly split transport-specific tests into their own files.
 
 
-class TestTransport(tests.TestCase):
+class TestTransport(unittest.TestCase):
     """Test the non transport-concrete class functionality."""
 
     def test__get_set_protocol_handlers(self):
@@ -151,7 +157,7 @@ class TestTransport(tests.TestCase):
         self.assertEqual("memory:///t is not a local path.", str(e))
 
 
-class TestCoalesceOffsets(tests.TestCase):
+class TestCoalesceOffsets(unittest.TestCase):
     def check(self, expected, offsets, limit=0, max_size=0, fudge=0):
         coalesce = transport.Transport._coalesce_offsets
         exp = [transport._CoalescedOffset(*x) for x in expected]
@@ -287,7 +293,7 @@ class TestCoalesceOffsets(tests.TestCase):
         )
 
 
-class TestMemoryServer(tests.TestCase):
+class TestMemoryServer(unittest.TestCase):
     def test_create_server(self):
         server = memory.MemoryServer()
         server.start_server()
@@ -300,7 +306,7 @@ class TestMemoryServer(tests.TestCase):
         self.assertRaises(UnsupportedProtocol, transport.get_transport_from_url, url)
 
 
-class TestMemoryTransport(tests.TestCase):
+class TestMemoryTransport(unittest.TestCase):
     def test_get_transport(self):
         memory.MemoryTransport()
 
@@ -406,7 +412,7 @@ class TestMemoryTransport(tests.TestCase):
         self.assertEqual(6, t.stat("bar").st_size)
 
 
-class ChrootDecoratorTransportTest(tests.TestCase):
+class ChrootDecoratorTransportTest(unittest.TestCase):
     """Chroot decoration specific tests."""
 
     def test_abspath(self):
@@ -469,7 +475,7 @@ class ChrootDecoratorTransportTest(tests.TestCase):
         self.assertRaises(urlutils.InvalidURLJoin, urlutils.join, t.base, "..")
 
 
-class TestChrootServer(tests.TestCase):
+class TestChrootServer(unittest.TestCase):
     def test_construct(self):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
@@ -497,7 +503,7 @@ class TestChrootServer(tests.TestCase):
         self.assertEqual("chroot-%d:///" % id(server), server.get_url())
 
 
-class TestHooks(tests.TestCase):
+class TestHooks(unittest.TestCase):
     """Basic tests for transport hooks."""
 
     def _get_connected_transport(self):
@@ -518,7 +524,7 @@ class TestHooks(tests.TestCase):
         self.assertEqual(calls, [t])
 
 
-class PathFilteringDecoratorTransportTest(tests.TestCase):
+class PathFilteringDecoratorTransportTest(unittest.TestCase):
     """Pathfilter decoration specific tests."""
 
     def test_abspath(self):
@@ -609,7 +615,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         self.assertEqual(t.base, new_t.base)
 
 
-class ReadonlyDecoratorTransportTest(tests.TestCase):
+class ReadonlyDecoratorTransportTest(unittest.TestCase):
     """Readonly decoration specific tests."""
 
     def test_local_parameters(self):
@@ -630,7 +636,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         self.assertEqual(True, t.is_readonly())
 
 
-class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
+class FakeNFSDecoratorTests(TestCaseInTempDir):
     """NFS decorator specific tests."""
 
     def get_nfs_transport(self, url):
@@ -676,7 +682,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
         self.assertRaises(errors.ResourceBusy, t.rename, "from", "to")
 
 
-class FakeVFATDecoratorTests(tests.TestCaseInTempDir):
+class FakeVFATDecoratorTests(TestCaseInTempDir):
     """Tests for simulation of VFAT restrictions."""
 
     def get_vfat_transport(self, url):
@@ -713,12 +719,12 @@ class BackupTransportHandler(transport.Transport):
     pass
 
 
-class TestTransportImplementation(tests.TestCaseInTempDir):
+class TestTransportImplementation(TestCaseInTempDir):
     """Implementation verification for transports.
 
     To verify a transport we need a server factory, which is a callable
     that accepts no parameters and returns an implementation of
-    breezy.transport.Server.
+    dromedary.Server.
 
     That Server is then used to construct transport instances and test
     the transport via loopback activity.
@@ -759,7 +765,7 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
         return t
 
 
-class TestTransportFromPath(tests.TestCaseInTempDir):
+class TestTransportFromPath(TestCaseInTempDir):
     def test_with_path(self):
         t = transport.get_transport_from_path(self.test_dir)
         self.assertIsInstance(t, local.LocalTransport)
@@ -774,7 +780,7 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
         )
 
 
-class TestTransportFromUrl(tests.TestCaseInTempDir):
+class TestTransportFromUrl(TestCaseInTempDir):
     def test_with_path(self):
         self.assertRaises(
             urlutils.InvalidURL, transport.get_transport_from_url, self.test_dir
@@ -796,7 +802,7 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         self.assertTrue(t.has("afile"))
 
 
-class TestLocalTransports(tests.TestCase):
+class TestLocalTransports(unittest.TestCase):
     def test_get_transport_from_abspath(self):
         here = osutils.abspath(".")
         t = transport.get_transport_from_path(here)
@@ -821,7 +827,7 @@ class TestLocalTransports(tests.TestCase):
         self.assertEqual(t.local_abspath(""), here)
 
 
-class TestLocalTransportMutation(tests.TestCaseInTempDir):
+class TestLocalTransportMutation(TestCaseInTempDir):
     def test_local_transport_mkdir(self):
         here = osutils.abspath(".")
         t = transport.get_transport_from_path(here)
@@ -845,7 +851,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
         self.assertTrue(os.path.exists("test2"))
 
 
-class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
+class TestLocalTransportWriteStream(TestCaseWithTransport):
     def test_local_fdatasync_calls_fdatasync(self):
         """Check fdatasync on a stream tries to flush the data to the OS.
 
@@ -855,7 +861,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         sentinel = object()
         fdatasync = getattr(os, "fdatasync", sentinel)
         if fdatasync is sentinel:
-            raise tests.TestNotApplicable("fdatasync not supported")
+            self.skipTest("fdatasync not supported")
         t = self.get_transport(".")
         self.recordCalls(os, "fdatasync")
         w = t.open_write_stream("out")
@@ -870,10 +876,10 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         self.assertRaises(NoSuchFile, t.open_write_stream, "dir/foo")
 
 
-class TestWin32LocalTransport(tests.TestCase):
+class TestWin32LocalTransport(unittest.TestCase):
     def test_unc_clone_to_root(self):
         if sys.platform != "win32":
-            raise tests.TestNotApplicable("requires win32")
+            self.skipTest("requires win32")
         # Win32 UNC path like \\HOST\path
         # clone to root should stop at least at \\HOST part
         # not on \\
@@ -886,7 +892,7 @@ class TestWin32LocalTransport(tests.TestCase):
         self.assertEqual(t.base, "file://HOST/")
 
 
-class TestConnectedTransport(tests.TestCase):
+class TestConnectedTransport(unittest.TestCase):
     """Tests for connected to remote server transports."""
 
     def test_parse_url(self):
@@ -974,7 +980,7 @@ class TestConnectedTransport(tests.TestCase):
         self.assertIs(new_password, c._get_credentials())
 
 
-class TestReusedTransports(tests.TestCase):
+class TestReusedTransports(unittest.TestCase):
     """Tests for transport reuse."""
 
     def test_reuse_same_transport(self):
@@ -1007,7 +1013,7 @@ class TestReusedTransports(tests.TestCase):
         self.assertIsNot(t1, t2)
 
 
-class TestTransportTrace(tests.TestCase):
+class TestTransportTrace(unittest.TestCase):
     def test_decorator(self):
         t = transport.get_transport_from_url("trace+memory://")
         from dromedary.trace import TransportTraceDecorator
@@ -1048,7 +1054,7 @@ class TestTransportTrace(tests.TestCase):
         self.assertEqual(expected_result, t._activity)
 
 
-class TestSSHConnections(tests.TestCaseWithTransport):
+class TestSSHConnections(TestCaseWithTransport):
     def test_bzr_connect_to_bzr_ssh(self):
         """get_transport of a bzr+ssh:// behaves correctly.
 
@@ -1062,7 +1068,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         try:
             import paramiko  # noqa: F401
         except ModuleNotFoundError:
-            raise tests.TestNotApplicable("paramiko not available")
+            self.skipTest("paramiko not available")
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
@@ -1159,7 +1165,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
             t.join()
 
 
-class TestKind(tests.TestCaseInTempDir):
+class TestKind(TestCaseInTempDir):
     def test_file_kind(self):
         import socket
 

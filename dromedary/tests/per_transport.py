@@ -37,13 +37,14 @@ from dromedary import (
     ConnectedTransport,
     Transport,
     _get_transport_modules,
+    test_server,
 )
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
 from breezy.transport.remote import RemoteTransport
 import testscenarios
 
-from breezy.tests import TestNotApplicable, TestSkipped, test_server
+from breezy.tests import TestNotApplicable, TestSkipped
 from .test_transport import TestTransportImplementation
 
 
