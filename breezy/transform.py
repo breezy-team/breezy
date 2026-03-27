@@ -569,7 +569,7 @@ def refuse_orphan(tt, orphan_id, parent_id):
 
 
 orphaning_registry = registry.Registry[
-    str, Callable[[TreeTransform, bytes, bytes], None]
+    str, Callable[[TreeTransform, bytes, bytes], None], None
 ]()
 orphaning_registry.register(
     "conflict",

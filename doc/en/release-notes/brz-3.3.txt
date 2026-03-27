@@ -12,6 +12,12 @@ brz 3.3.22
    embeds a git tag SHA rather than a commit SHA.
    (Jelmer Vernooĳ)
 
+ * Use the ``catalogus`` package for the registry implementation
+   rather than a local copy. (Jelmer Vernooĳ)
+
+ * Fix builtin command lookup when running brz commands in-process
+   without going through ``main()``. (Jelmer Vernooĳ)
+
 brz 3.3.21
 ##########
 

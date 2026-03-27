@@ -49,7 +49,7 @@ from ..registry import Registry
 from ..textmerge import TextMerge
 from . import index
 
-adapter_registry = Registry[tuple[str, str], Any]()
+adapter_registry = Registry[tuple[str, str], Any, None]()
 adapter_registry.register_lazy(
     ("knit-annotated-delta-gz", "knit-delta-gz"),
     "breezy.bzr.knit",

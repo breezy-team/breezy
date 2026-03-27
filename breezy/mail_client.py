@@ -111,7 +111,7 @@ class MailClient:
         return ""
 
 
-mail_client_registry = registry.Registry[str, type[MailClient]]()
+mail_client_registry = registry.Registry[str, type[MailClient], None]()
 
 
 class Editor(MailClient):

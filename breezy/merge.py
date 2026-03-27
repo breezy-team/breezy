@@ -2051,7 +2051,7 @@ def merge_inner(
     return merger.do_merge()
 
 
-merge_type_registry = registry.Registry[str, type[Merge3Merger]]()
+merge_type_registry = registry.Registry[str, type[Merge3Merger], None]()
 merge_type_registry.register("diff3", Diff3Merger, "Merge using external diff3.")
 merge_type_registry.register("lca", LCAMerger, "LCA-newness merge.")
 merge_type_registry.register("merge3", Merge3Merger, "Native diff3-style merge.")
