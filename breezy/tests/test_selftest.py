@@ -42,7 +42,7 @@ from .. import (
     errors,
     hooks,
     lockdir,
-    memorytree,
+    mutabletree,
     osutils,
     repository,
     symbol_versioning,
@@ -719,7 +719,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
         self.assertFalse(osutils.lexists("dir"))
-        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertIsInstance(tree, mutabletree.MutableTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
@@ -729,7 +729,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
         self.assertFalse(osutils.lexists("dir"))
-        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertIsInstance(tree, mutabletree.MutableTree)
         self.assertEqual(
             format.repository_format.__class__, tree.branch.repository._format.__class__
         )
@@ -2309,7 +2309,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         # we should be able to get a new branch and a mutable tree from
         # TestCaseWithTransport
         tree = self.make_branch_and_memory_tree("a")
-        self.assertIsInstance(tree, breezy.memorytree.MemoryTree)
+        self.assertIsInstance(tree, breezy.mutabletree.MutableTree)
 
     def test_make_tree_for_local_vfs_backed_transport(self):
         # make_branch_and_tree has to use local branch and repositories
