@@ -1487,7 +1487,7 @@ class ControlDirFormatInfo:
         self.experimental = experimental
 
 
-class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
+class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat, None]):
     """Registry of user-selectable ControlDir subformats.
 
     Differs from ControlDirFormat._formats in that it provides sub-formats,

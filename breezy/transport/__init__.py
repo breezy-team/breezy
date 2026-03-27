@@ -1854,7 +1854,7 @@ register_transport_proto("ssh:")
 register_lazy_transport("ssh:", "breezy.transport.remote", "HintingSSHTransport")
 
 
-transport_server_registry = registry.Registry[str, Callable]()
+transport_server_registry = registry.Registry[str, Callable, None]()
 transport_server_registry.register_lazy(
     "bzr",
     "breezy.bzr.smart.server",

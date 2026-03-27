@@ -3508,7 +3508,7 @@ def run_suite(
 
 
 # A registry where get() returns a suite decorator.
-parallel_registry = registry.Registry[str, Callable]()
+parallel_registry = registry.Registry[str, Callable, None]()
 
 
 def fork_decorator(suite):
@@ -4245,10 +4245,8 @@ def _test_suite_testmod_names():
         "breezy.tests.test_permissions",
         "breezy.tests.test_plugins",
         "breezy.tests.test_progress",
-        "breezy.tests.test_pyutils",
         "breezy.tests.test_reconcile",
         "breezy.tests.test_reconfigure",
-        "breezy.tests.test_registry",
         "breezy.tests.test_rename_map",
         "breezy.tests.test_revert",
         "breezy.tests.test_revision",
@@ -4319,7 +4317,6 @@ def _test_suite_modules_to_doctest():
         "breezy.iterablefile",
         "breezy.lockdir",
         "breezy.option",
-        "breezy.pyutils",
         "breezy.symbol_versioning",
         "breezy.tests",
         "breezy.tests.fixtures",

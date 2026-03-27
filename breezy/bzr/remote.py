@@ -4849,8 +4849,8 @@ class RemoteBzrDirConfig(RemoteConfig):
         return self._bzrdir._real_bzrdir
 
 
-error_translators = registry.Registry[bytes, Callable]()
-no_context_error_translators = registry.Registry[bytes, Callable]()
+error_translators = registry.Registry[bytes, Callable, None]()
+no_context_error_translators = registry.Registry[bytes, Callable, None]()
 
 
 def _translate_error(err, **context):

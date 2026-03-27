@@ -91,7 +91,7 @@ def _search_key_plain(key: Key) -> SerialisedKey:
     return b"\x00".join(key)
 
 
-search_key_registry = registry.Registry[bytes, Callable[[Key], SerialisedKey]]()
+search_key_registry = registry.Registry[bytes, Callable[[Key], SerialisedKey], None]()
 search_key_registry.register(b"plain", _search_key_plain)
 
 

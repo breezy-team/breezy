@@ -1278,5 +1278,5 @@ class DiffTree:
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry[str, type[DiffTree]]()
+format_registry = Registry[str, type[DiffTree], None]()
 format_registry.register("default", DiffTree)

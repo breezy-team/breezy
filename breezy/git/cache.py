@@ -935,7 +935,7 @@ class IndexGitShaMap(GitShaMap):
             yield key[1]
 
 
-formats = registry.Registry[str, BzrGitCacheFormat]()
+formats = registry.Registry[str, BzrGitCacheFormat, None]()
 formats.register(TdbGitCacheFormat().get_format_string(), TdbGitCacheFormat())
 formats.register(SqliteGitCacheFormat().get_format_string(), SqliteGitCacheFormat())
 formats.register(IndexGitCacheFormat().get_format_string(), IndexGitCacheFormat())

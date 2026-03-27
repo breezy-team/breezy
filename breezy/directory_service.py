@@ -116,7 +116,7 @@ class AliasDirectory(Directory):
     """
 
     branch_aliases = registry.Registry[
-        str, Callable[[_mod_branch.Branch], str | None]
+        str, Callable[[_mod_branch.Branch], str | None], None
     ]()
     branch_aliases.register(
         "parent", lambda b: b.get_parent(), help="The parent of this branch."
