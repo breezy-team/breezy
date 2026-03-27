@@ -19,11 +19,13 @@
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump
 
+import logging
 import time
 import types
 
-from breezy.trace import mutter
 from dromedary import decorator
+
+logger = logging.getLogger(__name__)
 
 
 class TransportLogDecorator(decorator.TransportDecorator):
@@ -92,12 +94,12 @@ class TransportLogDecorator(decorator.TransportDecorator):
             Iterator of file paths beneath this transport.
         """
         # needs special handling because it does not have a relpath parameter
-        mutter("iter_files_recursive %s", self._decorated.base)
+        logger.debug("iter_files_recursive %s", self._decorated.base)
         return self._call_and_log_result("iter_files_recursive", (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
         kwargs_str = dict(kwargs) if kwargs else ""
-        mutter(
+        logger.debug(
             "%s %s %s %s",
             methodname,
             relpath,
@@ -111,8 +113,8 @@ class TransportLogDecorator(decorator.TransportDecorator):
         try:
             result = getattr(self._decorated, methodname)(*args, **kwargs)
         except Exception as e:
-            mutter("  --> %s", e)
-            mutter("      %.03fs", time.time() - before)
+            logger.debug("  --> %s", e)
+            logger.debug("      %.03fs", time.time() - before)
             raise
         return self._show_result(before, methodname, result)
 
@@ -151,7 +153,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             result_len = total_bytes
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
-        mutter("  --> %s", shown_result)
+        logger.debug("  --> %s", shown_result)
         # The log decorator no longer shows the elapsed time or transfer rate
         # because they're available in the log prefixes and the transport
         # activity display respectively.
@@ -160,11 +162,11 @@ class TransportLogDecorator(decorator.TransportDecorator):
             if result_len and elapsed > 0:
                 # this is the rate of higher-level data, not the raw network
                 # speed using base-10 units (see HACKING.txt).
-                mutter(
+                logger.debug(
                     "      %9.03fs %8dkB/s", elapsed, result_len / elapsed / 1000
                 )
             else:
-                mutter("      %9.03fs", elapsed)
+                logger.debug("      %9.03fs", elapsed)
         return return_result
 
     def _shorten(self, x):
