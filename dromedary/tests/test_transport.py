@@ -36,8 +36,8 @@ from dromedary import (
     osutils,
     pathfilter,
     readonly,
-    test_server,
 )
+from dromedary.tests import test_server
 from dromedary.errors import FileExists, NoSuchFile, UnsupportedProtocol
 from dromedary.local import file_kind
 from dromedary.tests import (

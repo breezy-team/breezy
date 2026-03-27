@@ -22,7 +22,7 @@ from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 
 from ...tests import TestCase, TestCaseWithTransport
-from dromedary import transport_server_registry
+from breezy.transport import transport_server_registry
 from ..server import BzrBackend, BzrTCPGitServer
 
 

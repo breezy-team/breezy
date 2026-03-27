@@ -31,8 +31,8 @@ from dromedary import errors as transport_errors
 from dromedary import (
     register_lazy_transport,
     register_transport_proto,
-    transport_server_registry,
 )
+from breezy.transport import transport_server_registry
 
 from .. import __version__ as breezy_version
 from .. import errors as brz_errors
