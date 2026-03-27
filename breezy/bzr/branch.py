@@ -107,6 +107,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Branch.__init__(self, possible_transports)
         self._tags_bytes = None
 
+    def create_memorytree(self):
+        """Create a memory tree for this branch."""
+        from .memorytree import MemoryTree
+
+        return MemoryTree.create_on_branch(self)
+
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self.user_url)
 

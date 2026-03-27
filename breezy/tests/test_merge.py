@@ -18,7 +18,7 @@ import contextlib
 import os
 
 from .. import branch as _mod_branch
-from .. import errors, memorytree, option, tests
+from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
 from ..bzr import inventory, knit, versionedfile
@@ -1359,7 +1359,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 
     def make_Merger(self, builder, other_revision_id, interesting_files=None):
         """Make a Merger object from a branch builder."""
-        mem_tree = memorytree.MemoryTree.create_on_branch(builder.get_branch())
+        mem_tree = builder.get_branch().create_memorytree()
         mem_tree.lock_write()
         self.addCleanup(mem_tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(mem_tree, other_revision_id)
