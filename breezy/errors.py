@@ -1737,28 +1737,6 @@ class UnexpectedProtocolVersionMarker(TransportError):
         self.marker = marker
 
 
-class SocketConnectionError(ConnectionError):
-    """Socket connection error.
-
-    Raised when a socket connection fails.
-    """
-
-    def __init__(self, host, port=None, msg=None, orig_error=None):
-        """Initialize with connection details.
-
-        Args:
-            host: The hostname that connection failed to.
-            port: Optional port number.
-            msg: Optional error message.
-            orig_error: Optional original exception.
-        """
-        if msg is None:
-            msg = "Failed to connect to"
-        orig_error = "" if orig_error is None else "; " + str(orig_error)
-        self.host = host
-        port = "" if port is None else f":{port}"
-        self.port = port
-        ConnectionError.__init__(self, f"{msg} {host}{port}{orig_error}")
 
 
 class ConnectionTimeout(ConnectionError):

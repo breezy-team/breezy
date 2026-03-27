@@ -33,7 +33,8 @@ import stat
 import sys
 import time
 
-from breezy import config, errors
+from breezy import config
+from dromedary import errors
 from dromedary.errors import (
     DependencyNotPresent,
     LockError,

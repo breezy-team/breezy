@@ -200,6 +200,22 @@ class ConnectionError(TransportError):
     _fmt = "Connection error: %(msg)s"
 
 
+class SocketConnectionError(ConnectionError):
+    """Socket connection error."""
+
+    _fmt = "%(msg)s"
+
+    def __init__(self, host, port=None, msg=None, orig_error=None):
+        if msg is None:
+            msg = "Failed to connect to"
+        orig_error = "" if orig_error is None else "; " + str(orig_error)
+        self.host = host
+        port_str = "" if port is None else f":{port}"
+        self.port = port_str
+        self.msg = f"{msg} {host}{port_str}{orig_error}"
+        TransportError.__init__(self, self.msg)
+
+
 class UnusableRedirect(TransportError):
     _fmt = "Unable to follow redirect from %(source)s to %(target)s: %(reason)s."
 

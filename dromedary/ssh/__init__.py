@@ -24,8 +24,9 @@ import socket
 import subprocess
 import sys
 
-from breezy import config, errors
+from breezy import config
 from catalogus import registry
+from dromedary import errors
 from dromedary.osutils import pathjoin, set_fd_cloexec, get_terminal_encoding
 
 from .._transport_rs import sftp as _sftp_rs
@@ -42,17 +43,17 @@ except ModuleNotFoundError:
     paramiko = None  # type: ignore
 
 
-class UnknownSSH(errors.BzrError):
+class UnknownSSH(errors.TransportError):
     """Unknown SSH implementation specified."""
 
     _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 
     def __init__(self, vendor):
-        errors.BzrError.__init__(self)
+        super().__init__(str(vendor))
         self.vendor = vendor
 
 
-class SSHVendorNotFound(errors.BzrError):
+class SSHVendorNotFound(errors.TransportError):
     """No SSH implementation available."""
 
     _fmt = (
@@ -61,17 +62,16 @@ class SSHVendorNotFound(errors.BzrError):
     )
 
 
-class StrangeHostname(errors.BzrError):
+class StrangeHostname(errors.TransportError):
     """Error raised when an SSH hostname looks suspicious.
 
     This error is raised when the hostname starts with a dash, which could
     potentially be interpreted as a command-line option by the SSH client.
-
-    Attributes:
-        hostname: The suspicious hostname that was rejected.
     """
 
-    _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
+    def __init__(self, hostname):
+        self.hostname = hostname
+        super().__init__(f"Refusing to connect to strange SSH hostname {hostname}")
 
 
 class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):

@@ -32,7 +32,8 @@ import time
 from io import BytesIO
 from urllib.parse import urlparse, urlunparse
 
-from breezy import config, errors, ui
+from breezy import config, ui
+from dromedary import errors
 from dromedary.osutils import pumpfile
 from dromedary.errors import TransportError, PathError, PermissionDenied
 from breezy.tests.test_server import TestServer
@@ -107,7 +108,7 @@ class GioFileStream(FileStream):
             pumpfile(BytesIO(bytes), self.stream)
         except gio.Error as e:
             # self.transport._translate_gio_error(e,self.relpath)
-            raise errors.BzrError(str(e)) from e
+            raise errors.TransportError(str(e)) from e
 
 
 class GioStatResult:
@@ -226,7 +227,7 @@ class GioTransport(ConnectedTransport):
             self.loop.quit()
         except gio.Error as e:
             self.loop.quit()
-            raise errors.BzrError(
+            raise errors.TransportError(
                 "Failed to mount the given location: " + str(e)
             ) from e
 
@@ -440,7 +441,7 @@ class GioTransport(ConnectedTransport):
             fout.close()
             info = GioStatResult(fo)
             if info.st_size != result + length:
-                raise errors.BzrError(
+                raise errors.TransportError(
                     "Failed to append size after "
                     "(%d) is not original (%d) + written (%d) total (%d)"
                     % (info.st_size, result, length, result + length)
