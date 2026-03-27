@@ -221,17 +221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "breezy-urlutils"
-version = "3.4.0"
-dependencies = [
- "breezy-osutils",
- "lazy_static",
- "percent-encoding",
- "regex",
- "url",
-]
-
-[[package]]
 name = "breezy-zlib-util"
 version = "3.4.0"
 dependencies = [
@@ -399,6 +388,17 @@ dependencies = [
  "pyo3",
  "pyo3-filelike",
  "sftp",
+ "url",
+]
+
+[[package]]
+name = "dromedary-urlutils"
+version = "3.4.0"
+dependencies = [
+ "breezy-osutils",
+ "lazy_static",
+ "percent-encoding",
+ "regex",
  "url",
 ]
 
@@ -1580,7 +1580,7 @@ dependencies = [
 name = "urlutils-py"
 version = "3.4.0"
 dependencies = [
- "breezy-urlutils",
+ "dromedary-urlutils",
  "pyo3",
 ]
 

@@ -21,7 +21,7 @@ stub functions to allow other decorators to be written easily.
 """
 
 from dromedary import Transport
-from dromedary transport import get_transport_from_url
+from dromedary import get_transport_from_url
 
 
 class TransportDecorator(Transport):

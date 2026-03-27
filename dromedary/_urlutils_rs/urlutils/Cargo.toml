@@ -1,5 +1,5 @@
 [package]
-name = "breezy-urlutils"
+name = "dromedary-urlutils"
 version = { workspace = true }
 edition = "2021"
 description = "URL utilities for Breezy"

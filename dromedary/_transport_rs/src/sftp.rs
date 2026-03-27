@@ -7,9 +7,9 @@ use pyo3::types::{PyBytes, PyType};
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-create_exception!(breezy._transport_rs, SFTPError, PyException);
-import_exception!(breezy.transport, NoSuchFile);
-import_exception!(breezy.errors, PermissionDenied);
+create_exception!(dromedary._transport_rs, SFTPError, PyException);
+import_exception!(dromedary.errors, NoSuchFile);
+import_exception!(dromedary.errors, PermissionDenied);
 
 #[pyclass]
 struct SFTPAttributes(sftp::Attributes);

@@ -12,19 +12,19 @@ use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-import_exception!(breezy.errors, TransportError);
-import_exception!(breezy.errors, NoSmartMedium);
-import_exception!(breezy.errors, InProcessTransport);
-import_exception!(breezy.errors, NotLocalUrl);
-import_exception!(breezy.transport, NoSuchFile);
-import_exception!(breezy.errors, FileExists);
-import_exception!(breezy.errors, TransportNotPossible);
-import_exception!(breezy.errors, UrlError);
-import_exception!(breezy.errors, PermissionDenied);
-import_exception!(breezy.errors, PathNotChild);
-import_exception!(breezy.errors, ShortReadvError);
-import_exception!(breezy.errors, LockContention);
-import_exception!(breezy.errors, LockFailed);
+import_exception!(dromedary.errors, TransportError);
+import_exception!(dromedary.errors, NoSmartMedium);
+import_exception!(dromedary.errors, InProcessTransport);
+import_exception!(dromedary.errors, NotLocalUrl);
+import_exception!(dromedary.errors, NoSuchFile);
+import_exception!(dromedary.errors, FileExists);
+import_exception!(dromedary.errors, TransportNotPossible);
+import_exception!(dromedary.errors, UrlError);
+import_exception!(dromedary.errors, PermissionDenied);
+import_exception!(dromedary.errors, PathNotChild);
+import_exception!(dromedary.errors, ShortReadvError);
+import_exception!(dromedary.errors, LockContention);
+import_exception!(dromedary.errors, LockFailed);
 
 struct PySmartMedium(Py<PyAny>);
 

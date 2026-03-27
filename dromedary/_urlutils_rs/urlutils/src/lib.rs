@@ -486,7 +486,7 @@ fn unescape_safe_chars(captures: &regex::Captures) -> String {
 ///
 /// # Examples
 ///
-///  use breezy_urlutils::combine_paths;
+///  use dromedary_urlutils::combine_paths;
 ///  assert_eq!("/home/sarah/project/foo", combine_paths("/home/sarah", "project/foo"));
 ///  assert_eq!("/etc", combine_paths("/home/sarah", "../../etc"));
 ///  assert_eq!("/etc", combine_paths("/home/sarah", "/etc"));

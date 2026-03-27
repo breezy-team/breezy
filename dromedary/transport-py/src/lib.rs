@@ -1,5 +1,5 @@
-use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
-use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
+use dromedary::lock::{FileLock, Lock as LockTrait, LockError};
+use dromedary::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
 use log::debug;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
@@ -13,23 +13,23 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use url::Url;
 
-import_exception!(breezy.errors, TransportError);
-import_exception!(breezy.errors, NoSmartMedium);
-import_exception!(breezy.errors, NotLocalUrl);
-import_exception!(breezy.errors, InProcessTransport);
-import_exception!(breezy.transport, NoSuchFile);
-import_exception!(breezy.transport, FileExists);
-import_exception!(breezy.errors, PathNotChild);
-import_exception!(breezy.errors, PermissionDenied);
-import_exception!(breezy.errors, TransportNotPossible);
-import_exception!(breezy.errors, ShortReadvError);
-import_exception!(breezy.errors, LockContention);
-import_exception!(breezy.errors, LockFailed);
-import_exception!(breezy.errors, ReadError);
-import_exception!(breezy.errors, PathError);
-import_exception!(breezy.errors, DirectoryNotEmpty);
-import_exception!(breezy.errors, NotADirectory);
-import_exception!(breezy.urlutils, InvalidURL);
+import_exception!(dromedary.errors, TransportError);
+import_exception!(dromedary.errors, NoSmartMedium);
+import_exception!(dromedary.errors, NotLocalUrl);
+import_exception!(dromedary.errors, InProcessTransport);
+import_exception!(dromedary.errors, NoSuchFile);
+import_exception!(dromedary.errors, FileExists);
+import_exception!(dromedary.errors, PathNotChild);
+import_exception!(dromedary.errors, PermissionDenied);
+import_exception!(dromedary.errors, TransportNotPossible);
+import_exception!(dromedary.errors, ShortReadvError);
+import_exception!(dromedary.errors, LockContention);
+import_exception!(dromedary.errors, LockFailed);
+import_exception!(dromedary.errors, ReadError);
+import_exception!(dromedary.errors, PathError);
+import_exception!(dromedary.errors, DirectoryNotEmpty);
+import_exception!(dromedary.errors, NotADirectory);
+import_exception!(dromedary.urlutils, InvalidURL);
 
 #[pyclass(subclass)]
 struct Transport(Box<dyn TransportTrait>);
@@ -162,7 +162,7 @@ impl PyBufReadStream {
     }
 
     fn map_io_err_to_py_err(&self, e: std::io::Error) -> PyErr {
-        let transport_err = breezy_transport::map_io_err_to_transport_err(
+        let transport_err = dromedary::map_io_err_to_transport_err(
             e,
             Some(&self.path.as_path().to_string_lossy()),
         );
@@ -740,7 +740,7 @@ impl Transport {
             py.detach(|| self.0.copy_tree_to_transport(t))
                 .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
         } else {
-            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
+            let t = Box::new(dromedary::pyo3::PyTransport::from(to_transport));
             py.detach(|| self.0.copy_tree_to_transport(t.as_ref()))
                 .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
         }
@@ -788,7 +788,7 @@ impl Transport {
             })
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
         } else {
-            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
+            let t = Box::new(dromedary::pyo3::PyTransport::from(to_transport));
             py.detach(|| {
                 self.0
                     .copy_to(
@@ -812,10 +812,10 @@ impl Transport {
 }
 
 #[pyclass]
-struct Lock(Box<dyn breezy_transport::lock::Lock + Send + Sync>);
+struct Lock(Box<dyn dromedary::lock::Lock + Send + Sync>);
 
-impl From<Box<dyn breezy_transport::lock::Lock + Send + Sync>> for Lock {
-    fn from(lock: Box<dyn breezy_transport::lock::Lock + Send + Sync>) -> Self {
+impl From<Box<dyn dromedary::lock::Lock + Send + Sync>> for Lock {
+    fn from(lock: Box<dyn dromedary::lock::Lock + Send + Sync>) -> Self {
         Lock(lock)
     }
 }
@@ -837,7 +837,7 @@ impl LocalTransport {
         Ok((
             LocalTransport {},
             Transport(Box::new(
-                breezy_transport::local::LocalTransport::new(url)
+                dromedary::local::LocalTransport::new(url)
                     .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
             )),
         ))
@@ -869,7 +869,7 @@ fn get_test_permutations(py: Python) -> PyResult<Bound<PyList>> {
     let test_server_module = py.import("breezy.tests.test_server")?;
     let local_url_server = test_server_module.getattr("LocalURLServer")?;
     let local_transport = py
-        .import("breezy.transport.local")?
+        .import("dromedary.local")?
         .getattr("LocalTransport")?;
     let ret = PyList::empty(py);
     ret.append((local_transport, local_url_server))?;
@@ -893,7 +893,7 @@ fn coalesce_offsets(
     if max_size == Some(0) {
         max_size = None;
     }
-    breezy_transport::readv::coalesce_offsets(offsets.as_slice(), limit, fudge_factor, max_size)
+    dromedary::readv::coalesce_offsets(offsets.as_slice(), limit, fudge_factor, max_size)
         .map_err(|e| PyValueError::new_err(format!("{}", e)))
 }
 
@@ -913,7 +913,7 @@ fn seek_and_read(
     let f = PyBinaryFile::from(file);
     let mut data = py
         .detach(|| {
-            breezy_transport::readv::seek_and_read(
+            dromedary::readv::seek_and_read(
                 f,
                 offsets,
                 max_readv_combine.unwrap_or(DEFAULT_MAX_READV_COMBINE),
@@ -945,7 +945,7 @@ fn sort_expand_and_combine(
     upper_limit: Option<u64>,
     recommended_page_size: Option<usize>,
 ) -> Vec<(u64, usize)> {
-    breezy_transport::readv::sort_expand_and_combine(
+    dromedary::readv::sort_expand_and_combine(
         offsets,
         upper_limit,
         recommended_page_size.unwrap_or(4 * 1024),
@@ -1082,10 +1082,10 @@ fn map_lock_err_to_py_err(err: LockError) -> PyErr {
 }
 
 #[pyclass]
-struct ReadLock(Option<breezy_transport::filelock::ReadLock>);
+struct ReadLock(Option<dromedary::filelock::ReadLock>);
 
 #[pyclass]
-struct WriteLock(breezy_transport::filelock::WriteLock);
+struct WriteLock(dromedary::filelock::WriteLock);
 
 #[pymethods]
 impl ReadLock {
@@ -1102,7 +1102,7 @@ impl ReadLock {
     #[pyo3(signature = (filename, strict_locks=None))]
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(Some(
-            breezy_transport::filelock::ReadLock::new(&filename, strict_locks.unwrap_or(false))
+            dromedary::filelock::ReadLock::new(&filename, strict_locks.unwrap_or(false))
                 .map_err(map_lock_err_to_py_err)?,
         )))
     }
@@ -1141,7 +1141,7 @@ impl ReadLock {
 }
 
 #[pyclass]
-struct TemporaryWriteLock(Option<breezy_transport::filelock::TemporaryWriteLock>);
+struct TemporaryWriteLock(Option<dromedary::filelock::TemporaryWriteLock>);
 
 #[pymethods]
 impl TemporaryWriteLock {
@@ -1178,7 +1178,7 @@ impl WriteLock {
     #[pyo3(signature = (filename, strict_locks=None))]
     fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
         Ok(Self(
-            breezy_transport::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))
+            dromedary::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))
                 .map_err(map_lock_err_to_py_err)?,
         ))
     }

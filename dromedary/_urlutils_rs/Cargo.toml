@@ -8,4 +8,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = ">=0.19", features = ["extension-module"]}
-breezy-urlutils = { path = "urlutils" }
+dromedary-urlutils = { path = "urlutils" }
