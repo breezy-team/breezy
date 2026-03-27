@@ -32,7 +32,7 @@ from catalogus import pyutils
 from dromedary import urlutils
 import dromedary as _mod_transport
 from dromedary.errors import PathError, TransportNotPossible
-from breezy.osutils import getcwd
+from os import getcwd
 from dromedary import (
     ConnectedTransport,
     Transport,

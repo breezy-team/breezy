@@ -23,7 +23,6 @@ import random
 import re
 from urllib.parse import urlparse
 
-from breezy import osutils
 from dromedary.tests import test_server
 from dromedary import urlutils
 
@@ -454,7 +453,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
                     backing_transport_server
                 )
             )
-        self._home_dir = osutils.getcwd()
+        self._home_dir = os.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 

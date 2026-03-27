@@ -515,7 +515,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             )
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
-        self._homedir = osutils.getcwd()
+        self._homedir = os.getcwd()
         if sys.platform == "win32":
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
