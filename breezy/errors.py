@@ -3272,20 +3272,3 @@ class RevnoOutOfBounds(InternalBzrError):
         )
 
 
-class UnknownSSH(BzrError):
-    """Unknown SSH implementation specified."""
-
-    _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
-
-    def __init__(self, vendor):
-        BzrError.__init__(self)
-        self.vendor = vendor
-
-
-class SSHVendorNotFound(BzrError):
-    """No SSH implementation available."""
-
-    _fmt = (
-        "Don't know how to handle SSH connections."
-        " Please set BRZ_SSH environment variable."
-    )

@@ -21,7 +21,7 @@ stub functions to allow other decorators to be written easily.
 """
 
 from dromedary import Transport
-from breezy.transport import get_transport
+from dromedary transport import get_transport_from_url
 
 
 class TransportDecorator(Transport):
@@ -52,7 +52,7 @@ class TransportDecorator(Transport):
             )
         not_decorated_url = url[len(prefix) :]
         if _decorated is None:
-            self._decorated = get_transport(not_decorated_url)
+            self._decorated = get_transport_from_url(not_decorated_url)
         else:
             self._decorated = _decorated
         super().__init__(prefix + self._decorated.base)

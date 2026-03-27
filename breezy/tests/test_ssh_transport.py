@@ -17,14 +17,15 @@
 from breezy import config
 from breezy.tests import TestCase, TestCaseWithTransport
 
-from ..errors import SSHVendorNotFound, UnknownSSH
 from dromedary.ssh import (
     LSHSubprocessVendor,
     OpenSSHSubprocessVendor,
     PLinkSubprocessVendor,
     SSHCorpSubprocessVendor,
     SSHVendorManager,
+    SSHVendorNotFound,
     StrangeHostname,
+    UnknownSSH,
 )
 
 
