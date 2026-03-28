@@ -50,9 +50,9 @@ from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
-    http_server,
     http_utils,
 )
+from dromedary.tests import http_server
 from .. import bzrdir, knitpack_repo, knitrepo, remote, workingtree_3, workingtree_4
 from ..fullhistory import BzrBranchFormat5
 

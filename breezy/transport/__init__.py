@@ -20,9 +20,32 @@ This module has been moved to the dromedary package.
 This shim provides backward compatibility for code that imports from breezy.transport.
 """
 
-# Re-export everything from dromedary for backward compatibility
+# Re-export from dromedary for backward compatibility
+from collections.abc import Callable
+
 from catalogus import registry
-from dromedary import *  # noqa: F403
+from dromedary import (
+    AppendBasedFileStream,
+    ConnectedTransport,
+    FileFileStream,
+    LateReadError,
+    Server,
+    Transport,
+    TransportHooks,
+    do_catching_redirections,
+    get_transport_from_path,
+    get_transport_from_url,
+    register_lazy_transport,
+    register_transport,
+    register_transport_proto,
+    register_urlparse_netloc_protocol,
+    transport_list_registry,
+    unregister_transport,
+)
+from dromedary.errors import (
+    FileExists,
+    NoSuchFile,
+)
 
 import breezy
 from dromedary.http import set_user_agent, set_credential_lookup

@@ -68,6 +68,20 @@ class TestCase(_AssertHelpersMixin, unittest.TestCase):
 
         self.addCleanup(restore)
 
+    @staticmethod
+    def _adjust_url(base, relpath):
+        """Get a URL for the transport, adjusted by relpath."""
+        if relpath is not None and relpath != ".":
+            if not base.endswith("/"):
+                base = base + "/"
+            if base.startswith("./") or base.startswith("/"):
+                base += relpath
+            else:
+                from dromedary import urlutils
+
+                base += urlutils.escape(relpath)
+        return base
+
 
 class TestCaseInTempDir(TestCase):
     """A test case that runs in a temporary directory.
