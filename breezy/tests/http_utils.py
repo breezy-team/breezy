@@ -25,7 +25,7 @@ from dromedary import errors as transport_errors
 
 from .. import tests, transport
 from ..bzr.smart import medium
-from . import http_server
+from dromedary.tests import http_server
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):

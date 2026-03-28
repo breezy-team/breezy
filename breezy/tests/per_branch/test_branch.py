@@ -38,7 +38,7 @@ from breezy.tests import per_branch
 from dromedary import errors as transport_errors
 from dromedary import memory
 
-from ..http_server import HttpServer
+from dromedary.tests.http_server import HttpServer
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):

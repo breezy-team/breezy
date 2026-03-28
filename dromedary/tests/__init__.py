@@ -47,7 +47,26 @@ class _AssertHelpersMixin:
 class TestCase(_AssertHelpersMixin, unittest.TestCase):
     """Base test case for dromedary tests with extra assertion helpers."""
 
-    pass
+    def start_server(self, server):
+        """Start a test server, registering cleanup to stop it."""
+        server.start_server()
+        self.addCleanup(server.stop_server)
+
+    def overrideEnv(self, name, new_value):
+        """Temporarily override an environment variable."""
+        old_value = os.environ.get(name)
+        if new_value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = new_value
+
+        def restore():
+            if old_value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = old_value
+
+        self.addCleanup(restore)
 
 
 class TestCaseInTempDir(TestCase):

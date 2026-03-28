@@ -818,7 +818,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_get_readonly_url_http(self):
         from dromedary.http.urllib import HttpTransport
 
-        from .http_server import HttpServer
+        from dromedary.tests.http_server import HttpServer
 
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer

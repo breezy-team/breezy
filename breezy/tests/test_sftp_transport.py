@@ -26,7 +26,7 @@ from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
 from dromedary import errors as transport_errors
 
 from ..osutils import lexists
-from .http_server import HttpServer
+from dromedary.tests.http_server import HttpServer
 
 if features.paramiko.available():
     from dromedary.tests import stub_sftp

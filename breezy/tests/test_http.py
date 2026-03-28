@@ -59,7 +59,8 @@ from dromedary.http.urllib import (
     ProxyHandler,
     Request,
 )
-from . import features, http_server, http_utils, test_server
+from . import features, http_utils, test_server
+from dromedary.tests import http_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
 load_tests = load_tests_apply_scenarios
