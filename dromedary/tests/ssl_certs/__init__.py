@@ -16,12 +16,12 @@
 
 """ssl_certs -- provides access to ssl keys and certificates needed by tests."""
 
-from breezy import osutils
+import os
 
 # Directory containing all ssl files, keys or certificates
-base_dir = osutils.dirname(osutils.realpath(__file__))
+base_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 def build_path(name):
     """Build and return a path in ssl_certs directory for name."""
-    return osutils.pathjoin(base_dir, name)
+    return os.path.join(base_dir, name)
