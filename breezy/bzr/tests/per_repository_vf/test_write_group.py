@@ -16,7 +16,7 @@
 
 """Tests for repository write groups."""
 
-from breezy import controldir, errors, memorytree, tests
+from breezy import controldir, errors, tests
 from breezy.bzr import branch as bzrbranch
 from breezy.bzr import remote, versionedfile
 from breezy.bzr.tests.per_repository_vf import (
@@ -52,7 +52,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def make_first_commit(self, repo):
         trunk = repo.controldir.create_branch()
-        tree = memorytree.MemoryTree.create_on_branch(trunk)
+        tree = trunk.create_memorytree()
         tree.lock_write()
         tree.add([""], ["directory"], [b"TREE_ROOT"])
         tree.add(["dir"], ["directory"], [b"dir-id"])

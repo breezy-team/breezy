@@ -8,6 +8,13 @@ Breezy Release Notes
 brz 3.3.22
 ##########
 
+ * Add a format-independent ``MemoryTree`` in ``breezy.memorytree``
+   that does not use file ids or inventories. The bzr-specific
+   ``MemoryTree`` has moved to ``breezy.bzr.memorytree``.
+   ``Branch.create_memorytree()`` is now format-specific, with
+   implementations on ``BzrBranch``, ``RemoteBranch`` and
+   ``LocalGitBranch``. (Jelmer Vernooĳ)
+
  * Fix ``revision_tree()`` crash when a bzr revision id
    embeds a git tag SHA rather than a commit SHA.
    (Jelmer Vernooĳ)
