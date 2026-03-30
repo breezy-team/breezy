@@ -35,12 +35,15 @@ from debmutate.versions import (
 )
 
 from .... import osutils
+try:
+    from ....errors import GhostRevisionsHaveNoRevno
+except ImportError:
+    from vcsgraph.errors import GhostRevisionsHaveNoRevno
 from ....branch import (
     Branch,
 )
 from ....errors import (
     BzrError,
-    GhostRevisionsHaveNoRevno,
     InvalidRevisionId,
     NoSuchRevision,
     NoSuchTag,

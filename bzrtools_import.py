@@ -14,7 +14,10 @@ from ...upstream_import import (
     names_of_files,
     DirWrapper,
 )
-from ...bzr import generate_ids
+try:
+    from ...bzr import generate_ids
+except ImportError:
+    from bzrformats import generate_ids
 
 from ...errors import BzrError
 from ...osutils import (
