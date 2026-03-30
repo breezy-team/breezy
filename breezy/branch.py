@@ -1542,9 +1542,7 @@ class Branch(ControlComponent):
 
         Returns: An in-memory MutableTree instance
         """
-        from . import memorytree
-
-        return memorytree.MemoryTree.create_on_branch(self)
+        raise NotImplementedError(self.create_memorytree)
 
 
 class BranchFormat(ControlComponentFormat):

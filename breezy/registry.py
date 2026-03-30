@@ -21,13 +21,16 @@ from typing import (
     TypeVar,
 )
 
-from catalogus.registry import Registry
+from catalogus import Registry
+from catalogus.registry import _LazyObjectGetter, _ObjectGetter
+
+__all__ = ["Registry", "FormatRegistry", "_LazyObjectGetter", "_ObjectGetter"]
 
 Format = TypeVar("Format")
 Info = TypeVar("Info")
 
 
-class FormatRegistry(Registry[str, Format | Callable[[], Format], Info]):
+class FormatRegistry(Registry[str, Format | Callable[[], Format], None]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):

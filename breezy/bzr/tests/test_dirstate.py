@@ -22,7 +22,7 @@ import os
 import struct
 import tempfile
 
-from ... import controldir, errors, memorytree, osutils, tests
+from ... import controldir, errors, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
@@ -1314,7 +1314,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree1.unlock()
         branch2 = tree1.branch.controldir.clone("tree2").open_branch()
-        tree2 = memorytree.MemoryTree.create_on_branch(branch2)
+        tree2 = branch2.create_memorytree()
         tree2.lock_write()
         try:
             revid2 = tree2.commit("foo")
@@ -1401,7 +1401,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree1.unlock()
         branch2 = tree1.branch.controldir.clone("tree2").open_branch()
-        tree2 = memorytree.MemoryTree.create_on_branch(branch2)
+        tree2 = branch2.create_memorytree()
         tree2.lock_write()
         try:
             tree2.put_file_bytes_non_atomic("a file", b"new file-content")

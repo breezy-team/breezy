@@ -24,6 +24,7 @@ from io import BytesIO
 
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
+from dulwich.object_store import peel_sha
 from dulwich.objects import ZERO_SHA, NotCommitError
 from dulwich.repo import check_ref_format
 from vcsgraph.errors import (
@@ -1418,6 +1419,7 @@ class LocalGitBranch(GitBranch):
                 tuples for each tag reference in the local repository.
         """
         refs = self.repository.controldir.get_refs_container()
+        object_store = self.repository._git.object_store
         for ref_name, unpeeled in refs.as_dict().items():
             try:
                 tag_name = ref_to_tag_name(ref_name)
@@ -1425,7 +1427,16 @@ class LocalGitBranch(GitBranch):
                 continue
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
-                peeled = unpeeled
+                try:
+                    _unpeeled_obj, peeled_obj = peel_sha(
+                        object_store, unpeeled
+                    )
+                except KeyError:
+                    trace.warning(
+                        "%s does not point to a valid object", tag_name
+                    )
+                    continue
+                peeled = peeled_obj.id
             if not isinstance(tag_name, str):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)

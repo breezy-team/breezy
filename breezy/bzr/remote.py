@@ -5200,6 +5200,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             elif self._lock_mode == "w":
                 self._real_branch.lock_write(token=self._lock_token)
 
+    def create_memorytree(self):
+        """Create a memory tree for this branch."""
+        from .memorytree import MemoryTree
+
+        return MemoryTree.create_on_branch(self)
+
     def _translate_error(self, err, **context):
         self.repository._translate_error(err, branch=self, **context)
 

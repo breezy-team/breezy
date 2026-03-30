@@ -57,6 +57,7 @@ record_to_fulltext_bytes = _versionedfile_rs.record_to_fulltext_bytes
 fulltext_network_to_record = _versionedfile_rs.fulltext_network_to_record
 
 
+
 adapter_registry = Registry[tuple[str, str], Any, None]()
 adapter_registry.register_lazy(
     ("knit-annotated-delta-gz", "knit-delta-gz"),

@@ -18,7 +18,6 @@
 """Tests for the MemoryTree class."""
 
 from .. import errors, transport
-from ..memorytree import MemoryTree
 from ..treebuilder import TreeBuilder
 from . import TestCaseWithTransport
 
@@ -27,7 +26,7 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_create_on_branch(self):
         """Creating a mutable tree on a trivial branch works."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         self.assertEqual(branch.controldir, tree.controldir)
         self.assertEqual(branch, tree.branch)
         self.assertEqual([], tree.get_parent_ids())
@@ -35,7 +34,7 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_create_on_branch_with_content(self):
         """Creating a mutable tree on a non-trivial branch works."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         # build some content
         tree.lock_write()
         builder = TreeBuilder()
@@ -44,7 +43,7 @@ class TestMemoryTree(TestCaseWithTransport):
         builder.finish_tree()
         rev_id = tree.commit("first post")
         tree.unlock()
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_read():
             self.assertEqual([rev_id], tree.get_parent_ids())
             with tree.get_file("foo") as f:
@@ -52,7 +51,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
     def test_get_root_id(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add([""])
             self.assertIsNot(None, tree.path2id(""))
@@ -60,34 +59,34 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         tree.lock_tree_write()
         tree.unlock()
 
     def test_lock_tree_write_after_read_fails(self):
         """Check that we error when trying to upgrade a read lock to write."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_read():
             self.assertRaises(errors.ReadOnlyError, tree.lock_tree_write)
 
     def test_lock_write(self):
         """Check we can lock_write and unlock MemoryTrees."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         tree.lock_write()
         tree.unlock()
 
     def test_lock_write_after_read_fails(self):
         """Check that we error when trying to upgrade a read lock to write."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_read():
             self.assertRaises(errors.ReadOnlyError, tree.lock_write)
 
     def test_add_with_kind(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add(["", "afile", "adir"], ["directory", "file", "directory"])
             self.assertEqual("afile", tree.id2path(tree.path2id("afile")))
@@ -97,7 +96,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
     def test_put_new_file(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add(
                 ["", "foo"], ids=[b"root-id", b"foo-id"], kinds=["directory", "file"]
@@ -108,7 +107,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
     def test_put_existing_file(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add(
                 ["", "foo"], ids=[b"root-id", b"foo-id"], kinds=["directory", "file"]
@@ -119,7 +118,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
     def test_add_in_subdir(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add([""], ["directory"], [b"root-id"])
             # Unfortunately, the only way to 'mkdir' is to call 'tree.mkdir', but
@@ -134,7 +133,7 @@ class TestMemoryTree(TestCaseWithTransport):
 
     def test_add_symlink(self):
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree._file_transport.symlink("bar", "foo")
             tree.add(["", "foo"])
@@ -148,7 +147,7 @@ class TestMemoryTree(TestCaseWithTransport):
         logic should work quite reliably.
         """
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add(
                 ["", "foo"], ids=[b"root-id", b"foo-id"], kinds=["directory", "file"]
@@ -165,7 +164,7 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_unversion(self):
         """Some test for unversion of a memory tree."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         with tree.lock_write():
             tree.add(
                 ["", "foo"], ids=[b"root-id", b"foo-id"], kinds=["directory", "file"]
