@@ -306,10 +306,11 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes("mode400", b"test text\n", mode=0o400)
         self.assertTransportMode(t, "mode400", 0o400)
 
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
+        # The default permissions should be based on the server-side umask,
+        # which may differ from the client umask (e.g. for SFTP).
         t.put_bytes("nomode", b"test text\n", mode=None)
-        self.assertTransportMode(t, "nomode", 0o666 & ~umask)
+        nomode = t.stat("nomode").st_mode & 0o777
+        self.assertEqual(nomode & 0o666, nomode)  # should not have execute bits
 
     def test_put_bytes_non_atomic_permissions(self):
         t = self.get_transport()
@@ -328,10 +329,11 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes_non_atomic("mode400", b"test text\n", mode=0o400)
         self.assertTransportMode(t, "mode400", 0o400)
 
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
+        # The default permissions should be based on the server-side umask,
+        # which may differ from the client umask (e.g. for SFTP).
         t.put_bytes_non_atomic("nomode", b"test text\n", mode=None)
-        self.assertTransportMode(t, "nomode", 0o666 & ~umask)
+        nomode = t.stat("nomode").st_mode & 0o777
+        self.assertEqual(nomode & 0o666, nomode)  # should not have execute bits
 
         # We should also be able to set the mode for a parent directory
         # when it is created
@@ -448,10 +450,11 @@ class TransportTests(TestTransportImplementation):
         # Yes, you can put a file such that it becomes readonly
         t.put_file("mode400", BytesIO(b"test text\n"), mode=0o400)
         self.assertTransportMode(t, "mode400", 0o400)
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
+        # The default permissions should be based on the server-side umask,
+        # which may differ from the client umask (e.g. for SFTP).
         t.put_file("nomode", BytesIO(b"test text\n"), mode=None)
-        self.assertTransportMode(t, "nomode", 0o666 & ~umask)
+        nomode = t.stat("nomode").st_mode & 0o777
+        self.assertEqual(nomode & 0o666, nomode)  # should not have execute bits
 
     def test_put_file_non_atomic_permissions(self):
         t = self.get_transport()
@@ -471,10 +474,11 @@ class TransportTests(TestTransportImplementation):
         t.put_file_non_atomic("mode400", BytesIO(b"test text\n"), mode=0o400)
         self.assertTransportMode(t, "mode400", 0o400)
 
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
+        # The default permissions should be based on the server-side umask,
+        # which may differ from the client umask (e.g. for SFTP).
         t.put_file_non_atomic("nomode", BytesIO(b"test text\n"), mode=None)
-        self.assertTransportMode(t, "nomode", 0o666 & ~umask)
+        nomode = t.stat("nomode").st_mode & 0o777
+        self.assertEqual(nomode & 0o666, nomode)  # should not have execute bits
 
         # We should also be able to set the mode for a parent directory
         # when it is created
