@@ -195,6 +195,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         repo = self.git_repo
         # Create an annotated tag pointing at the commit
         from dulwich.objects import Tag
+
         tag = Tag()
         tag.name = b"v1.0"
         tag.tagger = b"Test User <test@example.com>"

@@ -1013,7 +1013,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             raise tests.TestNotApplicable("readdir IOError not tested on win32")
         self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
-        os.chmod("test-unreadable", 0000)
+        os.chmod("test-unreadable", 0o0000)
         # must chmod it back so that it can be removed
         self.addCleanup(os.chmod, "test-unreadable", 0o700)
         # The error is not raised until the generator is actually evaluated.

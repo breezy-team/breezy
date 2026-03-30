@@ -25,10 +25,10 @@ import stat
 from .. import errors, lock
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from .inventory import Inventory
-from .inventorytree import MutableInventoryTree
 from ..osutils import sha_file
 from ..transport.memory import MemoryTransport
+from .inventory import Inventory
+from .inventorytree import MutableInventoryTree
 
 
 class MemoryTree(MutableInventoryTree):
@@ -48,15 +48,19 @@ class MemoryTree(MutableInventoryTree):
         self._lock_mode = None
 
     def supports_symlinks(self):
+        """Return True, as MemoryTree supports symbolic links."""
         return True
 
     def supports_tree_reference(self):
+        """Return False, as MemoryTree does not support nested trees."""
         return False
 
     def get_config_stack(self):
+        """Return the configuration stack from the associated branch."""
         return self.branch.get_config_stack()
 
     def is_control_filename(self, filename):
+        """Return False, as MemoryTree has no control filenames."""
         # Memory tree doesn't have any control filenames
         return False
 
@@ -111,6 +115,7 @@ class MemoryTree(MutableInventoryTree):
         return entry.kind, entry.executable, None
 
     def rename_one(self, from_rel, to_rel):
+        """Rename a file or directory from from_rel to to_rel."""
         with self.lock_tree_write():
             file_id = self.path2id(from_rel)
             to_dir, to_tail = os.path.split(to_rel)
@@ -152,9 +157,11 @@ class MemoryTree(MutableInventoryTree):
         return self._file_transport.has(filename)
 
     def is_executable(self, path):
+        """Return whether the file at path is executable."""
         return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path):
+        """Return the kind of the entry at path."""
         return self._inventory.get_entry_by_path(path).kind
 
     def mkdir(self, path, file_id=None):
@@ -312,6 +319,7 @@ class MemoryTree(MutableInventoryTree):
                 raise
 
     def get_symlink_target(self, path):
+        """Return the target of the symbolic link at path."""
         with self.lock_read():
             return self._file_transport.readlink(path)
 

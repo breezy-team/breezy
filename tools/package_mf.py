@@ -150,9 +150,9 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
 
 if __name__ == "__main__":
     """Command line interface for package module discovery.
-    
+
     Usage: python package_mf.py <package_name>
-    
+
     This script demonstrates the CustomModuleFinder by discovering all
     packages and modules within the specified package and printing them
     to stdout.

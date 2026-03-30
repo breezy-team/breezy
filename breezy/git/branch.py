@@ -1428,13 +1428,9 @@ class LocalGitBranch(GitBranch):
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
                 try:
-                    _unpeeled_obj, peeled_obj = peel_sha(
-                        object_store, unpeeled
-                    )
+                    _unpeeled_obj, peeled_obj = peel_sha(object_store, unpeeled)
                 except KeyError:
-                    trace.warning(
-                        "%s does not point to a valid object", tag_name
-                    )
+                    trace.warning("%s does not point to a valid object", tag_name)
                     continue
                 peeled = peeled_obj.id
             if not isinstance(tag_name, str):

@@ -54,12 +54,11 @@ class MemoryTree(MutableTree):
 
     @property
     def supports_file_ids(self):
+        """Return whether this tree supports file ids."""
         return False
 
     def supports_rename_tracking(self):
-        return False
-
-    def supports_tree_reference(self):
+        """Return whether this tree supports rename tracking."""
         return False
 
     def supports_symlinks(self):
@@ -79,6 +78,7 @@ class MemoryTree(MutableTree):
         return False
 
     def has_versioned_directories(self):
+        """Return whether this tree versions directories separately."""
         return False
 
     def get_config_stack(self):
@@ -113,130 +113,10 @@ class MemoryTree(MutableTree):
         missing files, so is a no-op.
         """
 
-    def iter_child_entries(self, path):
-        """Iterate over the child entries of a directory.
-
-        Args:
-            path: Path to the directory to iterate.
-
-        Returns:
-            Iterator over child inventory entries.
-
-        Raises:
-            NoSuchFile: If the path does not exist.
-            NotADirectory: If the path is not a directory.
-        """
-        with self.lock_read():
-            ie = self._inventory.get_entry_by_path(path)
-            if ie is None:
-                raise _mod_transport.NoSuchFile(path)
-            if ie.kind != "directory":
-                raise errors.NotADirectory(path)
-            return ie.children.values()
-
-    def get_file(self, path):
-        """See Tree.get_file."""
-        return self._file_transport.get(path)
-
-    def get_file_sha1(self, path, stat_value=None):
-        """See Tree.get_file_sha1()."""
-        stream = self._file_transport.get(path)
-        return sha_file(stream)
-
-    def _comparison_data(self, entry, path):
-        """See Tree._comparison_data."""
-        if entry is None:
-            return None, False, None
-        return entry.kind, entry.executable, None
-
-    def rename_one(self, from_rel, to_rel):
-        """Rename a single file or directory.
-
-        Args:
-            from_rel: The relative path of the source.
-            to_rel: The relative path of the destination.
-
-        Returns:
-            None
-        """
-        with self.lock_tree_write():
-            file_id = self.path2id(from_rel)
-            to_dir, to_tail = os.path.split(to_rel)
-            to_parent_id = self.path2id(to_dir)
-            self._file_transport.move(from_rel, to_rel)
-            self._inventory.rename(file_id, to_parent_id, to_tail)
-
-    def path_content_summary(self, path):
-        """See Tree.path_content_summary."""
-        id = self.path2id(path)
-        if id is None:
-            return "missing", None, None, None
-        kind = self.kind(path, id)
-        if kind == "file":
-            bytes = self._file_transport.get_bytes(path)
-            size = len(bytes)
-            executable = self._inventory[id].executable
-            sha1 = None  # no stat cache
-            return (kind, size, executable, sha1)
-        elif kind == "directory":
-            # memory tree does not support nested trees yet.
-            return kind, None, None, None
-        elif kind == "symlink":
-            return kind, None, None, self._inventory[id].symlink_target
-        else:
-            raise NotImplementedError("unknown kind")
-
-    def get_parent_ids(self):
-        """See Tree.get_parent_ids.
-
-        This implementation returns the current cached value from
-            self._parent_ids.
-        """
-        with self.lock_read():
-            return list(self._parent_ids)
-
-    def has_filename(self, filename):
-        """See Tree.has_filename()."""
-        return self._file_transport.has(filename)
-
-    def is_executable(self, path):
-        """Check if a file is executable.
-
-        Args:
-            path: Path to the file to check.
-
-        Returns:
-            True if the file is executable, False otherwise.
-        """
-        return self._inventory.get_entry_by_path(path).executable
-
-    def kind(self, path):
-        """Return the kind of entry at the given path.
-
-        Args:
-            path: Path to check the kind of.
-
-        Returns:
-            String describing the kind (e.g., 'file', 'directory', 'symlink').
-        """
-        return self._inventory.get_entry_by_path(path).kind
-
-    def mkdir(self, path, file_id=None):
-        """See MutableTree.mkdir()."""
-        self.add(path, "directory", file_id)
-        if file_id is None:
-            file_id = self.path2id(path)
-        self._file_transport.mkdir(path)
-        return file_id
-
-    def last_revision(self):
-        """See MutableTree.last_revision."""
-        with self.lock_read():
-            return self._branch_revision_id
-
     # -- Locking --
 
     def lock_read(self):
+        """Acquire a read lock on this tree."""
         self._locks += 1
         try:
             if self._locks == 1:
@@ -249,6 +129,7 @@ class MemoryTree(MutableTree):
             raise
 
     def lock_tree_write(self):
+        """Acquire a tree-write lock on this tree."""
         self._locks += 1
         try:
             if self._locks == 1:
@@ -263,6 +144,7 @@ class MemoryTree(MutableTree):
         return lock.LogicalLockResult(self.unlock)
 
     def lock_write(self):
+        """Acquire a write lock on this tree."""
         self._locks += 1
         try:
             if self._locks == 1:
@@ -277,6 +159,7 @@ class MemoryTree(MutableTree):
             raise
 
     def unlock(self):
+        """Release a lock on this tree."""
         if self._locks == 1:
             self._basis_tree = None
             self._parent_ids = []
@@ -334,29 +217,36 @@ class MemoryTree(MutableTree):
     # -- Tree read interface --
 
     def basis_tree(self):
+        """Return the basis tree for this tree."""
         return self._basis_tree
 
     def get_parent_ids(self):
+        """Return the parent revision ids for this tree."""
         with self.lock_read():
             return list(self._parent_ids)
 
     def last_revision(self):
+        """Return the revision id of the last commit."""
         with self.lock_read():
             return self._branch_revision_id
 
     def has_filename(self, filename):
+        """Return whether the given filename exists in this tree."""
         return self._file_transport.has(filename)
 
     def is_versioned(self, path):
+        """Return whether the given path is versioned."""
         path = path.rstrip("/")
         if self._versioned is None:
             return False
         return path in self._versioned
 
     def all_versioned_paths(self):
+        """Return the set of all versioned paths in this tree."""
         return set(self._versioned)
 
     def kind(self, path):
+        """Return the kind of entry at the given path."""
         st_mode = self._file_transport.stat(path).st_mode
         if stat.S_ISREG(st_mode):
             return "file"
@@ -368,20 +258,25 @@ class MemoryTree(MutableTree):
             raise AssertionError(f"Unknown file kind for {path}")
 
     def is_executable(self, path):
+        """Return whether the file at the given path is executable."""
         st_mode = self._file_transport.stat(path).st_mode
         return bool(stat.S_ISREG(st_mode) and stat.S_IEXEC & st_mode)
 
     def get_file(self, path):
+        """Return a file-like object for the given path."""
         return self._file_transport.get(path)
 
     def get_file_sha1(self, path, stat_value=None):
+        """Return the SHA1 hash of the file at the given path."""
         stream = self._file_transport.get(path)
         return osutils.sha_file(stream)
 
     def get_file_mtime(self, path):
+        """Return the modification time of the file at the given path."""
         return 0
 
     def get_file_size(self, path):
+        """Return the size of the file at the given path."""
         try:
             content = self._file_transport.get_bytes(path)
         except _mod_transport.NoSuchFile:
@@ -401,6 +296,7 @@ class MemoryTree(MutableTree):
             return self._file_transport.readlink(path)
 
     def path_content_summary(self, path):
+        """Return a content summary tuple for the given path."""
         if not self.is_versioned(path):
             return "missing", None, None, None
         try:
@@ -426,11 +322,13 @@ class MemoryTree(MutableTree):
         return entry.kind, entry.executable, None
 
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
+        """Return an iterator of (revision_id, line) tuples for the file."""
         with self.lock_read():
             text = self.get_file_text(path)
             return [(default_revision, line) for line in text.splitlines(True)]
 
     def walkdirs(self, prefix=""):
+        """Walk the directories of this tree, yielding (dirpath, dirblock)."""
         with self.lock_read():
             pending = [prefix]
             while pending:
@@ -460,6 +358,7 @@ class MemoryTree(MutableTree):
                 yield dirpath, dirblock
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        """Iterate over entries in directory order."""
         with self.lock_read():
             if specific_files is not None:
                 specific_files = set(specific_files)
@@ -487,6 +386,7 @@ class MemoryTree(MutableTree):
             return iter(entries)
 
     def iter_child_entries(self, path):
+        """Iterate over the direct child entries of the given path."""
         with self.lock_read():
             from .tree import TreeDirectory, TreeFile, TreeLink
 
@@ -514,6 +414,7 @@ class MemoryTree(MutableTree):
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
     ):
+        """List the files in this tree."""
         with self.lock_read():
             if from_dir is None or from_dir == ".":
                 from_dir = ""
@@ -546,6 +447,7 @@ class MemoryTree(MutableTree):
     def find_related_paths_across_trees(
         self, paths, trees=None, require_versioned=True
     ):
+        """Find related paths across multiple trees."""
         if paths is None:
             return None
         if trees is None:
@@ -564,17 +466,21 @@ class MemoryTree(MutableTree):
         return [p for p in paths if self.is_versioned(p)]
 
     def get_nested_tree(self, path):
+        """Return the nested tree at the given path."""
         raise errors.NotBranchError(path)
 
     def get_reference_revision(self, path):
+        """Return the reference revision for a nested tree at path."""
         return None
 
     def preview_transform(self, pb=None):
+        """Return a preview transform for this tree."""
         raise NotImplementedError(self.preview_transform)
 
     # -- Mutable interface --
 
     def add(self, files, kinds=None):
+        """Add paths to be versioned."""
         if isinstance(files, str):
             if not (kinds is None or isinstance(kinds, str)):
                 raise AssertionError()
@@ -618,13 +524,16 @@ class MemoryTree(MutableTree):
                     parent = posixpath.dirname(parent)
 
     def mkdir(self, path):
+        """Create a versioned directory at the given path."""
         self.add(path, "directory")
         self._file_transport.mkdir(path)
 
     def put_file_bytes_non_atomic(self, path, bytes):
+        """Write bytes to a file non-atomically."""
         self._file_transport.put_bytes(path, bytes)
 
     def has_changes(self, _from_tree=None):
+        """Return whether this tree has changes compared to the basis tree."""
         with self.lock_read():
             if _from_tree is None:
                 _from_tree = self.basis_tree()
@@ -642,6 +551,7 @@ class MemoryTree(MutableTree):
                 return True
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent revision ids for this tree."""
         for revision_id in revision_ids:
             _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
@@ -654,6 +564,7 @@ class MemoryTree(MutableTree):
         self._set_basis()
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parent trees for this tree."""
         if len(parents_list) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(
@@ -672,18 +583,21 @@ class MemoryTree(MutableTree):
             self._branch_revision_id = parents_list[0][0]
 
     def rename_one(self, from_rel, to_rel, after=False):
+        """Rename a file from one path to another."""
         with self.lock_tree_write():
             self._file_transport.move(from_rel, to_rel)
             self._versioned.discard(from_rel)
             self._versioned.add(to_rel)
 
     def copy_one(self, from_rel, to_rel):
+        """Copy a file from one path to another."""
         with self.lock_tree_write():
             content = self._file_transport.get_bytes(from_rel)
             self._file_transport.put_bytes(to_rel, content)
             self._versioned.add(to_rel)
 
     def unversion(self, paths):
+        """Remove the given paths from the versioned set."""
         with self.lock_tree_write():
             for path in paths:
                 if path not in self._versioned:
@@ -695,6 +609,7 @@ class MemoryTree(MutableTree):
                 self._versioned -= children
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
+        """Add files to the tree, skipping already-versioned paths."""
         with self.lock_tree_write():
             added = []
             ignored = {}
@@ -706,6 +621,7 @@ class MemoryTree(MutableTree):
             return len(added), ignored
 
     def update_basis_by_delta(self, revid, delta):
+        """Update the basis tree using the given delta."""
         for old_path, new_path, _file_id, _ie in delta:
             if old_path is not None:
                 self._versioned.discard(old_path)
@@ -715,6 +631,7 @@ class MemoryTree(MutableTree):
         self._branch_revision_id = revid
 
     def transform(self, pb=None):
+        """Return a tree transform for this tree."""
         raise NotImplementedError(self.transform)
 
 
@@ -723,6 +640,7 @@ class InterMemoryTree(tree_mod.InterTree):
 
     @classmethod
     def is_compatible(cls, source, target):
+        """Return whether this InterTree is compatible with the given trees."""
         return isinstance(target, MemoryTree)
 
     def iter_changes(
@@ -734,6 +652,7 @@ class InterMemoryTree(tree_mod.InterTree):
         require_versioned=True,
         want_unversioned=False,
     ):
+        """Iterate over changes between the source and target trees."""
         if extra_trees is None:
             extra_trees = []
         with self.lock_read():
@@ -822,6 +741,7 @@ class InterMemoryTree(tree_mod.InterTree):
                 )
 
     def find_target_path(self, path, recurse="none"):
+        """Find the corresponding path in the target tree."""
         if not self.source.is_versioned(path):
             raise _mod_transport.NoSuchFile(path)
         if self.target.is_versioned(path):
@@ -829,6 +749,7 @@ class InterMemoryTree(tree_mod.InterTree):
         return None
 
     def find_source_path(self, path, recurse="none"):
+        """Find the corresponding path in the source tree."""
         if not self.target.is_versioned(path):
             raise _mod_transport.NoSuchFile(path)
         if self.source.is_versioned(path):
@@ -836,12 +757,14 @@ class InterMemoryTree(tree_mod.InterTree):
         return None
 
     def find_target_paths(self, paths, recurse="none"):
+        """Find corresponding paths in the target tree for multiple paths."""
         ret = {}
         for path in paths:
             ret[path] = self.find_target_path(path, recurse=recurse)
         return ret
 
     def find_source_paths(self, paths, recurse="none"):
+        """Find corresponding paths in the source tree for multiple paths."""
         ret = {}
         for path in paths:
             ret[path] = self.find_source_path(path, recurse=recurse)

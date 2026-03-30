@@ -146,8 +146,8 @@ def load_tests(loader, standard_tests, pattern):
             # XXX: we shouldn't use an Intertree object to detect inventories
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
-            chk_tree_format._get_matchingcontroldir = (
-                lambda: breezy.controldir.format_registry.make_controldir("2a")
+            chk_tree_format._get_matchingcontroldir = lambda: (
+                breezy.controldir.format_registry.make_controldir("2a")
             )
             test_intertree_permutations.append(
                 (

@@ -24,7 +24,7 @@ from typing import (
 from catalogus import Registry
 from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 
-__all__ = ["Registry", "FormatRegistry", "_LazyObjectGetter", "_ObjectGetter"]
+__all__ = ["FormatRegistry", "Registry", "_LazyObjectGetter", "_ObjectGetter"]
 
 Format = TypeVar("Format")
 Info = TypeVar("Info")

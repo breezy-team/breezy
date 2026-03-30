@@ -20,7 +20,6 @@
 from breezy import tests
 from breezy.tests import TestCaseWithTransport
 
-from ..memorytree import MemoryTree
 from ..treebuilder import TreeBuilder
 
 
