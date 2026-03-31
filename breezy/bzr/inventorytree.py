@@ -374,6 +374,26 @@ class InventoryTree(Tree):
         """
         return {path for path, entry in self.iter_entries_by_dir()}
 
+    def iter_child_entries(self, path):
+        """Iterate child entries of a directory.
+
+        Args:
+            path: Path to the directory.
+
+        Yields:
+            InventoryEntry: Child entries.
+
+        Raises:
+            NoSuchFile: If path doesn't exist.
+            NotADirectory: If path is not a directory.
+        """
+        inv, ie = self._path2inv_ie(path)
+        if ie is None:
+            raise _mod_transport.NoSuchFile(path)
+        if ie.kind != "directory":
+            raise errors.NotADirectory(path)
+        return inv.iter_sorted_children(ie.file_id)
+
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
@@ -1266,26 +1286,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                     yield full_subpath, status, kind, entry
             else:
                 yield path, "V", entry.kind, entry
-
-    def iter_child_entries(self, path):
-        """Iterate child entries of a directory.
-
-        Args:
-            path: Path to the directory.
-
-        Yields:
-            InventoryEntry: Child entries.
-
-        Raises:
-            NoSuchFile: If path doesn't exist.
-            NotADirectory: If path is not a directory.
-        """
-        inv, ie = self._path2inv_ie(path)
-        if ie is None:
-            raise _mod_transport.NoSuchFile(path)
-        if ie.kind != "directory":
-            raise errors.NotADirectory(path)
-        return inv.iter_sorted_children(ie.file_id)
 
     def get_symlink_target(self, path):
         """Get the target of a symbolic link.
