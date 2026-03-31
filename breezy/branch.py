@@ -1542,9 +1542,7 @@ class Branch(ControlComponent):
 
         Returns: An in-memory MutableTree instance
         """
-        from . import memorytree
-
-        return memorytree.MemoryTree.create_on_branch(self)
+        raise NotImplementedError(self.create_memorytree)
 
 
 class BranchFormat(ControlComponentFormat):
@@ -2005,7 +2003,7 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
         self._default_format = None
 
 
-network_format_registry = registry.FormatRegistry[BranchFormat, None]()
+network_format_registry = registry.FormatRegistry[BranchFormat]()
 """Registry of formats indexed by their network name.
 
 The network name for a branch format is an identifier that can be used when

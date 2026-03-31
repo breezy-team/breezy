@@ -69,11 +69,7 @@ pub fn colorstring<F: Color, B: Color>(
 }
 
 #[cfg(windows)]
-pub fn colorstring(
-    text: &[u8],
-    _fgcolor: Option<()>,
-    _bgcolor: Option<()>,
-) -> Vec<u8> {
+pub fn colorstring(text: &[u8], _fgcolor: Option<()>, _bgcolor: Option<()>) -> Vec<u8> {
     // On Windows, just return the text without colors for now
     text.to_vec()
 }

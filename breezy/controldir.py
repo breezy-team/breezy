@@ -1137,9 +1137,7 @@ class ControlComponentFormat:
         raise NotImplementedError(cls.get_format_string)
 
 
-class ControlComponentFormatRegistry(
-    registry.FormatRegistry[ControlComponentFormat, None]
-):
+class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFormat]):
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
@@ -1939,7 +1937,7 @@ class RepositoryAcquisitionPolicy:
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
 
-network_format_registry = registry.FormatRegistry[ControlDirFormat, None]()
+network_format_registry = registry.FormatRegistry[ControlDirFormat]()
 """Registry of formats indexed by their network name.
 
 The network name for a ControlDirFormat is an identifier that can be used when

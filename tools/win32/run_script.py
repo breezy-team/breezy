@@ -16,10 +16,10 @@ import sys
 
 if __name__ == "__main__":
     """Execute a script from the Python Scripts directory.
-    
+
     This main block modifies sys.argv to point to the full path of a script
     in the Python Scripts directory, then executes that script.
-    
+
     Raises:
         AssertionError: If the first argument is already an absolute path.
     """

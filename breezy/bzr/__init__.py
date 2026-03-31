@@ -60,7 +60,7 @@ class LineEndingError(errors.BzrError):
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    formats = registry.FormatRegistry["BzrDirFormat", None](
+    formats = registry.FormatRegistry["BzrDirFormat"](
         controldir.network_format_registry
     )
     """The known .bzr formats."""

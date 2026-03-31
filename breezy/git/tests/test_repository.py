@@ -187,6 +187,27 @@ class TestGitRepository(tests.TestCaseWithTransport):
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
 
+    def test_revision_tree_from_tag(self):
+        # Revision ids should never contain tag SHAs, only commit SHAs.
+        # If one does, revision_tree should raise NoSuchRevision rather
+        # than crashing with AttributeError.
+        commit_id = self._do_commit()
+        repo = self.git_repo
+        # Create an annotated tag pointing at the commit
+        from dulwich.objects import Tag
+
+        tag = Tag()
+        tag.name = b"v1.0"
+        tag.tagger = b"Test User <test@example.com>"
+        tag.tag_time = 0
+        tag.tag_timezone = 0
+        tag.message = b"test tag"
+        tag.object = (dulwich.objects.Commit, commit_id)
+        repo._git.object_store.add_object(tag)
+        # Build a bzr revision id from the tag SHA (not the commit SHA)
+        tag_revid = default_mapping.revision_id_foreign_to_bzr(tag.id)
+        self.assertRaises(AssertionError, repo.revision_tree, tag_revid)
+
     def test_get_parent_map_null(self):
         self.assertEqual(
             {revision.NULL_REVISION: ()},

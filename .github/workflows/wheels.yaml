@@ -96,7 +96,7 @@ jobs:
           CIBW_SKIP: "*musllinux* *-win32"
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
           CIBW_SKIP_LINUX: '*-musllinux_*'
-          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1"'
+          CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY="1" MACOSX_DEPLOYMENT_TARGET="10.12"'
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
@@ -106,6 +106,8 @@ jobs:
             yum install libatomic -y &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
             rustup show
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: >
+            MACOSX_DEPLOYMENT_TARGET=10.12 delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}
           CIBW_BEFORE_BUILD_MACOS: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&

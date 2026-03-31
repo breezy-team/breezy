@@ -356,6 +356,7 @@ pub fn get_home_dir() -> Option<std::path::PathBuf> {
     dirs::home_dir()
 }
 
+#[cfg(unix)]
 fn _get_user_encoding() -> Option<String> {
     unsafe {
         let codeset = nix::libc::nl_langinfo(nix::libc::CODESET);
@@ -365,6 +366,11 @@ fn _get_user_encoding() -> Option<String> {
         let codeset_str = std::ffi::CStr::from_ptr(codeset);
         Some(codeset_str.to_string_lossy().to_string())
     }
+}
+
+#[cfg(windows)]
+fn _get_user_encoding() -> Option<String> {
+    None
 }
 
 pub fn get_user_encoding() -> Option<String> {

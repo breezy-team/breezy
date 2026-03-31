@@ -20,7 +20,6 @@
 from breezy import tests
 from breezy.tests import TestCaseWithTransport
 
-from ..memorytree import MemoryTree
 from ..treebuilder import TreeBuilder
 
 
@@ -68,7 +67,7 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
     def test_build_tree(self):
         """Test building works using a MemoryTree."""
         branch = self.make_branch("branch")
-        tree = MemoryTree.create_on_branch(branch)
+        tree = branch.create_memorytree()
         builder = TreeBuilder()
         builder.start_tree(tree)
         builder.build(["foo", "bar/", "bar/file"])
