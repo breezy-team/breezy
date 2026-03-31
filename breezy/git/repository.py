@@ -22,7 +22,6 @@ from io import BytesIO
 from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
-
 from vcsgraph import (
     graph as _mod_graph,
 )
