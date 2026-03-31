@@ -1,4 +1,5 @@
-use std::os::windows::ffi::OsStrExt;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::path::Path;
 use std::ptr;
 use winapi::shared::minwindef::DWORD;
 use winapi::um::errhandlingapi::GetLastError;
@@ -36,7 +37,11 @@ fn _get_fs_type(drive: &str) -> Option<String> {
 }
 
 pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
-    let drive = path.parent().and_then(|p| p.to_str()).unwrap_or_default();
+    let drive = path
+        .as_ref()
+        .parent()
+        .and_then(|p| p.to_str())
+        .unwrap_or_default();
     let drive = if drive.contains(':') {
         drive
     } else {

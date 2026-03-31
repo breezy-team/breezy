@@ -2,6 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
 use std::ffi::OsStr;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use unicode_normalization::{is_nfc, UnicodeNormalization};
@@ -227,11 +228,9 @@ pub fn legal_path(_path: &Path) -> bool {
 }
 
 #[cfg(windows)]
-use lazy_static::lazy_static;
-#[cfg(windows)]
 lazy_static! {
-use regex::Regex;
-static ref VALID_WIN32_PATH_RE: Regex = Regex::new(r#"^([A-Za-z]:[/\\])?[^:<>*"?\|]*$"#).unwrap();
+    static ref VALID_WIN32_PATH_RE: Regex =
+        Regex::new(r#"^([A-Za-z]:[/\\])?[^:<>*"?\|]*$"#).unwrap();
 }
 
 #[cfg(windows)]
@@ -357,6 +356,10 @@ pub mod win32 {
             p.push(s);
         }
         fix_separators(&p)
+    }
+
+    pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
+        std::fs::canonicalize(f)
     }
 
     #[cfg(test)]
