@@ -4,8 +4,6 @@ import random
 import sys
 
 from breezy import (
-    _known_graph_py,
-    _known_graph_pyx,
     branch,
     commands,
     graph,
@@ -14,6 +12,8 @@ from breezy import (
     ui,
 )
 from breezy.ui import text
+from vcsgraph import KnownGraph
+from vcsgraph import known_graph as _known_graph_mod
 
 p = optparse.OptionParser()
 p.add_option("--quick", default=False, action="store_true")
@@ -60,7 +60,7 @@ combinations = []
 # Times for 500 'merge parents' from bzr.dev
 #   25.6s   vs   45.0s  :(
 
-for _revision_id, parent_ids in parent_map.iteritems():
+for _revision_id, parent_ids in parent_map.items():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
 # The largest portion of the graph that has to be walked for a heads() check
@@ -97,11 +97,11 @@ def report(name, g):
         print("  {}".format(graph._counters))
 
 
-known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
-report("Known", known_python)
+known_python = combi_graph(_known_graph_mod.KnownGraph, combinations)
+report("Known (python)", known_python)
 
-known_pyrex = combi_graph(_known_graph_pyx.KnownGraph, combinations)
-report("Known (pyx)", known_pyrex)
+known_compiled = combi_graph(KnownGraph, combinations)
+report("Known (compiled)", known_compiled)
 
 
 def _simple_graph(parent_map):
@@ -109,22 +109,22 @@ def _simple_graph(parent_map):
 
 
 if opts.quick:
-    if known_python["heads"] != known_pyrex["heads"]:
+    if known_python["heads"] != known_compiled["heads"]:
         import pdb
 
         pdb.set_trace()
     print(
         "ratio: {:.1f}:1 faster".format(
-            known_python["elapsed"] / known_pyrex["elapsed"]
+            known_python["elapsed"] / known_compiled["elapsed"]
         )
     )
 else:
     orig = combi_graph(_simple_graph, combinations)
     report("Orig", orig)
 
-    if orig["heads"] != known_pyrex["heads"]:
+    if orig["heads"] != known_compiled["heads"]:
         import pdb
 
         pdb.set_trace()
 
-    print("ratio: {:.1f}:1 faster".format(orig["elapsed"] / known_pyrex["elapsed"]))
+    print("ratio: {:.1f}:1 faster".format(orig["elapsed"] / known_compiled["elapsed"]))

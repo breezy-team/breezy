@@ -18,6 +18,8 @@
 
 import os
 
+import vcsgraph.errors
+
 from ... import config as _mod_config
 from ... import osutils, ui
 from ...bzr.generate_ids import gen_revision_id
@@ -560,7 +562,7 @@ class WorkingTreeRevisionRewriter:
 
         try:
             return self.graph.find_unique_lca(*[oldparents[0], newparents[1]])
-        except NoCommonAncestor:
+        except (NoCommonAncestor, vcsgraph.errors.NoCommonAncestor):
             return oldparents[0]
 
     def commit_rebase(self, oldrev, newrevid):
