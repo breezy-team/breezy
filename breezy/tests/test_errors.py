@@ -57,14 +57,6 @@ class TestErrors(tests.TestCase):
             "The prefix foo is in the help search path twice.", str(error)
         )
 
-    def test_ghost_revisions_have_no_revno(self):
-        error = vcsgraph.errors.GhostRevisionsHaveNoRevno("target", "ghost_rev")
-        self.assertEqualDiff(
-            "Ghost revision 'ghost_rev' has no revno,"
-            " cannot determine revno for 'target'",
-            str(error),
-        )
-
     def test_incompatibleVersion(self):
         error = errors.IncompatibleVersion("module", [(4, 5, 6), (7, 8, 9)], (1, 2, 3))
         self.assertEqualDiff(

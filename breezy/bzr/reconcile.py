@@ -27,6 +27,7 @@ import vcsgraph.errors
 from vcsgraph.tsort import topo_sort
 
 from .. import errors, ui
+
 from .. import revision as _mod_revision
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
@@ -473,7 +474,7 @@ class BranchReconciler:
                 last_revision_id, (_mod_revision.NULL_REVISION,)
             ):
                 real_history.append(revid)
-        except vcsgraph.errors.RevisionNotPresent:
+        except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent):
             pass  # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):

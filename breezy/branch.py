@@ -402,8 +402,8 @@ class Branch(ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except vcsgraph.errors.RevisionNotPresent as exc:
-                raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
+            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as exc:
+                raise errors.GhostRevisionsHaveNoRevno(
                     revno[0], exc.revision_id
                 ) from exc
         revision_id_to_revno = self.get_revision_id_to_revno_map()
@@ -1267,7 +1267,7 @@ class Branch(ControlComponent):
                 revno = graph.find_distance_to_null(
                     revision_id, [(source_revision_id, source_revno)]
                 )
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
                 # Default to 1, if we can't find anything else
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)

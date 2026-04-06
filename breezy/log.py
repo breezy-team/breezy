@@ -872,7 +872,7 @@ def _linear_view_revisions(
         ):
             try:
                 br_revno, br_rev_id = branch.last_revision_info()
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
                 br_rev_id = branch.last_revision()
                 cur_revno = None
             else:
@@ -887,7 +887,7 @@ def _linear_view_revisions(
         while True:
             try:
                 revision_id = next(graph_iter)
-            except vcsgraph.errors.RevisionNotPresent as e:
+            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
@@ -910,7 +910,7 @@ def _linear_view_revisions(
                 revision_id = next(graph_iter)
             except StopIteration:
                 break
-            except vcsgraph.errors.RevisionNotPresent as e:
+            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break

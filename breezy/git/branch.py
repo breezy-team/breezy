@@ -1286,10 +1286,8 @@ class LocalGitBranch(GitBranch):
             ret = list(
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
-        except vcsgraph.errors.RevisionNotPresent as e:
-            raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
-                last_revid, e.revision_id
-            ) from e
+        except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as e:
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
         ret.reverse()
         return ret
 
@@ -1312,7 +1310,7 @@ class LocalGitBranch(GitBranch):
             revno = graph.find_distance_to_null(
                 last_revid, [(revision.NULL_REVISION, 0)]
             )
-        except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+        except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
             revno = None
         return revno, last_revid
 
@@ -1473,7 +1471,7 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
             graph = local_branch.repository.get_graph()
             try:
                 return graph.find_distance_to_null(revid, [(revision.NULL_REVISION, 0)])
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
                 if not _calculate_revnos(remote_branch):
                     return None
                 # FIXME: Check using graph.find_distance_to_null() ?
