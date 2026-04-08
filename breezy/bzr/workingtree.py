@@ -57,10 +57,10 @@ from breezy import (
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
-    generate_ids,
     inventory,
     serializer,
     )
+from bzrformats import generate_ids
 """,
 )
 

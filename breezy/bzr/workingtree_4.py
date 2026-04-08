@@ -41,9 +41,9 @@ from breezy import (
     views,
     )
 from breezy.bzr import (
-    generate_ids,
     transform as bzr_transform,
     )
+from bzrformats import generate_ids
 """,
 )
 

@@ -38,6 +38,7 @@ from breezy import (
     textfile,
     ui,
     )
+from bzrformats import generate_ids
 from breezy.i18n import gettext
 """,
 )

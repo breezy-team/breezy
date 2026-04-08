@@ -40,12 +40,12 @@ from vcsgraph import graph, tsort
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,
-    generate_ids,
     inventory_delta,
     inventorytree,
     versionedfile,
     vf_search,
     )
+from bzrformats import generate_ids
 from breezy.bzr.bundle import serializer
 
 from breezy.i18n import gettext
