@@ -2108,7 +2108,7 @@ class StreamSource:
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
-        from .recordcounter import RecordCounter
+        from bzrformats.recordcounter import RecordCounter
 
         self._record_counter = RecordCounter()
 
