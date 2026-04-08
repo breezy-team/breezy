@@ -29,7 +29,7 @@ load_tests = scenarios.load_tests_apply_scenarios
 
 
 def btreeparser_scenarios():
-    import breezy.bzr._btree_serializer_py as py_module
+    import bzrformats._btree_serializer_py as py_module
 
     scenarios = [("python", {"parse_btree": py_module})]
     if compiled_btreeparser_feature.available():
@@ -38,7 +38,7 @@ def btreeparser_scenarios():
 
 
 compiled_btreeparser_feature = features.ModuleAvailableFeature(
-    "breezy.bzr._btree_serializer_pyx"
+    "bzrformats._btree_serializer_pyx"
 )
 
 
