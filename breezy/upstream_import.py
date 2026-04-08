@@ -28,7 +28,7 @@ from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
 
 from . import urlutils
-from .bzr import generate_ids
+from bzrformats import generate_ids
 from .controldir import ControlDir, is_control_filename
 from .errors import BzrError, CommandError, NotBranchError
 from .osutils import basename, file_iterator, isdir, pathjoin, splitpath

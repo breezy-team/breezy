@@ -1216,7 +1216,7 @@ def make_entry(kind, name, parent_id, file_id=None, revision=None, **kwargs):
     :param file_id: the file_id to use. if None, one will be created.
     """
     if file_id is None:
-        from . import generate_ids
+        from bzrformats import generate_ids
 
         file_id = generate_ids.gen_file_id(name)
     name = ensure_normalized_name(name)
