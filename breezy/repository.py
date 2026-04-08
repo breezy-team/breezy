@@ -1074,7 +1074,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(self, partial_history, stop_index=distance_from_known)
-        except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as err:
+        except vcsgraph.errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
                 raise errors.NoSuchRevision(self, known_revid) from err

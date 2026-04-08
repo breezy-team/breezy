@@ -402,7 +402,7 @@ class Branch(ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as exc:
+            except vcsgraph.errors.RevisionNotPresent as exc:
                 raise errors.GhostRevisionsHaveNoRevno(
                     revno[0], exc.revision_id
                 ) from exc
