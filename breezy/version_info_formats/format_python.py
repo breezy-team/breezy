@@ -61,7 +61,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         else:
             try:
                 info["revno"] = self._get_revno_str(revision_id)
-            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)

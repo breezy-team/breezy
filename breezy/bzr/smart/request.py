@@ -650,7 +650,7 @@ def _translate_error(err):
         return (b"TokenMismatch", err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return (b"LockContention",)
-    elif isinstance(err, (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno)):
+    elif isinstance(err, vcsgraph.errors.GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
         return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("utf-8"))

@@ -151,7 +151,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         else:
             try:
                 info.add("revno", self._get_revno_str(revision_id))
-            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 pass
             info.add("revision_id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)

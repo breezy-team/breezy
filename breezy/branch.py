@@ -1267,7 +1267,7 @@ class Branch(ControlComponent):
                 revno = graph.find_distance_to_null(
                     revision_id, [(source_revision_id, source_revno)]
                 )
-            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 # Default to 1, if we can't find anything else
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
