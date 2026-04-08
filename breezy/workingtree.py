@@ -34,7 +34,6 @@ import errno
 import os
 from typing import TYPE_CHECKING
 
-import vcsgraph.errors
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -343,7 +342,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
-        except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent, errors.NoSuchRevision):
+        except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
             # occurred. If the revision is present, its a problem, if its not
             # its a ghost.

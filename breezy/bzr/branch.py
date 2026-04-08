@@ -838,7 +838,7 @@ class BzrBranch8(BzrBranch):
             except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as exc:
+                except vcsgraph.errors.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
                         revision_id, exc.revision_id
                     ) from exc

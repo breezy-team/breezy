@@ -661,7 +661,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         graph = self.make_graph(ancestry_1)
         self.assertRaises(
-            (errors.InvalidRevisionId, vcsgraph.errors.InvalidRevisionId),
+            vcsgraph.errors.InvalidRevisionId,
             graph.find_lca, None,
         )
         self.assertEqual({NULL_REVISION}, graph.find_lca(NULL_REVISION, NULL_REVISION))

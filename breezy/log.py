@@ -893,7 +893,7 @@ def _linear_view_revisions(
         while True:
             try:
                 revision_id = next(graph_iter)
-            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
@@ -916,7 +916,7 @@ def _linear_view_revisions(
                 revision_id = next(graph_iter)
             except StopIteration:
                 break
-            except (errors.RevisionNotPresent, vcsgraph.errors.RevisionNotPresent) as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
