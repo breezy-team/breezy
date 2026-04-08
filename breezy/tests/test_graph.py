@@ -673,7 +673,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         """Test error when one revision is not in the graph."""
         graph = self.make_graph(ancestry_1)
         self.assertRaises(
-            (errors.NoCommonAncestor, vcsgraph.errors.NoCommonAncestor), graph.find_unique_lca, b"rev1", b"1rev"
+            errors.NoCommonAncestor, graph.find_unique_lca, b"rev1", b"1rev"
         )
 
     def test_lca_criss_cross(self):
@@ -1554,7 +1554,7 @@ class TestGraphFindDistanceToNull(TestGraphBase):
     def test_rev_is_ghost(self):
         graph = self.make_graph(ancestry_1)
         e = self.assertRaises(
-            (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno),
+            errors.GhostRevisionsHaveNoRevno,
             graph.find_distance_to_null,
             b"rev_missing",
             [],
@@ -1565,7 +1565,7 @@ class TestGraphFindDistanceToNull(TestGraphBase):
     def test_ancestor_is_ghost(self):
         graph = self.make_graph({b"rev": [b"parent"]})
         e = self.assertRaises(
-            (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno), graph.find_distance_to_null, b"rev", []
+            errors.GhostRevisionsHaveNoRevno, graph.find_distance_to_null, b"rev", []
         )
         self.assertEqual(b"rev", e.revision_id)
         self.assertEqual(b"parent", e.ghost_revision_id)

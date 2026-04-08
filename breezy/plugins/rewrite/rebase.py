@@ -24,7 +24,7 @@ from ... import config as _mod_config
 from ... import osutils, ui
 from ...bzr.generate_ids import gen_revision_id
 from ...bzr.inventorytree import InventoryTreeChange
-from ...errors import BzrError, NoCommonAncestor, UnknownFormatError, UnrelatedBranches
+from ...errors import BzrError, UnknownFormatError, UnrelatedBranches
 from ...graph import FrozenHeadsCache
 from ...merge import Merger
 from ...revision import NULL_REVISION
@@ -562,7 +562,7 @@ class WorkingTreeRevisionRewriter:
 
         try:
             return self.graph.find_unique_lca(*[oldparents[0], newparents[1]])
-        except (NoCommonAncestor, vcsgraph.errors.NoCommonAncestor):
+        except vcsgraph.errors.NoCommonAncestor:
             return oldparents[0]
 
     def commit_rebase(self, oldrev, newrevid):

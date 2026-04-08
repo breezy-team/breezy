@@ -19,6 +19,12 @@ __docformat__ = "google"
 """Exceptions for bzr, and reporting of them.
 """
 
+from vcsgraph.errors import (  # noqa: F401
+    GhostRevisionsHaveNoRevno,
+    GraphCycleError,
+    NoCommonAncestor,
+)
+
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
@@ -905,13 +911,6 @@ class CannotReverseCherrypick(BzrError):
     _fmt = "Selected merge cannot perform reverse cherrypicks.  Try merge3 or diff3."
 
 
-class NoCommonAncestor(BzrError):
-    _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
-
-    def __init__(self, revision_a, revision_b):
-        self.revision_a = revision_a
-        self.revision_b = revision_b
-
 
 
 class NoCommonRoot(BzrError):
@@ -1212,13 +1211,6 @@ class WorkingTreeNotRevision(BzrError):
         BzrError.__init__(self, basedir=tree.basedir)
 
 
-
-class GraphCycleError(BzrError):
-    _fmt = "Cycle in graph %(graph)r"
-
-    def __init__(self, graph):
-        BzrError.__init__(self)
-        self.graph = graph
 
 
 class WritingCompleted(InternalBzrError):
@@ -1681,17 +1673,6 @@ class SSHVendorNotFound(BzrError):
 
 
 
-class GhostRevisionsHaveNoRevno(BzrError):
-    """When searching for revnos, if we encounter a ghost, we are stuck."""
-
-    _fmt = (
-        "Could not determine revno for {%(revision_id)s} because"
-        " its ancestry shows a ghost at {%(ghost_revision_id)s}"
-    )
-
-    def __init__(self, revision_id, ghost_revision_id):
-        self.revision_id = revision_id
-        self.ghost_revision_id = ghost_revision_id
 
 
 class GhostRevisionUnusableHere(BzrError):

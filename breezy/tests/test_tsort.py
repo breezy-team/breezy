@@ -19,9 +19,7 @@
 
 import pprint
 
-import vcsgraph.errors
-
-from breezy.errors import GraphCycleError
+from vcsgraph.errors import GraphCycleError
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase
 from breezy.tsort import MergeSorter, TopoSorter, merge_sort, topo_sort
@@ -71,18 +69,18 @@ class TopoSortTests(TestCase):
 
     def test_tsort_cycle(self):
         """TopoSort traps graph with cycles."""
-        self.assertSortAndIterateRaise((GraphCycleError, vcsgraph.errors.GraphCycleError), {0: [1], 1: [0]}.items())
+        self.assertSortAndIterateRaise(GraphCycleError, {0: [1], 1: [0]}.items())
 
     def test_tsort_cycle_2(self):
         """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(
-            (GraphCycleError, vcsgraph.errors.GraphCycleError), {0: [1], 1: [2], 2: [0]}.items()
+            GraphCycleError, {0: [1], 1: [2], 2: [0]}.items()
         )
 
     def test_topo_sort_cycle_with_tail(self):
         """TopoSort traps graph with longer cycle."""
         self.assertSortAndIterateRaise(
-            (GraphCycleError, vcsgraph.errors.GraphCycleError), {0: [1], 1: [2], 2: [3, 4], 3: [0], 4: []}.items()
+            GraphCycleError, {0: [1], 1: [2], 2: [3, 4], 3: [0], 4: []}.items()
         )
 
     def test_tsort_1(self):

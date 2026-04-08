@@ -38,7 +38,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write("  from brz checkout {}\n".format(src_tree.basedir))
         try:
             revno = src_tree.branch.revision_id_to_revno(src_revision_id)
-        except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+        except vcsgraph.errors.GhostRevisionsHaveNoRevno:
             pass
         else:
             to_file.write("    revision: {}\n".format(revno))

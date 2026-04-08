@@ -36,7 +36,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add("date", create_date_str(rev.timestamp, rev.timezone))
             try:
                 revno = self._get_revno_str(revision_id)
-            except (errors.GhostRevisionsHaveNoRevno, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 revno = None
             for hook in RioVersionInfoBuilder.hooks["revision"]:
                 hook(rev, info)
