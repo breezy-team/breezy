@@ -20,7 +20,9 @@
 import gzip
 from io import BytesIO
 
-from .. import tests, tuned_gzip
+from bzrformats import tuned_gzip
+
+from .. import tests
 
 
 class TestToGzip(tests.TestCase):
