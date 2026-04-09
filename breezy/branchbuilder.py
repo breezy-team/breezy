@@ -135,9 +135,11 @@ class BranchBuilder:
                     new_revision_id, [(cur_revision_id, cur_revno)]
                 )
                 self._branch.set_last_revision_info(new_revno, new_revision_id)
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
                 if not allow_leftmost_as_ghost:
-                    raise
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        e.revision_id, e.ghost_revision_id
+                    ) from e
                 new_revno = 1
         if self._tree is not None:
             # We are currently processing a series, but when switching branch

@@ -878,7 +878,7 @@ def _linear_view_revisions(
         ):
             try:
                 br_revno, br_rev_id = branch.last_revision_info()
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except errors.GhostRevisionsHaveNoRevno:
                 br_rev_id = branch.last_revision()
                 cur_revno = None
             else:

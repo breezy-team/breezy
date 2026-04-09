@@ -16,8 +16,9 @@
 
 """Functionality for doing annotations in the 'optimal' way."""
 
+import vcsgraph
+
 from . import errors, osutils, ui
-from . import graph as _mod_graph
 
 
 class Annotator:
@@ -259,7 +260,7 @@ class Annotator:
 
     def _get_heads_provider(self):
         if self._heads_provider is None:
-            self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
+            self._heads_provider = vcsgraph.KnownGraph(self._parent_map)
         return self._heads_provider
 
     def _resolve_annotation_tie(self, the_heads, line, tiebreaker):

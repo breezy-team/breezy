@@ -18,8 +18,6 @@
 
 import pprint
 
-import vcsgraph.errors
-
 from breezy import errors
 from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
@@ -61,7 +59,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         else:
             try:
                 info["revno"] = self._get_revno_str(revision_id)
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except errors.GhostRevisionsHaveNoRevno:
                 pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)

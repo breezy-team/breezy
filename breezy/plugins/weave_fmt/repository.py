@@ -31,8 +31,9 @@ lazy_import(
     """
 import itertools
 
+import vcsgraph
+
 from breezy import (
-    graph as _mod_graph,
     ui,
     )
 from breezy.bzr import (
@@ -765,7 +766,7 @@ class RevisionTextStore(TextVersionedFiles):
         """Get a KnownGraph instance with the ancestry of keys."""
         keys = self.keys()
         parent_map = self.get_parent_map(keys)
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = vcsgraph.KnownGraph(parent_map)
         return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):

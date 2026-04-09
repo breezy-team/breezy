@@ -35,8 +35,9 @@ from breezy.i18n import gettext
 )
 
 import vcsgraph.errors
+import vcsgraph.graph as _mod_vcsgraph
 
-from . import controldir, debug, errors, graph, registry, ui
+from . import controldir, debug, errors, registry, ui
 from . import revision as _mod_revision
 from .decorators import only_raises
 from .inter import InterObject
@@ -1134,14 +1135,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self
-        return graph.StackedParentsProvider(
+        return _mod_vcsgraph.StackedParentsProvider(
             _LazyListJoin(
                 [self._make_parents_provider_unstacked()], self._fallback_repositories
             )
         )
 
     def _make_parents_provider_unstacked(self):
-        return graph.CallableToParentsProviderAdapter(self._get_parent_map_no_fallbacks)
+        return _mod_vcsgraph.CallableToParentsProviderAdapter(self._get_parent_map_no_fallbacks)
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
@@ -1157,10 +1158,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         if other_repository is not None and not self.has_same_location(
             other_repository
         ):
-            parents_provider = graph.StackedParentsProvider(
+            parents_provider = _mod_vcsgraph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()]
             )
-        return graph.Graph(parents_provider)
+        return _mod_vcsgraph.Graph(parents_provider)
 
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.

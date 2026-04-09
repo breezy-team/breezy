@@ -42,8 +42,10 @@ from breezy.bzr import (
     )
 """,
 )
+import vcsgraph
+import vcsgraph.graph
+
 from .. import errors, osutils
-from .. import graph as _mod_graph
 from .. import transport as _mod_transport
 from ..registry import Registry
 from ..textmerge import TextMerge
@@ -1350,7 +1352,7 @@ class VersionedFiles:
             parent_map.update(this_parent_map)
             pending = set(itertools.chain.from_iterable(this_parent_map.values()))
             pending.difference_update(parent_map)
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = vcsgraph.KnownGraph(parent_map)
         return kg
 
     def get_parent_map(self, keys):
@@ -1753,7 +1755,7 @@ class VersionedFilesWithFallbacks(VersionedFiles):
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(missing_keys)
             parent_map.update(f_parent_map)
             missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
+        kg = vcsgraph.KnownGraph(parent_map)
         return kg
 
 
@@ -1783,7 +1785,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         # line data for locally held keys.
         self._lines = {}
         # key lookup providers
-        self._providers = [_mod_graph.DictParentsProvider(self._parents)]
+        self._providers = [vcsgraph.graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge."""
@@ -1798,7 +1800,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
     def plan_lca_merge(self, ver_a, ver_b, base=None):
         from ..merge import _PlanLCAMerge
 
-        graph = _mod_graph.Graph(self)
+        graph = vcsgraph.graph.Graph(self)
         new_plan = _PlanLCAMerge(
             ver_a, ver_b, self, (self._file_id,), graph
         ).plan_merge()
@@ -1866,7 +1868,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            _mod_graph.StackedParentsProvider(self._providers).get_parent_map(keys)
+            vcsgraph.graph.StackedParentsProvider(self._providers).get_parent_map(keys)
         )
         for key, parents in result.items():
             if parents == ():

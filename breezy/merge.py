@@ -24,9 +24,10 @@ lazy_import(
     """
 import patiencediff
 
+import vcsgraph.graph
+
 from breezy import (
     debug,
-    graph as _mod_graph,
     textfile,
     ui,
     )
@@ -2253,7 +2254,7 @@ class _PlanMerge(_PlanMergeBase):
         super().__init__(a_rev, b_rev, vf, key_prefix)
         self.a_key = self._key_prefix + (self.a_rev,)
         self.b_key = self._key_prefix + (self.b_rev,)
-        self.graph = _mod_graph.Graph(self.vf)
+        self.graph = vcsgraph.graph.Graph(self.vf)
         heads = self.graph.heads((self.a_key, self.b_key))
         if len(heads) == 1:
             # one side dominates, so we can just return its values, yay for
@@ -2364,7 +2365,7 @@ class _PlanMerge(_PlanMergeBase):
             tails.remove(base_key)
             self._prune_tails(culled_parent_map, child_map, tails)
         # Now remove all the uninteresting 'linear' regions
-        simple_map = _mod_graph.collapse_linear_regions(culled_parent_map)
+        simple_map = vcsgraph.graph.collapse_linear_regions(culled_parent_map)
         return simple_map
 
     @staticmethod
