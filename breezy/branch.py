@@ -26,12 +26,7 @@ import contextlib
 import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
-from vcsgraph.errors import (
-    GhostRevisionsHaveNoRevno,
-)
-from vcsgraph.errors import (
-    RevisionNotPresent as VcsGraphRevisionNotPresent,
-)
+import vcsgraph.errors
 
 from . import config as _mod_config
 from . import debug, errors, registry, repository, urlutils
@@ -407,8 +402,10 @@ class Branch(ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as exc:
-                raise GhostRevisionsHaveNoRevno(revno[0], exc.revision_id) from exc
+            except vcsgraph.errors.RevisionNotPresent as exc:
+                raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
+                    revno[0], exc.revision_id
+                ) from exc
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [
             revision_id
@@ -1270,7 +1267,7 @@ class Branch(ControlComponent):
                 revno = graph.find_distance_to_null(
                     revision_id, [(source_revision_id, source_revno)]
                 )
-            except GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 # Default to 1, if we can't find anything else
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)

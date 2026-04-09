@@ -30,7 +30,7 @@ The main components include:
 
 import os
 
-from vcsgraph.errors import NoCommonAncestor
+import vcsgraph.errors
 from vcsgraph.graph import FrozenHeadsCache
 from vcsgraph.tsort import topo_sort
 
@@ -682,7 +682,7 @@ class WorkingTreeRevisionRewriter:
 
         try:
             return self.graph.find_unique_lca(*[oldparents[0], newparents[1]])
-        except NoCommonAncestor:
+        except vcsgraph.errors.NoCommonAncestor:
             return oldparents[0]
 
     def commit_rebase(self, oldrev, newrevid):

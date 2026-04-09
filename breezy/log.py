@@ -55,6 +55,8 @@ from collections.abc import Callable
 from io import BytesIO
 from warnings import warn
 
+import vcsgraph.errors
+
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -70,13 +72,6 @@ from breezy import (
     )
 from breezy.i18n import gettext, ngettext
 """,
-)
-
-from vcsgraph.errors import (
-    GhostRevisionsHaveNoRevno,
-)
-from vcsgraph.errors import (
-    RevisionNotPresent as VcsGraphRevisionNotPresent,
 )
 
 from . import errors, registry, revisionspec, trace
@@ -877,7 +872,7 @@ def _linear_view_revisions(
         ):
             try:
                 br_revno, br_rev_id = branch.last_revision_info()
-            except GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 br_rev_id = branch.last_revision()
                 cur_revno = None
             else:
@@ -892,7 +887,7 @@ def _linear_view_revisions(
         while True:
             try:
                 revision_id = next(graph_iter)
-            except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
@@ -915,7 +910,7 @@ def _linear_view_revisions(
                 revision_id = next(graph_iter)
             except StopIteration:
                 break
-            except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break

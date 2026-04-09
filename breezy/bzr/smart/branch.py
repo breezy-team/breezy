@@ -17,7 +17,7 @@
 """Server-side branch related request implmentations."""
 
 import fastbencode as bencode
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
 
 from ... import errors
 from ... import revision as _mod_revision
@@ -372,7 +372,7 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
             dotted_revno = branch.revision_id_to_dotted_revno(revid)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b"NoSuchRevision", revid))
-        except GhostRevisionsHaveNoRevno as e:
+        except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
             return FailedSmartServerResponse(
                 (b"GhostRevisionsHaveNoRevno", e.revision_id, e.ghost_revision_id)
             )
@@ -551,7 +551,7 @@ class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
                 new_last_revision_id, [(last_rev, last_revno)]
             )
             branch.set_last_revision_info(new_revno, new_last_revision_id)
-        except GhostRevisionsHaveNoRevno:
+        except vcsgraph.errors.GhostRevisionsHaveNoRevno:
             return FailedSmartServerResponse((b"NoSuchRevision", new_last_revision_id))
         return SuccessfulSmartServerResponse((b"ok", new_revno, new_last_revision_id))
 
