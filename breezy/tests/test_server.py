@@ -32,7 +32,6 @@ from dromedary.tests.test_server import (  # noqa: F401
     FakeVFATServer,
     LocalURLServer,
     LogDecoratorServer,
-    NoSmartTransportServer,
     ReadonlyServer,
     TestingChrootServer,
     TestingPathFilteringServer,
@@ -46,6 +45,15 @@ from dromedary.tests.test_server import (  # noqa: F401
     UnlistableServer,
     debug_threads,
 )
+
+
+class NoSmartTransportServer(DecoratorServer):
+    """Server for the NoSmartTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from breezy.transport import nosmart
+
+        return nosmart.NoSmartTransportDecorator
 
 
 def _breezy_debug_threads():
