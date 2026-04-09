@@ -59,7 +59,7 @@ from ..versionedfile import (
 )
 
 compiled_knit_feature = features.ModuleAvailableFeature(
-    "breezy.bzr._knit_load_data_pyx"
+    "bzrformats._knit_load_data_pyx"
 )
 
 
@@ -946,7 +946,7 @@ class LowLevelKnitDataTests(TestCase):
 class LowLevelKnitIndexTests(TestCase):
     @property
     def _load_data(self):
-        from .._knit_load_data_py import _load_data_py
+        from bzrformats._knit_load_data_py import _load_data_py
 
         return _load_data_py
 
@@ -1362,7 +1362,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     @property
     def _load_data(self):
-        from .._knit_load_data_pyx import _load_data_c
+        from bzrformats._knit_load_data_pyx import _load_data_c
 
         return _load_data_c
 
