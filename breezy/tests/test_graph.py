@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import vcsgraph.errors
+
 from .. import errors, tests
 from .. import graph as _mod_graph
 from ..revision import NULL_REVISION
@@ -658,7 +660,10 @@ class TestGraph(TestCaseWithMemoryTransport):
         ancestry_1 should always have a single common ancestor
         """
         graph = self.make_graph(ancestry_1)
-        self.assertRaises(errors.InvalidRevisionId, graph.find_lca, None)
+        self.assertRaises(
+            vcsgraph.errors.InvalidRevisionId,
+            graph.find_lca, None,
+        )
         self.assertEqual({NULL_REVISION}, graph.find_lca(NULL_REVISION, NULL_REVISION))
         self.assertEqual({NULL_REVISION}, graph.find_lca(NULL_REVISION, b"rev1"))
         self.assertEqual({b"rev1"}, graph.find_lca(b"rev1", b"rev1"))
@@ -887,6 +892,10 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertFalse(graph.is_ancestor(b"a", b"c"))
         self.assertTrue(b"null:" not in instrumented_provider.calls)
 
+    def _to_tuples(self, d):
+        """Convert a dict with list values to tuple values for comparison."""
+        return {k: tuple(v) if isinstance(v, list) else v for k, v in d.items()}
+
     def test_iter_ancestry(self):
         nodes = boundary.copy()
         nodes[NULL_REVISION] = ()
@@ -894,17 +903,26 @@ class TestGraph(TestCaseWithMemoryTransport):
         expected = nodes.copy()
         expected.pop(b"a")  # b'a' is not in the ancestry of b'c', all the
         # other nodes are
-        self.assertEqual(expected, dict(graph.iter_ancestry([b"c"])))
-        self.assertEqual(nodes, dict(graph.iter_ancestry([b"a", b"c"])))
+        self.assertEqual(
+            self._to_tuples(expected), dict(graph.iter_ancestry([b"c"]))
+        )
+        self.assertEqual(
+            self._to_tuples(nodes), dict(graph.iter_ancestry([b"a", b"c"]))
+        )
 
     def test_iter_ancestry_with_ghost(self):
         graph = self.make_graph(with_ghost)
         expected = with_ghost.copy()
         # b'a' is not in the ancestry of b'c', and b'g' is a ghost
         expected[b"g"] = None
-        self.assertEqual(expected, dict(graph.iter_ancestry([b"a", b"c"])))
+        self.assertEqual(
+            self._to_tuples(expected),
+            dict(graph.iter_ancestry([b"a", b"c"])),
+        )
         expected.pop(b"a")
-        self.assertEqual(expected, dict(graph.iter_ancestry([b"c"])))
+        self.assertEqual(
+            self._to_tuples(expected), dict(graph.iter_ancestry([b"c"]))
+        )
 
     def test_filter_candidate_lca(self):
         """Test filter_candidate_lca for a corner case.
@@ -1890,22 +1908,22 @@ class TestStackedParentsProvider(tests.TestCase):
         return SharedInstrumentedParentsProvider(pp, self.calls, info)
 
     def test_stacked_parents_provider(self):
-        parents1 = _mod_graph.DictParentsProvider({b"rev2": [b"rev3"]})
-        parents2 = _mod_graph.DictParentsProvider({b"rev1": [b"rev4"]})
+        parents1 = _mod_graph.DictParentsProvider({b"rev2": (b"rev3",)})
+        parents2 = _mod_graph.DictParentsProvider({b"rev1": (b"rev4",)})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
         self.assertEqual(
-            {b"rev1": [b"rev4"], b"rev2": [b"rev3"]},
+            {b"rev1": (b"rev4",), b"rev2": (b"rev3",)},
             stacked.get_parent_map([b"rev1", b"rev2"]),
         )
         self.assertEqual(
-            {b"rev2": [b"rev3"], b"rev1": [b"rev4"]},
+            {b"rev2": (b"rev3",), b"rev1": (b"rev4",)},
             stacked.get_parent_map([b"rev2", b"rev1"]),
         )
         self.assertEqual(
-            {b"rev2": [b"rev3"]}, stacked.get_parent_map([b"rev2", b"rev2"])
+            {b"rev2": (b"rev3",)}, stacked.get_parent_map([b"rev2", b"rev2"])
         )
         self.assertEqual(
-            {b"rev1": [b"rev4"]}, stacked.get_parent_map([b"rev1", b"rev1"])
+            {b"rev1": (b"rev4",)}, stacked.get_parent_map([b"rev1", b"rev1"])
         )
 
     def test_stacked_parents_provider_overlapping(self):
@@ -1913,10 +1931,10 @@ class TestStackedParentsProvider(tests.TestCase):
         # 1
         # |
         # 2
-        parents1 = _mod_graph.DictParentsProvider({b"rev2": [b"rev1"]})
-        parents2 = _mod_graph.DictParentsProvider({b"rev2": [b"rev1"]})
+        parents1 = _mod_graph.DictParentsProvider({b"rev2": (b"rev1",)})
+        parents2 = _mod_graph.DictParentsProvider({b"rev2": (b"rev1",)})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b"rev2": [b"rev1"]}, stacked.get_parent_map([b"rev2"]))
+        self.assertEqual({b"rev2": (b"rev1",)}, stacked.get_parent_map([b"rev2"]))
 
     def test_handles_no_get_cached_parent_map(self):
         # this shows that we both handle when a provider doesn't implement

@@ -23,6 +23,8 @@ __all__ = [
     "VersionedFileRepoReconciler",
 ]
 
+import vcsgraph.errors
+
 from .. import errors, ui
 from .. import revision as _mod_revision
 from ..i18n import gettext
@@ -450,7 +452,7 @@ class BranchReconciler:
                 last_revision_id, (_mod_revision.NULL_REVISION,)
             ):
                 real_history.append(revid)
-        except errors.RevisionNotPresent:
+        except vcsgraph.errors.RevisionNotPresent:
             pass  # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):

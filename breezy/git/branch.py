@@ -22,6 +22,7 @@ from collections import defaultdict
 from functools import partial
 from io import BytesIO
 
+import vcsgraph.errors
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.object_store import peel_sha
@@ -804,8 +805,8 @@ class LocalGitBranch(GitBranch):
             ret = list(
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
-        except errors.RevisionNotPresent as e:
-            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
+        except vcsgraph.errors.RevisionNotPresent as e:
+            raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
 
@@ -822,7 +823,7 @@ class LocalGitBranch(GitBranch):
             revno = graph.find_distance_to_null(
                 last_revid, [(revision.NULL_REVISION, 0)]
             )
-        except errors.GhostRevisionsHaveNoRevno:
+        except vcsgraph.errors.GhostRevisionsHaveNoRevno:
             revno = None
         return revno, last_revid
 
@@ -921,7 +922,7 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
             graph = local_branch.repository.get_graph()
             try:
                 return graph.find_distance_to_null(revid, [(revision.NULL_REVISION, 0)])
-            except errors.GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 if not _calculate_revnos(remote_branch):
                     return None
                 # FIXME: Check using graph.find_distance_to_null() ?

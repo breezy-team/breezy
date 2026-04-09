@@ -55,6 +55,8 @@ from collections.abc import Callable
 from io import BytesIO
 from warnings import warn
 
+import vcsgraph.errors
+
 from .lazy_import import lazy_import
 
 lazy_import(
@@ -876,7 +878,7 @@ def _linear_view_revisions(
         ):
             try:
                 br_revno, br_rev_id = branch.last_revision_info()
-            except errors.GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 br_rev_id = branch.last_revision()
                 cur_revno = None
             else:
@@ -891,7 +893,7 @@ def _linear_view_revisions(
         while True:
             try:
                 revision_id = next(graph_iter)
-            except errors.RevisionNotPresent as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
@@ -914,7 +916,7 @@ def _linear_view_revisions(
                 revision_id = next(graph_iter)
             except StopIteration:
                 break
-            except errors.RevisionNotPresent as e:
+            except vcsgraph.errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break

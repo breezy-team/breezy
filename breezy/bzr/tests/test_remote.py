@@ -4307,11 +4307,14 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """Like translateTuple, but takes an already constructed
         ErrorFromSmartServer rather than a tuple.
         """
+        import vcsgraph.errors as vcsgraph_errors
+
         try:
             raise error_object
         except errors.ErrorFromSmartServer as server_error:
             translated_error = self.assertRaises(
-                errors.BzrError, remote._translate_error, server_error, **context
+                (errors.BzrError, vcsgraph_errors.Error),
+                remote._translate_error, server_error, **context,
             )
         return translated_error
 
