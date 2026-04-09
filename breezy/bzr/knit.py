@@ -70,8 +70,8 @@ from breezy import (
     )
 from breezy.bzr import (
     pack,
-    tuned_gzip,
     )
+from bzrformats import tuned_gzip
 
 from breezy.bzr import pack_repo
 from breezy.i18n import gettext
