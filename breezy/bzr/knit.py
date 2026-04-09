@@ -68,9 +68,7 @@ from breezy import (
     diff,
     ui,
     )
-from breezy.bzr import (
-    pack,
-    )
+from bzrformats import pack
 from bzrformats import tuned_gzip
 
 from breezy.bzr import pack_repo

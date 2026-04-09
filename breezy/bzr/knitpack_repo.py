@@ -32,8 +32,11 @@ from breezy import (
     revision as _mod_revision,
     ui,
     )
+from bzrformats import pack
 from breezy.bzr import (
-    pack,
+    xml5,
+    xml6,
+    xml7,
     )
 from breezy.bzr.knit import (
     _KnitGraphIndex,

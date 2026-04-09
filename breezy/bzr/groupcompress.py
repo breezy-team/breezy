@@ -1081,7 +1081,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     :param delta: Delta compress contents.
     :param keylength: How long should keys be.
     """
-    from .pack import ContainerWriter
+    from bzrformats.pack import ContainerWriter
     from .pack_repo import _DirectPackAccess
 
     def factory(transport):

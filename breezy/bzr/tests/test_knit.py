@@ -33,8 +33,10 @@ from ...tests import (
     TestNotApplicable,
     features,
 )
-from .. import knit, knitpack_repo, pack, pack_repo
-from ..index import *  # noqa: F403
+from bzrformats import pack
+
+from .. import knit, knitpack_repo, pack_repo
+from ..index import *
 from ..knit import (
     AnnotatedKnitContent,
     KnitContent,

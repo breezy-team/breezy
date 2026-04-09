@@ -41,10 +41,7 @@ from breezy import (
     transactions,
     ui,
     )
-from vcsgraph import graph
-from breezy.bzr import (
-    pack,
-    )
+from bzrformats import pack
 from breezy.bzr.index import (
     CombinedGraphIndex,
     )

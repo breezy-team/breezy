@@ -35,9 +35,7 @@ from breezy import (
     merge,
     transform,
 )
-from breezy.bzr import (
-    pack,
-    )
+from bzrformats import pack
 """,
 )
 

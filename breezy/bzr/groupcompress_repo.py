@@ -21,6 +21,8 @@ import time
 
 from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
+from bzrformats import pack
+
 from ..bzr import chk_map, chk_serializer, inventory, versionedfile
 from ..bzr import index as _mod_index
 from ..bzr import pack as _mod_pack

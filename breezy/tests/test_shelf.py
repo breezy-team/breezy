@@ -16,9 +16,9 @@
 
 import os
 
-from .. import errors, ignores, osutils, shelf, tests, workingtree
-from ..bzr import pack
-from . import expectedFailure, features
+from .. import errors, ignores, osutils, shelf, tests, transform, workingtree
+from bzrformats import pack
+from . import KnownFailure, features
 
 EMPTY_SHELF = (
     b"Bazaar pack format 1 (introduced in 0.18)\n"
