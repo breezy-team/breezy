@@ -16,7 +16,12 @@
 
 """Inventory/revision serialization."""
 
-from .. import errors, registry
+from .. import errors
+from bzrformats.serializer import (
+    InventorySerializer,
+    RevisionSerializer,
+    SerializerRegistry,
+)
 
 
 class BadInventoryFormat(errors.BzrError):
@@ -53,133 +58,10 @@ class UnsupportedInventoryKind(errors.BzrError):
         self.kind = kind
 
 
-class RevisionSerializer:
-    """Revision serialization/deserialization."""
+class Serializer(InventorySerializer, RevisionSerializer):
+    """Inventory and revision serialization/deserialization."""
 
     squashes_xml_invalid_characters = False
-
-    def write_revision_to_string(self, rev):
-        """Serialize a revision to a string.
-
-        Args:
-            rev: The revision object to serialize.
-
-        Returns:
-            Serialized revision as a string.
-
-        Raises:
-            NotImplementedError: This method must be implemented by subclasses.
-        """
-        raise NotImplementedError(self.write_revision_to_string)
-
-    def write_revision_to_lines(self, rev):
-        """Serialize a revision to a list of lines.
-
-        Args:
-            rev: The revision object to serialize.
-
-        Returns:
-            Serialized revision as a list of lines.
-
-        Raises:
-            NotImplementedError: This method must be implemented by subclasses.
-        """
-        raise NotImplementedError(self.write_revision_to_lines)
-
-    def read_revision(self, f):
-        """Read a revision from a file object.
-
-        Args:
-            f: File-like object to read from.
-
-        Returns:
-            Deserialized revision object.
-
-        Raises:
-            NotImplementedError: This method must be implemented by subclasses.
-        """
-        raise NotImplementedError(self.read_revision)
-
-    def read_revision_from_string(self, xml_string):
-        """Read a revision from a string.
-
-        Args:
-            xml_string: String containing the serialized revision.
-
-        Returns:
-            Deserialized revision object.
-
-        Raises:
-            NotImplementedError: This method must be implemented by subclasses.
-        """
-        raise NotImplementedError(self.read_revision_from_string)
-
-
-class InventorySerializer:
-    """Inventory serialization/deserialization."""
-
-    def write_inventory(self, inv, f):
-        """Write inventory to a file.
-
-        Note: this is a *whole inventory* operation, and should only be used
-        sparingly, as it does not scale well with large trees.
-        """
-        raise NotImplementedError(self.write_inventory)
-
-    def write_inventory_to_chunks(self, inv):
-        """Produce a simple bytestring chunk representation of an inventory.
-
-        Note: this is a *whole inventory* operation, and should only be used
-        sparingly, as it does not scale well with large trees.
-
-        The requirement for the contents of the string is that it can be passed
-        to read_inventory_from_lines and the result is an identical inventory
-        in memory.
-        """
-        raise NotImplementedError(self.write_inventory_to_chunks)
-
-    def write_inventory_to_lines(self, inv):
-        """Produce a simple lines representation of an inventory.
-
-        Note: this is a *whole inventory* operation, and should only be used
-        sparingly, as it does not scale well with large trees.
-
-        The requirement for the contents of the string is that it can be passed
-        to read_inventory_from_lines and the result is an identical inventory
-        in memory.
-        """
-        raise NotImplementedError(self.write_inventory_to_lines)
-
-    def read_inventory_from_lines(
-        self, lines, revision_id=None, entry_cache=None, return_from_cache=False
-    ):
-        """Read bytestring chunks into an inventory object.
-
-        :param lines: The serialized inventory to read.
-        :param revision_id: If not-None, the expected revision id of the
-            inventory. Some serialisers use this to set the results' root
-            revision. This should be supplied for deserialising all
-            from-repository inventories so that xml5 inventories that were
-            serialised without a revision identifier can be given the right
-            revision id (but not for working tree inventories where users can
-            edit the data without triggering checksum errors or anything).
-        :param entry_cache: An optional cache of InventoryEntry objects. If
-            supplied we will look up entries via (file_id, revision_id) which
-            should map to a valid InventoryEntry (File/Directory/etc) object.
-        :param return_from_cache: Return entries directly from the cache,
-            rather than copying them first. This is only safe if the caller
-            promises not to mutate the returned inventory entries, but it can
-            make some operations significantly faster.
-        """
-        raise NotImplementedError(self.read_inventory_from_lines)
-
-    def read_inventory(self, f, revision_id=None):
-        """See read_inventory_from_lines."""
-        raise NotImplementedError(self.read_inventory)
-
-
-class SerializerRegistry(registry.Registry):
-    """Registry for serializer objects."""
 
 
 revision_format_registry = SerializerRegistry()
