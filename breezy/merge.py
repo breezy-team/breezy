@@ -17,14 +17,14 @@
 import contextlib
 import tempfile
 
+import vcsgraph.graph
+
 from .lazy_import import lazy_import
 
 lazy_import(
     globals(),
     """
 import patiencediff
-
-import vcsgraph.graph
 
 from breezy import (
     debug,

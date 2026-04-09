@@ -18,6 +18,9 @@
 
 from io import BytesIO
 
+import vcsgraph.graph as graph
+from vcsgraph.graph import HeadsCache
+
 from ..lazy_import import lazy_import
 
 lazy_import(
@@ -30,7 +33,6 @@ from breezy import (
     debug,
     fifo_cache,
     gpg,
-    graph,
     lru_cache,
     osutils,
     revision as _mod_revision,
@@ -123,7 +125,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         self.basis_delta_revision = basis_id
         self._new_inventory = None
         self._basis_delta = []
-        self.__heads = graph.HeadsCache(repository.get_graph()).heads
+        self.__heads = HeadsCache(repository.get_graph()).heads
         # memo'd check for no-op commits.
         self._any_changes = False
         self._owns_transaction = owns_transaction

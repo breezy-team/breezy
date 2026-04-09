@@ -17,6 +17,8 @@
 import re
 import sys
 
+import vcsgraph.graph as _vcsgraph
+
 from ..lazy_import import lazy_import
 
 lazy_import(
@@ -24,8 +26,6 @@ lazy_import(
     """
 import contextlib
 import time
-
-import vcsgraph.graph as _vcsgraph
 
 from breezy import (
     config,
