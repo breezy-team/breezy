@@ -4290,8 +4290,6 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """Like translateTuple, but takes an already constructed
         ErrorFromSmartServer rather than a tuple.
         """
-        import vcsgraph.errors as vcsgraph_errors
-
         try:
             raise error_object
         except errors.ErrorFromSmartServer as server_error:
