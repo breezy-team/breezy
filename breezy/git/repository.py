@@ -19,12 +19,13 @@
 
 from io import BytesIO
 
+import vcsgraph
+import vcsgraph.graph
 from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
 
 from .. import check, errors, lock, repository, trace, transactions, ui
-from .. import graph as _mod_graph
 from .. import revision as _mod_revision
 from ..decorators import only_raises
 from ..foreign import ForeignRepository
@@ -261,7 +262,7 @@ class LocalGitRepository(GitRepository):
         self._git._put_named_file("config", f.getvalue())
 
     def get_file_graph(self):
-        return _mod_graph.Graph(GitFileParentProvider(self._file_change_scanner))
+        return vcsgraph.graph.Graph(GitFileParentProvider(self._file_change_scanner))
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -397,7 +398,7 @@ class LocalGitRepository(GitRepository):
             for values in this_parent_map.values():
                 pending.update(values)
             pending = pending.difference(parent_map)
-        return _mod_graph.KnownGraph(parent_map)
+        return vcsgraph.KnownGraph(parent_map)
 
     def get_signature_text(self, revision_id):
         git_commit_id, _mapping = self.lookup_bzr_revision_id(revision_id)

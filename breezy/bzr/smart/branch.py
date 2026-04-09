@@ -230,7 +230,7 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
             dotted_revno = branch.revision_id_to_dotted_revno(revid)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b"NoSuchRevision", revid))
-        except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+        except errors.GhostRevisionsHaveNoRevno as e:
             return FailedSmartServerResponse(
                 (b"GhostRevisionsHaveNoRevno", e.revision_id, e.ghost_revision_id)
             )

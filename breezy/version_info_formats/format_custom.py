@@ -20,8 +20,6 @@ tree info.
 
 import codecs
 
-import vcsgraph.errors
-
 from breezy import errors
 from breezy.lazy_regex import lazy_compile
 from breezy.revision import NULL_REVISION
@@ -107,7 +105,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         else:
             try:
                 info.add("revno", self._get_revno_str(revision_id))
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except errors.GhostRevisionsHaveNoRevno:
                 pass
             info.add("revision_id", revision_id.decode("utf-8"))
             rev = self._branch.repository.get_revision(revision_id)

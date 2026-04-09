@@ -16,8 +16,6 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
-import vcsgraph.errors
-
 from . import errors, log
 
 
@@ -176,12 +174,12 @@ def _find_unmerged(
     """
     try:
         local_revno, local_revision_id = local_branch.last_revision_info()
-    except (errors.UnsupportedOperation, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+    except (errors.UnsupportedOperation, errors.GhostRevisionsHaveNoRevno):
         local_revno = None
         local_revision_id = local_branch.last_revision()
     try:
         remote_revno, remote_revision_id = remote_branch.last_revision_info()
-    except (errors.UnsupportedOperation, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+    except (errors.UnsupportedOperation, errors.GhostRevisionsHaveNoRevno):
         remote_revision_id = remote_branch.last_revision()
         remote_revno = None
 

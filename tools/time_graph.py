@@ -3,10 +3,11 @@ import optparse
 import random
 import sys
 
+import vcsgraph.graph as graph
+
 from breezy import (
     branch,
     commands,
-    graph,
     osutils,
     trace,
     ui,

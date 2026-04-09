@@ -20,8 +20,6 @@ import errno
 import os
 import sys
 
-import vcsgraph.errors
-
 import breezy.bzr
 import breezy.git
 
@@ -634,7 +632,7 @@ class cmd_revno(Command):
                 revid = b.last_revision()
         try:
             revno_t = b.revision_id_to_dotted_revno(revid)
-        except (errors.NoSuchRevision, vcsgraph.errors.GhostRevisionsHaveNoRevno):
+        except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
             revno_t = ("???",)
         revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
@@ -6868,7 +6866,7 @@ class cmd_tags(Command):
                         revno = ".".join(map(str, revno))
                 except (
                     errors.NoSuchRevision,
-                    vcsgraph.errors.GhostRevisionsHaveNoRevno,
+                    errors.GhostRevisionsHaveNoRevno,
                     errors.UnsupportedOperation,
                 ):
                     # Bad tag data/merges can lead to tagged revisions

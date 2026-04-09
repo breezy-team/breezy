@@ -28,6 +28,8 @@ from ...controldir import (
     format_registry,
 )
 from ...i18n import gettext
+import vcsgraph.graph as graph
+
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
 
@@ -37,8 +39,7 @@ lazy_import(
 import os
 
 from breezy import (
-    branch as _mod_branch,,
-    graph,
+    branch as _mod_branch,
     lockdir,
     osutils,
     revision as _mod_revision,

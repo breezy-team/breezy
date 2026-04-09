@@ -22,6 +22,8 @@ from collections.abc import Callable
 from typing import Optional
 
 import fastbencode as bencode
+import vcsgraph
+import vcsgraph.graph
 
 from .. import (
     branch,
@@ -29,7 +31,6 @@ from .. import (
     debug,
     errors,
     gpg,
-    graph,
     lock,
     lockdir,
     osutils,
@@ -1394,7 +1395,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._leave_lock = False
         # Cache of revision parents; misses are cached during read locks, and
         # write locks when no _real_repository has been set.
-        self._unstacked_provider = graph.CachingParentsProvider(
+        self._unstacked_provider = vcsgraph.graph.CachingParentsProvider(
             get_parent_map=self._get_parent_map_rpc
         )
         self._unstacked_provider.disable_cache()
@@ -1665,7 +1666,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
 
     def get_file_graph(self):
         with self.lock_read():
-            return graph.Graph(self.texts)
+            return vcsgraph.graph.Graph(self.texts)
 
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
@@ -1711,7 +1712,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format."""
         parents_provider = self._make_parents_provider(other_repository)
-        return graph.Graph(parents_provider)
+        return vcsgraph.graph.Graph(parents_provider)
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
@@ -1722,7 +1723,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 if value is not None
             }
             revision_graph = _mod_repository._strip_NULL_ghosts(revision_graph)
-            return graph.KnownGraph(revision_graph)
+            return vcsgraph.KnownGraph(revision_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -3070,7 +3071,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         providers = [self._unstacked_provider]
         if other is not None:
             providers.insert(0, other)
-        return graph.StackedParentsProvider(
+        return vcsgraph.graph.StackedParentsProvider(
             _LazyListJoin(providers, self._fallback_repositories)
         )
 
@@ -4584,7 +4585,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 if not graph.is_ancestor(last_rev, revision_id):
                     # our previous tip is not merged into stop_revision
                     raise errors.DivergedBranches(self, other_branch)
-            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            try:
+                revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                raise errors.GhostRevisionsHaveNoRevno(
+                    e.revision_id, e.ghost_revision_id
+                ) from e
             self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):

@@ -14,21 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Re-exports from vcsgraph for backwards compatibility."""
+"""Backwards compatibility shim for vcsgraph.
 
-from vcsgraph import KnownGraph  # noqa: F401
-from vcsgraph.graph import (  # noqa: F401
-    STEP_UNIQUE_SEARCHER_EVERY,
-    CachingParentsProvider,
-    CallableToParentsProviderAdapter,
-    DictParentsProvider,
-    FrozenHeadsCache,
-    Graph,
-    GraphThunkIdsToKeys,
-    HeadsCache,
-    StackedParentsProvider,
-    _BreadthFirstSearcher,
-    _counters,
-    collapse_linear_regions,
-    invert_parent_map,
-)
+This module previously contained graph algorithms. These have been moved
+to the vcsgraph package. Import from vcsgraph directly.
+"""

@@ -14,11 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import graph as _mod_graph
+import vcsgraph.graph
+
 from ... import tests
 from ...revision import NULL_REVISION
-from ...tests.test_graph import TestGraphBase
 from .. import vf_search
+
+
+class TestGraphBase(tests.TestCase):
+    def make_graph(self, ancestors):
+        return vcsgraph.graph.Graph(vcsgraph.graph.DictParentsProvider(ancestors))
 
 # Ancestry 1:
 #
@@ -83,7 +88,7 @@ extended_history_shortcut = {
 
 class TestSearchResultRefine(tests.TestCase):
     def make_graph(self, ancestors):
-        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+        return vcsgraph.graph.Graph(vcsgraph.graph.DictParentsProvider(ancestors))
 
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
@@ -210,7 +215,7 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
 
 class TestPendingAncestryResultRefine(tests.TestCase):
     def make_graph(self, ancestors):
-        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+        return vcsgraph.graph.Graph(vcsgraph.graph.DictParentsProvider(ancestors))
 
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions

@@ -17,6 +17,8 @@
 import re
 import sys
 
+import vcsgraph.graph as _vcsgraph
+
 from ..lazy_import import lazy_import
 
 lazy_import(
@@ -28,7 +30,6 @@ import time
 from breezy import (
     config,
     debug,
-    graph,
     osutils,
     transactions,
     ui,
@@ -141,7 +142,7 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
             lossy=lossy,
             owns_transaction=owns_transaction,
         )
-        self._file_graph = graph.Graph(
+        self._file_graph = _vcsgraph.Graph(
             repository._pack_collection.text_index.combined_index
         )
 
@@ -1899,11 +1900,11 @@ class PackRepository(MetaDirVersionedFileRepository):
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
-            self._unstacked_provider = graph.CachingParentsProvider(
+            self._unstacked_provider = _vcsgraph.CachingParentsProvider(
                 self._make_parents_provider_unstacked()
             )
         else:
-            self._unstacked_provider = graph.CachingParentsProvider(self)
+            self._unstacked_provider = _vcsgraph.CachingParentsProvider(self)
         self._unstacked_provider.disable_cache()
 
     def _all_revision_ids(self):
@@ -1918,7 +1919,7 @@ class PackRepository(MetaDirVersionedFileRepository):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self._unstacked_provider
-        return graph.StackedParentsProvider(
+        return _vcsgraph.StackedParentsProvider(
             _LazyListJoin([self._unstacked_provider], self._fallback_repositories)
         )
 
