@@ -24,16 +24,14 @@ and conflicts.
 import contextlib
 import tempfile
 
+import vcsgraph.graph
+
 from .lazy_import import lazy_import
 
 lazy_import(
     globals(),
     """
 import patiencediff
-
-from vcsgraph import (
-    graph as _mod_graph,
-    )
 
 from breezy import (
     debug,

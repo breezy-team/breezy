@@ -25,14 +25,14 @@ import gzip
 import os
 from io import BytesIO
 
+import vcsgraph
+
 from ...lazy_import import lazy_import
 
 lazy_import(
     globals(),
     """
 import itertools
-
-import vcsgraph
 
 from breezy import (
     ui,

@@ -21,6 +21,11 @@ from ... import tests
 from ...revision import NULL_REVISION
 from .. import vf_search
 
+
+class TestGraphBase(tests.TestCase):
+    def make_graph(self, ancestors):
+        return vcsgraph.graph.Graph(vcsgraph.graph.DictParentsProvider(ancestors))
+
 # Ancestry 1:
 #
 #  NULL_REVISION
