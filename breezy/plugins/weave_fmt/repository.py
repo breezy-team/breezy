@@ -32,6 +32,8 @@ lazy_import(
     """
 import itertools
 
+import vcsgraph
+
 from breezy import (
     ui,
     )

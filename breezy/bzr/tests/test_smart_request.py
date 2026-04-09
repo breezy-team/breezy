@@ -18,10 +18,9 @@
 
 import threading
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
-
 from breezy import errors, transport
 from breezy.bzr.smart import request
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import TestCase, TestCaseWithMemoryTransport
 
 from ..bzrdir import BzrDir

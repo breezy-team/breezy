@@ -375,8 +375,7 @@ class RevisionStore:
         )
         if self._graph is None and self._use_known_graph:
             if (
-                getattr(_mod_graph, "GraphThunkIdsToKeys", None)
-                and getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None)
+                getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None)
                 and getattr(self.repo, "get_known_graph_ancestry", None)
             ):
                 self._graph = self.repo.get_known_graph_ancestry(rev.parent_ids)

@@ -30,10 +30,10 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.bzr import branch as _mod_bzrbranch
 from breezy.bzr import inventory_delta, versionedfile
 from breezy.bzr.inventory import _make_delta
