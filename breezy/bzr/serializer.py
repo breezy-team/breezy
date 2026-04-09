@@ -16,46 +16,14 @@
 
 """Inventory/revision serialization."""
 
-from .. import errors
 from bzrformats.serializer import (
+    BadInventoryFormat,  # noqa: F401
     InventorySerializer,
     RevisionSerializer,
     SerializerRegistry,
+    UnexpectedInventoryFormat,  # noqa: F401
+    UnsupportedInventoryKind,  # noqa: F401
 )
-
-
-class BadInventoryFormat(errors.BzrError):
-    """Base exception class for inventory serialization errors."""
-
-    _fmt = "Root class for inventory serialization errors"
-
-
-class UnexpectedInventoryFormat(BadInventoryFormat):
-    """Raised when an inventory is not in the expected format."""
-
-    _fmt = "The inventory was not in the expected format:\n %(msg)s"
-
-    def __init__(self, msg):
-        """Initialize UnexpectedInventoryFormat exception.
-
-        Args:
-            msg: Error message describing the unexpected format.
-        """
-        BadInventoryFormat.__init__(self, msg=msg)
-
-
-class UnsupportedInventoryKind(errors.BzrError):
-    """Raised when an unsupported inventory entry kind is encountered."""
-
-    _fmt = """Unsupported entry kind %(kind)s"""
-
-    def __init__(self, kind):
-        """Initialize UnsupportedInventoryKind exception.
-
-        Args:
-            kind: The unsupported entry kind.
-        """
-        self.kind = kind
 
 
 class Serializer(InventorySerializer, RevisionSerializer):

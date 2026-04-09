@@ -37,7 +37,8 @@ __all__ = [
     "unpack_inventory_flat",
 ]
 
-from xml.etree.ElementTree import (
+import re
+from xml.etree.ElementTree import (  # noqa: F401
     Element,
     ElementTree,
     ParseError,
@@ -48,161 +49,50 @@ from xml.etree.ElementTree import (
     tostringlist,
 )
 
+from bzrformats.xml_serializer import (
+    XMLInventorySerializer,
+    XMLRevisionSerializer,
+    encode_and_escape,  # noqa: F401
+    get_utf8_or_ascii,  # noqa: F401
+)
+
 from . import inventory, serializer
 
 
-class XMLRevisionSerializer(serializer.RevisionSerializer):
-    """Abstract XML object serialize/deserialize."""
-
-    squashes_xml_invalid_characters = True
-
-    def _unpack_revision(self, element):
-        raise NotImplementedError(self._unpack_revision)
-
-    def write_revision_to_string(self, rev):
-        """Serialize a revision object to a UTF-8 string."""
-        return b"".join(self.write_revision_to_lines(rev))
-
-    def read_revision(self, f):
-        """Read a revision from an open file object."""
-        return self._unpack_revision(self._read_element(f))
-
-    def read_revision_from_string(self, xml_string):
-        """Read a revision from an XML string."""
-        return self._unpack_revision(fromstring(xml_string))  # noqa: S314
-
-    def _read_element(self, f):
-        return ElementTree().parse(f)
+class XMLSerializer(XMLInventorySerializer, XMLRevisionSerializer):
+    """Combined XML inventory and revision serialize/deserialize."""
 
 
-class XMLInventorySerializer(serializer.InventorySerializer):
-    """Abstract XML object serialize/deserialize."""
+def escape_invalid_chars(message):
+    """Escape the XML-invalid characters in a commit message.
 
-    def read_inventory_from_lines(
-        self, lines, revision_id=None, entry_cache=None, return_from_cache=False
-    ):
-        """Read xml_string into an inventory object.
-
-        :param chunks: The xml to read.
-        :param revision_id: If not-None, the expected revision id of the
-            inventory. Some serialisers use this to set the results' root
-            revision. This should be supplied for deserialising all
-            from-repository inventories so that xml5 inventories that were
-            serialised without a revision identifier can be given the right
-            revision id (but not for working tree inventories where users can
-            edit the data without triggering checksum errors or anything).
-        :param entry_cache: An optional cache of InventoryEntry objects. If
-            supplied we will look up entries via (file_id, revision_id) which
-            should map to a valid InventoryEntry (File/Directory/etc) object.
-        :param return_from_cache: Return entries directly from the cache,
-            rather than copying them first. This is only safe if the caller
-            promises not to mutate the returned inventory entries, but it can
-            make some operations significantly faster.
-        """
-        try:
-            return self._unpack_inventory(
-                fromstringlist(lines),
-                revision_id,
-                entry_cache=entry_cache,
-                return_from_cache=return_from_cache,
-            )
-        except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e)) from e
-
-    def _unpack_inventory(
-        self,
-        element,
-        revision_id: bytes | None = None,
-        entry_cache=None,
-        return_from_cache=False,
-    ):
-        raise NotImplementedError(self._unpack_inventory)
-
-    def read_inventory(self, f, revision_id=None):
-        """Read an inventory from an open file object."""
-        try:
-            try:
-                return self._unpack_inventory(self._read_element(f), revision_id=None)
-            finally:
-                f.close()
-        except ParseError as e:
-            raise serializer.UnexpectedInventoryFormat(str(e)) from e
-
-    def _read_element(self, f):
-        return ElementTree().parse(f)
-
-
-def get_utf8_or_ascii(a_str):
-    """Return a cached version of the string.
-
-    cElementTree will return a plain string if the XML is plain ascii. It only
-    returns Unicode when it needs to. We want to work in utf-8 strings. So if
-    cElementTree returns a plain string, we can just return the cached version.
-    If it is Unicode, then we need to encode it.
-
-    :param a_str: An 8-bit string or Unicode as returned by
-                  cElementTree.Element.get()
-    :return: A utf-8 encoded 8-bit string.
+    :param message: Commit message to escape
+    :return: tuple with escaped message and number of characters escaped
     """
-    # This is fairly optimized because we know what cElementTree does, this is
-    # not meant as a generic function for all cases. Because it is possible for
-    # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ is str:
-        return a_str.encode("utf-8")
-    else:
-        return a_str
+    if message is None:
+        return None, 0
+    return re.subn(
+        "[^\x09\x0a\x0d\u0020-\ud7ff\ue000-\ufffd]+",
+        lambda match: match.group(0).encode("unicode_escape").decode("ascii"),
+        message,
+    )
 
 
-from .._bzr_rs import encode_and_escape, escape_invalid_chars
+def _clear_cache():
+    """No-op, cache is managed by bzrformats Rust code."""
 
 
-def unpack_inventory_entry(
-    elt, entry_cache=None, return_from_cache=False, root_id=None
-):
-    """Unpack an inventory entry from XML element."""
+def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     elt_get = elt.get
     file_id = elt_get("file_id")
     revision = elt_get("revision")
-    # Check and see if we have already unpacked this exact entry
-    # Some timings for "repo.revision_trees(last_100_revs)"
-    #               bzr     mysql
-    #   unmodified  4.1s    40.8s
-    #   using lru   3.5s
-    #   using fifo  2.83s   29.1s
-    #   lru._cache  2.8s
-    #   dict        2.75s   26.8s
-    #   inv.add     2.5s    26.0s
-    #   no_copy     2.00s   20.5s
-    #   no_c,dict   1.95s   18.0s
-    # Note that a cache of 10k nodes is more than sufficient to hold all of
-    # the inventory for the last 100 revs for bzr, but not for mysql (20k
-    # is enough for mysql, which saves the same 2s as using a dict)
-
-    # Breakdown of mysql using time.clock()
-    #   4.1s    2 calls to element.get for file_id, revision_id
-    #   4.5s    cache_hit lookup
-    #   7.1s    InventoryFile.copy()
-    #   2.4s    InventoryDirectory.copy()
-    #   0.4s    decoding unique entries
-    #   1.6s    decoding entries after FIFO fills up
-    #   0.8s    Adding nodes to FIFO (including flushes)
-    #   0.1s    cache miss lookups
-    # Using an LRU cache
-    #   4.1s    2 calls to element.get for file_id, revision_id
-    #   9.9s    cache_hit lookup
-    #   10.8s   InventoryEntry.copy()
-    #   0.3s    cache miss lookus
-    #   1.2s    decoding entries
-    #   1.0s    adding nodes to LRU
     if entry_cache is not None and revision is not None:
         key = (file_id, revision)
         try:
-            # We copy it, because some operations may mutate it
             cached_ie = entry_cache[key]
         except KeyError:
             pass
         else:
-            # Only copying directory entries drops us 2.85s => 2.35s
             if return_from_cache:
                 if cached_ie.kind == "directory":
                     return cached_ie.copy()
@@ -254,10 +144,6 @@ def unpack_inventory_entry(
     else:
         raise serializer.UnsupportedInventoryKind(kind)
     if revision is not None and entry_cache is not None:
-        # We cache a copy() because callers like to mutate objects, and
-        # that would cause the item in cache to mutate as well.
-        # This has a small effect on many-inventory performance, because
-        # the majority fraction is spent in cache hits, not misses.
         entry_cache[key] = ie.copy()
 
     return ie
@@ -266,15 +152,7 @@ def unpack_inventory_entry(
 def unpack_inventory_flat(
     elt, format_num, unpack_entry, entry_cache=None, return_from_cache=False
 ):
-    """Unpack a flat XML inventory.
-
-    :param elt: XML element for the inventory
-    :param format_num: Expected format number
-    :param unpack_entry: Function for unpacking inventory entries
-    :return: An inventory
-    :raise UnexpectedInventoryFormat: When unexpected elements or data is
-        encountered
-    """
+    """Unpack a flat XML inventory."""
     if elt.tag != "inventory":
         raise serializer.UnexpectedInventoryFormat(f"Root tag is {elt.tag!r}")
     format = elt.get("format")
@@ -291,13 +169,7 @@ def unpack_inventory_flat(
 
 
 def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
-    """Serialize an inventory to a flat XML file.
-
-    :param inv: Inventory to serialize
-    :param append: Function for writing a line of output
-    :param working: If True skip history data - text_sha1, text_size,
-        reference_revision, symlink_target.
-    """
+    """Serialize an inventory to a flat XML file."""
     entries = inv.iter_entries()
     # Skip the root
     _root_path, _root_ie = next(entries)

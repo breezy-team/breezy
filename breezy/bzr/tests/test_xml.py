@@ -534,11 +534,9 @@ class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
     def test_simple_ascii(self):
-        # _encode_and_escape always appends a final ", because these parameters
-        # are being used in xml attributes, and by returning it now, we have to
-        # do fewer string operations later.
         val = breezy.bzr.xml_serializer.encode_and_escape("foo bar")
         self.assertEqual(b"foo bar", val)
+        # The second time should return the same value
         val2 = breezy.bzr.xml_serializer.encode_and_escape("foo bar")
         self.assertEqual(val2, val)
 
