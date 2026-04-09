@@ -41,7 +41,6 @@ from dromedary import (
 from dromedary.tests import test_server
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
-from breezy.transport.remote import RemoteTransport
 import testscenarios
 
 from .test_transport import TestTransportImplementation

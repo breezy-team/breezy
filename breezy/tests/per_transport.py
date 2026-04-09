@@ -3,8 +3,13 @@
 The per_transport tests have been moved to the dromedary package.
 """
 
-from dromedary.tests.test_transport import TestTransportImplementation
+import testscenarios
+
+from breezy.transport.remote import RemoteTransport
+from dromedary import ConnectedTransport, Transport
 from dromedary.tests.per_transport import *  # noqa: F403, F401
+from dromedary.tests.per_transport import transport_test_permutations
+from dromedary.tests.test_transport import TestTransportImplementation
 
 
 def load_tests(loader, standard_tests, pattern):
