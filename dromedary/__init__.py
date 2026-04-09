@@ -37,10 +37,8 @@ from typing import Any, TypeVar
 
 from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 
-from breezy import (
-    ui,
-    hooks,
-)
+from dromedary._hooks import Hooks
+from dromedary import _ui
 from catalogus import registry
 import os
 
@@ -57,7 +55,7 @@ from . import _transport_rs
 _file_streams: dict[str, Any] = {}
 
 
-class TransportHooks(hooks.Hooks):
+class TransportHooks(Hooks):
     """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
@@ -609,7 +607,7 @@ class Transport:
           bytes: Number of bytes read or written.
           direction: 'read' or 'write' or None.
         """
-        ui.ui_factory.report_transport_activity(self, bytes, direction)
+        _ui.report_transport_activity(self, bytes, direction)
 
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count

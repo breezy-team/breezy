@@ -203,3 +203,12 @@ class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_o
         """Get a backing transport from a server we are decorating."""
         url = "readonly+" + backing_transport_server.get_url()
         return transport.get_transport_from_url(url)
+
+
+class NoSmartTransportServer(DecoratorServer):
+    """Server for the NoSmartTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from breezy.transport import nosmart
+
+        return nosmart.NoSmartTransportDecorator

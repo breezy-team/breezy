@@ -32,8 +32,7 @@ import time
 from io import BytesIO
 from urllib.parse import urlparse, urlunparse
 
-from breezy import config, ui
-from dromedary import errors
+from dromedary import _config, _ui, errors
 from dromedary.osutils import pumpfile
 from dromedary.errors import TransportError, PathError, PermissionDenied
 from dromedary.tests.test_server import TestServer
@@ -180,7 +179,6 @@ class GioTransport(ConnectedTransport):
     def _auth_cb(self, op, message, default_user, default_domain, flags):
         # really use breezy.auth get_password for this
         # or possibly better gnome-keyring?
-        auth = config.AuthenticationConfig()
         parsed_url = urlutils.URL.from_string(self.url)
         user = None
         if (
@@ -188,7 +186,7 @@ class GioTransport(ConnectedTransport):
             and flags & gio.ASK_PASSWORD_NEED_DOMAIN
         ):
             prompt = f"{parsed_url.scheme.upper()}" + " %(host)s DOMAIN\\username"
-            user_and_domain = auth.get_user(
+            user_and_domain = _config.get_auth_user(
                 parsed_url.scheme,
                 parsed_url.host,
                 port=parsed_url.port,
@@ -199,23 +197,19 @@ class GioTransport(ConnectedTransport):
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            user = auth.get_user(
+            user = _config.get_auth_user(
                 parsed_url.scheme, parsed_url.host, port=parsed_url.port, ask=True
             )
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
-            # Don't know how common this case is, but anyway
-            # a DOMAIN and a username prompt should be the
-            # same so I will missuse the ui_factory get_username
-            # a little bit here.
             prompt = f"{parsed_url.scheme.upper()}" + " %(host)s DOMAIN"
-            domain = ui.ui_factory.get_username(prompt=prompt)
+            domain = _ui.get_username(prompt=prompt)
             op.set_domain(domain)
 
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
             if user is None:
                 user = op.get_username()
-            password = auth.get_password(
+            password = _config.get_auth_password(
                 parsed_url.scheme, parsed_url.host, user, port=parsed_url.port
             )
             op.set_password(password)
@@ -244,7 +238,7 @@ class GioTransport(ConnectedTransport):
             except gio.Error as e:
                 if e.code == gio.ERROR_NOT_MOUNTED:
                     self.loop = glib.MainLoop()
-                    ui.ui_factory.show_message(f"Mounting {self.url} using GIO")
+                    _ui.show_message(f"Mounting {self.url} using GIO")
                     op = gio.MountOperation()
                     if user:
                         op.set_username(user)

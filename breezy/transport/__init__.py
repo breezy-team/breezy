@@ -50,6 +50,58 @@ from dromedary.errors import (
 import breezy
 from dromedary.http import set_user_agent, set_credential_lookup
 
+# Wire up breezy integrations into dromedary's callback points
+from dromedary import _ui, _config, _bedding
+from breezy import ui, bedding
+
+
+def _breezy_report_activity(transport, byte_count, direction):
+    ui.ui_factory.report_transport_activity(transport, byte_count, direction)
+
+
+def _breezy_get_password(prompt="", **kwargs):
+    return ui.ui_factory.get_password(prompt, **kwargs)
+
+
+def _breezy_get_username(prompt, **kwargs):
+    return ui.ui_factory.get_username(prompt, **kwargs)
+
+
+def _breezy_show_message(msg):
+    ui.ui_factory.show_message(msg)
+
+
+_ui.report_transport_activity = _breezy_report_activity
+_ui.get_password = _breezy_get_password
+_ui.get_username = _breezy_get_username
+_ui.show_message = _breezy_show_message
+
+
+def _breezy_get_ssh_vendor_name():
+    from breezy import config
+    return config.GlobalStack().get("ssh")
+
+
+def _breezy_get_auth_user(scheme, host, port=None, default=None, ask=False, prompt=None):
+    from breezy import config
+    return config.AuthenticationConfig().get_user(
+        scheme, host, port=port, default=default, ask=ask, prompt=prompt
+    )
+
+
+def _breezy_get_auth_password(scheme, host, user, port=None):
+    from breezy import config
+    return config.AuthenticationConfig().get_password(scheme, host, user, port=port)
+
+
+_config.get_ssh_vendor_name = _breezy_get_ssh_vendor_name
+_config.get_auth_user = _breezy_get_auth_user
+_config.get_auth_password = _breezy_get_auth_password
+
+_bedding.config_dir = bedding.config_dir
+_bedding.ensure_config_dir_exists = bedding.ensure_config_dir_exists
+
+
 set_user_agent(f"Breezy/{breezy.__version__}")
 
 

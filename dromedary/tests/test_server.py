@@ -152,15 +152,6 @@ class LogDecoratorServer(DecoratorServer):
         return log.TransportLogDecorator
 
 
-class NoSmartTransportServer(DecoratorServer):
-    """Server for the NoSmartTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        from breezy.transport import nosmart
-
-        return nosmart.NoSmartTransportDecorator
-
-
 class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 

@@ -33,8 +33,7 @@ import stat
 import sys
 import time
 
-from breezy import config
-from dromedary import errors
+from dromedary import _config, errors
 from dromedary.errors import (
     DependencyNotPresent,
     LockError,
@@ -387,8 +386,7 @@ class SFTPTransport(ConnectedTransport):
         vendor = ssh._get_ssh_vendor()
         user = self._parsed_url.user
         if user is None:
-            auth = config.AuthenticationConfig()
-            user = auth.get_user("ssh", self._parsed_url.host, self._parsed_url.port)
+            user = _config.get_auth_user("ssh", self._parsed_url.host, port=self._parsed_url.port)
         connection = vendor.connect_sftp(
             self._parsed_url.user,
             password,

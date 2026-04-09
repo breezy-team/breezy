@@ -30,7 +30,7 @@ from binascii import hexlify
 
 import paramiko
 
-from breezy import bedding, config, ui
+from dromedary import _bedding, _config, _ui
 from dromedary.osutils import pathjoin
 from dromedary.errors import TransportError
 from dromedary.ssh import SSHConnection, SSHVendor
@@ -61,11 +61,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     Raises:
         ConnectionError: If authentication fails or is not supported
     """
-    auth = config.AuthenticationConfig()
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user("ssh", host, port=port, default=getpass.getuser())
+        username = _config.get_auth_user("ssh", host, port=port, default=getpass.getuser())
     agent = paramiko.Agent()
     for key in agent.get_keys():
         logger.debug("Trying SSH agent key %s", hexlify(key.get_fingerprint()).upper())
@@ -127,7 +126,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
-    password = auth.get_password("ssh", host, username, port=port)
+    password = _config.get_auth_password("ssh", host, username, port=port)
     # get_password can still return None, which means we should not prompt
     if password is not None:
         try:
@@ -160,7 +159,7 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
         paramiko_transport.auth_publickey(username, key)
         return True
     except paramiko.PasswordRequiredException:
-        password = ui.ui_factory.get_password(
+        password = _ui.get_password(
             prompt="SSH %(filename)s password", filename=os.fsdecode(filename)
         )
         try:
@@ -186,7 +185,7 @@ def _ssh_host_keys_config_dir():
     Returns:
         str: Path to the directory where SSH host keys are stored
     """
-    return pathjoin(bedding.config_dir(), "ssh_host_keys")
+    return pathjoin(_bedding.config_dir(), "ssh_host_keys")
 
 
 def load_host_keys():
@@ -212,7 +211,7 @@ def save_host_keys():
     """Save "discovered" host keys in $(config)/ssh_host_keys/."""
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
     bzr_hostkey_path = _ssh_host_keys_config_dir()
-    bedding.ensure_config_dir_exists()
+    _bedding.ensure_config_dir_exists()
 
     try:
         with open(bzr_hostkey_path, "w") as f:
