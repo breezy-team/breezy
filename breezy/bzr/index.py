@@ -40,54 +40,14 @@ _OPTION_NODE_REFS = b"node_ref_lists="
 _SIGNATURE = b"Bazaar Graph Index 1\n"
 
 
-class BadIndexFormatSignature(errors.BzrError):
-    _fmt = "%(value)s is not an index of type %(_type)s."
-
-    def __init__(self, value, _type):
-        errors.BzrError.__init__(self)
-        self.value = value
-        self._type = _type
-
-
-class BadIndexData(errors.BzrError):
-    _fmt = "Error in data for index %(value)s."
-
-    def __init__(self, value):
-        errors.BzrError.__init__(self)
-        self.value = value
-
-
-class BadIndexDuplicateKey(errors.BzrError):
-    _fmt = "The key '%(key)s' is already in index '%(index)s'."
-
-    def __init__(self, key, index):
-        errors.BzrError.__init__(self)
-        self.key = key
-        self.index = index
-
-
-class BadIndexKey(errors.BzrError):
-    _fmt = "The key '%(key)s' is not a valid key."
-
-    def __init__(self, key):
-        errors.BzrError.__init__(self)
-        self.key = key
-
-
-class BadIndexOptions(errors.BzrError):
-    _fmt = "Could not parse options for index %(value)s."
-
-    def __init__(self, value):
-        errors.BzrError.__init__(self)
-        self.value = value
-
-
-class BadIndexValue(errors.BzrError):
-    _fmt = "The value '%(value)s' is not a valid value."
-
-    def __init__(self, value):
-        errors.BzrError.__init__(self)
-        self.value = value
+from bzrformats.index import (  # noqa: E402, F401
+    BadIndexData,
+    BadIndexDuplicateKey,
+    BadIndexFormatSignature,
+    BadIndexKey,
+    BadIndexOptions,
+    BadIndexValue,
+)
 
 
 _whitespace_re = re.compile(b"[\t\n\x0b\x0c\r\x00 ]")
