@@ -89,40 +89,10 @@ for target_storage_kind in ("fulltext", "chunked", "lines"):
     )
 
 
-class UnavailableRepresentation(errors.InternalBzrError):
-    """Raised when a requested content encoding is not available.
-
-    This error occurs when trying to access content in a specific encoding
-    that is not supported or available for the given key.
-    """
-
-    _fmt = (
-        "The encoding '%(wanted)s' is not available for key %(key)s which "
-        "is encoded as '%(native)s'."
-    )
-
-    def __init__(self, key, wanted, native):
-        """Initialize an UnavailableRepresentation error.
-
-        Args:
-            key: The content key that was requested.
-            wanted: The encoding that was requested.
-            native: The encoding that is actually available.
-        """
-        errors.InternalBzrError.__init__(self)
-        self.wanted = wanted
-        self.native = native
-        self.key = key
-
-
-class ExistingContent(errors.BzrError):
-    """Raised when attempting to insert content that already exists.
-
-    This error occurs when trying to add content to a versioned file
-    that has already been stored.
-    """
-
-    _fmt = "The content being inserted is already present."
+from bzrformats.versionedfile import (  # noqa: E402, F401
+    ExistingContent,
+    UnavailableRepresentation,
+)
 
 
 class ContentFactory:
