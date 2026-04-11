@@ -27,7 +27,9 @@ from pprint import pformat
 from ... import errors
 from ...osutils import sha_string
 from ..weave import Weave, WeaveFormatError, WeaveInvalidChecksum
-from ..weavefile import read_weave, write_weave
+from bzrformats.weavefile import write_weave
+
+from ..weavefile import read_weave
 from . import TestCase, TestCaseInTempDir
 
 # texts for use in testing
