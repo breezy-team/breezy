@@ -110,27 +110,30 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     parent_id = get_utf8_or_ascii(parent_id) if parent_id is not None else root_id
 
     if kind == "directory":
-        ie = inventory.InventoryDirectory(file_id, elt_get("name"), parent_id, revision)
+        ie = inventory.InventoryDirectory(
+            file_id, elt_get("name"), parent_id, revision=revision
+        )
     elif kind == "file":
         text_sha1 = elt_get("text_sha1")
         if text_sha1 is not None:
             text_sha1 = text_sha1.encode("ascii")
-        executable = elt_get("executable") == "yes"
         v = elt_get("text_size")
-        text_size = v and int(v)
         ie = inventory.InventoryFile(
             file_id,
             elt_get("name"),
             parent_id,
-            revision,
+            revision=revision,
             text_sha1=text_sha1,
-            executable=executable,
-            text_size=text_size,
+            text_size=v and int(v),
+            executable=elt_get("executable") == "yes",
         )
     elif kind == "symlink":
-        symlink_target = elt_get("symlink_target")
         ie = inventory.InventoryLink(
-            file_id, elt_get("name"), parent_id, revision, symlink_target=symlink_target
+            file_id,
+            elt_get("name"),
+            parent_id,
+            revision=revision,
+            symlink_target=elt_get("symlink_target"),
         )
     elif kind == "tree-reference":
         file_id = get_utf8_or_ascii(elt.attrib["file_id"])
