@@ -2087,31 +2087,36 @@ class NetworkRecordStream:
             yield from self._kind_factory[storage_kind](storage_kind, bytes, line_end)
 
 
-def sort_groupcompress(parent_map):
-    """Sort and group the keys in parent_map into groupcompress order.
+def fulltext_network_to_record(kind, bytes, line_end):
+    """Convert a network fulltext record to record."""
+    (meta_len,) = struct.unpack("!L", bytes[line_end : line_end + 4])
+    record_meta = bytes[line_end + 4 : line_end + 4 + meta_len]
+    key, parents = bencode.bdecode_as_tuple(record_meta)
+    if parents == b"nil":
+        parents = None
+    fulltext = bytes[line_end + 4 + meta_len :]
+    return [FulltextContentFactory(key, parents, None, fulltext)]
 
-    groupcompress is defined (currently) as reverse-topological order, grouped
-    by the key prefix.
 
-    :return: A sorted-list of keys
-    """
-    from vcsgraph.tsort import topo_sort
+def _length_prefix(bytes):
+    return struct.pack("!L", len(bytes))
 
-    # gc-optimal ordering is approximately reverse topological,
-    # properly grouped by file-id.
-    per_prefix_map = {}
-    for item in parent_map.items():
-        key = item[0]
-        prefix = b"" if isinstance(key, bytes) or len(key) == 1 else key[0]
-        try:
-            per_prefix_map[prefix].append(item)
-        except KeyError:
-            per_prefix_map[prefix] = [item]
 
-    present_keys = []
-    for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
-    return present_keys
+def record_to_fulltext_bytes(record):
+    if record.parents is None:
+        parents = b"nil"
+    else:
+        parents = tuple([tuple(p) for p in record.parents])
+    record_meta = bencode.bencode((record.key, parents))
+    record_content = record.get_bytes_as("fulltext")
+    return b"fulltext\n%s%s%s" % (
+        _length_prefix(record_meta),
+        record_meta,
+        record_content,
+    )
+
+
+from bzrformats.versionedfile import sort_groupcompress  # noqa: E402, F811
 
 
 class _KeyRefs:
