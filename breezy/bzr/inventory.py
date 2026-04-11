@@ -1209,7 +1209,42 @@ class CommonInventory:
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
-        result = _chk_inventory_bytes_to_entry(bytes)
+        sections = bytes.split(b"\n")
+        parent_id = sections[1] or None
+        revision = sections[3]
+        name = sections[2].decode("utf8")
+        if sections[0].startswith(b"file: "):
+            result = InventoryFile(
+                sections[0][6:],
+                name,
+                parent_id,
+                revision=revision,
+                text_sha1=sections[4],
+                text_size=int(sections[5]),
+                executable=sections[6] == b"Y",
+            )
+        elif sections[0].startswith(b"dir: "):
+            result = CHKInventoryDirectory(
+                sections[0][5:], name, parent_id, self, revision=revision
+            )
+        elif sections[0].startswith(b"symlink: "):
+            result = InventoryLink(
+                sections[0][9:],
+                name,
+                parent_id,
+                revision=revision,
+                symlink_target=sections[4].decode("utf8"),
+            )
+        elif sections[0].startswith(b"tree: "):
+            result = TreeReference(
+                sections[0][6:],
+                name,
+                parent_id,
+                revision=revision,
+                reference_revision=sections[4],
+            )
+        else:
+            raise ValueError("Not a serialised entry {!r}".format(bytes))
         self._fileid_to_entry_cache[result.file_id] = result
         return result
 
@@ -1833,6 +1868,63 @@ class CommonInventory:
     def root(self):
         """Get the root entry."""
         return self.get_entry(self.root_id)
+
+
+class CHKInventoryDirectory(InventoryDirectory):
+    """A directory in an inventory."""
+
+    __slots__ = ["_children", "_chk_inventory"]
+
+    def __init__(self, file_id, name, parent_id, chk_inventory, revision=None):
+        # Don't call InventoryDirectory.__init__ - it isn't right for this
+        # class.
+        InventoryEntry.__init__(self, file_id, name, parent_id)
+        self.revision = revision
+        self._children = None
+        self._chk_inventory = chk_inventory
+
+    @property
+    def children(self):
+        """Access the list of children of this directory.
+
+        With a parent_id_basename_to_file_id index, loads all the children,
+        without loads the entire index. Without is bad. A more sophisticated
+        proxy object might be nice, to allow partial loading of children as
+        well when specific names are accessed. (So path traversal can be
+        written in the obvious way but not examine siblings.).
+        """
+        if self._children is not None:
+            return self._children
+        # No longer supported
+        if self._chk_inventory.parent_id_basename_to_file_id is None:
+            raise AssertionError(
+                "Inventories without"
+                " parent_id_basename_to_file_id are no longer supported"
+            )
+        result = {}
+        # XXX: Todo - use proxy objects for the children rather than loading
+        # all when the attribute is referenced.
+        parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
+        child_keys = set()
+        for (_parent_id, _name_utf8), file_id in parent_id_index.iteritems(
+            key_filter=[(self.file_id,)]
+        ):
+            child_keys.add((file_id,))
+        cached = set()
+        for file_id_key in child_keys:
+            entry = self._chk_inventory._fileid_to_entry_cache.get(file_id_key[0], None)
+            if entry is not None:
+                result[entry.name] = entry
+                cached.add(file_id_key)
+        child_keys.difference_update(cached)
+        # populate; todo: do by name
+        id_to_entry = self._chk_inventory.id_to_entry
+        for file_id_key, bytes in id_to_entry.iteritems(child_keys):
+            entry = self._chk_inventory._bytes_to_entry(bytes)
+            result[entry.name] = entry
+            self._chk_inventory._fileid_to_entry_cache[file_id_key[0]] = entry
+        self._children = result
+        return result
 
 
 entry_factory = {
