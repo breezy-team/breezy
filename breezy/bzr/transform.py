@@ -1999,6 +1999,17 @@ class InventoryTreeTransform(DiskTreeTransform):
                     old_path = self._tree.id2path(new_entry.file_id)
                 except errors.NoSuchId:
                     old_path = None
+                new_executability = self._new_executability.get(trans_id)
+                if new_executability is not None and new_entry.kind == "file":
+                    new_entry = inventory.InventoryFile(
+                        new_entry.file_id,
+                        new_entry.name,
+                        new_entry.parent_id,
+                        revision=new_entry.revision,
+                        text_sha1=new_entry.text_sha1,
+                        text_size=new_entry.text_size,
+                        executable=new_executability,
+                    )
                 inventory_delta.append((old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
 
