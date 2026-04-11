@@ -47,7 +47,7 @@ from vcsgraph import (
 from .. import errors, osutils, revision, urlutils
 from .._bzr_rs import versionedfile as _versionedfile_rs
 from ..registry import Registry
-from ..textmerge import TextMerge
+from bzrformats.textmerge import TextMerge
 from . import index
 
 FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
