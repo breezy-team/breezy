@@ -32,8 +32,15 @@ from vcsgraph import (
     known_graph as _mod_known_graph,
 )
 
+from bzrformats.errors import (
+    OutSideTransaction,
+    ReadOnlyError,
+    ReservedId,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
+
 from ... import errors, osutils, progress, transport, ui
-from ...errors import RevisionAlreadyPresent, RevisionNotPresent
 from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,
@@ -248,14 +255,14 @@ class VersionedFileTestMixIn:
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterUnicode,
+            (errors.BzrBadParameterUnicode, TypeError),
             vf.add_lines,
             b"a",
             [],
             [b"a\n", "b\n", b"c\n"],
         )
         self.assertRaises(
-            (errors.BzrBadParameterUnicode, NotImplementedError),
+            (errors.BzrBadParameterUnicode, TypeError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -291,10 +298,10 @@ class VersionedFileTestMixIn:
         # \r characters are not permitted in lines being added
         vf = self.get_file()
         self.assertRaises(
-            errors.BzrBadParameterContainsNewline, vf.add_lines, b"a", [], [b"a\n\n"]
+            (errors.BzrBadParameterContainsNewline, ValueError), vf.add_lines, b"a", [], [b"a\n\n"]
         )
         self.assertRaises(
-            (errors.BzrBadParameterContainsNewline, NotImplementedError),
+            (errors.BzrBadParameterContainsNewline, ValueError, NotImplementedError),
             vf.add_lines_with_ghosts,
             b"a",
             [],
@@ -308,7 +315,7 @@ class VersionedFileTestMixIn:
     def test_add_reserved(self):
         vf = self.get_file()
         self.assertRaises(
-            errors.ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"]
+            ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"]
         )
 
     def test_add_lines_nostoresha(self):
@@ -334,7 +341,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_with_ghosts_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -364,7 +371,7 @@ class VersionedFileTestMixIn:
                 nostore_sha=sha,
             )
             # and no new version should have been added.
-            self.assertRaises(errors.RevisionNotPresent, vf.get_lines, version + b"2")
+            self.assertRaises(RevisionNotPresent, vf.get_lines, version + b"2")
 
     def test_add_lines_return_value(self):
         # add_lines should return the sha1 and the text size.
@@ -391,9 +398,9 @@ class VersionedFileTestMixIn:
 
     def test_get_reserved(self):
         vf = self.get_file()
-        self.assertRaises(errors.ReservedId, vf.get_texts, [b"b:"])
-        self.assertRaises(errors.ReservedId, vf.get_lines, b"b:")
-        self.assertRaises(errors.ReservedId, vf.get_text, b"b:")
+        self.assertRaises(ReservedId, vf.get_texts, [b"b:"])
+        self.assertRaises(ReservedId, vf.get_lines, b"b:")
+        self.assertRaises(ReservedId, vf.get_text, b"b:")
 
     def test_add_unchanged_last_line_noeol_snapshot(self):
         """Add a text with an unchanged last line with no eol should work."""
@@ -500,7 +507,7 @@ class VersionedFileTestMixIn:
         except NotImplementedError:
             # old Weave formats do not allow ghosts
             return
-        self.assertRaises(errors.RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
+        self.assertRaises(RevisionNotPresent, vf.make_mpdiffs, [b"ghost"])
 
     def _setup_for_deltas(self, f):
         self.assertFalse(f.has_version("base"))
@@ -592,9 +599,9 @@ class VersionedFileTestMixIn:
         self._transaction = "before"
         f = self.get_file()
         self._transaction = "after"
-        self.assertRaises(errors.OutSideTransaction, f.add_lines, b"", [], [])
+        self.assertRaises(OutSideTransaction, f.add_lines, b"", [], [])
         self.assertRaises(
-            errors.OutSideTransaction, f.add_lines_with_ghosts, b"", [], []
+            OutSideTransaction, f.add_lines_with_ghosts, b"", [], []
         )
 
     def test_copy_to(self):
@@ -813,9 +820,9 @@ class VersionedFileTestMixIn:
         factory = self.get_factory()
         vf = factory("id", t, 0o777, create=True, access_mode="w")
         vf = factory("id", t, access_mode="r")
-        self.assertRaises(errors.ReadOnlyError, vf.add_lines, b"base", [], [])
+        self.assertRaises(ReadOnlyError, vf.add_lines, b"base", [], [])
         self.assertRaises(
-            errors.ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], []
+            ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], []
         )
 
     def test_get_sha1s(self):
@@ -2651,7 +2658,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         stream = source.get_record_stream(
             [(b"missing",) * self.key_length], "topological", False
         )
-        self.assertRaises(errors.RevisionNotPresent, files.insert_record_stream, stream)
+        self.assertRaises(RevisionNotPresent, files.insert_record_stream, stream)
 
     def test_insert_record_stream_out_of_order(self):
         """An out of order stream can either error or work."""
@@ -2781,7 +2788,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
             self.assertRaises(
-                errors.RevisionNotPresent, files.insert_record_stream, entries
+                RevisionNotPresent, files.insert_record_stream, entries
             )
             files.check()
 
