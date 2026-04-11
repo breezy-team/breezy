@@ -87,105 +87,18 @@ from .versionedfile import (
     adapter_registry,
     sort_groupcompress,
 )
-from .weavefile import _read_weave_v5, write_weave_v5
+from bzrformats.weavefile import _read_weave_v5, write_weave_v5
 
 
-class WeaveError(errors.BzrError):
-    """Base class for weave-related errors."""
-
-    _fmt = "Error in processing weave: %(msg)s"
-
-    def __init__(self, msg=None):
-        """Initialize WeaveError with optional message.
-
-        Args:
-            msg: Optional error message.
-        """
-        errors.BzrError.__init__(self)
-        self.msg = msg
-
-
-class WeaveRevisionAlreadyPresent(WeaveError):
-    """Error raised when attempting to add a revision that already exists."""
-
-    _fmt = "Revision {%(revision_id)s} already present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-        """Initialize WeaveRevisionAlreadyPresent error.
-
-        Args:
-            revision_id: The revision ID that already exists.
-            weave: The weave object.
-        """
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
-class WeaveRevisionNotPresent(WeaveError):
-    """Error raised when requesting a revision that doesn't exist."""
-
-    _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-        """Initialize WeaveRevisionNotPresent error.
-
-        Args:
-            revision_id: The revision ID that was not found.
-            weave: The weave object.
-        """
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
-class WeaveFormatError(WeaveError):
-    """Error raised when weave format is invalid or invariants are violated."""
-
-    _fmt = "Weave invariant violated: %(what)s"
-
-    def __init__(self, what):
-        """Initialize WeaveFormatError.
-
-        Args:
-            what: Description of the format error or invariant violation.
-        """
-        WeaveError.__init__(self)
-        self.what = what
-
-
-class WeaveParentMismatch(WeaveError):
-    """Error raised when parent information doesn't match between revisions."""
-
-    _fmt = "Parents are mismatched between two revisions. %(msg)s"
-
-
-class WeaveInvalidChecksum(WeaveError):
-    """Error raised when text content doesn't match its expected checksum."""
-
-    _fmt = "Text did not match its checksum: %(msg)s"
-
-
-class WeaveTextDiffers(WeaveError):
-    """Error raised when two weaves have different text content for the same revision."""
-
-    _fmt = (
-        "Weaves differ on text content. Revision:"
-        " {%(revision_id)s}, %(weave_a)s, %(weave_b)s"
-    )
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        """Initialize WeaveTextDiffers error.
-
-        Args:
-            revision_id: The revision ID where text differs.
-            weave_a: First weave with differing text.
-            weave_b: Second weave with differing text.
-        """
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
+from bzrformats.weave import (
+    WeaveError,
+    WeaveFormatError,
+    WeaveInvalidChecksum,
+    WeaveParentMismatch,
+    WeaveRevisionAlreadyPresent,
+    WeaveRevisionNotPresent,
+    WeaveTextDiffers,
+)
 
 
 class WeaveContentFactory(ContentFactory):
