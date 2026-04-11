@@ -19,7 +19,7 @@
 
 import zlib
 
-from .. import chunk_writer
+from bzrformats import chunk_writer
 from . import TestCaseWithTransport
 
 
