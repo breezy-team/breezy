@@ -30,15 +30,14 @@ import contextlib
 import errno
 import logging
 import sys
-from collections.abc import Callable
 from io import BytesIO
 from stat import S_ISDIR
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
-from catalogus.registry import _LazyObjectGetter, _ObjectGetter
-
-from dromedary._hooks import Hooks
-from dromedary import _ui
+from breezy import (
+    hooks,
+    ui,
+)
 from catalogus import registry
 import os
 
@@ -48,26 +47,14 @@ from . import errors, osutils, urlutils
 logger = logging.getLogger("dromedary")
 
 # Import the Rust extension
-from . import _transport_rs
+try:
+    from . import _transport_rs
+except ImportError:
+    _transport_rs = None
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
 _file_streams: dict[str, Any] = {}
-
-
-class TransportHooks(Hooks):
-    """Mapping of hook names to registered callbacks for transport hooks."""
-
-    def __init__(self):
-        """Initialize TransportHooks."""
-        super().__init__()
-        self.add_hook(
-            "post_connect",
-            "Called after a new connection is established or a reconnect "
-            "occurs. The sole argument passed is either the connected "
-            "transport or smart medium instance.",
-            (2, 5),
-        )
 
 
 def _get_protocol_handlers():
@@ -127,7 +114,7 @@ class TransportListRegistry(registry.Registry):
             key: Protocol prefix (e.g., 'http://').
             obj: Transport class or factory object.
         """
-        self.get(key).insert(0, _ObjectGetter(obj))
+        self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
         """Register a transport provider with lazy loading.
@@ -137,7 +124,7 @@ class TransportListRegistry(registry.Registry):
             module_name: Name of the module containing the transport class.
             member_name: Name of the transport class within the module.
         """
-        self.get(key).insert(0, _LazyObjectGetter(module_name, member_name))
+        self.get(key).insert(0, registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None):
         """Register a transport protocol.
@@ -422,6 +409,21 @@ class AppendBasedFileStream(FileStream):
         pass
 
 
+class TransportHooks(hooks.Hooks):
+    """Mapping of hook names to registered callbacks for transport hooks."""
+
+    def __init__(self):
+        """Initialize TransportHooks."""
+        super().__init__()
+        self.add_hook(
+            "post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.",
+            (2, 5),
+        )
+
+
 class Transport:
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -501,9 +503,11 @@ class Transport:
         while True:
             new_transport = cur_transport.clone("..")
             if new_transport.base == cur_transport.base:
-                from dromedary.errors import PrefixCreateError
+                from breezy.errors import CommandError
 
-                raise PrefixCreateError(cur_transport.base)
+                raise CommandError(
+                    f"Failed to create path prefix for {cur_transport.base}."
+                )
             try:
                 new_transport.mkdir(".", mode=mode)
             except errors.NoSuchFile:
@@ -607,7 +611,7 @@ class Transport:
           bytes: Number of bytes read or written.
           direction: 'read' or 'write' or None.
         """
-        _ui.report_transport_activity(self, bytes, direction)
+        ui.ui_factory.report_transport_activity(self, bytes, direction)
 
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
@@ -668,7 +672,7 @@ class Transport:
         start with our base, but still be a relpath once aliasing is
         resolved.
         """
-        # TODO: This might want to use dromedary.osutils.relpath
+        # TODO: This might want to use breezy.osutils.relpath
         #       but we have to watch out because of the prefix issues
         if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)
@@ -1653,7 +1657,7 @@ def do_catching_redirections(
         # information if needed (like what file or directory we
         # were trying to act upon when the redirection loop
         # occurred).
-        raise errors.TooManyRedirections()
+        raise TooManyRedirections
 
 
 class Server:
@@ -1675,8 +1679,8 @@ def open_file(url):
     :param url: URL to open
     :return: A file-like object.
     """
-    base, filename = urlutils.split(url)
-    transport = get_transport_from_url(base)
+    base, filename = urlutils.split(path)
+    transport = get_transport(base)
     return open_file_via_transport(filename, transport)
 
 
@@ -1688,8 +1692,8 @@ def open_file_via_transport(filename, transport):
 
     def follow_redirection(transport, e, redirection_notice):
         logger.debug("%s", redirection_notice)
-        base, _filename = urlutils.split(e.target)
-        redirected_transport = get_transport_from_url(base)
+        base, filename = urlutils.split(e.target)
+        redirected_transport = get_transport(base)
         return redirected_transport
 
     return do_catching_redirections(open_file, transport, follow_redirection)
@@ -1765,3 +1769,12 @@ register_lazy_transport(
 
 register_transport_proto("vfat+")
 register_lazy_transport("vfat+", "dromedary.fakevfat", "FakeVFATTransportDecorator")
+
+register_transport_proto("nosmart+")
+register_lazy_transport("nosmart+", "dromedary.nosmart", "NoSmartTransportDecorator")
+
+register_transport_proto(
+    "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
+)
+
+register_lazy_transport("bzr://", "dro

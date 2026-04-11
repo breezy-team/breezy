@@ -17,10 +17,9 @@
 
 """Tests for log+ transport decorator."""
 
-import logging
-
+from breezy.tests import TestCaseWithMemoryTransport
+from breezy.trace import mutter
 import dromedary as transport
-from dromedary.tests import TestCaseWithMemoryTransport
 from dromedary.log import TransportLogDecorator
 
 
@@ -29,13 +28,13 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         base_transport = self.get_transport("")
         logging_transport = transport.get_transport_from_url("log+" + base_transport.base)
 
-        # Capture logging output from dromedary.log
-        with self.assertLogs("dromedary.log", level="DEBUG") as cm:
-            logging_transport.mkdir("subdir")
-
-        log_output = "\n".join(cm.output)
-        self.assertRegex(log_output, r"mkdir subdir")
-        self.assertRegex(log_output, "  --> None")
+        # operations such as mkdir are logged
+        mutter("where are you?")
+        logging_transport.mkdir("subdir")
+        log = self.get_log()
+        # GZ 2017-05-24: Used to expect abspath logged, logger needs fixing.
+        self.assertContainsRe(log, r"mkdir subdir")
+        self.assertContainsRe(log, "  --> None")
         # they have the expected effect
         self.assertTrue(logging_transport.has("subdir"))
         # and they operate on the underlying transport

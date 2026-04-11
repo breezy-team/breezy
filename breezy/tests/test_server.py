@@ -14,209 +14,242 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Test server implementations for the smart server."""
-
+import errno
 import socket
 import socketserver
+import sys
+import threading
 
-from breezy import errors, transport
+from breezy import cethread, errors, osutils, transport, urlutils
 from breezy.bzr.smart import medium, server
-from dromedary import chroot
-
-# Re-export from dromedary for backward compatibility
-from dromedary.tests import test_server as _dromedary_test_server
-from dromedary.tests.test_server import (  # noqa: F401
-    BrokenRenameServer,
-    DecoratorServer,
-    FakeNFSServer,
-    FakeVFATServer,
-    LocalURLServer,
-    LogDecoratorServer,
-    ReadonlyServer,
-    TestingChrootServer,
-    TestingPathFilteringServer,
-    TestingTCPServer,
-    TestingTCPServerInAThread,
-    TestingTCPServerMixin,
-    TestingThreadingTCPServer,
-    TestServer,
-    TestThread,
-    TraceServer,
-    UnlistableServer,
-    debug_threads,
-)
+from dromedary import chroot, pathfilter
 
 
-class NoSmartTransportServer(DecoratorServer):
-    """Server for the NoSmartTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        from breezy.transport import nosmart
-
-        return nosmart.NoSmartTransportDecorator
-
-
-def _breezy_debug_threads():
+def debug_threads():
+    # FIXME: There is a dependency loop between breezy.tests and
+    # breezy.tests.test_server that needs to be fixed. In the mean time
+    # defining this function is enough for our needs. -- vila 20100611
     from breezy import tests
+
     return "threads" in tests.selftest_debug_flags
 
 
-_dromedary_test_server.debug_threads_hook = _breezy_debug_threads
+class TestServer(transport.Server):
+    """A Transport Server dedicated to tests.
 
+    The TestServer interface provides a server for a given transport. We use
+    these servers as loopback testing tools. For any given transport the
+    Servers it provides must either allow writing, or serve the contents
+    of osutils.getcwd() at the time start_server is called.
 
-class TestingSmartConnectionHandler(
-    socketserver.BaseRequestHandler, medium.SmartServerSocketStreamMedium
-):
-    def __init__(self, request, client_address, server):
-        medium.SmartServerSocketStreamMedium.__init__(
-            self,
-            request,
-            server.backing_transport,
-            server.root_client_path,
-            timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT,
-        )
-        request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
-
-    def handle(self):
-        try:
-            while not self.finished:
-                server_protocol = self._build_protocol()
-                self._serve_one_request(server_protocol)
-        except errors.ConnectionTimeout:
-            # idle connections aren't considered a failure of the server
-            return
-
-
-_DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
-
-
-class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
-    def __init__(
-        self, server_address, request_handler_class, backing_transport, root_client_path
-    ):
-        TestingThreadingTCPServer.__init__(self, server_address, request_handler_class)
-        server.SmartTCPServer.__init__(
-            self,
-            backing_transport,
-            root_client_path,
-            client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT,
-        )
-
-    def serve(self):
-        self.run_server_started_hooks()
-        try:
-            TestingThreadingTCPServer.serve(self)
-        finally:
-            self.run_server_stopped_hooks()
-
-    def get_url(self):
-        """Return the url of the server."""
-        return "bzr://%s:%d/" % self.server_address
-
-
-class SmartTCPServer_for_testing(TestingTCPServerInAThread):
-    """Server suitable for use by transport tests.
-
-    This server is backed by the process's cwd.
+    Note that these are real servers - they must implement all the things
+    that we want bzr transports to take advantage of.
     """
 
-    def __init__(self, thread_name_suffix=""):
-        self.client_path_extra = None
-        self.thread_name_suffix = thread_name_suffix
-        self.host = "127.0.0.1"
-        self.port = 0
-        super().__init__(
-            (self.host, self.port), TestingSmartServer, TestingSmartConnectionHandler
-        )
-
-    def create_server(self):
-        return self.server_class(
-            (self.host, self.port),
-            self.request_handler_class,
-            self.backing_transport,
-            self.root_client_path,
-        )
-
-    def start_server(self, backing_transport_server=None, client_path_extra="/extra/"):
-        """Set up server for testing.
-
-        :param backing_transport_server: backing server to use.  If not
-            specified, a LocalURLServer at the current working directory will
-            be used.
-        :param client_path_extra: a path segment starting with '/' to append to
-            the root URL for this server.  For instance, a value of '/foo/bar/'
-            will mean the root of the backing transport will be published at a
-            URL like `bzr://127.0.0.1:nnnn/foo/bar/`, rather than
-            `bzr://127.0.0.1:nnnn/`.  Default value is `extra`, so that tests
-            by default will fail unless they do the necessary path translation.
-        """
-        if not client_path_extra.startswith("/"):
-            raise ValueError(client_path_extra)
-        self.root_client_path = self.client_path_extra = client_path_extra
-        if backing_transport_server is None:
-            backing_transport_server = LocalURLServer()
-        self.chroot_server = chroot.ChrootServer(
-            self.get_backing_transport(backing_transport_server)
-        )
-        self.chroot_server.start_server()
-        self.backing_transport = transport.get_transport_from_url(
-            self.chroot_server.get_url()
-        )
-        super().start_server()
-
-    def stop_server(self):
-        try:
-            super().stop_server()
-        finally:
-            self.chroot_server.stop_server()
-
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        return transport.get_transport_from_url(backing_transport_server.get_url())
-
     def get_url(self):
-        url = self.server.get_url()
-        return url[:-1] + self.client_path_extra
+        """Return a url for this server.
+
+        If the transport does not represent a disk directory (i.e. it is
+        a database like svn, or a memory only transport, it should return
+        a connection to a newly established resource for this Server.
+        Otherwise it should return a url that will provide access to the path
+        that was osutils.getcwd() when start_server() was called.
+
+        Subsequent calls will return the same resource.
+        """
+        raise NotImplementedError
 
     def get_bogus_url(self):
-        """Return a URL which will fail to connect."""
-        return "bzr://127.0.0.1:1/"
+        """Return a url for this protocol, that will fail to connect.
+
+        This may raise NotImplementedError to indicate that this server cannot
+        provide bogus urls.
+        """
+        raise NotImplementedError
 
 
-class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
-    """Get a readonly server for testing."""
+class LocalURLServer(TestServer):
+    """A pretend server for local transports, using file:// urls.
 
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        url = "readonly+" + backing_transport_server.get_url()
-        return transport.get_transport_from_url(url)
-
-
-class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
-    """A variation of SmartTCPServer_for_testing that limits the client to
-    using RPCs in protocol v2 (i.e. bzr <= 1.5).
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
     """
 
+    def start_server(self):
+        pass
+
     def get_url(self):
-        url = super().get_url()
-        url = "bzr-v2://" + url[len("bzr://") :]
-        return url
+        """See Transport.Server.get_url."""
+        return urlutils.local_path_to_url("")
 
 
-class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_only):
-    """Get a readonly server for testing."""
+class DecoratorServer(TestServer):
+    """Server for the TransportDecorator for testing with.
 
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        url = "readonly+" + backing_transport_server.get_url()
-        return transport.get_transport_from_url(url)
+    To use this when subclassing TransportDecorator, override override the
+    get_decorator_class method.
+    """
+
+    def start_server(self, server=None):
+        """See breezy.transport.Server.start_server.
+
+        :server: decorate the urls given by server. If not provided a
+        LocalServer is created.
+        """
+        if server is not None:
+            self._made_server = False
+            self._server = server
+        else:
+            self._made_server = True
+            self._server = LocalURLServer()
+            self._server.start_server()
+
+    def stop_server(self):
+        if self._made_server:
+            self._server.stop_server()
+
+    def get_decorator_class(self):
+        """Return the class of the decorators we should be constructing."""
+        raise NotImplementedError(self.get_decorator_class)
+
+    def get_url_prefix(self):
+        """What URL prefix does this decorator produce?"""
+        return self.get_decorator_class()._get_url_prefix()
+
+    def get_bogus_url(self):
+        """See breezy.transport.Server.get_bogus_url."""
+        return self.get_url_prefix() + self._server.get_bogus_url()
+
+    def get_url(self):
+        """See breezy.transport.Server.get_url."""
+        return self.get_url_prefix() + self._server.get_url()
+
+
+class BrokenRenameServer(DecoratorServer):
+    """Server for the BrokenRenameTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from dromedary import brokenrename
+
+        return brokenrename.BrokenRenameTransportDecorator
+
+
+class FakeNFSServer(DecoratorServer):
+    """Server for the FakeNFSTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from dromedary import fakenfs
+
+        return fakenfs.FakeNFSTransportDecorator
+
+
+class FakeVFATServer(DecoratorServer):
+    """A server that suggests connections through FakeVFATTransportDecorator.
+
+    For use in testing.
+    """
+
+    def get_decorator_class(self):
+        from dromedary import fakevfat
+
+        return fakevfat.FakeVFATTransportDecorator
+
+
+class LogDecoratorServer(DecoratorServer):
+    """Server for testing."""
+
+    def get_decorator_class(self):
+        from dromedary import log
+
+        return log.TransportLogDecorator
 
 
 class NoSmartTransportServer(DecoratorServer):
     """Server for the NoSmartTransportDecorator for testing with."""
 
     def get_decorator_class(self):
-        from breezy.transport import nosmart
+        from dromedary import nosmart
 
         return nosmart.NoSmartTransportDecorator
+
+
+class ReadonlyServer(DecoratorServer):
+    """Server for the ReadonlyTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from dromedary import readonly
+
+        return readonly.ReadonlyTransportDecorator
+
+
+class TraceServer(DecoratorServer):
+    """Server for the TransportTraceDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from dromedary import trace
+
+        return trace.TransportTraceDecorator
+
+
+class UnlistableServer(DecoratorServer):
+    """Server for the UnlistableTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from dromedary import unlistable
+
+        return unlistable.UnlistableTransportDecorator
+
+
+class TestingPathFilteringServer(pathfilter.PathFilteringServer):
+    def __init__(self):
+        """TestingPathFilteringServer is not usable until start_server
+        is called.
+        """
+
+    def start_server(self, backing_server=None):
+        """Setup the Chroot on backing_server."""
+        if backing_server is not None:
+            self.backing_transport = transport.get_transport_from_url(
+                backing_server.get_url()
+            )
+        else:
+            self.backing_transport = transport.get_transport_from_path(".")
+        self.backing_transport.clone("added-by-filter").ensure_base()
+        self.filter_func = lambda x: "added-by-filter/" + x
+        super().start_server()
+
+    def get_bogus_url(self):
+        raise NotImplementedError
+
+
+class TestingChrootServer(chroot.ChrootServer):
+    def __init__(self):
+        """TestingChrootServer is not usable until start_server is called."""
+        super().__init__(None)
+
+    def start_server(self, backing_server=None):
+        """Setup the Chroot on backing_server."""
+        if backing_server is not None:
+            self.backing_transport = transport.get_transport_from_url(
+                backing_server.get_url()
+            )
+        else:
+            self.backing_transport = transport.get_transport_from_path(".")
+        super().start_server()
+
+    def get_bogus_url(self):
+        raise NotImplementedError
+
+
+class TestThread(cethread.CatchingExceptionThread):
+    def join(self, timeout=5):
+        """Overrides to use a default timeout.
+
+        The default timeout is set to 5 and should expire only when a thread
+        serving a client connection is hung.
+        """
+        super().join(timeout)
+        if timeout and self.is_alive():
+            # The timeout expired without joining the thread, the thread is
+            # therefore stucked and that's a failure as far as the test is
+  

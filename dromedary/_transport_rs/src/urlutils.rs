@@ -6,9 +6,9 @@ use pyo3::types::PyTuple;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-import_exception!(dromedary.urlutils, InvalidURLJoin);
-import_exception!(dromedary.urlutils, InvalidURL);
-import_exception!(dromedary.errors, PathNotChild);
+import_exception!(breezy.urlutils, InvalidURLJoin);
+import_exception!(breezy.urlutils, InvalidURL);
+import_exception!(breezy.errors, PathNotChild);
 
 #[pyfunction]
 fn is_url(url: &str) -> bool {

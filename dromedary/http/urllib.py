@@ -1614,20 +1614,18 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         realm = auth["realm"]
         port = auth.get("port", None)
 
-        looked_up_user, looked_up_password = get_credentials(
-            auth["protocol"],
-            auth["host"],
-            port=port,
-            path=auth["path"],
-            realm=realm,
-            user=user,
-            user_prompt=self.build_username_prompt(auth) if user is None else None,
-            password_prompt=self.build_password_prompt(auth) if password is None else None,
-        )
-        if user is None:
-            user = looked_up_user
-        if password is None:
-            password = looked_up_password
+        if user is None or password is None:
+            looked_up_user, looked_up_password = get_credentials(
+                auth["protocol"],
+                auth["host"],
+                port=port,
+                path=auth["path"],
+                realm=realm,
+            )
+            if user is None:
+                user = looked_up_user
+            if password is None:
+                password = looked_up_password
 
         return user, password
 
@@ -1698,7 +1696,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         Returns:
             bool: True if authentication matches.
         """
-        scheme, _raw_auth = self._parse_auth_header(header)
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != self.scheme:
             return False
         self.update_auth(auth, "scheme", scheme)
@@ -1935,7 +1933,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         if qop != "auth":  # No auth-int so far
             return False
 
-        H, _KD = get_digest_algorithm_impls(req_auth.get("algorithm", "MD5"))
+        H, KD = get_digest_algorithm_impls(req_auth.get("algorithm", "MD5"))
         if H is None:
             return False
 
@@ -2487,7 +2485,7 @@ class HttpTransport(ConnectedTransport):
 
         :param relpath: The relative path to the file
         """
-        _code, response_file = self._get(relpath, None)
+        code, response_file = self._get(relpath, None)
         return response_file
 
     def _get(self, relpath, offsets, tail_amount=0):
@@ -2705,7 +2703,7 @@ class HttpTransport(ConnectedTransport):
                 # errors.InvalidHttpRange. It's the caller's responsibility to
                 # decide how to retry since it may provide different coalesced
                 # offsets.
-                _code, rfile = self._get(relpath, coalesced)
+                code, rfile = self._get(relpath, coalesced)
                 for coal in coalesced:
                     yield coal, rfile
 
@@ -3023,16 +3021,14 @@ class HttpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    from breezy.tests import features
     from dromedary.tests import http_server
 
     permutations = [
         (HttpTransport, http_server.HttpServer),
     ]
-    try:
-        from dromedary.tests import https_server, ssl_certs
-    except ModuleNotFoundError:
-        pass
-    else:
+    if features.HTTPSServerFeature.available():
+        from breezy.tests import https_server, ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):

@@ -51,12 +51,12 @@ fn check_name(name: &str) -> PyResult<()> {
 }
 
 fn common_ie_check(
-    slf: Py<PyAny>,
+    slf: PyObject,
     ie: &Entry,
     py: Python,
-    checker: &Py<PyAny>,
+    checker: &PyObject,
     rev_id: &RevisionId,
-    inv: Py<PyAny>,
+    inv: PyObject,
 ) -> PyResult<()> {
     if let Some(parent_id) = ie.parent_id() {
         let present = inv
@@ -239,10 +239,10 @@ impl InventoryEntry {
     fn parent_candidates<'py>(
         &self,
         py: Python<'py>,
-        previous_inventories: Vec<Py<PyAny>>,
+        previous_inventories: Vec<PyObject>,
     ) -> PyResult<Bound<'py, PyDict>> {
         // revision:ie mapping for each ie found in previous_inventories
-        let mut candidates: HashMap<&RevisionId, Py<PyAny>> = HashMap::new();
+        let mut candidates: HashMap<&RevisionId, PyObject> = HashMap::new();
         // identify candidate head revision ids
         for inv in previous_inventories {
             match inv.call_method1(py, "get_entry", (self.get_file_id(py)?,)) {
@@ -333,7 +333,7 @@ impl InventoryFile {
     }
 
     #[getter]
-    fn get_text_sha1(slf: PyRef<Self>, py: Python) -> Option<Py<PyAny>> {
+    fn get_text_sha1(slf: PyRef<Self>, py: Python) -> Option<PyObject> {
         let s = slf.into_super();
         match &s.0 {
             Entry::File { text_sha1, .. } => text_sha1
@@ -353,7 +353,7 @@ impl InventoryFile {
     }
 
     #[getter]
-    fn get_text_id(slf: PyRef<Self>, py: Python) -> Option<Py<PyAny>> {
+    fn get_text_id(slf: PyRef<Self>, py: Python) -> Option<PyObject> {
         let s = slf.into_super();
         match &s.0 {
             Entry::File { text_id, .. } => text_id
@@ -364,7 +364,7 @@ impl InventoryFile {
     }
 
     #[getter]
-    fn get_reference_revision(_slf: PyRef<Self>, py: Python) -> Py<PyAny> {
+    fn get_reference_revision(_slf: PyRef<Self>, py: Python) -> PyObject {
         py.None()
     }
 
@@ -410,9 +410,9 @@ impl InventoryFile {
     fn check(
         slf: &Bound<Self>,
         py: Python,
-        checker: Py<PyAny>,
+        checker: PyObject,
         rev_id: RevisionId,
-        inv: Py<PyAny>,
+        inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
         common_ie_check(
@@ -496,12 +496,12 @@ impl InventoryDirectory {
     }
 
     #[getter]
-    fn get_text_size(&self, py: Python) -> Py<PyAny> {
+    fn get_text_size(&self, py: Python) -> PyObject {
         py.None()
     }
 
     #[getter]
-    fn get_text_sha1(&self, py: Python) -> Py<PyAny> {
+    fn get_text_sha1(&self, py: Python) -> PyObject {
         py.None()
     }
 
@@ -535,9 +535,9 @@ impl InventoryDirectory {
     fn check(
         slf: &Bound<Self>,
         py: Python,
-        checker: Py<PyAny>,
+        checker: PyObject,
         rev_id: RevisionId,
-        inv: Py<PyAny>,
+        inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
         common_ie_check(
@@ -665,21 +665,21 @@ impl InventoryLink {
     }
 
     #[getter]
-    fn get_text_size(&self, py: Python) -> Py<PyAny> {
+    fn get_text_size(&self, py: Python) -> PyObject {
         py.None()
     }
 
     #[getter]
-    fn get_text_sha1(&self, py: Python) -> Py<PyAny> {
+    fn get_text_sha1(&self, py: Python) -> PyObject {
         py.None()
     }
 
     fn check(
         slf: &Bound<Self>,
         py: Python,
-        checker: Py<PyAny>,
+        checker: PyObject,
         rev_id: RevisionId,
-        inv: Py<PyAny>,
+        inv: PyObject,
     ) -> PyResult<()> {
         let spr = slf.borrow().into_super();
         common_ie_check(
@@ -744,7 +744,7 @@ fn entry_to_py(py: Python, e: Entry) -> PyResult<Bound<PyAny>> {
     }
 }
 
-fn entry_from_py(py: Python, obj: Py<PyAny>) -> PyResult<Entry> {
+fn entry_from_py(py: Python, obj: PyObject) -> PyResult<Entry> {
     let kind = obj.getattr(py, "kind")?.extract::<String>(py)?;
     let kind = match kind.as_str() {
         "file" => Kind::File,
@@ -1219,7 +1219,7 @@ impl Inventory {
     fn get_entry_by_path_partial<'py>(
         &self,
         py: Python<'py>,
-        relpath: Py<PyAny>,
+        relpath: PyObject,
     ) -> PyResult<(
         Option<Bound<'py, PyAny>>,
         Option<Vec<String>>,
@@ -1249,7 +1249,7 @@ impl Inventory {
     fn get_entry_by_path<'py>(
         &self,
         py: Python<'py>,
-        relpath: Py<PyAny>,
+        relpath: PyObject,
     ) -> PyResult<Option<Bound<'py, PyAny>>> {
         if let Ok(relpath) = relpath.extract::<String>(py) {
             Ok(self

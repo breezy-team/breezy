@@ -107,7 +107,7 @@ class SmartTCPServer:
             host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE
         )[0]
 
-        (family, socktype, proto, _canonname, sockaddr) = addrs
+        (family, socktype, proto, canonname, sockaddr) = addrs
 
         self._server_socket = socket.socket(family, socktype, proto)
         # SO_REUSERADDR has a different meaning on Windows
@@ -248,7 +248,7 @@ class SmartTCPServer:
             try:
                 while not self._should_terminate:
                     try:
-                        conn, _client_addr = self._server_socket.accept()
+                        conn, client_addr = self._server_socket.accept()
                     except self._socket_timeout:
                         # just check if we're asked to stop
                         pass

@@ -44,7 +44,6 @@ from breezy.i18n import gettext
 
 import contextlib
 
-from catalogus.registry import _LazyObjectGetter, _ObjectGetter
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
@@ -255,9 +254,9 @@ class ControlDir(ControlComponent):
 
     def create_branch(
         self,
-        name: str | None = None,
+        name: Optional[str] = None,
         repository: Optional["Repository"] = None,
-        append_revisions_only: bool | None = None,
+        append_revisions_only: Optional[bool] = None,
     ) -> "Branch":
         """Create a branch in this ControlDir.
 
@@ -272,7 +271,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self, name: str | None = None) -> None:
+    def destroy_branch(self, name: Optional[str] = None) -> None:
         """Destroy a branch in this ControlDir.
 
         Args:
@@ -1165,15 +1164,15 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         This is mainly useful to allow custom repository formats, such as older
         Bazaar formats and foreign formats, to be tested.
         """
-        self._extra_formats.append(_ObjectGetter(format))
+        self._extra_formats.append(registry._ObjectGetter(format))
 
     def remove_extra(self, format):
         """Remove an extra format."""
-        self._extra_formats.remove(_ObjectGetter(format))
+        self._extra_formats.remove(registry._ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
         """Register a format lazily."""
-        self._extra_formats.append(_LazyObjectGetter(module_name, member_name))
+        self._extra_formats.append(registry._LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
         """Return getters for extra formats, not usable in meta directories."""
@@ -1375,7 +1374,7 @@ class ControlDirFormat:
     def find_format(
         klass,
         transport: _mod_transport.Transport,
-        probers: list[type["Prober"]] | None = None,
+        probers: Optional[list[type["Prober"]]] = None,
     ) -> "ControlDirFormat":
         """Return the format present at transport."""
         if probers is None:

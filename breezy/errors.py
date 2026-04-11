@@ -984,20 +984,7 @@ class ForbiddenControlFileError(BzrError):
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
 
 
-from dromedary.errors import LockError as _TransportLockError  # noqa: E402
-
-
-class LockError(_TransportLockError, InternalBzrError):
-    """Base class for lock-related errors in breezy.
-
-    Inherits from both dromedary's LockError and BzrError to maintain
-    compatibility with code that catches either.
-    """
-
-    _fmt = "Lock error: %(msg)s"
-
-    def __init__(self, msg=None):
-        _TransportLockError.__init__(self, msg)
+from dromedary.errors import LockError  # noqa: E402
 
 
 class LockActive(LockError):
@@ -1737,6 +1724,28 @@ class UnexpectedProtocolVersionMarker(TransportError):
         self.marker = marker
 
 
+class SocketConnectionError(ConnectionError):
+    """Socket connection error.
+
+    Raised when a socket connection fails.
+    """
+
+    def __init__(self, host, port=None, msg=None, orig_error=None):
+        """Initialize with connection details.
+
+        Args:
+            host: The hostname that connection failed to.
+            port: Optional port number.
+            msg: Optional error message.
+            orig_error: Optional original exception.
+        """
+        if msg is None:
+            msg = "Failed to connect to"
+        orig_error = "" if orig_error is None else "; " + str(orig_error)
+        self.host = host
+        port = "" if port is None else f":{port}"
+        self.port = port
+        ConnectionError.__init__(self, f"{msg} {host}{port}{orig_error}")
 
 
 class ConnectionTimeout(ConnectionError):
@@ -3250,3 +3259,20 @@ class RevnoOutOfBounds(InternalBzrError):
         )
 
 
+class UnknownSSH(BzrError):
+    """Unknown SSH implementation specified."""
+
+    _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
+
+    def __init__(self, vendor):
+        BzrError.__init__(self)
+        self.vendor = vendor
+
+
+class SSHVendorNotFound(BzrError):
+    """No SSH implementation available."""
+
+    _fmt = (
+        "Don't know how to handle SSH connections."
+        " Please set BRZ_SSH environment variable."
+    )

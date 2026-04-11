@@ -23,7 +23,8 @@ import random
 import re
 from urllib.parse import urlparse
 
-from dromedary.tests import test_server
+from breezy import osutils
+from breezy.tests import test_server
 from dromedary import urlutils
 
 
@@ -436,7 +437,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         self.logs.append(format % args)
 
     def start_server(self, backing_transport_server=None):
-        """See dromedary.Server.start_server.
+        """See breezy.transport.Server.start_server.
 
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
@@ -453,7 +454,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
                     backing_transport_server
                 )
             )
-        self._home_dir = os.getcwd()
+        self._home_dir = osutils.getcwd()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 
@@ -461,11 +462,11 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         self._http_base_url = f"{self._url_protocol}://{self.host}:{self.port}/"
 
     def get_url(self):
-        """See dromedary.Server.get_url."""
+        """See breezy.transport.Server.get_url."""
         return self._get_remote_url(self._home_dir)
 
     def get_bogus_url(self):
-        """See dromedary.Server.get_bogus_url."""
+        """See breezy.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return self._url_protocol + "://127.0.0.1:1/"

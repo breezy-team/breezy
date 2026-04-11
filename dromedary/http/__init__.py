@@ -40,10 +40,7 @@ def set_user_agent(prefix):
     _user_agent_prefix = prefix
 
 
-def _default_credential_lookup(
-    protocol, host, port=None, path=None, realm=None,
-    user=None, user_prompt=None, password_prompt=None,
-):
+def _default_credential_lookup(protocol, host, port=None, path=None, realm=None):
     """Default credential lookup returning no credentials.
 
     Override via set_credential_lookup() to integrate with a credential store.
@@ -61,23 +58,16 @@ def set_credential_lookup(func):
     """Set the function used to look up HTTP credentials.
 
     Args:
-        func: A callable(protocol, host, port=None, path=None, realm=None,
-            user=None, user_prompt=None, password_prompt=None)
+        func: A callable(protocol, host, port=None, path=None, realm=None)
             returning (user, password) or (None, None).
     """
     global _credential_lookup
     _credential_lookup = func
 
 
-def get_credentials(
-    protocol, host, port=None, path=None, realm=None,
-    user=None, user_prompt=None, password_prompt=None,
-):
+def get_credentials(protocol, host, port=None, path=None, realm=None):
     """Look up stored credentials for an HTTP connection."""
-    return _credential_lookup(
-        protocol, host, port=port, path=path, realm=realm,
-        user=user, user_prompt=user_prompt, password_prompt=password_prompt,
-    )
+    return _credential_lookup(protocol, host, port=port, path=path, realm=realm)
 
 
 def default_user_agent():

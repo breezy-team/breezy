@@ -4,7 +4,7 @@ version = { workspace = true }
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2021"
 default-run = "brz"
-license = "GPL-2.0-or-later"
+license = "GPL-2.0+"
 description = "Friendly distributed version control system"
 repository = "https://github.com/breezy-team/breezy"
 homepage = "https://www.breezy-vcs.org/"
@@ -16,7 +16,7 @@ include = [
 ]
 
 [workspace]
-members = ["crates/*", "dromedary", "dromedary/_transport_rs", "dromedary/_urlutils_rs", "dromedary/osutils-rs"]
+members = ["crates/*", "dromedary", "dromedary/_transport_rs", "dromedary/_urlutils_rs"]
 
 [workspace.package]
 version = "3.4.0"
@@ -55,7 +55,7 @@ nix = { workspace = true, features = ["fs"] }
 
 [workspace.dependencies]
 nix = ">=0.26"
-pyo3 = ">=0.26,<0.28"
+pyo3 = "=0.25"
 pyo3-filelike = "0.5.0"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"

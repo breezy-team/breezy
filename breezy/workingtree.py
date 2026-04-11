@@ -30,7 +30,7 @@ __docformat__ = "google"
 
 import contextlib
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -223,7 +223,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
-    def open_containing(path: str | None = None) -> tuple["WorkingTree", str]:
+    def open_containing(path: Optional[str] = None) -> tuple["WorkingTree", str]:
         """Open an existing working tree which has its root about path.
 
         This probes for a working tree at path and searches upwards from there.
@@ -1257,7 +1257,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
 
-    supports_setting_file_ids: bool | None = None
+    supports_setting_file_ids: Optional[bool] = None
     """If this format allows setting the file id."""
 
     supports_store_uncommitted = True
@@ -1267,7 +1267,7 @@ class WorkingTreeFormat(ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
-    ignore_filename: str | None = None
+    ignore_filename: Optional[str] = None
     """Name of file with ignore patterns, if any. """
 
     def initialize(

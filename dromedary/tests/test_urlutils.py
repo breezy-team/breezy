@@ -21,18 +21,16 @@ import os
 import posixpath
 import sys
 
-from dromedary import osutils
+from breezy import osutils
 from dromedary.errors import PathNotChild
-import sys
-
-from dromedary.tests import TestCase, TestCaseInTempDir
+from breezy.tests import TestCase, TestCaseInTempDir, TestSkipped, features
 from dromedary import urlutils
 
 
 class TestUrlToPath(TestCase):
     def test_basename(self):
-        # dromedary.urlutils.basename
-        # Test dromedary.urlutils.split()
+        # breezy.urlutils.basename
+        # Test breezy.urlutils.split()
         basename = urlutils.basename
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, basename, "file:///path/to/foo")
@@ -169,7 +167,7 @@ class TestUrlToPath(TestCase):
         test_one("ab://foo", ("ab", "ab://foo"))
 
     def test_dirname(self):
-        # Test dromedary.urlutils.dirname()
+        # Test breezy.urlutils.dirname()
         dirname = urlutils.dirname
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, dirname, "file:///path/to/foo")
@@ -381,7 +379,7 @@ class TestUrlToPath(TestCase):
         try:
             result = to_url("/path/to/r\xe4ksm\xf6rg\xe5s")
         except UnicodeError as err:
-            self.skipTest("local encoding cannot handle unicode")
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual("file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s", result)
         self.assertIsInstance(result, str)
@@ -427,14 +425,13 @@ class TestUrlToPath(TestCase):
         try:
             result = to_url("d:/path/to/r\xe4ksm\xf6rg\xe5s")
         except UnicodeError as err:
-            self.skipTest("local encoding cannot handle unicode")
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual("file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s", result)
         self.assertIsInstance(result, str)
 
     def test_win32_unc_path_to_url(self):
-        if sys.platform != "win32":
-            self.skipTest("requires win32")
+        self.requireFeature(features.win32_feature)
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual("file://HOST/path", to_url(r"\\HOST\path"))
         self.assertEqual("file://HOST/path", to_url("//HOST/path"))
@@ -442,7 +439,7 @@ class TestUrlToPath(TestCase):
         try:
             result = to_url("//HOST/path/to/r\xe4ksm\xf6rg\xe5s")
         except UnicodeError as err:
-            self.skipTest("local encoding cannot handle unicode")
+            raise TestSkipped("local encoding cannot handle unicode") from err
 
         self.assertEqual("file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s", result)
         self.assertNotIsInstance(result, str)
@@ -495,7 +492,7 @@ class TestUrlToPath(TestCase):
         self.assertRaises(urlutils.InvalidURL, extract, "file://", "/C:ool")
 
     def test_split(self):
-        # Test dromedary.urlutils.split()
+        # Test breezy.urlutils.split()
         split = urlutils.split
         if sys.platform == "win32":
             self.assertRaises(urlutils.InvalidURL, split, "file:///path/to/foo")
@@ -873,7 +870,7 @@ class TestCwdToURL(TestCaseInTempDir):
         try:
             os.mkdir("dod\xe9")
         except UnicodeError as err:
-            self.skipTest("cannot create unicode directory")
+            raise TestSkipped("cannot create unicode directory") from err
 
         os.chdir("dod\xe9")
 
@@ -1111,7 +1108,7 @@ class TestFileRelpath(TestCase):
 
     def test_same_url_win32(self):
         if sys.platform != "win32":
-            self.skipTest(
+            raise TestSkipped(
                 "broken on non-windows; _with_win32_paths no longer works for rust"
             )
 
@@ -1130,7 +1127,7 @@ class TestFileRelpath(TestCase):
 
     def test_child_win32(self):
         if sys.platform != "win32":
-            self.skipTest(
+            raise TestSkipped(
                 "broken on non-windows; _with_win32_paths no longer works for rust"
             )
         self._with_win32_paths()

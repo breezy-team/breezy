@@ -27,22 +27,21 @@ import stat
 import sys
 from io import BytesIO
 
-from dromedary import errors
+from breezy import errors, osutils
 from catalogus import pyutils
-from dromedary import urlutils, osutils
+from dromedary import urlutils
 import dromedary as _mod_transport
 from dromedary.errors import PathError, TransportNotPossible
-from os import getcwd
+from breezy.osutils import getcwd
 from dromedary import (
     ConnectedTransport,
     Transport,
     _get_transport_modules,
 )
-from dromedary.tests import test_server
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
-import testscenarios
-
+from dromedary.remote import RemoteTransport
+from breezy.tests import TestNotApplicable, TestSkipped, multiply_tests, test_server
 from .test_transport import TestTransportImplementation
 
 
@@ -80,11 +79,10 @@ def transport_test_permutations():
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Multiply tests for transport implementations."""
-    TransportTests.scenarios = transport_test_permutations()
-    return testscenarios.load_tests_apply_scenarios(
-        loader, standard_tests, pattern
-    )
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    scenarios = transport_test_permutations()
+    return multiply_tests(standard_tests, scenarios, result)
 
 
 class TransportTests(TestTransportImplementation):
@@ -149,7 +147,7 @@ class TransportTests(TestTransportImplementation):
 
     def test_has_root_works(self):
         if self.transport_server is test_server.SmartTCPServer_for_testing:
-            self.skipTest(
+            raise TestNotApplicable(
                 "SmartTCPServer_for_testing intentionally does not allow access to /."
             )
         current_transport = self.get_transport()
@@ -856,7 +854,7 @@ class TransportTests(TestTransportImplementation):
     def test_rename_across_subdirs(self):
         t = self.get_transport()
         if t.is_readonly():
-            self.skipTest("transport is readonly")
+            raise TestNotApplicable("transport is readonly")
         t.mkdir("a")
         t.mkdir("b")
         ta = t.clone("a")
@@ -959,9 +957,9 @@ class TransportTests(TestTransportImplementation):
         try:
             url = self._server.get_bogus_url()
         except NotImplementedError as err:
-            self.skipTest(
+            raise TestSkipped(
                 "Transport {} has no bogus URL support.".format(self._server.__class__)
-            )
+            ) from err
         t = _mod_transport.get_transport_from_url(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, ".bzr/branch")
 
@@ -1021,11 +1019,11 @@ class TransportTests(TestTransportImplementation):
             except errors.NotLocalUrl:
                 pass
         except TransportNotPossible as err:
-            self.skipTest(
+            raise TestSkipped(
                 "Transport {} does not support hardlinks.".format(
                     self._server.__class__
                 )
-            )
+            ) from err
 
     def test_symlink(self):
         from stat import S_ISLNK
@@ -1048,9 +1046,9 @@ class TransportTests(TestTransportImplementation):
                 S_ISLNK(st.st_mode), f"expected symlink, got mode {st.st_mode:o}"
             )
         except TransportNotPossible as err:
-            self.skipTest(
+            raise TestSkipped(
                 "Transport {} does not support symlinks.".format(self._server.__class__)
-            )
+            ) from err
 
         self.assertEqual(source_name, t.readlink(link_name))
 
@@ -1059,9 +1057,9 @@ class TransportTests(TestTransportImplementation):
         try:
             self.assertRaises(NoSuchFile, t.readlink, "nonexistent")
         except TransportNotPossible as err:
-            self.skipTest(
+            raise TestSkipped(
                 "Transport {} does not support symlinks.".format(self._server.__class__)
-            )
+            ) from err
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1111,7 +1109,7 @@ class TransportTests(TestTransportImplementation):
     def test_list_dir_result_is_url_escaped(self):
         t = self.get_transport()
         if not t.listable():
-            self.skipTest("transport not listable")
+            raise TestSkipped("transport not listable")
 
         if not t.is_readonly():
             self.build_tree(["a/", "a/%"], transport=t)
@@ -1125,7 +1123,7 @@ class TransportTests(TestTransportImplementation):
     def test_clone_preserve_info(self):
         t1 = self.get_transport()
         if not isinstance(t1, ConnectedTransport):
-            self.skipTest("not a connected transport")
+            raise TestSkipped("not a connected transport")
 
         t2 = t1.clone("subdir")
         self.assertEqual(t1._parsed_url.scheme, t2._parsed_url.scheme)
@@ -1137,7 +1135,7 @@ class TransportTests(TestTransportImplementation):
     def test__reuse_for(self):
         t = self.get_transport()
         if not isinstance(t, ConnectedTransport):
-            self.skipTest("not a connected transport")
+            raise TestSkipped("not a connected transport")
 
         def new_url(
             scheme=None, user=None, password=None, host=None, port=None, path=None
@@ -1187,7 +1185,7 @@ class TransportTests(TestTransportImplementation):
     def test_connection_sharing(self):
         t = self.get_transport()
         if not isinstance(t, ConnectedTransport):
-            self.skipTest("not a connected transport")
+            raise TestSkipped("not a connected transport")
 
         c = t.clone("subdir")
         # Some transports will create the connection  only when needed
@@ -1204,7 +1202,7 @@ class TransportTests(TestTransportImplementation):
     def test_reuse_connection_for_various_paths(self):
         t = self.get_transport()
         if not isinstance(t, ConnectedTransport):
-            self.skipTest("not a connected transport")
+            raise TestSkipped("not a connected transport")
 
         t.has("surely_not")  # Force connection
         self.assertIsNot(None, t._get_connection())
@@ -1337,7 +1335,7 @@ class TransportTests(TestTransportImplementation):
         # other platforms too, but then osutils does platform specific
         # things at import time which defeated us...
         if sys.platform != "win32":
-            self.skipTest(
+            raise TestSkipped(
                 "Testing drive letters in abspath implemented only for win32"
             )
 
@@ -1506,7 +1504,7 @@ class TransportTests(TestTransportImplementation):
         try:
             self.build_tree(files, transport=t, line_endings="binary")
         except UnicodeError as err:
-            raise self.skipTest(
+            raise TestSkipped(
                 "cannot handle unicode paths in current encoding"
             ) from err
 
@@ -1804,7 +1802,7 @@ class TransportTests(TestTransportImplementation):
         try:
             t.symlink("target", "link")
         except TransportNotPossible as err:
-            raise self.skipTest("symlinks not supported") from err
+            raise TestSkipped("symlinks not supported") from err
         t2 = t.clone("link")
         st = t2.stat("")
         self.assertTrue(stat.S_ISLNK(st.st_mode))
@@ -1829,3 +1827,35 @@ class TransportTests(TestTransportImplementation):
         self.build_tree([needlessly_escaped_dir], transport=t1)
         t2 = t1.clone(needlessly_escaped_dir)
         self.assertEqual(t1.base + "-.09AZ_az~/", t2.base)
+
+    def test_hook_post_connection_one(self):
+        """Fire post_connect hook after a ConnectedTransport is first used."""
+        log = []
+        Transport.hooks.install_named_hook("post_connect", log.append, None)
+        t = self.get_transport()
+        self.assertEqual([], log)
+        t.has("non-existant")
+        if isinstance(t, RemoteTransport):
+            self.assertEqual([t.get_smart_medium()], log)
+        elif isinstance(t, ConnectedTransport):
+            self.assertEqual([t], log)
+        else:
+            self.assertEqual([], log)
+
+    def test_hook_post_connection_multi(self):
+        """Fire post_connect hook once per unshared underlying connection."""
+        log = []
+        Transport.hooks.install_named_hook("post_connect", log.append, None)
+        t1 = self.get_transport()
+        t2 = t1.clone(".")
+        t3 = self.get_transport()
+        self.assertEqual([], log)
+        t1.has("x")
+        t2.has("x")
+        t3.has("x")
+        if isinstance(t1, RemoteTransport):
+            self.assertEqual([t.get_smart_medium() for t in [t1, t3]], log)
+        elif isinstance(t1, ConnectedTransport):
+            self.assertEqual([t1, t3], log)
+        else:
+            self.assertEqual([], log)

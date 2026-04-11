@@ -33,7 +33,7 @@ import stat
 import sys
 import time
 
-from dromedary import _config, errors
+from breezy import config, errors
 from dromedary.errors import (
     DependencyNotPresent,
     LockError,
@@ -218,10 +218,9 @@ class _SFTPReadvHelper:
         # rather than just because the data stream ended. This lets us detect
         # short readv.
         data_stream = itertools.chain(fp.readv(requests), itertools.repeat(None))
-        for (start, length), data in zip(requests, data_stream, strict=False):
-            if data is None:
-                if cur_coalesced is not None:
-                    raise errors.ShortReadvError(self.relpath, start, length, len(data))
+        for (start, length), data in zip(requests, data_stream):
+            if data is None and cur_coalesced is not None:
+                raise errors.ShortReadvError(self.relpath, start, length, len(data))
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath, start, length, len(data))
             self._report_activity(length, "read")
@@ -386,7 +385,8 @@ class SFTPTransport(ConnectedTransport):
         vendor = ssh._get_ssh_vendor()
         user = self._parsed_url.user
         if user is None:
-            user = _config.get_auth_user("ssh", self._parsed_url.host, port=self._parsed_url.port)
+            auth = config.AuthenticationConfig()
+            user = auth.get_user("ssh", self._parsed_url.host, self._parsed_url.port)
         connection = vendor.connect_sftp(
             self._parsed_url.user,
             password,
@@ -954,7 +954,7 @@ def get_test_permutations():
     if importlib.util.find_spec("paramiko") is None:
         raise ParamikoNotPresent("paramiko not installed")
 
-    from dromedary.tests import stub_sftp
+    from breezy.tests import stub_sftp
 
     return [
         (SFTPTransport, stub_sftp.SFTPAbsoluteServer),

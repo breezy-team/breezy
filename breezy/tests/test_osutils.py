@@ -635,10 +635,8 @@ class TestRelpath(tests.TestCase):
         self.assertEqual("sub/subsubdir", osutils.relpath(cwd, subdir))
 
     def test_not_relative(self):
-        from dromedary.errors import PathNotChild
-
-        self.assertRaises(PathNotChild, osutils.relpath, "C:/path", "H:/path")
-        self.assertRaises(PathNotChild, osutils.relpath, "C:/", "H:/path")
+        self.assertRaises(ValueError, osutils.relpath, "C:/path", "H:/path")
+        self.assertRaises(ValueError, osutils.relpath, "C:/", "H:/path")
 
 
 class TestSafeUnicode(tests.TestCase):
@@ -869,7 +867,7 @@ class TestChunksToLines(tests.TestCase):
         self.assertEqual(list(lines), result)
         if already_lines:
             self.assertEqual(len(chunks), len(result))
-            for a, b in zip(chunks, result, strict=False):
+            for a, b in zip(chunks, result):
                 self.assertIs(a, b)
 
     def test_fulltext_chunk_to_lines(self):
@@ -949,7 +947,7 @@ class TestChunksToLinesIter(tests.TestCase):
         self.assertEqual(list(lines), result)
         if already_lines:
             self.assertEqual(len(chunks), len(result))
-            for a, b in zip(chunks, result, strict=False):
+            for a, b in zip(chunks, result):
                 self.assertIs(a, b)
 
 
@@ -1365,7 +1363,7 @@ class TestSetUnsetEnv(tests.TestCase):
 
         So Unicode strings must be encoded.
         """
-        uni_val, _env_val = tests.probe_unicode_in_user_encoding()
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
                 f"Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}"
@@ -1613,7 +1611,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
-        warnings, _result = self.callCatchWarnings(
+        warnings, result = self.callCatchWarnings(
             osutils.report_extension_load_failures
         )
         # it used to give a Python warning; it no longer does
@@ -1757,7 +1755,7 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
-        uni_val, _env_val = tests.probe_unicode_in_user_encoding()
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
         if uni_val is None:
             raise tests.TestSkipped(
                 f"Cannot find a unicode character that works in encoding {osutils.get_user_encoding()}"

@@ -32,8 +32,6 @@ from http.server import SimpleHTTPRequestHandler
 
 import breezy
 
-from dromedary import errors as transport_errors
-
 from .. import (
     config,
     controldir,
@@ -47,7 +45,7 @@ from .. import (
     urlutils,
 )
 from ..bzr import remote as _mod_remote
-from breezy.transport import remote
+from dromedary import errors as transport_errors, remote
 from dromedary.http import urllib
 from dromedary.http.urllib import (
     AbstractAuthHandler,
@@ -59,8 +57,7 @@ from dromedary.http.urllib import (
     ProxyHandler,
     Request,
 )
-from . import features, http_utils, test_server
-from dromedary.tests import http_server
+from . import features, http_server, http_utils, test_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -136,7 +133,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
-        from dromedary.tests import ssl_certs
+        from . import ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
@@ -204,7 +201,7 @@ class RecordingServer:
     def _accept_read_and_reply(self):
         self._sock.listen(1)
         self._ready.set()
-        conn, _address = self._sock.accept()
+        conn, address = self._sock.accept()
         if self._expect_body_tail is not None:
             while not self.received_bytes.endswith(self._expect_body_tail):
                 self.received_bytes += conn.recv(4096)
@@ -263,7 +260,7 @@ class TestAuthHeader(tests.TestCase):
         self.assertNotIn("\n", header)
 
     def test_basic_extract_realm(self):
-        _scheme, remainder = self.parse_header(
+        scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"', BasicAuthHandler
         )
         match, realm = self.auth_handler.extract_realm(remainder)
@@ -495,7 +492,7 @@ class TestPost(tests.TestCase):
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
         http_transport = transport.get_transport_from_url(url)
-        _code, _response = http_transport._post(b"abc def end-of-body")
+        code, response = http_transport._post(b"abc def end-of-body")
         self.assertTrue(server.received_bytes.startswith(b"POST /.bzr/smart HTTP/1."))
         self.assertIn(b"content-length: 19\r", server.received_bytes.lower())
         self.assertIn(
@@ -774,8 +771,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # since we are sure that it cannot get there
         self.assertListRaises(
             (
-                transport_errors.InvalidRange,
-                transport_errors.ShortReadvError,
+                errors.InvalidRange,
+                errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -786,8 +783,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # also raise a special error
         self.assertListRaises(
             (
-                transport_errors.InvalidRange,
-                transport_errors.ShortReadvError,
+                errors.InvalidRange,
+                errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -1344,12 +1341,12 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(
-            transport_errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
+            errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
         )
 
     def test_semantically_invalid_range_header(self):
         self.assertListRaises(
-            transport_errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
+            errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
         )
 
 
@@ -2063,7 +2060,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from dromedary.tests import https_server
+    from . import https_server
 
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass
@@ -2213,7 +2210,7 @@ lalala whatever as long as itsssss
         t = self.get_transport()
         # We must send a single line of body bytes, see
         # PredefinedRequestHandler._handle_one_request
-        _code, f = t._post(b"abc def end-of-body\n")
+        code, f = t._post(b"abc def end-of-body\n")
         self.assertEqual(b"lalala whatever as long as itsssss\n", f.read())
         self.assertActivitiesMatch()
 
