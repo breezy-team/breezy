@@ -291,7 +291,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
             return
         if len(self.parents) == 0:
             raise errors.RootMissing()
-        entry = InventoryDirectory(tree.path2id(""), "", None, self._new_revision_id)
+        entry = entry_factory["directory"](
+            tree.path2id(""), "", None, revision=self._new_revision_id
+        )
         self._basis_delta.append(("", "", entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
