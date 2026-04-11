@@ -251,21 +251,7 @@ ERROR_PATH_NOT_FOUND = 3
 ERROR_DIRECTORY = 267
 
 
-class DirstateCorrupt(errors.BzrError):
-    """Exception raised when a dirstate file is corrupt."""
-
-    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
-
-    def __init__(self, state, msg):
-        """Create a DirstateCorrupt exception.
-
-        Args:
-            state: The dirstate that is corrupt.
-            msg: Error message describing the corruption.
-        """
-        errors.BzrError.__init__(self)
-        self.state = state
-        self.msg = msg
+from bzrformats.errors import DirstateCorrupt  # noqa: E402
 
 
 class SHA1Provider:
