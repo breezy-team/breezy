@@ -28,6 +28,7 @@ import re
 from bisect import bisect_right
 from io import BytesIO
 
+from bzrformats import bisect_multi
 from dromedary.errors import NoSuchFile
 
 from .. import debug, errors, trace
