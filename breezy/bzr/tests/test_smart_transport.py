@@ -32,9 +32,10 @@ from typing import Optional
 from testtools.matchers import DocTestMatches
 
 import breezy
-import dromedary as _mod_transport
+from breezy import transport as _mod_transport
 from dromedary import errors as transport_errors
-from dromedary import local, memory, remote, ssh
+from dromedary import local, memory, ssh
+from breezy.transport import remote
 from dromedary.errors import NoSuchFile
 from dromedary.http import urllib
 
@@ -676,7 +677,7 @@ class SmartClientMediumTests(tests.TestCase):
         client_medium = medium.SmartTCPClientMedium(
             "non_existent.invalid", 4155, "base"
         )
-        self.assertRaises(ConnectionError, client_medium._ensure_connection)
+        self.assertRaises(transport_errors.ConnectionError, client_medium._ensure_connection)
 
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
@@ -1566,7 +1567,7 @@ class TestServerSocketUsage(SmartTCPTests):
         self.start_server()
         t = remote.RemoteTCPTransport(self.server.get_url())
         self.stop_server()
-        self.assertRaises(ConnectionError, t.has, ".")
+        self.assertRaises(transport_errors.ConnectionError, t.has, ".")
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
@@ -1577,7 +1578,7 @@ class TestServerSocketUsage(SmartTCPTests):
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
         t = remote.RemoteTCPTransport(server_url)
-        self.assertRaises(ConnectionError, t.has, ".")
+        self.assertRaises(transport_errors.ConnectionError, t.has, ".")
 
 
 class WritableEndToEndTests(SmartTCPTests):

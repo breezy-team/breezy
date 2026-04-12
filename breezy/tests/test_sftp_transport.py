@@ -55,7 +55,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 
 class SFTPLockTests(TestCaseWithSFTPServer):
     def test_sftp_locks(self):
-        from dromedary.errors import LockError
+        from dromedary.errors import LockContention
 
         t = self.get_transport()
 
@@ -64,14 +64,14 @@ class SFTPLockTests(TestCaseWithSFTPServer):
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert
-        self.assertRaises(LockError, t.lock_write, "bogus")
+        self.assertRaises(LockContention, t.lock_write, "bogus")
 
         l.unlock()
         self.assertFalse(lexists("bogus.write-lock"))
 
         with open("something.write-lock", "wb") as f:
             f.write(b"fake lock\n")
-        self.assertRaises(LockError, t.lock_write, "something")
+        self.assertRaises(LockContention, t.lock_write, "something")
         os.remove("something.write-lock")
 
         l = t.lock_write("something")
@@ -294,7 +294,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
         self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
-        self.assertRaises(ConnectionError, t.get, "foobar")
+        self.assertRaises(transport_errors.ConnectionError, t.get, "foobar")
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor."""
@@ -303,7 +303,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            self.assertRaises(ConnectionError, t.get, "foobar")
+            self.assertRaises(transport_errors.ConnectionError, t.get, "foobar")
         except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure("Known NameError bug in paramiko 1.6.1")

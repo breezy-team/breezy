@@ -23,8 +23,8 @@ import random
 import re
 from urllib.parse import urlparse
 
-from breezy import osutils
-from breezy.tests import test_server
+from dromedary import osutils
+from dromedary.tests import test_server
 from dromedary import urlutils
 
 

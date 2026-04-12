@@ -3408,7 +3408,7 @@ def _ca_certs_from_store(path):
 
     if not os.path.exists(path):
         raise ValueError(f"ca certs path {path} does not exist")
-    dromedary.http.ssl_ca_certs = path
+    dromedary.http.ssl_ca_certs = lambda: path
     return path
 
 
@@ -3421,7 +3421,7 @@ def _cert_reqs_from_store(unicode_str):
         value = {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
     except KeyError as e:
         raise ValueError(f"invalid value {unicode_str}") from e
-    dromedary.http.ssl_cert_reqs = value
+    dromedary.http.ssl_cert_reqs = lambda: value
     return value
 
 
@@ -3442,10 +3442,19 @@ Use ssl.cert_reqs=none to disable certificate verification.
     )
 )
 
+def _ssl_cert_reqs_default():
+    """Return 'required' or 'none' depending on the platform default."""
+    import ssl as _ssl
+
+    from dromedary.http import default_cert_reqs
+
+    return "required" if default_cert_reqs() == _ssl.CERT_REQUIRED else "none"
+
+
 option_registry.register(
     Option(
         "ssl.cert_reqs",
-        default=lambda: __import__("dromedary.http", fromlist=["default_ca_reqs"]).default_ca_reqs(),
+        default=_ssl_cert_reqs_default,
         from_unicode=_cert_reqs_from_store,
         invalid="error",
         help="""\

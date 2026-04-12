@@ -116,13 +116,13 @@ from .decorators import only_raises
 from .errors import (
     LockBreakMismatch,
     LockBroken,
+    LockContention,
     LockCorrupt,
+    LockFailed,
     LockNotHeld,
 )
 from dromedary.errors import (
     DirectoryNotEmpty,
-    LockContention,
-    LockFailed,
     PathError,
     ResourceBusy,
     TransportError,

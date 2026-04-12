@@ -32,7 +32,7 @@ from breezy import (
     transport,
     urlutils,
 )
-from breezy import tree as _mod_tree
+from breezy import errors, tree as _mod_tree
 from breezy.bzr import remote
 from breezy.tests import per_branch
 from dromedary import errors as transport_errors
@@ -466,7 +466,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (transport_errors.LockError, transport_errors.TransportNotPossible),
+            (errors.LockError, transport_errors.TransportNotPossible),
             source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c", lightweight=True)
@@ -484,7 +484,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (transport_errors.LockError, transport_errors.TransportNotPossible),
+            (errors.LockError, transport_errors.TransportNotPossible),
             source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c")

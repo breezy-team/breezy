@@ -33,10 +33,11 @@ import stat
 import sys
 import time
 
-from breezy import config, errors
+from dromedary import _config
+from dromedary import errors
 from dromedary.errors import (
     DependencyNotPresent,
-    LockError,
+    LockContention,
     PathError,
     ReadError,
     TransportNotPossible,
@@ -118,7 +119,7 @@ class SFTPLock:
             transport: SFTP transport to use.
 
         Raises:
-            LockError: If the file is already locked.
+            LockContention: If the file is already locked.
         """
         self.lock_file = None
         self.path = path
@@ -129,7 +130,7 @@ class SFTPLock:
             abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists as err:
-            raise LockError(f"File {self.path!r} already locked") from err
+            raise LockContention(self.path) from err
 
     def unlock(self):
         """Release the lock by closing and deleting the lock file."""
@@ -385,8 +386,7 @@ class SFTPTransport(ConnectedTransport):
         vendor = ssh._get_ssh_vendor()
         user = self._parsed_url.user
         if user is None:
-            auth = config.AuthenticationConfig()
-            user = auth.get_user("ssh", self._parsed_url.host, self._parsed_url.port)
+            user = _config.get_auth_user("ssh", self._parsed_url.host, self._parsed_url.port)
         connection = vendor.connect_sftp(
             self._parsed_url.user,
             password,
@@ -929,7 +929,11 @@ class SFTPTransport(ConnectedTransport):
         if mode is not None:
             attr.st_mode = mode | stat.S_IFREG
         else:
-            attr.st_mode = stat.S_IFREG | 0o644
+            # Apply the local umask to the default 0o666 so file permissions
+            # follow the same convention as ordinary file creation.
+            from dromedary.osutils import get_umask
+
+            attr.st_mode = stat.S_IFREG | (0o666 & ~get_umask())
         flags = (
             _sftp_rs.SFTP_FLAG_WRITE
             | _sftp_rs.SFTP_FLAG_CREAT
@@ -954,7 +958,7 @@ def get_test_permutations():
     if importlib.util.find_spec("paramiko") is None:
         raise ParamikoNotPresent("paramiko not installed")
 
-    from breezy.tests import stub_sftp
+    from dromedary.tests import stub_sftp
 
     return [
         (SFTPTransport, stub_sftp.SFTPAbsoluteServer),

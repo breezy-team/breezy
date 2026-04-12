@@ -59,11 +59,11 @@ from dulwich.repo import (
 
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.errors import (
-    LockContention,
     NotLocalUrl,
     ReadError,
     TransportNotPossible,
 )
+from breezy.errors import LockContention
 
 from .. import osutils, urlutils
 from .. import transport as _mod_transport

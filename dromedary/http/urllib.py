@@ -42,6 +42,7 @@ from dromedary import ConnectedTransport, urlutils
 from dromedary.errors import NoSuchFile, UnusableRedirect
 from dromedary.errors import (
     BadHttpRequest,
+    ConnectionError,
     HttpBoundaryMissing,
     InvalidHttpRange,
     InvalidHttpResponse,
@@ -542,7 +543,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
         """
         from dromedary import http as _mod_http
 
-        cert_reqs = _mod_http.ssl_cert_reqs
+        cert_reqs = _mod_http.ssl_cert_reqs()
         if self.proxied_host is not None:
             host = self.proxied_host.split(":", 1)[0]
         else:
@@ -552,7 +553,7 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
             ca_certs = None
         else:
             if self.ca_certs is None:
-                ca_certs = _mod_http.ssl_ca_certs
+                ca_certs = _mod_http.ssl_ca_certs()
             else:
                 ca_certs = self.ca_certs
             if ca_certs is None:
@@ -1607,6 +1608,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         :param auth: authentication info gathered so far (from the initial url
             and then during dialog with the server).
         """
+        from dromedary import _ui
         from dromedary.http import get_credentials
 
         user = auth.get("user", None)
@@ -1627,6 +1629,16 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
             if password is None:
                 password = looked_up_password
 
+        if user is None:
+            # Prompt for the username if we still don't have one.
+            prompt = self.build_username_prompt(auth)
+            user = _ui.get_username(prompt, **auth)
+            auth["user"] = user
+        if user is not None and password is None:
+            # Prompt for the password if we still don't have one.
+            prompt = self.build_password_prompt(auth)
+            password = _ui.get_password(prompt, **auth)
+
         return user, password
 
     def _build_password_prompt(self, auth):
@@ -1641,6 +1653,8 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         build_password_prompt using this method.
         """
         prompt = f"{auth['protocol'].upper()}" + " %(user)s@%(host)s"
+        if auth.get("port") is not None:
+            prompt += ":%(port)d"
         realm = auth["realm"]
         if realm is not None:
             prompt += f", Realm: '{realm}'"
@@ -1659,6 +1673,8 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         build_username_prompt using this method.
         """
         prompt = f"{auth['protocol'].upper()}" + " %(host)s"
+        if auth.get("port") is not None:
+            prompt += ":%(port)d"
         realm = auth["realm"]
         if realm is not None:
             prompt += f", Realm: '{realm}'"
@@ -2456,7 +2472,7 @@ class HttpTransport(ConnectedTransport):
                     The data read from the response.
                 """
                 if amt is None and evil_logger.isEnabledFor(logging.DEBUG):
-                    mutter_callsite(4, "reading full response.")
+                    evil_logger.debug("reading full response.")
                 return self._actual.read(amt)
 
             def readlines(self):
@@ -3021,14 +3037,15 @@ class HttpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import features
     from dromedary.tests import http_server
 
     permutations = [
         (HttpTransport, http_server.HttpServer),
     ]
-    if features.HTTPSServerFeature.available():
-        from breezy.tests import https_server, ssl_certs
+    try:
+        import ssl  # noqa: F401
+
+        from dromedary.tests import https_server, ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
@@ -3039,4 +3056,6 @@ def get_test_permutations():
                 )
 
         permutations.append((HTTPS_transport, https_server.HTTPSServer))
+    except ModuleNotFoundError:
+        pass
     return permutations

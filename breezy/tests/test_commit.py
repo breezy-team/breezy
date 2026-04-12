@@ -19,7 +19,8 @@ import os
 from io import BytesIO
 
 import breezy
-from dromedary.errors import LockContention, NoSuchFile
+from breezy.errors import LockContention
+from dromedary.errors import NoSuchFile
 
 from .. import config, controldir, errors, osutils, trace
 from ..branch import Branch

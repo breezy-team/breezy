@@ -139,7 +139,7 @@ class TestTransportScenarios(tests.TestCase):
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
-            with contextlib.suppress(errors.DependencyNotPresent):
+            with contextlib.suppress(transport_errors.DependencyNotPresent):
                 permutation_count += len(
                     reduce(
                         getattr,

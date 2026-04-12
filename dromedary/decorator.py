@@ -21,7 +21,8 @@ stub functions to allow other decorators to be written easily.
 """
 
 from dromedary import Transport
-from dromedary import get_transport_from_url
+from dromedary import get_transport_from_path, get_transport_from_url
+from dromedary import urlutils
 
 
 class TransportDecorator(Transport):
@@ -52,7 +53,10 @@ class TransportDecorator(Transport):
             )
         not_decorated_url = url[len(prefix) :]
         if _decorated is None:
-            self._decorated = get_transport_from_url(not_decorated_url)
+            if urlutils.is_url(not_decorated_url):
+                self._decorated = get_transport_from_url(not_decorated_url)
+            else:
+                self._decorated = get_transport_from_path(not_decorated_url)
         else:
             self._decorated = _decorated
         super().__init__(prefix + self._decorated.base)

@@ -26,8 +26,7 @@ import os
 from io import BytesIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
-from breezy import transport
-from dromedary.errors import InProcessTransport, LockError
+from dromedary.errors import InProcessTransport, LockContention
 from dromedary import (
     AppendBasedFileStream,
     LateReadError,
@@ -347,7 +346,7 @@ class _MemoryLock:
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError(f"File {self.path!r} already locked")
+            raise LockContention(self.path)
         self.transport._locks[self.path] = self
 
     def unlock(self):

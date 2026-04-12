@@ -1483,7 +1483,7 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         # The branch (and associated repository) is now locked.  Verify that
         # with a new branch object.
         new_branch = repository.controldir.open_branch()
-        self.assertRaises(transport_errors.LockContention, new_branch.lock_write)
+        self.assertRaises(errors.LockContention, new_branch.lock_write)
         # Cleanup
         request = smart_branch.SmartServerBranchRequestUnlock(backing)
         response = request.execute(b"", branch_nonce, repository_nonce)
@@ -2237,7 +2237,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         # The repository is now locked.  Verify that with a new repository
         # object.
         new_repo = repository.controldir.open_repository()
-        self.assertRaises(transport_errors.LockContention, new_repo.lock_write)
+        self.assertRaises(errors.LockContention, new_repo.lock_write)
         # Cleanup
         request = smart_repo.SmartServerRepositoryUnlock(backing)
         response = request.execute(b"", nonce)

@@ -134,5 +134,5 @@ def default_cert_reqs():
         return ssl.CERT_REQUIRED
 
 
-ssl_ca_certs = default_ca_certs()
-ssl_cert_reqs = default_cert_reqs()
+ssl_ca_certs = default_ca_certs
+ssl_cert_reqs = default_cert_reqs

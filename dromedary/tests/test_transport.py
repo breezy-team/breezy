@@ -22,8 +22,8 @@ import sys
 import threading
 from io import BytesIO
 
-from breezy import osutils, tests
-from dromedary import errors
+from dromedary import errors, osutils
+from dromedary import tests
 import dromedary as transport
 from dromedary import urlutils
 from dromedary import (
@@ -36,7 +36,8 @@ from dromedary import (
 )
 from dromedary.errors import FileExists, NoSuchFile, UnsupportedProtocol
 from dromedary.local import file_kind
-from breezy.tests import features, test_server
+from dromedary import tests as features
+from dromedary.tests import test_server
 
 # TODO: Should possibly split transport-specific tests into their own files.
 
@@ -117,20 +118,12 @@ class TestTransport(tests.TestCase):
         self.assertIsInstance(t, BackupTransportHandler)
 
     def test_ssh_hints(self):
-        """Transport ssh:// should raise an error pointing out bzr+ssh://."""
-        try:
-            transport.get_transport_from_url("ssh://fooserver/foo")
-        except UnsupportedProtocol as e:
-            self.assertEqual(
-                "Unsupported protocol"
-                ' for url "ssh://fooserver/foo":'
-                " Use bzr+ssh for Bazaar operations over SSH, "
-                'e.g. "bzr+ssh://fooserver/foo". Use git+ssh '
-                'for Git operations over SSH, e.g. "git+ssh://fooserver/foo".',
-                str(e),
-            )
-        else:
-            self.fail("Did not raise UnsupportedProtocol")
+        """Transport ssh:// should raise UnsupportedProtocol."""
+        self.assertRaises(
+            UnsupportedProtocol,
+            transport.get_transport_from_url,
+            "ssh://fooserver/foo",
+        )
 
     def test_LateReadError(self):
         """The LateReadError helper should raise on read()."""
@@ -628,7 +621,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         self.assertEqual(True, t.is_readonly())
 
 
-class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
+class FakeNFSDecoratorTests(tests.TestCaseWithTransport):
     """NFS decorator specific tests."""
 
     def get_nfs_transport(self, url):
@@ -670,11 +663,14 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
         # a FakeNFS transport must mangle the way rename errors occur to
         # look like NFS problems.
         t = self.get_nfs_transport(".")
-        self.build_tree(["from/", "from/foo", "to/", "to/bar"], transport=t)
+        t.mkdir("from")
+        t.put_bytes("from/foo", b"")
+        t.mkdir("to")
+        t.put_bytes("to/bar", b"")
         self.assertRaises(errors.ResourceBusy, t.rename, "from", "to")
 
 
-class FakeVFATDecoratorTests(tests.TestCaseInTempDir):
+class FakeVFATDecoratorTests(tests.TestCaseWithTransport):
     """Tests for simulation of VFAT restrictions."""
 
     def get_vfat_transport(self, url):
@@ -755,6 +751,33 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
             # regular connection behaviour by direct construction.
             t = self.transport_class(url)
         return t
+
+    def build_tree(self, shape, transport=None, line_endings="binary"):
+        """Build a tree of files via the test transport.
+
+        Transport implementation tests need to operate on files at the
+        test server (which may not be a local filesystem) rather than the
+        process cwd, so this overrides the cwd-based TestCaseInTempDir
+        version. If `transport` is None or read-only, falls back to a
+        transport on the current working directory. Names are URL-escaped
+        before being passed to the transport.
+        """
+        if transport is None or transport.is_readonly():
+            from dromedary import get_transport_from_path
+            transport = get_transport_from_path(".")
+        for name in shape:
+            escaped = urlutils.escape(name.rstrip("/"))
+            if name.endswith("/"):
+                transport.mkdir(escaped)
+            else:
+                if line_endings == "binary":
+                    end = b"\n"
+                elif line_endings == "native":
+                    end = os.linesep.encode("ascii")
+                else:
+                    raise ValueError(f"Invalid line ending request {line_endings!r}")
+                content = b"contents of %s%s" % (name.encode("utf-8"), end)
+                transport.put_bytes(escaped, content)
 
 
 class TestTransportFromPath(tests.TestCaseInTempDir):
@@ -1050,7 +1073,10 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         """get_transport of a bzr+ssh:// behaves correctly.
 
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
+
+        Note: this test requires breezy's bzr+ssh transport to be registered.
         """
+        raise tests.TestNotApplicable("bzr+ssh:// is registered by breezy, not dromedary")
         # This test actually causes a bzr instance to be invoked, which is very
         # expensive: it should be the only such test in the test suite.
         # A reasonable evolution for this would be to simply check inside
@@ -1060,7 +1086,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         # Start an SSH server
         self.command_executed = []
@@ -1153,7 +1179,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
             t.join()
 
 
-class TestKind(tests.TestCaseInTempDir):
+class TestKind(tests.TestCaseWithTransport):
     def test_file_kind(self):
         import socket
 

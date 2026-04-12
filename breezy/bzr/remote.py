@@ -55,6 +55,7 @@ from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..branch import BranchWriteLockResult
 from ..decorators import only_raises
+from .. import errors
 from ..errors import NoSuchRevision
 from ..i18n import gettext
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
@@ -5492,11 +5493,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 repo_token or b"",
                 **err_context,
             )
-        except transport_errors.LockContention as e:
+        except errors.LockContention as e:
             # The LockContention from the server doesn't have any
             # information about the lock_url. We re-raise LockContention
             # with valid lock_url.
-            raise transport_errors.LockContention(
+            raise errors.LockContention(
                 "(remote lock)", self.repository.base.split(".bzr/")[0]
             ) from e
         if response[0] != b"ok":
@@ -6405,11 +6406,11 @@ no_context_error_translators.register(
     ),
 )
 no_context_error_translators.register(
-    b"LockContention", lambda err: transport_errors.LockContention("(remote lock)")
+    b"LockContention", lambda err: errors.LockContention("(remote lock)")
 )
 no_context_error_translators.register(
     b"LockFailed",
-    lambda err: transport_errors.LockFailed(
+    lambda err: errors.LockFailed(
         err.error_args[0].decode("utf-8"), err.error_args[1].decode("utf-8")
     ),
 )

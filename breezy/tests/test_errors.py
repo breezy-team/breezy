@@ -168,7 +168,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_lock_failed(self):
-        error = transport_errors.LockFailed(
+        error = errors.LockFailed(
             "http://canonical.com/", "readonly transport"
         )
         self.assertEqualDiff(

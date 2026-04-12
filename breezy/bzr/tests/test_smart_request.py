@@ -203,7 +203,7 @@ class TestRequestHanderErrorTranslation(TestCase):
         # Eventually they should include a relpath or url or something else to
         # identify which lock is busy.
         self.assertTranslationEqual(
-            (b"LockContention",), transport_errors.LockContention("lock", "msg")
+            (b"LockContention",), errors.LockContention("lock", "msg")
         )
 
     def test_TokenMismatch(self):

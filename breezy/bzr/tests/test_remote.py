@@ -3629,7 +3629,7 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         transport_path = "quack"
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b"LockContention")
-        self.assertRaises(transport_errors.LockContention, repo.lock_write)
+        self.assertRaises(errors.LockContention, repo.lock_write)
         self.assertEqual(
             [("call", b"Repository.lock_write", (b"quack/", b""))], client._calls
         )
@@ -4366,7 +4366,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
 
     def test_LockContention(self):
         translated_error = self.translateTuple((b"LockContention",))
-        expected_error = transport_errors.LockContention("(remote lock)")
+        expected_error = errors.LockContention("(remote lock)")
         self.assertEqual(expected_error, translated_error)
 
     def test_UnlockableTransport(self):
@@ -4381,7 +4381,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         translated_error = self.translateTuple(
             (b"LockFailed", lock.encode("ascii"), why.encode("ascii"))
         )
-        expected_error = transport_errors.LockFailed(lock, why)
+        expected_error = errors.LockFailed(lock, why)
         self.assertEqual(expected_error, translated_error)
 
     def test_TokenMismatch(self):

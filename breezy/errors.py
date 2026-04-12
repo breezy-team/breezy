@@ -556,7 +556,7 @@ class InvalidNormalization(PathError):
 # TODO: This is given a URL; we try to unescape it but doing that from inside
 # the exception object is a bit undesirable.
 # TODO: Probably this behavior of should be a common superclass
-class NotBranchError(PathError):
+class NotBranchError(BzrError):
     """Location is not a branch.
 
     Raised when an operation expects a branch but the location does not contain one.
@@ -574,12 +574,10 @@ class NotBranchError(PathError):
         """
         from . import urlutils
 
-        path = urlutils.unescape_for_display(path, "ascii")
-        if detail is not None:
-            detail = ": " + detail
-        self.detail = detail
+        BzrError.__init__(self)
+        self.path = urlutils.unescape_for_display(path, "ascii")
+        self.detail = ": " + detail if detail is not None else detail
         self.controldir = controldir
-        PathError.__init__(self, path=path)
 
     def __repr__(self):
         """Return developer-friendly string representation of the error."""
@@ -984,7 +982,50 @@ class ForbiddenControlFileError(BzrError):
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
 
 
-from dromedary.errors import LockError  # noqa: E402
+class LockError(BzrError):
+    """A lock-related error in breezy.
+
+    This is the breezy concept of a lock error: it covers repository,
+    branch and working-tree locks. Transport-level file lock contention
+    raised by dromedary (LockContention/LockFailed) is intentionally a
+    separate hierarchy and is translated at the boundary by callers
+    that operate on a transport directly (see TransportLock).
+    """
+
+    _fmt = "Lock error: %(msg)s"
+
+    internal_error = False
+
+    def __init__(self, msg=""):
+        BzrError.__init__(self)
+        self.msg = msg
+
+
+class LockContention(LockError):
+    """A lock could not be acquired because something else holds it."""
+
+    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
+
+    internal_error = False
+
+    def __init__(self, lock, msg=""):
+        BzrError.__init__(self)
+        self.lock = lock
+        self.msg = msg
+
+
+class LockFailed(LockError):
+    """A lock could not be created."""
+
+    _fmt = "Cannot lock %(lock)s: %(why)s"
+
+    internal_error = False
+
+    def __init__(self, lock, why):
+        BzrError.__init__(self)
+        self.lock = lock
+        self.why = why
+        self.msg = ""
 
 
 class LockActive(LockError):

@@ -843,7 +843,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         before_writing.wait()
         self.assertTrue(c1._lock.is_held)
         self.assertRaises(
-            transport_errors.LockContention, c2.set_user_option, "one", "c2"
+            errors.LockContention, c2.set_user_option, "one", "c2"
         )
         self.assertEqual("c1", c1.get_user_option("one"))
         # Let the lock be released
@@ -3079,7 +3079,7 @@ class TestConcurrentStoreUpdates(TestStore):
         self.addCleanup(after_writing.set)
         t1.start()
         before_writing.wait()
-        self.assertRaises(transport_errors.LockContention, c2.set, "one", "c2")
+        self.assertRaises(errors.LockContention, c2.set, "one", "c2")
         self.assertEqual("c1", c1.get("one"))
         # Let the lock be released
         after_writing.set()

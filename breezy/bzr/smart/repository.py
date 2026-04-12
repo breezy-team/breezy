@@ -576,11 +576,11 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
             token = None
         try:
             token = repository.lock_write(token=token).repository_token
-        except transport_errors.LockContention:
+        except errors.LockContention:
             return FailedSmartServerResponse((b"LockContention",))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b"UnlockableTransport",))
-        except transport_errors.LockFailed as e:
+        except errors.LockFailed as e:
             return FailedSmartServerResponse((b"LockFailed", str(e.lock), str(e.why)))
         if token is not None:
             repository.leave_lock_in_place()

@@ -529,7 +529,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     self.control_transport.local_abspath("index"), "wb"
                 )
             except FileLocked as err:
-                raise transport_errors.LockContention("index") from err
+                raise errors.LockContention("index") from err
             self._read_index()
         elif self._lock_mode == "r":
             raise errors.ReadOnlyError(self)

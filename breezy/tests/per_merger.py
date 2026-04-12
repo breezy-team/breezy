@@ -180,7 +180,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         os.mkdir(limbodir)
         os.mkdir(os.path.join(limbodir, "something"))
         self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
-        self.assertRaises(transport_errors.LockError, wt.unlock)
+        self.assertRaises(errors.LockError, wt.unlock)
 
     def test_merge_with_pending_deletion_empty(self):
         wt = self.make_branch_and_tree("this")
@@ -195,7 +195,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         os.mkdir(deletiondir)
         os.mkdir(os.path.join(deletiondir, "something"))
         self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
-        self.assertRaises(transport_errors.LockError, wt.unlock)
+        self.assertRaises(errors.LockError, wt.unlock)
 
 
 class TestHookMergeFileContent(TestCaseWithTransport):

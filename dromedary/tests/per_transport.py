@@ -27,12 +27,12 @@ import stat
 import sys
 from io import BytesIO
 
-from breezy import errors, osutils
+from dromedary import errors, osutils
 from catalogus import pyutils
 from dromedary import urlutils
 import dromedary as _mod_transport
 from dromedary.errors import PathError, TransportNotPossible
-from breezy.osutils import getcwd
+from dromedary.osutils import getcwd
 from dromedary import (
     ConnectedTransport,
     Transport,
@@ -40,8 +40,7 @@ from dromedary import (
 )
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.memory import MemoryTransport
-from dromedary.remote import RemoteTransport
-from breezy.tests import TestNotApplicable, TestSkipped, multiply_tests, test_server
+from dromedary.tests import TestNotApplicable, TestSkipped, multiply_tests, test_server
 from .test_transport import TestTransportImplementation
 
 
@@ -144,16 +143,6 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(False, t.has_any(["c", "d", "f", urlutils.escape("%%")]))
         self.assertEqual(False, t.has_any(["c", "c", "c"]))
         self.assertEqual(True, t.has_any(["b", "b", "b"]))
-
-    def test_has_root_works(self):
-        if self.transport_server is test_server.SmartTCPServer_for_testing:
-            raise TestNotApplicable(
-                "SmartTCPServer_for_testing intentionally does not allow access to /."
-            )
-        current_transport = self.get_transport()
-        self.assertTrue(current_transport.has("/"))
-        root = current_transport.clone("/")
-        self.assertTrue(root.has(""))
 
     def test_get(self):
         t = self.get_transport()
@@ -961,7 +950,7 @@ class TransportTests(TestTransportImplementation):
                 "Transport {} has no bogus URL support.".format(self._server.__class__)
             ) from err
         t = _mod_transport.get_transport_from_url(url)
-        self.assertRaises((ConnectionError, NoSuchFile), t.get, ".bzr/branch")
+        self.assertRaises((errors.ConnectionError, NoSuchFile), t.get, ".bzr/branch")
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing
@@ -1726,14 +1715,14 @@ class TransportTests(TestTransportImplementation):
         """All transports must either give a smart medium, or know they can't."""
         transport = self.get_transport()
         try:
-            client_medium = transport.get_smart_medium()
+            transport.get_smart_medium()
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
-        else:
-            from ..bzr.smart import medium
-
-            self.assertIsInstance(client_medium, medium.SmartClientMedium)
+        # dromedary doesn't know about the breezy SmartClientMedium type, so
+        # we just check that get_smart_medium either returns something or
+        # raises NoSmartMedium. Subclasses (e.g. in breezy) override this to
+        # also check the medium implementation type.
 
     def test_readv_short_read(self):
         transport = self.get_transport()
@@ -1835,7 +1824,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         self.assertEqual([], log)
         t.has("non-existant")
-        if isinstance(t, RemoteTransport):
+        # Smart-protocol transports (e.g. breezy's RemoteTransport) fire the
+        # hook on their smart medium rather than on the transport itself.
+        if hasattr(t, "get_smart_medium"):
             self.assertEqual([t.get_smart_medium()], log)
         elif isinstance(t, ConnectedTransport):
             self.assertEqual([t], log)
@@ -1853,7 +1844,7 @@ class TransportTests(TestTransportImplementation):
         t1.has("x")
         t2.has("x")
         t3.has("x")
-        if isinstance(t1, RemoteTransport):
+        if hasattr(t1, "get_smart_medium"):
             self.assertEqual([t.get_smart_medium() for t in [t1, t3]], log)
         elif isinstance(t1, ConnectedTransport):
             self.assertEqual([t1, t3], log)

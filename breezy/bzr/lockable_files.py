@@ -252,7 +252,7 @@ class LockableFiles:
     def _set_transaction(self, new_transaction):
         """Set a new active transaction."""
         if self._transaction is not None:
-            raise transport_errors.LockError(
+            raise errors.LockError(
                 f"Branch {self} is in a transaction already."
             )
         self._transaction = new_transaction
@@ -260,7 +260,7 @@ class LockableFiles:
     def _finish_transaction(self):
         """Exit the current transaction."""
         if self._transaction is None:
-            raise transport_errors.LockError(f"Branch {self} is not in a transaction")
+            raise errors.LockError(f"Branch {self} is not in a transaction")
         transaction = self._transaction
         self._transaction = None
         transaction.finish()
@@ -325,11 +325,21 @@ class TransportLock:
         """
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
-        self._lock = self._transport.lock_write(self._escaped_name)
+        try:
+            self._lock = self._transport.lock_write(self._escaped_name)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._escaped_name) from e
+        except transport_errors.LockFailed as e:
+            raise errors.LockFailed(self._escaped_name, str(e)) from e
 
     def lock_read(self):
         """Acquire a read lock."""
-        self._lock = self._transport.lock_read(self._escaped_name)
+        try:
+            self._lock = self._transport.lock_read(self._escaped_name)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._escaped_name) from e
+        except transport_errors.LockFailed as e:
+            raise errors.LockFailed(self._escaped_name, str(e)) from e
 
     def unlock(self):
         """Release the lock."""

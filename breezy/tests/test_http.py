@@ -45,7 +45,8 @@ from .. import (
     urlutils,
 )
 from ..bzr import remote as _mod_remote
-from dromedary import errors as transport_errors, remote
+from breezy.transport import remote
+from dromedary import errors as transport_errors
 from dromedary.http import urllib
 from dromedary.http.urllib import (
     AbstractAuthHandler,
@@ -57,7 +58,8 @@ from dromedary.http.urllib import (
     ProxyHandler,
     Request,
 )
-from . import features, http_server, http_utils, test_server
+from dromedary.tests import http_server
+from . import features, http_utils, test_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -133,7 +135,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
-        from . import ssl_certs
+        from dromedary.tests import ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
@@ -462,7 +464,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             s = socket.socket()
             s.bind(("localhost", 0))
             t = self._transport("http://{}:{}/".format(*s.getsockname()))
-            self.assertRaises(ConnectionError, t.has, "foo/bar")
+            self.assertRaises(transport_errors.ConnectionError, t.has, "foo/bar")
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -576,13 +578,13 @@ class TestWallServer(TestSpecificRequestHandler):
         # just test for ConnectionError, we have to test
         # InvalidHttpResponse too.
         self.assertRaises(
-            (ConnectionError, transport_errors.InvalidHttpResponse), t.has, "foo/bar"
+            (transport_errors.ConnectionError, transport_errors.InvalidHttpResponse), t.has, "foo/bar"
         )
 
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
+            (transport_errors.ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -619,7 +621,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_has(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
+            (transport_errors.ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.has,
             "foo/bar",
         )
@@ -627,7 +629,7 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
+            (transport_errors.ConnectionError, ConnectionResetError, transport_errors.InvalidHttpResponse),
             t.get,
             "foo/bar",
         )
@@ -771,8 +773,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # since we are sure that it cannot get there
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -783,8 +785,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # also raise a special error
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -1341,12 +1343,12 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
         )
 
     def test_semantically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
         )
 
 
@@ -2060,7 +2062,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from . import https_server
+    from dromedary.tests import https_server
 
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass

@@ -1412,7 +1412,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             )
         except socket.gaierror as e:
             (_err_num, err_msg) = e.args
-            raise ConnectionError(
+            raise transport_errors.ConnectionError(
                 f"failed to lookup {self._host}:{port}: {err_msg}"
             ) from e
         # Initialize err in case there are no addresses returned:
@@ -1436,11 +1436,9 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 err_msg = last_err.args
             else:
                 err_msg = last_err.args[1]
-            if isinstance(last_err, ConnectionError):
-                raise last_err
-            raise ConnectionError(
+            raise transport_errors.ConnectionError(
                 "failed to connect to %s:%d: %s" % (self._host, port, err_msg)
-            )
+            ) from last_err
         self._connected = True
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)

@@ -231,7 +231,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_read()
-            except transport_errors.LockError:
+            except errors.LockError:
                 # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())
@@ -257,7 +257,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         branch_copy.lock_write()
         try:
             try:
-                self.assertRaises(transport_errors.LockError, wt.lock_write)
+                self.assertRaises(errors.LockError, wt.lock_write)
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())
             finally:
@@ -281,7 +281,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_tree_write()
-            except transport_errors.LockError:
+            except errors.LockError:
                 # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())

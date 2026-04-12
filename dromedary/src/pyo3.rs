@@ -93,7 +93,13 @@ impl From<PyErr> for Error {
             if e.is_instance_of::<InProcessTransport>(py) {
                 Error::InProcessTransport
             } else if e.is_instance_of::<NotLocalUrl>(py) {
-                Error::NotLocalUrl(arg(0).unwrap())
+                let url = e
+                    .value(py)
+                    .getattr("url")
+                    .ok()
+                    .and_then(|u| u.extract::<String>().ok())
+                    .unwrap_or_default();
+                Error::NotLocalUrl(url)
             } else if e.is_instance_of::<NoSuchFile>(py) {
                 Error::NoSuchFile(arg(0))
             } else if e.is_instance_of::<FileExists>(py) {

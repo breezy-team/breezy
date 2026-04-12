@@ -211,7 +211,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # try for a write lock - need permission to get one anyhow
                     # to break locks.
                     state.lock_write()
-                except transport_errors.LockContention as err:
+                except errors.LockContention as err:
                     # oslocks fail when a process is still live: fail.
                     # TODO: get the locked lockdir info and give to the user to
                     # assist in debugging.

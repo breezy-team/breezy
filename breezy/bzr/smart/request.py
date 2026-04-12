@@ -651,7 +651,7 @@ def _translate_error(err):
         )
     elif isinstance(err, errors.TokenMismatch):
         return (b"TokenMismatch", err.given_token, err.lock_token)
-    elif isinstance(err, transport_errors.LockContention):
+    elif isinstance(err, errors.LockContention):
         return (b"LockContention",)
     elif isinstance(err, GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)

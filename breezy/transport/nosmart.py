@@ -21,8 +21,8 @@ and sometimes don't.  By using this decorator, you can force those transports
 to never have a smart medium.
 """
 
-from breezy import errors
 from dromedary import decorator
+from dromedary import errors
 
 
 class NoSmartTransportDecorator(decorator.TransportDecorator):

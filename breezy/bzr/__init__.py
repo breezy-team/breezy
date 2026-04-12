@@ -30,7 +30,9 @@ from typing import TYPE_CHECKING
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
-from .. import config, controldir, errors, pyutils, registry
+from catalogus import pyutils
+
+from .. import config, controldir, errors, registry
 from .. import transport as _mod_transport
 from .._bzr_rs import hashcache, rio
 from ..branch import format_registry as branch_format_registry
@@ -597,8 +599,7 @@ controldir.format_registry.register_alias("bzr", "2a")
 format_name = config.GlobalStack().get("default_format")
 controldir.format_registry.set_default(format_name)
 
-# Add smart protocol support to HTTP transports
-from .smart.http import install as _install_smart_http
-
-_install_smart_http()
-del _install_smart_http
+# Smart-protocol-over-HTTP support is provided by a thin HttpTransport
+# subclass registered in breezy.transport. We don't need to import anything
+# here at module load time — the subclass module is loaded lazily on first
+# http:// or https:// access.

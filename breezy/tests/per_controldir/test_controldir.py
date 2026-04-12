@@ -32,7 +32,7 @@ from breezy import (
     workingtree,
 )
 from breezy import repository as _mod_repository
-from breezy import revision as _mod_revision
+from breezy import errors, revision as _mod_revision
 from breezy.bzr import bzrdir as _mod_bzrdir
 from breezy.tests import ChrootedTestCase, TestNotApplicable, TestSkipped, fixtures
 from breezy.tests.per_controldir import TestCaseWithControlDir
@@ -1751,7 +1751,7 @@ class TestBreakLock(TestCaseWithControlDir):
                 # its still held by the explicit lock we took, and the break
                 # lock should not have touched it.
                 repo = thisdir.open_repository()
-                self.assertRaises(transport_errors.LockContention, repo.lock_write)
+                self.assertRaises(errors.LockContention, repo.lock_write)
         self.assertRaises(errors.LockBroken, master.unlock)
 
     def test_break_lock_tree(self):

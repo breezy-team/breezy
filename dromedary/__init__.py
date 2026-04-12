@@ -34,10 +34,8 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, TypeVar
 
-from breezy import (
-    hooks,
-    ui,
-)
+from . import _hooks
+from . import _ui
 from catalogus import registry
 import os
 
@@ -409,7 +407,7 @@ class AppendBasedFileStream(FileStream):
         pass
 
 
-class TransportHooks(hooks.Hooks):
+class TransportHooks(_hooks.Hooks):
     """Mapping of hook names to registered callbacks for transport hooks."""
 
     def __init__(self):
@@ -503,9 +501,7 @@ class Transport:
         while True:
             new_transport = cur_transport.clone("..")
             if new_transport.base == cur_transport.base:
-                from breezy.errors import CommandError
-
-                raise CommandError(
+                raise errors.TransportError(
                     f"Failed to create path prefix for {cur_transport.base}."
                 )
             try:
@@ -611,7 +607,7 @@ class Transport:
           bytes: Number of bytes read or written.
           direction: 'read' or 'write' or None.
         """
-        ui.ui_factory.report_transport_activity(self, bytes, direction)
+        _ui.report_transport_activity(self, bytes, direction)
 
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
@@ -672,7 +668,7 @@ class Transport:
         start with our base, but still be a relpath once aliasing is
         resolved.
         """
-        # TODO: This might want to use breezy.osutils.relpath
+        # TODO: This might want to use dromedary.osutils.relpath
         #       but we have to watch out because of the prefix issues
         if not (abspath == self.base[:-1] or abspath.startswith(self.base)):
             raise errors.PathNotChild(abspath, self.base)
@@ -1657,7 +1653,7 @@ def do_catching_redirections(
         # information if needed (like what file or directory we
         # were trying to act upon when the redirection loop
         # occurred).
-        raise TooManyRedirections
+        raise errors.TooManyRedirections()
 
 
 class Server:
@@ -1679,8 +1675,8 @@ def open_file(url):
     :param url: URL to open
     :return: A file-like object.
     """
-    base, filename = urlutils.split(path)
-    transport = get_transport(base)
+    base, filename = urlutils.split(url)
+    transport = get_transport_from_url(base)
     return open_file_via_transport(filename, transport)
 
 
@@ -1692,8 +1688,8 @@ def open_file_via_transport(filename, transport):
 
     def follow_redirection(transport, e, redirection_notice):
         logger.debug("%s", redirection_notice)
-        base, filename = urlutils.split(e.target)
-        redirected_transport = get_transport(base)
+        base, _filename = urlutils.split(e.target)
+        redirected_transport = get_transport_from_url(base)
         return redirected_transport
 
     return do_catching_redirections(open_file, transport, follow_redirection)
@@ -1769,12 +1765,3 @@ register_lazy_transport(
 
 register_transport_proto("vfat+")
 register_lazy_transport("vfat+", "dromedary.fakevfat", "FakeVFATTransportDecorator")
-
-register_transport_proto("nosmart+")
-register_lazy_transport("nosmart+", "dromedary.nosmart", "NoSmartTransportDecorator")
-
-register_transport_proto(
-    "bzr://", help="Fast access using the Bazaar smart server.", register_netloc=True
-)
-
-register_lazy_transport("bzr://", "dro

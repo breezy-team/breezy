@@ -20,9 +20,6 @@ Embedders should replace these functions to provide config/auth.
 The defaults provide basic functionality using the standard library.
 """
 
-import getpass
-
-
 def get_ssh_vendor_name():
     """Return the configured SSH vendor name, or None for auto-detect."""
     return None
@@ -35,6 +32,8 @@ def get_auth_user(scheme, host, port=None, default=None, ask=False, prompt=None)
     """
     if default is not None:
         return default
+    import getpass
+
     return getpass.getuser()
 
 
@@ -43,4 +42,6 @@ def get_auth_password(scheme, host, user, port=None):
 
     Default: prompts via getpass.
     """
+    import getpass
+
     return getpass.getpass(f"Password for {user}@{host}: ")

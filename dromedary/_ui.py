@@ -20,10 +20,6 @@ Embedders should replace these functions to integrate with their UI.
 The defaults provide basic functionality using the standard library.
 """
 
-import getpass
-import sys
-
-
 def report_transport_activity(transport, byte_count, direction):
     """Called during transport I/O to report activity. Default: no-op."""
     pass
@@ -31,6 +27,8 @@ def report_transport_activity(transport, byte_count, direction):
 
 def get_password(prompt="", **kwargs):
     """Prompt for a password. Default: uses getpass."""
+    import getpass
+
     if kwargs:
         prompt = prompt % kwargs
     return getpass.getpass(prompt)
@@ -45,4 +43,6 @@ def get_username(prompt, **kwargs):
 
 def show_message(msg):
     """Show a message to the user. Default: print to stderr."""
+    import sys
+
     print(msg, file=sys.stderr)

@@ -3406,12 +3406,15 @@ class DirState:
     def lock_read(self):
         """Acquire a read lock on the dirstate."""
         if self._lock_token is not None:
-            raise transport_errors.LockContention(self._lock_token)
+            raise errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = _transport_rs.ReadLock(self._filename)
+        try:
+            self._lock_token = _transport_rs.ReadLock(self._filename)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._filename) from e
         self._lock_state = "r"
         self._state_file = self._lock_token.f
         self._wipe_state()
@@ -3420,12 +3423,15 @@ class DirState:
     def lock_write(self):
         """Acquire a write lock on the dirstate."""
         if self._lock_token is not None:
-            raise transport_errors.LockContention(self._lock_token)
+            raise errors.LockContention(self._lock_token)
         # TODO: jam 20070301 Rather than wiping completely, if the blocks are
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = _transport_rs.WriteLock(self._filename)
+        try:
+            self._lock_token = _transport_rs.WriteLock(self._filename)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._filename) from e
         self._lock_state = "w"
         self._state_file = self._lock_token.f
         self._wipe_state()

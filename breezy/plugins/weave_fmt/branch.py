@@ -249,7 +249,7 @@ class BzrBranchFormat4(BranchFormat):
         control_files.create_lock()
         try:
             control_files.lock_write()
-        except transport_errors.LockContention:
+        except errors.LockContention:
             lock_taken = False
         else:
             lock_taken = True

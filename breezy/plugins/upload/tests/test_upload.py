@@ -38,10 +38,10 @@ def get_transport_scenarios():
     # Keep only the interesting ones for upload
     usable_classes = set()
     if features.paramiko.available():
-        from ....transport import sftp
+        from dromedary import sftp
 
         usable_classes.add(sftp.SFTPTransport)
-    from ....transport import local
+    from dromedary import local
 
     usable_classes.add(local.LocalTransport)
     for name, d in basis:

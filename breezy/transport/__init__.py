@@ -31,7 +31,7 @@ from dromedary import (
     LateReadError,
     Server,
     Transport,
-    TransportHooks,
+    _file_streams,
     do_catching_redirections,
     get_transport_from_path,
     get_transport_from_url,
@@ -42,6 +42,30 @@ from dromedary import (
     transport_list_registry,
     unregister_transport,
 )
+from breezy import hooks as _breezy_hooks
+
+
+class TransportHooks(_breezy_hooks.Hooks):
+    """Mapping of hook names to registered callbacks for transport hooks.
+
+    This is the breezy-flavoured version that integrates with breezy's
+    `known_hooks` registry; the dromedary core uses a minimal local hooks
+    implementation when used standalone.
+    """
+
+    def __init__(self):
+        super().__init__("breezy.transport", "Transport.hooks")
+        self.add_hook(
+            "post_connect",
+            "Called after a new connection is established or a reconnect "
+            "occurs. The sole argument passed is either the connected "
+            "transport or smart medium instance.",
+            (2, 5),
+        )
+
+
+# Override the dromedary-flavoured TransportHooks instance with our own.
+Transport.hooks = TransportHooks()
 from dromedary.errors import (
     FileExists,
     NoSuchFile,
@@ -107,28 +131,33 @@ set_user_agent(f"Breezy/{breezy.__version__}")
 
 def _breezy_credential_lookup(
     protocol, host, port=None, path=None, realm=None,
-    user=None, user_prompt=None, password_prompt=None,
 ):
     """Look up credentials using breezy's AuthenticationConfig."""
     from breezy import config
 
     auth_conf = config.AuthenticationConfig()
-    if user is None:
-        user = auth_conf.get_user(
-            protocol, host, port=port, path=path, realm=realm,
-            ask=user_prompt is not None,
-            prompt=user_prompt,
-        )
+    user = auth_conf.get_user(
+        protocol, host, port=port, path=path, realm=realm,
+    )
     password = None
-    if user is not None and password_prompt is not None:
+    if user is not None:
         password = auth_conf.get_password(
             protocol, host, user, port=port, path=path, realm=realm,
-            prompt=password_prompt,
         )
     return user, password
 
 
 set_credential_lookup(_breezy_credential_lookup)
+
+
+# Override dromedary's plain HttpTransport registration with one that knows
+# how to construct a bzr smart medium. The breezy module is loaded lazily on
+# first http:// access, so this doesn't pull in socket/ssl for commands that
+# never touch a remote.
+register_lazy_transport("http://", "breezy.transport.http", "HttpTransport")
+register_lazy_transport("https://", "breezy.transport.http", "HttpTransport")
+register_lazy_transport("http+urllib://", "breezy.transport.http", "HttpTransport")
+register_lazy_transport("https+urllib://", "breezy.transport.http", "HttpTransport")
 
 
 register_transport_proto("nosmart+")

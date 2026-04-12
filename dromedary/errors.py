@@ -123,7 +123,7 @@ class ShortReadvError(PathError):
         self.actual = actual
 
 
-class PathNotChild(PathError):
+class PathNotChild(PathError, ValueError):
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
     internal_error = False
@@ -312,16 +312,14 @@ class UnknownSmartMethod(TransportError):
         TransportError.__init__(self)
 
 
-# Lock errors
-class LockError(TransportError):
-    _fmt = "Lock error: %(msg)s"
-
-    def __init__(self, msg=""):
-        self.msg = msg
-        TransportError.__init__(self)
-
-
-class LockContention(LockError):
+# File-level locking errors raised by transport implementations.
+#
+# These class names are imported by the Rust extensions (see
+# dromedary/_transport_rs/src/lib.rs), so they must stay at module level.
+# Higher-level lock concepts (repository/branch/working-tree locks) belong
+# in the consuming application (e.g. breezy.errors), which translates these
+# at the boundary if it wants to surface them as its own lock errors.
+class LockContention(TransportError):
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
 
     internal_error = False
@@ -329,15 +327,41 @@ class LockContention(LockError):
     def __init__(self, lock, msg=""):
         self.lock = lock
         self.msg = msg
-        LockError.__init__(self, msg)
+        TransportError.__init__(self)
 
 
-class LockFailed(LockError):
+class LockFailed(TransportError):
     internal_error = False
 
     _fmt = "Cannot lock %(lock)s: %(why)s"
 
     def __init__(self, lock, why):
-        LockError.__init__(self, "")
         self.lock = lock
         self.why = why
+        TransportError.__init__(self)
+
+
+class SocketConnectionError(ConnectionError):
+    """Socket connection error."""
+
+    _fmt = "%(formatted_msg)s"
+
+    def __init__(self, host, port=None, msg=None, orig_error=None):
+        if msg is None:
+            msg = "Failed to connect to"
+        orig_error = "" if orig_error is None else "; " + str(orig_error)
+        self.host = host
+        port = "" if port is None else f":{port}"
+        self.port = port
+        self.formatted_msg = f"{msg} {host}{port}{orig_error}"
+        ConnectionError.__init__(self, self.formatted_msg)
+
+
+class StrangeHostname(TransportError):
+    """Refusing to connect to strange SSH hostname."""
+
+    _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
+
+    def __init__(self, hostname):
+        self.hostname = hostname
+        TransportError.__init__(self)

@@ -895,7 +895,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
         finally:
             repo.unlock()
         # We should be unable to relock the repo.
-        self.assertRaises(transport_errors.LockContention, repo.lock_write)
+        self.assertRaises(errors.LockContention, repo.lock_write)
         # Cleanup
         repo.lock_write(token)
         repo.dont_leave_lock_in_place()

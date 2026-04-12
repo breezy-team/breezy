@@ -642,13 +642,13 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             finally:
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()
-        except transport_errors.LockContention:
+        except errors.LockContention:
             return FailedSmartServerResponse((b"LockContention",))
         except errors.TokenMismatch:
             return FailedSmartServerResponse((b"TokenMismatch",))
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b"UnlockableTransport",))
-        except transport_errors.LockFailed as e:
+        except errors.LockFailed as e:
             return FailedSmartServerResponse(
                 (b"LockFailed", str(e.lock).encode("utf-8"), str(e.why).encode("utf-8"))
             )

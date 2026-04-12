@@ -16,10 +16,8 @@
 
 """Tests for breezy.counted_lock."""
 
-from dromedary.errors import LockError
-
 from ..counted_lock import CountedLock
-from ..errors import LockNotHeld, ReadOnlyError, TokenMismatch
+from ..errors import LockError, LockNotHeld, ReadOnlyError, TokenMismatch
 from . import TestCase
 
 

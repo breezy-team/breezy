@@ -18,14 +18,16 @@
 """Foundation SSH support for SFTP and smart server."""
 
 import errno
+from binascii import hexlify
 import logging
 import os
 import socket
 import subprocess
 import sys
 
-from breezy import config, errors
 from catalogus import registry
+from dromedary import _config, _ui, _bedding as bedding, errors
+from dromedary.errors import SocketConnectionError, StrangeHostname
 from dromedary.osutils import pathjoin, set_fd_cloexec, get_terminal_encoding
 
 from .._transport_rs import sftp as _sftp_rs
@@ -42,20 +44,24 @@ except ModuleNotFoundError:
     paramiko = None  # type: ignore
 
 
-from breezy.errors import SSHVendorNotFound, UnknownSSH  # noqa: F401
+class SSHVendorNotFound(errors.TransportError):
+    """No SSH implementation available."""
+
+    _fmt = (
+        "Don't know how to handle SSH connections."
+        " Please set BRZ_SSH environment variable."
+    )
 
 
-class StrangeHostname(errors.BzrError):
-    """Error raised when an SSH hostname looks suspicious.
+class UnknownSSH(errors.TransportError):
+    """Unknown SSH implementation specified."""
 
-    This error is raised when the hostname starts with a dash, which could
-    potentially be interpreted as a command-line option by the SSH client.
+    _fmt = "Unrecognised value for BRZ_SSH environment variable: %(vendor)s"
 
-    Attributes:
-        hostname: The suspicious hostname that was rejected.
-    """
+    def __init__(self, vendor):
+        self.vendor = vendor
+        errors.TransportError.__init__(self)
 
-    _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
 class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
@@ -87,7 +93,7 @@ class SSHVendorManager(registry.Registry[str, "SSHVendor", None]):
             UnknownSSH: If the configured vendor name is not found and cannot
                 be used as an executable path.
         """
-        vendor_name = config.GlobalStack().get("ssh")
+        vendor_name = _config.get_ssh_vendor_name()
         if vendor_name is not None:
             try:
                 vendor = self.get(vendor_name)
@@ -356,7 +362,7 @@ class SSHVendor:
         Raises:
             SocketConnectionError: Always raises this error with the provided details.
         """
-        raise errors.SocketConnectionError(
+        raise SocketConnectionError(
             host=host, port=port, msg=msg, orig_error=orig_error
         )
 
@@ -671,11 +677,10 @@ register_ssh_vendor("plink", PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
-    auth = config.AuthenticationConfig()
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user("ssh", host, port=port, default=getpass.getuser())
+        username = _config.get_auth_user("ssh", host, port=port)
     agent = paramiko.Agent()
     for key in agent.get_keys():
         logger.debug("Trying SSH agent key %s", hexlify(key.get_fingerprint()).upper())
@@ -739,7 +744,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
-    password = auth.get_password("ssh", host, username, port=port)
+    password = _config.get_auth_password("ssh", host, username, port=port)
     # get_password can still return None, which means we should not prompt
     if password is not None:
         try:
@@ -764,8 +769,8 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
         paramiko_transport.auth_publickey(username, key)
         return True
     except paramiko.PasswordRequiredException:
-        password = ui.ui_factory.get_password(
-            prompt="SSH %(filename)s password", filename=os.fsdecode(filename)
+        password = _ui.get_password(
+            "SSH %(filename)s password", filename=os.fsdecode(filename)
         )
         try:
             key = pkey_class.from_private_key_file(filename, password)

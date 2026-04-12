@@ -21,9 +21,10 @@ import os
 import posixpath
 import sys
 
-from breezy import osutils
+from dromedary import osutils
 from dromedary.errors import PathNotChild
-from breezy.tests import TestCase, TestCaseInTempDir, TestSkipped, features
+from dromedary.tests import TestCase, TestCaseInTempDir, TestSkipped
+from dromedary import tests as features
 from dromedary import urlutils
 
 

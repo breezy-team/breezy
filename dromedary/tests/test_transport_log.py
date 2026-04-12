@@ -17,8 +17,11 @@
 
 """Tests for log+ transport decorator."""
 
-from breezy.tests import TestCaseWithMemoryTransport
-from breezy.trace import mutter
+import logging
+
+from dromedary.tests import TestCaseWithMemoryTransport
+
+logger = logging.getLogger("dromedary.tests.test_transport_log")
 import dromedary as transport
 from dromedary.log import TransportLogDecorator
 
@@ -29,7 +32,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         logging_transport = transport.get_transport_from_url("log+" + base_transport.base)
 
         # operations such as mkdir are logged
-        mutter("where are you?")
+        logger.debug("where are you?")
         logging_transport.mkdir("subdir")
         log = self.get_log()
         # GZ 2017-05-24: Used to expect abspath logged, logger needs fixing.
