@@ -36,7 +36,7 @@ from ...tests import (
 from bzrformats import pack
 
 from .. import knit, knitpack_repo, pack_repo
-from ..index import *
+from bzrformats.index import *
 from ..knit import (
     AnnotatedKnitContent,
     KnitContent,

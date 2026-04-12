@@ -23,7 +23,7 @@ import zlib
 from ... import fifo_cache, lru_cache, osutils, tests, transport
 from ...tests import TestCaseWithTransport, features, scenarios
 from .. import btree_index
-from .. import index as _mod_index
+from bzrformats import index as _mod_index
 
 load_tests = scenarios.load_tests_apply_scenarios
 

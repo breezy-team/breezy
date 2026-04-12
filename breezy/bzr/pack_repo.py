@@ -42,7 +42,7 @@ from breezy import (
     ui,
     )
 from bzrformats import pack
-from breezy.bzr.index import (
+from bzrformats.index import (
     CombinedGraphIndex,
     )
 """,
@@ -51,8 +51,9 @@ from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 
 from .. import debug, errors, lockdir, osutils
+from bzrformats import index as _mod_index
+
 from ..bzr import btree_index, lockable_files
-from ..bzr import index as _mod_index
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin

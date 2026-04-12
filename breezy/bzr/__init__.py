@@ -214,6 +214,7 @@ def register_metadir(
         except ImportError as e:
             raise ImportError(f"failed to load {full_name}: {e}") from e
         except AttributeError as e:
+            import sys
             raise AttributeError(
                 f"no factory {full_name} in module {sys.modules[mod_name]!r}"
             ) from e

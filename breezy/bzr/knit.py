@@ -93,7 +93,8 @@ from ..bzr.versionedfile import (
 )
 from ..errors import InvalidRevisionId, RevisionNotPresent
 from ..osutils import contains_whitespace, sha_string, sha_strings
-from . import index as _mod_index
+from bzrformats import index as _mod_index
+
 from .annotate import VersionedFileAnnotator
 
 # TODO: Split out code specific to this format into an associated object.

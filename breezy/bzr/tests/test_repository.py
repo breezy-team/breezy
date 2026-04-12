@@ -51,6 +51,10 @@ from breezy.bzr import (
     vf_search,
 )
 from breezy.bzr import repository as bzrrepository
+from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.index import GraphIndex
+from breezy.errors import UnknownFormatError
+from breezy.repository import RepositoryFormat
 from breezy.tests import TestCase, TestCaseWithTransport
 
 from ...errors import UnknownFormatError

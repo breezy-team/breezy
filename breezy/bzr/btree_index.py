@@ -33,8 +33,8 @@ import zlib
 from bzrformats import chunk_writer
 
 from .. import debug, fifo_cache, lru_cache, osutils, trace, transport
-from . import index as _mod_index
-from .index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
+from bzrformats import index as _mod_index
+from bzrformats.index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
 _OPTION_ROW_LENGTHS = b"row_lengths="

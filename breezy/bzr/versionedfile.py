@@ -48,7 +48,7 @@ from .. import errors, osutils, revision, urlutils
 from .._bzr_rs import versionedfile as _versionedfile_rs
 from ..registry import Registry
 from bzrformats.textmerge import TextMerge
-from . import index
+from bzrformats import index
 
 FulltextContentFactory = _versionedfile_rs.FulltextContentFactory
 ChunkedContentFactory = _versionedfile_rs.ChunkedContentFactory

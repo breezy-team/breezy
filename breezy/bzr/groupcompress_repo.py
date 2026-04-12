@@ -24,8 +24,7 @@ from .. import revision as _mod_revision
 from bzrformats import pack
 
 from ..bzr import chk_map, chk_serializer, inventory, versionedfile
-from ..bzr import index as _mod_index
-from ..bzr import pack as _mod_pack
+from bzrformats import index as _mod_index
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource

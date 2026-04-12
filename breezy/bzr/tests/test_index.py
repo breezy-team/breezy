@@ -19,7 +19,7 @@
 from dromedary.errors import NoSuchFile
 
 from ... import tests, transport
-from .. import index as _mod_index
+from bzrformats import index as _mod_index
 
 
 class ErrorTests(tests.TestCase):

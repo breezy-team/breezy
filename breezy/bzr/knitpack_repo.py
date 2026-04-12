@@ -47,7 +47,7 @@ from breezy.bzr.knit import (
 )
 
 from ..bzr import btree_index
-from ..bzr.index import (
+from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,

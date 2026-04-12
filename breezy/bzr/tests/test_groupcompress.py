@@ -22,7 +22,7 @@ from ... import config, osutils, tests, trace
 from ...osutils import sha_string
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import btree_index, groupcompress, knit, versionedfile
-from .. import index as _mod_index
+from bzrformats import index as _mod_index
 from .test__groupcompress import compiled_groupcompress_feature
 
 
