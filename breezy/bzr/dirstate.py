@@ -228,6 +228,7 @@ import sys
 import time
 from stat import S_IEXEC
 
+from bzrformats import inventory
 from dromedary import _transport_rs
 from dromedary import errors as transport_errors
 
@@ -241,7 +242,6 @@ from .. import (
     trace,
     urlutils,
 )
-from . import inventory
 from .inventorytree import InventoryTreeChange
 
 # This is the Windows equivalent of ENOTDIR

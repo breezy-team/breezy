@@ -62,7 +62,9 @@ from ..transform import (
     unique_add,
 )
 from ..tree import find_previous_path
-from . import generate_ids, inventory, inventorytree, multiparent
+from bzrformats import inventory
+
+from . import generate_ids, inventorytree
 from .conflicts import Conflict
 
 

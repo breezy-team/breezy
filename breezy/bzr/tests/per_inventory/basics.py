@@ -20,7 +20,11 @@
 # hardcode that when we should be using self.make_inventory
 
 from breezy import errors, osutils
-from breezy.bzr import inventory
+from bzrformats import inventory
+from bzrformats.inventory import (
+    InventoryFile,
+    InventoryLink,
+)
 from breezy.bzr.tests.per_inventory import TestCaseWithInventory
 
 from ...inventory import InventoryFile, InventoryLink

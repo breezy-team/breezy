@@ -30,7 +30,7 @@ import fastbencode as bencode
 from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
 from ...repository import _strip_NULL_ghosts, network_format_registry
-from .. import inventory as _mod_inventory
+from bzrformats import inventory as _mod_inventory
 from bzrformats import pack
 
 from .. import inventory_delta, vf_search

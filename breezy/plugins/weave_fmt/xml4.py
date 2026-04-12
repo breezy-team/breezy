@@ -14,11 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""XML serialization support for weave format version 4."""
-
-from ... import revision as _mod_revision
-from ...bzr import inventory
-from ...bzr.inventory import ROOT_ID, Inventory
+from bzrformats import inventory
+from bzrformats.inventory import ROOT_ID, Inventory
 from ...bzr.xml_serializer import (
     Element,
     SubElement,

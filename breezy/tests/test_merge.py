@@ -23,7 +23,8 @@ from .. import branch as _mod_branch
 from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
-from ..bzr import inventory, knit, versionedfile
+from bzrformats import inventory
+from ..bzr import knit, versionedfile
 from ..bzr.conflicts import (
     ContentsConflict,
     DeletingParent,

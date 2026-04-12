@@ -17,7 +17,7 @@
 from io import StringIO
 
 from .. import add, errors, tests
-from ..bzr import inventory
+from bzrformats import inventory
 
 
 class AddCustomIDAction(add.AddAction):

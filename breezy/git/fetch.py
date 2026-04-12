@@ -25,7 +25,7 @@ from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tre
 from vcsgraph.tsort import topo_sort
 
 from .. import debug, osutils, trace
-from ..bzr.inventory import (
+from bzrformats.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,

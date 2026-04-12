@@ -27,7 +27,8 @@ from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
-from .. import bzrdir, dirstate, inventory, workingtree_4
+from bzrformats import inventory
+from .. import bzrdir, dirstate, workingtree_4
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):

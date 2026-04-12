@@ -22,8 +22,8 @@ from fastimport import processor
 from ... import debug, errors, osutils, revision
 from bzrformats import generate_ids
 
-from ...bzr import inventory, serializer
-from ...bzr.inventory_delta import InventoryDelta
+from bzrformats import inventory
+from ...bzr import serializer
 from ...trace import mutter, note, warning
 from .helpers import escape_commit_message, mode_to_kind
 

@@ -20,6 +20,7 @@ That is, tests for reconcile and check.
 """
 
 from breezy import osutils
+from bzrformats.inventory import Inventory, InventoryFile
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

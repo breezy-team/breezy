@@ -17,9 +17,8 @@
 """Black box tests for the reconcile command."""
 
 from breezy import controldir, tests
-from breezy.bzr import inventory
-
-from ...repository import WriteGroup
+from bzrformats import inventory
+from breezy.repository import WriteGroup
 
 
 class TrivialTest(tests.TestCaseWithTransport):

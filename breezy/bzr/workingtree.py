@@ -314,15 +314,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     def set_inventory(self, new_inventory_list):
-        """Set the inventory from a list of path/file_id/parent/kind tuples.
-
-        Args:
-            new_inventory_list: List of tuples containing (path, file_id, parent, kind).
-
-        Note:
-            This method should be deprecated in favor of taking a proper Inventory object.
-        """
-        from .inventory import (
+        from bzrformats.inventory import (
             Inventory,
             InventoryDirectory,
             InventoryFile,

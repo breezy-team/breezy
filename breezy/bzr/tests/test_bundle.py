@@ -26,7 +26,8 @@ from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
 from ...tests import features, test_commit
 from ...tree import InterTree
-from .. import bzrdir, inventory, knitrepo
+from bzrformats import inventory
+from .. import bzrdir, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
 from ..bundle.serializer import read_bundle, v09, v4, write_bundle
@@ -51,7 +52,7 @@ def get_inventory_text(repo, revision_id):
 
 class MockTree(InventoryTree):
     def __init__(self):
-        from ..inventory import ROOT_ID, InventoryDirectory
+        from bzrformats.inventory import ROOT_ID, InventoryDirectory
 
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
@@ -99,7 +100,7 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import InventoryDirectory, InventoryFile, InventoryLink
+        from bzrformats.inventory import InventoryDirectory, InventoryFile, InventoryLink
 
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)

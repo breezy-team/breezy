@@ -18,6 +18,8 @@
 
 import breezy
 from breezy import errors
+from breezy.bzr.bzrdir import BzrDir
+from bzrformats.inventory import Inventory
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

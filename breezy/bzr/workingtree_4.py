@@ -63,18 +63,7 @@ from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
-from .inventory import (
-    ROOT_ID,
-    DuplicateFileId,
-    Inventory,
-    InventoryDirectory,
-    InventoryEntry,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    _make_delta,
-)
-from .inventory_delta import InventoryDelta
+from bzrformats.inventory import ROOT_ID, Inventory, entry_factory
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir

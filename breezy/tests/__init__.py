@@ -4265,7 +4265,7 @@ def _test_suite_modules_to_doctest():
     return [
         "breezy",
         "breezy.branchbuilder",
-        "breezy.bzr.inventory",
+        "bzrformats.inventory",
         "breezy.decorators",
         "breezy.lockdir",
         "breezy.option",

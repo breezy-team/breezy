@@ -20,7 +20,7 @@ from .... import revision as _mod_revision
 from ....repository import WriteGroup
 from ....tests import TestNotApplicable
 from ....tests.per_repository import TestCaseWithRepository
-from ... import inventory
+from bzrformats import inventory
 from ...knitrepo import RepositoryFormatKnit
 
 

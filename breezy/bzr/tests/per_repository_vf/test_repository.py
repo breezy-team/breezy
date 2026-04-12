@@ -21,7 +21,8 @@ import contextlib
 from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
 from breezy import revision as _mod_revision
-from breezy.bzr import inventory, versionedfile, vf_repository
+from bzrformats import inventory
+from breezy.bzr import versionedfile, vf_repository
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

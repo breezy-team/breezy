@@ -21,7 +21,7 @@ import vcsgraph.graph as _mod_graph
 
 from ... import errors
 from ... import revision as _mod_revision
-from ...bzr import inventory
+from bzrformats import inventory
 from ...bzr.inventorytree import InventoryTreeChange
 
 

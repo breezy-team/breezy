@@ -24,8 +24,10 @@ In this module the interesting classes are:
 
 __all__ = ["InventoryDeltaSerializer"]
 
-from .._bzr_rs import inventory as _inventory_delta_rs
-from ..revision import RevisionID
+from .. import errors
+from ..osutils import basename
+from ..revision import NULL_REVISION
+from bzrformats import inventory
 
 FORMAT_1 = b"bzr inventory delta v1 (bzr 1.14)"
 

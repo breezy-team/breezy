@@ -64,15 +64,7 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import (
-    Inventory,
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    _make_delta,
-)
-from .inventory_delta import InventoryDelta
+from bzrformats.inventory import Inventory, entry_factory
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 

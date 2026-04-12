@@ -56,7 +56,8 @@ from bzrformats.xml_serializer import (
     get_utf8_or_ascii,  # noqa: F401
 )
 
-from . import inventory, serializer
+from bzrformats import inventory
+from . import serializer
 
 
 class XMLSerializer(XMLInventorySerializer, XMLRevisionSerializer):

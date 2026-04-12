@@ -17,8 +17,8 @@
 
 from ... import errors, osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import chk_map, groupcompress, inventory
-from ..inventory import (
+from bzrformats import inventory
+from bzrformats.inventory import (
     ROOT_ID,
     CHKInventory,
     DuplicateFileId,
@@ -34,7 +34,7 @@ from ..inventory import (
     chk_inventory_bytes_to_utf8name_key,
     mutable_inventory_from_tree,
 )
-from ..inventory_delta import InventoryDelta
+from .. import chk_map, groupcompress
 from . import TestCase, TestCaseWithTransport
 
 load_tests = load_tests_apply_scenarios

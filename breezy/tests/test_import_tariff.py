@@ -222,7 +222,7 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.version_info_formats.format_rio",
                 "breezy.bzr.xml_serializer",
                 "breezy.bzr.xml8",
-                "breezy.bzr.inventory",
+                "bzrformats.inventory",
                 "breezy.bzr.bzrdir",
                 "breezy.git.remote",
                 "breezy.git.commit",

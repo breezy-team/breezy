@@ -18,9 +18,10 @@ from io import BytesIO
 
 import breezy.bzr.xml5
 
-from ...revision import Revision
-from .. import inventory, serializer, xml6, xml7, xml8
-from ..inventory import Inventory
+from ... import fifo_cache
+from bzrformats import inventory
+from bzrformats.inventory import Inventory
+from .. import serializer, xml6, xml7, xml8
 from . import TestCase
 
 _revision_v5 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
@@ -347,26 +348,29 @@ class TestSerializer(TestCase):
         self.assertEqual(props, new_rev.properties)
 
     def get_sample_inventory(self):
-        inv = Inventory(root_id=None, revision_id=b"rev_outer")
-        inv.add(inventory.InventoryDirectory(b"tree-root-321", "", None, b"rev_outer"))
+        inv = Inventory(b"tree-root-321", revision_id=b"rev_outer")
+        # Replace root with one that has revision set
+        inv.delete(b"tree-root-321")
+        inv.add(
+            inventory.InventoryDirectory(
+                b"tree-root-321", "", None, revision=b"rev_outer",
+            )
+        )
         inv.add(
             inventory.InventoryFile(
-                b"file-id",
-                "file",
-                b"tree-root-321",
-                b"rev_outer",
-                text_sha1=b"A",
-                text_size=1,
+                b"file-id", "file", b"tree-root-321",
+                revision=b"rev_outer", text_sha1=b"A", text_size=1,
             )
         )
         inv.add(
             inventory.InventoryDirectory(
-                b"dir-id", "dir", b"tree-root-321", b"rev_outer"
+                b"dir-id", "dir", b"tree-root-321", revision=b"rev_outer",
             )
         )
         inv.add(
             inventory.InventoryLink(
-                b"link-id", "link", b"tree-root-321", b"rev_outer", symlink_target="a"
+                b"link-id", "link", b"tree-root-321",
+                revision=b"rev_outer", symlink_target="a",
             )
         )
         return inv

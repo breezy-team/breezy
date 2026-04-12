@@ -26,7 +26,7 @@ from dulwich.repo import Repo as GitRepo
 from ... import osutils
 from ...branch import Branch
 from ...bzr import knit, versionedfile
-from ...bzr.inventory import Inventory
+from bzrformats.inventory import Inventory
 from ...controldir import ControlDir
 from ...repository import Repository
 from ...tests import TestCaseWithTransport

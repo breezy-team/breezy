@@ -65,8 +65,7 @@ from . import bzrdir as _mod_bzrdir
 from . import inventory_delta, vf_repository, vf_search
 from . import testament as _mod_testament
 from .branch import BranchReferenceFormat
-from .inventory import Inventory
-from .inventory_delta import InventoryDelta
+from bzrformats.inventory import Inventory
 from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
 from .serializer import revision_format_registry

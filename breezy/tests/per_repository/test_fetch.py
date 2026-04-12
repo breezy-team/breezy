@@ -20,6 +20,7 @@ from dromedary import errors as transport_errors
 
 from breezy import controldir, errors, gpg, repository
 from breezy.bzr import remote
+from bzrformats.inventory import ROOT_ID
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
 

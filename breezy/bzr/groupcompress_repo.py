@@ -23,7 +23,8 @@ from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
 from bzrformats import pack
 
-from ..bzr import chk_map, chk_serializer, inventory, versionedfile
+from bzrformats import inventory
+from ..bzr import chk_map, chk_serializer, versionedfile
 from bzrformats import index as _mod_index
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
