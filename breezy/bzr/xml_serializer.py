@@ -110,10 +110,6 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
     parent_id = elt_get("parent_id")
     if parent_id is not None:
         parent_id = get_utf8_or_ascii(parent_id)
-    elif kind != "directory":
-        # Non-directory entries must have a parent_id; None means the XML
-        # didn't specify one (v5 format), use ROOT_ID as default
-        parent_id = inventory.ROOT_ID
 
     if kind == "directory":
         ie = inventory.InventoryDirectory(

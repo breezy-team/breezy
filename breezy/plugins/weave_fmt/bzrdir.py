@@ -53,6 +53,7 @@ from breezy.bzr import (
     versionedfile,
     weave,
     )
+from bzrformats import xml5
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
 """,
@@ -458,9 +459,7 @@ class ConvertBzrDir4To5(Converter):
             self.branch._transport.get("inventory")
         )
         f = BytesIO()
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        inventory_serializer_v5.write_inventory(inv, f, working=True)
+        xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes(
             "inventory", f.getvalue(), mode=self.controldir._get_file_mode()
         )
@@ -502,7 +501,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir("revision-store")
         revision_transport = self.controldir.transport.clone("revision-store")
         # TODO permissions
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats._bzr_rs import revision_serializer_v5 as serializer_v5
         from .repository import RevisionTextStore
 
         revision_store = RevisionTextStore(
@@ -581,7 +580,7 @@ class ConvertBzrDir4To5(Converter):
         from ...bzr.xml5 import inventory_serializer_v5
 
         inv_xml = self.inv_weave.get_lines(rev_id)
-        inv = inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
+        inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -598,16 +597,7 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        """Store the inventory in the new weave format.
-
-        Args:
-            rev: The revision object.
-            inv: The inventory to store.
-            present_parents: List of parent revision IDs that are present.
-        """
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        new_inv_xml = inventory_serializer_v5.write_inventory_to_lines(inv)
+        new_inv_xml = xml5.inventory_serializer_v5.write_inventory_to_lines(inv)
         new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id, present_parents, new_inv_xml)
         rev.inventory_sha1 = new_inv_sha1

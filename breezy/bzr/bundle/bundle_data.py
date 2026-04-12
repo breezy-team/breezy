@@ -30,7 +30,7 @@ from ...tree import InterTree
 from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ..inventorytree import InventoryTree
 from ..testament import StrictTestament
-from ..xml5 import inventory_serializer_v5
+from bzrformats.xml5 import inventory_serializer_v5 as serializer_v5
 from . import apply_bundle
 
 

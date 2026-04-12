@@ -34,10 +34,10 @@ from breezy import (
     )
 from bzrformats import pack
 from breezy.bzr import (
-    xml5,
     xml6,
     xml7,
     )
+from bzrformats import xml5
 from breezy.bzr.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
@@ -192,16 +192,8 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
-
-    @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _serializer(self):
+        return xml5.inventory_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -340,16 +332,8 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
-
-    @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _serializer(self):
+        return xml5.inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6")
@@ -493,16 +477,8 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
-
-    @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _serializer(self):
+        return xml5.inventory_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9")

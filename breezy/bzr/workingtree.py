@@ -59,8 +59,10 @@ from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
     inventory,
     serializer,
+    xml7,
     )
 from bzrformats import generate_ids
+from bzrformats import xml5
 """,
 )
 
@@ -218,14 +220,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        from .xml5 import inventory_serializer_v5
-
-        inventory_serializer_v5.write_inventory(self._inventory, out_file, working=True)
+        xml5.inventory_serializer_v5.write_inventory(self._inventory, out_file, working=True)
 
     def _deserialize(self, in_file):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5.read_inventory(in_file)
+        return xml5.inventory_serializer_v5.read_inventory(in_file)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.

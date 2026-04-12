@@ -32,11 +32,13 @@ class Serializer(InventorySerializer, RevisionSerializer):
     squashes_xml_invalid_characters = False
 
 
-revision_format_registry = SerializerRegistry()
-revision_format_registry.register_lazy("5", "breezy._bzr_rs", "revision_serializer_v5")
-revision_format_registry.register_lazy("8", "breezy._bzr_rs", "revision_serializer_v8")
-revision_format_registry.register_lazy(
-    "10", "breezy._bzr_rs", "revision_bencode_serializer"
+format_registry = SerializerRegistry()
+format_registry.register_lazy("5", "bzrformats.xml5", "inventory_serializer_v5")
+format_registry.register_lazy("6", "breezy.bzr.xml6", "serializer_v6")
+format_registry.register_lazy("7", "breezy.bzr.xml7", "serializer_v7")
+format_registry.register_lazy("8", "breezy.bzr.xml8", "serializer_v8")
+format_registry.register_lazy(
+    "9", "breezy.bzr.chk_serializer", "chk_serializer_255_bigpage"
 )
 
 

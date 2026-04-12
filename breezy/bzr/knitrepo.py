@@ -28,7 +28,11 @@ from breezy.bzr import (
     knit as _mod_knit,
     lockable_files,
     versionedfile,
+    serializer,
+    xml6,
+    xml7,
     )
+from bzrformats import xml5
 """,
 )
 import contextlib
@@ -246,16 +250,8 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     # repository objects will have passed to their constructor.
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
-
-    @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _serializer(self):
+        return xml5.inventory_serializer_v5
 
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
@@ -407,16 +403,8 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     _commit_builder_class = VersionedFileCommitBuilder
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
-
-    @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _serializer(self):
+        return xml5.inventory_serializer_v5
 
     def __ne__(self, other):
         """Check if this format is not equal to another.
