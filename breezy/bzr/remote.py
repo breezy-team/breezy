@@ -62,7 +62,9 @@ from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from . import inventory_delta, vf_repository, vf_search
+from bzrformats import inventory_delta
+
+from . import vf_repository, vf_search
 from . import testament as _mod_testament
 from .branch import BranchReferenceFormat
 from bzrformats.inventory import Inventory

@@ -33,7 +33,9 @@ from ...repository import _strip_NULL_ghosts, network_format_registry
 from bzrformats import inventory as _mod_inventory
 from bzrformats import pack
 
-from .. import inventory_delta, vf_search
+from bzrformats import inventory_delta
+
+from .. import vf_search
 from ..bzrdir import BzrDir
 from ..versionedfile import (
     ChunkedContentFactory,
