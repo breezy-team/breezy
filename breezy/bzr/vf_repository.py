@@ -64,7 +64,7 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from bzrformats.inventory import Inventory, entry_factory
+from bzrformats.inventory import Inventory, NoSuchId, entry_factory
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -428,7 +428,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             #   executable)
             try:
                 basis_entry = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 # a change from basis->some_parents but file_id isn't in basis
                 # so was new in the merge, which means it must have changed
                 # from basis -> current, and as it hasn't the add was reverted
@@ -1499,7 +1499,7 @@ class VersionedFileRepository(Repository):
                                 inventory_cache[parent_id] = inv
                             try:
                                 parent_entry = inv.get_entry(text_key[0])
-                            except (KeyError, errors.NoSuchId):
+                            except (KeyError, NoSuchId):
                                 parent_entry = None
                             if parent_entry is not None:
                                 parent_text_key = (text_key[0], parent_entry.revision)
@@ -2848,7 +2848,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     file_id, file_revision = file_key
                     try:
                         entry = basis_inv.get_entry(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         continue
                     if entry.revision == file_revision:
                         texts_possibly_new_in_tree.remove(file_key)
@@ -3113,7 +3113,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
         for _revision, tree in parent_trees.items():
             try:
                 path = tree.id2path(ie.file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 continue
             parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:

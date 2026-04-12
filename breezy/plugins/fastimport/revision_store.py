@@ -22,6 +22,7 @@ import vcsgraph.graph as _mod_graph
 from ... import errors
 from ... import revision as _mod_revision
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from ...bzr.inventorytree import InventoryTreeChange
 
 
@@ -47,7 +48,7 @@ class _TreeShim:
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
-                raise errors.NoSuchId(self, file_id)
+                raise NoSuchId(self, file_id)
             return new_path
         return self._basis_inv.id2path(file_id)
 
@@ -115,7 +116,7 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId as e:
+            except NoSuchId:
                 old_ie = None
                 if ie is None:
                     raise AssertionError("How is both old and new None?") from e
@@ -302,7 +303,7 @@ class RevisionStore:
         for inv in self._rev_parent_invs:
             try:
                 old_rev = inv.get_entry(ie.file_id).revision
-            except errors.NoSuchId:
+            except NoSuchId:
                 pass
             else:
                 if old_rev in head_set:

@@ -62,13 +62,14 @@ from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
-from . import dirstate
+from bzrformats import dirstate
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
+    NoSuchId,
     TreeReference,
     entry_factory,
 )
@@ -179,7 +180,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise BadReferenceTarget(self, sub_tree, "Trees have the same root id.")
             try:
                 self.id2path(sub_tree_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 pass
             else:
                 raise BadReferenceTarget(
@@ -530,12 +531,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
                             return osutils.pathjoin(
                                 nested_path, nested_tree.id2path(file_id)
                             )
-                        except errors.NoSuchId:
+                        except NoSuchId:
                             pass
-                raise errors.NoSuchId(tree=self, file_id=file_id)
-            return osutils.pathjoin(entry[0][0], entry[0][1]).decode(
-                "utf-8", "surrogateescape"
-            )
+                raise NoSuchId(tree=self, file_id=file_id)
+            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+            return path_utf8.decode("utf8")
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         entry = self._get_entry(path=path)
@@ -1430,7 +1430,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     ids_to_unversion.remove(entry[0][2])
                 block_index += 1
             if ids_to_unversion:
-                raise errors.NoSuchId(self, next(iter(ids_to_unversion)))
+                raise NoSuchId(self, next(iter(ids_to_unversion)))
             self._make_dirty(reset_inventory=False)
             # have to change the legacy inventory too.
             if self._inventory is not None:
@@ -1965,9 +1965,9 @@ class DirStateRevisionTree(InventoryTree):
                             return osutils.pathjoin(
                                 nested_path, nested_tree.id2path(file_id)
                             )
-                        except errors.NoSuchId:
+                        except NoSuchId:
                             pass
-                raise errors.NoSuchId(tree=self, file_id=file_id)
+                raise NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode("utf8")
 

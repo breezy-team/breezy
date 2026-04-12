@@ -27,6 +27,7 @@ from dromedary.local import file_kind, file_stat
 
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
+from bzrformats.inventory import NoSuchId
 from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
@@ -264,6 +265,8 @@ class InventoryTree(Tree):
         for file_id in file_ids:
             with contextlib.suppress(errors.NoSuchId):
                 ret.add(self.id2path(file_id))
+            except NoSuchId:
+                pass
         return ret
 
     def paths2ids(self, paths, trees=None, require_versioned=True):
@@ -347,7 +350,7 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         try:
             return inventory.id2path(file_id)
-        except errors.NoSuchId as e:
+        except NoSuchId as e:
             if recurse == "down":
                 if debug.debug_flag_enabled("evil"):
                     trace.mutter_callsite(
@@ -357,9 +360,9 @@ class InventoryTree(Tree):
                     subtree = self.get_nested_tree(path)
                     try:
                         return osutils.pathjoin(path, subtree.id2path(file_id))
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         pass
-            raise errors.NoSuchId(self, file_id) from e
+            raise NoSuchId(self, file_id) from e
 
     def all_file_ids(self):
         """Get all file IDs in the tree.
@@ -589,7 +592,7 @@ def _find_children_across_trees(specified_ids, trees):
             for tree in trees:
                 try:
                     path = tree.id2path(file_id)
-                except errors.NoSuchId:
+                except NoSuchId:
                     continue
                 try:
                     for child in tree.iter_child_entries(path):
@@ -1791,7 +1794,7 @@ class InterInventoryTree(InterTree):
             for parent_id in precise_file_ids:
                 try:
                     paths.append(self.target.id2path(parent_id))
-                except errors.NoSuchId:
+                except NoSuchId:
                     # This id has been dragged in from the source by delta
                     # expansion and isn't present in target at all: we don't
                     # need to check for path collisions on it.
@@ -1815,14 +1818,14 @@ class InterInventoryTree(InterTree):
                 if result is None:
                     try:
                         source_path = self.source.id2path(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         source_path = None
                         source_entry = None
                     else:
                         source_entry = self._get_entry(self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         target_path = None
                         target_entry = None
                     else:
@@ -1861,7 +1864,7 @@ class InterInventoryTree(InterTree):
             raise NoSuchFile(path)
         try:
             return self.target.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
+        except NoSuchId:
             return None
 
     def find_source_path(self, path, recurse="none"):
@@ -1876,7 +1879,7 @@ class InterInventoryTree(InterTree):
             raise NoSuchFile(path)
         try:
             return self.source.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
+        except NoSuchId:
             return None
 
 

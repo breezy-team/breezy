@@ -303,26 +303,6 @@ class NoPublicBranch(BzrError):
         BzrError.__init__(self, branch_url=public_location)
 
 
-class NoSuchId(BzrError):
-    """File ID not found in tree.
-
-    Raised when a requested file ID is not present in the tree.
-    """
-
-    _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
-
-    def __init__(self, tree, file_id):
-        """Initialize with the tree and missing file ID.
-
-        Args:
-            tree: The tree where the file ID was not found.
-            file_id: The file ID that was not found.
-        """
-        BzrError.__init__(self)
-        self.file_id = file_id
-        self.tree = tree
-
-
 class NotStacked(BranchError):
     """Branch is not stacked.
 

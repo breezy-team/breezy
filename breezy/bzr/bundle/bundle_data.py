@@ -21,8 +21,10 @@ import os
 import pprint
 from io import BytesIO
 
-from ... import cache_utf8, osutils
-from ...errors import BzrError, NoSuchId, TestamentMismatch
+from ... import cache_utf8, timestamp
+from bzrformats.inventory import NoSuchId
+
+from ...errors import BzrError, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning

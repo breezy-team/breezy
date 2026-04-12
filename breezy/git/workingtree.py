@@ -64,6 +64,7 @@ from .. import branch as _mod_branch
 from .. import conflicts as _mod_conflicts
 from .. import controldir as _mod_controldir
 from .. import errors, globbing, lock, osutils, trace, tree, urlutils, workingtree
+from bzrformats.inventory import NoSuchId
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..decorators import only_raises
@@ -321,7 +322,7 @@ class ContentsConflict(_mod_conflicts.Conflict):
             pass
         try:
             this_path = tt._tree.id2path(self.file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             # The file is not present anymore. This may happen if the user
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the

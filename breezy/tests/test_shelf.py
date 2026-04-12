@@ -18,6 +18,7 @@ import os
 
 from .. import errors, ignores, osutils, shelf, tests, transform, workingtree
 from bzrformats import pack
+from bzrformats.inventory import NoSuchId
 from . import KnownFailure, features
 
 EMPTY_SHELF = (
@@ -634,8 +635,8 @@ class TestUnshelver(tests.TestCaseWithTransport):
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             self.addCleanup(unshelver.finalize)
             unshelver.make_merger().do_merge()
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"foo-id")
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"bar-id")
+        self.assertRaises(NoSuchId, tree.id2path, b"foo-id")
+        self.assertRaises(NoSuchId, tree.id2path, b"bar-id")
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree("tree")

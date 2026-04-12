@@ -27,6 +27,7 @@ __docformat__ = "google"
 import operator
 
 from .. import errors, ui
+from bzrformats.inventory import NoSuchId
 from ..i18n import gettext
 from ..revision import NULL_REVISION
 from ..trace import mutter
@@ -346,7 +347,7 @@ def _parent_keys_for_root_version(
                     parent_ids.append(
                         tree.get_file_revision(tree.id2path(root_id, recurse="none"))
                     )
-                except errors.NoSuchId:
+                except NoSuchId:
                     # not in the tree
                     pass
     # Drop non-head parents

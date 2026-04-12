@@ -32,7 +32,7 @@ import sys
 from .. import errors, osutils
 from ..osutils import (is_inside, is_inside_any, parent_directories, pathjoin,
                        splitpath)
-from .dirstate import DirState, DirstateCorrupt
+from bzrformats.dirstate import DirState, DirstateCorrupt
 from .inventorytree import InventoryTreeChange
 
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM

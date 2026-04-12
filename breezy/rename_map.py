@@ -30,6 +30,7 @@ from io import BytesIO
 from . import errors, osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
+from bzrformats.inventory import NoSuchId
 
 
 class RenameMap:
@@ -253,6 +254,8 @@ class RenameMap:
         for f in matches.values():
             with contextlib.suppress(errors.NoSuchId):
                 file_id_query.append(self.tree.id2path(f))
+            except NoSuchId:
+                pass
         for old_path, entry in self.tree.iter_entries_by_dir(
             specific_files=file_id_query
         ):

@@ -16,6 +16,8 @@
 
 from dromedary.errors import NoSuchFile
 
+from bzrformats.inventory import NoSuchId
+
 from breezy import conflicts, errors, osutils, revisiontree, tests
 from breezy.bzr import workingtree_4
 from breezy.tests.per_tree import TestCaseWithTree
@@ -145,7 +147,7 @@ class TestFileIds(TestCaseWithTree):
         with tree.lock_read():
             self.assertEqual("a", tree.id2path(a_id))
             # other ids give an error- don't return None for this case
-            self.assertRaises(errors.NoSuchId, tree.id2path, b"a")
+            self.assertRaises(NoSuchId, tree.id2path, b"a")
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree("wt")

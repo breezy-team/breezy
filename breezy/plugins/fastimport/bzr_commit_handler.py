@@ -23,6 +23,7 @@ from ... import debug, errors, osutils, revision
 from bzrformats import generate_ids
 
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from ...bzr import serializer
 from ...trace import mutter, note, warning
 from .helpers import escape_commit_message, mode_to_kind
@@ -589,7 +590,7 @@ class CommitHandler(processor.CommitHandler):
         # Record it
         try:
             old_ie = inv.get_entry(file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             try:
                 self.record_new(path, ie)
             except:
@@ -673,7 +674,7 @@ class CommitHandler(processor.CommitHandler):
                 raise KeyError
             try:
                 file_id = inv.path2id(dirname)
-            except errors.NoSuchId as e:
+            except NoSuchId:
                 # In a CHKInventory, this is raised if there's no root yet
                 raise KeyError from e
             if file_id is None:
@@ -709,7 +710,7 @@ class CommitHandler(processor.CommitHandler):
                 return
             try:
                 ie = inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 self.mutter("ignoring delete of %s as not in inventory", path)
                 return
         self.record_delete(path, ie)

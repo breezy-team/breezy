@@ -27,8 +27,9 @@ from ...bzr.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
-from bzrformats import inventory
-from .. import bzrdir, dirstate, workingtree_4
+from bzrformats import dirstate, inventory
+from bzrformats.inventory import NoSuchId
+from .. import bzrdir, workingtree_4
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):
@@ -528,7 +529,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.build_tree(["tree/a", "tree/b"])
         tree.add(["a"], ids=[b"a-id"])
         self.assertEqual("a", tree.id2path(b"a-id"))
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"a")
+        self.assertRaises(NoSuchId, tree.id2path, "a")
         tree.commit("a")
         tree.add(["b"], ids=[b"b-id"])
 
@@ -542,9 +543,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual(new_path, tree.id2path(b"a-id"))
         tree.commit("b\xb5rry")
         tree.unversion([new_path])
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"a-id")
+        self.assertRaises(NoSuchId, tree.id2path, b"a-id")
         self.assertEqual("b", tree.id2path(b"b-id"))
-        self.assertRaises(errors.NoSuchId, tree.id2path, b"c-id")
+        self.assertRaises(NoSuchId, tree.id2path, b"c-id")
 
     def test_unique_root_id_per_tree(self):
         # each time you initialize a new tree, it gets a different root id

@@ -21,6 +21,8 @@ import re
 
 from dromedary import errors as transport_errors
 
+from bzrformats.inventory import NoSuchId
+
 from .. import controldir, errors, osutils, tests, urlutils
 from ..bzr.smart import transport as _smart_transport
 
@@ -137,7 +139,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_no_such_id(self):
-        error = errors.NoSuchId("atree", "anid")
+        error = NoSuchId("atree", "anid")
         self.assertEqualDiff(
             'The file id "anid" is not present in the tree atree.', str(error)
         )

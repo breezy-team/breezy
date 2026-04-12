@@ -24,6 +24,7 @@ from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from ..bzr import knit, versionedfile
 from ..bzr.conflicts import (
     ContentsConflict,
@@ -2636,7 +2637,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b"B-id", b"C-id"], [], revision_id=b"D-id")
         wt, conflicts = self.do_merge(builder, b"F-id")
         self.assertEqual([], conflicts)
-        self.assertRaises(errors.NoSuchId, wt.id2path, b"foo-id")
+        self.assertRaises(NoSuchId, wt.id2path, b"foo-id")
 
     def test_executable_changes(self):
         #   A       Path at 'foo'

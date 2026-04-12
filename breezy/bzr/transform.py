@@ -63,6 +63,7 @@ from ..transform import (
 )
 from ..tree import find_previous_path
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 
 from . import generate_ids, inventorytree
 from .conflicts import Conflict
@@ -245,7 +246,7 @@ class TreeTransformBase(TreeTransform):
         else:
             try:
                 path = self._tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
@@ -1784,8 +1785,11 @@ class InventoryTreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
+        from bzrformats.inventory_delta import InventoryDelta
         if self.final_file_id(self.root) is None:
             inventory_delta = [e for e in inventory_delta if e[0] != ""]
+        if not isinstance(inventory_delta, InventoryDelta):
+            inventory_delta = InventoryDelta(list(inventory_delta))
         self._tree.apply_inventory_delta(inventory_delta)
         self._apply_observed_sha1s()
         self._done = True
@@ -1999,7 +2003,7 @@ class InventoryTreeTransform(DiskTreeTransform):
                     )
                 try:
                     old_path = self._tree.id2path(new_entry.file_id)
-                except errors.NoSuchId:
+                except NoSuchId:
                     old_path = None
                 new_executability = self._new_executability.get(trans_id)
                 if new_executability is not None and new_entry.kind == "file":
@@ -2239,7 +2243,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         try:
             return self._final_paths._determine_path(trans_id)
         except NoFinalPath as e:
-            raise errors.NoSuchId(self, file_id) from e
+            raise NoSuchId(self, file_id) from e
 
     def extras(self):
         """Get extra (unversioned) files.

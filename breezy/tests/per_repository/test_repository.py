@@ -34,6 +34,7 @@ from ... import (
     workingtree,
 )
 from ... import delta as _mod_delta
+from bzrformats.inventory import NoSuchId
 from ... import revision as _mod_revision
 from ...bzr import branch as _mod_bzrbranch
 from ...bzr import knitpack_repo, remote
@@ -520,7 +521,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repository.iter_files_bytes([(file1_id, b"rev3", "file1-notpresent")]),
         )
         self.assertRaises(
-            (errors.RevisionNotPresent, errors.NoSuchId),
+            (errors.RevisionNotPresent, NoSuchId),
             list,
             repository.iter_files_bytes([(b"file3-id", b"rev3", "file1-notpresent")]),
         )

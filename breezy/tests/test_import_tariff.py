@@ -278,7 +278,7 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.bugtracker",
                 "breezy.bundle.commands",
                 "breezy.cmd_version_info",
-                "breezy.bzr.dirstate",
+                "bzrformats.dirstate",
                 "breezy.bzr._dirstate_helpers_py",
                 "breezy.bzr._dirstate_helpers_pyx",
                 "breezy.externalcommand",

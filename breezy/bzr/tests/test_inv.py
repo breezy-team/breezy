@@ -18,6 +18,7 @@
 from ... import errors, osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from bzrformats.inventory import (
     ROOT_ID,
     CHKInventory,
@@ -602,7 +603,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta([("path", None, b"file-id", None)])
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(None, res_inv.path2id("path"))
-        self.assertRaises(errors.NoSuchId, res_inv.id2path, b"file-id")
+        self.assertRaises(NoSuchId, res_inv.id2path, b"file-id")
 
     def test_rename_file(self):
         inv = self.get_empty_inventory()
@@ -1054,7 +1055,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(b"ffff", file_entry.text_sha1)
         self.assertEqual(1, file_entry.text_size)
         self.assertEqual(True, file_entry.executable)
-        self.assertRaises(errors.NoSuchId, new_inv.get_entry, "missing")
+        self.assertRaises(NoSuchId, new_inv.get_entry, "missing")
 
     def test_has_id_true(self):
         inv = Inventory(revision_id=b"revid", root_revision=b"rootrev")

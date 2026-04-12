@@ -17,6 +17,7 @@
 """Walk multiple trees simultaneously."""
 
 from . import errors, osutils
+from bzrformats.inventory import NoSuchId
 
 
 class MultiWalker:
@@ -124,7 +125,7 @@ class MultiWalker:
             return extra_entries.pop(file_id)
         try:
             cur_path = other_tree.id2path(file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             cur_path = None
         if cur_path is None:
             return (None, None)

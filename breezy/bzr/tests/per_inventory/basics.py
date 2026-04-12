@@ -21,6 +21,7 @@
 
 from breezy import errors, osutils
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from bzrformats.inventory import (
     InventoryFile,
     InventoryLink,
@@ -114,7 +115,7 @@ class TestInventoryCreateByApplyDelta(TestInventory):
             ),
             b"new-rev-2",
         )
-        self.assertRaises(errors.NoSuchId, inv.id2path, b"a-id")
+        self.assertRaises(NoSuchId, inv.id2path, b"a-id")
 
     def test_rename(self):
         inv = self.make_init_inventory()

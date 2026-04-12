@@ -39,6 +39,7 @@ from breezy import (
     ui,
     )
 from bzrformats import generate_ids
+from bzrformats.inventory import NoSuchId
 from breezy.i18n import gettext
 """,
 )
@@ -1216,7 +1217,7 @@ class Merge3Merger:
 
             try:
                 base_path = self.base_tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 base_path = None
                 base_ie = _none_entry
             else:
@@ -1226,7 +1227,7 @@ class Merge3Merger:
 
             try:
                 this_path = self.this_tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 this_ie = _none_entry
                 this_path = None
             else:
@@ -2227,9 +2228,9 @@ class MergeIntoMergeType(Merge3Merger):
         from .bzr.inventory import InventoryDirectory
 
         try:
-            self.this_tree.id2path(subdir.file_id)
-        except errors.NoSuchId:
-            file_id = subdir.file_id
+            self.this_tree.id2path(merge_into_root.file_id)
+        except NoSuchId:
+            pass
         else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are

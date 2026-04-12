@@ -62,6 +62,7 @@ from breezy.bzr import (
     xml7,
     )
 from bzrformats import generate_ids
+from bzrformats.inventory import NoSuchId
 from bzrformats import xml5
 """,
 )
@@ -1037,7 +1038,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     file_id = cache_utf8.encode(s.get("file_id"))
                     try:
                         path = self.id2path(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         continue
                     text_hash = s.get("hash").encode("ascii")
                     if text_hash == self.get_file_sha1(path):
@@ -1455,7 +1456,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     )
                 try:
                     from_entry = from_inv.get_entry(from_id)
-                except errors.NoSuchId:
+                except NoSuchId:
                     # put entry back in the inventory so we can rename it
                     from_entry = basis_from_inv.get_entry(from_id).copy()
                     from_inv.add(from_entry)
@@ -1557,7 +1558,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     with basis.lock_read():
                         try:
                             basis.id2path(to_id)
-                        except errors.NoSuchId:
+                        except NoSuchId:
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:

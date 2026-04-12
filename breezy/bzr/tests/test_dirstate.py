@@ -26,8 +26,8 @@ from ... import controldir, errors, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
-from bzrformats import inventory
-from .. import dirstate, inventorytree, workingtree_4
+from bzrformats import dirstate, inventory
+from .. import inventorytree, workingtree_4
 
 # TODO:
 # TESTS to write:

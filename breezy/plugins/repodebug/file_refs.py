@@ -17,6 +17,7 @@
 """Command for finding file references in repository inventories."""
 
 from ... import commands, controldir, errors
+from bzrformats.inventory import NoSuchId
 
 
 class cmd_file_refs(commands.Command):
@@ -47,7 +48,7 @@ class cmd_file_refs(commands.Command):
         for inv in repo.iter_inventories(all_invs, "unordered"):
             try:
                 entry = inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 # This file doesn't even appear in this inv.
                 continue
             if entry.revision == rev_id:

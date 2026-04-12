@@ -17,6 +17,7 @@
 
 """Tests for the MemoryTree class."""
 
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from .. import errors
@@ -173,7 +174,7 @@ class TestMemoryTree(TestCaseWithTransport):
             )
             tree.unversion(["foo"])
             self.assertFalse(tree.is_versioned("foo"))
-            self.assertRaises(errors.NoSuchId, tree.id2path, b"foo-id")
+            self.assertRaises(NoSuchId, tree.id2path, b"foo-id")
 
     def test_last_revision(self):
         """There should be a last revision method we can call."""

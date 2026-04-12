@@ -17,6 +17,7 @@
 
 from .... import errors, osutils, tests
 from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from .. import revision_store
 from . import FastimportFeature
 
@@ -50,7 +51,7 @@ class Test_TreeShim(tests.TestCase):
         self.assertEqual("foo", shim.id2path(b"foo-id"))
         self.assertEqual("bar", shim.id2path(b"bar-id"))
         self.assertEqual("bar/baz", shim.id2path(b"baz-id"))
-        self.assertRaises(errors.NoSuchId, shim.id2path, b"qux-id")
+        self.assertRaises(NoSuchId, shim.id2path, b"qux-id")
 
     def test_id2path_with_delta(self):
         basis_inv = self.make_trivial_basis_inv()
@@ -66,7 +67,7 @@ class Test_TreeShim(tests.TestCase):
         self.assertEqual("", shim.id2path(b"TREE_ROOT"))
         self.assertEqual("foo2", shim.id2path(b"foo-id"))
         self.assertEqual("bar", shim.id2path(b"bar-id"))
-        self.assertRaises(errors.NoSuchId, shim.id2path, b"baz-id")
+        self.assertRaises(NoSuchId, shim.id2path, b"baz-id")
 
     def test_path2id(self):
         basis_inv = self.make_trivial_basis_inv()
