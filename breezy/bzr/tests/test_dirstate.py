@@ -2998,7 +2998,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == "":
                 # Replace the root entry
-                inv.rename_id(inv.root.file_id, file_id)
+                inv.change_root_id(file_id)
                 dir_ids[""] = file_id
             else:
                 inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))

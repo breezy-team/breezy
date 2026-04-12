@@ -63,7 +63,15 @@ from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
-from bzrformats.inventory import ROOT_ID, Inventory, entry_factory
+from bzrformats.inventory import (
+    ROOT_ID,
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    TreeReference,
+    entry_factory,
+)
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -345,16 +353,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if not (current_entry[0][0] == b"d"):  # directory
             raise AssertionError(current_entry)
         inv = Inventory(root_id=current_id)
-        # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         utf8_decode = cache_utf8._utf8_decode
-        # we could do this straight out of the dirstate; it might be fast
-        # and should be profiled - RBC 20070216
-        parent_ies: dict[bytes, InventoryEntry] = {b"": inv.root}
+        # Track parent file_ids by dirblock path for directory entries
+        parent_ids = {b"": current_id}
         for block in state._dirblocks[1:]:  # skip the root
             dirname = block[0]
             try:
-                parent_ie = parent_ies[dirname]
+                parent_id = parent_ids[dirname]
             except KeyError:
                 # all the paths in this block are not versioned in this tree
                 continue
@@ -368,51 +374,27 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
-                    # The executable bit is only needed on win32, where this is the only way
-                    # we know the executable bit.
-                    # the text {sha1,size} fields are optional
                     inv_entry = InventoryFile(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
-                        revision=None,
-                        executable=(executable != 0),
+                        file_id, name_unicode, parent_id,
+                        executable=executable,
                     )
                 elif kind == "directory":
                     inv_entry = InventoryDirectory(
-                        file_id, name_unicode, parent_ie.file_id, revision=None
+                        file_id, name_unicode, parent_id,
                     )
-                    # add this entry to the parent map.
-                    parent_ies[(dirname + b"/" + name).strip(b"/")] = inv_entry
-                elif kind == "tree-reference":
-                    inv_entry = TreeReference(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
-                        revision=None,
-                        reference_revision=link_or_sha1 or None,
-                    )
+                    parent_ids[(dirname + b"/" + name).strip(b"/")] = file_id
                 elif kind == "symlink":
                     inv_entry = InventoryLink(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
-                        revision=None,
-                        symlink_target=utf8_decode(link_or_sha1)[0],
+                        file_id, name_unicode, parent_id,
+                    )
+                elif kind == "tree-reference":
+                    inv_entry = TreeReference(
+                        file_id, name_unicode, parent_id,
+                        reference_revision=link_or_sha1 or None,
                     )
                 else:
-                    raise AssertionError(f"unknown kind {kind!r}")
-                try:
-                    inv.add(inv_entry)
-                except DuplicateFileId as err:
-                    raise AssertionError(
-                        f"file_id {file_id} already in"
-                        f" inventory as {inv.get_entry(file_id)}"
-                    ) from err
-                except errors.InconsistentDelta as err:
-                    raise AssertionError(
-                        f"name {name_unicode!r} already in parent"
-                    ) from err
+                    raise AssertionError("unknown kind {!r}".format(kind))
+                inv.add(inv_entry)
         self._inventory = inv
 
     def _get_entry(self, file_id=None, path=None):
@@ -2101,20 +2083,16 @@ class DirStateRevisionTree(InventoryTree):
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         utf8_decode = cache_utf8._utf8_decode
-        # we could do this straight out of the dirstate; it might be fast
-        # and should be profiled - RBC 20070216
-        parent_ies = {b"": inv.root}
+        parent_ids = {b"": inv.root.file_id}
         for block in self._dirstate._dirblocks[1:]:  # skip root
             dirname = block[0]
             try:
-                parent_ie = parent_ies[dirname]
+                parent_id = parent_ids[dirname]
             except KeyError:
-                # all the paths in this block are not versioned in this tree
                 continue
             for key, entry in block[1]:
                 (minikind, fingerprint, size, executable, revid) = entry[parent_index]
                 if minikind in (b"a", b"r"):  # absent, relocated
-                    # not this tree
                     continue
                 name = key[1]
                 name_unicode = utf8_decode(name)[0]
@@ -2122,33 +2100,27 @@ class DirStateRevisionTree(InventoryTree):
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
                     inv_entry = InventoryFile(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
+                        file_id, name_unicode, parent_id,
                         revision=revid,
-                        executable=bool(executable),
+                        executable=executable,
                         text_size=size,
                         text_sha1=fingerprint,
                     )
                 elif kind == "directory":
                     inv_entry = InventoryDirectory(
-                        file_id, name_unicode, parent_ie.file_id, revision=revid
+                        file_id, name_unicode, parent_id,
+                        revision=revid,
                     )
-
-                    parent_ies[(dirname + b"/" + name).strip(b"/")] = inv_entry
+                    parent_ids[(dirname + b"/" + name).strip(b"/")] = file_id
                 elif kind == "symlink":
                     inv_entry = InventoryLink(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
+                        file_id, name_unicode, parent_id,
                         revision=revid,
                         symlink_target=utf8_decode(fingerprint)[0],
                     )
                 elif kind == "tree-reference":
                     inv_entry = TreeReference(
-                        file_id,
-                        name_unicode,
-                        parent_ie.file_id,
+                        file_id, name_unicode, parent_id,
                         revision=revid,
                         reference_revision=fingerprint or None,
                     )
@@ -2156,17 +2128,7 @@ class DirStateRevisionTree(InventoryTree):
                     raise AssertionError(
                         f"cannot convert entry {entry!r} into an InventoryEntry"
                     )
-                try:
-                    inv.add(inv_entry)
-                except DuplicateFileId as err:
-                    raise AssertionError(
-                        f"file_id {file_id} already in"
-                        f" inventory as {inv.get_entry(file_id)}"
-                    ) from err
-                except errors.InconsistentDelta as err:
-                    raise AssertionError(
-                        f"name {name_unicode!r} already in parent"
-                    ) from err
+                inv.add(inv_entry)
         self._inventory = inv
 
     def get_file_mtime(self, path):

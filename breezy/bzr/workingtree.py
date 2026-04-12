@@ -401,11 +401,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             not be None, but rather a valid file id.
         """
         inv = self._inventory
-        # TODO: it might be nice to exit early if there was nothing
-        # to do, saving us from trigger a sync on unlock.
         self._inventory_is_modified = True
-        # we preserve the root inventory entry object, but
-        # unlinkit from the byid index
         inv.change_root_id(file_id)
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True, force=False):
@@ -1051,22 +1047,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
-        """Subsume another tree into this working tree.
-
-        Args:
-            other_tree: The tree to subsume into this one.
-
-        Raises:
-            BadSubsumeSource: If the trees have the same root or other issues.
-        """
-        from .inventory import InventoryDirectory
-
-        def add_children(inventory, other_inventory, entry):
-            for child_entry in other_inventory.get_children(entry.file_id).values():
-                inventory.add(child_entry)
-                if child_entry.kind == "directory":
-                    add_children(inventory, other_inventory, child_entry)
-
         with self.lock_write():
             if other_tree.path2id("") == self.path2id(""):
                 raise errors.BadSubsumeSource(
@@ -1083,22 +1063,28 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 raise errors.BadSubsumeSource(
                     self, other_tree, "Parent directory is not versioned."
                 )
-            # We need to ensure that the result of a fetch will have a
-            # versionedfile for the other_tree root, and only fetching into
-            # RepositoryKnit2 guarantees that.
             if not self.branch.repository.supports_rich_root():
                 raise errors.SubsumeTargetNeedsUpgrade(other_tree)
             with other_tree.lock_tree_write():
-                other_root = InventoryDirectory(
-                    other_tree.root_inventory.root.file_id,
+                other_inv = other_tree.root_inventory
+                other_root = other_inv.root
+                inv = self.root_inventory
+                # Add the other tree's root as a subdirectory
+                from bzrformats.inventory import InventoryDirectory
+                new_dir = InventoryDirectory(
+                    other_root.file_id,
                     osutils.basename(other_tree_path),
                     new_root_parent,
+                    revision=other_root.revision,
                 )
-                self.root_inventory.add(other_root)
-                add_children(self.root_inventory, other_tree.root_inventory, other_root)
-                self._write_inventory(self.root_inventory)
-                # normally we don't want to fetch whole repositories, but i
-                # think here we really do want to consolidate the whole thing.
+                inv.add(new_dir)
+                # Add all entries from the other tree, reparenting
+                # root children to the new directory
+                for path, entry in other_inv.iter_entries():
+                    if entry.file_id == other_root.file_id:
+                        continue
+                    inv.add(entry)
+                self._write_inventory(inv)
                 for parent_id in other_tree.get_parent_ids():
                     self.branch.fetch(other_tree.branch, parent_id)
                     self.add_parent_tree_id(parent_id)
