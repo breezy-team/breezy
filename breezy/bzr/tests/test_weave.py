@@ -24,12 +24,11 @@
 from io import BytesIO
 from pprint import pformat
 
-from bzrformats.weavefile import write_weave
 from bzrformats.errors import ReservedId, RevisionAlreadyPresent, RevisionNotPresent
+from bzrformats.weave import Weave, WeaveFormatError, WeaveInvalidChecksum
+from bzrformats.weavefile import read_weave, write_weave
 
 from ...osutils import sha_string
-from bzrformats.weave import Weave, WeaveFormatError, WeaveInvalidChecksum
-from ..weavefile import read_weave
 from . import TestCase, TestCaseInTempDir
 
 # texts for use in testing
