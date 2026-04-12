@@ -121,10 +121,10 @@ _mod_workingtree.format_registry.register_extra_lazy(
 )
 
 serializer.inventory_format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "inventory_serializer_v4"
+    "4", "bzrformats.xml4", "inventory_serializer_v4"
 )
 serializer.revision_format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "revision_serializer_v4"
+    "4", "bzrformats.xml4", "revision_serializer_v4"
 )
 
 

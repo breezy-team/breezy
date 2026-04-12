@@ -56,6 +56,7 @@ from breezy.bzr import (
 from bzrformats import xml5
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
+from bzrformats import xml4
 """,
 )
 

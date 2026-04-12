@@ -525,7 +525,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from .xml4 import revision_serializer_v4
+        from bzrformats.xml4 import revision_serializer_v4
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),

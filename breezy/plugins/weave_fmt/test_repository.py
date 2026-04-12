@@ -34,7 +34,7 @@ from ...bzr.bzrdir import BzrDirMetaFormat1
 from ...errors import IllegalPath
 from ...repository import InterRepository, Repository
 from ...tests import TestCase, TestCaseWithTransport
-from . import xml4
+from bzrformats import xml4
 from .bzrdir import BzrDirFormat6
 from .repository import (
     InterWeaveRepo,
