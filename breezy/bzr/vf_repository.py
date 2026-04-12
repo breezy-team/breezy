@@ -65,6 +65,7 @@ from ..repository import (
 )
 from ..trace import mutter, note
 from bzrformats.inventory import Inventory, NoSuchId, entry_factory
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -712,6 +713,11 @@ class VersionedFileRepository(Repository):
     # get_commit_builder.
     _commit_builder_class = VersionedFileCommitBuilder
 
+    # The serializers used for this repository's inventories and revisions.
+    # Set by subclasses; the base class declares them so we can compare formats.
+    _inventory_serializer: "InventorySerializer"
+    _revision_serializer: "RevisionSerializer"
+
     def add_fallback_repository(self, repository):
         """Add a repository to use for looking up data not held locally.
 
@@ -877,7 +883,6 @@ class VersionedFileRepository(Repository):
 
     def _add_revision(self, revision):
         lines = self._revision_serializer.write_revision_to_lines(revision)
-        self._revision_serializer.read_revision_from_string(b"".join(lines))
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
         self.revisions.add_lines(key, parents, lines)
@@ -1656,11 +1661,6 @@ class VersionedFileRepository(Repository):
         return result
 
     def get_serializer_format(self):
-        """Get the format number of the inventory serializer.
-
-        Returns:
-            The inventory serializer's format number.
-        """
         return self._inventory_serializer.format_num
 
     def _get_inventory_xml(self, revision_id):
@@ -1912,7 +1912,8 @@ class StreamSink:
                     write_group_tokens = self.target_repo.suspend_write_group()
                     return write_group_tokens, missing_keys
                 hint = self.target_repo.commit_write_group()
-                dest_format = self.target_repo._format
+                to_serializer = self.target_repo._format._inventory_serializer
+                src_serializer = src_format._inventory_serializer
                 if (
                     dest_format._revision_serializer != src_format._revision_serializer
                     or dest_format._inventory_serializer
@@ -1941,7 +1942,8 @@ class StreamSink:
             raise errors.ObjectNotLocked(self)
         if not self.target_repo.is_in_write_group():
             raise errors.BzrError("you must already be in a write group")
-        dest_format = self.target_repo._format
+        to_serializer = self.target_repo._format._inventory_serializer
+        src_serializer = src_format._inventory_serializer
         new_pack = None
         if (
             src_format._revision_serializer == dest_format._revision_serializer
@@ -2111,13 +2113,9 @@ class StreamSource:
 
         That is on revisions and signatures.
         """
-        src_format = self.from_repository._format
-        dest_format = self.to_format
-        return (
-            self.to_format._fetch_uses_deltas
-            and src_format._revision_serializer == dest_format._revision_serializer
-            and src_format._inventory_serializer == dest_format._inventory_serializer
-        )
+        src_serializer = self.from_repository._format._inventory_serializer
+        target_serializer = self.to_format._inventory_serializer
+        return self.to_format._fetch_uses_deltas and src_serializer == target_serializer
 
     def _fetch_revision_texts(self, revs):
         # fetch signatures first and then the revision texts
@@ -2298,9 +2296,7 @@ class StreamSource:
         elif (
             not from_format.supports_chks
             and not self.to_format.supports_chks
-            and from_format._revision_serializer == self.to_format._revision_serializer
-            and from_format._inventory_serializer
-            == self.to_format._inventory_serializer
+            and from_format._inventory_serializer == self.to_format._inventory_serializer
         ):
             # Essentially the same format.
             return self._get_simple_inventory_stream(revision_ids, missing=missing)

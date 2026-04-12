@@ -641,7 +641,6 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         if (  # noqa: SIM103
             to_format.supports_chks
             and from_format.repository_class is to_format.repository_class
-            and from_format._revision_serializer == to_format._revision_serializer
             and from_format._inventory_serializer == to_format._inventory_serializer
         ):
             # Source is CHK, but target matches: that's ok

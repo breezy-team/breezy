@@ -33,11 +33,8 @@ from breezy import (
     ui,
     )
 from bzrformats import pack
-from breezy.bzr import (
-    xml6,
-    xml7,
-    )
-from bzrformats import xml5
+from bzrformats import xml5, xml6, xml7
+from bzrformats._bzr_rs import revision_serializer_v5
 from breezy.bzr.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
@@ -79,8 +76,8 @@ class KnitPackRepository(PackRepository, KnitRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Initialize a KnitPackRepository.
 
@@ -98,8 +95,8 @@ class KnitPackRepository(PackRepository, KnitRepository):
             a_controldir,
             control_files,
             _commit_builder_class,
-            _revision_serializer,
             _inventory_serializer,
+            _revision_serializer,
         )
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
@@ -192,8 +189,12 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _serializer(self):
+    def _inventory_serializer(self):
         return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -234,16 +235,12 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     supports_tree_reference = True
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -284,16 +281,12 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     supports_tree_reference = False
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -332,8 +325,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _serializer(self):
+    def _inventory_serializer(self):
         return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6")
@@ -370,16 +367,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -421,16 +414,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         matching = controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -477,8 +466,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _serializer(self):
+    def _inventory_serializer(self):
         return xml5.inventory_serializer_v5
+
+    @property
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9")
@@ -514,16 +507,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9-rich-root")
@@ -563,16 +552,12 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("development5-subtree")

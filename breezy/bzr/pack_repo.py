@@ -57,9 +57,10 @@ from ..bzr import btree_index, lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
+
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
-from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -2007,8 +2008,8 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: type[VersionedFileCommitBuilder]
-    _revision_serializer: RevisionSerializer
     _inventory_serializer: InventorySerializer
+    _revision_serializer: RevisionSerializer
 
     def __init__(
         self,
@@ -2016,8 +2017,8 @@ class PackRepository(MetaDirVersionedFileRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Initialize a PackRepository.
 
@@ -2031,8 +2032,8 @@ class PackRepository(MetaDirVersionedFileRepository):
         """
         MetaDirRepository.__init__(self, _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._revision_serializer = _revision_serializer
         self._inventory_serializer = _inventory_serializer
+        self._revision_serializer = _revision_serializer
         self._reconcile_fixes_text_parents = True
         if self._format.supports_external_lookups:
             self._unstacked_provider = _vcsgraph.CachingParentsProvider(
@@ -2270,10 +2271,10 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
     _commit_builder_class: type[VersionedFileCommitBuilder]
-    # Set this attribute in derived clases to control the _serializer that the
-    # repository objects will have passed to their constructor.
-    _revision_serializer: RevisionSerializer
+    # Set these attributes in derived clases to control the serializers that
+    # the repository objects will have passed to their constructor.
     _inventory_serializer: InventorySerializer
+    _revision_serializer: RevisionSerializer
     # Packs are not confused by ghosts.
     supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
@@ -2328,8 +2329,8 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
             a_controldir=a_controldir,
             control_files=control_files,
             _commit_builder_class=self._commit_builder_class,
-            _revision_serializer=self._revision_serializer,
             _inventory_serializer=self._inventory_serializer,
+            _revision_serializer=self._revision_serializer,
         )
 
 

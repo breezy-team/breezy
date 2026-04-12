@@ -35,10 +35,8 @@ import itertools
 from breezy import (
     ui,
     )
-from vcsgraph import (
-    graph as _mod_graph,
-    known_graph as _mod_known_graph,
-)
+from bzrformats import xml5
+from bzrformats._bzr_rs import revision_serializer_v5
 """,
 )
 from dromedary.errors import NoSuchFile
@@ -74,16 +72,12 @@ class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _escape(self, file_or_path):
         """Escape a file or path for use in a URL.
@@ -293,8 +287,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             control_files: The lockable files instance for this repository.
         """
         super().__init__(_format, a_controldir, control_files)
-        self._revision_serializer = _format._revision_serializer
         self._inventory_serializer = _format._inventory_serializer
+        self._revision_serializer = _format._revision_serializer
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -569,16 +563,12 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -637,16 +627,12 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     supports_funky_characters = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -714,16 +700,12 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     fast_deltas = False
 
     @property
-    def _revision_serializer(self):
-        from ...bzr.xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from ...bzr.xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     @classmethod
     def get_format_string(cls):

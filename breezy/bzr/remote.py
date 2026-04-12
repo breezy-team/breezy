@@ -2007,24 +2007,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         return self._custom_format.pack_compresses
 
     @property
-    def _revision_serializer(self):
-        """Get the revision serializer for this format.
-
-        Returns:
-            The revision serializer from the underlying format.
-        """
-        self._ensure_real()
-        return self._custom_format._revision_serializer
-
-    @property
     def _inventory_serializer(self):
-        """Get the inventory serializer for this format.
-
-        Returns:
-            The inventory serializer from the underlying format.
-        """
         self._ensure_real()
         return self._custom_format._inventory_serializer
+
+    @property
+    def _revision_serializer(self):
+        self._ensure_real()
+        return self._custom_format._revision_serializer
 
 
 class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebugMixin):
@@ -4049,12 +4039,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._format.rich_root_data
 
     @property
-    def _revision_serializer(self):
-        return self._format._revision_serializer
-
-    @property
     def _inventory_serializer(self):
         return self._format._inventory_serializer
+
+    @property
+    def _revision_serializer(self):
+        return self._format._revision_serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         """Store a revision signature.
@@ -4624,9 +4614,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.from_revision_serialiser = (
-            self.from_repository._format._revision_serializer
-        )
+        self.from_serialiser = self.from_repository._format._revision_serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not

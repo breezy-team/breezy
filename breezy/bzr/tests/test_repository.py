@@ -364,8 +364,8 @@ class DummyRepository:
     """A dummy repository for testing."""
 
     _format = None
-    _revision_serializer = None
     _inventory_serializer = None
+    _revision_serializer = None
 
     def supports_rich_root(self):
         if self._format is not None:
@@ -436,15 +436,15 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_b._format = RepositoryFormat()
         repo = self.make_repository(".")
         # hack dummies to look like repo somewhat.
-        dummy_a._revision_serializer = repo._revision_serializer
         dummy_a._inventory_serializer = repo._inventory_serializer
+        dummy_a._revision_serializer = repo._revision_serializer
         dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_a._format.supports_full_versioned_files = (
             repo._format.supports_full_versioned_files
         )
-        dummy_b._revision_serializer = repo._revision_serializer
         dummy_b._inventory_serializer = repo._inventory_serializer
+        dummy_b._revision_serializer = repo._revision_serializer
         dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_b._format.rich_root_data = repo._format.rich_root_data
         dummy_b._format.supports_full_versioned_files = (

@@ -535,9 +535,7 @@ class BundleWriteOperation:
             revision_order: List of revision IDs to add in order.
         """
         parent_map = self.repository.get_parent_map(revision_order)
-        revision_to_bytes = (
-            self.repository._revision_serializer.write_revision_to_string
-        )
+        revision_to_bytes = self.repository._revision_serializer.write_revision_to_string
         revisions = self.repository.get_revisions(revision_order)
         for revision in revisions:
             revision_id = revision.revision_id
@@ -924,8 +922,7 @@ class RevisionInstaller:
                 inventory data to install.
         """
         if (
-            self._info[b"serializer"]
-            == self._repository._inventory_serializer.format_num
+            self._info[b"serializer"] == self._repository._inventory_serializer.format_num
             and self._repository._inventory_serializer.support_altered_by_hack
         ):
             return self._install_mp_records_keys(self._repository.inventories, records)

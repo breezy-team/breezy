@@ -909,8 +909,8 @@ class CHKInventoryRepository(PackRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Overridden to change pack collection class."""
         super().__init__(
@@ -918,8 +918,8 @@ class CHKInventoryRepository(PackRepository):
             a_controldir,
             control_files,
             _commit_builder_class,
-            _revision_serializer,
             _inventory_serializer,
+            _revision_serializer,
         )
         index_transport = self._transport.clone("indices")
         self._pack_collection = GCRepositoryPackCollection(
@@ -1263,10 +1263,7 @@ class CHKInventoryRepository(PackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if (
-            self._format._inventory_serializer == to_format._inventory_serializer
-            and self._format._revision_serializer == to_format._revision_serializer
-        ):
+        if self._format._inventory_serializer == to_format._inventory_serializer:
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different.
             # Actually, this test is just slightly looser than exact so that
@@ -1546,8 +1543,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _revision_serializer = _bzr_rs.revision_bencode_serializer
-    _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
+    _inventory_serializer = chk_serializer.chk_bencode_serializer
+    _revision_serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder
