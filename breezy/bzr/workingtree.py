@@ -59,11 +59,9 @@ from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
     inventory,
     serializer,
-    xml7,
     )
-from bzrformats import generate_ids
+from bzrformats import generate_ids, xml5, xml7
 from bzrformats.inventory import NoSuchId
-from bzrformats import xml5
 """,
 )
 
@@ -609,9 +607,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory."""
         inventory.revision_id = revision_id
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7.write_inventory_to_lines(inventory)
+        return xml7.inventory_serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         """Set the list of conflicts for this working tree.
@@ -917,7 +913,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 from .xml7 import inventory_serializer_v7
 
                 try:
-                    inv = inventory_serializer_v7.read_inventory_from_lines(xml_lines)
+                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:

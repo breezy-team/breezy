@@ -67,8 +67,7 @@ from . import testament as _mod_testament
 from .branch import BranchReferenceFormat
 from bzrformats.inventory import Inventory
 from .inventorytree import InventoryRevisionTree
-from .lockable_files import LockableFiles
-from .serializer import revision_format_registry
+from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from .smart import client, vfs
 from .smart import repository as smart_repo
 from .smart import transport as _smart_transport

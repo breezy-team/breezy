@@ -23,9 +23,11 @@ from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
 from bzrformats import pack
 
-from bzrformats import inventory
-from ..bzr import chk_map, chk_serializer, versionedfile
+from bzrformats import chk_serializer, inventory
 from bzrformats import index as _mod_index
+from bzrformats._bzr_rs import revision_bencode_serializer
+
+from ..bzr import chk_map, versionedfile
 from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
@@ -1543,8 +1545,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _inventory_serializer = chk_serializer.chk_bencode_serializer
-    _revision_serializer = chk_serializer.chk_bencode_serializer
+    _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
+    _revision_serializer = revision_bencode_serializer
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder

@@ -27,7 +27,9 @@ from ... import (
 )
 from ... import repository as _mod_repository
 from ... import workingtree as _mod_workingtree
-from ...bzr import BzrProber, register_metadir, serializer
+from bzrformats import serializer
+
+from ...bzr import BzrProber, register_metadir
 
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
@@ -118,11 +120,11 @@ _mod_workingtree.format_registry.register_extra_lazy(
     "breezy.plugins.weave_fmt.workingtree", "WorkingTreeFormat2"
 )
 
-serializer.revision_format_registry.register_lazy(
-    "4", "breezy.plugins.weave_fmt.xml4", "revision_serializer_v4"
-)
 serializer.inventory_format_registry.register_lazy(
     "4", "breezy.plugins.weave_fmt.xml4", "inventory_serializer_v4"
+)
+serializer.revision_format_registry.register_lazy(
+    "4", "breezy.plugins.weave_fmt.xml4", "revision_serializer_v4"
 )
 
 

@@ -14,48 +14,96 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from xml.etree.ElementTree import ElementTree, tostring
+
 from bzrformats import inventory
 from bzrformats.inventory import ROOT_ID, Inventory
-from ...bzr.xml_serializer import (
+from bzrformats.xml_serializer import (
     Element,
     SubElement,
     XMLInventorySerializer,
     XMLRevisionSerializer,
     escape_invalid_chars,
 )
+
 from ...errors import BzrError
 
 
-class Revision(_mod_revision.Revision):
-    """Revision class with additional v4-specific attributes."""
-
-    def __new__(cls, *args, **kwargs):
-        """Create new Revision instance with inventory_id and parent_sha1s.
-
-        Args:
-            *args: Positional arguments passed to parent class.
-            **kwargs: Keyword arguments, including inventory_id and parent_sha1s.
-
-        Returns:
-            New Revision instance with additional attributes.
-        """
-        inventory_id = kwargs.pop("inventory_id", None)
-        parent_sha1s = kwargs.pop("parent_sha1s", None)
-        self = _mod_revision.Revision.__new__(cls, *args, **kwargs)
-        self.inventory_id = inventory_id
-        self.parent_sha1s = parent_sha1s
-        return self
-
-
-class _RevisionSerializer_v4(XMLRevisionSerializer):
-    """Version 0.0.4 serializer.
-
-    You should use the revision_serializer_v4 singleton.
+class _InventorySerializer_v4(XMLInventorySerializer):
+    """Version 0.0.4 inventory serializer.
 
     v4 serialisation is no longer supported, only deserialisation.
     """
 
     __slots__: list[str] = []
+
+    def _unpack_inventory(
+        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
+    ):
+        """Construct from XML Element.
+
+        :param revision_id: Ignored parameter used by xml5.
+        """
+        root_id = elt.get("file_id")
+        root_id = root_id.encode("ascii") if root_id else ROOT_ID
+        inv = Inventory(root_id)
+        for e in elt:
+            ie = self._unpack_entry(
+                e, entry_cache=entry_cache, return_from_cache=return_from_cache
+            )
+            if ie.parent_id == ROOT_ID:
+                ie.parent_id = root_id
+            inv.add(ie)
+        return inv
+
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
+        # original format inventories don't have a parent_id for
+        # nodes in the root directory, but it's cleaner to use one
+        # internally.
+        parent_id = elt.get("parent_id")
+        parent_id = parent_id.encode("ascii") if parent_id else ROOT_ID
+
+        file_id = elt.get("file_id").encode("ascii")
+        kind = elt.get("kind")
+        if kind == "directory":
+            ie = inventory.InventoryDirectory(file_id, elt.get("name"), parent_id)
+        elif kind == "file":
+            text_id = elt.get("text_id")
+            if text_id is not None:
+                text_id = text_id.encode("utf-8")
+            text_sha1 = elt.get("text_sha1")
+            if text_sha1 is not None:
+                text_sha1 = text_sha1.encode("ascii")
+            v = elt.get("text_size")
+            ie = inventory.InventoryFile(
+                file_id,
+                elt.get("name"),
+                parent_id,
+                text_id=text_id,
+                text_sha1=text_sha1,
+                text_size=v and int(v),
+            )
+        elif kind == "symlink":
+            ie = inventory.InventoryLink(
+                file_id,
+                elt.get("name"),
+                parent_id,
+                symlink_target=elt.get("symlink_target"),
+            )
+        else:
+            raise BzrError("unknown kind {!r}".format(kind))
+
+        return ie
+
+
+class _RevisionSerializer_v4(XMLRevisionSerializer):
+    """Version 0.0.4 revision serializer.
+
+    v4 serialisation is no longer supported, only deserialisation.
+    """
+
+    def write_revision_to_string(self, rev):
+        return tostring(self._pack_revision(rev)) + b"\n"
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree."""
@@ -85,9 +133,6 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
                 if i < len(rev.parent_sha1s):
                     p.set("revision_sha1", rev.parent_sha1s[i])
         return root
-
-    def write_revision_to_string(self, rev):
-        return tostring(self._pack_revision(rev)) + b"\n"
 
     def _write_element(self, elt, f):
         ElementTree(elt).write(f, "utf-8")
@@ -143,103 +188,5 @@ class _RevisionSerializer_v4(XMLRevisionSerializer):
         )
 
 
-class _InventorySerializer_v4(XMLInventorySerializer):
-    """Version 0.0.4 serializer.
-
-    You should use the inventory_serializer_v4 singleton.
-
-    v4 serialisation is no longer supported, only deserialisation.
-    """
-
-    def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element."""
-        e = Element("entry")
-        e.set("name", ie.name)
-        e.set("file_id", ie.file_id.decode("ascii"))
-        e.set("kind", ie.kind)
-
-        if ie.text_size is not None:
-            e.set("text_size", "%d" % ie.text_size)
-
-        for f in ["text_id", "text_sha1", "symlink_target"]:
-            v = getattr(ie, f)
-            if v is not None:
-                e.set(f, v)
-
-        # to be conservative, we don't externalize the root pointers
-        # for now, leaving them as null in the xml form.  in a future
-        # version it will be implied by nested elements.
-        if ie.parent_id != ROOT_ID:
-            e.set("parent_id", ie.parent_id)
-
-        e.tail = "\n"
-
-        return e
-
-    def _unpack_inventory(
-        self, elt, revision_id=None, entry_cache=None, return_from_cache=False
-    ):
-        """Construct from XML Element.
-
-        :param revision_id: Ignored parameter used by xml5.
-        """
-        root_id = elt.get("file_id")
-        root_id = root_id.encode("ascii") if root_id else ROOT_ID
-        inv = Inventory(root_id)
-        for e in elt:
-            ie = self._unpack_entry(
-                e,
-                entry_cache=entry_cache,
-                return_from_cache=return_from_cache,
-                root_id=root_id,
-            )
-            inv.add(ie)
-        return inv
-
-    def _unpack_entry(self, elt, root_id, entry_cache=None, return_from_cache=False):
-        # original format inventories don't have a parent_id for
-        # nodes in the root directory, but it's cleaner to use one
-        # internally.
-        parent_id = elt.get("parent_id")
-        parent_id = parent_id.encode("ascii") if parent_id else ROOT_ID
-        if parent_id == ROOT_ID:
-            parent_id = root_id
-        file_id = elt.get("file_id").encode("ascii")
-        kind = elt.get("kind")
-        if kind == "directory":
-            ie = inventory.InventoryDirectory(file_id, elt.get("name"), parent_id)
-        elif kind == "file":
-            text_id = elt.get("text_id")
-            if text_id is not None:
-                text_id = text_id.encode("utf-8")
-            text_sha1 = elt.get("text_sha1")
-            if text_sha1 is not None:
-                text_sha1 = text_sha1.encode("ascii")
-            v = elt.get("text_size")
-            text_size = v and int(v)
-
-            ie = inventory.InventoryFile(
-                file_id,
-                elt.get("name"),
-                parent_id,
-                text_size=text_size,
-                text_sha1=text_sha1,
-                text_id=text_id,
-            )
-        elif kind == "symlink":
-            ie = inventory.InventoryLink(
-                file_id,
-                elt.get("name"),
-                parent_id,
-                symlink_target=elt.get("symlink_target"),
-            )
-        else:
-            raise BzrError(f"unknown kind {kind!r}")
-
-        ## mutter("read inventoryentry: %r", elt.attrib)
-
-        return ie
-
-
-revision_serializer_v4 = _RevisionSerializer_v4()
 inventory_serializer_v4 = _InventorySerializer_v4()
+revision_serializer_v4 = _RevisionSerializer_v4()

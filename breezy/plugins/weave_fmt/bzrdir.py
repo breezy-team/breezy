@@ -448,16 +448,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree("text-store")
 
     def _convert_working_inv(self):
-        """Convert the working inventory from format 4 to format 5.
-
-        Reads the inventory using the format 4 serializer and writes it
-        back using the format 5 serializer.
-        """
-        from .xml4 import inventory_serializer_v4
-
-        inv = inventory_serializer_v4.read_inventory(
-            self.branch._transport.get("inventory")
-        )
+        inv = xml4.inventory_serializer_v4.read_inventory(self.branch._transport.get("inventory"))
         f = BytesIO()
         xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes(
@@ -563,7 +554,7 @@ class ConvertBzrDir4To5(Converter):
         from .xml4 import inventory_serializer_v4
 
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            inv = inventory_serializer_v4.read_inventory(f)
+            inv = xml4.inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         self.revisions[rev_id]
         return inv

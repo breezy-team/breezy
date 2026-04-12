@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import breezy.bzr.xml6
-from breezy.bzr.inventory import _make_delta
+import breezy.bzr.workingtree_4
+from bzrformats import xml7
+
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -58,7 +59,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertTrue(t._transport.has("basis-inventory-cache"))
 
         basis_inv_lines = t.read_basis_inventory()
-        basis_inv = breezy.bzr.xml7.inventory_serializer_v7.read_inventory_from_lines(
+        basis_inv = xml7.inventory_serializer_v7.read_inventory_from_lines(
             basis_inv_lines
         )
         self.assertEqual(r2, basis_inv.revision_id)

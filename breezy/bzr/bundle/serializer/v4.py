@@ -35,7 +35,8 @@ from .... import revision as _mod_revision
 from ....i18n import ngettext
 from bzrformats import pack
 
-from ... import serializer
+from bzrformats import serializer
+
 from ... import versionedfile as _mod_versionedfile
 from ...inventory import _make_delta
 from .. import bundle_data

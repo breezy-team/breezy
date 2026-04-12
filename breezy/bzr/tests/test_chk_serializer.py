@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ..._bzr_rs import revision_bencode_serializer
-from ...revision import Revision
+from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
+from bzrformats.revision import Revision
+
 from . import TestCase
 
 _working_revision_bencode1 = (
@@ -102,26 +103,26 @@ class TestBEncodeSerializer1(TestCase):
 
     def test_roundtrips_non_ascii(self):
         rev = Revision(
-            b"revid1",
-            message="\n\xe5me",
-            committer="Erik B\xe5gfors",
-            timestamp=1242385452,
-            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
+            revision_id=b"revid1",
             parent_ids=[],
+            committer="Erik B\xe5gfors",
+            message="\n\xe5me",
             properties={},
+            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
+            timestamp=1242385452,
             timezone=3600,
         )
-        self.assertRoundTrips(revision_bencode_serializer, rev)
+        self.assertRoundTrips(chk_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):
         rev = Revision(
-            b"revid1",
-            properties={},
+            revision_id=b"revid1",
             parent_ids=[],
-            message="\t\ue000",
             committer="Erik B\xe5gfors",
+            message="\t\ue000",
+            properties={},
+            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
             timestamp=1242385452,
             timezone=3600,
-            inventory_sha1=b"4a2c7fb50e077699242cf6eb16a61779c7b680a7",
         )
-        self.assertRoundTrips(revision_bencode_serializer, rev)
+        self.assertRoundTrips(chk_bencode_serializer, rev)
