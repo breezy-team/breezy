@@ -28,7 +28,7 @@ from bzrformats.weavefile import write_weave
 from bzrformats.errors import ReservedId, RevisionAlreadyPresent, RevisionNotPresent
 
 from ...osutils import sha_string
-from ..weave import Weave, WeaveFormatError, WeaveInvalidChecksum
+from bzrformats.weave import Weave, WeaveFormatError, WeaveInvalidChecksum
 from ..weavefile import read_weave
 from . import TestCase, TestCaseInTempDir
 

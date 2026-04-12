@@ -63,7 +63,7 @@ from ..versionedfile import (
     VirtualVersionedFiles,
     make_versioned_files_factory,
 )
-from ..weave import WeaveFile, WeaveInvalidChecksum
+from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
 from bzrformats.weavefile import write_weave
 
 load_tests = load_tests_apply_scenarios

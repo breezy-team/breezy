@@ -47,8 +47,10 @@ from bzrformats import tuned_gzip
 
 from bzrformats import weavefile
 
+from bzrformats import weave
+
 from ... import debug, errors, lockdir, osutils, trace, urlutils
-from ...bzr import lockable_files, versionedfile, weave
+from ...bzr import lockable_files, versionedfile
 from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.versionedfile import (
     AbsentContentFactory,

@@ -24,7 +24,7 @@ from dromedary.memory import MemoryTransport
 
 from ... import errors as errors
 from ... import transactions, transport
-from ...bzr.weave import WeaveFile
+from bzrformats.weave import WeaveFile
 from ...errors import BzrError
 from ...tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 from .store import TransportStore

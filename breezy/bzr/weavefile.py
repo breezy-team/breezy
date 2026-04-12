@@ -51,7 +51,7 @@ def read_weave(f):
         A Weave object containing the data read from the file.
     """
     # FIXME: detect the weave type and dispatch
-    from .weave import Weave
+    from bzrformats.weave import Weave
 
     w = Weave(getattr(f, "name", None))
     _read_weave_v5(f, w)
