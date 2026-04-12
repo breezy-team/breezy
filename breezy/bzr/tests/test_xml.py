@@ -256,6 +256,44 @@ class TestSerializer(TestCase):
         )
         self.assertEqual(b"test-rev-id", inv.root.revision)
 
+    def test_unpack_inventory_5a_cache_and_copy(self):
+        # Passing an entry_cache should get populated with the objects
+        # But the returned objects should be copies if return_from_cache is
+        # False
+        entry_cache = fifo_cache.FIFOCache()
+        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+            breezy.osutils.split_lines(_inventory_v5a),
+            revision_id=b"test-rev-id",
+            entry_cache=entry_cache,
+            return_from_cache=False,
+        )
+        for entry in (ie for _, ie in inv.iter_entries()):
+            key = (entry.file_id, entry.revision)
+            if entry.file_id is inv.root.file_id:
+                # The root id is inferred for xml v5
+                self.assertFalse(key in entry_cache)
+            else:
+                self.assertIsNot(entry, entry_cache[key])
+
+    def test_unpack_inventory_5a_cache_no_copy(self):
+        # Passing an entry_cache should get populated with the objects
+        # The returned objects should be exact if return_from_cache is
+        # True
+        entry_cache = fifo_cache.FIFOCache()
+        inv = breezy.bzr.xml5.serializer_v5.read_inventory_from_lines(
+            breezy.osutils.split_lines(_inventory_v5a),
+            revision_id=b"test-rev-id",
+            entry_cache=entry_cache,
+            return_from_cache=True,
+        )
+        for entry in (ie for _, ie in inv.iter_entries()):
+            key = (entry.file_id, entry.revision)
+            if entry.file_id is inv.root.file_id:
+                # The root id is inferred for xml v5
+                self.assertFalse(key in entry_cache)
+            else:
+                self.assertIs(entry, entry_cache[key])
+
     def test_unpack_inventory_5b(self):
         inv = breezy.bzr.xml5.inventory_serializer_v5.read_inventory_from_lines(
             breezy.osutils.split_lines(_inventory_v5b), revision_id=b"test-rev-id"
@@ -414,12 +452,14 @@ class TestSerializer(TestCase):
         )
 
     def test_tree_reference(self):
-        s_v5 = breezy.bzr.xml5.inventory_serializer_v5
-        s_v6 = breezy.bzr.xml6.inventory_serializer_v6
-        s_v7 = xml7.inventory_serializer_v7
-        inv = Inventory(
-            b"tree-root-321", revision_id=b"rev-outer", root_revision=b"root-rev"
-        )
+        s_v5 = breezy.bzr.xml5.serializer_v5
+        s_v6 = breezy.bzr.xml6.serializer_v6
+        s_v7 = xml7.serializer_v7
+        inv = Inventory(b"tree-root-321", revision_id=b"rev-outer")
+        inv.delete(b"tree-root-321")
+        inv.add(inventory.InventoryDirectory(
+            b"tree-root-321", "", None, revision=b"root-rev",
+        ))
         inv.add(
             inventory.TreeReference(
                 b"nested-id", "nested", b"tree-root-321", b"rev-outer", b"rev-inner"

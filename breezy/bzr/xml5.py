@@ -42,17 +42,11 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
         data_revision_id = elt.get("revision_id")
         if data_revision_id is not None:
             revision_id = data_revision_id.encode("utf-8")
-        inv = inventory.Inventory(root_id=None, revision_id=revision_id)
-        root = inventory.InventoryDirectory(root_id, "", None, revision=revision_id)
-        inv.add(root)
-
-        # Optimizations tested
-        #   baseline w/entry cache  2.85s
-        #   using inv._byid         2.55s
-        #   avoiding attributes     2.46s
-        #   adding assertions       2.50s
-        #   last_parent cache       2.52s (worse, removed)
-
+        inv = inventory.Inventory(root_id, revision_id=revision_id)
+        if revision_id is not None:
+            # Replace root with one that has revision set
+            inv.delete(root_id)
+            inv.add(inventory.InventoryDirectory(root_id, "", None, revision=revision_id))
         for e in elt:
             ie = unpack_inventory_entry(
                 e,
@@ -60,8 +54,15 @@ class InventorySerializer_v5(xml6.InventorySerializer_v6):
                 return_from_cache=return_from_cache,
                 root_id=root_id,
             )
+            parent_id = ie.parent_id
+            if parent_id is None:
+                parent_id = root_id
+                ie = type(ie)(ie.file_id, ie.name, root_id, revision=ie.revision)
+            if not inv.has_id(parent_id):
+                raise errors.BzrError(
+                    "parent_id {{{}}} not in inventory".format(parent_id)
+                )
             inv.add(ie)
-        self._check_cache_size(len(inv), entry_cache)
         return inv
 
     def _append_inventory_root(self, append, inv):
