@@ -40,12 +40,11 @@ from vcsgraph import graph, tsort
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,
-    inventory_delta,
     inventorytree,
     versionedfile,
     vf_search,
     )
-from bzrformats import generate_ids
+from bzrformats import generate_ids, inventory_delta
 from breezy.bzr.bundle import serializer
 
 from breezy.i18n import gettext
@@ -192,14 +191,16 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :return: The revision id of the recorded revision.
         """
         self._validate_unicode_text(message, "commit message")
-        rev = _mod_revision.Revision(
-            timestamp=self._timestamp,
-            timezone=self._timezone,
-            committer=self._committer,
-            message=message,
-            inventory_sha1=self.inv_sha1,
+        from bzrformats.revision import Revision as _BzrRevision
+
+        rev = _BzrRevision(
             revision_id=self._new_revision_id,
             parent_ids=self.parents,
+            committer=self._committer,
+            message=message,
+            timestamp=self._timestamp,
+            timezone=self._timezone,
+            inventory_sha1=self.inv_sha1,
             properties=self._revprops,
         )
         create_signatures = self._config_stack.get("create_signatures")
@@ -465,6 +466,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 #  - record the change with the content from tree
                 kind = change.kind[1]
                 file_id = change.file_id
+                entry_name = change.name[1]
+                entry_parent_id = change.parent_id[1]
+                entry_kwargs: dict = {}
                 head_set = self._heads(change.file_id, set(head_candidates))
                 heads = []
                 # Preserve ordering.
@@ -493,8 +497,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # or carried over.
                         if (
                             parent_entry.kind != kind
-                            or parent_entry.parent_id != change.parent_id[1]
-                            or parent_entry.name != change.name[1]
+                            or parent_entry.parent_id != entry_parent_id
+                            or parent_entry.name != entry_name
                         ):
                             # Metadata common to all entries has changed
                             # against per-file parent
@@ -514,8 +518,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # new version even if some other process reverts it while
                     # commit is running (with the revert happening after
                     # iter_changes did its examination).
-                    executable = bool(change.executable[1])
-                    if carry_over_possible and parent_entry.executable == executable:
+                    entry_kwargs["executable"] = bool(change.executable[1])
+                    if (
+                        carry_over_possible
+                        and parent_entry.executable == entry_kwargs["executable"]
+                    ):
                         # Check the file length, content hash after reading
                         # the file.
                         nostore_sha = parent_entry.text_sha1
@@ -530,13 +537,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha,
                             size=(stat_value.st_size if stat_value else None),
                         )
+                        entry_kwargs["text_sha1"] = text_sha1
+                        entry_kwargs["text_size"] = text_size
                         yield change.path[1], (text_sha1, stat_value)
                     except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True
-                        text_size = parent_entry.text_size
-                        text_sha1 = parent_entry.text_sha1
+                        entry_kwargs["text_size"] = parent_entry.text_size
+                        entry_kwargs["text_sha1"] = parent_entry.text_sha1
                     finally:
                         file_obj.close()
                     if not carried_over:
@@ -555,6 +564,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 elif kind == "symlink":
                     # Wants a path hint?
                     symlink_target = tree.get_symlink_target(change.path[1])
+                    entry_kwargs["symlink_target"] = symlink_target
                     if (
                         carry_over_possible
                         and parent_entry.symlink_target == symlink_target
@@ -602,6 +612,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             tree.add_reference, self.repository
                         )
                     reference_revision = tree.get_reference_revision(change.path[1])
+                    entry_kwargs["reference_revision"] = reference_revision
                     if (
                         carry_over_possible
                         and parent_entry.reference_revision == reference_revision
@@ -623,7 +634,16 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         reference_revision=reference_revision,
                     )
                 else:
-                    raise errors.BadFileKindError(change.name[1], kind)
+                    raise AssertionError("unknown kind {!r}".format(kind))
+                entry_kwargs["revision"] = (
+                    parent_entry.revision if carried_over else modified_rev
+                )
+                entry = _entry_factory[kind](
+                    file_id=file_id,
+                    name=entry_name,
+                    parent_id=entry_parent_id,
+                    **entry_kwargs,
+                )
             else:
                 entry = None
             new_path = change.path[1]
@@ -2296,7 +2316,8 @@ class StreamSource:
         elif (
             not from_format.supports_chks
             and not self.to_format.supports_chks
-            and from_format._inventory_serializer == self.to_format._inventory_serializer
+            and from_format._inventory_serializer
+            == self.to_format._inventory_serializer
         ):
             # Essentially the same format.
             return self._get_simple_inventory_stream(revision_ids, missing=missing)

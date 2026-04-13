@@ -690,119 +690,14 @@ from bzrformats.versionedfile import (  # noqa: E402
 )
 
 
-class KeyMapper:
-    """KeyMappers map between keys and underlying partitioned storage."""
-
-    def map(self, key):
-        """Map key to an underlying storage identifier.
-
-        :param key: A key tuple e.g. (b'file-id', b'revision-id').
-        :return: An underlying storage identifier, specific to the partitioning
-            mechanism.
-        """
-        raise NotImplementedError(self.map)
-
-    def unmap(self, partition_id):
-        """Map a partitioned storage id back to a key prefix.
-
-        :param partition_id: The underlying partition id.
-        :return: As much of a key (or prefix) as is derivable from the partition
-            id.
-        """
-        raise NotImplementedError(self.unmap)
-
-
-class ConstantMapper(KeyMapper):
-    """A key mapper that maps to a constant result."""
-
-    def __init__(self, result):
-        """Create a ConstantMapper which will return result for all maps."""
-        self._result = result
-
-    def map(self, key):
-        """See KeyMapper.map()."""
-        return self._result
-
-
-class URLEscapeMapper(KeyMapper):
-    """Base class for use with transport backed storage.
-
-    This provides a map and unmap wrapper that respectively url escape and
-    unescape their outputs and inputs.
-    """
-
-    def map(self, key):
-        """See KeyMapper.map()."""
-        return urlutils.quote(self._map(key))
-
-    def unmap(self, partition_id):
-        """See KeyMapper.unmap()."""
-        return self._unmap(urlutils.unquote(partition_id))
-
-
-class PrefixMapper(URLEscapeMapper):
-    """A key mapper that extracts the first component of a key.
-
-    This mapper is for use with a transport based backend.
-    """
-
-    def _map(self, key):
-        """See KeyMapper.map()."""
-        return key[0].decode("utf-8")
-
-    def _unmap(self, partition_id):
-        """See KeyMapper.unmap()."""
-        return (partition_id.encode("utf-8"),)
-
-
-class HashPrefixMapper(URLEscapeMapper):
-    """A key mapper that combines the first component of a key with a hash.
-
-    This mapper is for use with a transport based backend.
-    """
-
-    def _map(self, key):
-        """See KeyMapper.map()."""
-        prefix = self._escape(key[0])
-        return f"{adler32(prefix) & 255:02x}/{prefix.decode('utf-8')}"
-
-    def _escape(self, prefix):
-        """No escaping needed here."""
-        return prefix
-
-    def _unmap(self, partition_id):
-        """See KeyMapper.unmap()."""
-        return (self._unescape(osutils.basename(partition_id)).encode("utf-8"),)
-
-    def _unescape(self, basename):
-        """No unescaping needed for HashPrefixMapper."""
-        return basename
-
-
-class HashEscapedPrefixMapper(HashPrefixMapper):
-    """Combines the escaped first component of a key with a hash.
-
-    This mapper is for use with a transport based backend.
-    """
-
-    _safe = bytearray(b"abcdefghijklmnopqrstuvwxyz0123456789-_@,.")
-
-    def _escape(self, prefix):
-        """Turn a key element into a filesystem safe string.
-
-        This is similar to a plain urlutils.quote, except
-        it uses specific safe characters, so that it doesn't
-        have to translate a lot of valid file ids.
-        """
-        # @ does not get escaped. This is because it is a valid
-        # filesystem character we use all the time, and it looks
-        # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and chr(c)) or (f"%{c:02x}") for c in bytearray(prefix)]
-        return "".join(r).encode("ascii")
-
-    def _unescape(self, basename):
-        """Escaped names are easily unescaped by urlutils."""
-        return urlutils.unquote(basename)
+from bzrformats.versionedfile import (  # noqa: E402, F401
+    ConstantMapper,
+    HashEscapedPrefixMapper,
+    HashPrefixMapper,
+    KeyMapper,
+    PrefixMapper,
+    URLEscapeMapper,
+)
 
 
 def make_versioned_files_factory(versioned_file_factory, mapper):
@@ -1650,15 +1545,11 @@ class VirtualVersionedFiles(VersionedFiles):
 from bzrformats.versionedfile import NoDupeAddLinesDecorator  # noqa: E402, F811
 
 
-def network_bytes_to_kind_and_offset(network_bytes):
-    """Strip of a record kind from the front of network_bytes.
-
-    :param network_bytes: The bytes of a record.
-    :return: A tuple (storage_kind, offset_of_remaining_bytes)
-    """
-    line_end = network_bytes.find(b"\n")
-    storage_kind = network_bytes[:line_end].decode("ascii")
-    return storage_kind, line_end + 1
+from bzrformats.versionedfile import (  # noqa: F401
+    fulltext_network_to_record,
+    network_bytes_to_kind_and_offset,
+    record_to_fulltext_bytes,
+)
 
 
 class NetworkRecordStream:
@@ -1692,35 +1583,6 @@ class NetworkRecordStream:
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
             yield from self._kind_factory[storage_kind](storage_kind, bytes, line_end)
-
-
-def fulltext_network_to_record(kind, bytes, line_end):
-    """Convert a network fulltext record to record."""
-    (meta_len,) = struct.unpack("!L", bytes[line_end : line_end + 4])
-    record_meta = bytes[line_end + 4 : line_end + 4 + meta_len]
-    key, parents = bencode.bdecode_as_tuple(record_meta)
-    if parents == b"nil":
-        parents = None
-    fulltext = bytes[line_end + 4 + meta_len :]
-    return [FulltextContentFactory(key, parents, None, fulltext)]
-
-
-def _length_prefix(bytes):
-    return struct.pack("!L", len(bytes))
-
-
-def record_to_fulltext_bytes(record):
-    if record.parents is None:
-        parents = b"nil"
-    else:
-        parents = tuple([tuple(p) for p in record.parents])
-    record_meta = bencode.bencode((record.key, parents))
-    record_content = record.get_bytes_as("fulltext")
-    return b"fulltext\n%s%s%s" % (
-        _length_prefix(record_meta),
-        record_meta,
-        record_content,
-    )
 
 
 from bzrformats.versionedfile import sort_groupcompress  # noqa: E402, F811

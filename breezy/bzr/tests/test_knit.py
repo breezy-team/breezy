@@ -948,9 +948,9 @@ class LowLevelKnitDataTests(TestCase):
 class LowLevelKnitIndexTests(TestCase):
     @property
     def _load_data(self):
-        from bzrformats._knit_load_data_py import _load_data_py
+        from bzrformats.knit import _load_data
 
-        return _load_data_py
+        return _load_data
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)

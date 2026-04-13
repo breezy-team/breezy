@@ -1029,10 +1029,12 @@ class CHKInventoryRepository(PackRepository):
         This is a simplified form of create_by_apply_delta which knows that all
         the old values must be None, so everything is a create.
         """
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
         serializer = self._format._inventory_serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = revision_id
-        entry_to_bytes = inventory._chk_inventory_entry_to_bytes
+        entry_to_bytes = _chk_inventory_entry_to_bytes
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
@@ -1117,6 +1119,10 @@ class CHKInventoryRepository(PackRepository):
                 basis_tree.lock_read()
                 basis_inv = basis_tree.root_inventory
         try:
+            from bzrformats.inventory_delta import InventoryDelta
+
+            if not isinstance(delta, InventoryDelta):
+                delta = InventoryDelta(delta)
             result = basis_inv.create_by_apply_delta(
                 delta, new_revision_id, propagate_caches=propagate_caches
             )

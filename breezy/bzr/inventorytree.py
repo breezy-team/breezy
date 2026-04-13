@@ -39,7 +39,7 @@ lazy_import.lazy_import(
 from breezy import (
     add,
     )
-from breezy.bzr import (
+from bzrformats import (
     inventory as _mod_inventory,
     )
 """,
