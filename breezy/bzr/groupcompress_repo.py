@@ -28,7 +28,7 @@ from bzrformats import index as _mod_index
 from bzrformats._bzr_rs import revision_bencode_serializer
 
 from ..bzr import chk_map, versionedfile
-from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
 from .pack_repo import (

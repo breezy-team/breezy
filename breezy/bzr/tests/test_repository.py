@@ -39,7 +39,6 @@ from breezy import (
 )
 from breezy import revision as _mod_revision
 from breezy.bzr import (
-    btree_index,
     bzrdir,
     groupcompress_repo,
     knitpack_repo,
@@ -49,9 +48,9 @@ from breezy.bzr import (
     vf_repository,
     vf_search,
 )
-from bzrformats import inventory
+from bzrformats import btree_index, inventory
 from breezy.bzr import repository as bzrrepository
-from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.index import GraphIndex
 from breezy.errors import UnknownFormatError
 from breezy.repository import RepositoryFormat

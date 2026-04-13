@@ -24,7 +24,7 @@ from .. import errors, osutils, transport
 from ..commands import Command, display_command
 from ..option import Option
 from ..workingtree import WorkingTree
-from . import btree_index
+from bzrformats import btree_index
 
 
 def as_tuples(obj):

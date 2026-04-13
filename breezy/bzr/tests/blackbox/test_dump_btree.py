@@ -19,8 +19,9 @@
 
 from dromedary.tests import http_server
 
+from bzrformats import btree_index
+
 from breezy import tests
-from breezy.bzr import btree_index
 
 
 class TestDumpBtree(tests.TestCaseWithTransport):

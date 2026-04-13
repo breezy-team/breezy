@@ -38,7 +38,7 @@ from breezy.bzr import (
 from .. import errors, osutils, trace
 from .._bzr_rs import groupcompress as _groupcompress_rs
 from ..lru_cache import LRUSizeCache
-from .btree_index import BTreeBuilder
+from bzrformats.btree_index import BTreeBuilder
 from .versionedfile import (
     AbsentContentFactory,
     ChunkedContentFactory,

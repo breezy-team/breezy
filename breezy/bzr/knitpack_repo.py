@@ -43,7 +43,7 @@ from breezy.bzr.knit import (
 """,
 )
 
-from ..bzr import btree_index
+from bzrformats import btree_index
 from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,

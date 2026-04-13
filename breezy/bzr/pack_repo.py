@@ -50,10 +50,11 @@ from bzrformats.index import (
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 
-from .. import debug, errors, lockdir, osutils
+from bzrformats import btree_index
 from bzrformats import index as _mod_index
 
-from ..bzr import btree_index, lockable_files
+from .. import debug, errors, lockdir, osutils
+from ..bzr import lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin

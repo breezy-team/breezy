@@ -27,9 +27,7 @@ from dromedary.errors import FileExists, NoSuchFile
 from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import errors as bzr_errors
-from .. import registry, trace
-from .._git_rs import get_cache_dir
-from ..bzr import btree_index as _mod_btree_index
+from bzrformats import btree_index as _mod_btree_index
 from bzrformats import index as _mod_index
 from ..bzr import versionedfile
 
