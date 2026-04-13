@@ -8,6 +8,12 @@ Breezy Release Notes
 brz 3.3.22
 ##########
 
+ * The transport layer has been extracted into a separate standalone
+   project, ``dromedary``. Breezy now depends on the external
+   ``dromedary`` package for its transport implementations (local,
+   sftp, http, memory, ssh, etc.) and URL utilities.
+   (Jelmer Vernooĳ)
+
  * Add a format-independent ``MemoryTree`` in ``breezy.memorytree``
    that does not use file ids or inventories. The bzr-specific
    ``MemoryTree`` has moved to ``breezy.bzr.memorytree``.
