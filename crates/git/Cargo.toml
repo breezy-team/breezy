@@ -11,5 +11,5 @@ homepage = "https://www.breezy-vcs.org/"
 
 [dependencies]
 breezy-osutils = { path = "../osutils" }
-dromedary = { path = "../../dromedary" }
 breezy = { path = "../.." }
+dromedary = { workspace = true }

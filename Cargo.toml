@@ -62,3 +62,4 @@ url = "2"
 log = "0.4"
 whoami = { version = "1", default-features = false }
 gettext = { version = "0.4.0" }
+dromedary = { version = "0.1" }
