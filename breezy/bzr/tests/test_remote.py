@@ -52,13 +52,12 @@ from .. import (
     RemoteBzrProber,
     bzrdir,
     groupcompress_repo,
-    inventory,
-    inventory_delta,
     knitpack_repo,
     remote,
     versionedfile,
     vf_search,
 )
+from bzrformats import inventory, inventory_delta
 from ..bzrdir import BzrDir, BzrDirFormat
 from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
 from ..remote import (

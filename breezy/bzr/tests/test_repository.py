@@ -42,7 +42,6 @@ from breezy.bzr import (
     btree_index,
     bzrdir,
     groupcompress_repo,
-    inventory,
     knitpack_repo,
     knitrepo,
     pack_repo,
@@ -50,6 +49,7 @@ from breezy.bzr import (
     vf_repository,
     vf_search,
 )
+from bzrformats import inventory
 from breezy.bzr import repository as bzrrepository
 from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.index import GraphIndex
