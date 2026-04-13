@@ -16,7 +16,7 @@
 
 """Utility for create branches with particular contents."""
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
 
 from . import commit, controldir, revision
 
@@ -132,7 +132,7 @@ class BranchBuilder:
                     new_revision_id, [(cur_revision_id, cur_revno)]
                 )
                 self._branch.set_last_revision_info(new_revno, new_revision_id)
-            except GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 if not allow_leftmost_as_ghost:
                     raise
                 new_revno = 1

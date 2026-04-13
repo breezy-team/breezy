@@ -33,7 +33,7 @@ Interesting module attributes:
 import threading
 from _thread import get_ident
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
 
 from ... import branch as _mod_branch
 from ... import debug, errors, osutils, registry, revision, trace, urlutils
@@ -650,7 +650,7 @@ def _translate_error(err):
         return (b"TokenMismatch", err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return (b"LockContention",)
-    elif isinstance(err, GhostRevisionsHaveNoRevno):
+    elif isinstance(err, vcsgraph.errors.GhostRevisionsHaveNoRevno):
         return (b"GhostRevisionsHaveNoRevno", err.revision_id, err.ghost_revision_id)
     elif isinstance(err, urlutils.InvalidURL):
         return (b"InvalidURL", err.path.encode("utf-8"), err.extra.encode("utf-8"))

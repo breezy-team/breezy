@@ -20,6 +20,8 @@
 from io import BytesIO
 from typing import TYPE_CHECKING, Union
 
+import vcsgraph.errors
+
 from ..lazy_import import lazy_import
 
 lazy_import(
@@ -34,13 +36,6 @@ from breezy import (
 )
 
 import contextlib
-
-from vcsgraph.errors import (
-    GhostRevisionsHaveNoRevno,
-)
-from vcsgraph.errors import (
-    RevisionNotPresent as VcsGraphRevisionNotPresent,
-)
 
 from .. import errors, urlutils
 from .. import revision as _mod_revision
@@ -907,8 +902,8 @@ class BzrBranch8(BzrBranch):
             except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except (errors.RevisionNotPresent, VcsGraphRevisionNotPresent) as exc:
-                    raise GhostRevisionsHaveNoRevno(
+                except vcsgraph.errors.RevisionNotPresent as exc:
+                    raise vcsgraph.errors.GhostRevisionsHaveNoRevno(
                         revision_id, exc.revision_id
                     ) from exc
                 index = len(self._partial_revision_history_cache) - 1

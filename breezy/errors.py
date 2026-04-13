@@ -33,6 +33,11 @@ The module includes exceptions for:
 - User interface errors (CommandError)
 """
 
+from vcsgraph.errors import (  # noqa: F401
+    GhostRevisionsHaveNoRevno,
+    GraphCycleError,
+    NoCommonAncestor,
+)
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful

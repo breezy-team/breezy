@@ -16,14 +16,12 @@
 
 """A generator which creates a python script from the current tree info."""
 
-import contextlib
 import pprint
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
 
+from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
-
-from ..revision import NULL_REVISION
 
 # Header and footer for the python format
 _py_version_header = '''#!/usr/bin/env python3
@@ -65,8 +63,10 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info["revno"] = "0"
         else:
-            with contextlib.suppress(GhostRevisionsHaveNoRevno):
+            try:
                 info["revno"] = self._get_revno_str(revision_id)
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+                pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)
             info["date"] = create_date_str(rev.timestamp, rev.timezone)

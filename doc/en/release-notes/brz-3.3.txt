@@ -8,6 +8,10 @@ Breezy Release Notes
 brz 3.3.22
 ##########
 
+ * Use the ``vcsgraph`` package for graph, topological sort and
+   known graph implementations rather than local copies.
+   (Jelmer Vernooĳ)
+
  * Add a format-independent ``MemoryTree`` in ``breezy.memorytree``
    that does not use file ids or inventories. The bzr-specific
    ``MemoryTree`` has moved to ``breezy.bzr.memorytree``.

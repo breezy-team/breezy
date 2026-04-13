@@ -16,13 +16,12 @@
 
 """A generator which creates a rio stanza of the current tree info."""
 
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
 
 from breezy import hooks
 from breezy.bzr import rio
+from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
-
-from ..revision import NULL_REVISION
 
 
 class RioVersionInfoBuilder(VersionInfoBuilder):
@@ -42,7 +41,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             info.add("date", create_date_str(rev.timestamp, rev.timezone))
             try:
                 revno = self._get_revno_str(revision_id)
-            except GhostRevisionsHaveNoRevno:
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
                 revno = None
             for hook in RioVersionInfoBuilder.hooks["revision"]:
                 hook(rev, info)

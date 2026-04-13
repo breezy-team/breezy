@@ -4290,16 +4290,13 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """Like translateTuple, but takes an already constructed
         ErrorFromSmartServer rather than a tuple.
         """
+        import vcsgraph.errors as vcsgraph_errors
+
         try:
             raise error_object
         except errors.ErrorFromSmartServer as server_error:
-            # Import vcsgraph.errors.Error for errors that come from vcsgraph
-            from vcsgraph.errors import Error as VcsGraphError
-
-            # Some errors like GhostRevisionsHaveNoRevno come from vcsgraph
-            # and don't inherit from BzrError
             translated_error = self.assertRaises(
-                (errors.BzrError, VcsGraphError),
+                (errors.BzrError, vcsgraph_errors.Error),
                 remote._translate_error,
                 server_error,
                 **context,
