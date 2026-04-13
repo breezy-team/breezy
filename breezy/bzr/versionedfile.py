@@ -95,120 +95,14 @@ from bzrformats.versionedfile import (  # noqa: E402, F401
 )
 
 
-class ContentFactory:
-    """Abstract interface for insertion and retrieval from a VersionedFile.
-
-    :ivar sha1: None, or the sha1 of the content fulltext.
-    :ivar size: None, or the size of the content fulltext.
-    :ivar storage_kind: The native storage kind of this factory. One of
-        'mpdiff', 'knit-annotated-ft', 'knit-annotated-delta', 'knit-ft',
-        'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
-        'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'.
-    :ivar key: The key of this content. Each key is a tuple with a single
-        string in it.
-    :ivar parents: A tuple of parent keys for self.key. If the object has
-        no parent information, None (as opposed to () for an empty list of
-        parents).
-    """
-
-    def __init__(self) -> None:
-        """Create a ContentFactory."""
-        self.sha1: bytes | None = None
-        self.size: int | None = None
-        self.storage_kind: str | None = None
-        self.key: tuple[bytes, ...] | None = None
-        self.parents = None
-
-    def map_key(self, cb):
-        """Add prefix to all keys."""
-        if self.key is not None:
-            self.key = cb(self.key)
-        if self.parents is not None:
-            self.parents = tuple([cb(parent) for parent in self.parents])
-        return self
-
-
-class FileContentFactory(ContentFactory):
-    """File-based content factory."""
-
-    def __init__(self, key, parents, fileobj, sha1=None, size=None):
-        """Initialize a FileContentFactory.
-
-        Args:
-            key: Unique identifier for this content.
-            parents: Parent keys for this content.
-            fileobj: File-like object containing the content data.
-            sha1: SHA1 hash of the content (optional).
-            size: Size of the content in bytes (optional).
-        """
-        self.key = key
-        self.parents = parents
-        self.file = fileobj
-        self.storage_kind = "file"
-        self.sha1 = sha1
-        self.size = size
-        self._needs_reset = False
-
-    def get_bytes_as(self, storage_kind):
-        """Get the content bytes in the specified storage format.
-
-        Args:
-            storage_kind: The desired storage format ('fulltext', 'chunked', 'lines').
-
-        Returns:
-            bytes or list: The content data in the requested format.
-
-        Raises:
-            UnavailableRepresentation: If the requested storage kind is not supported.
-        """
-        if self._needs_reset:
-            self.file.seek(0)
-        self._needs_reset = True
-        if storage_kind == "fulltext":
-            return self.file.read()
-        elif storage_kind == "chunked":
-            return list(osutils.file_iterator(self.file))
-        elif storage_kind == "lines":
-            return list(self.file.readlines())
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-    def iter_bytes_as(self, storage_kind):
-        """Iterate over content bytes in the specified storage format.
-
-        Args:
-            storage_kind: The desired storage format ('chunked', 'lines').
-
-        Returns:
-            iterator: Iterator over the content data in the requested format.
-
-        Raises:
-            UnavailableRepresentation: If the requested storage kind is not supported.
-        """
-        if self._needs_reset:
-            self.file.seek(0)
-        self._needs_reset = True
-        if storage_kind == "chunked":
-            return osutils.file_iterator(self.file)
-        elif storage_kind == "lines":
-            return self.file
-        raise UnavailableRepresentation(self.key, storage_kind, self.storage_kind)
-
-
-class AdapterFactory(ContentFactory):
-    """A content factory to adapt between key prefix's."""
-
-    def __init__(self, key, parents, adapted):
-        """Create an adapter factory instance."""
-        self.key = key
-        self.parents = parents
-        self._adapted = adapted
-
-    def __getattr__(self, attr):
-        """Return a member from the adapted object."""
-        if attr in ("key", "parents"):
-            return self.__dict__[attr]
-        else:
-            return getattr(self._adapted, attr)
+from bzrformats.versionedfile import (  # noqa: E402, F401
+    AbsentContentFactory,
+    AdapterFactory,
+    ChunkedContentFactory,
+    ContentFactory,
+    FileContentFactory,
+    FulltextContentFactory,
+)
 
 
 def filter_absent(record_stream):
