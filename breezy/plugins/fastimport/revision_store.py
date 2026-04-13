@@ -215,7 +215,7 @@ class RevisionStore:
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from ...bzr import chk_map
+        from bzrformats import chk_map
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
@@ -375,9 +375,9 @@ class RevisionStore:
             revision_id=rev.revision_id,
         )
         if self._graph is None and self._use_known_graph:
-            if getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None) and getattr(
-                self.repo, "get_known_graph_ancestry", None
-            ):
+            if getattr(
+                vcsgraph.graph.GraphThunkIdsToKeys, "add_node", None
+            ) and getattr(self.repo, "get_known_graph_ancestry", None):
                 self._graph = self.repo.get_known_graph_ancestry(rev.parent_ids)
             else:
                 self._use_known_graph = False

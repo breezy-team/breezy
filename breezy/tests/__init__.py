@@ -56,7 +56,7 @@ from catalogus import pyutils
 from testtools import content
 
 import breezy
-from breezy.bzr import chk_map
+from bzrformats import chk_map
 
 from .. import (
     branchbuilder,

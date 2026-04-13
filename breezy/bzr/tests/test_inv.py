@@ -15,10 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from ... import errors, osutils, repository, revision, tests, workingtree
-from ...tests.scenarios import load_tests_apply_scenarios
-from bzrformats import inventory
-from bzrformats.inventory import NoSuchId
+from bzrformats import chk_map, inventory
 from bzrformats.inventory import (
     ROOT_ID,
     CHKInventory,
@@ -28,14 +25,15 @@ from bzrformats.inventory import (
     InventoryDirectory,
     InventoryEntry,
     InventoryFile,
+    NoSuchId,
     TreeReference,
-    _chk_inventory_bytes_to_entry,
-    _chk_inventory_entry_to_bytes,
-    _make_delta,
     chk_inventory_bytes_to_utf8name_key,
     mutable_inventory_from_tree,
 )
-from .. import chk_map, groupcompress
+
+from ... import errors, osutils, repository, revision, tests, workingtree
+from ...tests.scenarios import load_tests_apply_scenarios
+from .. import groupcompress
 from . import TestCase, TestCaseWithTransport
 
 load_tests = load_tests_apply_scenarios
@@ -1282,11 +1280,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_file_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.InventoryFile(
-            b"file-id",
-            "filename",
-            b"parent-id",
+            file_id=b"file-id",
+            name="filename",
+            parent_id=b"parent-id",
             executable=True,
             revision=b"file-rev-id",
             text_sha1=b"abcdefgh",
@@ -1306,12 +1306,14 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_file2_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         # \u30a9 == 'omega'
         ie = inventory.InventoryFile(
-            b"file-id",
-            "\u03a9name",
-            b"parent-id",
+            file_id=b"file-id",
+            name="\u03a9name",
+            parent_id=b"parent-id",
             executable=False,
             revision=b"file-rev-id",
             text_sha1=b"123456",
@@ -1331,9 +1333,14 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_dir_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.InventoryDirectory(
-            b"dir-id", "dirname", b"parent-id", revision=b"dir-rev-id"
+            file_id=b"dir-id",
+            name="dirname",
+            parent_id=b"parent-id",
+            revision=b"dir-rev-id",
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
         self.assertEqual(b"dir: dir-id\nparent-id\ndirname\ndir-rev-id", bytes)
@@ -1346,27 +1353,33 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_dir2_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.InventoryDirectory(
-            b"dir-id", "dir\u03a9name", b"pid", revision=b"dir-rev-id"
+            file_id=b"dir-id",
+            name="dir\u03a9name",
+            parent_id=b"parent-id",
+            revision=b"dir-rev-id",
         )
         bytes = _chk_inventory_entry_to_bytes(ie)
-        self.assertEqual(b"dir: dir-id\npid\ndir\xce\xa9name\ndir-rev-id", bytes)
-        ie2 = _chk_inventory_bytes_to_entry(bytes)
+        self.assertEqual(b"dir: dir-id\nparent-id\ndir\xce\xa9name\ndir-rev-id", bytes)
+        ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
-        self.assertEqual(b"pid", ie2.parent_id)
         self.assertEqual(
             (b"dir\xce\xa9name", b"dir-id", b"dir-rev-id"),
             chk_inventory_bytes_to_utf8name_key(bytes),
         )
 
     def test_symlink_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.InventoryLink(
-            b"link-id",
-            "linkname",
-            b"parent-id",
+            file_id=b"link-id",
+            name="linkname",
+            parent_id=b"parent-id",
             revision=b"link-rev-id",
             symlink_target="target/path",
         )
@@ -1385,11 +1398,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_symlink2_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.InventoryLink(
-            b"link-id",
-            "link\u03a9name",
-            b"parent-id",
+            file_id=b"link-id",
+            name="link\u03a9name",
+            parent_id=b"parent-id",
             revision=b"link-rev-id",
             symlink_target="target/\u03a9path",
         )
@@ -1409,11 +1424,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_tree_reference_entry_to_bytes(self):
-        CHKInventory(None)
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
+        inv = CHKInventory(None)
         ie = inventory.TreeReference(
-            b"tree-root-id",
-            "tree\u03a9name",
-            b"parent-id",
+            file_id=b"tree-root-id",
+            name="tree\u03a9name",
+            parent_id=b"parent-id",
             revision=b"tree-rev-id",
             reference_revision=b"ref-rev-id",
         )
@@ -1590,29 +1607,45 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         return factory(trans)
 
     def make_dir(self, inv, name, parent_id, revision):
-        ie = inv.make_entry(
-            "directory",
-            name,
-            parent_id,
-            name.encode("utf-8") + b"-id",
+        from bzrformats.inventory import InventoryDirectory
+
+        ie = InventoryDirectory(
+            file_id=name.encode("utf-8") + b"-id",
+            name=name,
+            parent_id=parent_id,
             revision=revision,
         )
         inv.add(ie)
 
     def make_file(self, inv, name, parent_id, revision, content=b"content\n"):
-        ie = inv.make_entry(
-            "file",
-            name,
-            parent_id,
-            name.encode("utf-8") + b"-id",
+        from bzrformats.inventory import InventoryFile
+
+        ie = InventoryFile(
+            file_id=name.encode("utf-8") + b"-id",
+            name=name,
+            parent_id=parent_id,
             text_sha1=osutils.sha_string(content),
             text_size=len(content),
             revision=revision,
+            executable=False,
         )
         inv.add(ie)
 
     def make_simple_inventory(self):
-        inv = Inventory(b"TREE_ROOT", revision_id=b"revid", root_revision=b"rootrev")
+        from bzrformats.inventory import InventoryDirectory
+
+        inv = Inventory(
+            root_id=None,
+            revision_id=b"revid",
+        )
+        inv.add(
+            InventoryDirectory(
+                file_id=b"TREE_ROOT",
+                name="",
+                parent_id=None,
+                revision=b"rootrev",
+            )
+        )
         # /                 TREE_ROOT
         # dir1/             dir1-id
         #   sub-file1       sub-file1-id
