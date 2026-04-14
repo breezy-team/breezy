@@ -159,22 +159,9 @@ def load_tests(loader, standard_tests, pattern):
                 )
             )
         elif optimiser is breezy.bzr.workingtree_4.InterDirStateTree:
-            # Its a little ugly to be conditional here, but less so than having
-            # the optimiser listed twice.
-            # Add once, compiled version
             test_intertree_permutations.append(
                 (
-                    optimiser.__name__ + "(C)",
-                    optimiser,
-                    optimiser._matching_from_tree_format,
-                    optimiser._matching_to_tree_format,
-                    optimiser.make_source_parent_tree_compiled_dirstate,
-                )
-            )
-            # python version
-            test_intertree_permutations.append(
-                (
-                    optimiser.__name__ + "(PY)",
+                    optimiser.__name__,
                     optimiser,
                     optimiser._matching_from_tree_format,
                     optimiser._matching_to_tree_format,

@@ -376,21 +376,29 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
                     inv_entry = InventoryFile(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         executable=executable,
                     )
                 elif kind == "directory":
                     inv_entry = InventoryDirectory(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                     )
                     parent_ids[(dirname + b"/" + name).strip(b"/")] = file_id
                 elif kind == "symlink":
                     inv_entry = InventoryLink(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                     )
                 elif kind == "tree-reference":
                     inv_entry = TreeReference(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         reference_revision=link_or_sha1 or None,
                     )
                 else:
@@ -2102,7 +2110,9 @@ class DirStateRevisionTree(InventoryTree):
                 kind = minikind_to_kind[minikind]
                 if kind == "file":
                     inv_entry = InventoryFile(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         revision=revid,
                         executable=executable,
                         text_size=size,
@@ -2110,19 +2120,25 @@ class DirStateRevisionTree(InventoryTree):
                     )
                 elif kind == "directory":
                     inv_entry = InventoryDirectory(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         revision=revid,
                     )
                     parent_ids[(dirname + b"/" + name).strip(b"/")] = file_id
                 elif kind == "symlink":
                     inv_entry = InventoryLink(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         revision=revid,
                         symlink_target=utf8_decode(fingerprint)[0],
                     )
                 elif kind == "tree-reference":
                     inv_entry = TreeReference(
-                        file_id, name_unicode, parent_id,
+                        file_id,
+                        name_unicode,
+                        parent_id,
                         revision=revid,
                         reference_revision=fingerprint or None,
                     )
@@ -2592,27 +2608,6 @@ class InterDirStateTree(InterInventoryTree):
         """
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = dirstate.ProcessEntryPython
-        return result
-
-    @classmethod
-    def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
-        """Create parent tree using compiled dirstate implementation.
-
-        Args:
-            test_case: The test case instance.
-            source: The source tree.
-            target: The target tree.
-
-        Returns:
-            A tuple of (basis_tree, target).
-        """
-        from .tests.test__dirstate_helpers import compiled_dirstate_helpers_feature
-
-        test_case.requireFeature(compiled_dirstate_helpers_feature)
-        from ._dirstate_helpers_pyx import ProcessEntryC
-
-        result = klass.make_source_parent_tree(source, target)
-        result[1]._iter_changes = ProcessEntryC
         return result
 
     _matching_from_tree_format = WorkingTreeFormat4()

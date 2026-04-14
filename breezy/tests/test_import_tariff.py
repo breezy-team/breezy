@@ -279,8 +279,6 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.bundle.commands",
                 "breezy.cmd_version_info",
                 "bzrformats.dirstate",
-                "breezy.bzr._dirstate_helpers_py",
-                "breezy.bzr._dirstate_helpers_pyx",
                 "breezy.externalcommand",
                 "breezy.filters",
                 # foreign branch plugins import the foreign_vcs_registry from
