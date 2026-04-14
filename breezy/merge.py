@@ -1971,7 +1971,7 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        from .bzr.versionedfile import PlanWeaveMerge
+        from bzrformats.versionedfile import PlanWeaveMerge
 
         base = self.base_tree if self.cherrypick else None
         plan = self._generate_merge_plan(this_path, base)
@@ -2692,6 +2692,7 @@ class _PlanMerge(_PlanMergeBase):
 
     def _build_weave(self):
         from bzrformats import weave
+
         from .tsort import merge_sort
 
         self._weave = weave.Weave(weave_name="in_memory_weave", allow_reserved=True)

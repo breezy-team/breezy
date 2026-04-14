@@ -26,19 +26,16 @@ from breezy import (
     )
 from breezy.bzr import (
     knit as _mod_knit,
-    lockable_files,
-    versionedfile,
     serializer,
     )
-from bzrformats import xml5, xml6, xml7
+from bzrformats import versionedfile, xml5, xml6, xml7
 from bzrformats._bzr_rs import revision_serializer_v5
 """,
 )
 import contextlib
 
-from dromedary.errors import NoSuchFile
-
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
+from dromedary.errors import NoSuchFile
 
 from .. import controldir, errors, lockdir, trace
 from .. import revision as _mod_revision

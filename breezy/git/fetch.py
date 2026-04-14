@@ -19,22 +19,21 @@
 import posixpath
 import stat
 
-from dromedary.errors import NoSuchFile
-from dulwich.object_store import tree_lookup_path
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
-from vcsgraph.tsort import topo_sort
-
-from .. import debug, osutils, trace
 from bzrformats.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     TreeReference,
 )
-from ..bzr.inventory_delta import InventoryDelta
+from bzrformats.versionedfile import ChunkedContentFactory
+from dromedary.errors import NoSuchFile
+from dulwich.object_store import tree_lookup_path
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag, Tree
+from vcsgraph.tsort import topo_sort
+
+from .. import debug, osutils, trace
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import StrictTestament3
-from ..bzr.versionedfile import ChunkedContentFactory
 from ..errors import BzrError
 from ..revision import NULL_REVISION
 from ..tree import InterTree

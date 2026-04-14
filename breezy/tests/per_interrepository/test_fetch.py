@@ -17,9 +17,9 @@
 
 import sys
 
+from bzrformats import inventory, versionedfile
+
 from breezy import errors, osutils, repository
-from bzrformats import inventory
-from breezy.bzr import versionedfile
 from breezy.bzr.vf_search import SearchResult
 from breezy.errors import NoSuchRevision
 from breezy.repository import WriteGroup

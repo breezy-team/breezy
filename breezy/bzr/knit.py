@@ -77,10 +77,8 @@ from breezy.i18n import gettext
 )
 import contextlib
 
-from dromedary.errors import NoSuchFile
-
-from .. import debug, errors, osutils, trace
-from ..bzr.versionedfile import (
+from bzrformats import index as _mod_index
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
     ContentFactory,
@@ -91,10 +89,11 @@ from ..bzr.versionedfile import (
     adapter_registry,
     sort_groupcompress,
 )
+from dromedary.errors import NoSuchFile
+
+from .. import debug, errors, osutils, trace
 from ..errors import InvalidRevisionId, RevisionNotPresent
 from ..osutils import contains_whitespace, sha_string, sha_strings
-from bzrformats import index as _mod_index
-
 from .annotate import VersionedFileAnnotator
 
 # TODO: Split out code specific to this format into an associated object.
@@ -115,7 +114,7 @@ INDEX_SUFFIX = ".kndx"
 _STREAM_MIN_BUFFER_SIZE = 5 * 1024 * 1024
 
 
-from bzrformats.knit import (  # noqa: E402, F401
+from bzrformats.knit import (  # noqa: F401
     KnitCorrupt,
     KnitDataStreamIncompatible,
     KnitDataStreamUnknown,
@@ -124,8 +123,6 @@ from bzrformats.knit import (  # noqa: E402, F401
     KnitIndexUnknownMethod,
     SHA1KnitCorrupt,
 )
-
-
 
 
 class KnitAdapter:

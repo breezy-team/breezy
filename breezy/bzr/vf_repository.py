@@ -41,10 +41,9 @@ from breezy.bzr import (
     fetch as _mod_fetch,
     check,
     inventorytree,
-    versionedfile,
     vf_search,
     )
-from bzrformats import generate_ids, inventory_delta
+from bzrformats import generate_ids, inventory_delta, versionedfile
 from breezy.bzr.bundle import serializer
 
 from breezy.i18n import gettext

@@ -35,11 +35,8 @@ from breezy.bzr import (
 """,
 )
 
-from .. import errors, osutils, trace
-from .._bzr_rs import groupcompress as _groupcompress_rs
-from ..lru_cache import LRUSizeCache
 from bzrformats.btree_index import BTreeBuilder
-from .versionedfile import (
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     ChunkedContentFactory,
     ExistingContent,
@@ -49,9 +46,8 @@ from .versionedfile import (
     adapter_registry,
 )
 
-_null_sha1 = _groupcompress_rs.NULL_SHA1
-PythonGroupCompressor = _groupcompress_rs.TraditionalGroupCompressor
-rabin_hash = _groupcompress_rs.rabin_hash
+from .. import errors, osutils, trace
+from ..lru_cache import LRUSizeCache
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -1082,6 +1078,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     :param keylength: How long should keys be.
     """
     from bzrformats.pack import ContainerWriter
+
     from .pack_repo import _DirectPackAccess
 
     def factory(transport):

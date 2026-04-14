@@ -28,17 +28,13 @@ import re
 from io import BytesIO
 
 import fastbencode as bencode
+from bzrformats import pack, serializer
+from bzrformats import versionedfile as _mod_versionedfile
 
 from .... import errors, lru_cache, osutils, trace, ui
 from .... import repository as _mod_repository
 from .... import revision as _mod_revision
 from ....i18n import ngettext
-from bzrformats import pack
-
-from bzrformats import serializer
-
-from ... import versionedfile as _mod_versionedfile
-from ...inventory import _make_delta
 from .. import bundle_data
 from .. import serializer as bundle_serializer
 
@@ -536,7 +532,9 @@ class BundleWriteOperation:
             revision_order: List of revision IDs to add in order.
         """
         parent_map = self.repository.get_parent_map(revision_order)
-        revision_to_bytes = self.repository._revision_serializer.write_revision_to_string
+        revision_to_bytes = (
+            self.repository._revision_serializer.write_revision_to_string
+        )
         revisions = self.repository.get_revisions(revision_order)
         for revision in revisions:
             revision_id = revision.revision_id
@@ -923,7 +921,8 @@ class RevisionInstaller:
                 inventory data to install.
         """
         if (
-            self._info[b"serializer"] == self._repository._inventory_serializer.format_num
+            self._info[b"serializer"]
+            == self._repository._inventory_serializer.format_num
             and self._repository._inventory_serializer.support_altered_by_hack
         ):
             return self._install_mp_records_keys(self._repository.inventories, records)

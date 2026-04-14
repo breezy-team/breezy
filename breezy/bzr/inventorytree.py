@@ -263,10 +263,8 @@ class InventoryTree(Tree):
         file_ids = self.paths2ids(paths, trees, require_versioned=require_versioned)
         ret = set()
         for file_id in file_ids:
-            with contextlib.suppress(errors.NoSuchId):
+            with contextlib.suppress(NoSuchId):
                 ret.add(self.id2path(file_id))
-            except NoSuchId:
-                pass
         return ret
 
     def paths2ids(self, paths, trees=None, require_versioned=True):
@@ -446,7 +444,7 @@ class InventoryTree(Tree):
             return iter_entries(self.root_inventory)
 
     def _get_plan_merge_data(self, path, other, base):
-        from . import versionedfile
+        from bzrformats import versionedfile
 
         file_id = self.path2id(path)
         vf = versionedfile._PlanMergeVersionedFile(file_id)
@@ -496,7 +494,7 @@ class InventoryTree(Tree):
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        from . import versionedfile
+        from bzrformats import versionedfile
 
         last_revision = tree_revision
         parent_keys = [

@@ -20,12 +20,18 @@ import gzip
 import sys
 from io import BytesIO
 
+from bzrformats import multiparent, pack
+from bzrformats.versionedfile import (
+    AbsentContentFactory,
+    ConstantMapper,
+    RecordingVersionedFilesDecorator,
+    network_bytes_to_kind_and_offset,
+)
 from dromedary.errors import NoSuchFile
 from patiencediff import PatienceSequenceMatcher
 
 from ... import errors, osutils
 from ... import transport as _mod_transport
-from ...bzr import multiparent
 from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,
@@ -33,10 +39,7 @@ from ...tests import (
     TestNotApplicable,
     features,
 )
-from bzrformats import pack
-
 from .. import knit, knitpack_repo, pack_repo
-from bzrformats.index import *
 from ..knit import (
     AnnotatedKnitContent,
     KnitContent,
@@ -52,12 +55,6 @@ from ..knit import (
     _KnitKeyAccess,
     _VFContentMapGenerator,
     make_file_factory,
-)
-from ..versionedfile import (
-    AbsentContentFactory,
-    ConstantMapper,
-    RecordingVersionedFilesDecorator,
-    network_bytes_to_kind_and_offset,
 )
 
 compiled_knit_feature = features.ModuleAvailableFeature(

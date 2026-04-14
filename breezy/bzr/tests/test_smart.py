@@ -30,6 +30,7 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
+from bzrformats import inventory_delta, versionedfile
 from dromedary import chroot, memory
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
@@ -37,8 +38,6 @@ from dromedary.errors import FileExists, NoSuchFile
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
 from breezy.bzr import branch as _mod_bzrbranch
-from breezy.bzr import versionedfile
-from bzrformats import inventory_delta
 from breezy.bzr.smart import branch as smart_branch
 from breezy.bzr.smart import bzrdir as smart_dir
 from breezy.bzr.smart import packrepository as smart_packrepo

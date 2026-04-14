@@ -18,12 +18,13 @@
 
 import zlib
 
+from bzrformats import btree_index, versionedfile
+from bzrformats import index as _mod_index
+
 from ... import config, osutils, tests, trace
 from ...osutils import sha_string
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import groupcompress, knit, versionedfile
-from bzrformats import btree_index
-from bzrformats import index as _mod_index
+from .. import groupcompress, knit
 from .test__groupcompress import compiled_groupcompress_feature
 
 

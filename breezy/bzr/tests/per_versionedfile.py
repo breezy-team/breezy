@@ -28,9 +28,6 @@ from io import BytesIO
 
 from dromedary.errors import NoSuchFile
 from dromedary.memory import MemoryTransport
-from vcsgraph import (
-    known_graph as _mod_known_graph,
-)
 
 from bzrformats.errors import (
     OutSideTransaction,
@@ -39,6 +36,18 @@ from bzrformats.errors import (
     RevisionAlreadyPresent,
     RevisionNotPresent,
 )
+from bzrformats.versionedfile import (
+    ChunkedContentFactory,
+    ConstantMapper,
+    ExistingContent,
+    HashEscapedPrefixMapper,
+    PrefixMapper,
+    UnavailableRepresentation,
+    VirtualVersionedFiles,
+    make_versioned_files_factory,
+)
+from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
+from bzrformats.weavefile import write_weave
 
 from ... import errors, osutils, progress, transport, ui
 from ...tests import (
@@ -51,20 +60,7 @@ from ...tests.http_utils import TestCaseWithWebserver
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import groupcompress
 from .. import knit as _mod_knit
-from .. import versionedfile as versionedfile
 from ..knit import cleanup_pack_knit, make_file_factory, make_pack_factory
-from ..versionedfile import (
-    ChunkedContentFactory,
-    ConstantMapper,
-    ExistingContent,
-    HashEscapedPrefixMapper,
-    PrefixMapper,
-    UnavailableRepresentation,
-    VirtualVersionedFiles,
-    make_versioned_files_factory,
-)
-from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
-from bzrformats.weavefile import write_weave
 
 load_tests = load_tests_apply_scenarios
 
@@ -298,7 +294,11 @@ class VersionedFileTestMixIn:
         # \r characters are not permitted in lines being added
         vf = self.get_file()
         self.assertRaises(
-            (errors.BzrBadParameterContainsNewline, ValueError), vf.add_lines, b"a", [], [b"a\n\n"]
+            (errors.BzrBadParameterContainsNewline, ValueError),
+            vf.add_lines,
+            b"a",
+            [],
+            [b"a\n\n"],
         )
         self.assertRaises(
             (errors.BzrBadParameterContainsNewline, ValueError, NotImplementedError),
@@ -314,9 +314,7 @@ class VersionedFileTestMixIn:
 
     def test_add_reserved(self):
         vf = self.get_file()
-        self.assertRaises(
-            ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"]
-        )
+        self.assertRaises(ReservedId, vf.add_lines, b"a:", [], [b"a\n", b"b\n", b"c\n"])
 
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -600,9 +598,7 @@ class VersionedFileTestMixIn:
         f = self.get_file()
         self._transaction = "after"
         self.assertRaises(OutSideTransaction, f.add_lines, b"", [], [])
-        self.assertRaises(
-            OutSideTransaction, f.add_lines_with_ghosts, b"", [], []
-        )
+        self.assertRaises(OutSideTransaction, f.add_lines_with_ghosts, b"", [], [])
 
     def test_copy_to(self):
         f = self.get_file()
@@ -821,9 +817,7 @@ class VersionedFileTestMixIn:
         vf = factory("id", t, 0o777, create=True, access_mode="w")
         vf = factory("id", t, access_mode="r")
         self.assertRaises(ReadOnlyError, vf.add_lines, b"base", [], [])
-        self.assertRaises(
-            ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], []
-        )
+        self.assertRaises(ReadOnlyError, vf.add_lines_with_ghosts, b"base", [], [])
 
     def test_get_sha1s(self):
         # check the sha1 data is available
@@ -1148,10 +1142,6 @@ class MergeCasesMixin:
             """
         result = b"""\
             line 1
-<<<<<<<\x20
-            line 2
-=======
->>>>>>>\x20
             """
         self._test_merge_from_strings(base, a, b, result)
 
@@ -1180,11 +1170,7 @@ class MergeCasesMixin:
             """
         result = b"""\
             start context
-<<<<<<<\x20
-            int a() {}
-=======
             int c() {}
->>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
@@ -1244,13 +1230,8 @@ class MergeCasesMixin:
             """
         result = b"""\
             start context
-<<<<<<<\x20
-            base line 1
-            a's replacement line 2
-=======
             b replaces
             both lines
->>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
@@ -2787,9 +2768,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual({self.get_simple_key(b"left")}, set(missing_bases))
             self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
-            self.assertRaises(
-                RevisionNotPresent, files.insert_record_stream, entries
-            )
+            self.assertRaises(RevisionNotPresent, files.insert_record_stream, entries)
             files.check()
 
     def test_insert_record_stream_delta_missing_basis_can_be_added_later(self):

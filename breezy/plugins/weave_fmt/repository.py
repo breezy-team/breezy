@@ -39,22 +39,17 @@ from bzrformats import xml5
 from bzrformats._bzr_rs import revision_serializer_v5
 """,
 )
-from dromedary.errors import NoSuchFile
-
-from bzrformats import tuned_gzip
-
-from bzrformats import weavefile
-
-from bzrformats import weave
-
-from ... import debug, errors, lockdir, osutils, trace, urlutils
-from ...bzr import lockable_files, versionedfile
-from ...bzr.repository import RepositoryFormatMetaDir
-from ...bzr.versionedfile import (
+from bzrformats import tuned_gzip, versionedfile, weave, weavefile
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
 )
+from dromedary.errors import NoSuchFile
+
+from ... import debug, errors, lockdir, osutils, trace, urlutils
+from ...bzr import lockable_files
+from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,

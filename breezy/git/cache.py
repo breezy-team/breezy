@@ -21,15 +21,15 @@ import hashlib
 import os
 import threading
 
+from bzrformats import btree_index as _mod_btree_index
+from bzrformats import index as _mod_index
+from bzrformats import versionedfile
 from dromedary import errors as transport_errors
 from dromedary import get_transport_from_path
 from dromedary.errors import FileExists, NoSuchFile
 from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import errors as bzr_errors
-from bzrformats import btree_index as _mod_btree_index
-from bzrformats import index as _mod_index
-from ..bzr import versionedfile
 
 
 def get_remote_cache_transport(repository):
