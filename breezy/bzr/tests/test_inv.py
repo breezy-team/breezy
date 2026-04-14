@@ -16,6 +16,8 @@
 
 
 from bzrformats import chk_map, inventory
+from bzrformats import revision as bzr_revision
+from bzrformats.errors import InconsistentDelta as BzrInconsistentDelta
 from bzrformats.inventory import (
     ROOT_ID,
     CHKInventory,
@@ -32,7 +34,7 @@ from bzrformats.inventory import (
 )
 from bzrformats.inventory_delta import InventoryDelta
 
-from ... import errors, osutils, repository, revision, tests, workingtree
+from ... import osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import groupcompress
 from . import TestCase, TestCaseWithTransport
@@ -175,15 +177,15 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
 
 def _create_repo_revisions(repo, basis, delta, invalid_delta):
     with repository.WriteGroup(repo):
-        rev = revision.Revision(
-            b"basis",
-            timestamp=0,
+        rev = bzr_revision.Revision(
+            revision_id=b"basis",
+            parent_ids=[],
+            timestamp=0.0,
             timezone=None,
             message="",
             committer="foo@example.com",
-            parent_ids=[],
             properties={},
-            inventory_sha1=None,
+            inventory_sha1=b"",
         )
         basis.revision_id = b"basis"
         create_texts_for_inv(repo, basis)
@@ -198,15 +200,15 @@ def _create_repo_revisions(repo, basis, delta, invalid_delta):
             result_inv = basis.create_by_apply_delta(delta, b"result")
             create_texts_for_inv(repo, result_inv)
             target_entries = list(result_inv.iter_entries_by_dir())
-        rev = revision.Revision(
-            b"result",
-            timestamp=0,
+        rev = bzr_revision.Revision(
+            revision_id=b"result",
+            parent_ids=[],
+            timestamp=0.0,
             timezone=None,
             message="",
             committer="foo@example.com",
-            parent_ids=[],
             properties={},
-            inventory_sha1=None,
+            inventory_sha1=b"",
         )
         repo.add_revision(b"result", rev, result_inv)
     return target_entries
@@ -296,15 +298,15 @@ def apply_inventory_Repository_add_inventory_by_delta(
     control = self.make_controldir("tree", format=format._matchingcontroldir)
     repo = format.initialize(control)
     with repo.lock_write(), repository.WriteGroup(repo):
-        rev = revision.Revision(
-            b"basis",
-            timestamp=0,
+        rev = bzr_revision.Revision(
+            revision_id=b"basis",
+            parent_ids=[],
+            timestamp=0.0,
             timezone=None,
             message="",
             committer="foo@example.com",
-            parent_ids=[],
             properties={},
-            inventory_sha1=None,
+            inventory_sha1=b"",
         )
         basis.revision_id = b"basis"
         create_texts_for_inv(repo, basis)
@@ -378,10 +380,12 @@ class TestInventoryUpdates(TestCase):
         )
 
     def test_error_encoding(self):
+        from bzrformats.errors import AlreadyVersionedError
+
         inv = inventory.Inventory(b"tree-root")
         inv.add(InventoryFile(b"a-id", "\u1234", b"tree-root"))
         e = self.assertRaises(
-            errors.AlreadyVersionedError,
+            AlreadyVersionedError,
             inv.add,
             InventoryFile(b"b-id", "\u1234", b"tree-root"),
         )
@@ -440,7 +444,10 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta([])
         inv = self.apply_delta(self, inv, delta)
         inv2 = self.get_empty_inventory(inv)
-        self.assertEqual(InventoryDelta([]), inv2._make_delta(inv))
+        self.assertEqual(
+            list(inv.iter_entries_by_dir()),
+            list(inv2.iter_entries_by_dir()),
+        )
 
     # TODO: test_None_file_id and test_unicode_file_id were removed because
     # bzrformats InventoryDirectory rejects invalid file_id at construction time.
@@ -459,7 +466,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta(
             [(None, "path1", b"id", file1), (None, "path2", b"id", file2)]
         )
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_repeated_new_path(self):
         inv = self.get_empty_inventory()
@@ -475,7 +482,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta(
             [(None, "path", b"id1", file1), (None, "path", b"id2", file2)]
         )
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_repeated_old_path(self):
         inv = self.get_empty_inventory()
@@ -506,7 +513,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta(
             [("path", None, b"id1", None), ("path", None, b"id2", None)]
         )
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_mismatched_id_entry_id(self):
         inv = self.get_empty_inventory()
@@ -519,12 +526,12 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_sha1=b"",
         )
         delta = InventoryDelta([(None, "path", b"id", file1)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_mismatched_new_path_entry_None(self):
         inv = self.get_empty_inventory()
         delta = InventoryDelta([(None, "path", b"id", None)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_mismatched_new_path_None_entry(self):
         inv = self.get_empty_inventory()
@@ -537,7 +544,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_sha1=b"",
         )
         delta = InventoryDelta([("path", None, b"id1", file1)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_parent_is_not_directory(self):
         inv = self.get_empty_inventory()
@@ -559,7 +566,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         )
         inv.add(file1)
         delta = InventoryDelta([(None, "path/path2", b"id2", file2)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_parent_is_missing(self):
         inv = self.get_empty_inventory()
@@ -572,7 +579,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_sha1=b"",
         )
         delta = InventoryDelta([(None, "path/path2", b"id2", file2)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_new_parent_path_has_wrong_id(self):
         inv = self.get_empty_inventory()
@@ -601,7 +608,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         # This delta claims that file1 is at dir/path, but actually its at
         # dir2/path if you follow the inventory parent structure.
         delta = InventoryDelta([(None, "dir/path", b"id", file1)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_old_parent_path_is_wrong(self):
         inv = self.get_empty_inventory()
@@ -631,7 +638,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         # This delta claims that file1 was at dir/path, but actually it was at
         # dir2/path if you follow the inventory parent structure.
         delta = InventoryDelta([("dir/path", None, b"id", None)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_old_parent_path_is_for_other_id(self):
         inv = self.get_empty_inventory()
@@ -671,7 +678,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         # dir2/path if you follow the inventory parent structure. At dir/path
         # is another entry we should not delete.
         delta = InventoryDelta([("dir/path", None, b"id", None)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_add_existing_id_new_path(self):
         inv = self.get_empty_inventory()
@@ -689,7 +696,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         )
         inv.add(parent1)
         delta = InventoryDelta([(None, "dir2", b"p-1", parent2)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_add_new_id_existing_path(self):
         inv = self.get_empty_inventory()
@@ -707,7 +714,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         )
         inv.add(parent1)
         delta = InventoryDelta([(None, "dir1", b"p-2", parent2)])
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_remove_dir_leaving_dangling_child(self):
         inv = self.get_empty_inventory()
@@ -735,7 +742,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta(
             [("dir1", None, b"p-1", None), ("dir1/child2", None, b"p-3", None)]
         )
-        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
+        self.assertRaises(BzrInconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_add_file(self):
         inv = self.get_empty_inventory()
@@ -959,18 +966,20 @@ class TestInventoryEntry(TestCase):
         )
 
     def test_make_entry_non_normalized(self):
-        if osutils.normalizes_filenames():
-            entry = inventory.make_entry("file", "a\u030a", ROOT_ID)
-            self.assertEqual("\xe5", entry.name)
-            self.assertIsInstance(entry, inventory.InventoryFile)
-        else:
-            self.assertRaises(
-                errors.InvalidNormalization,
-                inventory.make_entry,
-                "file",
-                "a\u030a",
-                ROOT_ID,
-            )
+        from bzrformats.errors import InvalidNormalization
+
+        # bzrformats rejects un-normalized names at construction time.
+        self.assertRaises(
+            InvalidNormalization,
+            inventory.make_entry,
+            "file",
+            "a\u030a",
+            ROOT_ID,
+        )
+        # Already-normalized names are accepted.
+        entry = inventory.make_entry("file", "\xe5", ROOT_ID)
+        self.assertEqual("\xe5", entry.name)
+        self.assertIsInstance(entry, inventory.InventoryFile)
 
 
 class TestDescribeChanges(TestCase):

@@ -2073,13 +2073,15 @@ class DirStateRevisionTree(InventoryTree):
         current_id = root_key[2]
         if current_entry[parent_index][0] != b"d":
             raise AssertionError()
-        if current_entry[parent_index][4] == b"":
-            root_revision = None
-        else:
-            root_revision = current_entry[parent_index][4]
-        inv = Inventory(revision_id=self._revision_id, root_id=None)
-        root = InventoryDirectory(current_id, "", None, root_revision)
-        inv.add(root)
+        inv = Inventory(root_id=None, revision_id=self._revision_id)
+        inv.add(
+            InventoryDirectory(
+                file_id=current_id,
+                name="",
+                parent_id=None,
+                revision=current_entry[parent_index][4],
+            )
+        )
         # Turn some things into local variables
         minikind_to_kind = dirstate.DirState._minikind_to_kind
         utf8_decode = cache_utf8._utf8_decode
