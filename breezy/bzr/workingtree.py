@@ -219,7 +219,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # it.  mbp 20070306
 
     def _serialize(self, inventory, out_file):
-        xml5.inventory_serializer_v5.write_inventory(self._inventory, out_file, working=True)
+        xml5.inventory_serializer_v5.write_inventory(
+            self._inventory, out_file, working=True
+        )
 
     def _deserialize(self, in_file):
         return xml5.inventory_serializer_v5.read_inventory(in_file)
@@ -522,7 +524,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # Print only one message (if any) per file.
                 if message is not None:
                     note(message)
-            self.apply_inventory_delta(inv_delta)
+            from bzrformats.inventory_delta import InventoryDelta
+
+            self.apply_inventory_delta(InventoryDelta(inv_delta))
 
     def get_nested_tree(self, path):
         """Get a nested working tree at the specified path.
@@ -913,7 +917,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 from .xml7 import inventory_serializer_v7
 
                 try:
-                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(xml_lines)
+                    inv = xml7.inventory_serializer_v7.read_inventory_from_lines(
+                        xml_lines
+                    )
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
@@ -1068,6 +1074,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 inv = self.root_inventory
                 # Add the other tree's root as a subdirectory
                 from bzrformats.inventory import InventoryDirectory
+
                 new_dir = InventoryDirectory(
                     other_root.file_id,
                     osutils.basename(other_tree_path),

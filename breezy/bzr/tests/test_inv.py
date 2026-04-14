@@ -30,6 +30,7 @@ from bzrformats.inventory import (
     chk_inventory_bytes_to_utf8name_key,
     mutable_inventory_from_tree,
 )
+from bzrformats.inventory_delta import InventoryDelta
 
 from ... import errors, osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
@@ -433,7 +434,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         delta = InventoryDelta([])
         inv = self.apply_delta(self, inv, delta)
         inv2 = self.get_empty_inventory(inv)
-        self.assertEqual([], inv2._make_delta(inv))
+        self.assertEqual(InventoryDelta([]), inv2._make_delta(inv))
 
     # TODO: test_None_file_id and test_unicode_file_id were removed because
     # bzrformats InventoryDirectory rejects invalid file_id at construction time.
@@ -449,7 +450,9 @@ class TestDeltaApplication(TestCaseWithTransport):
         }
         file1 = inventory.InventoryFile(name="path1", **common)
         file2 = inventory.InventoryFile(name="path2", **common)
-        delta = [(None, "path1", b"id", file1), (None, "path2", b"id", file2)]
+        delta = InventoryDelta(
+            [(None, "path1", b"id", file1), (None, "path2", b"id", file2)]
+        )
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_repeated_new_path(self):
@@ -463,7 +466,9 @@ class TestDeltaApplication(TestCaseWithTransport):
         }
         file1 = inventory.InventoryFile(file_id=b"id1", **common)
         file2 = inventory.InventoryFile(file_id=b"id2", **common)
-        delta = [(None, "path", b"id1", file1), (None, "path", b"id2", file2)]
+        delta = InventoryDelta(
+            [(None, "path", b"id1", file1), (None, "path", b"id2", file2)]
+        )
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_repeated_old_path(self):
@@ -507,7 +512,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_size=0,
             text_sha1=b"",
         )
-        delta = [(None, "path", b"id", file1)]
+        delta = InventoryDelta([(None, "path", b"id", file1)])
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_mismatched_new_path_entry_None(self):
@@ -525,7 +530,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_size=0,
             text_sha1=b"",
         )
-        delta = [("path", None, b"id1", file1)]
+        delta = InventoryDelta([("path", None, b"id1", file1)])
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_parent_is_not_directory(self):
@@ -560,7 +565,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_size=0,
             text_sha1=b"",
         )
-        delta = [(None, "path/path2", b"id2", file2)]
+        delta = InventoryDelta([(None, "path/path2", b"id2", file2)])
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_new_parent_path_has_wrong_id(self):
@@ -736,7 +741,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             text_size=0,
             text_sha1=b"",
         )
-        delta = [(None, "path", b"file-id", file1)]
+        delta = InventoryDelta([(None, "path", b"file-id", file1)])
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(b"file-id", res_inv.get_entry(b"file-id").file_id)
 
@@ -794,7 +799,7 @@ class TestDeltaApplication(TestCaseWithTransport):
             parent_id=inv.root.file_id,
             revision=b"result",
         )
-        delta = [("dir1", "dir2", b"dir-id", dir2)]
+        delta = InventoryDelta([("dir1", "dir2", b"dir-id", dir2)])
         res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
         self.assertEqual(b"file-id", res_inv.path2id("dir2/name"))
@@ -1320,7 +1325,10 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         _set_root_revision(inv, b"myrootrev")
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = InventoryDelta(
-            [("", None, base_inv.root.file_id, None), (None, "", b"myrootid", inv.root)]
+            [
+                ("", None, base_inv.root.file_id, None),
+                (None, "", b"myrootid", inv.root),
+            ]
         )
         new_inv = base_inv.create_by_apply_delta(delta, b"expectedid")
         self.assertEqual(reference_inv.root, new_inv.root)

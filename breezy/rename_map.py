@@ -27,10 +27,11 @@ files are actually renamed versions of missing versioned files.
 import contextlib
 from io import BytesIO
 
-from . import errors, osutils, progress, trace
+from bzrformats.inventory import NoSuchId
+
+from . import osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
-from bzrformats.inventory import NoSuchId
 
 
 class RenameMap:
@@ -248,6 +249,8 @@ class RenameMap:
                 to_tree.apply_inventory_delta(delta)
 
     def _make_inventory_delta(self, matches):
+        from bzrformats.inventory_delta import InventoryDelta
+
         delta = []
         file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
@@ -272,6 +275,20 @@ class RenameMap:
                         parent_id = self.tree.path2id(parent_path)
             if entry.name == new_name and entry.parent_id == parent_id:
                 continue
-            new_entry = entry.derive(name=new_name, parent_id=parent_id)
+            kwargs = {
+                "file_id": entry.file_id,
+                "name": new_name,
+                "parent_id": parent_id,
+                "revision": entry.revision,
+            }
+            if entry.kind == "file":
+                kwargs["text_sha1"] = entry.text_sha1
+                kwargs["text_size"] = entry.text_size
+                kwargs["executable"] = entry.executable
+            elif entry.kind == "symlink":
+                kwargs["symlink_target"] = entry.symlink_target
+            elif entry.kind == "tree-reference":
+                kwargs["reference_revision"] = entry.reference_revision
+            new_entry = type(entry)(**kwargs)
             delta.append((old_path, new_path, new_entry.file_id, new_entry))
-        return delta
+        return InventoryDelta(delta)

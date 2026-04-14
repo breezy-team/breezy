@@ -52,7 +52,10 @@ from breezy.bzr.testament import Testament
 """,
 )
 
-from .. import debug, errors, osutils
+from bzrformats.inventory import Inventory, NoSuchId, entry_factory
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
+
+from .. import errors
 from ..decorators import only_raises
 from ..repository import (
     CommitBuilder,
@@ -63,8 +66,6 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from bzrformats.inventory import Inventory, NoSuchId, entry_factory
-from bzrformats.serializer import InventorySerializer, RevisionSerializer
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
@@ -318,9 +319,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
     def get_basis_delta(self):
         """Return the complete inventory delta versus the basis inventory.
 
-        :return: An inventory delta, suitable for use with apply_delta, or
+        :return: An InventoryDelta, suitable for use with apply_delta, or
             Repository.add_inventory_by_delta, etc.
         """
+        from bzrformats.inventory_delta import InventoryDelta
+
         return InventoryDelta(self._basis_delta)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):

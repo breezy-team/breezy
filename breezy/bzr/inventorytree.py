@@ -21,13 +21,13 @@ import re
 import stat
 from collections import deque
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind, file_stat
 
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
-from bzrformats.inventory import NoSuchId
 from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
@@ -844,14 +844,9 @@ class _SmartAddHelper:
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
-        """Get the inventory delta accumulated by this helper.
+        from bzrformats.inventory_delta import InventoryDelta
 
-        Returns:
-            list: List of inventory changes.
-        """
-        # GZ 2016-06-05: Returning view would probably be fine but currently
-        # Inventory.apply_delta is documented as requiring a list of changes.
-        return list(self._invdelta.values())
+        return InventoryDelta(list(self._invdelta.values()))
 
     def _get_ie(self, inv_path):
         """Retrieve the most up to date inventory entry for a path.
