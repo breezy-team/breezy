@@ -17,7 +17,7 @@
 import contextlib
 import os
 
-from bzrformats import inventory, versionedfile
+from bzrformats import inventory, knit, versionedfile
 from bzrformats.inventory import NoSuchId
 from dromedary.local import file_kind
 
@@ -25,7 +25,6 @@ from .. import branch as _mod_branch
 from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
-from ..bzr import knit
 from ..bzr.conflicts import (
     ContentsConflict,
     DeletingParent,

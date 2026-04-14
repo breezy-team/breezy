@@ -20,14 +20,13 @@ import os
 import stat
 import time
 
-from bzrformats import versionedfile
+from bzrformats import knit, versionedfile
 from bzrformats.inventory import Inventory
 from dulwich.objects import S_IFGITLINK, Blob, Tag, Tree
 from dulwich.repo import Repo as GitRepo
 
 from ... import osutils
 from ...branch import Branch
-from ...bzr import knit
 from ...controldir import ControlDir
 from ...repository import Repository
 from ...tests import TestCaseWithTransport

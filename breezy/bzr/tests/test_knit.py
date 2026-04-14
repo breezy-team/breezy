@@ -20,7 +20,24 @@ import gzip
 import sys
 from io import BytesIO
 
-from bzrformats import multiparent, pack
+from bzrformats import knit, multiparent, pack
+from bzrformats.errors import ReadOnlyError as BzrReadOnlyError
+from bzrformats.knit import (
+    AnnotatedKnitContent,
+    KnitContent,
+    KnitCorrupt,
+    KnitDataStreamIncompatible,
+    KnitDataStreamUnknown,
+    KnitHeaderError,
+    KnitIndexUnknownMethod,
+    KnitVersionedFiles,
+    PlainKnitContent,
+    _KndxIndex,
+    _KnitGraphIndex,
+    _KnitKeyAccess,
+    _VFContentMapGenerator,
+    make_file_factory,
+)
 from bzrformats.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
@@ -39,23 +56,7 @@ from ...tests import (
     TestNotApplicable,
     features,
 )
-from .. import knit, knitpack_repo, pack_repo
-from ..knit import (
-    AnnotatedKnitContent,
-    KnitContent,
-    KnitCorrupt,
-    KnitDataStreamIncompatible,
-    KnitDataStreamUnknown,
-    KnitHeaderError,
-    KnitIndexUnknownMethod,
-    KnitVersionedFiles,
-    PlainKnitContent,
-    _KndxIndex,
-    _KnitGraphIndex,
-    _KnitKeyAccess,
-    _VFContentMapGenerator,
-    make_file_factory,
-)
+from .. import knitpack_repo, pack_repo
 
 compiled_knit_feature = features.ModuleAvailableFeature(
     "bzrformats._knit_load_data_pyx"
@@ -1804,7 +1805,7 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(
-            errors.ReadOnlyError,
+            BzrReadOnlyError,
             index.add_records,
             [((b"new",), b"fulltext,no-eol", (None, 50, 60), [b"separate"])],
         )
@@ -2222,7 +2223,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(
-            errors.ReadOnlyError,
+            BzrReadOnlyError,
             index.add_records,
             [((b"new",), b"fulltext,no-eol", (None, 50, 60), [(b"separate",)])],
         )

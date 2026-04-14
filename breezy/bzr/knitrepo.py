@@ -25,9 +25,9 @@ from breezy import (
     transactions,
     )
 from breezy.bzr import (
-    knit as _mod_knit,
     serializer,
     )
+from bzrformats import knit as _mod_knit
 from bzrformats import versionedfile, xml5, xml6, xml7
 from bzrformats._bzr_rs import revision_serializer_v5
 """,

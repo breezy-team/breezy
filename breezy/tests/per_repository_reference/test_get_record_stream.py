@@ -16,7 +16,8 @@
 
 """Tests that get_record_stream() behaves itself properly when stacked."""
 
-from breezy.bzr import knit
+from bzrformats import knit
+
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
 )

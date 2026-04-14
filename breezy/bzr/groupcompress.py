@@ -28,9 +28,10 @@ lazy_import(
     globals(),
     """
 from breezy.bzr import (
-    knit,
-    static_tuple,
+    pack,
+    pack_repo,
     )
+from bzrformats import knit
 
 """,
 )

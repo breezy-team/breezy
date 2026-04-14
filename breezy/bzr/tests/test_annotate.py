@@ -16,9 +16,17 @@
 
 """Whitebox tests for annotate functionality."""
 
-from ... import annotate, errors, revision, tests
-from ...bzr import knit
-from ...bzr.annotate import VersionedFileAnnotator
+from bzrformats import knit
+
+from .. import annotate, errors, revision, tests
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Parameterize tests for all versions of groupcompress."""
+    suite, _ = tests.permute_tests_for_extension(
+        standard_tests, loader, "breezy._annotator_py", "breezy._annotator_pyx"
+    )
+    return suite
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):

@@ -47,19 +47,18 @@ from bzrformats.index import (
     )
 """,
 )
-from dromedary import errors as transport_errors
-from dromedary.errors import FileExists, NoSuchFile
-
 from bzrformats import btree_index
 from bzrformats import index as _mod_index
+from bzrformats.pack_repo import RetryWithNewPacks
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
 
 from .. import debug, errors, lockdir, osutils
 from ..bzr import lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
 from ..repository import RepositoryWriteLockResult, _LazyListJoin
-from bzrformats.serializer import InventorySerializer, RevisionSerializer
-
 from ..trace import mutter, note, warning
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 from .vf_repository import (
@@ -67,41 +66,6 @@ from .vf_repository import (
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
 )
-
-
-class RetryWithNewPacks(errors.BzrError):
-    """Raised when we realize that the packs on disk have changed.
-
-    This is meant as more of a signaling exception, to trap between where a
-    local error occurred and the code that can actually handle the error and
-    code that can retry appropriately.
-    """
-
-    internal_error = True
-
-    _fmt = (
-        "Pack files have changed, reload and retry. context: %(context)s %(orig_error)s"
-    )
-
-    def __init__(self, context, reload_occurred, exc_info):
-        """Create a new RetryWithNewPacks error.
-
-        :param reload_occurred: Set to True if we know that the packs have
-            already been reloaded, and we are failing because of an in-memory
-            cache miss. If set to True then we will ignore if a reload says
-            nothing has changed, because we assume it has already reloaded. If
-            False, then a reload with nothing changed will force an error.
-        :param exc_info: The original exception traceback, so if there is a
-            problem we can raise the original error (value from sys.exc_info())
-        """
-        errors.BzrError.__init__(self)
-        self.context = context
-        self.reload_occurred = reload_occurred
-        self.exc_info = exc_info
-        self.orig_error = exc_info[1]
-        # TODO: The global error handler should probably treat this by
-        #       raising/printing the original exception with a bit about
-        #       RetryWithNewPacks also not being caught
 
 
 class RetryAutopack(RetryWithNewPacks):

@@ -35,7 +35,7 @@ from breezy import (
 from bzrformats import pack
 from bzrformats import xml5, xml6, xml7
 from bzrformats._bzr_rs import revision_serializer_v5
-from breezy.bzr.knit import (
+from bzrformats.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
@@ -50,6 +50,7 @@ from bzrformats.index import (
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
 )
+
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
 from .pack_repo import (
@@ -785,8 +786,7 @@ class KnitPacker(Packer):
                 if output_lines is not None:
                     output_lines(knit._parse_record(key[-1], raw_data)[0])
                 else:
-                    df, _ = knit._parse_record_header(key, raw_data)
-                    df.close()
+                    knit._parse_record_header(key, raw_data)
                 pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
@@ -859,8 +859,7 @@ class KnitPacker(Packer):
                         yield line, key
                 else:
                     # check the header only
-                    df, _ = knit._parse_record_header(key, raw_data)
-                    df.close()
+                    knit._parse_record_header(key, raw_data)
                 pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size), references)
                 pb.update("Copied record", record_index)
