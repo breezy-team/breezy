@@ -249,6 +249,7 @@ def read_stanza(line_iter):
 
 
 # Patch-stanza helpers are provided by bzrformats.rio_patch.
+from bzrformats.rio_patch import read_patch_stanza, to_patch_lines  # noqa: F401,E402
 
 
 try:

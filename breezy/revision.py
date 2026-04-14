@@ -14,112 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Revision related functionality and data structures.
+"""Revision metadata.
 
-This module provides utilities for working with revisions, including
-iterating through revision ancestry and finding ancestors in revision
-trees.
+The implementation lives in bzrformats.revision; this module re-exports
+it so that existing ``breezy.revision`` imports keep working.
 """
 
-# TODO: Some kind of command-line display of revision properties:
-# perhaps show them in log -v and allow them as options to the commit command.
-
-__docformat__ = "google"
-
-from . import errors
-from ._bzr_rs import (  # noqa: F401
+from bzrformats.revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     Revision,
+    RevisionID,
     check_not_reserved_id,
     is_null,
     is_reserved_id,
 )
 
-RevisionID = bytes
-
-
-def iter_bugs(rev):
-    """Iterate over the bugs associated with this revision."""
-    from . import bugtracker
-
-    return bugtracker.decode_bug_urls(rev.bug_urls())
-
-
-def get_history(repository, current_revision) -> list["RevisionID | None"]:
-    """Return the canonical line-of-history for this revision.
-
-    Walks the left-most parent back to a parentless ancestor. The
-    result is ordered from the root to ``current_revision``, with a
-    leading ``None`` when the oldest ancestor has no parents. If ghosts
-    are present this may differ from a ghost-free repository.
-    """
-    reversed_result: list[RevisionID | None] = []
-    while current_revision is not None:
-        reversed_result.append(current_revision.revision_id)
-        if not len(current_revision.parent_ids):
-            reversed_result.append(None)
-            current_revision = None
-        else:
-            next_revision_id = current_revision.parent_ids[0]
-            current_revision = repository.get_revision(next_revision_id)
-    reversed_result.reverse()
-    return reversed_result
-
-
-def iter_ancestors(
-    revision_id: RevisionID, revision_source, only_present: bool = False
-):
-    """Iterate through the ancestors of a revision.
-
-    Args:
-        revision_id: The revision ID to start from.
-        revision_source: Source to retrieve revisions from.
-        only_present: If True, only yield revisions that are present
-            in the revision source.
-
-    Yields:
-        tuple[RevisionID, int]: Tuples of (ancestor_id, distance) where
-            distance is the number of generations away from the starting
-            revision.
-
-    Raises:
-        NoSuchRevision: If the starting revision_id cannot be found.
-    """
-    ancestors = [revision_id]
-    distance = 0
-    while len(ancestors) > 0:
-        new_ancestors: list[bytes] = []
-        for ancestor in ancestors:
-            if not only_present:
-                yield ancestor, distance
-            try:
-                revision = revision_source.get_revision(ancestor)
-            except errors.NoSuchRevision as e:
-                if e.revision == revision_id:
-                    raise
-                else:
-                    continue
-            if only_present:
-                yield ancestor, distance
-            new_ancestors.extend(revision.parent_ids)
-        ancestors = new_ancestors
-        distance += 1
-
-
-def find_present_ancestors(
-    revision_id: RevisionID, revision_source
-) -> dict[RevisionID, tuple[int, int]]:
-    """Return the ancestors of a revision present in a branch.
-
-    It's possible that a branch won't have the complete ancestry of
-    one of its revisions.
-    """
-    found_ancestors: dict[RevisionID, tuple[int, int]] = {}
-    anc_iter = enumerate(
-        iter_ancestors(revision_id, revision_source, only_present=True)
-    )
-    for anc_order, (anc_id, anc_distance) in anc_iter:
-        if anc_id not in found_ancestors:
-            found_ancestors[anc_id] = (anc_order, anc_distance)
-    return found_ancestors
+__all__ = [
+    "CURRENT_REVISION",
+    "NULL_REVISION",
+    "Revision",
+    "RevisionID",
+    "check_not_reserved_id",
+    "is_null",
+    "is_reserved_id",
+]

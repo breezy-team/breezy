@@ -97,21 +97,16 @@ class ForeignRevision(Revision):
 
     """
 
-    def __new__(cls, foreign_revid, mapping, *args, **kwargs):
-        """Create a new ForeignRevision instance.
+    def __new__(cls, foreign_revid, mapping, **kwargs):
+        kwargs.setdefault("inventory_sha1", b"")
+        kwargs.setdefault("parent_ids", [])
+        kwargs.setdefault("properties", {})
+        return Revision.__new__(cls, **kwargs)
 
-        Args:
-            foreign_revid: The foreign revision id.
-            mapping: The VcsMapping to use.
-            *args: Additional positional arguments for Revision.__new__.
-            **kwargs: Additional keyword arguments for Revision.__new__.
-
-        Returns:
-            A new ForeignRevision instance.
-        """
-        if "inventory_sha1" not in kwargs:
-            kwargs["inventory_sha1"] = None
-        self = Revision.__new__(cls, *args, **kwargs)
+    def __init__(self, foreign_revid, mapping, **kwargs):
+        # bzrformats Revision is immutable, so the structural fields have
+        # already been set by __new__; only attach the foreign-specific
+        # metadata here (instance __dict__ is available to subclasses).
         self.foreign_revid = foreign_revid
         self.mapping = mapping
         return self
