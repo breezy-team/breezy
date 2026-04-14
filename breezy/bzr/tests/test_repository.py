@@ -44,11 +44,10 @@ from breezy.bzr import (
     knitpack_repo,
     knitrepo,
     pack_repo,
-    versionedfile,
     vf_repository,
     vf_search,
 )
-from bzrformats import btree_index, inventory
+from bzrformats import btree_index, inventory, versionedfile
 from breezy.bzr import repository as bzrrepository
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.index import GraphIndex
