@@ -344,7 +344,9 @@ class TestInventoryUpdates(TestCase):
         inv = inventory.Inventory(root_id=b"some-tree-root")
         inv.add_path("hello", "file", b"hello-id")
         inv2 = inv.copy()
-        inv.rename_id(b"some-tree-root", b"some-new-root")
+        # Mutate the original via replacement; the copy must be unaffected.
+        inv.change_root_id(b"some-new-root")
+        _replace_entry(inv, b"hello-id", name="file2")
         self.assertEqual(b"some-tree-root", inv2.root.file_id)
         self.assertEqual("hello", inv2.get_entry(b"hello-id").name)
 
@@ -438,31 +440,29 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
-        file1 = inventory.InventoryFile(
-            file_id=b"id",
-            name="path1",
-            parent_id=inv.root.file_id,
-            revision=b"result",
-            text_size=0,
-            text_sha1=b"",
-        )
-        file2 = file1.copy()
-        file2.name = "path2"
+        common = {
+            "file_id": b"id",
+            "parent_id": inv.root.file_id,
+            "revision": b"result",
+            "text_size": 0,
+            "text_sha1": b"",
+        }
+        file1 = inventory.InventoryFile(name="path1", **common)
+        file2 = inventory.InventoryFile(name="path2", **common)
         delta = [(None, "path1", b"id", file1), (None, "path2", b"id", file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
     def test_repeated_new_path(self):
         inv = self.get_empty_inventory()
-        file1 = inventory.InventoryFile(
-            file_id=b"id1",
-            name="path",
-            parent_id=inv.root.file_id,
-            revision=b"result",
-            text_size=0,
-            text_sha1=b"",
-        )
-        file2 = file1.copy()
-        file2.file_id = b"id2"
+        common = {
+            "name": "path",
+            "parent_id": inv.root.file_id,
+            "revision": b"result",
+            "text_size": 0,
+            "text_sha1": b"",
+        }
+        file1 = inventory.InventoryFile(file_id=b"id1", **common)
+        file2 = inventory.InventoryFile(file_id=b"id2", **common)
         delta = [(None, "path", b"id1", file1), (None, "path", b"id2", file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self, inv, delta)
 
@@ -836,11 +836,11 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv = inventory.Inventory(b"TREE_ROOT")
         self.assertTrue(inv.is_root(b"TREE_ROOT"))
         self.assertFalse(inv.is_root(b"booga"))
-        inv.rename_id(inv.root.file_id, b"booga")
+        inv.change_root_id(b"booga")
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertTrue(inv.is_root(b"booga"))
         # works properly even if no root is set
-        inv.delete(inv.root.file_id)
+        inv.delete(b"booga")
         self.assertFalse(inv.is_root(b"TREE_ROOT"))
         self.assertFalse(inv.is_root(b"booga"))
 
