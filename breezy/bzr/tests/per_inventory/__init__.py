@@ -16,8 +16,9 @@
 
 """Tests for different inventory implementations."""
 
+from bzrformats import groupcompress
+
 from breezy import tests
-from breezy.bzr import groupcompress
 
 
 def load_tests(loader, basic_tests, pattern):

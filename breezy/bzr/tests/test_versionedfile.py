@@ -16,11 +16,10 @@
 
 """Tests for VersionedFile classes."""
 
-from bzrformats import multiparent, versionedfile
+from bzrformats import groupcompress, multiparent, versionedfile
 from bzrformats.errors import RevisionNotPresent
 
 from ... import tests
-from .. import groupcompress
 
 
 class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):

@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrformats import chk_map, inventory
+from bzrformats import chk_map, groupcompress, inventory
 from bzrformats import revision as bzr_revision
 from bzrformats.errors import InconsistentDelta as BzrInconsistentDelta
 from bzrformats.inventory import (
@@ -36,7 +36,6 @@ from bzrformats.inventory_delta import InventoryDelta
 
 from ... import osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import groupcompress
 from . import TestCase, TestCaseWithTransport
 
 load_tests = load_tests_apply_scenarios

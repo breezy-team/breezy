@@ -26,6 +26,7 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
+from bzrformats import groupcompress
 from bzrformats import knit as _mod_knit
 from dromedary.errors import NoSuchFile
 from dromedary.memory import MemoryTransport
@@ -60,7 +61,6 @@ from ...tests import (
 )
 from ...tests.http_utils import TestCaseWithWebserver
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import groupcompress
 
 load_tests = load_tests_apply_scenarios
 

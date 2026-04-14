@@ -23,10 +23,10 @@ from bzrformats import chk_map, chk_serializer, inventory, pack, versionedfile
 from bzrformats import index as _mod_index
 from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 
 from .. import controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
 from .pack_repo import (
     NewPack,

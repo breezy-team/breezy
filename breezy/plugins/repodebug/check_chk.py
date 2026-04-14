@@ -16,10 +16,9 @@
 
 """Check each CHK page to make sure it is in 'canonical' form."""
 
-from bzrformats import chk_map
+from bzrformats import chk_map, groupcompress
 
 from ... import commands, controldir, trace, transport, ui
-from ...bzr import groupcompress
 
 
 class cmd_check_chk(commands.Command):

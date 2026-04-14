@@ -16,10 +16,10 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
-from ... import errors, osutils, tests
-from .. import groupcompress
-from bzrformats import chk_map
-from bzrformats.chk_map import CHKMap, InternalNode, LeafNode, Node, common_prefix_pair
+from bzrformats import chk_map, groupcompress
+from bzrformats.chk_map import CHKMap, InternalNode, LeafNode, common_prefix_pair
+
+from ... import osutils, tests
 
 
 class TestNode(tests.TestCase):
