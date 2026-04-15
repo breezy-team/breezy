@@ -36,7 +36,6 @@ def load_tests(loader, basic_tests, pattern):
         "blackbox",
         "test_dirstate",
         "per_bzrdir",
-        "per_inventory",
         "per_pack_repository",
         "per_repository_chk",
         "per_repository_vf",

@@ -3108,11 +3108,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             [
                 (
                     "revisions",
-                    [
-                        ChunkedContentFactory(
-                            key, parents, None, lines, chunks_are_lines=True
-                        )
-                    ],
+                    [ChunkedContentFactory(key, parents, None, lines)],
                 )
             ],
             self._format,

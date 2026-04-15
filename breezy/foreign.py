@@ -97,16 +97,10 @@ class ForeignRevision(Revision):
 
     """
 
-    def __new__(cls, foreign_revid, mapping, **kwargs):
-        kwargs.setdefault("inventory_sha1", b"")
-        kwargs.setdefault("parent_ids", [])
-        kwargs.setdefault("properties", {})
-        return Revision.__new__(cls, **kwargs)
-
-    def __init__(self, foreign_revid, mapping, **kwargs):
-        # bzrformats Revision is immutable, so the structural fields have
-        # already been set by __new__; only attach the foreign-specific
-        # metadata here (instance __dict__ is available to subclasses).
+    def __init__(self, foreign_revid, mapping, *args, **kwargs):
+        if "inventory_sha1" not in kwargs:
+            kwargs["inventory_sha1"] = b""
+        super().__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
         return self

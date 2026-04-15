@@ -781,7 +781,6 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                     record.parents,
                     record.sha1,
                     canonical_inv.to_lines(),
-                    chunks_are_lines=True,
                 )
             # We have finished processing all of the inventory records, we
             # don't need these sets anymore

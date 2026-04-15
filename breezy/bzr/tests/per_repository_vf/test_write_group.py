@@ -136,8 +136,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         rich_root = branch_repo._format.rich_root_data
         all_texts = [
             (ie.file_id, ie.revision)
-            for (_n, ie) in inv.iter_entries()
-            if rich_root or inv.id2path(ie.file_id) != ""
+            for path, ie in inv.iter_entries()
+            if rich_root or path != ""
         ]
         repo.texts.insert_record_stream(
             branch_repo.texts.get_record_stream(all_texts, "unordered", False)

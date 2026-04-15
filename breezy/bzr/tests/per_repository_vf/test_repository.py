@@ -213,6 +213,7 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs, strict=False):
             self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, inventory.Inventory)
 
     def test_item_keys_introduced_by(self):
         # Make a repo with one revision and one versioned file.

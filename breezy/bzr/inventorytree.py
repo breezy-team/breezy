@@ -415,10 +415,8 @@ class InventoryTree(Tree):
                         raise AssertionError(
                             f"{inventory!r} != {self.root_inventory!r}"
                         )
-                    if inv_file_id is not None:
-                        # TODO(jelmer): Should we perhaps raise NoSuchFile here
-                        # rather than silently skipping entries?
-                        inventory_file_ids.add(inv_file_id)
+                    inventory_file_ids.append(inv_file_id)
+                inventory_file_ids = set(inventory_file_ids)
             else:
                 inventory_file_ids = None
 

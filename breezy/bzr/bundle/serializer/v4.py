@@ -373,20 +373,10 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
 
     @staticmethod
     def get_source_serializer(info):
-        """Retrieve the serializer for a given info object.
-
-        Args:
-            info: Dictionary containing serializer format information.
-
-        Returns:
-            Tuple[serializer, serializer]: Revision and inventory serializers.
-        """
-        format_name = info[b"serializer"].decode("ascii")
-        inventory_serializer = serializer.inventory_format_registry.get(format_name)
-        revision_serializer = serializer.revision_format_registry.get(
-            {"7": "5", "6": "5"}.get(format_name, format_name)
+        """Retrieve the serializer for a given info object."""
+        return serializer.revision_format_registry.get(
+            info[b"serializer"].decode("ascii")
         )
-        return (revision_serializer, inventory_serializer)
 
 
 class BundleWriteOperation:
