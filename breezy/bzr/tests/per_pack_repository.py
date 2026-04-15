@@ -22,17 +22,32 @@ These tests are repeated for all pack-based repository formats.
 import hashlib
 from stat import S_ISDIR
 
+from bzrformats import inventory
+from bzrformats.btree_index import BTreeGraphIndex
+from bzrformats.index import GraphIndex
+from bzrformats.inventory import InventoryDirectory
 from dromedary import errors as transport_errors
 from dromedary import memory
 
 from ... import controldir, errors, gpg, osutils, repository, tests, transport, ui
 from ... import revision as _mod_revision
 from ...tests import TestCaseWithTransport, TestNotApplicable, test_server
-from bzrformats import inventory
-from bzrformats.btree_index import BTreeGraphIndex
 from ..groupcompress_repo import RepositoryFormat2a
-from bzrformats.index import GraphIndex
 from ..smart import client
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -234,9 +249,8 @@ class TestPackRepository(TestCaseWithTransport):
                 revid = b"%d" % pos
                 repo.start_write_group()
                 try:
-                    inv = inventory.Inventory(revision_id=revid, root_id=None)
-                    root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, revid)
-                    inv.add(root)
+                    inv = inventory.Inventory(revision_id=revid)
+                    _set_root_revision(inv, revid)
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(
                         timestamp=0,
@@ -636,9 +650,8 @@ class TestPackRepository(TestCaseWithTransport):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = inventory.Inventory(revision_id=revision_id, root_id=None)
-            root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, revision_id)
-            inv.add(root)
+            inv = inventory.Inventory(revision_id=revision_id)
+            _set_root_revision(inv, revision_id)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, [])
             repo.texts.add_lines((root_id, revision_id), [], [])

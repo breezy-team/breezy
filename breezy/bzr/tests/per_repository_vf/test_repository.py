@@ -17,6 +17,22 @@
 """Tests for repository implementations - tests a repository format."""
 
 from bzrformats import inventory, versionedfile
+from bzrformats.inventory import InventoryDirectory
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
 
 from breezy import errors, gpg, tests
 from breezy import repository as _mod_repository
@@ -139,8 +155,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b"A")
-        root = inventory.InventoryDirectory(b"fixed-root", "", None, b"A")
-        inv.add(root)
+        inv.change_root_id(b"fixed-root")
+        _set_root_revision(inv, b"A")
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository("reference_repo")
@@ -401,9 +417,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo = self.make_repository("inventory_with_unnecessary_ghost")
         repo.lock_write()
         repo.start_write_group()
-        inv = inventory.Inventory(revision_id=b"ghost", root_id=None)
-        root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"ghost")
-        inv.add(root)
+        inv = inventory.Inventory(revision_id=b"ghost")
+        _set_root_revision(inv, b"ghost")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"ghost"), [], [])
@@ -425,9 +440,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
                 "Cannot test with ghosts for this format."
             ) from e
 
-        inv = inventory.Inventory(revision_id=b"the_ghost", root_id=None)
-        root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"the_ghost")
-        inv.add(root)
+        inv = inventory.Inventory(revision_id=b"the_ghost")
+        _set_root_revision(inv, b"the_ghost")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"the_ghost"), [], [])

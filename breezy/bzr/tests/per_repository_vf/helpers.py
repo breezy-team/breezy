@@ -16,11 +16,29 @@
 
 """Helper classes for repository implementation tests."""
 
+from bzrformats import inventory
+from bzrformats.inventory import InventoryDirectory
+
 from .... import revision as _mod_revision
 from ....repository import WriteGroup
 from ....tests import TestNotApplicable
 from ....tests.per_repository import TestCaseWithRepository
-from bzrformats import inventory
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
 from ...knitrepo import RepositoryFormatKnit
 
 
@@ -45,9 +63,8 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
 
         repo = self.make_repository("broken")
         with repo.lock_write(), WriteGroup(repo):
-            inv = inventory.Inventory(revision_id=b"revision-id", root_id=None)
-            root = inventory.InventoryDirectory(b"TREE_ROOT", "", None, b"revision-id")
-            inv.add(root)
+            inv = inventory.Inventory(revision_id=b"revision-id")
+            _set_root_revision(inv, b"revision-id")
             inv_sha1 = repo.add_inventory(b"revision-id", inv, [])
             if repo.supports_rich_root():
                 root_id = inv.root.file_id
