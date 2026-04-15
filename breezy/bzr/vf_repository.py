@@ -1992,6 +1992,7 @@ class StreamSink:
             raise errors.BzrError("you must already be in a write group")
         to_serializer = self.target_repo._format._inventory_serializer
         src_serializer = src_format._inventory_serializer
+        src_revision_serializer = src_format._revision_serializer
         new_pack = None
         if (
             src_format._revision_serializer == dest_format._revision_serializer
@@ -2049,7 +2050,7 @@ class StreamSink:
                     self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(
-                        substream, src_format._revision_serializer
+                        substream, src_revision_serializer
                     )
             elif substream_type == "signatures":
                 self.target_repo.signatures.insert_record_stream(substream)

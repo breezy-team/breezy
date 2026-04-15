@@ -943,7 +943,7 @@ class BundleTree(InventoryTree):
         """
         from os.path import basename, dirname
 
-        inv = Inventory(None, self.revision_id)
+        inv = Inventory(None, self.revision_id or None)
 
         def add_entry(path, file_id):
             if path == "":

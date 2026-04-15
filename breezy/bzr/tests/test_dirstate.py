@@ -1836,7 +1836,7 @@ class TestGetLines(TestCaseWithDirState):
                 ],
             )
         ]
-        dirblocks.append(("", root_entries))
+        dirblocks.append((b"", root_entries))
         # add two files in the root
         subdir_entry = (
             (b"", b"subdir", b"subdir-id"),
@@ -1858,7 +1858,7 @@ class TestGetLines(TestCaseWithDirState):
                 (b"f", b"sha1value", 23, False, packed_stat),  # current tree details
             ],
         )
-        dirblocks.append(("subdir", [file_entry2]))
+        dirblocks.append((b"subdir", [file_entry2]))
         state = dirstate.DirState.initialize("dirstate")
         try:
             state._set_data([], dirblocks)

@@ -371,12 +371,24 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
         bundle = BundleInfoV4(file, self)
         return bundle
 
-    @staticmethod
-    def get_source_serializer(info):
+    # The bundle info "serializer" field historically names the inventory
+    # serializer format. Map it back to the revision serializer format key
+    # because bzrformats now keeps those two registries separate.
+    _inv_to_rev_format = {
+        "5": "5",
+        "6": "5",
+        "7": "5",
+        "8": "8",
+        "9": "10",
+        "10": "10",
+    }
+
+    @classmethod
+    def get_source_serializer(cls, info):
         """Retrieve the revision serializer for a given info object."""
-        return serializer.revision_format_registry.get(
-            info[b"serializer"].decode("ascii")
-        )
+        inv_format = info[b"serializer"].decode("ascii")
+        rev_format = cls._inv_to_rev_format.get(inv_format, inv_format)
+        return serializer.revision_format_registry.get(rev_format)
 
     @staticmethod
     def get_source_inventory_serializer(info):
