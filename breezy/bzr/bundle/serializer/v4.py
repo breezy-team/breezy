@@ -373,8 +373,15 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
 
     @staticmethod
     def get_source_serializer(info):
-        """Retrieve the serializer for a given info object."""
+        """Retrieve the revision serializer for a given info object."""
         return serializer.revision_format_registry.get(
+            info[b"serializer"].decode("ascii")
+        )
+
+    @staticmethod
+    def get_source_inventory_serializer(info):
+        """Retrieve the inventory serializer for a given info object."""
+        return serializer.inventory_format_registry.get(
             info[b"serializer"].decode("ascii")
         )
 
@@ -801,10 +808,10 @@ class RevisionInstaller:
             info: Dictionary containing bundle format information.
         """
         self._info = info
-        (
-            self._source_revision_serializer,
-            self._source_inventory_serializer,
-        ) = self._serializer.get_source_serializer(info)
+        self._source_serializer = self._serializer.get_source_serializer(info)
+        self._source_inventory_serializer = (
+            self._serializer.get_source_inventory_serializer(info)
+        )
         if info[b"supports_rich_root"] == 0 and self._repository.supports_rich_root():
             self.update_root = True
         else:

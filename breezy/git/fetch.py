@@ -208,10 +208,10 @@ def import_git_submodule(
     file_id = lookup_file_id(path)
     invdelta = []
     ie = TreeReference(
-        file_id,
-        decode_git_path(name),
-        parent_id,
-        revision_id,
+        file_id=file_id,
+        name=decode_git_path(name),
+        parent_id=parent_id,
+        revision=revision_id,
         reference_revision=mapping.revision_id_foreign_to_bzr(hexsha),
     )
     if base_hexsha is not None:
@@ -305,9 +305,6 @@ def import_git_tree(
         return [], {}
     invdelta = []
     file_id = lookup_file_id(osutils.safe_unicode(path))
-    ie = InventoryDirectory(
-        file_id, decode_git_path(name), parent_id, revision=revision_id
-    )
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
@@ -317,9 +314,21 @@ def import_git_tree(
         old_path = decode_git_path(path)  # Renames aren't supported yet
     new_path = decode_git_path(path)
     if base_tree is None or type(base_tree) is not Tree:
+        ie = InventoryDirectory(
+            file_id=file_id,
+            name=decode_git_path(name),
+            parent_id=parent_id,
+            revision=revision_id,
+        )
         invdelta.append((old_path, new_path, ie.file_id, ie))
         texts.insert_record_stream(
             [ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])]
+        )
+    else:
+        ie = InventoryDirectory(
+            file_id=file_id,
+            name=decode_git_path(name),
+            parent_id=parent_id,
         )
     # Remember for next time
     existing_children = set()
