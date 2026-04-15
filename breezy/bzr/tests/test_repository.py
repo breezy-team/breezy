@@ -25,6 +25,8 @@ also see this file.
 import hashlib
 from stat import S_ISDIR
 
+from bzrformats import btree_index, inventory, versionedfile
+from bzrformats.inventory import InventoryDirectory, InventoryFile
 from dromedary.errors import NoSuchFile
 
 import breezy
@@ -47,10 +49,26 @@ from breezy.bzr import (
     vf_repository,
     vf_search,
 )
-from bzrformats import btree_index, inventory, versionedfile
-from breezy.bzr import repository as bzrrepository
+
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.index import GraphIndex
+
+from breezy.bzr import repository as bzrrepository
 from breezy.errors import UnknownFormatError
 from breezy.repository import RepositoryFormat
 from breezy.tests import TestCase, TestCaseWithTransport
@@ -883,7 +901,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.start_write_group()
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
-            inv = inventory.Inventory(revision_id=b"rev1a", root_revision=b"rev1a")
+            inv = inventory.Inventory(revision_id=b"rev1a")
+            _set_root_revision(inv, b"rev1a")
             self.add_file(repo, inv, "file1", b"rev1a", [])
             repo.texts.add_lines((inv.root.file_id, b"rev1a"), [], [])
             repo.add_inventory(b"rev1a", inv, [])
@@ -901,7 +920,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
-            inv = inventory.Inventory(revision_id=b"rev1b", root_revision=b"rev1b")
+            inv = inventory.Inventory(revision_id=b"rev1b")
+            _set_root_revision(inv, b"rev1b")
             self.add_file(repo, inv, "file1", b"rev1b", [])
             repo.add_inventory(b"rev1b", inv, [])
 
@@ -931,6 +951,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
+        _set_root_revision(inv, revision_id)
         repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(
@@ -948,10 +969,10 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode("utf-8") + b"-id"
         content = [b"line\n"]
-        entry = inventory.InventoryFile(
-            file_id,
-            filename,
-            b"TREE_ROOT",
+        entry = InventoryFile(
+            file_id=file_id,
+            name=filename,
+            parent_id=b"TREE_ROOT",
             revision=revision,
             text_sha1=osutils.sha_strings(content),
             text_size=0,

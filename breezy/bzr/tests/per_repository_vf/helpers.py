@@ -81,7 +81,11 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
             )
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
-            lines = repo._revision_serializer.write_revision_to_lines(revision)
+            from breezy.bzr.vf_repository import _to_bzr_revision
+
+            lines = repo._revision_serializer.write_revision_to_lines(
+                _to_bzr_revision(revision)
+            )
             repo.revisions.add_lines(
                 (revision.revision_id,), [(b"incorrect-parent",)], lines
             )

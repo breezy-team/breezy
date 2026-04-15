@@ -31,6 +31,9 @@ from typing import Optional
 import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
+from bzrformats import inventory_delta
+from bzrformats.inventory import Inventory
+from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile, SmartProtocolError
 from vcsgraph import known_graph
@@ -62,14 +65,10 @@ from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from bzrformats import inventory_delta
-
-from . import vf_repository, vf_search
 from . import testament as _mod_testament
+from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
-from bzrformats.inventory import Inventory
 from .inventorytree import InventoryRevisionTree
-from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from .smart import client, vfs
 from .smart import repository as smart_repo
 from .smart import transport as _smart_transport
@@ -3101,7 +3100,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def _add_revision(self, rev):
         if self._real_repository is not None:
             return self._real_repository._add_revision(rev)
-        lines = self._revision_serializer.write_revision_to_lines(rev)
+        from .vf_repository import _to_bzr_revision
+
+        lines = self._revision_serializer.write_revision_to_lines(_to_bzr_revision(rev))
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
         self._write_group_tokens, _missing_keys = self._get_sink().insert_stream(

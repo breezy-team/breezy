@@ -69,6 +69,30 @@ from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
 
+def _to_bzr_revision(revision):
+    """Coerce a breezy.revision.Revision into a bzrformats.revision.Revision.
+
+    bzrformats' Rust-backed serializers type-check their Revision argument
+    and will not accept the mutable Python breezy.revision.Revision; this
+    helper copies the relevant fields across into a fresh immutable
+    bzrformats.revision.Revision on demand.
+    """
+    from bzrformats.revision import Revision as _BzrRevision
+
+    if isinstance(revision, _BzrRevision):
+        return revision
+    return _BzrRevision(
+        revision_id=revision.revision_id,
+        parent_ids=list(revision.parent_ids),
+        committer=revision.committer,
+        message=revision.message,
+        properties=dict(revision.properties),
+        inventory_sha1=revision.inventory_sha1,
+        timestamp=float(revision.timestamp),
+        timezone=revision.timezone,
+    )
+
+
 class VersionedFileRepositoryFormat(RepositoryFormat):
     """Base class for all repository formats that are VersionedFiles-based."""
 
@@ -904,7 +928,9 @@ class VersionedFileRepository(Repository):
         self._add_revision(rev)
 
     def _add_revision(self, revision):
-        lines = self._revision_serializer.write_revision_to_lines(revision)
+        lines = self._revision_serializer.write_revision_to_lines(
+            _to_bzr_revision(revision)
+        )
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
         self.revisions.add_lines(key, parents, lines)
