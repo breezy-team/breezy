@@ -421,9 +421,13 @@ class InventoryTree(Tree):
                 inventory_file_ids = None
 
             def iter_entries(inv):
-                for p, e in inv.iter_entries_by_dir(
-                    specific_file_ids=inventory_file_ids
-                ):
+                if inventory_file_ids is None:
+                    entries = inv.iter_entries_by_dir()
+                else:
+                    entries = inv.iter_entries_by_dir(
+                        specific_file_ids=inventory_file_ids
+                    )
+                for p, e in entries:
                     if e.kind == "tree-reference" and recurse_nested:
                         try:
                             subtree = self._get_nested_tree(

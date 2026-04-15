@@ -80,30 +80,34 @@ def import_git_blob(
         # If nothing has changed since the base revision, we're done
         return []
     file_id = lookup_file_id(decoded_path)
-    decoded_name = decode_git_path(name)
-    kind = "symlink" if stat.S_ISLNK(mode) else "file"
-    kwargs = {}
+    entry_name = decode_git_path(name)
+    is_symlink = stat.S_ISLNK(mode)
+    # Gather all the fields we need up front — bzrformats inventory
+    # entries are immutable, so we build one in a single constructor call.
+    symlink_target = None
+    text_size = None
+    text_sha1 = None
+    executable = None if is_symlink else mode_is_executable(mode)
+    entry_revision = None
+    blob = None
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_exec = base_bzr_tree.is_executable(decoded_path)
-        if kind == "symlink":
-            kwargs["symlink_target"] = base_bzr_tree.get_symlink_target(decoded_path)
+        if is_symlink:
+            symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
         else:
-            kwargs["text_size"] = base_bzr_tree.get_file_size(decoded_path)
-            kwargs["text_sha1"] = base_bzr_tree.get_file_sha1(decoded_path)
-            kwargs["executable"] = mode_is_executable(mode)
-        if kind == "symlink" or kwargs["executable"] == base_exec:
-            kwargs["revision"] = base_bzr_tree.get_file_revision(decoded_path)
+            text_size = base_bzr_tree.get_file_size(decoded_path)
+            text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
+        if is_symlink or executable == base_exec:
+            entry_revision = base_bzr_tree.get_file_revision(decoded_path)
         else:
             blob = lookup_object(hexsha)
     else:
         blob = lookup_object(hexsha)
-        if kind == "symlink":
-            kwargs["revision"] = None
-            kwargs["symlink_target"] = decode_git_path(blob.data)
+        if is_symlink:
+            symlink_target = decode_git_path(blob.data)
         else:
-            kwargs["executable"] = mode_is_executable(mode)
-            kwargs["text_size"] = sum(map(len, blob.chunked))
-            kwargs["text_sha1"] = osutils.sha_strings(blob.chunked)
+            text_size = sum(map(len, blob.chunked))
+            text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
@@ -115,38 +119,54 @@ def import_git_blob(
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)
+        kind = "symlink" if is_symlink else "file"
         if pkind == kind and (
-            (
-                pkind == "symlink"
-                and ptree.get_symlink_target(ppath) == kwargs.get("symlink_target")
-            )
+            (pkind == "symlink" and ptree.get_symlink_target(ppath) == symlink_target)
             or (
                 pkind == "file"
-                and ptree.get_file_sha1(ppath) == kwargs.get("text_sha1")
-                and ptree.is_executable(ppath) == kwargs.get("executable")
+                and ptree.get_file_sha1(ppath) == text_sha1
+                and ptree.is_executable(ppath) == executable
             )
         ):
             # found a revision in one of the parents to use
-            kwargs["revision"] = ptree.get_file_revision(ppath)
+            entry_revision = ptree.get_file_revision(ppath)
             break
         parent_key = (file_id, ptree.get_file_revision(ppath))
         if parent_key not in parent_keys:
             parent_keys.append(parent_key)
-    if kwargs.get("revision") is None:
+    if entry_revision is None:
         # Need to store a new revision
-        kwargs["revision"] = revision_id
-        if kwargs["revision"] is None:
+        entry_revision = revision_id
+        if entry_revision is None:
             raise ValueError("no file revision set")
-        chunks = [] if kind == "symlink" else blob.chunked
+        if is_symlink:
+            chunks = []
+        else:
+            chunks = blob.chunked
         texts.insert_record_stream(
             [
                 ChunkedContentFactory(
-                    (file_id, kwargs["revision"]),
-                    tuple(parent_keys),
-                    kwargs.get("text_sha1"),
-                    chunks,
+                    (file_id, entry_revision), tuple(parent_keys), text_sha1, chunks
                 )
             ]
+        )
+    if is_symlink:
+        ie = InventoryLink(
+            file_id=file_id,
+            name=entry_name,
+            parent_id=parent_id,
+            revision=entry_revision,
+            symlink_target=symlink_target,
+        )
+    else:
+        ie = InventoryFile(
+            file_id=file_id,
+            name=entry_name,
+            parent_id=parent_id,
+            revision=entry_revision,
+            text_size=text_size,
+            text_sha1=text_sha1,
+            executable=executable,
         )
     invdelta = []
     if base_hexsha is not None:
