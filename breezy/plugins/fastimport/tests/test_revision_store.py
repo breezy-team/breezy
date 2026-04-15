@@ -98,8 +98,11 @@ class Test_TreeShim(tests.TestCase):
 
     def test_get_symlink_target(self):
         basis_inv = self.make_trivial_basis_inv()
-        ie = inventory.make_entry(
-            "symlink", "link", b"TREE_ROOT", b"link-id", symlink_target="link-target"
+        ie = inventory.InventoryLink(
+            file_id=b"link-id",
+            name="link",
+            parent_id=b"TREE_ROOT",
+            symlink_target="link-target",
         )
         basis_inv.add(ie)
         shim = revision_store._TreeShim(
@@ -109,8 +112,11 @@ class Test_TreeShim(tests.TestCase):
 
     def test_get_symlink_target_from_delta(self):
         basis_inv = self.make_trivial_basis_inv()
-        ie = inventory.make_entry(
-            "symlink", "link", b"TREE_ROOT", b"link-id", symlink_target="link-target"
+        ie = inventory.InventoryLink(
+            file_id=b"link-id",
+            name="link",
+            parent_id=b"TREE_ROOT",
+            symlink_target="link-target",
         )
         inv_delta = [(None, "link", b"link-id", ie)]
         shim = revision_store._TreeShim(
@@ -121,8 +127,11 @@ class Test_TreeShim(tests.TestCase):
     def test__delta_to_iter_changes(self):
         basis_inv = self.make_trivial_basis_inv()
         foo_entry = inventory.make_entry("file", "foo2", b"bar-id", b"foo-id")
-        link_entry = inventory.make_entry(
-            "symlink", "link", b"TREE_ROOT", b"link-id", symlink_target="link-target"
+        link_entry = inventory.InventoryLink(
+            file_id=b"link-id",
+            name="link",
+            parent_id=b"TREE_ROOT",
+            symlink_target="link-target",
         )
         inv_delta = [
             ("foo", "bar/foo2", b"foo-id", foo_entry),

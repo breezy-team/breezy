@@ -20,6 +20,6 @@ The implementation lives in bzrformats.lru_cache; this module re-exports
 it so that existing ``breezy.lru_cache`` imports keep working.
 """
 
-from bzrformats.lru_cache import LRUCache, LRUSizeCache
+from bzrformats.lru_cache import LRUCache, LRUSizeCache, _null_key
 
-__all__ = ["LRUCache", "LRUSizeCache"]
+__all__ = ["LRUCache", "LRUSizeCache", "_null_key"]
