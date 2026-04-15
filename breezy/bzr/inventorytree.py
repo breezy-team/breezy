@@ -443,6 +443,13 @@ class InventoryTree(Tree):
 
             return iter_entries(self.root_inventory)
 
+    def iter_child_entries(self, path):
+        with self.lock_read():
+            ie = self._path2ie(path)
+            if ie.kind != "directory":
+                raise errors.NotADirectory(path)
+            return iter(self.root_inventory.iter_sorted_children(ie.file_id))
+
     def _get_plan_merge_data(self, path, other, base):
         from bzrformats import versionedfile
 
@@ -1086,7 +1093,9 @@ class _SmartAddHelper:
                     if entry is not None:
                         sub_ie = entry[3]
                     else:
-                        sub_ie = InterInventoryTree._get_entry(self.tree, sub_invp)
+                        sub_ie = self.tree.root_inventory.get_child(
+                            this_ie.file_id, inv_f
+                        )
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))

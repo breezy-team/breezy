@@ -1225,7 +1225,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     dir_ie = inv.get_entry(from_dir_id)
                     if dir_ie.kind == "directory":
-                        f_ie = inv.get_child(dir_ie.file_id, f)
+                        f_ie = inv.get_child(from_dir_id, f)
                     else:
                         f_ie = None
                     if f_ie:
@@ -1712,6 +1712,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         This is the same order used by 'osutils.walkdirs'.
         """
         # TODO: Work from given directory downwards
+        inv = self.root_inventory
         for path, dir_entry in self.iter_entries_by_dir():
             if dir_entry.kind != "directory":
                 continue
@@ -1721,18 +1722,17 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # e.g. directory deleted
                 continue
 
-            versioned_children = [e.name for e in self.iter_child_entries(path)]
-
+            children = inv.get_children(dir_entry.file_id) or {}
             fl = []
             for subf in os.listdir(os.fsencode(dirabs)):
                 subf = os.fsdecode(subf)
 
                 if self.controldir.is_control_filename(subf):
                     continue
-                if subf not in versioned_children:
+                if subf not in children:
                     (subf_norm, can_access) = osutils.normalized_filename(subf)
                     if subf_norm != subf and can_access:
-                        if subf_norm not in versioned_children:
+                        if subf_norm not in children:
                             fl.append(subf_norm)
                     else:
                         fl.append(subf)
@@ -1919,7 +1919,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # FIXME: stash the node in pending
             entry = inv.get_entry(top_id)
             if entry.kind == "directory":
-                for child in inv.iter_sorted_children(entry.file_id):
+                for child in inv.iter_sorted_children(top_id):
                     dirblock.append(
                         (
                             relroot + child.name,

@@ -49,6 +49,16 @@ from bzrformats import generate_ids
 
 import contextlib
 
+from bzrformats import dirstate
+from bzrformats.inventory import (
+    ROOT_ID,
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    NoSuchId,
+    TreeReference,
+)
 from dromedary import errors as transport_errors
 from dromedary import get_transport_from_path
 from dromedary.errors import NoSuchFile
@@ -62,17 +72,6 @@ from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
-from bzrformats import dirstate
-from bzrformats.inventory import (
-    ROOT_ID,
-    Inventory,
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    NoSuchId,
-    TreeReference,
-    entry_factory,
-)
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -2082,12 +2081,13 @@ class DirStateRevisionTree(InventoryTree):
         if current_entry[parent_index][0] != b"d":
             raise AssertionError()
         inv = Inventory(root_id=None, revision_id=self._revision_id)
+        root_revision = current_entry[parent_index][4] or None
         inv.add(
             InventoryDirectory(
                 file_id=current_id,
                 name="",
                 parent_id=None,
-                revision=current_entry[parent_index][4],
+                revision=root_revision,
             )
         )
         # Turn some things into local variables
@@ -2104,6 +2104,7 @@ class DirStateRevisionTree(InventoryTree):
                 (minikind, fingerprint, size, executable, revid) = entry[parent_index]
                 if minikind in (b"a", b"r"):  # absent, relocated
                     continue
+                revid = revid or None
                 name = key[1]
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]

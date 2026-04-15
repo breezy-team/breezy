@@ -22,11 +22,12 @@ import os
 import struct
 import tempfile
 
-from ... import controldir, errors, osutils, tests
+from bzrformats import dirstate, inventory
+
+from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
-from bzrformats import dirstate, inventory
 from .. import inventorytree, workingtree_4
 
 # TODO:
@@ -964,13 +965,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.assertEqual([b"a-root-value", b"subdir-id"], sorted(id_index.file_ids()))
         state.add("file-name", b"file-id", "file", None, "")
         self.assertEqual(
-            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+            [b"a-root-value", b"file-id", b"subdir-id"],
+            sorted(id_index.file_ids()),
         )
         state.update_minimal(
             (b"", b"new-name", b"file-id"), b"f", path_utf8=b"new-name"
         )
         self.assertEqual(
-            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+            [b"a-root-value", b"file-id", b"subdir-id"],
+            sorted(id_index.file_ids()),
         )
         self.assertEqual(
             [(b"", b"new-name", b"file-id")], sorted(id_index.get(b"file-id"))
@@ -1509,11 +1512,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         once dirstate is stable and if it is merged with WorkingTree3, consider
         removing this copy of the test.
         """
+        from bzrformats.errors import NotVersionedError as BzrNotVersionedError
+
         self.build_tree(["unversioned/", "unversioned/a file"])
         state = dirstate.DirState.initialize("dirstate")
         self.addCleanup(state.unlock)
         self.assertRaises(
-            errors.NotVersionedError,
+            BzrNotVersionedError,
             state.add,
             "unversioned/a file",
             b"a-file-id",
@@ -1679,13 +1684,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.assertEqual(entry, expected_entry)
 
     def test_add_forbidden_names(self):
+        from bzrformats.inventory import InvalidEntryName
+
         state = dirstate.DirState.initialize("dirstate")
         self.addCleanup(state.unlock)
         self.assertRaises(
-            errors.BzrError, state.add, ".", b"ass-id", "directory", None, None
+            InvalidEntryName, state.add, ".", b"ass-id", "directory", None, None
         )
         self.assertRaises(
-            errors.BzrError, state.add, "..", b"ass-id", "directory", None, None
+            InvalidEntryName, state.add, "..", b"ass-id", "directory", None, None
         )
 
     def test_set_state_with_rename_b_a_bug_395556(self):
@@ -2256,13 +2263,19 @@ class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
     def __init__(
-        self, path, sha1_provider, worth_saving_limit=0, use_filesystem_for_exec=True
+        self,
+        path,
+        sha1_provider,
+        worth_saving_limit=0,
+        use_filesystem_for_exec=True,
+        fdatasync=True,
     ):
         super().__init__(
             path,
             sha1_provider,
             worth_saving_limit=worth_saving_limit,
             use_filesystem_for_exec=use_filesystem_for_exec,
+            fdatasync=fdatasync,
         )
         self._time_offset = 0
         self._log = []
@@ -2918,10 +2931,10 @@ class Test_InvEntryToDetails(tests.TestCase):
     def test_unicode_symlink(self):
         target = "link-targ\N{EURO SIGN}t"
         inv_entry = inventory.InventoryLink(
-            b"link-file-id",
-            "nam\N{EURO SIGN}e",
-            b"link-parent-id",
-            b"link-revision-id",
+            file_id=b"link-file-id",
+            name="nam\N{EURO SIGN}e",
+            parent_id=b"link-parent-id",
+            revision=b"link-revision-id",
             symlink_target=target,
         )
         self.assertDetails(
@@ -2979,11 +2992,21 @@ class TestUpdateBasisByDelta(tests.TestCase):
         except KeyError:
             dir_id = osutils.basename(dirname).encode("utf-8") + b"-id"
         if is_dir:
-            ie = inventory.InventoryDirectory(file_id, basename, dir_id, rev_id)
+            ie = inventory.InventoryDirectory(
+                file_id=file_id,
+                name=basename,
+                parent_id=dir_id,
+                revision=rev_id,
+            )
             dir_ids[path] = file_id
         else:
             ie = inventory.InventoryFile(
-                file_id, basename, dir_id, rev_id, text_size=0, text_sha1=b""
+                file_id=file_id,
+                name=basename,
+                parent_id=dir_id,
+                revision=rev_id,
+                text_size=0,
+                text_sha1=b"",
             )
         return ie
 
@@ -3014,6 +3037,8 @@ class TestUpdateBasisByDelta(tests.TestCase):
 
     def create_inv_delta(self, delta, rev_id):
         """Translate a 'delta shape' into an actual InventoryDelta."""
+        from bzrformats.inventory_delta import InventoryDelta
+
         dir_ids = {"": b"root-id"}
         inv_delta = []
         for old_path, new_path, file_id in delta:
@@ -3080,8 +3105,13 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
+        from bzrformats.errors import InconsistentDelta as BzrInconsistentDelta
+
         self.assertRaises(
-            errors.InconsistentDelta, state.update_basis_by_delta, inv_delta, b"target"
+            BzrInconsistentDelta,
+            state.update_basis_by_delta,
+            inv_delta,
+            b"target",
         )
         # try:
         ##     state.update_basis_by_delta(inv_delta, b'target')

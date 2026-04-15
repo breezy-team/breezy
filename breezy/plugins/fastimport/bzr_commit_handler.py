@@ -15,15 +15,11 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
-import contextlib
-
-from fastimport import processor
+from bzrformats import generate_ids, inventory
+from bzrformats.inventory import NoSuchId
+from fastimport import helpers, processor
 
 from ... import debug, errors, osutils, revision
-from bzrformats import generate_ids
-
-from bzrformats import inventory
-from bzrformats.inventory import NoSuchId
 from ...bzr import serializer
 from ...trace import mutter, note, warning
 from .helpers import escape_commit_message, mode_to_kind
@@ -597,7 +593,11 @@ class CommitHandler(processor.CommitHandler):
                 print(
                     f"failed to add path '{path}' with entry '{ie}' in command {self.command.id}"
                 )
-                print(f"parent's children are:\n{inv.get_children(ie.parent_id)!r}\n")
+                print(
+                    "parent's children are:\n{!r}\n".format(
+                        inv.get_children(ie.parent_id)
+                    )
+                )
                 raise
         else:
             if old_ie.kind == "directory":
@@ -912,7 +912,7 @@ class CommitHandler(processor.CommitHandler):
             ie = new_inv.get_entry(file_id)
             if ie.kind != "directory":
                 continue
-            if len(new_inv.get_children(ie.file_id)) == 0:
+            if not new_inv.get_children(file_id):
                 result.append((dir, file_id))
                 if self.verbose:
                     self.note(f"pruning empty directory {dir}")
