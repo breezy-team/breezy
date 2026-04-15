@@ -761,7 +761,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree_contents([("foo", b"a bit of content for foo\n")])
         tree.add(["foo"], ids=[b"foo-id"])
-        tree.current_dirstate()._cutoff_time = time.time() + 60
+        tree.current_dirstate()._cutoff_time = int(time.time()) + 60
         return tree
 
     def test_commit_updates_hash_cache(self):
