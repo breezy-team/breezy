@@ -18,7 +18,7 @@
 
 from bzrformats import inventory, versionedfile
 from bzrformats.errors import ObjectNotLocked
-from bzrformats.inventory import InventoryDirectory
+from bzrformats.inventory import CHKInventory, InventoryDirectory
 
 
 def _set_root_revision(inv, revision):
@@ -230,7 +230,7 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs, strict=False):
             self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, inventory.Inventory)
+            self.assertIsInstance(inv, (inventory.Inventory, CHKInventory))
 
     def test_item_keys_introduced_by(self):
         # Make a repo with one revision and one versioned file.
