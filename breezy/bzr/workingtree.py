@@ -57,14 +57,15 @@ from breezy import (
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
-    inventory,
+    rio as _mod_rio,
     serializer,
     )
-from bzrformats import generate_ids, xml5, xml7
+from bzrformats import generate_ids, inventory, xml5, xml7
 from bzrformats.inventory import NoSuchId
 """,
 )
 
+from bzrformats.errors import ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -247,7 +248,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def _must_be_locked(self):
         if not self.is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
 
     def lock_read(self):
         """Lock the tree for reading.
