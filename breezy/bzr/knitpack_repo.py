@@ -44,6 +44,7 @@ from bzrformats.knit import (
 )
 
 from bzrformats import btree_index
+from bzrformats.errors import BzrCheckError
 from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,
@@ -1283,8 +1284,10 @@ class KnitReconcilePacker(KnitPacker):
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrCheckError(
-                f"Reference to missing compression parents {missing_text_keys!r}"
+            raise BzrCheckError(
+                "Reference to missing compression parents {!r}".format(
+                    missing_text_keys
+                )
             )
         self._log_copied_texts()
 

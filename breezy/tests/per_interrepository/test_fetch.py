@@ -18,6 +18,7 @@
 import sys
 
 from bzrformats import inventory, versionedfile
+from bzrformats.errors import BzrCheckError
 
 from breezy import errors, osutils, repository
 from breezy.bzr.vf_search import SearchResult
@@ -479,7 +480,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, rev2)
-        except (errors.BzrCheckError, errors.RevisionNotPresent):
+        except (BzrCheckError, errors.RevisionNotPresent):
             # If an exception is raised, the revision should not be in the
             # target.
             #

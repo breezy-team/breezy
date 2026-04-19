@@ -33,6 +33,7 @@ Interesting module attributes:
 import threading
 from _thread import get_ident
 
+from bzrformats.errors import BzrCheckError
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 
@@ -612,7 +613,7 @@ def _translate_error(err):
         )
     elif isinstance(err, errors.NotStacked):
         return (b"NotStacked",)
-    elif isinstance(err, errors.BzrCheckError):
+    elif isinstance(err, BzrCheckError):
         return (b"BzrCheckError", err.msg.encode("utf-8"))
     elif isinstance(err, UnicodeError):
         # If it is a DecodeError, than most likely we are starting

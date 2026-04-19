@@ -17,7 +17,7 @@
 """Tests for repository write groups."""
 
 from bzrformats import versionedfile
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
 
 from breezy import controldir, errors, tests
 from breezy.bzr import branch as bzrbranch
@@ -622,7 +622,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # the stacked location has already filled in the fulltext.
         try:
             repo.commit_write_group()
-        except errors.BzrCheckError:
+        except BzrCheckError:
             # It refused to commit because we have a missing parent
             pass
         else:
@@ -637,7 +637,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
-        self.assertRaises(errors.BzrCheckError, same_repo.commit_write_group)
+        self.assertRaises(BzrCheckError, same_repo.commit_write_group)
         same_repo.abort_write_group()
 
     def test_commit_resumed_write_group_adding_missing_parents(self):
@@ -664,7 +664,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # commit_write_group fails.
         try:
             same_repo.commit_write_group()
-        except errors.BzrCheckError:
+        except BzrCheckError:
             pass
         else:
             # If the commit_write_group didn't fail, that is because the

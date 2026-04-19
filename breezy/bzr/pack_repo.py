@@ -49,7 +49,7 @@ from bzrformats.index import (
 )
 from bzrformats import btree_index
 from bzrformats import index as _mod_index
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
 from bzrformats.pack_repo import RetryWithNewPacks
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
@@ -1247,13 +1247,15 @@ class RepositoryPackCollection:
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
-            raise errors.BzrCheckError(
-                f"Repository {self.repo} has missing compression parent(s) {sorted(all_missing)!r} "
+            raise BzrCheckError(
+                "Repository {} has missing compression parent(s) {!r} ".format(
+                    self.repo, sorted(all_missing)
+                )
             )
         problems = self._check_new_inventories()
         if problems:
             problems_summary = "\n".join(problems)
-            raise errors.BzrCheckError(
+            raise BzrCheckError(
                 "Cannot add revision(s) to repository: " + problems_summary
             )
         self._remove_pack_indices(self._new_pack)

@@ -24,6 +24,7 @@ from stat import S_ISDIR
 
 from bzrformats import inventory
 from bzrformats.btree_index import BTreeGraphIndex
+from bzrformats.errors import BzrCheckError
 from bzrformats.index import GraphIndex
 from bzrformats.inventory import InventoryDirectory
 from dromedary import errors as transport_errors
@@ -695,29 +696,29 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_write_ready_repo()
         key = ("junk",)
         repo.inventories._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_revisions_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ("junk",)
         repo.revisions._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_signatures_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ("junk",)
         repo.signatures._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_text_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ("some", "junk")
         repo.texts._index._missing_compression_parents.add(key)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
+        self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_supports_external_lookups(self):
         repo = self.make_repository(".", format=self.get_format())

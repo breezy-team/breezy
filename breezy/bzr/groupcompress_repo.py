@@ -23,6 +23,7 @@ from bzrformats import chk_map, chk_serializer, inventory, pack, versionedfile
 from bzrformats import index as _mod_index
 from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.errors import BzrCheckError
 from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 
 from .. import controldir, debug, errors, osutils, trace, ui
@@ -1303,7 +1304,7 @@ class CHKInventoryRepository(PackRepository):
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
         if inconsistencies:
-            raise errors.BzrCheckError("Revision index has inconsistent parents.")
+            raise BzrCheckError("Revision index has inconsistent parents.")
 
 
 class GroupCHKStreamSource(StreamSource):

@@ -172,24 +172,6 @@ class BranchError(BzrError):
         BzrError.__init__(self, branch=branch)
 
 
-class BzrCheckError(InternalBzrError):
-    """Internal consistency check failure.
-
-    Raised when an internal consistency check fails, indicating a bug in bzr.
-    """
-
-    _fmt = "Internal check failed: %(msg)s"
-
-    def __init__(self, msg):
-        """Initialize with an error message.
-
-        Args:
-            msg: Description of what check failed.
-        """
-        BzrError.__init__(self)
-        self.msg = msg
-
-
 class IncompatibleVersion(BzrError):
     """Incompatible API version error.
 

@@ -65,7 +65,7 @@ from bzrformats.inventory import NoSuchId
 """,
 )
 
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -768,7 +768,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             with tree_basis.lock_read():
                 repo_basis = references[("trees", self.last_revision())]
                 if len(list(repo_basis.iter_changes(tree_basis))) > 0:
-                    raise errors.BzrCheckError("Mismatched basis inventory content.")
+                    raise BzrCheckError("Mismatched basis inventory content.")
                 self._validate()
 
     def check_state(self):

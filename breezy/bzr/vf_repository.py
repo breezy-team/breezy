@@ -51,7 +51,7 @@ from breezy.bzr.testament import Testament
 """,
 )
 
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
 from bzrformats.inventory import Inventory, NoSuchId, entry_factory
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
@@ -1868,7 +1868,7 @@ class VersionedFileRepository(Repository):
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
         if inconsistencies:
-            raise errors.BzrCheckError("Revision knit has inconsistent parents.")
+            raise BzrCheckError("Revision knit has inconsistent parents.")
 
     def _get_sink(self):
         """Return a sink for streaming into this repository."""

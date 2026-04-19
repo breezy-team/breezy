@@ -255,11 +255,6 @@ class TestErrors(tests.TestCase):
             "Could not understand response from smart server: ('not yes',)", str(e)
         )
 
-    def test_check_error(self):
-        e = errors.BzrCheckError("example check failure")
-        self.assertEqual("Internal check failed: example check failure", str(e))
-        self.assertTrue(e.internal_error)
-
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""
         e = errors.RepositoryDataStreamError("my reason")

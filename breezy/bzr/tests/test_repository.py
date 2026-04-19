@@ -26,7 +26,7 @@ import hashlib
 from stat import S_ISDIR
 
 from bzrformats import btree_index, inventory, versionedfile
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked
 from bzrformats.inventory import InventoryDirectory, InventoryFile
 from dromedary.errors import NoSuchFile
 
@@ -991,7 +991,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         empty_repo = self.make_repository("empty-repo")
         try:
             empty_repo.fetch(broken_repo)
-        except (errors.RevisionNotPresent, errors.BzrCheckError):
+        except (errors.RevisionNotPresent, BzrCheckError):
             # Test successful: compression parent not being copied leads to
             # error.
             return

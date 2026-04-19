@@ -32,6 +32,7 @@ import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
 from bzrformats import inventory_delta
+from bzrformats.errors import BzrCheckError
 from bzrformats.inventory import Inventory
 from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from dromedary import errors as transport_errors
@@ -6490,5 +6491,5 @@ no_context_error_translators.register(
 
 no_context_error_translators.register(
     b"BzrCheckError",
-    lambda err: errors.BzrCheckError(msg=err.error_args[0].decode("utf-8")),
+    lambda err: BzrCheckError(msg=err.error_args[0].decode("utf-8")),
 )

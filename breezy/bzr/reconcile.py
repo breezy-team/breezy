@@ -24,6 +24,7 @@ __all__ = [
 ]
 
 import vcsgraph.errors
+from bzrformats.errors import BzrCheckError
 from bzrformats.versionedfile import AdapterFactory, ChunkedContentFactory
 
 from .. import errors, ui
@@ -219,7 +220,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         if self.thorough:
             try:
                 self._load_indexes()
-            except errors.BzrCheckError:
+            except BzrCheckError:
                 self.aborted = True
                 return
             # knits never suffer this
