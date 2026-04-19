@@ -1289,7 +1289,7 @@ class LocalGitBranch(GitBranch):
             ret = list(
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
-        except vcsgraph.RevisionNotPresent as e:
+        except vcsgraph.errors.RevisionNotPresent as e:
             raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
