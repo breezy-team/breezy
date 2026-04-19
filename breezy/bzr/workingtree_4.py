@@ -50,6 +50,7 @@ from bzrformats import generate_ids
 import contextlib
 
 from bzrformats import dirstate
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
@@ -72,6 +73,7 @@ from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
+from .inventory_utils import make_inventory_delta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -990,7 +992,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def _must_be_locked(self):
         if not self._control_files._lock_count:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
 
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
@@ -1286,7 +1288,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # _make_delta if we can't get the RevisionTree
                     pass
                 else:
-                    delta = _make_delta(
+                    delta = make_inventory_delta(
                         rev_tree.root_inventory, basis_tree.root_inventory
                     )
                     dirstate.update_basis_by_delta(delta, rev_id)
@@ -1483,7 +1485,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # being created.
             self._inventory = None
             # generate a delta,
-            delta = _make_delta(inv, self.root_inventory)
+            delta = make_inventory_delta(inv, self.root_inventory)
             # and apply it.
             self.apply_inventory_delta(delta)
             if had_inventory:
@@ -2480,7 +2482,7 @@ class DirStateRevisionTree(InventoryTree):
 
     def _must_be_locked(self):
         if not self._locked:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
 
     def path2id(self, path):
         """Return the file ID for path in this tree.
