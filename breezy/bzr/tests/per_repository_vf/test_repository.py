@@ -17,6 +17,7 @@
 """Tests for repository implementations - tests a repository format."""
 
 from bzrformats import inventory, versionedfile
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.inventory import InventoryDirectory
 
 
@@ -132,15 +133,15 @@ class TestRepository(TestCaseWithRepository):
         revisions = repo.revisions
         inventories = repo.inventories
         repo.unlock()
-        self.assertRaises(errors.ObjectNotLocked, signatures.keys)
-        self.assertRaises(errors.ObjectNotLocked, revisions.keys)
-        self.assertRaises(errors.ObjectNotLocked, inventories.keys)
+        self.assertRaises(ObjectNotLocked, signatures.keys)
+        self.assertRaises(ObjectNotLocked, revisions.keys)
+        self.assertRaises(ObjectNotLocked, inventories.keys)
         self.assertRaises(
-            errors.ObjectNotLocked, signatures.add_lines, ("foo",), [], []
+            ObjectNotLocked, signatures.add_lines, ("foo",), [], []
         )
-        self.assertRaises(errors.ObjectNotLocked, revisions.add_lines, ("foo",), [], [])
+        self.assertRaises(ObjectNotLocked, revisions.add_lines, ("foo",), [], [])
         self.assertRaises(
-            errors.ObjectNotLocked, inventories.add_lines, ("foo",), [], []
+            ObjectNotLocked, inventories.add_lines, ("foo",), [], []
         )
 
     def test__get_sink(self):

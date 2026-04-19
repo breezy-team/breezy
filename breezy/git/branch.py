@@ -29,6 +29,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.object_store import peel_sha
 from dulwich.objects import ZERO_SHA, NotCommitError
+from bzrformats.errors import ObjectNotLocked
 from dulwich.repo import check_ref_format
 
 from .. import (
@@ -2246,7 +2247,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             TypeError: If stop_revision is not bytes.
         """
         if not self.source.is_locked():
-            raise errors.ObjectNotLocked(self.source)
+            raise ObjectNotLocked(self.source)
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         elif stop_revno is None:

@@ -26,6 +26,7 @@ import hashlib
 from stat import S_ISDIR
 
 from bzrformats import btree_index, inventory, versionedfile
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.inventory import InventoryDirectory, InventoryFile
 from dromedary.errors import NoSuchFile
 
@@ -1144,7 +1145,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_ensure_loaded_unlocked(self):
         packs = self.get_packs()
-        self.assertRaises(errors.ObjectNotLocked, packs.ensure_loaded)
+        self.assertRaises(ObjectNotLocked, packs.ensure_loaded)
 
     def test_pack_distribution_one_to_nine(self):
         packs = self.get_packs()

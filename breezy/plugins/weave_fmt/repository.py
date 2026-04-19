@@ -40,6 +40,7 @@ from bzrformats._bzr_rs import revision_serializer_v5
 """,
 )
 from bzrformats import tuned_gzip, versionedfile, weave, weavefile
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
@@ -839,7 +840,7 @@ class TextVersionedFiles(VersionedFiles):
             ValueError: If the key contains invalid characters.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if b"/" in key[-1]:
@@ -896,7 +897,7 @@ class TextVersionedFiles(VersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         path = self._map(key)
         try:
             text = self._transport.get_bytes(path)
@@ -1021,7 +1022,7 @@ class RevisionTextStore(TextVersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)
@@ -1099,7 +1100,7 @@ class SignatureTextStore(TextVersionedFiles):
             ObjectNotLocked: If the store is not locked.
         """
         if not self._is_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         relpaths = set()
         for quoted_relpath in self._transport.iter_files_recursive():
             relpath = urlutils.unquote(quoted_relpath)

@@ -17,6 +17,7 @@
 """Tests for repository write groups."""
 
 from bzrformats import versionedfile
+from bzrformats.errors import ObjectNotLocked
 
 from breezy import controldir, errors, tests
 from breezy.bzr import branch as bzrbranch
@@ -301,7 +302,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             )
         ]
         self.assertRaises(
-            errors.ObjectNotLocked,
+            ObjectNotLocked,
             sink.insert_stream_without_locking,
             stream,
             repo._format,

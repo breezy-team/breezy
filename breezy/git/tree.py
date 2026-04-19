@@ -41,15 +41,8 @@ from dulwich.index import (
     index_entry_from_stat,
 )
 from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
-from dulwich.objects import (
-    S_IFGITLINK,
-    S_ISGITLINK,
-    ZERO_SHA,
-    Blob,
-    Commit,
-    ObjectID,
-    Tree,
-)
+from bzrformats.errors import ObjectNotLocked
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Commit, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils
@@ -1938,7 +1931,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             ObjectNotLocked: If the tree is not locked.
         """
         if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         self._versioned_dirs = set()
         for p, _entry in self._recurse_index_entries():
             self._ensure_versioned_dir(posixpath.dirname(p))
@@ -2301,7 +2294,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _unversion_path(self, path):
         if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         encoded_path = encode_git_path(path)
         count = 0
         (index, subpath) = self._lookup_index(encoded_path)

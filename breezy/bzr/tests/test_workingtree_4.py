@@ -21,6 +21,7 @@ import os
 import time
 
 from bzrformats import dirstate, inventory
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
@@ -275,13 +276,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             tree.unlock()
 
         tree = self.make_workingtree()
-        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
+        self.assertRaises(ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, "lock_read")
-        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
+        self.assertRaises(ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, "lock_write")
-        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
+        self.assertRaises(ObjectNotLocked, tree.current_dirstate)
         lock_and_call_current_dirstate(tree, "lock_tree_write")
-        self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
+        self.assertRaises(ObjectNotLocked, tree.current_dirstate)
 
     def test_set_parent_trees_uses_update_basis_by_delta(self):
         builder = self.make_branch_builder("source")

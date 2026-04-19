@@ -1092,29 +1092,6 @@ class OutSideTransaction(BzrError):
     )
 
 
-class ObjectNotLocked(LockError):
-    """Object is not locked.
-
-    Raised when an operation requires a locked object but the object is
-    not currently locked.
-
-    Note:
-        This indicates that any particular object is not locked. See also
-        LockNotHeld which means that a particular *lock* object is not held
-        by the caller -- perhaps they should be unified.
-    """
-
-    _fmt = "%(obj)r is not locked"
-
-    def __init__(self, obj):
-        """Initialize with the unlocked object.
-
-        Args:
-            obj: The object that is not locked.
-        """
-        self.obj = obj
-
-
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
     """Attempt to modify object in read-only transaction.
 

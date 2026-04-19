@@ -105,6 +105,7 @@ from breezy import (
 from breezy.i18n import gettext
 """,
 )
+from bzrformats.errors import ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
@@ -1233,7 +1234,7 @@ class LockableConfig(IniBasedConfig):
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a
             # missing call to lock_write() by one of the callers.
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         super()._write_config_file()
 
 

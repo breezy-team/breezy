@@ -49,6 +49,7 @@ from bzrformats.index import (
 )
 from bzrformats import btree_index
 from bzrformats import index as _mod_index
+from bzrformats.errors import ObjectNotLocked
 from bzrformats.pack_repo import RetryWithNewPacks
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
@@ -704,7 +705,7 @@ class RepositoryPackCollection:
         # NB: if you see an assertion error here, it's probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
-            raise errors.ObjectNotLocked(self.repo)
+            raise ObjectNotLocked(self.repo)
         if self._names is None:
             self._names = {}
             self._packs_at_load = set()
