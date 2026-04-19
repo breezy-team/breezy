@@ -962,7 +962,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             str(e),
             r"(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n"
             r".*Repository.*/repo/.*\n"
-            r"different inventory serializers",
+            r"different (?:inventory )?serializers",
         )
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):

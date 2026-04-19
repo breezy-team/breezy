@@ -28,6 +28,7 @@ from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
+from ..inventory_utils import make_inventory_delta
 from .. import inventorytree, workingtree_4
 
 # TODO:
@@ -1850,7 +1851,7 @@ class TestGetLines(TestCaseWithDirState):
                 (b"f", b"sha1value", 34, False, packed_stat),  # current tree details
             ],
         )
-        dirblocks.append(("", [subdir_entry, afile_entry]))
+        dirblocks.append((b"", [subdir_entry, afile_entry]))
         # and one in subdir
         file_entry2 = (
             (b"subdir", b"2file", b"2file-id"),
@@ -2656,7 +2657,7 @@ class TestDirstateValidation(TestCaseWithDirState):
             )
         )
         e = self.assertRaises(AssertionError, state._validate)
-        self.assertContainsRe(str(e), "file a-id is absent in row")
+        self.assertContainsRe(str(e), "file a-id absent but previously present")
 
 
 class TestDirstateTreeReference(TestCaseWithDirState):
@@ -2676,7 +2677,9 @@ class TestDirstateTreeReference(TestCaseWithDirState):
         )
 
         try:
-            self.assertEqual(expected, state._find_block(key))
+            block_index, present = state._find_block_index_from_key(key)
+            self.assertTrue(present)
+            self.assertEqual(expected, state._dirblocks[block_index])
         finally:
             state.unlock()
 
@@ -3031,7 +3034,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
-        delta = _make_delta(target_tree.root_inventory, basis_tree.root_inventory)
+        delta = make_inventory_delta(target_tree.root_inventory, basis_tree.root_inventory)
         state.update_basis_by_delta(delta, b"target")
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(
