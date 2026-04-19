@@ -35,6 +35,7 @@ from ... import (
 )
 from ... import delta as _mod_delta
 from bzrformats.inventory import NoSuchId
+from bzrformats.errors import RevisionNotPresent
 from ... import revision as _mod_revision
 from ...bzr import branch as _mod_bzrbranch
 from ...bzr import knitpack_repo, remote
@@ -516,12 +517,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(b"bar", extracted["file2"])
         self.assertEqual(b"baz", extracted["file1-new"])
         self.assertRaises(
-            errors.RevisionNotPresent,
+            RevisionNotPresent,
             list,
             repository.iter_files_bytes([(file1_id, b"rev3", "file1-notpresent")]),
         )
         self.assertRaises(
-            (errors.RevisionNotPresent, NoSuchId),
+            (RevisionNotPresent, NoSuchId),
             list,
             repository.iter_files_bytes([(b"file3-id", b"rev3", "file1-notpresent")]),
         )

@@ -1619,48 +1619,6 @@ class VersionedFileError(BzrError):
     _fmt = "Versioned file error"
 
 
-class RevisionNotPresent(VersionedFileError):
-    """Revision not present in versioned file.
-
-    Raised when attempting to access a revision that does not exist
-    in the specified versioned file.
-    """
-
-    _fmt = 'Revision {%(revision_id)s} not present in "%(file_id)s".'
-
-    def __init__(self, revision_id, file_id):
-        """Initialize with revision and file information.
-
-        Args:
-            revision_id: The revision ID that is not present.
-            file_id: The file ID where the revision was not found.
-        """
-        VersionedFileError.__init__(self)
-        self.revision_id = revision_id
-        self.file_id = file_id
-
-
-class RevisionAlreadyPresent(VersionedFileError):
-    """Revision already present in versioned file.
-
-    Raised when attempting to add a revision that already exists
-    in the specified versioned file.
-    """
-
-    _fmt = 'Revision {%(revision_id)s} already present in "%(file_id)s".'
-
-    def __init__(self, revision_id, file_id):
-        """Initialize with revision and file information.
-
-        Args:
-            revision_id: The revision ID that is already present.
-            file_id: The file ID where the revision already exists.
-        """
-        VersionedFileError.__init__(self)
-        self.revision_id = revision_id
-        self.file_id = file_id
-
-
 class VersionedFileInvalidChecksum(VersionedFileError):
     """Text checksum validation failed.
 

@@ -44,7 +44,7 @@ from bzrformats.knit import (
 )
 
 from bzrformats import btree_index
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,
@@ -1009,7 +1009,7 @@ class KnitPacker(Packer):
                 # keys.
                 trace.mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
-                raise errors.RevisionNotPresent(a_missing_key[1], a_missing_key[0])
+                raise RevisionNotPresent(a_missing_key[1], a_missing_key[0])
         # copy text keys and adjust values
         self.pb.update("Copying content texts", 3)
         total_items, readv_group_iter = self._least_readv_node_readv(text_nodes)

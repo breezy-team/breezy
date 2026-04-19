@@ -32,7 +32,7 @@ import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
 from bzrformats import inventory_delta
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.inventory import Inventory
 from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from dromedary import errors as transport_errors
@@ -3514,7 +3514,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 # for just one.
                 missing_identifier = next(iter(absent))
                 missing_key = absent[missing_identifier]
-                raise errors.RevisionNotPresent(
+                raise RevisionNotPresent(
                     revision_id=missing_key[1], file_id=missing_key[0]
                 )
         except transport_errors.UnknownSmartMethod:
@@ -6484,7 +6484,7 @@ no_context_error_translators.register(
 )
 no_context_error_translators.register(
     b"RevisionNotPresent",
-    lambda err: errors.RevisionNotPresent(
+    lambda err: RevisionNotPresent(
         err.error_args[0].decode("utf-8"), err.error_args[1].decode("utf-8")
     ),
 )

@@ -33,7 +33,7 @@ Interesting module attributes:
 import threading
 from _thread import get_ident
 
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 
@@ -597,7 +597,7 @@ def _translate_error(err):
             str(err.length).encode("ascii") if err.length is not None else None,
             str(err.actual).encode("ascii") if err.actual is not None else None,
         )
-    elif isinstance(err, errors.RevisionNotPresent):
+    elif isinstance(err, RevisionNotPresent):
         return (b"RevisionNotPresent", err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return (

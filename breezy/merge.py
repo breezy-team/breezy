@@ -40,6 +40,7 @@ from breezy import (
     )
 from bzrformats import generate_ids
 from bzrformats.inventory import NoSuchId
+from bzrformats.errors import RevisionNotPresent
 from breezy.i18n import gettext
 """,
 )
@@ -2387,7 +2388,7 @@ class _PlanMergeBase:
         result = {}
         for record in self.vf.get_record_stream(keys, "unordered", True):
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent(record.key, self.vf)
+                raise RevisionNotPresent(record.key, self.vf)
             result[record.key[-1]] = record.get_bytes_as("lines")
         return result
 

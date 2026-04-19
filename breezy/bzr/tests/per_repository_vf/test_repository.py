@@ -17,7 +17,7 @@
 """Tests for repository implementations - tests a repository format."""
 
 from bzrformats import inventory, versionedfile
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
 from bzrformats.inventory import CHKInventory, InventoryDirectory
 
 
@@ -353,7 +353,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_parent_tree_id(b"ghost1")
         try:
             tree_a.commit("rev3", rev_id=b"rev3", allow_pointless=True)
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format."
             ) from e
@@ -436,7 +436,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         )
         try:
             repo.add_revision(b"ghost", rev)
-        except (errors.NoSuchRevision, errors.RevisionNotPresent) as e:
+        except (errors.NoSuchRevision, RevisionNotPresent) as e:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format."
             ) from e

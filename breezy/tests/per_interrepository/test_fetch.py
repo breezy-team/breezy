@@ -18,7 +18,7 @@
 import sys
 
 from bzrformats import inventory, versionedfile
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 
 from breezy import errors, osutils, repository
 from breezy.bzr.vf_search import SearchResult
@@ -480,14 +480,14 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, rev2)
-        except (BzrCheckError, errors.RevisionNotPresent):
+        except (BzrCheckError, RevisionNotPresent):
             # If an exception is raised, the revision should not be in the
             # target.
             #
             # Can also just raise a generic check errors; stream insertion
             # does this to include all the missing data
             self.assertRaises(
-                (errors.NoSuchRevision, errors.RevisionNotPresent),
+                (errors.NoSuchRevision, RevisionNotPresent),
                 to_repo.revision_tree,
                 rev2,
             )
@@ -567,9 +567,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         try:
-            self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
-        except errors.NoRoundtrippingSupport as err:
-            raise TestNotApplicable("roundtripping not supported") from err
+            self.assertRaises(RevisionNotPresent, target.fetch, source)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable("roundtripping not supported")
         self.assertFalse(target.has_revision(b"b"))
 
     def test_fetch_funky_file_id(self):

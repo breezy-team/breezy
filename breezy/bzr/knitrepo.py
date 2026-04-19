@@ -34,6 +34,7 @@ from bzrformats._bzr_rs import revision_serializer_v5
 )
 import contextlib
 
+from bzrformats.errors import RevisionNotPresent
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 from dromedary.errors import NoSuchFile
 
@@ -67,7 +68,7 @@ class _KnitParentsProvider:
             else:
                 try:
                     parents = tuple(self._knit.get_parents_with_ghosts(revision_id))
-                except errors.RevisionNotPresent:
+                except RevisionNotPresent:
                     continue
                 else:
                     if len(parents) == 0:

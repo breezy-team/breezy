@@ -50,7 +50,7 @@ from bzrformats import generate_ids
 import contextlib
 
 from bzrformats import dirstate
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
@@ -1219,7 +1219,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # RevisionNotPresent rather than NoSuchRevision if a given
                     # revision_id is not present. Should Repository be catching
                     # it and re-raising NoSuchRevision?
-                except (errors.NoSuchRevision, errors.RevisionNotPresent):
+                except (errors.NoSuchRevision, RevisionNotPresent):
                     revtree = None
                 trees.append((revision_id, revtree))
             self.set_parent_trees(

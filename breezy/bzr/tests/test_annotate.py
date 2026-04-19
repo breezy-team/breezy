@@ -17,6 +17,7 @@
 """Whitebox tests for annotate functionality."""
 
 from bzrformats import knit
+from bzrformats.errors import RevisionNotPresent
 
 from .. import annotate, errors, revision, tests
 
@@ -140,7 +141,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     def test_annotate_missing(self):
         self.make_simple_text()
         self.assertRaises(
-            errors.RevisionNotPresent, self.ann.annotate, (b"not", b"present")
+            RevisionNotPresent, self.ann.annotate, (b"not", b"present")
         )
 
     def test_annotate_simple(self):

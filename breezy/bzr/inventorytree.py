@@ -44,7 +44,7 @@ from bzrformats import (
     )
 """,
 )
-import contextlib
+from bzrformats.errors import RevisionNotPresent
 
 from ..tree import (
     FileTimestampUnavailable,
@@ -415,7 +415,8 @@ class InventoryTree(Tree):
                         raise AssertionError(
                             f"{inventory!r} != {self.root_inventory!r}"
                         )
-                    inventory_file_ids.append(inv_file_id)
+                    if inv_file_id is not None:
+                        inventory_file_ids.append(inv_file_id)
                 inventory_file_ids = set(inventory_file_ids)
             else:
                 inventory_file_ids = None
@@ -1422,7 +1423,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         ]
         try:
             yield from self._repository.iter_files_bytes(repo_desired_files)
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             raise NoSuchFile(e.file_id) from e
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):

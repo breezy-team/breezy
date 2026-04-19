@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 import vcsgraph.errors
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.versionedfile import AdapterFactory, ChunkedContentFactory
 
 from .. import errors, ui
@@ -474,7 +474,7 @@ class BranchReconciler:
                 last_revision_id, (_mod_revision.NULL_REVISION,)
             ):
                 real_history.append(revid)
-        except vcsgraph.errors.RevisionNotPresent:
+        except vcsgraph.RevisionNotPresent:
             pass  # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):

@@ -65,7 +65,7 @@ from bzrformats.inventory import NoSuchId
 """,
 )
 
-from bzrformats.errors import BzrCheckError, ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionNotPresent
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -603,7 +603,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 )
                 lines = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(lines)
-        except (errors.NoSuchRevision, errors.RevisionNotPresent):
+        except (errors.NoSuchRevision, RevisionNotPresent):
             pass
 
     def _basis_inventory_name(self):

@@ -22,6 +22,7 @@ to facilitate code review and collaboration workflows.
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrformats.errors import RevisionNotPresent
 import base64
 import contextlib
 import re
@@ -392,7 +393,7 @@ class BaseMergeDirective:
                 # MergeDirective.revision_id is authoritative.
                 try:
                     info.install_revisions(target_repo, stream_input=False)
-                except errors.RevisionNotPresent:
+                except RevisionNotPresent:
                     # At least one dependency isn't present.  Try installing
                     # missing revisions from the submit branch
                     try:

@@ -27,7 +27,7 @@ import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
-from bzrformats.errors import BzrCheckError
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from dromedary import errors as transport_errors
 
 from . import config as _mod_config
@@ -404,7 +404,7 @@ class Branch(ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except vcsgraph.errors.RevisionNotPresent as exc:
+            except RevisionNotPresent as exc:
                 raise errors.GhostRevisionsHaveNoRevno(
                     revno[0], exc.revision_id
                 ) from exc

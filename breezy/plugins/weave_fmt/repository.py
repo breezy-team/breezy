@@ -40,7 +40,7 @@ from bzrformats._bzr_rs import revision_serializer_v5
 """,
 )
 from bzrformats import tuned_gzip, versionedfile, weave, weavefile
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import ObjectNotLocked, RevisionAlreadyPresent, RevisionNotPresent
 from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
@@ -866,7 +866,7 @@ class TextVersionedFiles(VersionedFiles):
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent([record.key[0]], self)
+                raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             if record.storage_kind in ("fulltext", "chunks", "lines"):
                 self.add_lines(record.key, None, record.get_bytes_as("lines"))
@@ -883,6 +883,8 @@ class TextVersionedFiles(VersionedFiles):
                 )
                 with contextlib.suppress(errors.RevisionAlreadyPresent):
                     self.add_lines(record.key, None, lines)
+                except RevisionAlreadyPresent:
+                    pass
 
     def _load_text(self, key):
         """Load text content for a given key.

@@ -51,7 +51,7 @@ from breezy.bzr.testament import Testament
 """,
 )
 
-from bzrformats.errors import BzrCheckError, ObjectNotLocked
+from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionAlreadyPresent, RevisionNotPresent
 from bzrformats.inventory import Inventory, NoSuchId, entry_factory
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
@@ -1470,7 +1470,7 @@ class VersionedFileRepository(Repository):
             text_keys[(file_id, revision_id)] = callable_data
         for record in self.texts.get_record_stream(text_keys, "unordered", True):
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent(record.key[1], record.key[0])
+                raise RevisionNotPresent(record.key[1], record.key[0])
             yield text_keys[record.key], record.iter_bytes_as("chunked")
 
     def _generate_text_key_index(self, text_key_references=None, ancestors=None):
@@ -2508,7 +2508,7 @@ class _VersionedFileChecker:
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
-            except errors.RevisionNotPresent:
+            except RevisionNotPresent:
                 # Missing text!
                 knit_parents = None
             if correct_parents != knit_parents:
@@ -3187,7 +3187,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
                 )
         else:
             repository.add_inventory(rev.revision_id, inv, present_parents)
-    except errors.RevisionAlreadyPresent:
+    except RevisionAlreadyPresent:
         pass
     if signature is not None:
         repository.add_signature_text(rev.revision_id, signature)

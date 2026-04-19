@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrformats.errors import RevisionNotPresent
 from io import BytesIO
 from typing import TYPE_CHECKING, Union
 
@@ -904,7 +905,7 @@ class BzrBranch8(BzrBranch):
             except ValueError as e:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except vcsgraph.errors.RevisionNotPresent as exc:
+                except vcsgraph.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
                         revision_id, exc.revision_id
                     ) from exc

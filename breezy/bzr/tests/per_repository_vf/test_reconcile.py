@@ -17,6 +17,7 @@
 """Tests for reconciliation of repositories."""
 
 from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
+from bzrformats.errors import RevisionNotPresent
 
 import breezy
 from breezy import errors
@@ -336,7 +337,7 @@ class TestsNeedingReweave(TestReconcile):
                         ((b"myfileid", b"ghost-text-parent"),),
                         [b"line1\n", b"line2\n"],
                     )
-                except errors.RevisionNotPresent as e:
+                except RevisionNotPresent as e:
                     raise TestSkipped("text ghost parents not supported") from e
                 if repo.supports_rich_root():
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision), [], [])

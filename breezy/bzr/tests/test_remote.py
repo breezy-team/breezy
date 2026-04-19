@@ -60,6 +60,7 @@ from .. import (
 from bzrformats import inventory, inventory_delta
 from ..bzrdir import BzrDir, BzrDirFormat
 from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
+from bzrformats.errors import RevisionNotPresent
 from ..remote import (
     RemoteBranch,
     RemoteBranchFormat,
@@ -3856,7 +3857,7 @@ class TestRepositoryIterFilesBytes(TestRemoteRepository):
             iter([b"absent\0somefile\0somerev\n"]),
         )
         self.assertRaises(
-            errors.RevisionNotPresent,
+            RevisionNotPresent,
             list,
             repo.iter_files_bytes([(b"somefile", b"somerev", b"myid")]),
         )

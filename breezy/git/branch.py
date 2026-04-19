@@ -29,7 +29,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.object_store import peel_sha
 from dulwich.objects import ZERO_SHA, NotCommitError
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
 from dulwich.repo import check_ref_format
 
 from .. import (
@@ -1289,7 +1289,7 @@ class LocalGitBranch(GitBranch):
             ret = list(
                 graph.iter_lefthand_ancestry(last_revid, (revision.NULL_REVISION,))
             )
-        except vcsgraph.errors.RevisionNotPresent as e:
+        except vcsgraph.RevisionNotPresent as e:
             raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id) from e
         ret.reverse()
         return ret
