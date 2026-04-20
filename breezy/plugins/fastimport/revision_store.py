@@ -203,14 +203,18 @@ class RevisionStore:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
             if self.expects_rich_root():
-                inv = inventory.Inventory(root_id=None, revision_id=revision_id)
-                # The very first root needs to have the right revision
-                root = inventory.InventoryDirectory(
-                    inventory.ROOT_ID, "", None, revision_id
+                # The very first root needs to carry the revision; rebuild
+                # it since InventoryEntry is immutable.
+                old_root = inv.root
+                inv.delete(old_root.file_id)
+                inv.add(
+                    inventory.InventoryDirectory(
+                        file_id=old_root.file_id,
+                        name=old_root.name,
+                        parent_id=None,
+                        revision=revision_id,
+                    )
                 )
-                inv.add(root)
-            else:
-                inv = inventory.Inventory(revision_id=revision_id)
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
