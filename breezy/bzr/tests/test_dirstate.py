@@ -28,7 +28,7 @@ from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
-from ..inventory_utils import make_inventory_delta
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from .. import inventorytree, workingtree_4
 
 # TODO:
@@ -964,7 +964,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
         self.assertEqual([b"a-root-value", b"subdir-id"], sorted(id_index.file_ids()))
-        state.add("file-name", b"file-id", "file", None, "")
+        state.add("file-name", b"file-id", "file", None, b"")
         self.assertEqual(
             [b"a-root-value", b"file-id", b"subdir-id"],
             sorted(id_index.file_ids()),
