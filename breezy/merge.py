@@ -39,11 +39,11 @@ from breezy import (
     ui,
     )
 from bzrformats import generate_ids
-from bzrformats.inventory import NoSuchId
 from bzrformats.errors import RevisionNotPresent
 from breezy.i18n import gettext
 """,
 )
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from . import decorators, errors, hooks, osutils, registry, trace, transform
@@ -2225,26 +2225,62 @@ class MergeIntoMergeType(Merge3Merger):
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
-        from .bzr import generate_ids
-        from .bzr.inventory import InventoryDirectory
-
+        # Pick the file-id for the new root: re-use the source's unless
+        # it already exists in the target (common case is both trees
+        # sharing TREE_ROOT), in which case mint a fresh one. Non-root
+        # clashes still fall through and will show up as conflicts.
+        new_file_id = subdir.file_id
         try:
-            self.this_tree.id2path(merge_into_root.file_id)
+            self.this_tree.id2path(new_file_id)
         except NoSuchId:
             pass
         else:
-            # Give the root a new file-id.
-            # This can happen fairly easily if the directory we are
-            # incorporating is the root, and both trees have 'TREE_ROOT' as
-            # their root_id.  Users will expect this to Just Work, so we
-            # change the file-id here.
-            # Non-root file-ids could potentially conflict too.  That's really
-            # an edge case, so we don't do anything special for those.  We let
-            # them cause conflicts.
-            file_id = generate_ids.gen_file_id(name_in_target)
-        merge_into_root = InventoryDirectory(
-            file_id, name_in_target, target_id, subdir.revision
+            new_file_id = generate_ids.gen_file_id(name_in_target)
+        # InventoryEntry is immutable; build the renamed root from
+        # scratch. Each kind needs its own fields, so handle them
+        # one at a time rather than through a shared kwargs dict.
+        from bzrformats.inventory import (
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink,
+            TreeReference,
         )
+
+        if subdir.kind == "directory":
+            merge_into_root = InventoryDirectory(
+                new_file_id,
+                name_in_target,
+                subdir.parent_id,
+                revision=subdir.revision,
+            )
+        elif subdir.kind == "file":
+            merge_into_root = InventoryFile(
+                new_file_id,
+                name_in_target,
+                subdir.parent_id,
+                revision=subdir.revision,
+                text_sha1=subdir.text_sha1,
+                text_size=subdir.text_size,
+                executable=subdir.executable,
+            )
+        elif subdir.kind == "symlink":
+            merge_into_root = InventoryLink(
+                new_file_id,
+                name_in_target,
+                subdir.parent_id,
+                revision=subdir.revision,
+                symlink_target=subdir.symlink_target,
+            )
+        elif subdir.kind == "tree-reference":
+            merge_into_root = TreeReference(
+                new_file_id,
+                name_in_target,
+                subdir.parent_id,
+                revision=subdir.revision,
+                reference_revision=subdir.reference_revision,
+            )
+        else:
+            raise AssertionError(f"unexpected kind: {subdir.kind!r}")
         yield (merge_into_root, target_id, "")
         if subdir.kind != "directory":
             # No children, so we are done.
