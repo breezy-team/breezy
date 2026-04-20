@@ -50,7 +50,7 @@ from bzrformats import generate_ids
 import contextlib
 
 from bzrformats import dirstate
-from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
+from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
@@ -749,7 +749,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             ) = state._get_block_entry_index(to_entry_dirname, to_basename, 0)
             if not entry_present:
                 raise errors.BzrMoveFailedError(
-                    "", to_dir, errors.NotVersionedError(to_dir)
+                    "", to_dir, NotVersionedError(to_dir)
                 )
             to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
             # get a handle on the block itself.
@@ -827,7 +827,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 from_entry = self._get_entry(path=from_rel)
                 if from_entry == (None, None):
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_dir, errors.NotVersionedError(path=from_rel)
+                        from_rel, to_dir, NotVersionedError(path=from_rel)
                     )
 
                 from_id = from_entry[0][2]
@@ -1458,6 +1458,10 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def apply_inventory_delta(self, changes):
         """See MutableTree.apply_inventory_delta."""
+        from bzrformats.inventory_delta import InventoryDelta
+
+        if not isinstance(changes, InventoryDelta):
+            changes = InventoryDelta(changes)
         with self.lock_tree_write():
             state = self.current_dirstate()
             state.update_by_delta(InventoryDelta(changes))
@@ -1465,6 +1469,10 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def update_basis_by_delta(self, new_revid, delta):
         """See MutableTree.update_basis_by_delta."""
+        from bzrformats.inventory_delta import InventoryDelta
+
+        if not isinstance(delta, InventoryDelta):
+            delta = InventoryDelta(delta)
         if self.last_revision() == new_revid:
             raise AssertionError()
         self.current_dirstate().update_basis_by_delta(delta, new_revid)

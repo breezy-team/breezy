@@ -25,6 +25,7 @@ from ..commands import Command, display_command
 from ..option import Option
 from ..workingtree import WorkingTree
 from bzrformats import btree_index
+from bzrformats.errors import NotVersionedError
 
 
 def as_tuples(obj):
@@ -161,7 +162,7 @@ class cmd_file_id(Command):
         tree, relpath = WorkingTree.open_containing(filename)
         file_id = tree.path2id(relpath)
         if file_id is None:
-            raise errors.NotVersionedError(filename)
+            raise NotVersionedError(filename)
         else:
             self.outf.write(file_id.decode("utf-8") + "\n")
 
@@ -184,7 +185,7 @@ class cmd_file_path(Command):
         tree, relpath = WorkingTree.open_containing(filename)
         fid = tree.path2id(relpath)
         if fid is None:
-            raise errors.NotVersionedError(filename)
+            raise NotVersionedError(filename)
         segments = osutils.splitpath(relpath)
         for pos in range(1, len(segments) + 1):
             path = osutils.joinpath(segments[:pos])

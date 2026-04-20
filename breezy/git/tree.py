@@ -41,7 +41,7 @@ from dulwich.index import (
     index_entry_from_stat,
 )
 from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
-from bzrformats.errors import ObjectNotLocked
+from bzrformats.errors import NotVersionedError, ObjectNotLocked
 from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Commit, ObjectID, Tree
 
 from .. import controldir as _mod_controldir
@@ -2440,7 +2440,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     )
                 kind = self.kind(from_rel)
                 if not self.is_versioned(from_rel) and kind != "directory":
-                    raise exc_type(from_rel, to_rel, errors.NotVersionedError(from_rel))
+                    raise exc_type(from_rel, to_rel, NotVersionedError(from_rel))
                 if self.has_filename(to_rel):
                     raise errors.RenameFailedFilesExist(
                         from_rel, to_rel, FileExists(to_rel)
@@ -2453,7 +2453,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 if from_subpath not in index:
                     # It's not a file
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, errors.NotVersionedError(path=from_rel)
+                        from_rel, to_rel, NotVersionedError(path=from_rel)
                     )
 
             if not after:

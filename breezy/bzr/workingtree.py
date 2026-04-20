@@ -65,7 +65,12 @@ from bzrformats.inventory import NoSuchId
 """,
 )
 
-from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionNotPresent
+from bzrformats.errors import (
+    BzrCheckError,
+    NotVersionedError,
+    ObjectNotLocked,
+    RevisionNotPresent,
+)
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -1348,7 +1353,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             to_inv, to_dir_id = self._path2inv_file_id(to_dir)
             if to_dir_id is None:
                 raise errors.BzrMoveFailedError(
-                    "", to_dir, errors.NotVersionedError(path=to_dir)
+                    "", to_dir, NotVersionedError(path=to_dir)
                 )
 
             to_dir_ie = to_inv.get_entry(to_dir_id)
@@ -1363,7 +1368,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 from_inv, from_id = self._path2inv_file_id(from_rel)
                 if from_id is None:
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_dir, errors.NotVersionedError(path=from_rel)
+                        from_rel, to_dir, NotVersionedError(path=from_rel)
                     )
 
                 from_entry = from_inv.get_entry(from_id)
@@ -1456,7 +1461,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 basis_from_inv, from_id = basis_tree._path2inv_file_id(from_rel)
                 if from_id is None:
                     raise errors.BzrRenameFailedError(
-                        from_rel, to_rel, errors.NotVersionedError(path=from_rel)
+                        from_rel, to_rel, NotVersionedError(path=from_rel)
                     )
                 try:
                     from_entry = from_inv.get_entry(from_id)
@@ -1488,7 +1493,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # is versioned
             if to_dir_id is None:
                 raise errors.BzrMoveFailedError(
-                    from_rel, to_rel, errors.NotVersionedError(path=to_dir)
+                    from_rel, to_rel, NotVersionedError(path=to_dir)
                 )
 
             # all checks done. now we can continue with our actual work
@@ -1552,7 +1557,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(
-                    from_rel, to_rel, errors.NotVersionedError(path=from_rel)
+                    from_rel, to_rel, NotVersionedError(path=from_rel)
                 )
             if to_id is not None:
                 allowed = False

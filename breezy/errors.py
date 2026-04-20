@@ -844,31 +844,6 @@ class AlreadyVersionedError(BzrError):
             self.context_info = context_info + ". "
 
 
-class NotVersionedError(BzrError):
-    """Path is not versioned but was expected to be.
-
-    Raised when attempting to perform a version control operation on a path
-    that is not under version control.
-    """
-
-    _fmt = "%(context_info)s%(path)s is not versioned."
-
-    def __init__(self, path, context_info=None):
-        """Initialize with path and context information.
-
-        Args:
-            path: The path which is not versioned, in user-friendly form.
-            context_info: Optional context information explaining why this
-                path was expected to be versioned.
-        """
-        BzrError.__init__(self)
-        self.path = path
-        if context_info is None:
-            self.context_info = ""
-        else:
-            self.context_info = context_info + ". "
-
-
 class PathsNotVersionedError(BzrError):
     """Multiple paths are not versioned.
 

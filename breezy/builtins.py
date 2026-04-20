@@ -25,7 +25,8 @@ from dromedary.errors import FileExists, NoSuchFile
 import breezy.bzr
 import breezy.git
 
-from . import controldir, errors, lazy_import, osutils, transport
+from . import controldir, errors, lazy_import, transport
+from bzrformats.errors import NotVersionedError
 
 lazy_import.lazy_import(
     globals(),
@@ -6072,7 +6073,7 @@ class cmd_remerge(Command):  # noqa: D101
             interesting_files = set()
             for filename in file_list:
                 if not tree.is_versioned(filename):
-                    raise errors.NotVersionedError(filename)
+                    raise NotVersionedError(filename)
                 interesting_files.add(filename)
                 if tree.kind(filename) != "directory":
                     continue
@@ -6662,13 +6663,13 @@ class cmd_annotate(Command):  # noqa: D101
         self.enter_context(tree.lock_read())
         if wt is not None and revision is None:
             if not wt.is_versioned(relpath):
-                raise errors.NotVersionedError(relpath)
+                raise NotVersionedError(relpath)
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all, show_ids=show_ids)
         else:
             if not tree.is_versioned(relpath):
-                raise errors.NotVersionedError(relpath)
+                raise NotVersionedError(relpath)
             annotate_file_tree(
                 tree, relpath, self.outf, long, all, show_ids=show_ids, branch=branch
             )
@@ -7189,7 +7190,7 @@ class cmd_split(Command):  # noqa: D101
 
         containing_tree, subdir = WorkingTree.open_containing(tree)
         if not containing_tree.is_versioned(subdir):
-            raise errors.NotVersionedError(subdir)
+            raise NotVersionedError(subdir)
         try:
             containing_tree.extract(subdir)
         except errors.RootNotRich as exc:
@@ -8614,7 +8615,7 @@ class cmd_reference(Command):  # noqa: D101
                 self._display_reference_info(tree, branch, info)
         else:
             if not tree.is_versioned(path) and not force_unversioned:
-                raise errors.NotVersionedError(path)
+                raise NotVersionedError(path)
             if location is None:
                 info = [(path, tree.get_reference_info(path, branch))]
                 self._display_reference_info(tree, branch, info)
