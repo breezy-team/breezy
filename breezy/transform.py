@@ -46,7 +46,7 @@ from .osutils import delete_any, pathjoin
 from .progress import ProgressPhase
 from .tree import InterTree
 
-ROOT_PARENT = "root-parent"
+ROOT_PARENT = b"root-parent"
 
 
 class NoFinalPath(BzrError):

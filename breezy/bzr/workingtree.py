@@ -1974,7 +1974,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 and ie.parent_id is not None
                 and self._directory_is_tree_reference(path)
             ):
-                # This InventoryDirectory needs to be a TreeReference
+                # This InventoryDirectory needs to be a TreeReference.
+                # Root directories are never tree references, so skip
+                # them — a TreeReference requires a real parent_id.
                 ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
                 blocked_parent_ids.add(ie.file_id)
 
