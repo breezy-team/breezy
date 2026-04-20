@@ -66,7 +66,7 @@ class TestReadonly(TestCaseWithWorkingTree):
 
     def _custom_cutoff_time(self):
         """We need to fake the cutoff time."""
-        return time.time() + 10.0
+        return int(time.time()) + 10
 
     def test_readonly_unclean(self):
         """Even if the tree is unclean, we should still handle readonly dirs."""

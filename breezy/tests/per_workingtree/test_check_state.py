@@ -34,6 +34,8 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         try:
             dirstate = tree.current_dirstate()
             dirstate_path = dirstate._filename
+            if isinstance(dirstate_path, bytes):
+                dirstate_path = dirstate_path.decode("utf-8")
             self.assertPathExists(dirstate_path)
         finally:
             tree.unlock()

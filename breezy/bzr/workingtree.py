@@ -1143,11 +1143,18 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             my_inv, new_root = self._path2inv_ie(sub_path)
             my_inv = self.root_inventory
             child_inv = inventory.Inventory(root_id=None)
-            # Recursively migrate everything under the new root to the child inv
-            for ie in my_inv.remove_recursive_id(new_root.file_id):
-                if ie.file_id == new_root.file_id:
-                    ie = InventoryDirectory(ie.file_id, "", None)
-                child_inv.add(ie)
+            file_id = self.path2id(sub_path)
+            old_root = my_inv.get_entry(file_id)
+            my_inv.remove_recursive_id(file_id)
+            # InventoryEntry is immutable; rebuild the subtree root as a
+            # new directory entry with no parent.
+            new_root = inventory.InventoryDirectory(
+                file_id=old_root.file_id,
+                name=old_root.name,
+                parent_id=None,
+                revision=old_root.revision,
+            )
+            child_inv.add(new_root)
             self._write_inventory(my_inv)
             wt._write_inventory(child_inv)
             return wt
