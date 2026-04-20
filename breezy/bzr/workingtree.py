@@ -61,7 +61,6 @@ from breezy.bzr import (
     serializer,
     )
 from bzrformats import generate_ids, inventory, xml5, xml7
-from bzrformats.inventory import NoSuchId
 """,
 )
 
@@ -71,6 +70,7 @@ from bzrformats.errors import (
     ObjectNotLocked,
     RevisionNotPresent,
 )
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
