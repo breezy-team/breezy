@@ -73,7 +73,7 @@ from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
-from .inventory_utils import make_inventory_delta
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -787,7 +787,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 fingerprint,
                 packed_stat,
                 size,
-                to_block,
+                to_block_index,
                 to_key,
                 to_path_utf8,
             ):
@@ -812,6 +812,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     size=size,
                     path_utf8=to_path_utf8,
                 )
+                # update_minimal replaces state._dirblocks, so always
+                # re-fetch the target block rather than caching.
+                to_block = state._dirblocks[to_block_index]
                 added_entry_index, _ = state._find_entry_index(to_key, to_block[1])
                 new_entry = to_block[1][added_entry_index]
                 rollbacks.callback(state._make_absent, new_entry)
@@ -909,7 +912,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         fingerprint=cur_details[1],
                         packed_stat=cur_details[4],
                         size=cur_details[2],
-                        to_block=to_block,
+                        to_block_index=to_block_index,
                         to_key=to_key,
                         to_path_utf8=to_rel_utf8,
                     )
@@ -969,7 +972,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                                     fingerprint=cur_details[1],
                                     packed_stat=cur_details[4],
                                     size=cur_details[2],
-                                    to_block=to_block,
+                                    to_block_index=to_block_index,
                                     to_key=to_key,
                                     to_path_utf8=to_path_utf8,
                                 )

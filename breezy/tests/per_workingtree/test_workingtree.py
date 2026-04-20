@@ -325,7 +325,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
-        from ...errors import NotVersionedError
+        from bzrformats.errors import NotVersionedError
 
         wt = self.make_branch_and_tree(".")
         self.build_tree(["foo/", "foo/hello"])
