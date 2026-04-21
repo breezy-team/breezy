@@ -2615,17 +2615,28 @@ class TestDirstateValidation(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def _inject_corrupt_last_block_entry(self, state, bad_entry):
+        """Append ``bad_entry`` to the last dirblock and write it back.
+
+        ``state._dirblocks`` is a read-through snapshot of the Rust-owned
+        dirblocks, so mutating it in place does not persist.  Assemble
+        the corrupted dirblocks and reassign via the setter.
+        """
+        dirblocks = state._dirblocks
+        dirblocks[-1][1].append(bad_entry)
+        state._dirblocks = dirblocks
+
     def test_dirblock_not_sorted(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # we're appending to the dirblock, but this name comes before some of
         # the existing names; that's wrong
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"h", b"aaaa", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
         self.assertContainsRe(str(e), "not sorted")
@@ -2633,28 +2644,28 @@ class TestDirstateValidation(TestCaseWithDirState):
     def test_dirblock_name_mismatch(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # add an entry with the wrong directory name
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"", b"z", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
-        self.assertContainsRe(str(e), "doesn't match directory name")
+        self.assertContainsRe(str(e), r"doesn't match (?:block )?directory name")
 
     def test_dirblock_missing_rename(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # make another entry for a-id, without a correct 'r' pointer to
         # the real occurrence in the working tree
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"h", b"z", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
         self.assertContainsRe(str(e), "file a-id absent but previously present")

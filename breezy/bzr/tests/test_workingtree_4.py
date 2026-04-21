@@ -683,7 +683,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         )
         tree.add(["versioned", "versioned2", "versioned2/a"])
         tree.commit("one", rev_id=b"rev-1")
-        # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
+        # Trap _walkdirs_utf8 in bzrformats.dirstate to spy on what dirs have
+        # been accessed.  The dirstate module imports the symbol locally, so
+        # the patch has to happen there rather than on bzrformats.osutils.
         returned = []
 
         def walkdirs_spy(*args, **kwargs):
@@ -691,7 +693,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                 returned.append(val[0][0])
                 yield val
 
-        orig = self.overrideAttr(osutils, "_walkdirs_utf8", walkdirs_spy)
+        orig = self.overrideAttr(dirstate, "_walkdirs_utf8", walkdirs_spy)
 
         basis = tree.basis_tree()
         tree.lock_read()
@@ -837,13 +839,17 @@ class TestCorruptDirstate(TestCaseWithTransport):
             tree.commit("init")
             state = tree.current_dirstate()
             state._read_dirblocks_if_needed()
-            # Now add in an invalid entry, a rename with a dangling pointer
-            state._dirblocks[1][1].append(
+            # Now add in an invalid entry, a rename with a dangling pointer.
+            # _dirblocks is a read-through snapshot; rebuild the whole
+            # dirblocks list with the injected entry and reassign.
+            dirblocks = state._dirblocks
+            dirblocks[1][1].append(
                 (
                     (b"", b"foo", b"foo-id"),
                     [(b"f", b"", 0, False, b""), (b"r", b"bar", 0, False, b"")],
                 )
             )
+            state._dirblocks = dirblocks
             self.assertListRaises(
                 dirstate.DirstateCorrupt, tree.iter_changes, tree.basis_tree()
             )

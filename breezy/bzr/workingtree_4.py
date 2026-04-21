@@ -1406,9 +1406,12 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # this block is to be deleted: process it.
                     # TODO: we can special case the no-parents case and
                     # just forget the whole block.
+                    # state._dirblocks is a read-through snapshot, so
+                    # re-fetch the block's entries after each mutation.
                     entry_index = 0
-                    while entry_index < len(block[1]):
-                        entry = block[1][entry_index]
+                    entries = state._dirblocks[block_index][1]
+                    while entry_index < len(entries):
+                        entry = entries[entry_index]
                         if entry[1][0][0] in (b"a", b"r"):
                             # don't remove absent or renamed entries
                             entry_index += 1
@@ -1418,13 +1421,15 @@ class DirStateWorkingTree(InventoryWorkingTree):
                             if not state._make_absent(entry):
                                 # The block has not shrunk.
                                 entry_index += 1
+                        entries = state._dirblocks[block_index][1]
                     # go to the next block. (At the moment we dont delete empty
                     # dirblocks)
                     block_index += 1
                     continue
                 entry_index = 0
-                while entry_index < len(block[1]):
-                    entry = block[1][entry_index]
+                entries = state._dirblocks[block_index][1]
+                while entry_index < len(entries):
+                    entry = entries[entry_index]
                     if (
                         entry[1][0][0] in (b"a", b"r")  # absent, relocated
                         or
@@ -1440,6 +1445,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         entry_index += 1
                     # we have unversioned this id
                     ids_to_unversion.remove(entry[0][2])
+                    entries = state._dirblocks[block_index][1]
                 block_index += 1
             if ids_to_unversion:
                 raise NoSuchId(self, next(iter(ids_to_unversion)))
