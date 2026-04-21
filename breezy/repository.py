@@ -1686,13 +1686,12 @@ class InterRepository(InterObject[Repository]):
     @staticmethod
     def _assert_same_model(source, target):
         """Raise an exception if two repositories do not use the same model."""
-        from .bzr.vf_repository import VersionedFileRepository
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(
                 source, target, "different rich-root support"
             )
-        if not isinstance(source, VersionedFileRepository) or not isinstance(
-            target, VersionedFileRepository
+        if not hasattr(source, "_inventory_serializer") or not hasattr(
+            target, "_inventory_serializer"
         ):
             if source != target:
                 raise errors.IncompatibleRepositories(
