@@ -216,15 +216,12 @@ class TestCommonAncestor(TestCaseWithTransport):
         tree.commit("1", rev_id=b"1", allow_pointless=True)
         tree.commit("2", rev_id=b"2", allow_pointless=True)
         tree.commit("3", rev_id=b"3", allow_pointless=True)
-        rev = tree.branch.repository.get_revision(b"1")
-        history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b"1"], history)
-        rev = tree.branch.repository.get_revision(b"2")
-        history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b"1", b"2"], history)
-        rev = tree.branch.repository.get_revision(b"3")
-        history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, b"1", b"2", b"3"], history)
+        repo = tree.branch.repository
+        self.assertEqual([None, b"1"], revision.get_history(repo, b"1"))
+        self.assertEqual([None, b"1", b"2"], revision.get_history(repo, b"2"))
+        self.assertEqual(
+            [None, b"1", b"2", b"3"], revision.get_history(repo, b"3")
+        )
 
 
 class TestReservedId(TestCase):
