@@ -33,8 +33,6 @@ from breezy import (
     ui,
     )
 from bzrformats import pack
-from bzrformats import xml5, xml6, xml7
-from bzrformats._bzr_rs import revision_serializer_v5
 from bzrformats.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
@@ -42,6 +40,8 @@ from bzrformats.knit import (
     )
 """,
 )
+from bzrformats import xml5, xml6, xml7
+from bzrformats._bzr_rs import revision_serializer_v5
 
 from bzrformats import btree_index
 from bzrformats.errors import BzrCheckError, RevisionNotPresent
