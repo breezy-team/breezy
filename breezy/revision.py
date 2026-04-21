@@ -153,12 +153,17 @@ class Revision:
 
     def iter_bugs(self):
         """Iterate over the bugs associated with this revision."""
-        bug_property = self.properties.get("bugs", None)
-        if bug_property is None:
-            return iter([])
-        from . import bugtracker
+        return iter_bugs(self)
 
-        return bugtracker.decode_bug_urls(bug_property)
+
+def iter_bugs(revision):
+    """Iterate over the bugs associated with a revision."""
+    bug_property = revision.properties.get("bugs", None)
+    if bug_property is None:
+        return iter([])
+    from . import bugtracker
+
+    return bugtracker.decode_bug_urls(bug_property)
 
 
 def iter_ancestors(

@@ -56,8 +56,12 @@ class TestCheckState(TestCaseWithState):
         tree.check_state()
 
     def test_check_broken_dirstate(self):
+        from bzrformats.errors import BzrFormatsError
+
         tree = self.make_tree_with_broken_dirstate("tree")
-        self.assertRaises(errors.BzrError, tree.check_state)
+        self.assertRaises(
+            (errors.BzrError, BzrFormatsError), tree.check_state
+        )
 
 
 class TestResetState(TestCaseWithState):
