@@ -2363,7 +2363,7 @@ properties_handler_registry = registry.Registry[
 def _bugs_properties_handler(revision):
     fixed_bug_urls = []
     related_bug_urls = []
-    for bug_url, status in revision.iter_bugs():
+    for bug_url, status in _mod_revision.iter_bugs(revision):
         if status == "fixed":
             fixed_bug_urls.append(bug_url)
         elif status == "related":
