@@ -30,6 +30,10 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
+from bzrformats import inventory, inventory_delta, versionedfile
+from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.revision import Revision
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.memory import MemoryTransport
@@ -44,8 +48,7 @@ from ... import branch, config, controldir, errors, repository, tests, treebuild
 from ... import transport as _mod_transport
 from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
-from ...errors import GhostRevisionsHaveNoRevno
-from ...revision import NULL_REVISION, Revision
+from ...revision import NULL_REVISION
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
 from .. import (
@@ -56,10 +59,7 @@ from .. import (
     remote,
     vf_search,
 )
-from bzrformats import inventory, inventory_delta, versionedfile
 from ..bzrdir import BzrDir, BzrDirFormat
-from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
-from bzrformats.errors import RevisionNotPresent
 from ..remote import (
     RemoteBranch,
     RemoteBranchFormat,
@@ -3266,14 +3266,14 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         transport_path = "quack"
         repo, client = self.setup_fake_client_and_repository(transport_path)
         somerev1 = Revision(
-            b"somerev1",
-            committer="Joe Committer <joe@example.com>",
-            timestamp=1321828927,
-            timezone=-60,
-            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            revision_id=b"somerev1",
             parent_ids=[],
+            committer="Joe Committer <joe@example.com>",
             message="Message",
             properties={},
+            inventory_sha1=b"691b39be74c67b1212a75fcb19c433aaed903c2b",
+            timestamp=1321828927,
+            timezone=-60,
         )
         body = zlib.compress(
             b"".join(revision_bencode_serializer.write_revision_to_lines(somerev1))
@@ -4055,8 +4055,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
-            entry = inv.make_entry(
-                "directory", "newdir", inv.root.file_id, b"newdir-id", revision=b"ghost"
+            entry = inventory.InventoryDirectory(
+                b"newdir-id", "newdir", inv.root.file_id, revision=b"ghost"
             )
             delta = inventory_delta.InventoryDelta(
                 [(None, "newdir", b"newdir-id", entry)]
