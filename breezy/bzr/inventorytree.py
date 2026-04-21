@@ -119,12 +119,11 @@ class InventoryTreeChange(TreeChange):
         )
 
     def __eq__(self, other):
-        """Check equality with another change object."""
-        if isinstance(other, TreeChange):
+        if isinstance(other, TreeChange) or hasattr(other, "_as_tuple"):
             return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
             return self._as_tuple() == other
-        return False
+        return NotImplemented
 
     def __lt__(self, other):
         """Compare with another change object for ordering."""
