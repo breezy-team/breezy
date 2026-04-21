@@ -1067,7 +1067,7 @@ def _match_filter(search_re, rev):
         "message": (rev.message,),
         "committer": (rev.committer,),
         "author": (rev.get_apparent_authors()),
-        "bugs": list(rev.iter_bugs()),
+        "bugs": list(_mod_revision.iter_bugs(rev)),
     }
     strings[""] = [item for inner_list in strings.values() for item in inner_list]
     for k, v in search_re:
