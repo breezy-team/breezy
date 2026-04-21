@@ -39,7 +39,7 @@ from ... import errors, estimate_compressed_size, osutils, trace, ui
 from ... import revision as _mod_revision
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import vf_search
-from ..inventory_utils import make_inventory_delta
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from ..bzrdir import BzrDir
 from .request import (
     FailedSmartServerResponse,

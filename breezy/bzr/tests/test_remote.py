@@ -54,10 +54,9 @@ from .. import (
     groupcompress_repo,
     knitpack_repo,
     remote,
-    versionedfile,
     vf_search,
 )
-from bzrformats import inventory, inventory_delta
+from bzrformats import inventory, inventory_delta, versionedfile
 from ..bzrdir import BzrDir, BzrDirFormat
 from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
 from bzrformats.errors import RevisionNotPresent

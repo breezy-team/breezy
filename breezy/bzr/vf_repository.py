@@ -67,7 +67,7 @@ from ..repository import (
 )
 from ..trace import mutter, note
 from .inventorytree import InventoryTreeChange
-from .inventory_utils import make_inventory_delta
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
 
