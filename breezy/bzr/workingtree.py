@@ -58,12 +58,12 @@ from breezy import (
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
     rio as _mod_rio,
-    serializer,
     )
 from bzrformats import generate_ids, inventory, xml5, xml7
 """,
 )
 
+from bzrformats import serializer
 from bzrformats.errors import (
     BzrCheckError,
     NotVersionedError,
