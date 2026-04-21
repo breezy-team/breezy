@@ -2311,8 +2311,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise NoSuchFile(path)
+        parent_file_id = self._transform.final_file_id(trans_id)
         todo = [
-            (child_trans_id, trans_id)
+            (child_trans_id, parent_file_id)
             for child_trans_id in self._all_children(trans_id)
         ]
         for entry, _trans_id in self._make_inv_entries(todo):
