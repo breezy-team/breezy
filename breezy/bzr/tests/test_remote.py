@@ -4986,7 +4986,11 @@ class TestRepositoryIterInventories(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_single_empty(self):
         transport_path = "quack"
@@ -5046,7 +5050,11 @@ class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_simple(self):
         transport_path = "quack"
@@ -5100,7 +5108,11 @@ class TestRepositoryAnnotate(TestRemoteRepository):
 
     def _serialize_inv_delta(self, old_name, new_name, delta):
         serializer = inventory_delta.InventoryDeltaSerializer(True, False)
-        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+        return b"".join(
+            serializer.delta_to_lines(
+                old_name, new_name, inventory_delta.InventoryDelta(delta)
+            )
+        )
 
     def test_simple(self):
         transport_path = "quack"
