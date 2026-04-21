@@ -114,7 +114,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                 "foo-path",
                 parent_id,
                 b"foo",
-                revid,
+                revision=revid,
                 text_size=len("contents"),
                 text_sha1=osutils.sha_string(b"contents"),
             )
