@@ -531,27 +531,23 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.lock_write()
         self.addCleanup(source.unlock)
         source.start_write_group()
-        old_ie = inv.get_entry(b"id")
-        inv = inv.create_by_apply_delta(
-            InventoryDelta(
-                [
-                    (
-                        "id",
-                        "id",
-                        b"id",
-                        inventory.InventoryFile(
-                            b"id",
-                            "id",
-                            inv.root.file_id,
-                            revision=b"b",
-                            text_size=old_ie.text_size,
-                            text_sha1=old_ie.text_sha1,
-                        ),
-                    )
-                ]
-            ),
-            b"b",
+        # Replace the entry with one that carries revision 'b', since
+        # InventoryEntry is immutable.
+        old_entry = inv.get_entry(b"id")
+        inv.delete(old_entry.file_id)
+        inv.add(
+            inventory.make_entry(
+                old_entry.kind,
+                old_entry.name,
+                old_entry.parent_id,
+                old_entry.file_id,
+                revision=b"b",
+                text_sha1=old_entry.text_sha1,
+                text_size=old_entry.text_size,
+                executable=old_entry.executable,
+            )
         )
+        inv.revision_id = b"b"
         sha1 = source.add_inventory(b"b", inv, [b"a"])
         rev = Revision(
             timestamp=0,
@@ -561,6 +557,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             inventory_sha1=sha1,
             parent_ids=[b"a"],
             revision_id=b"b",
+            parent_ids=[b"a"],
             properties={},
         )
         source.add_revision(b"b", rev)
