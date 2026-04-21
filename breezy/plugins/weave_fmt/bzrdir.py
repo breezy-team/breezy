@@ -48,17 +48,11 @@ from breezy import (
     ui,
     urlutils,
     )
-from vcsgraph import graph
-from breezy.bzr import (
-    versionedfile,
-    weave,
-    )
-from bzrformats import xml5
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
-from bzrformats import xml4
 """,
 )
+from bzrformats import versionedfile, weave, xml4, xml5
 
 
 class BzrDirFormatAllInOne(BzrDirFormat):
@@ -610,8 +604,26 @@ class ConvertBzrDir4To5(Converter):
         entries = inv.iter_entries()
         next(entries)
         for _path, ie in entries:
-            inv.delete(ie.file_id)
-            inv.add(self._convert_file_version(rev, ie, parent_invs))
+            new_revision = self._convert_file_version(rev, ie, parent_invs)
+            if new_revision != ie.revision:
+                self._replace_entry_revision(inv, ie, new_revision)
+
+    def _replace_entry_revision(self, inv, ie, revision):
+        """Replace ie in inv with an otherwise-identical entry carrying
+        the given revision. InventoryEntry is immutable."""
+        inv.delete(ie.file_id)
+        kwargs = {"revision": revision}
+        if ie.kind == "file":
+            kwargs["text_sha1"] = ie.text_sha1
+            kwargs["text_size"] = ie.text_size
+            kwargs["executable"] = ie.executable
+        elif ie.kind == "symlink":
+            kwargs["symlink_target"] = ie.symlink_target
+        elif ie.kind == "tree-reference":
+            kwargs["reference_revision"] = ie.reference_revision
+        from bzrformats.inventory import entry_factory
+
+        inv.add(entry_factory[ie.kind](ie.file_id, ie.name, ie.parent_id, **kwargs))
 
     def _convert_file_version(self, rev, ie, parent_invs):
         """Convert one version of one file.
@@ -619,13 +631,7 @@ class ConvertBzrDir4To5(Converter):
         The file needs to be added into the weave if it is a merge
         of >=2 parents or if it's changed from its parent.
 
-        Args:
-            rev: The revision object.
-            ie: The inventory entry for the file.
-            parent_invs: List of parent inventories.
-
-        Returns:
-            The updated inventory entry.
+        Returns the revision id that should be associated with the entry.
         """
         file_id = ie.file_id
         rev_id = rev.revision_id
@@ -674,10 +680,14 @@ class ConvertBzrDir4To5(Converter):
         # and we need something that looks like a weave store for snapshot to
         # save against.
         # ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
+        #
+        # Returns the revision id to store on the (freshly rebuilt) entry;
+        # the caller replaces ie in the inventory since InventoryEntry is
+        # immutable.
         if len(previous_revisions) == 1:
             previous_ie = next(iter(previous_revisions.values()))
             if ie._unchanged(previous_ie):
-                return ie.derive(revision=previous_ie.revision)
+                return previous_ie.revision
         if ie.has_text():
             with self.branch.repository._text_store.get(ie.text_id) as f:
                 file_lines = f.readlines()
@@ -685,7 +695,7 @@ class ConvertBzrDir4To5(Converter):
             self.text_count += 1
         else:
             w.add_lines(rev_id, previous_revisions, [])
-        return ie.derive(revision=rev_id)
+        return rev_id
 
     def _make_order(self):
         """Return a suitable order for importing revisions.
