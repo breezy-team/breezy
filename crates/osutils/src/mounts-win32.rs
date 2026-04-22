@@ -57,3 +57,40 @@ pub fn get_fs_type<P: AsRef<Path>>(path: P) -> Option<String> {
         _ => fs_type,
     })
 }
+
+pub struct MountEntry {
+    pub path: std::path::PathBuf,
+    pub fs_type: String,
+    pub options: String,
+}
+
+/// Windows has no /etc/mtab equivalent; return an empty iterator.
+pub fn read_mtab<P: AsRef<Path>>(_path: P) -> impl Iterator<Item = MountEntry> {
+    std::iter::empty()
+}
+
+pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
+    match get_fs_type(path)?.as_str() {
+        "ntfs" => Some(true),
+        "vfat" => Some(false),
+        _ => Some(false),
+    }
+}
+
+pub fn supports_symlinks<P: AsRef<Path>>(path: P) -> Option<bool> {
+    // NTFS supports symlinks with SeCreateSymbolicLinkPrivilege, but default
+    // user accounts can't create them, so report false.
+    match get_fs_type(path)?.as_str() {
+        "ntfs" | "vfat" => Some(false),
+        _ => Some(false),
+    }
+}
+
+pub fn supports_executable<P: AsRef<Path>>(_path: P) -> Option<bool> {
+    // Windows tracks executability by file extension rather than a mode bit.
+    Some(false)
+}
+
+pub fn supports_posix_readonly() -> bool {
+    false
+}
