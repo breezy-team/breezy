@@ -1,8 +1,21 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
-use std::os::unix::ffi::OsStrExt;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+fn os_str_as_bytes(s: &OsStr) -> &[u8] {
+    use std::os::unix::ffi::OsStrExt;
+    s.as_bytes()
+}
+
+#[cfg(windows)]
+fn os_str_as_bytes(s: &OsStr) -> &[u8] {
+    // Windows paths are UTF-16 internally; as_encoded_bytes gives a
+    // well-formed UTF-8-like byte slice we can escape.
+    s.as_encoded_bytes()
+}
 
 lazy_static! {
     static ref URL_SCHEME_RE: Regex =
@@ -75,8 +88,11 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
         // Strip off the drive letter
         // url_base is currently file://
         // path is currently /C:/foo
-        let (url_base, path) = extract_drive_letter(url_base, path);
-        // now it should be file:///C: and /foo
+        if let Ok((_url_base, _path)) = win32::extract_drive_letter(url_base, path) {
+            // now it should be file:///C: and /foo
+            // TODO: the outer split does not currently use these values;
+            // preserved as a drop-in for future refactoring.
+        }
     }
 
     if exclude_trailing_slash && path.len() > 1 && path.ends_with('/') {
@@ -685,17 +701,16 @@ pub mod win32 {
         Ok((url_base, path.to_owned()))
     }
 
-    pub fn strip_local_trailing_slash(url: &str) -> String {
+    pub fn strip_local_trailing_slash(url: &str) -> &str {
         if url.len() > WIN32_MIN_ABS_FILEURL_LENGTH {
-            url[..url.len() - 1].to_owned()
+            &url[..url.len() - 1]
         } else {
-            url.to_owned()
+            url
         }
     }
 }
 
 pub mod posix {
-    use std::os::unix::ffi::OsStrExt;
     use std::path::{Path, PathBuf};
 
     /// Convert a local path like ./foo into a URL like file:///path/to/foo
@@ -703,7 +718,10 @@ pub mod posix {
     /// This also handles transforming escaping unicode characters, etc.
     pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
         let abs_path = breezy_osutils::path::posix::abspath(path.as_ref())?;
-        let escaped_path = super::escape(abs_path.as_path().as_os_str().as_bytes(), Some("/~"));
+        let escaped_path = super::escape(
+            super::os_str_as_bytes(abs_path.as_path().as_os_str()),
+            Some("/~"),
+        );
         Ok(format!("file://{}", escaped_path))
     }
 
@@ -782,5 +800,5 @@ pub fn file_relpath(base: &str, path: &str) -> Result<String> {
         ));
     }
 
-    Ok(escape(relpath.unwrap().as_os_str().as_bytes(), None))
+    Ok(escape(os_str_as_bytes(relpath.unwrap().as_os_str()), None))
 }
