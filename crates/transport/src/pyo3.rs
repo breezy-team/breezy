@@ -9,8 +9,23 @@ use pyo3_filelike::PyBinaryFile;
 use std::collections::HashMap;
 use std::fs::Permissions;
 use std::io::{Read, Write};
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+
+#[cfg(unix)]
+fn permissions_mode(p: &Permissions) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    p.mode()
+}
+
+#[cfg(windows)]
+fn permissions_mode(p: &Permissions) -> u32 {
+    // Windows has no POSIX mode; map the read-only bit to a plausible value.
+    if p.readonly() {
+        0o444
+    } else {
+        0o666
+    }
+}
 
 import_exception!(breezy.errors, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
@@ -214,7 +229,7 @@ impl Transport for PyTransport {
     fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
         Python::attach(|py| {
             self.0
-                .call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode())))?;
+                .call_method1(py, "mkdir", (relpath, perms.map(|p| permissions_mode(&p))))?;
             Ok(())
         })
     }
@@ -223,7 +238,7 @@ impl Transport for PyTransport {
         Python::attach(|py| {
             let obj = self
                 .0
-                .call_method1(py, "ensure_base", (perms.map(|p| p.mode()),))?;
+                .call_method1(py, "ensure_base", (perms.map(|p| permissions_mode(&p)),))?;
             Ok(obj.extract::<bool>(py)?)
         })
     }
@@ -280,7 +295,7 @@ impl Transport for PyTransport {
         Python::attach(|py| {
             let ret = self
                 .0
-                .call_method1(py, "put_file", (relpath, f, mode.map(|p| p.mode())))?;
+                .call_method1(py, "put_file", (relpath, f, mode.map(|p| permissions_mode(&p))))?;
             Ok(ret.extract::<u64>(py)?)
         })
     }
@@ -293,7 +308,7 @@ impl Transport for PyTransport {
     ) -> Result<()> {
         Python::attach(|py| {
             self.0
-                .call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| p.mode())))?;
+                .call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| permissions_mode(&p))))?;
             Ok(())
         })
     }
@@ -314,9 +329,9 @@ impl Transport for PyTransport {
                 (
                     relpath,
                     f,
-                    mode.map(|p| p.mode()),
+                    mode.map(|p| permissions_mode(&p)),
                     create_parent,
-                    parent_mode.map(|p| p.mode()),
+                    parent_mode.map(|p| permissions_mode(&p)),
                 ),
             )?;
             Ok(())
@@ -338,9 +353,9 @@ impl Transport for PyTransport {
                 (
                     relpath,
                     bytes,
-                    mode.map(|p| p.mode()),
+                    mode.map(|p| permissions_mode(&p)),
                     create_parent,
-                    parent_mode.map(|p| p.mode()),
+                    parent_mode.map(|p| permissions_mode(&p)),
                 ),
             )?;
             Ok(())
@@ -388,7 +403,7 @@ impl Transport for PyTransport {
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
         Python::attach(|py| {
             self.0
-                .call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
+                .call_method1(py, "create_prefix", (permissions.map(|p| permissions_mode(&p)),))?;
             Ok(())
         })
     }
@@ -462,7 +477,7 @@ impl Transport for PyTransport {
             let pos = self.0.call_method1(
                 py,
                 "append_bytes",
-                (relpath, bytes, permissions.map(|p| p.mode())),
+                (relpath, bytes, permissions.map(|p| permissions_mode(&p))),
             )?;
             Ok(pos.extract::<u64>(py)?)
         })
@@ -479,7 +494,7 @@ impl Transport for PyTransport {
             let pos = self.0.call_method1(
                 py,
                 "append_file",
-                (relpath, f, permissions.map(|p| p.mode())),
+                (relpath, f, permissions.map(|p| permissions_mode(&p))),
             )?;
             Ok(pos.extract::<u64>(py)?)
         })
@@ -547,7 +562,7 @@ impl Transport for PyTransport {
             let obj = self.0.call_method1(
                 py,
                 "open_write_stream",
-                (relpath, permissions.map(|p| p.mode())),
+                (relpath, permissions.map(|p| permissions_mode(&p))),
             )?;
             let file = PyWriteStream(obj);
             Ok(Box::new(file) as Box<dyn WriteStream + Send + Sync>)

@@ -1,8 +1,8 @@
 use crate::lock::{Lock, LockError};
+use breezy_osutils::stat;
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
 use std::io::{Read, Seek};
-use std::os::unix::fs::PermissionsExt;
 use std::time::UNIX_EPOCH;
 use url::Url;
 
@@ -60,6 +60,7 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
         //
         // std::io::ErrorKind::NotADirectoryError => Error::NotADirectoryError(None),
         // std::io::ErrorKind::IsADirectoryError => Error::IsADirectoryError(None),
+        #[cfg(unix)]
         _ => match err.raw_os_error() {
             Some(nix::libc::ENOTDIR) => Error::NotADirectoryError(path.map(|p| p.to_string())),
             Some(nix::libc::EISDIR) => Error::IsADirectoryError(path.map(|p| p.to_string())),
@@ -68,6 +69,8 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
             }
             _ => Error::Io(err),
         },
+        #[cfg(windows)]
+        _ => Error::Io(err),
     }
 }
 
@@ -93,7 +96,7 @@ impl From<Metadata> for Stat {
     fn from(metadata: Metadata) -> Self {
         Stat {
             size: metadata.len() as usize,
-            mode: metadata.permissions().mode(),
+            mode: stat::mode(&metadata),
             mtime: metadata.modified().map_or(None, |t| {
                 Some(t.duration_since(UNIX_EPOCH).unwrap().as_secs_f64())
             }),
@@ -103,11 +106,11 @@ impl From<Metadata> for Stat {
 
 impl Stat {
     pub fn is_dir(&self) -> bool {
-        (self.mode as nix::libc::mode_t) & nix::libc::S_IFMT == nix::libc::S_IFDIR
+        self.mode & stat::S_IFMT == stat::S_IFDIR
     }
 
     pub fn is_file(&self) -> bool {
-        (self.mode as nix::libc::mode_t) & nix::libc::S_IFMT == nix::libc::S_IFREG
+        self.mode & stat::S_IFMT == stat::S_IFREG
     }
 }
 
@@ -415,7 +418,17 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
         // create target directory with the same rwx bits as source
         // use umask to ensure bits other than rwx are ignored
         let stat = self.stat(from_relpath)?;
-        target.mkdir(".", Some(Permissions::from_mode(stat.mode)))?;
+        #[cfg(unix)]
+        let perms = {
+            use std::os::unix::fs::PermissionsExt;
+            Some(Permissions::from_mode(stat.mode))
+        };
+        #[cfg(windows)]
+        let perms = {
+            let _ = stat;
+            None
+        };
+        target.mkdir(".", perms)?;
         source.copy_tree_to_transport(target.as_ref())?;
         Ok(())
     }
