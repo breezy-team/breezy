@@ -3,8 +3,19 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use std::fs::Permissions;
 use std::io::Error;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+
+#[cfg(unix)]
+fn permissions_from_mode(mode: u32) -> Option<Permissions> {
+    use std::os::unix::fs::PermissionsExt;
+    Some(Permissions::from_mode(mode))
+}
+
+#[cfg(windows)]
+fn permissions_from_mode(_mode: u32) -> Option<Permissions> {
+    // Windows has no POSIX file mode; ignore the value.
+    None
+}
 
 #[pyclass]
 struct HashCache {
@@ -134,7 +145,7 @@ impl HashCache {
             hashcache: Box::new(bazaar::hashcache::HashCache::new(
                 Path::new(root),
                 Path::new(cache_file_name),
-                mode.map(Permissions::from_mode),
+                mode.and_then(permissions_from_mode),
                 content_filter_provider.map(content_filter_to_fn),
             )),
         }

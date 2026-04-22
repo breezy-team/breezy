@@ -1,14 +1,13 @@
 use crate::filters::{ContentFilter, ContentFilterProvider, ContentFilterStack};
 use breezy_osutils::sha::sha_string;
+use breezy_osutils::stat;
 use log::{debug, info};
-use nix::sys::stat::SFlag;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{File, Metadata, Permissions};
 use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
@@ -70,12 +69,12 @@ pub struct Fingerprint {
 impl From<Metadata> for Fingerprint {
     fn from(meta: Metadata) -> Fingerprint {
         Fingerprint {
-            size: meta.size(),
-            mtime: meta.mtime(),
-            ctime: meta.ctime(),
-            ino: meta.ino(),
-            dev: meta.dev(),
-            mode: meta.mode(),
+            size: stat::size(&meta),
+            mtime: stat::mtime(&meta),
+            ctime: stat::ctime(&meta),
+            ino: stat::ino(&meta),
+            dev: stat::dev(&meta),
+            mode: stat::mode(&meta),
         }
     }
 }
@@ -203,58 +202,56 @@ impl HashCache {
         } else {
             self.miss_count += 1;
 
-            match SFlag::from_bits_truncate(file_fp.mode as nix::libc::mode_t) {
-                SFlag::S_IFREG => {
-                    let filters: Box<dyn ContentFilter> =
-                        if let Some(filter_provider) = self.filter_provider.as_ref() {
-                            filter_provider(path, file_fp.ctime as u64)
-                        } else {
-                            Box::new(ContentFilterStack::new())
-                        };
-                    let digest = filters.sha1_file(&abspath)?;
-
-                    // window of 3 seconds to allow for 2s resolution on windows,
-                    // unsynchronized file servers, etc.
-                    let cutoff = self.cutoff_time();
-                    if file_fp.mtime >= cutoff || file_fp.ctime >= cutoff {
-                        // changed too recently; can't be cached. we can
-                        // return the result and it could possibly be cached
-                        // next time.
-                        //
-                        // the point is that we only want to cache when we are sure that any
-                        // subsequent modifications of the file can be detected. If a
-                        // modification neither changes the inode, the device, the size, nor
-                        // the mode, then we can only distinguish it by time; therefore we
-                        // need to let sufficient time elapse before we may cache this entry
-                        // again. If we didn't do this, then, for example, a very quick 1
-                        // byte replacement in the file might go undetected.
-                        self.danger_count += 1;
-                        if self.cache.remove(path).is_some() {
-                            self.removed_count += 1;
-                            self.needs_write = true;
-                        }
+            if stat::is_regular_file(file_fp.mode) {
+                let filters: Box<dyn ContentFilter> =
+                    if let Some(filter_provider) = self.filter_provider.as_ref() {
+                        filter_provider(path, file_fp.ctime as u64)
                     } else {
-                        self.update_count += 1;
-                        self.needs_write = true;
-                        self.cache
-                            .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
-                    }
+                        Box::new(ContentFilterStack::new())
+                    };
+                let digest = filters.sha1_file(&abspath)?;
 
-                    Ok(digest)
-                }
-                SFlag::S_IFLNK => {
-                    let target = fs::read_link(&abspath)?;
-                    let digest = sha_string(target.to_string_lossy().as_bytes());
-                    self.cache
-                        .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
+                // window of 3 seconds to allow for 2s resolution on windows,
+                // unsynchronized file servers, etc.
+                let cutoff = self.cutoff_time();
+                if file_fp.mtime >= cutoff || file_fp.ctime >= cutoff {
+                    // changed too recently; can't be cached. we can
+                    // return the result and it could possibly be cached
+                    // next time.
+                    //
+                    // the point is that we only want to cache when we are sure that any
+                    // subsequent modifications of the file can be detected. If a
+                    // modification neither changes the inode, the device, the size, nor
+                    // the mode, then we can only distinguish it by time; therefore we
+                    // need to let sufficient time elapse before we may cache this entry
+                    // again. If we didn't do this, then, for example, a very quick 1
+                    // byte replacement in the file might go undetected.
+                    self.danger_count += 1;
+                    if self.cache.remove(path).is_some() {
+                        self.removed_count += 1;
+                        self.needs_write = true;
+                    }
+                } else {
                     self.update_count += 1;
                     self.needs_write = true;
-                    Ok(digest)
+                    self.cache
+                        .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
                 }
-                _ => Err(io::Error::new(
+
+                Ok(digest)
+            } else if stat::is_symlink(file_fp.mode) {
+                let target = fs::read_link(&abspath)?;
+                let digest = sha_string(target.to_string_lossy().as_bytes());
+                self.cache
+                    .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
+                self.update_count += 1;
+                self.needs_write = true;
+                Ok(digest)
+            } else {
+                Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!("unknown file stat mode: {:o}", file_fp.mode),
-                )),
+                ))
             }
         }
     }
