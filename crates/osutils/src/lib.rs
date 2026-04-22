@@ -393,6 +393,7 @@ pub mod file;
 pub mod iterablefile;
 pub mod path;
 pub mod sha;
+pub mod stat;
 pub mod textfile;
 pub mod time;
 

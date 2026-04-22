@@ -1,19 +1,31 @@
 #![allow(non_snake_case)]
 
 use bazaar::FileId;
+use breezy_osutils::stat;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyString, PyTuple};
 use pyo3::wrap_pyfunction;
-use std::ffi::OsString;
-use std::os::unix::ffi::OsStringExt;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+fn path_from_bytes(bytes: Vec<u8>) -> PathBuf {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+    PathBuf::from(OsString::from_vec(bytes))
+}
+
+#[cfg(windows)]
+fn path_from_bytes(bytes: Vec<u8>) -> PathBuf {
+    // Windows path APIs operate on UTF-16, so interpret the byte string as
+    // UTF-8 (what Breezy uses for path bytes on Windows).
+    PathBuf::from(String::from_utf8_lossy(&bytes).into_owned())
+}
 
 // TODO(jelmer): Shared pyo3 utils?
 fn extract_path(object: &Bound<PyAny>) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(OsString::from_vec(path)))
+        Ok(path_from_bytes(path))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -241,19 +253,17 @@ impl StatResult {
 
     #[getter]
     fn st_mode(&self) -> PyResult<u32> {
-        Ok(self.metadata.permissions().mode())
+        Ok(stat::mode(&self.metadata))
     }
 
-    #[cfg(unix)]
     #[getter]
     fn st_dev(&self) -> PyResult<u64> {
-        Ok(self.metadata.dev())
+        Ok(stat::dev(&self.metadata))
     }
 
-    #[cfg(unix)]
     #[getter]
     fn st_ino(&self) -> PyResult<u64> {
-        Ok(self.metadata.ino())
+        Ok(stat::ino(&self.metadata))
     }
 }
 

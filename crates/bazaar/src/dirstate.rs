@@ -2,11 +2,11 @@ use crate::inventory::Entry as InventoryEntry;
 use crate::FileId;
 use base64::engine::Engine;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
+use breezy_osutils::stat;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::fs::Metadata;
-use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
 pub trait SHA1Provider: Send + Sync {
@@ -119,9 +119,9 @@ pub fn pack_stat_metadata(metadata: &Metadata) -> String {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
-        metadata.dev(),
-        metadata.ino(),
-        metadata.mode(),
+        stat::dev(metadata),
+        stat::ino(metadata),
+        stat::mode(metadata),
     )
 }
 
