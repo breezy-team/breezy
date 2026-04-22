@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true, features = ["extension-module"]}
 breezy-transport = { path = "../transport" }
 pyo3-filelike = { workspace = true }
-sftp = "0.2.0"
+sftp = "0.3.0"
 url = { workspace = true }
 log = { workspace = true }
 
