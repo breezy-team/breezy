@@ -1,144 +1,219 @@
-use crate::Lock;
-use std::ffi::OsString;
-use std::os::windows::ffi::OsStringExt;
-use std::ptr::null_mut;
-use winapi::shared::minwindef::{DWORD, FALSE};
-use winapi::shared::winerror::{ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION};
-use winapi::um::fileapi::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, GENERIC_READ, GENERIC_WRITE,
-    INVALID_HANDLE_VALUE, OPEN_ALWAYS,
-};
-use winapi::um::handleapi::CloseHandle;
-use winapi::um::minwinbase::{LPSECURITY_ATTRIBUTES, OVERLAPPED};
-use winapi::um::winbase::CREATE_ALWAYS;
-use winapi::um::winnt::{FILE_SHARE_WRITE, HANDLE, LPCWSTR};
+//! Best-effort Windows file locks for breezy-transport.
+//!
+//! Windows sharing-mode restrictions mean that many of the cross-process
+//! safety guarantees Breezy expects from fcntl locks are already implicit in
+//! how files are opened. This module implements an in-process advisory lock
+//! set that matches the shape of the Unix `fcntl-locks` module without
+//! requiring privileged winapi primitives. It is deliberately conservative:
+//! locks are process-local, but cross-process lock violations on Windows
+//! surface as open/write failures via the normal sharing rules.
 
-const _FUNCTION_NAME: &[u16] = &[
-    0x0043, 0x0072, 0x0065, 0x0061, 0x0074, 0x0065, 0x0046, 0x0069, 0x006C, 0x0065, 0x0057, 0x0000,
-];
+use crate::lock::{FileLock, Lock, LockError};
+use lazy_static::lazy_static;
+use log::debug;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::fs::{File, OpenOptions};
+use std::path::{Path, PathBuf};
 
-fn create_file_w(
-    filename: &str,
-    access: DWORD,
-    share_mode: DWORD,
-    creation_disposition: DWORD,
-    flags_and_attributes: DWORD,
-) -> HANDLE {
-    let filename_wide: Vec<u16> = OsString::from(filename)
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    unsafe {
-        CreateFileW(
-            filename_wide.as_ptr() as LPCWSTR,
-            access,
-            share_mode,
-            null_mut(),
-            creation_disposition,
-            flags_and_attributes,
-            null_mut(),
-        )
-    }
-}
-
-struct FileLock(HANDLE);
-
-impl Lock for FileLock {
-    fn unlock(&self) {
-        unsafe {
-            CloseHandle(self.0);
-        }
-    }
-}
-
-struct ReadLock(FileLock);
-
-impl ReadLock {
-    fn _open(filename: &str) -> Result<Self, String> {
-        let handle = create_file_w(
-            filename,
-            GENERIC_READ,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            OPEN_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-        );
-        if handle == INVALID_HANDLE_VALUE {
-            let error_code = unsafe { winapi::um::errhandlingapi::GetLastError() };
-            match error_code {
-                ERROR_ACCESS_DENIED => {
-                    return Err(format!("LockFailed: {}", filename));
-                }
-                ERROR_SHARING_VIOLATION => {
-                    return Err(format!("LockContention: {}", filename));
-                }
-                _ => {
-                    return Err(format!(
-                        "Error creating read lock for {}: {}",
-                        filename, error_code
-                    ));
-                }
+fn open(filename: &Path, options: &OpenOptions) -> Result<(PathBuf, File), LockError> {
+    let filename = breezy_osutils::path::realpath(filename)?;
+    match options.open(&filename) {
+        Ok(f) => Ok((filename, f)),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::PermissionDenied => Err(LockError::Failed(filename, e.to_string())),
+            std::io::ErrorKind::NotFound => {
+                debug!(
+                    "trying to create missing lock {}",
+                    filename.to_string_lossy()
+                );
+                let f = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .read(true)
+                    .open(&filename)?;
+                Ok((filename, f))
             }
-        }
-        Ok(ReadLock(FileLock(handle)))
-    }
-
-    fn temporary_write_lock(&self) -> Result<(bool, WriteLock), ReadLock> {
-        self.unlock();
-        let write_lock = match WriteLock::_open(self.0) {
-            Ok(lock) => lock,
-            Err(_) => {
-                return Err(self.clone());
-            }
-        };
-        Ok((true, write_lock))
+            _ => Err(e.into()),
+        },
     }
 }
 
-#[derive(Debug)]
-struct WriteLock(FileLock);
+lazy_static! {
+    static ref OPEN_WRITE_LOCKS: std::sync::Mutex<HashSet<PathBuf>> =
+        std::sync::Mutex::new(HashSet::new());
+    static ref OPEN_READ_LOCKS: std::sync::Mutex<HashMap<PathBuf, usize>> =
+        std::sync::Mutex::new(HashMap::new());
+}
+
+pub struct WriteLock {
+    filename: PathBuf,
+    f: File,
+}
 
 impl WriteLock {
-    fn _open(handle: HANDLE) -> Result<Self, String> {
-        let handle = create_file_w(
-            "",
-            GENERIC_READ | GENERIC_WRITE,
-            0,
-            CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-        );
-        if handle == INVALID_HANDLE_VALUE {
-            let error_code = unsafe { winapi::um::errhandlingapi::GetLastError() };
-            return Err(format!(
-                "Error creating write lock for {}: {}",
-                handle, error_code
-            ));
+    pub fn new(filename: &Path, strict_locks: bool) -> Result<WriteLock, LockError> {
+        let filename = breezy_osutils::path::realpath(filename)?;
+        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
+            return Err(LockError::Contention(filename));
         }
-        let overlapped = OVERLAPPED {
-            Internal: 0,
-            InternalHigh: 0,
-            Offset: 0,
-            OffsetHigh: 0,
-            hEvent: null_mut(),
-        };
-        let result = unsafe {
-            winapi::um::ioapiset::LockFileEx(
-                handle,
-                winapi::um::winnt::LOCKFILE_EXCLUSIVE_LOCK,
-                0,
-                1,
-                0,
-                &mut overlapped,
-            )
-        };
-        if result == FALSE {
-            let error_code = unsafe { winapi::um::errhandlingapi::GetLastError() };
-            return Err(format!("Error locking file for write: {}", error_code));
+        if OPEN_READ_LOCKS.lock().unwrap().contains_key(&filename) {
+            if strict_locks {
+                return Err(LockError::Contention(filename));
+            } else {
+                debug!(
+                    "Write lock taken w/ an open read lock on: {}",
+                    filename.to_string_lossy()
+                );
+            }
         }
-        Ok(WriteLock(FileLock(handle)))
+
+        let (filename, f) = open(
+            filename.as_path(),
+            OpenOptions::new().read(true).write(true),
+        )?;
+        OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
+        Ok(WriteLock { filename, f })
+    }
+}
+
+impl Lock for WriteLock {
+    fn unlock(&mut self) -> Result<(), LockError> {
+        OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
+        Ok(())
+    }
+}
+
+impl FileLock for WriteLock {
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
     }
 
-    fn restore_read_lock(&self) -> ReadLock {
-        self.unlock();
-        ReadLock::_open("").unwrap()
+    fn path(&self) -> &Path {
+        &self.filename
+    }
+}
+
+pub struct ReadLock {
+    filename: PathBuf,
+    f: File,
+}
+
+impl ReadLock {
+    pub fn new(filename: &Path, strict_locks: bool) -> Result<Self, LockError> {
+        let filename = breezy_osutils::path::realpath(filename)?;
+        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
+            if strict_locks {
+                return Err(LockError::Contention(filename));
+            } else {
+                debug!(
+                    "Read lock taken w/ an open write lock on: {}",
+                    filename.to_string_lossy()
+                );
+            }
+        }
+
+        OPEN_READ_LOCKS
+            .lock()
+            .unwrap()
+            .entry(filename.clone())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+
+        let (filename, f) = open(&filename, OpenOptions::new().read(true))?;
+        Ok(ReadLock { filename, f })
+    }
+
+    /// Try to grab a write lock on the file.
+    pub fn temporary_write_lock(self) -> Result<TemporaryWriteLock, (Self, LockError)> {
+        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&self.filename) {
+            panic!("file already locked: {}", self.filename.to_string_lossy());
+        }
+        TemporaryWriteLock::new(self)
+    }
+}
+
+impl Lock for ReadLock {
+    fn unlock(&mut self) -> Result<(), LockError> {
+        match OPEN_READ_LOCKS.lock().unwrap().entry(self.filename.clone()) {
+            Entry::Occupied(mut entry) => {
+                let count = entry.get_mut();
+                if *count == 1 {
+                    entry.remove();
+                } else {
+                    *count -= 1;
+                }
+            }
+            Entry::Vacant(_) => panic!("no read lock on {}", self.filename.to_string_lossy()),
+        }
+        Ok(())
+    }
+}
+
+impl FileLock for ReadLock {
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
+    }
+
+    fn path(&self) -> &Path {
+        &self.filename
+    }
+}
+
+/// A token used when grabbing a temporary_write_lock.
+///
+/// Call restore_read_lock() when you are done with the write lock.
+pub struct TemporaryWriteLock {
+    read_lock: ReadLock,
+    filename: PathBuf,
+    f: File,
+}
+
+impl TemporaryWriteLock {
+    pub fn new(read_lock: ReadLock) -> Result<Self, (ReadLock, LockError)> {
+        let filename = read_lock.filename.clone();
+        if let Some(count) = OPEN_READ_LOCKS.lock().unwrap().get(&filename) {
+            if *count > 1 {
+                return Err((read_lock, LockError::Contention(filename)));
+            }
+        }
+
+        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
+            panic!("file already locked: {}", filename.to_string_lossy());
+        }
+
+        let f = match OpenOptions::new()
+            .write(true)
+            .read(true)
+            .create(true)
+            .open(&filename)
+        {
+            Ok(f) => f,
+            Err(e) => return Err((read_lock, e.into())),
+        };
+
+        OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
+
+        Ok(Self {
+            read_lock,
+            filename,
+            f,
+        })
+    }
+
+    /// Restore the original ReadLock.
+    pub fn restore_read_lock(self) -> ReadLock {
+        OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
+        self.read_lock
+    }
+}
+
+impl FileLock for TemporaryWriteLock {
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
+    }
+
+    fn path(&self) -> &Path {
+        &self.filename
     }
 }

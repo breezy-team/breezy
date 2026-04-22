@@ -237,7 +237,6 @@ dependencies = [
  "tempfile",
  "url",
  "walkdir",
- "winapi",
 ]
 
 [[package]]

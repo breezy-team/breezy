@@ -30,6 +30,3 @@ pyo3 = ["dep:pyo3", "dep:pyo3-filelike"]
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["uio"] }
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["errhandlingapi", "fileapi", "handleapi", "ioapiset", "minwinbase", "winbase", "winerror", "winnt"] }
