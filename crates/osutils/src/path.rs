@@ -50,7 +50,7 @@ pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
 #[cfg(target_os = "windows")]
 pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
-    use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
+    use winreg::enums::HKEY_LOCAL_MACHINE;
     use winreg::RegKey;
     let exts = env::var("PATHEXT").unwrap_or_default();
     let exts = exts
@@ -58,28 +58,22 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
         .map(|ext| ext.to_lowercase())
         .collect::<Vec<_>>();
     let (name, exts) = {
-        let mut path = PathBuf::from(name);
+        let path = PathBuf::from(name);
         let ext = path
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or_default()
             .to_lowercase();
+        let stem = path
+            .file_stem()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .to_owned();
         if !exts.is_empty() && !exts.contains(&ext) {
-            (
-                path.file_stem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default(),
-                vec![ext],
-            )
+            (stem, vec![ext])
         } else {
-            (
-                path.file_stem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default(),
-                exts,
-            )
+            (stem, exts)
         }
     };
     let paths = env::var("PATH").unwrap_or_default();
@@ -95,10 +89,8 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths")
     {
-        if let Ok(value) = reg_key.get_value(name) {
-            if let Some(value) = value.as_string() {
-                return Some(value);
-            }
+        if let Ok(value) = reg_key.get_value::<String, _>(name) {
+            return Some(value);
         }
     }
     None
@@ -235,7 +227,10 @@ lazy_static! {
 
 #[cfg(windows)]
 pub fn legal_path(path: &Path) -> bool {
-    VALID_WIN32_PATH_RE.is_match(path)
+    match path.to_str() {
+        Some(s) => VALID_WIN32_PATH_RE.is_match(s),
+        None => false,
+    }
 }
 
 /// Return a quoted filename filename
