@@ -29,6 +29,11 @@ lazy-regex = "3.4.0"
 byteorder = "1.5.0"
 lru = "0.13.0"
 flate2 = "1.0.28"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+xz2 = "0.1.7"
+
+[target.'cfg(target_os = "macos")'.dependencies]
 xz2 = { version = "0.1.7", features = ["static"] }
 
 [target.'cfg(unix)'.dependencies]
