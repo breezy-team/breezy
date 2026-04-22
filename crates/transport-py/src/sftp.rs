@@ -295,8 +295,18 @@ impl SFTPDir {
 #[pymethods]
 impl SFTPClient {
     #[new]
-    fn new(py: Python, fd: i32) -> PyResult<Self> {
-        let session = py.detach(|| sftp::SftpClient::<std::fs::File>::from_fd(fd))?;
+    fn new(py: Python, fd: isize) -> PyResult<Self> {
+        let session = py.detach(|| {
+            #[cfg(unix)]
+            {
+                sftp::SftpClient::<std::fs::File>::from_fd(fd as i32)
+            }
+            #[cfg(windows)]
+            {
+                let handle = fd as *mut std::ffi::c_void;
+                sftp::SftpClient::<std::fs::File>::from_handle(handle)
+            }
+        })?;
         Ok(Self {
             sftp: Arc::new(session),
             cwd: None,

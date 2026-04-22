@@ -9,7 +9,6 @@ use pyo3_filelike::PyBinaryFile;
 use std::collections::HashMap;
 use std::fs::Permissions;
 use std::io::{BufRead, BufReader, Read, Seek, Write};
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use url::Url;
 
@@ -68,19 +67,44 @@ fn map_transport_err_to_py_err(e: Error, t: Option<Py<PyAny>>, p: Option<&UrlFra
 
 #[cfg(unix)]
 fn perms_from_py_object(obj: Py<PyAny>) -> Permissions {
+    use std::os::unix::fs::PermissionsExt;
     Python::attach(|py| {
         let mode = obj.extract::<u32>(py).unwrap();
         Permissions::from_mode(mode)
     })
 }
 
+#[cfg(windows)]
+fn perms_from_py_object(obj: Py<PyAny>) -> Permissions {
+    // Windows has no POSIX mode; approximate by reading the mode and honouring
+    // the write bit via Permissions::set_readonly.
+    Python::attach(|py| {
+        let mode = obj.extract::<u32>(py).unwrap_or(0o666);
+        let mut perms = default_perms();
+        perms.set_readonly(mode & 0o200 == 0);
+        perms
+    })
+}
+
 #[cfg(unix)]
 fn default_perms() -> Permissions {
     use nix::sys::stat::{umask, Mode};
+    use std::os::unix::fs::PermissionsExt;
     let mask = umask(Mode::empty());
     umask(mask);
     let mode = 0o666 & !mask.bits();
     Permissions::from_mode(mode as u32)
+}
+
+#[cfg(windows)]
+fn default_perms() -> Permissions {
+    // std::fs::Permissions has no public constructor on Windows. Borrow the
+    // default permissions from the current directory, or the temp dir if
+    // that's not accessible.
+    std::fs::metadata(".")
+        .or_else(|_| std::fs::metadata(std::env::temp_dir()))
+        .expect("unable to read any metadata for default permissions")
+        .permissions()
 }
 
 #[pyclass]
