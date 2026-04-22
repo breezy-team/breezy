@@ -1274,13 +1274,9 @@ fn get_user_name() -> PyResult<String> {
     Ok(breezy_osutils::get_user_name())
 }
 
-#[cfg(unix)]
 #[pyfunction]
-fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
-    #[cfg(unix)]
-    use nix::unistd::Pid;
-
-    Ok(breezy_osutils::is_local_pid_dead(Pid::from_raw(pid)))
+fn is_local_pid_dead(pid: u32) -> PyResult<bool> {
+    Ok(breezy_osutils::is_local_pid_dead(pid))
 }
 
 #[pyfunction]
