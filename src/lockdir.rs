@@ -173,8 +173,7 @@ impl LockHeldInfo {
             debug!("no pid recorded in {}", self);
             return false;
         }
-        let pid = nix::unistd::Pid::from_raw(self.pid.unwrap() as i32);
-        breezy_osutils::is_local_pid_dead(pid)
+        breezy_osutils::is_local_pid_dead(self.pid.unwrap())
     }
 }
 

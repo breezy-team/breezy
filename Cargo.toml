@@ -53,6 +53,9 @@ encoding = "0.2.33"
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true, features = ["fs"] }
 
+[target.'cfg(windows)'.dependencies]
+dirs = "6"
+
 [workspace.dependencies]
 nix = ">=0.26"
 pyo3 = ">=0.26,<0.28"

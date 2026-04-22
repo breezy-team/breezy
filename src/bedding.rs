@@ -51,26 +51,16 @@ pub fn bazaar_config_dir() -> std::io::Result<PathBuf> {
 
     #[cfg(target_os = "windows")]
     {
-        match base {
-            None => {
-                let appdata = win32utils::get_appdata_location().ok();
-                let home = win32utils::get_home_location().ok();
-                let mut base_path = match appdata {
-                    Some(path) => path,
-                    None => match home {
-                        Some(path) => path,
-                        None => "".to_string(),
-                    },
-                };
-                base_path.push_str(r"\bazaar\2.0");
-                return base_path;
-            }
-            Some(base_path) => {
-                let mut path = base_path;
-                path.push_str(r"\bazaar\2.0");
-                return path;
-            }
-        }
+        let base_path = base
+            .or_else(dirs::data_dir)
+            .or_else(dirs::home_dir)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Unable to determine configuration directory",
+                )
+            })?;
+        return Ok(base_path.join("bazaar").join("2.0"));
     }
 
     match base {
@@ -124,12 +114,17 @@ pub fn _config_dir() -> std::io::Result<(PathBuf, ConfigDirKind)> {
     // TODO: Global option --config-dir to override this.
     let base = env::var("BRZ_HOME").map(PathBuf::from).ok();
     #[cfg(windows)]
-    {
-        let base = base.or_else(win32utils::get_appdata_location);
+    let base = {
+        let base = base.or_else(dirs::data_dir);
         if base.is_none() {
-            return Err("Unable to determine AppData location".into());
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Unable to determine AppData location",
+            ));
         }
-    }
+        base.unwrap()
+    };
+    #[cfg(not(windows))]
     let base = base.unwrap_or_else(|| {
         env::var("XDG_CONFIG_HOME").ok().map_or_else(
             || {
@@ -201,7 +196,9 @@ pub fn crash_dir() -> PathBuf {
 
     #[cfg(windows)]
     {
-        config_dir().join("Crash")
+        config_dir()
+            .map(|p| p.join("Crash"))
+            .unwrap_or_else(|_| PathBuf::from("Crash"))
     }
 
     #[cfg(not(windows))]
@@ -217,16 +214,17 @@ pub fn crash_dir() -> PathBuf {
 
 /// Returns the per-user cache directory.
 pub fn cache_dir() -> std::io::Result<PathBuf> {
+    #[allow(unused_mut)]
     let mut base: Option<PathBuf>;
 
     #[cfg(windows)]
     {
-        let mut base: Option<PathBuf> = env::var("BRZ_HOME").ok().map(PathBuf::from);
+        base = env::var("BRZ_HOME").ok().map(PathBuf::from);
         if base.is_none() {
-            base = win32utils::get_local_appdata_location();
+            base = dirs::data_local_dir();
         }
         if base.is_none() {
-            base = win32utils::get_home_location();
+            base = dirs::home_dir();
         }
     }
 
@@ -357,4 +355,15 @@ pub fn get_default_mail_domain(mailname_file: Option<&Path>) -> Option<String> {
     } else {
         None
     }
+}
+
+#[cfg(windows)]
+pub fn auto_user_id() -> std::io::Result<(Option<String>, Option<String>)> {
+    // No reliable heuristic for a default user identity on Windows.
+    Ok((None, None))
+}
+
+#[cfg(windows)]
+pub fn get_default_mail_domain(_mailname_file: Option<&Path>) -> Option<String> {
+    None
 }

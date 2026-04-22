@@ -411,9 +411,11 @@ mod tests;
 pub mod terminal;
 
 #[cfg(unix)]
-pub fn is_local_pid_dead(pid: nix::unistd::Pid) -> bool {
+pub fn is_local_pid_dead(pid: u32) -> bool {
     use nix::sys::signal::kill;
+    use nix::unistd::Pid;
 
+    let pid = Pid::from_raw(pid as i32);
     match kill(pid, None) {
         Ok(_) => false,                  // Process exists and is ours: not dead.
         Err(nix::Error::ESRCH) => true,  // Not found: as sure as we can be that it's dead.
@@ -423,6 +425,13 @@ pub fn is_local_pid_dead(pid: nix::unistd::Pid) -> bool {
             false // Don't really know.
         }
     }
+}
+
+#[cfg(windows)]
+pub fn is_local_pid_dead(_pid: u32) -> bool {
+    // No reliable cross-session way to tell on Windows without OpenProcess
+    // permissions; fall back to "don't know".
+    false
 }
 
 pub fn get_user_name() -> String {

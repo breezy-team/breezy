@@ -157,6 +157,7 @@ dependencies = [
  "bazaar",
  "breezy-osutils",
  "chrono",
+ "dirs",
  "encoding",
  "gettext",
  "inventory",

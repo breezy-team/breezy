@@ -86,6 +86,13 @@ pub fn copy_ownership_from_path<P: AsRef<Path>>(dst: P, src: Option<&Path>) -> R
     Ok(())
 }
 
+#[cfg(windows)]
+pub fn copy_ownership_from_path<P: AsRef<Path>>(_dst: P, _src: Option<&Path>) -> Result<()> {
+    // Windows ACLs are not POSIX ownership; leave new files with the defaults
+    // inherited from the parent directory.
+    Ok(())
+}
+
 pub fn is_dir(f: &std::path::Path) -> bool {
     match std::fs::symlink_metadata(f) {
         Ok(metadata) => metadata.is_dir(),
