@@ -357,12 +357,18 @@ pub fn get_default_mail_domain(mailname_file: Option<&Path>) -> Option<String> {
     }
 }
 
+/// Calculate automatic user identification.
+///
+/// On Windows there is no reliable heuristic for a default identity, so this
+/// always returns `(None, None)`.
 #[cfg(windows)]
 pub fn auto_user_id() -> std::io::Result<(Option<String>, Option<String>)> {
-    // No reliable heuristic for a default user identity on Windows.
     Ok((None, None))
 }
 
+/// If possible, return the assumed default email domain.
+///
+/// Always returns `None` on Windows.
 #[cfg(windows)]
 pub fn get_default_mail_domain(_mailname_file: Option<&Path>) -> Option<String> {
     None
