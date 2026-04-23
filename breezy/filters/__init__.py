@@ -90,6 +90,9 @@ class ContentFilterContext:
         """Relative path of file to tree-root."""
         return self._relpath
 
+    def file_id(self):
+        return self.source_tree().path2id(self.relpath())
+
     def source_tree(self):
         """Source Tree object."""
         return self._tree
