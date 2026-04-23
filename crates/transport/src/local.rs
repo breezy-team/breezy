@@ -7,6 +7,7 @@ use breezy_urlutils::{escape, unescape};
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::fs::Permissions;
 use std::io::{Read, Seek};
@@ -14,6 +15,19 @@ use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
 use url::Url;
 use walkdir;
+
+#[cfg(unix)]
+fn os_str_as_bytes(s: &OsStr) -> &[u8] {
+    use std::os::unix::ffi::OsStrExt;
+    s.as_bytes()
+}
+
+#[cfg(windows)]
+fn os_str_as_bytes(s: &OsStr) -> &[u8] {
+    // Windows paths are UTF-16 internally; as_encoded_bytes gives a
+    // well-formed UTF-8-like byte slice we can escape.
+    s.as_encoded_bytes()
+}
 
 pub struct LocalTransport {
     base: Url,
@@ -144,18 +158,16 @@ impl Transport for LocalTransport {
         Ok(path.exists())
     }
 
-    #[cfg(unix)]
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat> {
-        use std::ffi::OsStr;
-        use std::os::unix::ffi::OsStrExt;
         let path = self._abspath(relpath)?;
 
         // Strip trailing slashes, so we can properly stat broken symlinks
-
-        let path = if path.as_path().as_os_str().as_bytes().ends_with(b"/") {
-            let b = path.as_path().as_os_str().as_bytes();
-            let b = b.strip_suffix(b"/").unwrap();
-            PathBuf::from(OsStr::from_bytes(b))
+        let path = if let Some(s) = path.to_str() {
+            if s.ends_with('/') {
+                PathBuf::from(s.strip_suffix('/').unwrap())
+            } else {
+                path
+            }
         } else {
             path
         };
@@ -327,13 +339,11 @@ impl Transport for LocalTransport {
         Ok(pos)
     }
 
-    #[cfg(unix)]
     fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
-        use std::os::unix::ffi::OsStrExt;
         let path = self._abspath(relpath)?;
         let target =
             std::fs::read_link(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
-        Ok(escape(target.as_os_str().as_bytes(), None))
+        Ok(escape(os_str_as_bytes(target.as_os_str()), None))
     }
 
     fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
@@ -342,7 +352,6 @@ impl Transport for LocalTransport {
         std::fs::hard_link(from, to).map_err(|e| map_io_err_to_transport_err(e, Some(rel_from)))
     }
 
-    #[cfg(target_family = "unix")]
     fn symlink(&self, source: &UrlFragment, link_name: &UrlFragment) -> Result<()> {
         let abs_to = self.abspath(link_name)?;
         let abs_link_dirpath = breezy_urlutils::dirname(abs_to.as_str(), true);
@@ -351,12 +360,15 @@ impl Transport for LocalTransport {
             self.abspath(source)?.as_str(),
         )?;
 
-        std::os::unix::fs::symlink(source_rel, self._abspath(link_name)?)
-            .map_err(|e| map_io_err_to_transport_err(e, Some(link_name)))
+        #[cfg(unix)]
+        let result = std::os::unix::fs::symlink(source_rel, self._abspath(link_name)?);
+        #[cfg(windows)]
+        let result = std::os::windows::fs::symlink_file(source_rel, self._abspath(link_name)?);
+
+        result.map_err(|e| map_io_err_to_transport_err(e, Some(link_name)))
     }
 
     fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
-        use std::os::unix::ffi::OsStrExt;
         let wd = walkdir::WalkDir::new(&self.path);
 
         fn walkdir_err(e: walkdir::Error) -> Error {
@@ -370,11 +382,9 @@ impl Transport for LocalTransport {
             Ok(e) => {
                 if !e.file_type().is_dir() {
                     Some(Ok(escape(
-                        e.path()
-                            .strip_prefix(base.as_path())
-                            .unwrap()
-                            .as_os_str()
-                            .as_bytes(),
+                        os_str_as_bytes(
+                            e.path().strip_prefix(base.as_path()).unwrap().as_os_str(),
+                        ),
                         None,
                     )))
                 } else {
@@ -415,7 +425,6 @@ impl Transport for LocalTransport {
     }
 
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
-        use std::os::unix::ffi::OsStrExt;
         let path = match self._abspath(relpath) {
             Ok(p) => p,
             Err(err) => return Box::new(std::iter::once(Err(err))),
@@ -430,7 +439,7 @@ impl Transport for LocalTransport {
             entries
                 .map(|entry| entry.map_err(|e| map_io_err_to_transport_err(e, None)))
                 .map(|entry| {
-                    entry.map(|entry| escape(entry.file_name().as_os_str().as_bytes(), None))
+                    entry.map(|entry| escape(os_str_as_bytes(entry.file_name().as_os_str()), None))
                 }),
         )
     }

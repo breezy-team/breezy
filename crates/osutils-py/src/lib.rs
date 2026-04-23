@@ -11,11 +11,46 @@ use pyo3_filelike::PyBinaryFile;
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::ffi::OsString;
+#[cfg(unix)]
 use std::fs::Permissions;
 use std::io::{BufRead, Read};
 use std::iter::Iterator;
-use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+fn path_from_bytes(bytes: Vec<u8>) -> PathBuf {
+    use std::os::unix::ffi::OsStringExt;
+    PathBuf::from(OsString::from_vec(bytes))
+}
+
+#[cfg(windows)]
+fn path_from_bytes(bytes: Vec<u8>) -> PathBuf {
+    // Breezy stores path bytes as UTF-8 on Windows.
+    PathBuf::from(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+#[cfg(unix)]
+fn os_string_from_bytes(bytes: Vec<u8>) -> OsString {
+    use std::os::unix::ffi::OsStringExt;
+    OsString::from_vec(bytes)
+}
+
+#[cfg(windows)]
+fn os_string_from_bytes(bytes: Vec<u8>) -> OsString {
+    OsString::from(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+#[cfg(unix)]
+fn path_to_bytes(path: &Path) -> Vec<u8> {
+    use std::os::unix::ffi::OsStrExt;
+    path.as_os_str().as_bytes().to_vec()
+}
+
+#[cfg(windows)]
+fn path_to_bytes(path: &Path) -> Vec<u8> {
+    // Breezy treats path bytes as UTF-8 on Windows.
+    path.to_string_lossy().into_owned().into_bytes()
+}
 #[cfg(unix)]
 use termion::color::Color;
 
@@ -101,7 +136,7 @@ impl PyChunksToLinesIterator {
 
 fn extract_path(object: &Bound<PyAny>) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(OsString::from_vec(path)))
+        Ok(path_from_bytes(path))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -120,6 +155,13 @@ fn path_to_pystring<'a>(py: Python<'a>, path: &'_ Path) -> PyResult<Bound<'a, Py
     let py_str = py_bytes.call_method1("decode", ("utf-8", "surrogateescape"))?;
 
     Ok(py_str.downcast_into_exact::<PyString>()?)
+}
+
+#[cfg(windows)]
+fn path_to_pystring<'a>(py: Python<'a>, path: &'_ Path) -> PyResult<Bound<'a, PyString>> {
+    // Windows paths are natively Unicode; round-trip via to_string_lossy so
+    // non-UTF-16 code units become U+FFFD rather than panicking.
+    Ok(PyString::new(py, &path.to_string_lossy()))
 }
 
 #[pyfunction]
@@ -760,6 +802,7 @@ fn compact_date(py: Python, when: Py<PyAny>) -> PyResult<String> {
     Ok(breezy_osutils::time::compact_date(when))
 }
 
+#[cfg(unix)]
 #[pyfunction]
 fn chmod_if_possible(path: PathBuf, mode: u32) -> PyResult<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -767,6 +810,13 @@ fn chmod_if_possible(path: PathBuf, mode: u32) -> PyResult<()> {
         path,
         Permissions::from_mode(mode),
     )?)
+}
+
+#[cfg(windows)]
+#[pyfunction]
+fn chmod_if_possible(_path: PathBuf, _mode: u32) -> PyResult<()> {
+    // Windows has no POSIX mode bits; nothing to do.
+    Ok(())
 }
 
 #[pyfunction]
@@ -1193,7 +1243,7 @@ fn extract_osstring(py: Python, obj: Py<PyAny>) -> PyResult<OsString> {
     if let Ok(s) = obj.extract::<OsString>(py) {
         Ok(s)
     } else if let Ok(s) = obj.extract::<Vec<u8>>(py) {
-        Ok(OsString::from_vec(s))
+        Ok(os_string_from_bytes(s))
     } else if let Ok(s) = obj.extract::<PathBuf>(py) {
         Ok(s.into_os_string())
     } else {
@@ -1246,8 +1296,7 @@ fn pathjoin(py: Python, args: Vec<Py<PyAny>>) -> PyResult<Py<PyAny>> {
     );
 
     if return_bytes {
-        use std::os::unix::ffi::OsStrExt;
-        Ok(PyBytes::new(py, ret.as_path().as_os_str().as_bytes())
+        Ok(PyBytes::new(py, &path_to_bytes(ret.as_path()))
             .into_any()
             .unbind())
     } else {
@@ -1274,13 +1323,9 @@ fn get_user_name() -> PyResult<String> {
     Ok(breezy_osutils::get_user_name())
 }
 
-#[cfg(unix)]
 #[pyfunction]
-fn is_local_pid_dead(pid: i32) -> PyResult<bool> {
-    #[cfg(unix)]
-    use nix::unistd::Pid;
-
-    Ok(breezy_osutils::is_local_pid_dead(Pid::from_raw(pid)))
+fn is_local_pid_dead(pid: u32) -> PyResult<bool> {
+    Ok(breezy_osutils::is_local_pid_dead(pid))
 }
 
 #[pyfunction]

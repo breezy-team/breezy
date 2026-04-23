@@ -11,6 +11,20 @@ create_exception!(breezy._transport_rs, SFTPError, PyException);
 import_exception!(breezy.transport, NoSuchFile);
 import_exception!(breezy.errors, PermissionDenied);
 
+fn open_options_from_flags(flags: u32) -> sftp::OpenOptions {
+    use sftp::protocol::{
+        SFTP_FLAG_APPEND, SFTP_FLAG_CREAT, SFTP_FLAG_EXCL, SFTP_FLAG_READ, SFTP_FLAG_TRUNC,
+        SFTP_FLAG_WRITE,
+    };
+    sftp::OpenOptions::new()
+        .read(flags & SFTP_FLAG_READ != 0)
+        .write(flags & SFTP_FLAG_WRITE != 0)
+        .append(flags & SFTP_FLAG_APPEND != 0)
+        .create(flags & SFTP_FLAG_CREAT != 0)
+        .truncate(flags & SFTP_FLAG_TRUNC != 0)
+        .excl(flags & SFTP_FLAG_EXCL != 0)
+}
+
 #[pyclass]
 struct SFTPAttributes(sftp::Attributes);
 
@@ -281,8 +295,18 @@ impl SFTPDir {
 #[pymethods]
 impl SFTPClient {
     #[new]
-    fn new(py: Python, fd: i32) -> PyResult<Self> {
-        let session = py.detach(|| sftp::SftpClient::<std::fs::File>::from_fd(fd))?;
+    fn new(py: Python, fd: isize) -> PyResult<Self> {
+        let session = py.detach(|| {
+            #[cfg(unix)]
+            {
+                sftp::SftpClient::<std::fs::File>::from_fd(fd as i32)
+            }
+            #[cfg(windows)]
+            {
+                let handle = fd as *mut std::ffi::c_void;
+                sftp::SftpClient::<std::fs::File>::from_handle(handle)
+            }
+        })?;
         Ok(Self {
             sftp: Arc::new(session),
             cwd: None,
@@ -408,7 +432,7 @@ impl SFTPClient {
     ) -> PyResult<SFTPFile> {
         let path = self._adjust_cwd(path);
         let h = py
-            .detach(|| self.sftp.open(path.as_str(), flags, &attr.0))
+            .detach(|| self.sftp.open(path.as_str(), open_options_from_flags(flags), &attr.0))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
         Ok(SFTPFile {
             sftp: Arc::clone(&self.sftp),
@@ -429,23 +453,23 @@ impl SFTPClient {
         let offset = 0;
         let mode = mode.unwrap_or("rt");
         let flags = match mode {
-            "rt" => sftp::SFTP_FLAG_READ,
-            "ab" => sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT | sftp::SFTP_FLAG_APPEND,
+            "rt" => sftp::protocol::SFTP_FLAG_READ,
+            "ab" => sftp::protocol::SFTP_FLAG_WRITE | sftp::protocol::SFTP_FLAG_CREAT | sftp::protocol::SFTP_FLAG_APPEND,
             "wb" => {
-                sftp::SFTP_FLAG_WRITE
-                    | sftp::SFTP_FLAG_CREAT
-                    | sftp::SFTP_FLAG_TRUNC
-                    | sftp::SFTP_FLAG_READ
+                sftp::protocol::SFTP_FLAG_WRITE
+                    | sftp::protocol::SFTP_FLAG_CREAT
+                    | sftp::protocol::SFTP_FLAG_TRUNC
+                    | sftp::protocol::SFTP_FLAG_READ
             }
-            "rb" => sftp::SFTP_FLAG_READ,
+            "rb" => sftp::protocol::SFTP_FLAG_READ,
             "r+" | "rb+" | "b+" => {
-                sftp::SFTP_FLAG_READ | sftp::SFTP_FLAG_WRITE | sftp::SFTP_FLAG_CREAT
+                sftp::protocol::SFTP_FLAG_READ | sftp::protocol::SFTP_FLAG_WRITE | sftp::protocol::SFTP_FLAG_CREAT
             }
             "a+" | "ab+" => {
-                sftp::SFTP_FLAG_READ
-                    | sftp::SFTP_FLAG_WRITE
-                    | sftp::SFTP_FLAG_APPEND
-                    | sftp::SFTP_FLAG_CREAT
+                sftp::protocol::SFTP_FLAG_READ
+                    | sftp::protocol::SFTP_FLAG_WRITE
+                    | sftp::protocol::SFTP_FLAG_APPEND
+                    | sftp::protocol::SFTP_FLAG_CREAT
             }
             mode => panic!("Unsupported mode: {}", mode),
         };
@@ -456,7 +480,7 @@ impl SFTPClient {
         };
 
         let h = py
-            .detach(|| self.sftp.open(path.as_str(), flags, &attr))
+            .detach(|| self.sftp.open(path.as_str(), open_options_from_flags(flags), &attr))
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
 
         let mut ret = SFTPFile {
@@ -498,57 +522,39 @@ pub fn _sftp_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<SFTPAttributes>()?;
     m.add(
         "SSH_FXF_ACCESS_DISPOSITION",
-        sftp::SSH_FXF_ACCESS_DISPOSITION,
+        sftp::protocol::SSH_FXF_ACCESS_DISPOSITION,
     )?;
-    m.add("SSH_FXF_CREATE_NEW", sftp::SSH_FXF_CREATE_NEW)?;
-    m.add("SSH_FXF_CREATE_TRUNCATE", sftp::SSH_FXF_CREATE_TRUNCATE)?;
-    m.add("SSH_FXF_OPEN_EXISTING", sftp::SSH_FXF_OPEN_EXISTING)?;
-    m.add("SSH_FXF_OPEN_OR_CREATE", sftp::SSH_FXF_OPEN_OR_CREATE)?;
-    m.add("SSH_FXF_TRUNCATE_EXISTING", sftp::SSH_FXF_TRUNCATE_EXISTING)?;
-    m.add("SSH_FXF_APPEND_DATA", sftp::SSH_FXF_APPEND_DATA)?;
+    m.add("SSH_FXF_CREATE_NEW", sftp::protocol::SSH_FXF_CREATE_NEW)?;
+    m.add("SSH_FXF_CREATE_TRUNCATE", sftp::protocol::SSH_FXF_CREATE_TRUNCATE)?;
+    m.add("SSH_FXF_OPEN_EXISTING", sftp::protocol::SSH_FXF_OPEN_EXISTING)?;
+    m.add("SSH_FXF_OPEN_OR_CREATE", sftp::protocol::SSH_FXF_OPEN_OR_CREATE)?;
+    m.add("SSH_FXF_TRUNCATE_EXISTING", sftp::protocol::SSH_FXF_TRUNCATE_EXISTING)?;
+    m.add("SSH_FXF_APPEND_DATA", sftp::protocol::SSH_FXF_APPEND_DATA)?;
     m.add(
         "SSH_FXF_APPEND_DATA_ATOMIC",
-        sftp::SSH_FXF_APPEND_DATA_ATOMIC,
+        sftp::protocol::SSH_FXF_APPEND_DATA_ATOMIC,
     )?;
-    m.add("SSH_FXF_TEXT_MODE", sftp::SSH_FXF_TEXT_MODE)?;
-    m.add("SSH_FXF_BLOCK_READ", sftp::SSH_FXF_BLOCK_READ)?;
-    m.add("SSH_FXF_BLOCK_WRITE", sftp::SSH_FXF_BLOCK_WRITE)?;
-    m.add("SSH_FXF_BLOCK_DELETE", sftp::SSH_FXF_BLOCK_DELETE)?;
-    m.add("SSH_FXF_BLOCK_ADVISORY", sftp::SSH_FXF_BLOCK_ADVISORY)?;
-    m.add("SSH_FXF_NOFOLLOW", sftp::SSH_FXF_NOFOLLOW)?;
-    m.add("SSH_FXF_DELETE_ON_CLOSE", sftp::SSH_FXF_DELETE_ON_CLOSE)?;
+    m.add("SSH_FXF_TEXT_MODE", sftp::protocol::SSH_FXF_TEXT_MODE)?;
+    m.add("SSH_FXF_BLOCK_READ", sftp::protocol::SSH_FXF_BLOCK_READ)?;
+    m.add("SSH_FXF_BLOCK_WRITE", sftp::protocol::SSH_FXF_BLOCK_WRITE)?;
+    m.add("SSH_FXF_BLOCK_DELETE", sftp::protocol::SSH_FXF_BLOCK_DELETE)?;
+    m.add("SSH_FXF_BLOCK_ADVISORY", sftp::protocol::SSH_FXF_BLOCK_ADVISORY)?;
+    m.add("SSH_FXF_NOFOLLOW", sftp::protocol::SSH_FXF_NOFOLLOW)?;
+    m.add("SSH_FXF_DELETE_ON_CLOSE", sftp::protocol::SSH_FXF_DELETE_ON_CLOSE)?;
     m.add(
         "SSH_FXF_ACCESS_AUDIT_ALARM_INFO",
-        sftp::SSH_FXF_ACCESS_AUDIT_ALARM_INFO,
+        sftp::protocol::SSH_FXF_ACCESS_AUDIT_ALARM_INFO,
     )?;
-    m.add("SSH_FXF_ACCESS_BACKUP", sftp::SSH_FXF_ACCESS_BACKUP)?;
-    m.add("SSH_FXF_BACKUP_STREAM", sftp::SSH_FXF_BACKUP_STREAM)?;
-    m.add("SSH_FXF_OVERRIDE_OWNER", sftp::SSH_FXF_OVERRIDE_OWNER)?;
+    m.add("SSH_FXF_ACCESS_BACKUP", sftp::protocol::SSH_FXF_ACCESS_BACKUP)?;
+    m.add("SSH_FXF_BACKUP_STREAM", sftp::protocol::SSH_FXF_BACKUP_STREAM)?;
+    m.add("SSH_FXF_OVERRIDE_OWNER", sftp::protocol::SSH_FXF_OVERRIDE_OWNER)?;
 
-    m.add("ACE4_READ_DATA", sftp::ACE4_READ_DATA)?;
-    m.add("ACE4_LIST_DIRECTORY", sftp::ACE4_LIST_DIRECTORY)?;
-    m.add("ACE4_WRITE_DATA", sftp::ACE4_WRITE_DATA)?;
-    m.add("ACE4_ADD_FILE", sftp::ACE4_ADD_FILE)?;
-    m.add("ACE4_APPEND_DATA", sftp::ACE4_APPEND_DATA)?;
-    m.add("ACE4_ADD_SUBDIRECTORY", sftp::ACE4_ADD_SUBDIRECTORY)?;
-    m.add("ACE4_READ_NAMED_ATTRS", sftp::ACE4_READ_NAMED_ATTRS)?;
-    m.add("ACE4_WRITE_NAMED_ATTRS", sftp::ACE4_WRITE_NAMED_ATTRS)?;
-    m.add("ACE4_EXECUTE", sftp::ACE4_EXECUTE)?;
-    m.add("ACE4_DELETE_CHILD", sftp::ACE4_DELETE_CHILD)?;
-    m.add("ACE4_READ_ATTRIBUTES", sftp::ACE4_READ_ATTRIBUTES)?;
-    m.add("ACE4_WRITE_ATTRIBUTES", sftp::ACE4_WRITE_ATTRIBUTES)?;
-    m.add("ACE4_DELETE", sftp::ACE4_DELETE)?;
-    m.add("ACE4_READ_ACL", sftp::ACE4_READ_ACL)?;
-    m.add("ACE4_WRITE_ACL", sftp::ACE4_WRITE_ACL)?;
-    m.add("ACE4_WRITE_OWNER", sftp::ACE4_WRITE_OWNER)?;
-    m.add("ACE4_SYNCHRONIZE", sftp::ACE4_SYNCHRONIZE)?;
-
-    m.add("SFTP_FLAG_READ", sftp::SFTP_FLAG_READ)?;
-    m.add("SFTP_FLAG_WRITE", sftp::SFTP_FLAG_WRITE)?;
-    m.add("SFTP_FLAG_APPEND", sftp::SFTP_FLAG_APPEND)?;
-    m.add("SFTP_FLAG_CREAT", sftp::SFTP_FLAG_CREAT)?;
-    m.add("SFTP_FLAG_TRUNC", sftp::SFTP_FLAG_TRUNC)?;
-    m.add("SFTP_FLAG_EXCL", sftp::SFTP_FLAG_EXCL)?;
+    m.add("SFTP_FLAG_READ", sftp::protocol::SFTP_FLAG_READ)?;
+    m.add("SFTP_FLAG_WRITE", sftp::protocol::SFTP_FLAG_WRITE)?;
+    m.add("SFTP_FLAG_APPEND", sftp::protocol::SFTP_FLAG_APPEND)?;
+    m.add("SFTP_FLAG_CREAT", sftp::protocol::SFTP_FLAG_CREAT)?;
+    m.add("SFTP_FLAG_TRUNC", sftp::protocol::SFTP_FLAG_TRUNC)?;
+    m.add("SFTP_FLAG_EXCL", sftp::protocol::SFTP_FLAG_EXCL)?;
 
     m.add("SFTPError", py.get_type::<SFTPError>())?;
     Ok(())

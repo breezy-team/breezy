@@ -7,8 +7,18 @@ use pyo3::wrap_pyfunction;
 use pyo3_filelike::PyBinaryFile;
 use std::ffi::OsString;
 use std::io::Write;
-use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
+
+#[cfg(unix)]
+fn os_string_from_bytes(bytes: Vec<u8>) -> OsString {
+    use std::os::unix::ffi::OsStringExt;
+    OsString::from_vec(bytes)
+}
+
+#[cfg(windows)]
+fn os_string_from_bytes(bytes: Vec<u8>) -> OsString {
+    OsString::from(String::from_utf8_lossy(&bytes).into_owned())
+}
 
 create_exception!(_patch_rs, PatchInvokeError, pyo3::exceptions::PyException);
 create_exception!(_patch_rs, PatchFailed, pyo3::exceptions::PyException);
@@ -123,10 +133,10 @@ fn iter_patched_from_hunks(
 fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
     match err {
         breezy_patch::parse::Error::BinaryFiles(path1, path2) => BinaryFiles::new_err((
-            PathBuf::from(OsString::from_vec(path1))
+            PathBuf::from(os_string_from_bytes(path1))
                 .to_string_lossy()
                 .to_string(),
-            PathBuf::from(OsString::from_vec(path2))
+            PathBuf::from(os_string_from_bytes(path2))
                 .to_string_lossy()
                 .to_string(),
         )),

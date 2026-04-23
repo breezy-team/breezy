@@ -220,7 +220,7 @@ fn win32_extract_drive_letter(url_base: &str, path: &str) -> PyResult<(String, S
 
 #[pyfunction(name = "strip_local_trailing_slash")]
 fn win32_strip_local_trailing_slash(url: &str) -> String {
-    breezy_urlutils::win32::strip_local_trailing_slash(url)
+    breezy_urlutils::win32::strip_local_trailing_slash(url).to_string()
 }
 
 #[pyfunction(name = "local_path_from_url")]

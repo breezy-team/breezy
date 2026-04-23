@@ -348,3 +348,14 @@ pub fn debug_memory_proc(message: &str, short: bool) {
         }
     }
 }
+
+/// Log memory usage information (no-op on Windows).
+///
+/// Reads `/proc/self/status` on Unix; no equivalent is wired up on Windows
+/// yet, so this just logs the message.
+#[cfg(windows)]
+pub fn debug_memory_proc(message: &str, _short: bool) {
+    if !message.is_empty() {
+        info!("{}", message);
+    }
+}
