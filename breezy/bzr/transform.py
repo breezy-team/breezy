@@ -61,7 +61,7 @@ from ..transform import (
 )
 from ..transport.local import file_kind
 from ..tree import find_previous_path
-from . import inventory, inventorytree, multiparent
+from . import generate_ids, inventory, inventorytree, multiparent
 from .conflicts import Conflict
 
 
@@ -252,8 +252,11 @@ class TreeTransformBase(TreeTransform):
             else:
                 return self.trans_id_tree_path(path)
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        See ``TreeTransform.version_file`` for the full contract.
+        """
         raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):
@@ -1682,10 +1685,30 @@ class InventoryTreeTransform(DiskTreeTransform):
         self._limbo_children_names[parent][filename] = trans_id
         return limbo_name
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        Exactly one of ``file_id`` or ``source`` must be provided. With
+        ``source=(tree, path)`` the file id is inherited from that tree's
+        inventory at that path; if the tree has no entry there, a fresh
+        id is fabricated from the trans_id's final path.
+        """
         if file_id is None:
-            raise ValueError()
+            if source is None:
+                raise ValueError("version_file() requires either file_id or source")
+            src_tree, src_path = source
+            if src_path is not None and getattr(src_tree, "supports_file_ids", False):
+                file_id = src_tree.path2id(src_path)
+            if file_id is None:
+                # Source tree has nothing at that path (or doesn't use
+                # file ids). Fabricate from the final path — stable
+                # enough for this transform, and the only reasonable
+                # thing to do without a source of identity.
+                try:
+                    path = FinalPaths(self).get_path(trans_id)
+                except NoFinalPath:
+                    path = self._new_name.get(trans_id, "")
+                file_id = generate_ids.gen_file_id(path or "")
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 
