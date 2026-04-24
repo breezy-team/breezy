@@ -1031,7 +1031,7 @@ class Merge3Merger:
                     trans_id, file_id, paths3, parents3, names3, resolver=resolver
                 )
                 if changed:
-                    file_status = self._do_merge_contents(paths3, trans_id, file_id)
+                    file_status = self._do_merge_contents(paths3, trans_id)
                 else:
                     file_status = "unmodified"
                 self._merge_executable(
@@ -1563,8 +1563,15 @@ class Merge3Merger:
                 )
             self.tt.adjust_path(winning_name, parent_trans_id, trans_id)
 
-    def _do_merge_contents(self, paths, trans_id, file_id):
-        """Performs a merge on file_id contents."""
+    def _do_merge_contents(self, paths, trans_id):
+        """Merge contents / kind at ``trans_id`` given the three-tree paths.
+
+        File identity, when this method needs to version a file, is
+        inherited from the tree whose path "wins" for that site — OTHER
+        for new-file adds, THIS for content-conflict helpers where
+        OTHER deleted the file. The transform handles the lookup; we
+        just hand it ``source=(tree, path)``.
+        """
 
         def contents_pair(tree, path):
             if path is None:
@@ -1641,14 +1648,16 @@ class Merge3Merger:
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             inhibit_content_conflict = False
-            if params.this_kind is None:  # file_id is not in THIS
-                # Is the name used for a different file_id ?
+            if params.this_kind is None:  # path not present in THIS
+                # Does THIS already have a different entry at OTHER's path?
                 if self.this_tree.is_versioned(other_path):
                     # Two entries for the same path
                     keep_this = True
                     # versioning the merged file will trigger a duplicate
                     # conflict
-                    self.tt.version_file(trans_id, file_id=file_id)
+                    self.tt.version_file(
+                        trans_id, source=(self.other_tree, other_path)
+                    )
                     transform.create_from_tree(
                         self.tt,
                         trans_id,
@@ -1657,8 +1666,8 @@ class Merge3Merger:
                         filter_tree_path=self._get_filter_tree_path(other_path),
                     )
                     inhibit_content_conflict = True
-            elif params.other_kind is None:  # file_id is not in OTHER
-                # Is the name used for a different file_id ?
+            elif params.other_kind is None:  # path not present in OTHER
+                # Does OTHER already have a different entry at THIS's path?
                 if self.other_tree.is_versioned(this_path):
                     # Two entries for the same path again, but here, the other
                     # entry will also be merged.  We simply inhibit the
@@ -1676,8 +1685,12 @@ class Merge3Merger:
                 file_group = self._dump_conflicts(
                     name, (base_path, other_path, this_path), parent_id
                 )
+                # Inherit the conflict-helper's identity from whichever
+                # side has the path — prefer THIS (persistent
+                # destination), fall back to OTHER, then BASE.
+                source = self._identity_source(paths)
                 for tid in file_group:
-                    self.tt.version_file(tid, file_id=file_id)
+                    self.tt.version_file(tid, source=source)
                     break
                 self._raw_conflicts.append(("contents conflict", file_group))
         elif hook_status == "success":
@@ -1700,12 +1713,29 @@ class Merge3Merger:
         else:
             raise AssertionError(f"unknown hook_status: {hook_status!r}")
         if not this_path and result == "modified":
-            self.tt.version_file(trans_id, file_id=file_id)
+            # File is new in OTHER — inherit its identity.
+            self.tt.version_file(trans_id, source=(self.other_tree, other_path))
         if not keep_this:
             # The merge has been performed and produced a new content, so the
             # old contents should not be retained.
             self.tt.delete_contents(trans_id)
         return result
+
+    def _identity_source(self, paths):
+        """Pick a ``(tree, path)`` to inherit file identity from.
+
+        Prefers THIS (persistent destination), then OTHER, then BASE.
+        Used by content-conflict helpers where any of the three sides
+        may carry the file.
+        """
+        base_path, other_path, this_path = paths
+        if self._lca_trees and isinstance(base_path, tuple):
+            base_path = base_path[0]
+        if this_path is not None:
+            return (self.this_tree, this_path)
+        if other_path is not None:
+            return (self.other_tree, other_path)
+        return (self.base_tree, base_path)
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
