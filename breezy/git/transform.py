@@ -161,8 +161,12 @@ class TreeTransformBase(TreeTransform):
         path = self.mapping.parse_file_id(file_id)
         return self.trans_id_tree_path(path)
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        ``file_id`` and ``source`` are ignored: git trees have no
+        inventory ids to preserve.
+        """
         if trans_id in self._versioned:
             raise errors.DuplicateKey(key=trans_id)
         self._versioned.add(trans_id)
