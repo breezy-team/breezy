@@ -921,6 +921,16 @@ class _SmartAddHelper:
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
             parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
+        # Normalise the basename through breezy.osutils so that tests
+        # can monkeypatch ``osutils.normalized_filename`` at runtime.
+        # bzrformats's Rust ``ensure_normalized_name`` (inside
+        # ``make_entry``) doesn't see Python-level monkeypatches.
+        norm_name, can_access = osutils.normalized_filename(basename)
+        if norm_name != basename:
+            if can_access:
+                basename = norm_name
+            else:
+                raise errors.InvalidNormalization(path)
         file_id = self.action(self.tree, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(
             kind, basename, parent_ie.file_id, file_id=file_id

@@ -70,6 +70,7 @@ from bzrformats.errors import (
     ObjectNotLocked,
     RevisionNotPresent,
 )
+from bzrformats.errors import InvalidNormalization as _BzrFormatsInvalidNormalization
 from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
@@ -897,10 +898,25 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # FIXME: nested trees
             inv = self.root_inventory
             for f, file_id, kind in zip(files, ids, kinds, strict=False):
-                if file_id is None:
-                    inv.add_path(f, kind=kind)
-                else:
-                    inv.add_path(f, kind=kind, file_id=file_id)
+                # Normalise the basename through breezy.osutils so that
+                # tests can monkeypatch ``osutils.normalized_filename``
+                # at runtime; bzrformats's Rust ``ensure_normalized_name``
+                # doesn't see Python-level monkeypatches, so we have to
+                # do it at the breezy boundary.
+                dirname, basename = os.path.split(f)
+                norm_name, can_access = osutils.normalized_filename(basename)
+                if norm_name != basename:
+                    if can_access:
+                        f = os.path.join(dirname, norm_name) if dirname else norm_name
+                    else:
+                        raise errors.InvalidNormalization(f)
+                try:
+                    if file_id is None:
+                        inv.add_path(f, kind=kind)
+                    else:
+                        inv.add_path(f, kind=kind, file_id=file_id)
+                except _BzrFormatsInvalidNormalization as e:
+                    raise errors.InvalidNormalization(e.path) from e
                 self._inventory_is_modified = True
 
     def mkdir(self, path, file_id=None):
@@ -1678,7 +1694,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         if entry.change_id:
             to_id = inv.path2id(entry.to_rel)
             inv.remove_recursive_id(to_id)
-        inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
+        try:
+            inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
+        except _BzrFormatsInvalidNormalization as e:
+            raise errors.InvalidNormalization(e.path) from e
 
     def unversion(self, paths):
         """Remove the paths in paths from the current versioned set.

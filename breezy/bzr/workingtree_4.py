@@ -136,6 +136,18 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     continue
                 if file_id is None:
                     file_id = generate_ids.gen_file_id(f)
+                # Normalise the basename through breezy.osutils so that
+                # tests can monkeypatch ``osutils.normalized_filename``
+                # at runtime.  bzrformats does its own NFC normalisation
+                # too, but only breezy knows whether to use the
+                # accessible or inaccessible variant on this platform.
+                dirname, basename = os.path.split(f)
+                norm_name, can_access = osutils.normalized_filename(basename)
+                if norm_name != basename:
+                    if can_access:
+                        f = os.path.join(dirname, norm_name) if dirname else norm_name
+                    else:
+                        raise errors.InvalidNormalization(f)
                 # deliberately add the file with no cached stat or sha1
                 # - on the first access it will be gathered, and we can
                 # always change this once tests are all passing.
