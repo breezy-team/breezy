@@ -57,6 +57,67 @@ class TestInventoryAltered(TestCaseWithTransport):
             self.assertEqual([], tt._inventory_altered())
 
 
+class TestVersionFileSource(TestCaseWithTransport):
+    """version_file(source=(tree, path)) inheritance semantics."""
+
+    def _make_source_tree(self, path, file_id):
+        src = self.make_branch_and_tree("src")
+        self.build_tree(["src/" + path])
+        src.add(path, ids=file_id)
+        src.commit("add " + path)
+        return src.basis_tree()
+
+    def test_source_inherits_file_id(self):
+        """When source has an entry at the given path, version_file
+        picks up that tree's file id without the caller knowing it.
+        """
+        source = self._make_source_tree("foo", b"src-foo-id")
+        dest = self.make_branch_and_tree("dest")
+        self.build_tree(["dest/foo"])
+        with dest.preview_transform() as tt:
+            foo_tid = tt.trans_id_tree_path("foo")
+            tt.create_file([b"x"], foo_tid)
+            tt.version_file(foo_tid, source=(source, "foo"))
+            self.assertEqual(b"src-foo-id", tt.final_file_id(foo_tid))
+
+    def test_source_without_entry_fabricates_id(self):
+        """If the source tree doesn't have the path, fall back to a
+        fresh id so history tracking still resolves.
+        """
+        source = self._make_source_tree("foo", b"src-foo-id")
+        dest = self.make_branch_and_tree("dest")
+        self.build_tree(["dest/bar"])
+        with dest.preview_transform() as tt:
+            bar_tid = tt.trans_id_tree_path("bar")
+            tt.create_file([b"x"], bar_tid)
+            tt.version_file(bar_tid, source=(source, "does-not-exist"))
+            file_id = tt.final_file_id(bar_tid)
+            self.assertIsNotNone(file_id)
+            self.assertNotEqual(b"src-foo-id", file_id)
+
+    def test_file_id_wins_over_source(self):
+        """Passing an explicit file_id takes precedence over source."""
+        source = self._make_source_tree("foo", b"src-foo-id")
+        dest = self.make_branch_and_tree("dest")
+        self.build_tree(["dest/foo"])
+        with dest.preview_transform() as tt:
+            foo_tid = tt.trans_id_tree_path("foo")
+            tt.create_file([b"x"], foo_tid)
+            tt.version_file(foo_tid, file_id=b"explicit-id", source=(source, "foo"))
+            self.assertEqual(b"explicit-id", tt.final_file_id(foo_tid))
+
+    def test_no_file_id_and_no_source_raises(self):
+        """Callers must supply either file_id or source; version_file
+        refuses to silently fabricate an identity out of thin air.
+        """
+        dest = self.make_branch_and_tree("dest")
+        self.build_tree(["dest/foo"])
+        with dest.preview_transform() as tt:
+            foo_tid = tt.trans_id_tree_path("foo")
+            tt.create_file([b"x"], foo_tid)
+            self.assertRaises(ValueError, tt.version_file, foo_tid)
+
+
 class TestBuildTree(TestCaseWithTransport):
     def test_build_tree_with_symlinks(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))

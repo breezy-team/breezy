@@ -753,6 +753,35 @@ class _InventoryNoneEntry:
 _none_entry = _InventoryNoneEntry()
 
 
+def _path_basename(path):
+    if path is None:
+        return None
+    # The tree root has path "" and no proper basename; treat its "name"
+    # slot as "" so resolvers still compare equality correctly.
+    return osutils.basename(path)
+
+
+def _path_dirname(path):
+    if path is None:
+        return None
+    # The tree root (path "") has no parent; return None so _merge_names can
+    # route it through ROOT_PARENT rather than making the root its own parent.
+    if path == "":
+        return None
+    return osutils.dirname(path)
+
+
+def _safe_executable(tree, path):
+    if path is None:
+        return None
+    try:
+        if tree.kind(path) != "file":
+            return False
+    except _mod_transport.NoSuchFile:
+        return None
+    return tree.is_executable(path)
+
+
 class Merge3Merger:
     """Three-way merger that uses the merge3 text merger."""
 
@@ -881,14 +910,23 @@ class Merge3Merger:
                     executable3 = (None, executable3[1], None)
                     changed = True
                     copied = False
-                trans_id = self.tt.trans_id_file_id(file_id)
+                # Resolve a trans_id for this entry. When the tree carries
+                # file ids, go through the file-id map so that downstream
+                # parent lookups (see _merge_names) pick up the same trans_id
+                # as a sibling rename / creation. When file_id is None the
+                # tree is path-based, so fall back to this_path; if that's
+                # also absent, assign a fresh id.
+                if file_id is not None:
+                    trans_id = self.tt.trans_id_file_id(file_id)
+                elif paths3[2]:
+                    trans_id = self.tt.trans_id_tree_path(paths3[2])
+                else:
+                    trans_id = self.tt.assign_id()
                 # Try merging each entry
                 child_pb.update(gettext("Preparing file merge"), num, len(entries))
-                self._merge_names(
-                    trans_id, file_id, paths3, parents3, names3, resolver=resolver
-                )
+                self._merge_names(trans_id, paths3, parents3, names3, resolver=resolver)
                 if changed:
-                    file_status = self._do_merge_contents(paths3, trans_id, file_id)
+                    file_status = self._do_merge_contents(paths3, trans_id)
                 else:
                     file_status = "unmodified"
                 self._merge_executable(
@@ -917,82 +955,120 @@ class Merge3Merger:
             trace.warning("%s", conflict.describe())
 
     def _entries3(self):
-        """Gather data about files modified between three trees.
+        """Gather 3-way per-file merge data for a linear (non-LCA) merge.
 
-        Return a list of tuples of file_id, changed, parents3, names3,
-        executable3.  changed is a boolean indicating whether the file contents
-        or kind were changed.  parents3 is a tuple of parent ids for base,
-        other and this.  names3 is a tuple of names for base, other and this.
-        executable3 is a tuple of execute-bit values for base, other and this.
+        Drives off ``iter_changes(other vs base, extra_trees=[this])``.
+        When all three source trees use inventory file ids the
+        ``parents3``/``names3`` slots carry the file-id-based values
+        that the classical algorithm expects (so renames through a
+        directory of different identity still show up as a
+        ``_three_way`` conflict). When any tree is path-based the
+        slots fall back to ``dirname(path)`` / ``basename(path)``.
+
+        Yields 7-tuples ``(file_id_or_None, changed, paths3, parents3,
+        names3, executable3, copied)`` where each ``*3`` is a flat
+        ``(base, other, this)`` triple.
         """
+        all_inventory_trees = all(
+            getattr(t, "supports_file_ids", False)
+            for t in (self.base_tree, self.other_tree, self.this_tree)
+        )
+
         iterator = self.other_tree.iter_changes(
             self.base_tree,
             specific_files=self.interesting_files,
             extra_trees=[self.this_tree],
         )
-        this_interesting_files = self.this_tree.find_related_paths_across_trees(
-            self.interesting_files, trees=[self.other_tree]
-        )
-        this_entries = dict(
-            self.this_tree.iter_entries_by_dir(specific_files=this_interesting_files)
-        )
-        for change in iterator:
-            if change.path[0] is not None:
-                this_path = _mod_tree.find_previous_path(
-                    self.base_tree, self.this_tree, change.path[0]
-                )
-            else:
-                this_path = _mod_tree.find_previous_path(
-                    self.other_tree, self.this_tree, change.path[1]
-                )
-            this_entry = this_entries.get(this_path)
-            if this_entry is not None:
-                this_name = this_entry.name
-                this_parent = this_entry.parent_id
-                this_executable = this_entry.executable
-            else:
-                this_name = None
-                this_parent = None
-                this_executable = None
-            parents3 = change.parent_id + (this_parent,)
-            names3 = change.name + (this_name,)
-            paths3 = change.path + (this_path,)
-            executable3 = change.executable + (this_executable,)
-            yield (
-                (
-                    change.file_id,
-                    change.changed_content,
-                    paths3,
-                    parents3,
-                    names3,
-                    executable3,
-                    change.copied,
+
+        # Bulk-fetch THIS-tree inventory entries once so per-entry
+        # ``this_name``/``this_parent``/``this_executable`` lookups
+        # don't turn into N round-trips for working trees.
+        this_entries = {}
+        if all_inventory_trees:
+            this_interesting_files = self.this_tree.find_related_paths_across_trees(
+                self.interesting_files, trees=[self.other_tree]
+            )
+            this_entries = dict(
+                self.this_tree.iter_entries_by_dir(
+                    specific_files=this_interesting_files
                 )
             )
 
+        for change in iterator:
+            base_path, other_path = change.path
+            if base_path is not None:
+                this_path = _mod_tree.find_previous_path(
+                    self.base_tree, self.this_tree, base_path
+                )
+            else:
+                this_path = _mod_tree.find_previous_path(
+                    self.other_tree, self.this_tree, other_path
+                )
+            paths3 = change.path + (this_path,)
+
+            if all_inventory_trees:
+                this_entry = this_entries.get(this_path)
+                if this_entry is not None:
+                    this_name = this_entry.name
+                    this_parent = this_entry.parent_id
+                    this_executable = this_entry.executable
+                else:
+                    this_name = None
+                    this_parent = None
+                    this_executable = None
+                parents3 = change.parent_id + (this_parent,)
+                names3 = change.name + (this_name,)
+                executable3 = change.executable + (this_executable,)
+            else:
+                names3 = (
+                    _path_basename(base_path),
+                    _path_basename(other_path),
+                    _path_basename(this_path),
+                )
+                parents3 = (
+                    _path_dirname(base_path),
+                    _path_dirname(other_path),
+                    _path_dirname(this_path),
+                )
+                base_exec, other_exec = change.executable
+                executable3 = (
+                    base_exec,
+                    other_exec,
+                    _safe_executable(self.this_tree, this_path),
+                )
+
+            yield (
+                getattr(change, "file_id", None),
+                change.changed_content,
+                paths3,
+                parents3,
+                names3,
+                executable3,
+                change.copied,
+            )
+
     def _entries_lca(self):
-        """Gather data about files modified between multiple trees.
+        """Gather per-file merge data for criss-cross (LCA) merges.
 
-        This compares OTHER versus all LCA trees, and for interesting entries,
-        it then compares with THIS and BASE.
+        Walks all three trees plus the LCA trees via ``MultiWalker`` and
+        emits entries whose tip value differs from every LCA — the classic
+        "new node created by the merge" heuristic (see
+        ``doc/developers/lca_merge_resolution.txt``). Inventory-specific:
+        relies on ``iter_entries_by_dir`` yielding entries with
+        ``.file_id``/``.parent_id``/``.name``/``.executable`` and on
+        ``id2path`` to locate each tip's copy.
 
-        For the multi-valued entries, the format will be (BASE, [lca1, lca2])
-
-        :return: [(file_id, changed, paths, parents, names, executable, copied)], where:
-
-            * file_id: Simple file_id of the entry
-            * changed: Boolean, True if the kind or contents changed else False
-            * paths: ((base, [path, in, lcas]), path_other, path_this)
-            * parents: ((base, [parent_id, in, lcas]), parent_id_other,
-                        parent_id_this)
-            * names:   ((base, [name, in, lcas]), name_in_other, name_in_this)
-            * executable: ((base, [exec, in, lcas]), exec_in_other,
-                        exec_in_this)
+        Emits the same shape as ``_entries3`` in LCA mode:
+        ``(file_id, changed, ((base_path, [lca_paths]), other_path,
+        this_path), ((base_parent_id, [lca_parent_ids]),
+        other_parent_id, this_parent_id), ...)``. Parent and name slots
+        carry the inventory file ids / raw names (LCA merges run only on
+        inventory trees), which ``_merge_names`` feeds to
+        ``_lca_multi_way`` as comparators.
         """
         if self.interesting_files is not None:
             lookup_trees = [self.this_tree, self.base_tree]
             lookup_trees.extend(self._lca_trees)
-            # I think we should include the lca trees as well
             interesting_files = self.other_tree.find_related_paths_across_trees(
                 self.interesting_files, lookup_trees
             )
@@ -1003,24 +1079,14 @@ class Merge3Merger:
         walker = MultiWalker(self.other_tree, self._lca_trees)
 
         for other_path, file_id, other_ie, lca_values in walker.iter_all():
-            # Is this modified at all from any of the other trees?
             if other_ie is None:
                 other_ie = _none_entry
                 other_path = None
             if interesting_files is not None and other_path not in interesting_files:
                 continue
 
-            # If other_revision is found in any of the lcas, that means this
-            # node is uninteresting. This is because when merging, if there are
-            # multiple heads(), we have to create a new node. So if we didn't,
-            # we know that the ancestry is linear, and that OTHER did not
-            # modify anything
-            # See doc/developers/lca_merge_resolution.txt for details
-            # We can't use this shortcut when other_revision is None,
-            # because it may be None because things are WorkingTrees, and
-            # not because it is *actually* None.
             is_unmodified = False
-            for lca_path, ie in lca_values:
+            for _lca_path, ie in lca_values:
                 if ie is not None and other_ie.is_unmodified(ie):
                     is_unmodified = True
                     break
@@ -1057,20 +1123,20 @@ class Merge3Merger:
                     self.this_tree.iter_entries_by_dir(specific_files=[this_path])
                 )[1]
 
-            lca_kinds = []
-            lca_parent_ids = []
-            lca_names = []
-            lca_executable = []
-            for lca_ie in lca_entries:
-                lca_kinds.append(lca_ie.kind)
-                lca_parent_ids.append(lca_ie.parent_id)
-                lca_names.append(lca_ie.name)
-                lca_executable.append(lca_ie.executable)
+            lca_kinds = [lca_ie.kind for lca_ie in lca_entries]
+            lca_parent_ids = [lca_ie.parent_id for lca_ie in lca_entries]
+            lca_names = [lca_ie.name for lca_ie in lca_entries]
+            lca_executables = [lca_ie.executable for lca_ie in lca_entries]
 
             kind_winner = self._lca_multi_way(
                 (base_ie.kind, lca_kinds), other_ie.kind, this_ie.kind
             )
-            parent_id_winner = self._lca_multi_way(
+            # LCA merges run only on inventory trees, so we can compare
+            # the real parent ids. That keeps "renamed through a
+            # differently-identified directory" visible to the resolver
+            # as a conflict (a distinction that would be lost on path
+            # equality alone).
+            parent_winner = self._lca_multi_way(
                 (base_ie.parent_id, lca_parent_ids),
                 other_ie.parent_id,
                 this_ie.parent_id,
@@ -1081,10 +1147,8 @@ class Merge3Merger:
 
             content_changed = True
             if kind_winner == "this":
-                # No kind change in OTHER, see if there are *any* changes
                 if other_ie.kind == "directory":
-                    if parent_id_winner == "this" and name_winner == "this":
-                        # No change for this directory in OTHER, skip
+                    if parent_winner == "this" and name_winner == "this":
                         continue
                     content_changed = False
                 elif other_ie.kind is None or other_ie.kind == "file":
@@ -1113,18 +1177,16 @@ class Merge3Merger:
                         allow_overriding_lca=False,
                     )
                     exec_winner = self._lca_multi_way(
-                        (base_ie.executable, lca_executable),
+                        (base_ie.executable, lca_executables),
                         other_ie.executable,
                         this_ie.executable,
                     )
                     if (
-                        parent_id_winner == "this"
+                        parent_winner == "this"
                         and name_winner == "this"
                         and sha1_winner == "this"
                         and exec_winner == "this"
                     ):
-                        # No kind, parent, name, exec, or content change for
-                        # OTHER, so this node is not considered interesting
                         continue
                     if sha1_winner == "this":
                         content_changed = False
@@ -1148,27 +1210,20 @@ class Merge3Merger:
                         (base_target, lca_targets), other_target, this_target
                     )
                     if (
-                        parent_id_winner == "this"
+                        parent_winner == "this"
                         and name_winner == "this"
                         and target_winner == "this"
                     ):
-                        # No kind, parent, name, or symlink target change
-                        # not interesting
                         continue
                     if target_winner == "this":
                         content_changed = False
                 elif other_ie.kind == "tree-reference":
-                    # The 'changed' information seems to be handled at a higher
-                    # level. At least, _entries3 returns False for content
-                    # changed, even when at a new revision_id.
                     content_changed = False
-                    if parent_id_winner == "this" and name_winner == "this":
-                        # Nothing interesting
+                    if parent_winner == "this" and name_winner == "this":
                         continue
                 else:
                     raise AssertionError("unhandled kind: {}".format(other_ie.kind))
 
-            # If we have gotten this far, that means something has changed
             yield (
                 file_id,
                 content_changed,
@@ -1178,14 +1233,17 @@ class Merge3Merger:
                     other_ie.parent_id,
                     this_ie.parent_id,
                 ),
-                ((base_ie.name, lca_names), other_ie.name, this_ie.name),
                 (
-                    (base_ie.executable, lca_executable),
+                    (base_ie.name, lca_names),
+                    other_ie.name,
+                    this_ie.name,
+                ),
+                (
+                    (base_ie.executable, lca_executables),
                     other_ie.executable,
                     this_ie.executable,
                 ),
-                # Copy detection is not yet supported, so nothing is
-                # a copy:
+                # Copy detection is not yet supported, so nothing is a copy:
                 False,
             )
 
@@ -1308,20 +1366,55 @@ class Merge3Merger:
         # At this point, the lcas disagree, and the tip disagree
         return "conflict"
 
-    def _merge_names(self, trans_id, file_id, paths, parents, names, resolver):
-        """Perform a merge on file names and parents."""
+    def _parent_trans_id(self, tree, parent_path):
+        """Resolve a parent directory path in ``tree`` to a trans_id.
+
+        When the source tree carries file ids, route through
+        ``trans_id_file_id`` so that the same directory — possibly not yet
+        present in THIS but created earlier in the same merge run — maps to
+        a single trans_id. For path-based trees, fall back to
+        ``trans_id_tree_path``.
+        """
+        if parent_path is None:
+            return None
+        if tree.supports_file_ids:
+            parent_id = tree.path2id(parent_path)
+            if parent_id is not None:
+                return self.tt.trans_id_file_id(parent_id)
+        return self.tt.trans_id_tree_path(parent_path)
+
+    def _merge_names(self, trans_id, paths, parents, names, resolver):
+        """Perform a merge on file names and parent directory paths.
+
+        ``parents`` and ``names`` are whatever comparators the entry
+        generator supplied — either file ids (when all three trees have
+        inventories, matching the classical bzr semantics) or dirname /
+        basename strings (for path-based trees). The resolver only
+        compares values for equality, so the merger is agnostic about
+        which representation is in use. ``paths`` carries the per-tree
+        paths regardless, which ``_parent_trans_id`` consults to route
+        children through the existing directory's trans_id. The conflict
+        cooker recovers the file id (when the tree format has one) from
+        the trans_id via ``final_file_id`` / ``inactive_file_id``, so
+        this method no longer threads a file id through its records.
+        """
         _base_name, other_name, this_name = names
-        _base_parent, other_parent, this_parent = parents
-        _unused_base_path, other_path, _this_path = paths
+        base_slot, other_path, this_path = paths
+        # In LCA mode ``paths[0]`` is ``(base_path, [lca_paths])``; unwrap
+        # to the scalar base path so the winning-path lookup below works
+        # uniformly.
+        base_path = base_slot[0] if self._lca_trees else base_slot
+        this_parent_path = _path_dirname(this_path)
+        other_parent_path = _path_dirname(other_path)
 
         name_winner = resolver(*names)
-
         parent_id_winner = resolver(*parents)
         if this_name is None:
             if name_winner == "this":
                 name_winner = "other"
             if parent_id_winner == "this":
                 parent_id_winner = "other"
+
         if name_winner == "this" and parent_id_winner == "this":
             return
         if name_winner == "conflict" or parent_id_winner == "conflict":
@@ -1332,38 +1425,45 @@ class Merge3Merger:
                 (
                     "path conflict",
                     trans_id,
-                    file_id,
-                    this_parent,
+                    self._parent_trans_id(self.this_tree, this_parent_path),
                     this_name,
-                    other_parent,
+                    self._parent_trans_id(self.other_tree, other_parent_path),
                     other_name,
                 )
             )
         if other_path is None:
-            # it doesn't matter whether the result was 'other' or
-            # 'conflict'-- if it has no file id, we leave it alone.
+            # File was removed in OTHER; nothing to adjust in the transform.
             return
-        parent_id = parents[self.winner_idx[parent_id_winner]]
-        name = names[self.winner_idx[name_winner]]
-        if parent_id is not None or name is not None:
-            # if we get here, name_winner and parent_winner are set to safe
-            # values.
-            if parent_id is None and name is not None:
-                # if parent_id is None and name is non-None, current file is
-                # the tree root.
-                if names[self.winner_idx[parent_id_winner]] != "":
-                    raise AssertionError(
-                        "File looks like a root, but named {}".format(
-                            names[self.winner_idx[parent_id_winner]]
-                        )
-                    )
+        winning_idx = self.winner_idx[parent_id_winner]
+        winning_tree = (
+            self.base_tree,
+            self.other_tree,
+            self.this_tree,
+        )[winning_idx]
+        # The winning *path* is always derivable from paths3; the
+        # winning *parent comparator* in ``parents`` may be a file id
+        # rather than a path, so don't use it for trans_id lookup.
+        winning_entry_path = (base_path, other_path, this_path)[winning_idx]
+        winning_parent_path = _path_dirname(winning_entry_path)
+        winning_name = names[self.winner_idx[name_winner]]
+        if winning_parent_path is not None or winning_name is not None:
+            if winning_parent_path is None:
                 parent_trans_id = transform.ROOT_PARENT
             else:
-                parent_trans_id = self.tt.trans_id_file_id(parent_id)
-            self.tt.adjust_path(name, parent_trans_id, trans_id)
+                parent_trans_id = self._parent_trans_id(
+                    winning_tree, winning_parent_path
+                )
+            self.tt.adjust_path(winning_name, parent_trans_id, trans_id)
 
-    def _do_merge_contents(self, paths, trans_id, file_id):
-        """Performs a merge on file_id contents."""
+    def _do_merge_contents(self, paths, trans_id):
+        """Merge contents / kind at ``trans_id`` given the three-tree paths.
+
+        File identity, when this method needs to version a file, is
+        inherited from the tree whose path "wins" for that site — OTHER
+        for new-file adds, THIS for content-conflict helpers where
+        OTHER deleted the file. The transform handles the lookup; we
+        just hand it ``source=(tree, path)``.
+        """
 
         def contents_pair(tree, path):
             if path is None:
@@ -1440,14 +1540,14 @@ class Merge3Merger:
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             inhibit_content_conflict = False
-            if params.this_kind is None:  # file_id is not in THIS
-                # Is the name used for a different file_id ?
+            if params.this_kind is None:  # path not present in THIS
+                # Does THIS already have a different entry at OTHER's path?
                 if self.this_tree.is_versioned(other_path):
                     # Two entries for the same path
                     keep_this = True
                     # versioning the merged file will trigger a duplicate
                     # conflict
-                    self.tt.version_file(trans_id, file_id=file_id)
+                    self.tt.version_file(trans_id, source=(self.other_tree, other_path))
                     transform.create_from_tree(
                         self.tt,
                         trans_id,
@@ -1456,8 +1556,8 @@ class Merge3Merger:
                         filter_tree_path=self._get_filter_tree_path(other_path),
                     )
                     inhibit_content_conflict = True
-            elif params.other_kind is None:  # file_id is not in OTHER
-                # Is the name used for a different file_id ?
+            elif params.other_kind is None:  # path not present in OTHER
+                # Does OTHER already have a different entry at THIS's path?
                 if self.other_tree.is_versioned(this_path):
                     # Two entries for the same path again, but here, the other
                     # entry will also be merged.  We simply inhibit the
@@ -1475,8 +1575,12 @@ class Merge3Merger:
                 file_group = self._dump_conflicts(
                     name, (base_path, other_path, this_path), parent_id
                 )
+                # Inherit the conflict-helper's identity from whichever
+                # side has the path — prefer THIS (persistent
+                # destination), fall back to OTHER, then BASE.
+                source = self._identity_source(paths)
                 for tid in file_group:
-                    self.tt.version_file(tid, file_id=file_id)
+                    self.tt.version_file(tid, source=source)
                     break
                 self._raw_conflicts.append(("contents conflict", file_group))
         elif hook_status == "success":
@@ -1499,12 +1603,29 @@ class Merge3Merger:
         else:
             raise AssertionError("unknown hook_status: {!r}".format(hook_status))
         if not this_path and result == "modified":
-            self.tt.version_file(trans_id, file_id=file_id)
+            # File is new in OTHER — inherit its identity.
+            self.tt.version_file(trans_id, source=(self.other_tree, other_path))
         if not keep_this:
             # The merge has been performed and produced a new content, so the
             # old contents should not be retained.
             self.tt.delete_contents(trans_id)
         return result
+
+    def _identity_source(self, paths):
+        """Pick a ``(tree, path)`` to inherit file identity from.
+
+        Prefers THIS (persistent destination), then OTHER, then BASE.
+        Used by content-conflict helpers where any of the three sides
+        may carry the file.
+        """
+        base_path, other_path, this_path = paths
+        if self._lca_trees and isinstance(base_path, tuple):
+            base_path = base_path[0]
+        if this_path is not None:
+            return (self.this_tree, this_path)
+        if other_path is not None:
+            return (self.other_tree, other_path)
+        return (self.base_tree, base_path)
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
