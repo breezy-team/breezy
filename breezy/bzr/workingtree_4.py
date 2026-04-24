@@ -935,7 +935,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                             """Recursively update all entries in this dirblock."""
                             if from_dir == b"":
                                 raise AssertionError("renaming root not supported")
-                            from_key = (from_dir, "")
+                            from_key = (from_dir, b"", b"")
                             from_block_idx, present = state._find_block_index_from_key(
                                 from_key
                             )
