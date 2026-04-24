@@ -849,7 +849,6 @@ class TreeTransformBase(TreeTransform):
                 (
                     _,
                     _trans_id,
-                    _file_id,
                     this_parent,
                     this_name,
                     other_parent,
