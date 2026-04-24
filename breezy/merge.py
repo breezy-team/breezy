@@ -924,9 +924,7 @@ class Merge3Merger:
                     trans_id = self.tt.assign_id()
                 # Try merging each entry
                 child_pb.update(gettext("Preparing file merge"), num, len(entries))
-                self._merge_names(
-                    trans_id, file_id, paths3, parents3, names3, resolver=resolver
-                )
+                self._merge_names(trans_id, paths3, parents3, names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(paths3, trans_id)
                 else:
@@ -1385,7 +1383,7 @@ class Merge3Merger:
                 return self.tt.trans_id_file_id(parent_id)
         return self.tt.trans_id_tree_path(parent_path)
 
-    def _merge_names(self, trans_id, file_id, paths, parents, names, resolver):
+    def _merge_names(self, trans_id, paths, parents, names, resolver):
         """Perform a merge on file names and parent directory paths.
 
         ``parents`` and ``names`` are whatever comparators the entry
@@ -1395,15 +1393,18 @@ class Merge3Merger:
         compares values for equality, so the merger is agnostic about
         which representation is in use. ``paths`` carries the per-tree
         paths regardless, which ``_parent_trans_id`` consults to route
-        children through the existing directory's trans_id.
+        children through the existing directory's trans_id. The conflict
+        cooker recovers the file id (when the tree format has one) from
+        the trans_id via ``final_file_id`` / ``inactive_file_id``, so
+        this method no longer threads a file id through its records.
         """
         _base_name, other_name, this_name = names
-        _unused_base_path, other_path, _this_path = paths
-        if self._lca_trees:
-            base_path = paths[0][0]
-        else:
-            base_path = paths[0]
-        this_parent_path = _path_dirname(_this_path)
+        base_slot, other_path, this_path = paths
+        # In LCA mode ``paths[0]`` is ``(base_path, [lca_paths])``; unwrap
+        # to the scalar base path so the winning-path lookup below works
+        # uniformly.
+        base_path = base_slot[0] if self._lca_trees else base_slot
+        this_parent_path = _path_dirname(this_path)
         other_parent_path = _path_dirname(other_path)
 
         name_winner = resolver(*names)
@@ -1424,7 +1425,6 @@ class Merge3Merger:
                 (
                     "path conflict",
                     trans_id,
-                    file_id,
                     self._parent_trans_id(self.this_tree, this_parent_path),
                     this_name,
                     self._parent_trans_id(self.other_tree, other_parent_path),
@@ -1443,7 +1443,7 @@ class Merge3Merger:
         # The winning *path* is always derivable from paths3; the
         # winning *parent comparator* in ``parents`` may be a file id
         # rather than a path, so don't use it for trans_id lookup.
-        winning_entry_path = (base_path, other_path, _this_path)[winning_idx]
+        winning_entry_path = (base_path, other_path, this_path)[winning_idx]
         winning_parent_path = _path_dirname(winning_entry_path)
         winning_name = names[self.winner_idx[name_winner]]
         if winning_parent_path is not None or winning_name is not None:
@@ -1547,9 +1547,7 @@ class Merge3Merger:
                     keep_this = True
                     # versioning the merged file will trigger a duplicate
                     # conflict
-                    self.tt.version_file(
-                        trans_id, source=(self.other_tree, other_path)
-                    )
+                    self.tt.version_file(trans_id, source=(self.other_tree, other_path))
                     transform.create_from_tree(
                         self.tt,
                         trans_id,

@@ -1087,14 +1087,14 @@ def cook_path_conflict(
     fp,
     conflict_type,
     trans_id,
-    file_id,
     this_parent,
     this_name,
     other_parent,
     other_name,
 ):
     # this_parent / other_parent are trans_ids (ROOT_PARENT for the tree
-    # root, None when the file is absent in that tree).
+    # root, None when the file is absent in that tree); the file_id (if
+    # any) is recovered from the trans_id at cook time.
     if this_parent is None or this_name is None:
         this_path = "<deleted>"
     else:
@@ -1109,16 +1109,14 @@ def cook_path_conflict(
             # Put it in the root.
             parent_path = ""
         other_path = osutils.pathjoin(parent_path, other_name)
-    # The caller-provided ``file_id`` may be None when the merged entry
-    # comes from a path-based tree. Fall back to what's been registered
-    # against the trans_id: ``final_file_id`` returns None for trans_ids
-    # that exist only in ``_non_present_ids`` (the typical case when the
-    # file is new in OTHER or missing from THIS); ``inactive_file_id``
-    # also consults that map.
+    # ``final_file_id`` returns None for trans_ids that exist only in
+    # ``_non_present_ids`` (the typical case when the file is new in
+    # OTHER or missing from THIS); ``inactive_file_id`` also consults
+    # that map so the resulting Conflict carries the file id that was
+    # originally passed in via ``trans_id_file_id``.
+    file_id = tt.final_file_id(trans_id)
     if file_id is None:
-        file_id = tt.final_file_id(trans_id)
-        if file_id is None:
-            file_id = tt.inactive_file_id(trans_id)
+        file_id = tt.inactive_file_id(trans_id)
     return Conflict.factory(
         conflict_type, path=this_path, conflict_path=other_path, file_id=file_id
     )
