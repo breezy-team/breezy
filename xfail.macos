@@ -45,10 +45,4 @@ breezy.tests.test_msgeditor.MsgEditorTest.test_unsupported_encoding_commit_messa
 # Filename ordering
 breezy.tests.test_nonascii.NormalizedFilename.test_platform
 
-breezy.tests.test_patch.PatchesTester.test_iter_patched_from_hunks
 breezy.tests.test_upstream_import.TestImport.test_unzip
-
-# Permission denied error accessing one of the files under .pc/
-breezy.plugins.quilt.tests.test_merge.StartCommitMergeHookTests.test_warning
-breezy.plugins.quilt.tests.test_merge.TestMergeHook.test_diverged_patches
-breezy.plugins.quilt.tests.test_merge.TestTreeUnapplyPatches.test_unapply
