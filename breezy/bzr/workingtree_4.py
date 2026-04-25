@@ -51,6 +51,7 @@ import contextlib
 
 from bzrformats import dirstate
 from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
+from bzrformats.errors import LockContention as _BzrFormatsLockContention
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
@@ -222,7 +223,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # try for a write lock - need permission to get one anyhow
                     # to break locks.
                     state.lock_write()
-                except errors.LockContention as err:
+                except _BzrFormatsLockContention:
                     # oslocks fail when a process is still live: fail.
                     # TODO: get the locked lockdir info and give to the user to
                     # assist in debugging.
