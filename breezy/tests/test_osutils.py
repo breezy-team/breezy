@@ -1038,7 +1038,10 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.build_tree(tree)
 
         # rename the 1file to a latin-1 filename
-        os.rename(b"./1file", b"\xe8file")
+        try:
+            os.rename(b"./1file", b"\xe8file")
+        except OSError as err:
+            self.skipTest(f"Filesystem rejects non-UTF-8 filenames: {err}")
         if b"\xe8file" not in os.listdir("."):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
