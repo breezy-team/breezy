@@ -36,6 +36,7 @@ jobs:
           brew install quilt
         if: "matrix.os == 'macos-latest'"
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
