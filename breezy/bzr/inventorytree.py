@@ -991,6 +991,10 @@ class _SmartAddHelper:
             # we dont have a parent ie known yet.: use the relatively slower
             # inventory probing method
             inv_path, _ = osutils.normalized_filename(filepath)
+            # If the filesystem is case-insensitive, the user-supplied path may
+            # differ in case from the path stored in the inventory. Canonicalise
+            # so children inherit the inventory's casing during the walk below.
+            inv_path = self.tree._fix_case_of_inventory_path(inv_path)
             this_ie = self._get_ie(inv_path)
             if this_ie is None:
                 this_ie = self._add_one_and_parent(None, filepath, kind, inv_path)
