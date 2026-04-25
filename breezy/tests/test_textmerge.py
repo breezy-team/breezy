@@ -26,27 +26,36 @@ class TestMerge2(TestCase):
     """Test the Merge2 text merging class."""
 
     def test_agreed(self):
-        """Test merging identical text produces the same result."""
-        lines = "a\nb\nc\nd\ne\nf\n".splitlines(True)
+        lines = b"a\nb\nc\nd\ne\nf\n".splitlines(True)
         mlines = list(Merge2(lines, lines).merge_lines()[0])
         self.assertEqualDiff(mlines, lines)
 
     def test_conflict(self):
-        """Test merging conflicting text produces appropriate conflict markers."""
-        lines_a = "a\nb\nc\nd\ne\nf\ng\nh\n".splitlines(True)
-        lines_b = "z\nb\nx\nd\ne\ne\nf\ng\ny\n".splitlines(True)
+        lines_a = b"a\nb\nc\nd\ne\nf\ng\nh\n".splitlines(True)
+        lines_b = b"z\nb\nx\nd\ne\ne\nf\ng\ny\n".splitlines(True)
         expected = (
-            "<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\ne\n<\n=\ne\n>\nf\ng\n<\nh\n=\ny\n>\n"
+            b"<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\ne\n<\n=\ne\n>\nf\ng\n<\nh\n=\ny\n>\n"
         )
-        m2 = Merge2(lines_a, lines_b, "<\n", ">\n", "=\n")
+        m2 = Merge2(lines_a, lines_b, b"<\n", b">\n", b"=\n")
         mlines = m2.merge_lines()[0]
-        self.assertEqualDiff("".join(mlines), expected)
+        self.assertEqualDiff(b"".join(mlines), expected)
         mlines = m2.merge_lines(reprocess=True)[0]
-        self.assertEqualDiff("".join(mlines), expected)
+        self.assertEqualDiff(b"".join(mlines), expected)
 
     def test_reprocess(self):
-        """Test the reprocess_struct method for conflict resolution."""
-        struct = [("a", "b"), ("c",), ("def", "geh"), ("i",)]
-        expect = [("a", "b"), ("c",), ("d", "g"), ("e",), ("f", "h"), ("i",)]
+        struct = [
+            ([b"a"], [b"b"]),
+            ([b"c"],),
+            ([b"d", b"e", b"f"], [b"g", b"e", b"h"]),
+            ([b"i"],),
+        ]
+        expect = [
+            ([b"a"], [b"b"]),
+            ([b"c"],),
+            ([b"d"], [b"g"]),
+            ([b"e"],),
+            ([b"f"], [b"h"]),
+            ([b"i"],),
+        ]
         result = Merge2.reprocess_struct(struct)
         self.assertEqual(list(result), expect)
