@@ -167,21 +167,45 @@ pub fn inaccessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> 
     })
 }
 
-/// Get the unicode normalized path, and if you can access the file.
+/// Override for the platform default behaviour of [`normalized_filename`].
 ///
-/// On platforms where the system normalizes filenames (Mac OSX),
-/// you can access a file by any path which will normalize correctly.
-/// On platforms where the system does not normalize filenames
-/// (everything else), you have to access a file by its exact path.
-///
-/// Internally, bzr only supports NFC normalization, since that is
-/// the standard for XML documents.
-///
-/// So return the normalized path, and a flag indicating if the file
-/// can be accessed by that path.
-#[cfg(target_os = "macos")]
-pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
-    accessible_normalized_filename(path)
+/// Tests need to exercise both the accessible (macOS-like) and inaccessible
+/// (Linux/Windows-like) code paths regardless of the host platform. Setting a
+/// non-`Auto` mode forces the corresponding implementation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NormalizationMode {
+    /// Use the platform default: accessible on macOS, inaccessible elsewhere.
+    Auto,
+    /// Force `accessible_normalized_filename` (filesystem normalizes paths).
+    Accessible,
+    /// Force `inaccessible_normalized_filename` (filesystem does not).
+    Inaccessible,
+}
+
+thread_local! {
+    static NORMALIZATION_MODE: std::cell::Cell<NormalizationMode> =
+        const { std::cell::Cell::new(NormalizationMode::Auto) };
+}
+
+/// Set the normalization mode for the current thread, returning the previous mode.
+pub fn set_normalization_mode(mode: NormalizationMode) -> NormalizationMode {
+    NORMALIZATION_MODE.with(|m| m.replace(mode))
+}
+
+/// Return the normalization mode for the current thread.
+pub fn normalization_mode() -> NormalizationMode {
+    NORMALIZATION_MODE.with(|m| m.get())
+}
+
+fn platform_default_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
+    #[cfg(target_os = "macos")]
+    {
+        accessible_normalized_filename(path)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        inaccessible_normalized_filename(path)
+    }
 }
 
 /// Get the unicode normalized path, and if you can access the file.
@@ -196,10 +220,14 @@ pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
 ///
 /// So return the normalized path, and a flag indicating if the file
 /// can be accessed by that path.
-
-#[cfg(not(target_os = "macos"))]
+///
+/// The behaviour can be overridden for testing via [`set_normalization_mode`].
 pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
-    inaccessible_normalized_filename(path)
+    match normalization_mode() {
+        NormalizationMode::Auto => platform_default_normalized_filename(path),
+        NormalizationMode::Accessible => accessible_normalized_filename(path),
+        NormalizationMode::Inaccessible => inaccessible_normalized_filename(path),
+    }
 }
 
 pub fn normalizes_filenames() -> bool {

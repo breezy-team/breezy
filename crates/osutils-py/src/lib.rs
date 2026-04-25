@@ -255,21 +255,55 @@ fn normalized_filename<'a>(
     filename: &'a Bound<'a, PyAny>,
     policy: Option<&'a str>,
 ) -> PyResult<(Bound<'a, PyString>, bool)> {
-    if policy.is_none() {
-        if breezy_osutils::path::normalizes_filenames() {
-            _accessible_normalized_filename(py, filename)
-        } else {
-            _inaccessible_normalized_filename(py, filename)
+    use breezy_osutils::path::NormalizationMode;
+    let mode = match policy {
+        None => breezy_osutils::path::normalization_mode(),
+        Some("accessible") => NormalizationMode::Accessible,
+        Some("inaccessible") => NormalizationMode::Inaccessible,
+        Some(_) => {
+            return Err(PyValueError::new_err(
+                "policy must be 'accessible', 'inaccessible' or None",
+            ))
         }
-    } else if policy == Some("accessible") {
-        _accessible_normalized_filename(py, filename)
-    } else if policy == Some("inaccessible") {
-        _inaccessible_normalized_filename(py, filename)
-    } else {
-        Err(PyValueError::new_err(
-            "policy must be 'accessible', 'inaccessible' or None",
-        ))
+    };
+    let resolved = match mode {
+        NormalizationMode::Auto => {
+            if breezy_osutils::path::normalizes_filenames() {
+                NormalizationMode::Accessible
+            } else {
+                NormalizationMode::Inaccessible
+            }
+        }
+        other => other,
+    };
+    match resolved {
+        NormalizationMode::Accessible => _accessible_normalized_filename(py, filename),
+        NormalizationMode::Inaccessible => _inaccessible_normalized_filename(py, filename),
+        NormalizationMode::Auto => unreachable!(),
     }
+}
+
+#[pyfunction]
+fn set_normalization_mode(mode: &str) -> PyResult<String> {
+    use breezy_osutils::path::NormalizationMode;
+    let new_mode = match mode {
+        "auto" => NormalizationMode::Auto,
+        "accessible" => NormalizationMode::Accessible,
+        "inaccessible" => NormalizationMode::Inaccessible,
+        other => {
+            return Err(PyValueError::new_err(format!(
+                "mode must be 'auto', 'accessible' or 'inaccessible', not {:?}",
+                other
+            )))
+        }
+    };
+    let old = breezy_osutils::path::set_normalization_mode(new_mode);
+    Ok(match old {
+        NormalizationMode::Auto => "auto",
+        NormalizationMode::Accessible => "accessible",
+        NormalizationMode::Inaccessible => "inaccessible",
+    }
+    .to_string())
 }
 
 #[pyfunction]
@@ -1366,6 +1400,7 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
     m.add_wrapped(wrap_pyfunction!(_inaccessible_normalized_filename))?;
     m.add_wrapped(wrap_pyfunction!(_accessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(set_normalization_mode))?;
     m.add_wrapped(wrap_pyfunction!(normalizes_filenames))?;
     m.add_wrapped(wrap_pyfunction!(is_inside))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_any))?;

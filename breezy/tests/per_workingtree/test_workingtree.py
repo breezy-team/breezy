@@ -869,23 +869,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
+        if not osutils.normalizes_filenames():
+            raise TestSkipped("Filesystem does not normalize filenames")
         try:
             self.build_tree(["a\u030a"])
         except UnicodeError as err:
             raise TestSkipped("Filesystem does not support unicode filenames") from err
         tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
-        if not osutils.normalizes_filenames():
-            raise TestSkipped("Filesystem does not normalize filenames")
-        try:
-            tree.add(["a\u030a"])
-            with tree.lock_read():
-                self.assertEqual(
-                    [("", "directory"), ("\xe5", "file")],
-                    [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
-                )
-        finally:
-            osutils.normalized_filename = orig
+        tree.add(["a\u030a"])
+        with tree.lock_read():
+            self.assertEqual(
+                [("", "directory"), ("\xe5", "file")],
+                [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
+            )
 
     def test_non_normalized_add_inaccessible(self):
         try:
@@ -893,12 +889,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         except UnicodeError as err:
             raise TestSkipped("Filesystem does not support unicode filenames") from err
         tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
-        osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
-        finally:
-            osutils.normalized_filename = orig
+        self.addCleanup(osutils.set_normalization_mode, "auto")
+        osutils.set_normalization_mode("inaccessible")
+        self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
 
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by
