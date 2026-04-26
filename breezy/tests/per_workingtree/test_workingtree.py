@@ -884,6 +884,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             )
 
     def test_non_normalized_add_inaccessible(self):
+        if osutils.normalizes_filenames():
+            raise TestSkipped(
+                "Filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
         try:
             self.build_tree(["a\u030a"])
         except UnicodeError as err:

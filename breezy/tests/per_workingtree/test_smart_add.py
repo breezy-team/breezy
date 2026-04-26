@@ -411,11 +411,21 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         )
 
     def test_inaccessible_explicit(self):
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                "filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
         self.addCleanup(osutils.set_normalization_mode, "auto")
         osutils.set_normalization_mode("inaccessible")
         self.assertRaises(errors.InvalidNormalization, self.wt.smart_add, ["a\u030a"])
 
     def test_inaccessible_implicit(self):
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable(
+                "filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
         self.addCleanup(osutils.set_normalization_mode, "auto")
         osutils.set_normalization_mode("inaccessible")
         # TODO: jam 20060701 In the future, this should probably
