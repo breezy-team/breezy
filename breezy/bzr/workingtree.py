@@ -70,6 +70,7 @@ from bzrformats.errors import (
     ObjectNotLocked,
     RevisionNotPresent,
 )
+from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
 from bzrformats.errors import InvalidNormalization as _BzrFormatsInvalidNormalization
 from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
@@ -779,14 +780,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def check_state(self):
         """Check that the working state is/isn't valid."""
-        with self.lock_read():
-            check_refs = self._get_check_refs()
-            refs = {}
-            for ref in check_refs:
-                kind, value = ref
-                if kind == "trees":
-                    refs[ref] = self.branch.repository.revision_tree(value)
-            self._check(refs)
+        try:
+            with self.lock_read():
+                check_refs = self._get_check_refs()
+                refs = {}
+                for ref in check_refs:
+                    kind, value = ref
+                    if kind == "trees":
+                        refs[ref] = self.branch.repository.revision_tree(value)
+                self._check(refs)
+        except _BzrFormatsDirstateCorrupt as e:
+            # Translate the bzrformats-specific corruption error so
+            # callers (e.g. ``cmd_repair_workingtree``) catching
+            # ``breezy.errors.BzrError`` see it.
+            raise errors.BzrError(str(e)) from e
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.

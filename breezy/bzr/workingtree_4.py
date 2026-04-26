@@ -51,6 +51,7 @@ import contextlib
 
 from bzrformats import dirstate
 from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
+from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
 from bzrformats.errors import LockContention as _BzrFormatsLockContention
 from bzrformats.inventory import (
     ROOT_ID,
@@ -1528,26 +1529,32 @@ class DirStateWorkingTree(InventoryWorkingTree):
         This does a hard-reset to a last-known-good state. This is a way to
         fix if something got corrupted (like the .bzr/checkout/dirstate file)
         """
-        with self.lock_tree_write():
-            if revision_ids is None:
-                revision_ids = self.get_parent_ids()
-            if not revision_ids:
-                base_tree = self.branch.repository.revision_tree(
-                    _mod_revision.NULL_REVISION
-                )
-                trees = []
-            else:
-                trees = list(
-                    zip(
-                        revision_ids,
-                        self.branch.repository.revision_trees(revision_ids),
-                        strict=False,
+        try:
+            with self.lock_tree_write():
+                if revision_ids is None:
+                    revision_ids = self.get_parent_ids()
+                if not revision_ids:
+                    base_tree = self.branch.repository.revision_tree(
+                        _mod_revision.NULL_REVISION
                     )
-                )
-                base_tree = trees[0][1]
-            state = self.current_dirstate()
-            # We don't support ghosts yet
-            state.set_state_from_scratch(base_tree.root_inventory, trees, [])
+                    trees = []
+                else:
+                    trees = list(
+                        zip(
+                            revision_ids,
+                            self.branch.repository.revision_trees(revision_ids),
+                            strict=False,
+                        )
+                    )
+                    base_tree = trees[0][1]
+                state = self.current_dirstate()
+                # We don't support ghosts yet
+                state.set_state_from_scratch(base_tree.root_inventory, trees, [])
+        except _BzrFormatsDirstateCorrupt as e:
+            # Translate the bzrformats-specific corruption error so
+            # callers (e.g. ``cmd_repair_workingtree``) catching
+            # ``breezy.errors.BzrError`` see it.
+            raise errors.BzrError(str(e)) from e
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
