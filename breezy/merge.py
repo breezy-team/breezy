@@ -910,16 +910,22 @@ class Merge3Merger:
                     executable3 = (None, executable3[1], None)
                     changed = True
                     copied = False
-                # Resolve a trans_id for this entry. When the tree carries
-                # file ids, go through the file-id map so that downstream
-                # parent lookups (see _merge_names) pick up the same trans_id
-                # as a sibling rename / creation. When file_id is None the
-                # tree is path-based, so fall back to this_path; if that's
-                # also absent, assign a fresh id.
-                if file_id is not None:
+                # Resolve a trans_id for this entry. Inventory-backed
+                # trees route through ``trans_id_file_id`` so downstream
+                # parent lookups (see ``_merge_names``) pick up the same
+                # trans_id as a sibling rename / creation. Path-based
+                # trees (git, MemoryTree) key directly off the path —
+                # any ``file_id`` the iterator might have attached is
+                # synthetic and redundant. Prefer THIS's path; fall back
+                # to OTHER's (for new-in-OTHER files) so siblings that
+                # subsequently look up the same path hit the same
+                # trans_id.
+                if file_id is not None and self.this_tree.supports_file_ids:
                     trans_id = self.tt.trans_id_file_id(file_id)
                 elif paths3[2]:
                     trans_id = self.tt.trans_id_tree_path(paths3[2])
+                elif paths3[1]:
+                    trans_id = self.tt.trans_id_tree_path(paths3[1])
                 else:
                     trans_id = self.tt.assign_id()
                 # Try merging each entry
