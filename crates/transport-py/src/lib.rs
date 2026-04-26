@@ -65,31 +65,34 @@ fn map_transport_err_to_py_err(e: Error, t: Option<Py<PyAny>>, p: Option<&UrlFra
     }
 }
 
-#[cfg(unix)]
-fn perms_from_py_object(obj: Py<PyAny>) -> Permissions {
-    use std::os::unix::fs::PermissionsExt;
-    Python::attach(|py| {
-        let mode = obj.extract::<u32>(py).unwrap();
-        Permissions::from_mode(mode)
-    })
-}
-
-#[cfg(windows)]
-fn perms_from_py_object(obj: Py<PyAny>) -> Permissions {
-    // Windows has no POSIX mode; approximate by reading the mode and honouring
-    // the write bit via Permissions::set_readonly.
-    //
-    // std::fs::Permissions has no public constructor on Windows, so borrow a
-    // value by reading metadata of an existing file/dir.
-    Python::attach(|py| {
-        let mode = obj.extract::<u32>(py).unwrap_or(0o666);
-        let mut perms = std::fs::metadata(".")
-            .or_else(|_| std::fs::metadata(std::env::temp_dir()))
-            .expect("unable to read any metadata for default permissions")
-            .permissions();
-        perms.set_readonly(mode & 0o200 == 0);
-        perms
-    })
+/// Translate a Python POSIX mode integer into a `Permissions` value to hand
+/// to the underlying Rust transport.
+///
+/// On Unix this is a straight `Permissions::from_mode`. On Windows there is
+/// no general mapping: `std::fs::Permissions` is effectively just the
+/// readonly bit, and we cannot construct one directly. The only POSIX-mode
+/// concept we can express is "no write bit -> readonly file"; for the
+/// common writeable case we return `None` so the caller skips
+/// `set_permissions` entirely. Trying to synthesize a value via
+/// `metadata(".")` is wrong because directory attrs include
+/// `FILE_ATTRIBUTE_DIRECTORY`, which `SetFileAttributesW` rejects when
+/// applied to a regular file (Win32 error 87).
+// TODO: handle the readonly case on Windows by reading the target's own
+// attrs and toggling readonly there. Not needed for the current callers.
+fn perms_from_py_object(obj: Py<PyAny>) -> Option<Permissions> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        Python::attach(|py| {
+            let mode = obj.extract::<u32>(py).unwrap();
+            Some(Permissions::from_mode(mode))
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = obj;
+        None
+    }
 }
 
 /// Translate a Python `mode=None` argument into a `Permissions` value to
@@ -100,13 +103,11 @@ fn perms_from_py_object(obj: Py<PyAny>) -> Permissions {
 /// uses `tempfile`, which creates files with `0o600` by default, so we have
 /// to set the permissions explicitly to keep behaviour unchanged.
 ///
-/// On Windows there is no equivalent default; `std::fs::Permissions` is
-/// effectively just the readonly bit, which we don't want to clobber when
-/// the caller didn't ask for it. Returning `None` skips the `set_permissions`
-/// call entirely, which is what we want.
+/// On Windows there is no equivalent default; we just return `None` and
+/// let the OS-default attrs stand.
 fn perms_from_py_mode(mode: Option<Py<PyAny>>) -> Option<Permissions> {
     if let Some(obj) = mode {
-        return Some(perms_from_py_object(obj));
+        return perms_from_py_object(obj);
     }
     #[cfg(unix)]
     {
@@ -364,7 +365,7 @@ impl Transport {
 
     #[pyo3(signature = (path, mode=None))]
     fn mkdir(slf: &Bound<Self>, py: Python, path: &str, mode: Option<Py<PyAny>>) -> PyResult<()> {
-        let mode = mode.map(perms_from_py_object);
+        let mode = mode.and_then(perms_from_py_object);
         let t = &slf.borrow().0;
         py.detach(|| t.mkdir(path, mode)).map_err(|e| {
             let obj = slf.clone().unbind().into();
@@ -375,7 +376,7 @@ impl Transport {
 
     #[pyo3(signature = (mode=None))]
     fn ensure_base(&self, py: Python, mode: Option<Py<PyAny>>) -> PyResult<bool> {
-        let mode = mode.map(perms_from_py_object);
+        let mode = mode.and_then(perms_from_py_object);
         py.detach(|| self.0.ensure_base(mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
@@ -482,7 +483,7 @@ impl Transport {
         let t = &slf.borrow().0;
 
         let mode = perms_from_py_mode(mode);
-        let dir_mode = dir_mode.map(perms_from_py_object);
+        let dir_mode = dir_mode.and_then(perms_from_py_object);
         py.detach(|| t.put_bytes_non_atomic(path, data, mode, create_parent_dir, dir_mode))
             .map_err(|e| {
                 let obj = slf.clone().unbind().into();
@@ -524,7 +525,7 @@ impl Transport {
         let t = &slf.borrow().0;
         let mut file = PyBinaryFile::from(file);
         let mode = perms_from_py_mode(mode);
-        let dir_mode = dir_mode.map(perms_from_py_object);
+        let dir_mode = dir_mode.and_then(perms_from_py_object);
         py.detach(|| t.put_file_non_atomic(path, &mut file, mode, create_parent_dir, dir_mode))
             .map_err(|e| {
                 let obj = slf.clone().unbind().into();
@@ -579,7 +580,7 @@ impl Transport {
     fn create_prefix(&self, py: Python, mode: Option<Py<PyAny>>) -> PyResult<()> {
         let t = &self.0;
 
-        py.detach(|| t.create_prefix(mode.map(perms_from_py_object)))
+        py.detach(|| t.create_prefix(mode.and_then(perms_from_py_object)))
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
@@ -694,7 +695,7 @@ impl Transport {
         bytes: &[u8],
         mode: Option<Py<PyAny>>,
     ) -> PyResult<u64> {
-        let mode = mode.map(perms_from_py_object);
+        let mode = mode.and_then(perms_from_py_object);
         py.detach(|| self.0.append_bytes(path, bytes, mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
@@ -708,7 +709,7 @@ impl Transport {
         mode: Option<Py<PyAny>>,
     ) -> PyResult<u64> {
         let mut file = PyBinaryFile::from(file);
-        let mode = mode.map(perms_from_py_object);
+        let mode = mode.and_then(perms_from_py_object);
         py.detach(|| self.0.append_file(path, &mut file, mode))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
@@ -732,7 +733,7 @@ impl Transport {
         mode: Option<Py<PyAny>>,
     ) -> PyResult<PyWriteStream> {
         let t = &slf.borrow().0;
-        py.detach(|| t.open_write_stream(path, mode.map(perms_from_py_object)))
+        py.detach(|| t.open_write_stream(path, mode.and_then(perms_from_py_object)))
             .map_err(|e| Transport::map_to_py_err(slf.borrow(), py, e, Some(path)))
             .map(PyWriteStream)
     }
@@ -801,7 +802,7 @@ impl Transport {
                 self.0.copy_to(
                     relpaths_ref.as_slice(),
                     t.as_ref(),
-                    mode.map(perms_from_py_object),
+                    mode.and_then(perms_from_py_object),
                 )
             })
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
@@ -812,7 +813,7 @@ impl Transport {
                     .copy_to(
                         relpaths_ref.as_slice(),
                         t.as_ref(),
-                        mode.map(perms_from_py_object),
+                        mode.and_then(perms_from_py_object),
                     )
                     .map_err(|e| map_transport_err_to_py_err(e, None, None))
             })
