@@ -406,8 +406,33 @@ pub mod win32 {
         path
     }
 
+    /// Canonicalise the longest prefix of `f` that exists on disk, leaving
+    /// the rest as-is. `std::fs::canonicalize` requires the entire path to
+    /// exist, but Python's `ntpath.realpath` (and the rest of the codebase)
+    /// expects realpath to be tolerant of missing tail components.
+    fn canonicalize_existing_prefix(f: &Path) -> std::io::Result<PathBuf> {
+        match std::fs::canonicalize(f) {
+            Ok(p) => Ok(p),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                let parent = match f.parent() {
+                    Some(p) if !p.as_os_str().is_empty() => p,
+                    // No parent: return absolute path without canonicalisation.
+                    _ => return abspath(f),
+                };
+                let base = match f.file_name() {
+                    Some(b) => b,
+                    None => return abspath(f),
+                };
+                let mut canonical_parent = canonicalize_existing_prefix(parent)?;
+                canonical_parent.push(base);
+                Ok(canonical_parent)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
-        let canonical = std::fs::canonicalize(f)?;
+        let canonical = canonicalize_existing_prefix(f)?;
         let stripped = strip_verbatim_prefix(canonical);
         Ok(fixdrive(fix_separators(stripped.as_path()).as_path()))
     }
