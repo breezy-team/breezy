@@ -1577,7 +1577,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         except _mod_transport.FileExists as e:
             raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == "win32" and isinstance(transport, local.LocalTransport):
-            win32utils.set_file_attr_hidden(transport._abspath(".bzr"))
+            win32utils.set_file_attr_hidden(transport.local_abspath(".bzr"))
         file_mode = temp_control._file_mode
         del temp_control
         bzrdir_transport = transport.clone(".bzr")
