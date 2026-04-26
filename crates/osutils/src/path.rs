@@ -381,17 +381,79 @@ pub mod win32 {
         fix_separators(&p)
     }
 
+    /// Strip the `\\?\` extended-length path prefix that
+    /// `std::fs::canonicalize` adds on Windows. The prefix lets paths exceed
+    /// MAX_PATH but breaks downstream code that expects a regular drive path.
+    /// `ntpath.realpath` strips it when the result still fits, and we mirror
+    /// that behaviour here.
+    fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
+        let s = match path.to_str() {
+            Some(s) => s,
+            None => return path,
+        };
+        if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+            // \\?\UNC\server\share\... -> \\server\share\...
+            return PathBuf::from(format!(r"\\{rest}"));
+        }
+        if let Some(rest) = s.strip_prefix(r"\\?\") {
+            // Only strip when followed by a drive letter; \\?\Volume{...}
+            // and similar forms don't have a non-verbatim equivalent.
+            let bytes = rest.as_bytes();
+            if bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic() {
+                return PathBuf::from(rest);
+            }
+        }
+        path
+    }
+
     pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
-        std::fs::canonicalize(f)
+        let canonical = std::fs::canonicalize(f)?;
+        let stripped = strip_verbatim_prefix(canonical);
+        Ok(fixdrive(fix_separators(stripped.as_path()).as_path()))
     }
 
     #[cfg(test)]
     mod test {
+        use super::strip_verbatim_prefix;
+        use std::path::PathBuf;
+
         #[test]
         fn test_abspath() {
             assert_eq!(
                 super::abspath(std::path::Path::new("C:/foo/bar")).unwrap(),
                 std::path::Path::new("C:/foo/bar")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_drive() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\C:\Users\foo")),
+                PathBuf::from(r"C:\Users\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_unc() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\UNC\server\share\foo")),
+                PathBuf::from(r"\\server\share\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_unknown_kept() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\Volume{abc}\foo")),
+                PathBuf::from(r"\\?\Volume{abc}\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_no_prefix() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"C:\Users\foo")),
+                PathBuf::from(r"C:\Users\foo")
             );
         }
     }
