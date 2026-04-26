@@ -797,9 +797,17 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
 }
 
 #[pyfunction]
-#[cfg(unix)]
 fn get_umask() -> PyResult<u32> {
-    Ok(breezy_osutils::get_umask().bits() as u32)
+    #[cfg(unix)]
+    {
+        Ok(breezy_osutils::get_umask().bits() as u32)
+    }
+    #[cfg(not(unix))]
+    {
+        // umask is not meaningful on Windows; mirror Python's behaviour
+        // of reporting 0 since there's no way to set/read it.
+        Ok(0)
+    }
 }
 
 #[pyfunction]
@@ -1255,7 +1263,7 @@ fn colorstring<'a>(
     {
         let fgcolor = fgcolor.map(string_to_color).transpose()?;
         let bgcolor = bgcolor.map(string_to_color).transpose()?;
-        
+
         Ok(PyBytes::new(
             py,
             &breezy_osutils::terminal::colorstring(text, fgcolor, bgcolor),
@@ -1453,7 +1461,6 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
     posixm.add_wrapped(wrap_pyfunction!(posix_normpath))?;
     m.add_submodule(&posixm)?;
-    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
