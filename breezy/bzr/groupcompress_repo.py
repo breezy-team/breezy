@@ -24,6 +24,7 @@ from bzrformats import index as _mod_index
 from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrformats.errors import BzrCheckError
+from bzrformats.errors import NoSuchRevision as _BzrFormatsNoSuchRevision
 from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 
 from .. import controldir, debug, errors, osutils, trace, ui
@@ -877,7 +878,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 chk_diff, text_keys, chk_map._bytes_to_text_key
             ):
                 pass
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, _BzrFormatsNoSuchRevision):
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
@@ -888,7 +889,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         try:
             for _interesting_rec, _interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, _BzrFormatsNoSuchRevision):
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps"
             )

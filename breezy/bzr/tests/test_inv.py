@@ -333,6 +333,9 @@ class TestInventoryUpdates(TestCase):
         # add a root entry by adding its path
         ie = inv.add_path("", "directory", b"my-root")
         self.assertEqual(b"my-root", ie.file_id)
+        # bzrformats wraps the underlying Rust entry in a fresh
+        # Python object on every access, so identity comparison
+        # doesn't apply — equality is what matters.
         self.assertEqual(ie, inv.root)
 
     def test_add_path(self):
