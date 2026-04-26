@@ -52,6 +52,7 @@ import contextlib
 from bzrformats import dirstate
 from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
 from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
+from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
 from bzrformats.errors import LockContention as _BzrFormatsLockContention
 from bzrformats.inventory import (
     ROOT_ID,
@@ -2772,7 +2773,14 @@ class InterDirStateTree(InterInventoryTree):
             want_unversioned,
             self.target,
         )
-        return iter_changes.iter_changes()
+
+        def _translate_kind_errors(it):
+            try:
+                yield from it
+            except _BzrFormatsBadFileKindError as e:
+                raise errors.BadFileKindError(e.filename, e.kind) from e
+
+        return _translate_kind_errors(iter_changes.iter_changes())
 
     @staticmethod
     def is_compatible(source, target):

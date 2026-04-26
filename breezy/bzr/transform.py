@@ -63,6 +63,7 @@ from ..transform import (
 )
 from ..tree import find_previous_path
 from bzrformats import inventory
+from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
 from bzrformats.inventory import NoSuchId
 
 from . import generate_ids, inventorytree
@@ -2279,9 +2280,12 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 kind = self._transform._tree.stored_kind(
                     self._transform._tree.id2path(file_id)
                 )
-            new_entry = inventory.make_entry(
-                kind, self._transform.final_name(trans_id), parent_file_id, file_id
-            )
+            try:
+                new_entry = inventory.make_entry(
+                    kind, self._transform.final_name(trans_id), parent_file_id, file_id
+                )
+            except _BzrFormatsBadFileKindError as e:
+                raise errors.BadFileKindError(e.filename, e.kind) from e
             yield new_entry, trans_id
 
     def _list_files_by_dir(self):
