@@ -963,11 +963,36 @@ fn win32_abspath(path: PathBuf) -> PyResult<String> {
         .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
-#[cfg(unix)]
 #[pyfunction]
 fn kind_from_mode(mode: u32) -> &'static str {
-    use nix::sys::stat::SFlag;
-    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode.try_into().unwrap()))
+    #[cfg(unix)]
+    {
+        use nix::sys::stat::SFlag;
+        breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode.try_into().unwrap()))
+    }
+    #[cfg(not(unix))]
+    {
+        // POSIX S_IFMT/S_IFx constants. Windows Python sets these on os.stat
+        // results via the C runtime's stat.h.
+        const S_IFMT: u32 = 0o170000;
+        const S_IFDIR: u32 = 0o040000;
+        const S_IFCHR: u32 = 0o020000;
+        const S_IFBLK: u32 = 0o060000;
+        const S_IFREG: u32 = 0o100000;
+        const S_IFIFO: u32 = 0o010000;
+        const S_IFLNK: u32 = 0o120000;
+        const S_IFSOCK: u32 = 0o140000;
+        match mode & S_IFMT {
+            S_IFDIR => "directory",
+            S_IFCHR => "chardev",
+            S_IFBLK => "block",
+            S_IFREG => "file",
+            S_IFIFO => "fifo",
+            S_IFLNK => "symlink",
+            S_IFSOCK => "socket",
+            _ => "unknown",
+        }
+    }
 }
 
 #[pyfunction]
@@ -1462,7 +1487,6 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     posixm.add_wrapped(wrap_pyfunction!(posix_normpath))?;
     m.add_submodule(&posixm)?;
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
-    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
@@ -1495,7 +1519,6 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(pathjoin))?;
     m.add_wrapped(wrap_pyfunction!(joinpath))?;
     m.add_wrapped(wrap_pyfunction!(splitpath))?;
-    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(is_local_pid_dead))?;
     m.add_wrapped(wrap_pyfunction!(get_user_name))?;
     m.add_wrapped(wrap_pyfunction!(compare_files))?;
