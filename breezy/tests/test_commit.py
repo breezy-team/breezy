@@ -375,7 +375,10 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(b"1", inv.get_entry(b"dirid").revision)
         self.assertEqual(b"1", inv.get_entry(b"file1id").revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
-        self.assertRaises(BzrError, inv.get_entry, b"file2id")
+        # bzrformats raises its own NoSuchId class which is not a BzrError.
+        from bzrformats.inventory import NoSuchId
+
+        self.assertRaises((BzrError, NoSuchId), inv.get_entry, b"file2id")
 
     def test_strict_commit(self):
         """Try and commit with unknown files and strict = True, should fail."""

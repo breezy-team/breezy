@@ -44,7 +44,10 @@ from bzrformats import (
     )
 """,
 )
-from bzrformats.errors import RevisionNotPresent
+from bzrformats.errors import (
+    BadFileKindError as _BzrFormatsBadFileKindError,
+    RevisionNotPresent,
+)
 
 from ..tree import (
     FileTimestampUnavailable,
@@ -932,9 +935,12 @@ class _SmartAddHelper:
             else:
                 raise errors.InvalidNormalization(path)
         file_id = self.action(self.tree, parent_ie, path, kind)
-        entry = _mod_inventory.make_entry(
-            kind, basename, parent_ie.file_id, file_id=file_id
-        )
+        try:
+            entry = _mod_inventory.make_entry(
+                kind, basename, parent_ie.file_id, file_id=file_id
+            )
+        except _BzrFormatsBadFileKindError as e:
+            raise errors.BadFileKindError(e.filename, e.kind) from e
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
         self.added.append(inv_path)
         return entry
