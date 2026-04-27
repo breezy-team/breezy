@@ -1585,23 +1585,12 @@ class BoundBranchConnectionFailure(BzrError):
         self.error = error
 
 
-class VersionedFileError(BzrError):
-    """Base class for versioned file errors.
-
-    Raised when operations on versioned files encounter problems.
-    """
-
-    _fmt = "Versioned file error"
-
-
-class VersionedFileInvalidChecksum(VersionedFileError):
-    """Text checksum validation failed.
-
-    Raised when the checksum of text in a versioned file does not match
-    the expected checksum, indicating data corruption.
-    """
-
-    _fmt = "Text did not match its checksum: %(msg)s"
+# VersionedFile errors are now owned by bzrformats; re-export so
+# existing breezy.errors.X imports keep working.
+from bzrformats.errors import (  # noqa: E402
+    VersionedFileError,
+    VersionedFileInvalidChecksum,
+)
 
 
 class NoSuchExportFormat(BzrError):
