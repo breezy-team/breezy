@@ -43,9 +43,19 @@ class TrivialTest(tests.TestCaseWithTransport):
         t = controldir.ControlDir.create_standalone_workingtree(".")
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = inventory.Inventory(revision_id=b"missing", root_id=None)
-        root = inventory.InventoryDirectory(inventory.ROOT_ID, "", None, b"missing")
-        inv.add(root)
+        inv = inventory.Inventory(revision_id=b"missing")
+        # bzrformats InventoryEntry attributes are read-only, so build
+        # a fresh root with the desired revision and swap it in.
+        root = inv.root
+        inv.delete(root.file_id)
+        inv.add(
+            inventory.InventoryDirectory(
+                file_id=root.file_id,
+                name=root.name,
+                parent_id=None,
+                revision=b"missing",
+            )
+        )
         repo.lock_write()
         with repo.lock_write(), WriteGroup(repo):
             repo.add_inventory(b"missing", inv, [])

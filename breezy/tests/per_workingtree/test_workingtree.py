@@ -1023,6 +1023,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(["tree/a"])
         self.assertRaises(NoSuchFile, tree.stored_kind, "a")
         tree.add(["a"])
+        # bzrformats inventory entries return a fresh `str` each access,
+        # so identity comparison no longer holds — use equality.
         self.assertEqual("file", tree.stored_kind("a"))
 
     def test_missing_file_sha1(self):
