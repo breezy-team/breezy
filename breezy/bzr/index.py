@@ -28,9 +28,10 @@ import re
 from bisect import bisect_right
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+
 from .. import debug, errors, trace
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = b"key_elements="
@@ -1382,7 +1383,7 @@ class CombinedGraphIndex:
                             yield node
                             seen_keys.add(node[1])
                 return
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1412,7 +1413,7 @@ class CombinedGraphIndex:
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1455,7 +1456,7 @@ class CombinedGraphIndex:
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1606,7 +1607,7 @@ class CombinedGraphIndex:
         while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1641,7 +1642,7 @@ class CombinedGraphIndex:
                 for index in self._indices:
                     index.validate()
                 return
-            except _mod_transport.NoSuchFile as e:
+            except NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 

@@ -18,10 +18,10 @@
 
 import fastbencode as bencode
 import vcsgraph.errors
+from dromedary.errors import NoSuchFile
 
 from ... import errors
 from ... import revision as _mod_revision
-from ... import transport as _mod_transport
 from ...controldir import ControlDir
 from .request import (
     FailedSmartServerResponse,
@@ -127,7 +127,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         """
         try:
             content = branch.control_transport.get_bytes("branch.conf")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             content = b""
         return SuccessfulSmartServerResponse((b"ok",), content)
 

@@ -30,6 +30,9 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
+from dromedary import chroot, memory
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
 
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
@@ -44,7 +47,6 @@ from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
 from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import test_server
-from breezy.transport import chroot, memory
 
 from ..testament import Testament
 
@@ -182,8 +184,12 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             urlutils.InvalidURLJoin, request.translate_client_path, b"foo/.."
         )
-        self.assertRaises(errors.PathNotChild, request.translate_client_path, b"/")
-        self.assertRaises(errors.PathNotChild, request.translate_client_path, b"bar/")
+        self.assertRaises(
+            transport_errors.PathNotChild, request.translate_client_path, b"/"
+        )
+        self.assertRaises(
+            transport_errors.PathNotChild, request.translate_client_path, b"bar/"
+        )
         self.assertEqual("./baz", request.translate_client_path(b"foo/baz"))
         e_acute = "\N{LATIN SMALL LETTER E WITH ACUTE}"
         self.assertEqual(
@@ -523,7 +529,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         """Initializing a missing directory should fail like the bzrdir api."""
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
-        self.assertRaises(transport.NoSuchFile, request.execute, b"subdir")
+        self.assertRaises(NoSuchFile, request.execute, b"subdir")
 
     def test_initialized_dir(self):
         """Initializing an extant bzrdir should fail like the bzrdir api."""
@@ -565,7 +571,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
         name = self.make_controldir("reference")._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
         self.assertRaises(
-            transport.NoSuchFile,
+            NoSuchFile,
             request.execute,
             name,
             b"subdir/dir",
@@ -586,7 +592,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
         self.make_controldir("subdir")
         self.assertRaises(
-            transport.FileExists,
+            FileExists,
             request.execute,
             name,
             b"subdir",

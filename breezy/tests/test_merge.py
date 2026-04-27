@@ -17,6 +17,8 @@
 import contextlib
 import os
 
+from dromedary.local import file_kind
+
 from .. import branch as _mod_branch
 from .. import errors, option, tests
 from .. import merge as _mod_merge
@@ -32,7 +34,6 @@ from ..bzr.conflicts import (
 from ..errors import NoCommits, UnrelatedBranches
 from ..merge import _PlanMerge, merge_inner, transform_tree
 from ..osutils import basename, pathjoin
-from ..transport.local import file_kind
 from ..workingtree import PointlessMerge, WorkingTree
 from . import (
     TestCaseWithMemoryTransport,

@@ -250,8 +250,10 @@ impl<'py> pyo3::IntoPyObject<'py> for Kind {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for Kind {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl pyo3::FromPyObject<'_, '_> for Kind {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         let s: String = ob.extract()?;
         match s.as_str() {

@@ -18,12 +18,14 @@
 
 import contextlib
 
-from .. import errors, trace
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import LocalTransport
+
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
+from .. import trace
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
-from ..transport.local import LocalTransport
 from . import bzrdir, hashcache, inventory
 from . import transform as bzr_transform
 from .lockable_files import LockableFiles
@@ -96,7 +98,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         with self.lock_read():
             # To make sure NoSuchFile gets raised..
             if not self.is_versioned(path):
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             return self._hashcache.get_sha1(path, stat_value)
 
 
@@ -115,13 +117,13 @@ class WorkingTree3(PreDirStateWorkingTree):
         with self.lock_read():
             try:
                 return self._transport.get_bytes("last-revision")
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 self._transport.delete("last-revision")
             return False
         else:
@@ -208,7 +210,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             where possible.
         """
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         transport = a_controldir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_controldir)
         control_files.create_lock()
@@ -267,7 +269,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
             # we are being called directly and must probe.
             raise NotImplementedError
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         wt = self._open(a_controldir, self._open_control_files(a_controldir))
         return wt
 

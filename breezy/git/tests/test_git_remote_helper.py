@@ -25,7 +25,7 @@ from io import BytesIO
 
 from dulwich.repo import Repo
 
-from ...tests import TestCaseWithTransport
+from ...tests import TestCaseWithTransport, subprocess_pythonpath
 from ...tests.features import PathFeature
 from ..git_remote_helper import RemoteHelper, fetch, open_local_dir
 from ..object_store import get_object_store
@@ -93,7 +93,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         remote_dir = remote_tree.controldir
         env = dict(os.environ)
         env["GIT_DIR"] = local_path
-        env["PYTHONPATH"] = ":".join(sys.path)
+        env["PYTHONPATH"] = subprocess_pythonpath()
         p = subprocess.Popen(
             [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
             stdin=subprocess.PIPE,

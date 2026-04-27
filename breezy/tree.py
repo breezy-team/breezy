@@ -21,6 +21,8 @@ __docformat__ = "google"
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Optional, cast
 
+from dromedary import errors as transport_errors
+
 from . import errors, lock, osutils, trace
 from . import revision as _mod_revision
 from .inter import InterObject
@@ -1168,7 +1170,7 @@ def get_canonical_path(tree, path, normalize):
                 except errors.NoSuchId:
                     # before a change is committed we can see this error...
                     continue
-        except errors.NotADirectory:
+        except transport_errors.NotADirectory:
             pass
         if new_path:
             cur_path = new_path

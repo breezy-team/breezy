@@ -44,7 +44,8 @@ from breezy.i18n import gettext
 
 import contextlib
 
-from catalogus.registry import _LazyObjectGetter, _ObjectGetter
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
 
 from . import errors, hooks, registry, trace
 from . import revision as _mod_revision
@@ -572,7 +573,7 @@ class ControlDir(ControlComponent):
                 source.set_push_location(br_to.base)
             try:
                 tree_to = self.open_workingtree()
-            except errors.NotLocalUrl:
+            except transport_errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
                     br_to,
                     overwrite=overwrite,
@@ -629,7 +630,7 @@ class ControlDir(ControlComponent):
         """
         try:
             tree = self.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, transport_errors.NotLocalUrl):
             tree = None
             branch = self.open_branch(name=name)
         else:
@@ -741,7 +742,7 @@ class ControlDir(ControlComponent):
                 controldir = klass.open_from_transport(current_transport)
             except (
                 errors.NotBranchError,
-                errors.PermissionDenied,
+                transport_errors.PermissionDenied,
                 errors.UnknownFormatError,
             ):
                 pass
@@ -750,7 +751,7 @@ class ControlDir(ControlComponent):
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except (_mod_transport.NoSuchFile, errors.PermissionDenied):
+            except (NoSuchFile, transport_errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -845,17 +846,17 @@ class ControlDir(ControlComponent):
           possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
-            from breezy.transport import local
+            from dromedary import local
 
             # check for non local urls
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
-                raise errors.NotLocalUrl(base)
+                raise transport_errors.NotLocalUrl(base)
         controldir = klass.create(base, format, possible_transports)
         repo = controldir._find_or_create_repository(force_new_repo)
         result = controldir.create_branch()
         if force_new_tree or (repo.make_working_trees() and force_new_tree is None):
-            with contextlib.suppress(errors.NotLocalUrl):
+            with contextlib.suppress(transport_errors.NotLocalUrl):
                 controldir.create_workingtree()
         return result
 
@@ -876,10 +877,10 @@ class ControlDir(ControlComponent):
         Returns: The WorkingTree object.
         """
         t = _mod_transport.get_transport(base)
-        from breezy.transport import local
+        from dromedary import local
 
         if not isinstance(t, local.LocalTransport):
-            raise errors.NotLocalUrl(base)
+            raise transport_errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(
             base, force_new_repo=True, format=format
         ).controldir
@@ -936,7 +937,7 @@ class ControlDir(ControlComponent):
             transport, format = _mod_transport.do_catching_redirections(
                 find_format, transport, redirected
             )
-        except errors.TooManyRedirections as e:
+        except transport_errors.TooManyRedirections as e:
             raise errors.NotBranchError(base) from e
 
         format.check_support_status(_unsupported)
@@ -977,7 +978,7 @@ class ControlDir(ControlComponent):
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError:
                 pass
-            except errors.PermissionDenied:
+            except transport_errors.PermissionDenied:
                 pass
             try:
                 new_t = a_transport.clone("..")
@@ -1163,14 +1164,20 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         This is mainly useful to allow custom repository formats, such as older
         Bazaar formats and foreign formats, to be tested.
         """
+        from catalogus.registry import _ObjectGetter
+
         self._extra_formats.append(_ObjectGetter(format))
 
     def remove_extra(self, format):
         """Remove an extra format."""
+        from catalogus.registry import _ObjectGetter
+
         self._extra_formats.remove(_ObjectGetter(format))
 
     def register_extra_lazy(self, module_name, member_name):
         """Register a format lazily."""
+        from catalogus.registry import _LazyObjectGetter
+
         self._extra_formats.append(_LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):

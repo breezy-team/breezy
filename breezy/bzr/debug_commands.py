@@ -18,6 +18,8 @@
 
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from .. import errors, osutils, transport
 from ..commands import Command, display_command
 from ..option import Option
@@ -111,7 +113,7 @@ class cmd_dump_btree(Command):
     def _dump_entries(self, trans, basename):
         try:
             st = trans.stat(basename)
-        except errors.TransportNotPossible:
+        except transport_errors.TransportNotPossible:
             # We can't stat, so we'll fake it because we have to do the 'get()'
             # anyway.
             bt, _ = self._get_index_and_bytes(trans, basename)

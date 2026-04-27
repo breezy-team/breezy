@@ -20,7 +20,7 @@ import os
 import ssl
 
 from .. import config, tests, trace
-from ..transport.http import opt_ssl_ca_certs
+from ..config import option_registry
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):
@@ -41,8 +41,9 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
     def test_specified_doesnt_exist(self):
         stack = self.get_stack("")
         # Disable the default value mechanism to force the behavior we want
+        opt = option_registry.get("ssl.ca_certs")
         self.overrideAttr(
-            opt_ssl_ca_certs, "default", os.path.join(self.test_dir, "nonexisting.pem")
+            opt, "default", os.path.join(self.test_dir, "nonexisting.pem")
         )
         self.warnings = []
 

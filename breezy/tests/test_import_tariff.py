@@ -21,10 +21,11 @@ import os
 
 from testtools import content
 
+from breezy.transport import remote
+
 from .. import trace
 from ..bzr.smart import medium
 from ..controldir import ControlDir
-from ..transport import remote
 from . import TestCaseWithTransport
 
 old_format_modules = [
@@ -165,9 +166,9 @@ class TestImportTariffs(ImportTariffTestCase):
             "breezy.version_info_formats.format_rio",
             "breezy.bzr.hashcache",
             "breezy.bzr.remote",
-            "breezy.bzr.smart",
             "breezy.bzr.smart.client",
             "breezy.bzr.smart.medium",
+            "breezy.bzr.smart.request",
             "breezy.bzr.smart.server",
             "breezy.bzr.xml_serializer",
             "breezy.bzr.xml8",
@@ -213,9 +214,9 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.bzr.hashcache",
                 "breezy.bzr.knit",
                 "breezy.bzr.remote",
-                "breezy.bzr.smart",
                 "breezy.bzr.smart.client",
                 "breezy.bzr.smart.medium",
+                "breezy.bzr.smart.request",
                 "breezy.bzr.smart.server",
                 "breezy.transform",
                 "breezy.version_info_formats.format_rio",

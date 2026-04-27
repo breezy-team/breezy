@@ -27,6 +27,7 @@ import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
+from dromedary import errors as transport_errors
 
 from . import config as _mod_config
 from . import debug, errors, registry, repository, urlutils
@@ -2420,7 +2421,7 @@ class GenericInterBranch(InterBranch):
                 try:
                     relpath = self.source.user_transport.relpath(normalized)
                     source_is_master = relpath == ""
-                except (errors.PathNotChild, urlutils.InvalidURL):
+                except (transport_errors.PathNotChild, urlutils.InvalidURL):
                     source_is_master = False
             if not local and bound_location and not source_is_master:
                 # not pulling from master, so we need to update master.

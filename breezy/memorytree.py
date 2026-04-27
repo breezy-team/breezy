@@ -23,12 +23,13 @@ or inventories.
 import posixpath
 import stat
 
+from dromedary.errors import NoSuchFile
+from dromedary.memory import MemoryTransport
+
 from . import errors, lock, osutils
 from . import revision as _mod_revision
-from . import transport as _mod_transport
 from . import tree as tree_mod
 from .mutabletree import MutableTree
-from .transport.memory import MemoryTransport
 
 
 class MemoryTree(MutableTree):
@@ -279,7 +280,7 @@ class MemoryTree(MutableTree):
         """Return the size of the file at the given path."""
         try:
             content = self._file_transport.get_bytes(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         return len(content)
 
@@ -301,7 +302,7 @@ class MemoryTree(MutableTree):
             return "missing", None, None, None
         try:
             kind = self.kind(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return "missing", None, None, None
         if kind == "file":
             content = self._file_transport.get_bytes(path)
@@ -336,7 +337,7 @@ class MemoryTree(MutableTree):
                 dirblock = []
                 try:
                     children = sorted(self._file_transport.list_dir(dirpath))
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     continue
                 for child in children:
                     if dirpath:
@@ -347,7 +348,7 @@ class MemoryTree(MutableTree):
                         continue
                     try:
                         kind = self.kind(child_path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         continue
                     stat_val = self._file_transport.stat(child_path)
                     dirblock.append(
@@ -373,7 +374,7 @@ class MemoryTree(MutableTree):
                 else:
                     try:
                         kind = self.kind(path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         continue
                     if kind == "file":
                         entries.append((path, TreeFile()))
@@ -402,7 +403,7 @@ class MemoryTree(MutableTree):
                     continue
                 try:
                     kind = self.kind(versioned_path)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     continue
                 if kind == "file":
                     yield TreeFile()
@@ -432,7 +433,7 @@ class MemoryTree(MutableTree):
                     continue
                 try:
                     kind = self.kind(path)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     continue
                 if kind == "file":
                     entry = TreeFile()
@@ -503,7 +504,7 @@ class MemoryTree(MutableTree):
                     else:
                         try:
                             st_mode = self._file_transport.stat(f).st_mode
-                        except _mod_transport.NoSuchFile:
+                        except NoSuchFile:
                             # File doesn't exist yet in transport, accept
                             # the add anyway (kind will be determined later)
                             kind = "file"
@@ -601,7 +602,7 @@ class MemoryTree(MutableTree):
         with self.lock_tree_write():
             for path in paths:
                 if path not in self._versioned:
-                    raise _mod_transport.NoSuchFile(path)
+                    raise NoSuchFile(path)
                 self._versioned.discard(path)
                 # Also unversion children
                 prefix = path + "/"
@@ -689,7 +690,7 @@ class InterMemoryTree(tree_mod.InterTree):
                 if in_source:
                     try:
                         source_kind = self.source.kind(path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         in_source = False
                     else:
                         source_executable = (
@@ -700,7 +701,7 @@ class InterMemoryTree(tree_mod.InterTree):
                 if in_target:
                     try:
                         target_kind = self.target.kind(path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         in_target = False
                     else:
                         target_executable = (
@@ -743,7 +744,7 @@ class InterMemoryTree(tree_mod.InterTree):
     def find_target_path(self, path, recurse="none"):
         """Find the corresponding path in the target tree."""
         if not self.source.is_versioned(path):
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if self.target.is_versioned(path):
             return path
         return None
@@ -751,7 +752,7 @@ class InterMemoryTree(tree_mod.InterTree):
     def find_source_path(self, path, recurse="none"):
         """Find the corresponding path in the source tree."""
         if not self.target.is_versioned(path):
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if self.source.is_versioned(path):
             return path
         return None

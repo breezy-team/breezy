@@ -30,13 +30,17 @@ import threading
 from http.client import UnknownProtocol, parse_headers
 from http.server import SimpleHTTPRequestHandler
 
+from dromedary import errors as transport_errors
+from dromedary.http.urllib import HttpTransport
+from dromedary.tests import http_server
+
 import breezy
+from breezy.transport import remote
 
 from .. import (
     config,
     controldir,
     debug,
-    errors,
     osutils,
     tests,
     trace,
@@ -45,19 +49,7 @@ from .. import (
     urlutils,
 )
 from ..bzr import remote as _mod_remote
-from ..transport import remote
-from ..transport.http import urllib
-from ..transport.http.urllib import (
-    AbstractAuthHandler,
-    BasicAuthHandler,
-    HTTPAuthHandler,
-    HTTPConnection,
-    HTTPSConnection,
-    HttpTransport,
-    ProxyHandler,
-    Request,
-)
-from . import features, http_server, http_utils, test_server
+from . import features, http_utils, test_server
 from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -133,7 +125,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
-        from . import ssl_certs
+        from dromedary.tests import ssl_certs
 
         class HTTPS_transport(HttpTransport):
             def __init__(self, base, _from_transport=None):
@@ -226,51 +218,6 @@ class RecordingServer:
         self._thread.join()
         if "threads" in tests.selftest_debug_flags:
             sys.stderr.write(f"Thread  joined: {self._thread.ident}\n")
-
-
-class TestAuthHeader(tests.TestCase):
-    def parse_header(self, header, auth_handler_class=None):
-        if auth_handler_class is None:
-            auth_handler_class = AbstractAuthHandler
-        self.auth_handler = auth_handler_class()
-        return self.auth_handler._parse_auth_header(header)
-
-    def test_empty_header(self):
-        scheme, remainder = self.parse_header("")
-        self.assertEqual("", scheme)
-        self.assertIs(None, remainder)
-
-    def test_negotiate_header(self):
-        scheme, remainder = self.parse_header("Negotiate")
-        self.assertEqual("negotiate", scheme)
-        self.assertIs(None, remainder)
-
-    def test_basic_header(self):
-        scheme, remainder = self.parse_header('Basic realm="Thou should not pass"')
-        self.assertEqual("basic", scheme)
-        self.assertEqual('realm="Thou should not pass"', remainder)
-
-    def test_build_basic_header_with_long_creds(self):
-        handler = BasicAuthHandler()
-        user = "user" * 10  # length 40
-        password = "password" * 5  # length 40
-        header = handler.build_auth_header({"user": user, "password": password}, None)
-        # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
-        # creating a header value with an embedded '\n'
-        self.assertNotIn("\n", header)
-
-    def test_basic_extract_realm(self):
-        _scheme, remainder = self.parse_header(
-            'Basic realm="Thou should not pass"', BasicAuthHandler
-        )
-        match, realm = self.auth_handler.extract_realm(remainder)
-        self.assertIsNotNone(match)
-        self.assertEqual("Thou should not pass", realm)
-
-    def test_digest_header(self):
-        scheme, remainder = self.parse_header('Digest realm="Thou should not pass"')
-        self.assertEqual("digest", scheme)
-        self.assertEqual('realm="Thou should not pass"', remainder)
 
 
 class TestHTTPRangeParsing(tests.TestCase):
@@ -462,7 +409,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             s = socket.socket()
             s.bind(("localhost", 0))
             t = self._transport("http://{}:{}/".format(*s.getsockname()))
-            self.assertRaises(ConnectionError, t.has, "foo/bar")
+            self.assertRaises(transport_errors.ConnectionError, t.has, "foo/bar")
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -474,7 +421,13 @@ class TestHttpTransportRegistration(tests.TestCase):
 
     def test_http_registered(self):
         t = transport.get_transport_from_url(f"{self._url_protocol}://foo.com/")
-        self.assertIsInstance(t, transport.Transport)
+        # Dromedary's Rust-backed HttpTransport derives from the
+        # PyO3 `_transport_rs.Transport` pyclass rather than from
+        # Python's `transport.Transport` directly. Both identities
+        # are valid "this is a Transport" answers; accept either.
+        from dromedary._transport_rs import Transport as _RsTransport
+
+        self.assertIsInstance(t, (transport.Transport, _RsTransport))
         self.assertIsInstance(t, self._transport)
 
 
@@ -576,13 +529,19 @@ class TestWallServer(TestSpecificRequestHandler):
         # just test for ConnectionError, we have to test
         # InvalidHttpResponse too.
         self.assertRaises(
-            (ConnectionError, errors.InvalidHttpResponse), t.has, "foo/bar"
+            (transport_errors.ConnectionError, transport_errors.InvalidHttpResponse),
+            t.has,
+            "foo/bar",
         )
 
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (
+                transport_errors.ConnectionError,
+                ConnectionResetError,
+                transport_errors.InvalidHttpResponse,
+            ),
             t.get,
             "foo/bar",
         )
@@ -619,7 +578,11 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_has(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (
+                transport_errors.ConnectionError,
+                ConnectionResetError,
+                transport_errors.InvalidHttpResponse,
+            ),
             t.has,
             "foo/bar",
         )
@@ -627,7 +590,11 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     def test_http_get(self):
         t = self.get_readonly_transport()
         self.assertRaises(
-            (ConnectionError, ConnectionResetError, errors.InvalidHttpResponse),
+            (
+                transport_errors.ConnectionError,
+                ConnectionResetError,
+                transport_errors.InvalidHttpResponse,
+            ),
             t.get,
             "foo/bar",
         )
@@ -677,11 +644,11 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
 
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.has, "foo/bar")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.has, "foo/bar")
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "foo/bar")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "foo/bar")
 
 
 class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -701,11 +668,11 @@ class TestForbiddenServer(TestSpecificRequestHandler):
 
     def test_http_has(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.TransportError, t.has, "foo/bar")
+        self.assertRaises(transport_errors.TransportError, t.has, "foo/bar")
 
     def test_http_get(self):
         t = self.get_readonly_transport()
-        self.assertRaises(errors.TransportError, t.get, "foo/bar")
+        self.assertRaises(transport_errors.TransportError, t.get, "foo/bar")
 
 
 class TestRecordingServer(tests.TestCase):
@@ -771,8 +738,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # since we are sure that it cannot get there
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -783,8 +750,8 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # also raise a special error
         self.assertListRaises(
             (
-                errors.InvalidRange,
-                errors.ShortReadvError,
+                transport_errors.InvalidRange,
+                transport_errors.ShortReadvError,
             ),
             t.readv,
             "a",
@@ -1159,60 +1126,6 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         self.assertEqual(2, self.get_readonly_server().GET_request_nb)
 
 
-class TestHttpProxyWhiteBox(tests.TestCase):
-    """Whitebox test proxy http authorization.
-
-    Only the urllib implementation is tested here.
-    """
-
-    def _proxied_request(self):
-        handler = ProxyHandler()
-        request = Request("GET", "http://baz/buzzle")
-        handler.set_proxy(request, "http")
-        return request
-
-    def assertEvaluateProxyBypass(self, expected, host, no_proxy):
-        handler = ProxyHandler()
-        self.assertEqual(expected, handler.evaluate_proxy_bypass(host, no_proxy))
-
-    def test_empty_user(self):
-        self.overrideEnv("http_proxy", "http://bar.com")
-        request = self._proxied_request()
-        self.assertNotIn("Proxy-authorization", request.headers)
-
-    def test_user_with_at(self):
-        self.overrideEnv(
-            "http_proxy", "http://username@domain:password@proxy_host:1234"
-        )
-        request = self._proxied_request()
-        self.assertNotIn("Proxy-authorization", request.headers)
-
-    def test_invalid_proxy(self):
-        """A proxy env variable without scheme."""
-        self.overrideEnv("http_proxy", "host:1234")
-        self.assertRaises(urlutils.InvalidURL, self._proxied_request)
-
-    def test_evaluate_proxy_bypass_true(self):
-        """The host is not proxied."""
-        self.assertEvaluateProxyBypass(True, "example.com", "example.com")
-        self.assertEvaluateProxyBypass(True, "bzr.example.com", "*example.com")
-
-    def test_evaluate_proxy_bypass_false(self):
-        """The host is proxied."""
-        self.assertEvaluateProxyBypass(False, "bzr.example.com", None)
-
-    def test_evaluate_proxy_bypass_unknown(self):
-        """The host is not explicitly proxied."""
-        self.assertEvaluateProxyBypass(None, "example.com", "not.example.com")
-        self.assertEvaluateProxyBypass(None, "bzr.example.com", "example.com")
-
-    def test_evaluate_proxy_bypass_empty_entries(self):
-        """Ignore empty entries."""
-        self.assertEvaluateProxyBypass(None, "example.com", "")
-        self.assertEvaluateProxyBypass(None, "example.com", ",")
-        self.assertEvaluateProxyBypass(None, "example.com", "foo,,bar")
-
-
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """Tests proxy server.
 
@@ -1341,12 +1254,12 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(4, 3)]
         )
 
     def test_semantically_invalid_range_header(self):
         self.assertListRaises(
-            errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
+            transport_errors.InvalidHttpRange, self._file_contents, "a", [(42, 128)]
         )
 
 
@@ -1365,110 +1278,10 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         )
 
     def test_redirected(self):
-        self.assertRaises(errors.RedirectRequested, self.get_old_transport().get, "a")
+        self.assertRaises(
+            transport_errors.RedirectRequested, self.get_old_transport().get, "a"
+        )
         self.assertEqual(b"0123456789", self.get_new_transport().get("a").read())
-
-
-class RedirectedRequest(Request):
-    """Request following redirections."""
-
-    init_orig = Request.__init__
-
-    def __init__(self, method, url, *args, **kwargs):
-        """Constructor."""
-        # Since the tests using this class will replace
-        # Request, we can't just call the base class __init__
-        # or we'll loop.
-        RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
-        self.follow_redirections = True
-
-
-def install_redirected_request(test):
-    test.overrideAttr(urllib, "Request", RedirectedRequest)
-
-
-def cleanup_http_redirection_connections(test):
-    # Some sockets are opened but never seen by _urllib, so we trap them at
-    # the http level to be able to clean them up.
-    def socket_disconnect(sock):
-        try:
-            sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
-        except OSError:
-            pass
-
-    def connect(connection):
-        test.http_connect_orig(connection)
-        test.addCleanup(socket_disconnect, connection.sock)
-
-    test.http_connect_orig = test.overrideAttr(HTTPConnection, "connect", connect)
-
-    def connect(connection):
-        test.https_connect_orig(connection)
-        test.addCleanup(socket_disconnect, connection.sock)
-
-    test.https_connect_orig = test.overrideAttr(HTTPSConnection, "connect", connect)
-
-
-class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
-    """Test redirections.
-
-    http implementations do not redirect silently anymore (they
-    do not redirect at all in fact). The mechanism is still in
-    place at the Request level and these tests
-    exercise it.
-    """
-
-    scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(),
-        vary_by_http_protocol_version(),
-    )
-
-    def setUp(self):
-        super().setUp()
-        install_redirected_request(self)
-        cleanup_http_redirection_connections(self)
-        self.build_tree_contents(
-            [
-                ("a", b"a"),
-                ("1/",),
-                ("1/a", b"redirected once"),
-                ("2/",),
-                ("2/a", b"redirected twice"),
-                ("3/",),
-                ("3/a", b"redirected thrice"),
-                ("4/",),
-                ("4/a", b"redirected 4 times"),
-                ("5/",),
-                ("5/a", b"redirected 5 times"),
-            ],
-        )
-
-    def test_one_redirection(self):
-        t = self.get_old_transport()
-        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
-        self.old_server.redirections = [
-            ("(.*)", r"{}/1\1".format(new_prefix), 301),
-        ]
-        self.assertEqual(
-            b"redirected once", t.request("GET", t._remote_path("a"), retries=1).read()
-        )
-
-    def test_five_redirections(self):
-        t = self.get_old_transport()
-        old_prefix = f"http://{self.old_server.host}:{self.old_server.port}"
-        new_prefix = f"http://{self.new_server.host}:{self.new_server.port}"
-        self.old_server.redirections = [
-            ("/1(.*)", r"{}/2\1".format(old_prefix), 302),
-            ("/2(.*)", r"{}/3\1".format(old_prefix), 303),
-            ("/3(.*)", r"{}/4\1".format(old_prefix), 307),
-            ("/4(.*)", r"{}/5\1".format(new_prefix), 301),
-            ("(/[^/]+)", r"{}/1\1".format(old_prefix), 301),
-        ]
-        self.assertEqual(
-            b"redirected 5 times",
-            t.request("GET", t._remote_path("a"), retries=6).read(),
-        )
 
 
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1486,7 +1299,6 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
                 ("a", b"0123456789"),
             ],
         )
-        cleanup_http_redirection_connections(self)
 
         self.old_transport = self.get_old_transport()
 
@@ -1526,7 +1338,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
             return self.old_transport.clone(exception.target)
 
         self.assertRaises(
-            errors.TooManyRedirections,
+            transport_errors.TooManyRedirections,
             transport.do_catching_redirections,
             self.get_a,
             self.old_transport,
@@ -1538,32 +1350,6 @@ def _setup_authentication_config(**kwargs):
     conf = config.AuthenticationConfig()
     conf._get_config().update({"httptest": kwargs})
     conf._save()
-
-
-class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
-    """Unit tests for glue by which urllib2 asks us for authentication."""
-
-    def test_get_user_password_without_port(self):
-        """We cope if urllib2 doesn't tell us the port.
-
-        See https://bugs.launchpad.net/bzr/+bug/654684
-        """
-        user = "joe"
-        password = "foo"
-        _setup_authentication_config(
-            scheme="http", host="localhost", user=user, password=password
-        )
-        handler = HTTPAuthHandler()
-        got_pass = handler.get_user_password(
-            {
-                "user": "joe",
-                "protocol": "http",
-                "host": "localhost",
-                "path": "/",
-                "realm": "Realm",
-            }
-        )
-        self.assertEqual((user, password), got_pass)
 
 
 class TestAuth(http_utils.TestCaseWithWebserver):
@@ -1608,7 +1394,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_no_user(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport(None, None)
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1629,7 +1415,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_unknown_user(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport("bill", "foo")
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'I don't know you, who are
         # you').
@@ -1638,7 +1424,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_wrong_pass(self):
         self.server.add_user("joe", "foo")
         t = self.get_user_transport("joe", "bar")
-        self.assertRaises(errors.InvalidHttpResponse, t.get, "a")
+        self.assertRaises(transport_errors.InvalidHttpResponse, t.get, "a")
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and 'this is not you, who are you')
         self.assertEqual(2, self.server.auth_required_errors)
@@ -1938,7 +1724,7 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(
-            errors.SmartProtocolError,
+            transport_errors.SmartProtocolError,
             t.get_smart_medium().send_http_smart_request,
             b"whatever",
         )
@@ -2060,7 +1846,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 
 if features.HTTPSServerFeature.available():
-    from . import https_server
+    from dromedary.tests import https_server
 
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass
@@ -2189,8 +1975,6 @@ mbp@source\r
         # Remember that the request is ignored and that the ranges below
         # doesn't have to match the canned response.
         l = list(t.readv("/foo/bar", ((0, 255), (1000, 1050))))
-        # Force consumption of the last bytesrange boundary
-        t._get_connection().cleanup_pipe()
         self.assertEqual(2, len(l))
         self.assertActivitiesMatch()
 
@@ -2271,7 +2055,6 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         ]
         self.old_transport = self.get_old_transport()
         self.new_server.add_user("joe", "foo")
-        cleanup_http_redirection_connections(self)
 
     def create_transport_readonly_server(self):
         server = self._auth_server(protocol_version=self._protocol_version)

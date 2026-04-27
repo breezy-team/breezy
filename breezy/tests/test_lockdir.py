@@ -20,13 +20,12 @@ import os
 import time
 
 import breezy
+from breezy.errors import LockContention, LockFailed
 
 from .. import config, errors, lock, lockdir, osutils, tests, transport
 from ..errors import (
     LockBreakMismatch,
     LockBroken,
-    LockContention,
-    LockFailed,
     LockNotHeld,
 )
 from ..lockdir import LockDir, LockHeldInfo

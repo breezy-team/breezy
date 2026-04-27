@@ -24,9 +24,10 @@ the meta-directory layout.
 import contextlib
 import itertools
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, lockdir
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
 from ..repository import Repository, RepositoryFormat, format_registry
 from . import bzrdir, lockable_files
 
@@ -66,7 +67,7 @@ class MetaDirRepository(Repository):
         """
         with self.lock_write():
             if new_value:
-                with contextlib.suppress(_mod_transport.NoSuchFile):
+                with contextlib.suppress(NoSuchFile):
                     self._transport.delete("no-working-trees")
             else:
                 self._transport.put_bytes(
@@ -164,7 +165,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile as e:
+        except NoSuchFile as e:
             raise errors.NoRepositoryPresent(a_bzrdir) from e
         return klass._find_format(format_registry, "repository", format_string)
 

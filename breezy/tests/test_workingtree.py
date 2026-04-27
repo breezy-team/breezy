@@ -18,6 +18,8 @@
 import os
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from .. import conflicts, errors, osutils, trace, workingtree
 from ..bzr import bzrdir, workingtree_3, workingtree_4
 from ..bzr import conflicts as _mod_bzr_conflicts
@@ -370,7 +372,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         dir.create_branch()
         try:
             tree = workingtree_3.WorkingTreeFormat3().initialize(dir)
-        except errors.NotLocalUrl as err:
+        except transport_errors.NotLocalUrl as err:
             raise TestSkipped("Not a local URL") from err
         self.assertIsDirectory(".bzr", t)
         self.assertIsDirectory(".bzr/checkout", t)

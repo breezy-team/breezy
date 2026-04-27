@@ -28,3 +28,4 @@ doc/en/_build/
 doc/developers/_build/
 doc/developers/Makefile
 doc/developers/make.bat
+*.so

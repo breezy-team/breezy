@@ -109,8 +109,10 @@ impl<'py> pyo3::IntoPyObject<'py> for Ordering {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for Ordering {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl pyo3::FromPyObject<'_, '_> for Ordering {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         let s = ob.extract::<String>()?;
         match s.as_str() {
@@ -142,8 +144,10 @@ impl<'py> pyo3::IntoPyObject<'py> for &VersionId {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for VersionId {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl pyo3::FromPyObject<'_, '_> for VersionId {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         let bytes = ob.extract::<Vec<u8>>()?;
         Ok(VersionId(bytes))
@@ -202,8 +206,10 @@ impl std::fmt::Display for Key {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for Key {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl pyo3::FromPyObject<'_, '_> for Key {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         // Look at the type name, stripping out the module name.
         match ob

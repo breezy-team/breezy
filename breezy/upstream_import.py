@@ -23,6 +23,10 @@ import tarfile
 import zipfile
 from io import BytesIO
 
+from dromedary import get_transport_from_url
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
+
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
@@ -30,8 +34,6 @@ from .errors import BzrError, CommandError, NotBranchError
 from .osutils import basename, file_iterator, isdir, pathjoin, splitpath
 from .trace import warning
 from .transform import resolve_conflicts
-from .transport import NoSuchFile, get_transport
-from .transport.local import file_kind
 from .workingtree import WorkingTree
 
 
@@ -49,7 +51,7 @@ def open_from_url(location):
     dirname, basename = urlutils.split(location)
     if location.endswith("/") and not basename.endswith("/"):
         basename += "/"
-    return get_transport(dirname).get(basename)
+    return get_transport_from_url(dirname).get(basename)
 
 
 class NotArchiveType(BzrError):

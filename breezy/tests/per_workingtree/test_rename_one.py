@@ -18,8 +18,9 @@
 
 import os
 
+from dromedary.errors import NoSuchFile
+
 from breezy import errors, osutils, tests
-from breezy import transport as _mod_transport
 from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -413,5 +414,5 @@ class TestRenameOne(TestCaseWithWorkingTree):
         e = self.assertRaises(
             errors.BzrMoveFailedError, tree.rename_one, "a", "\xa7", after=True
         )
-        self.assertIsInstance(e.extra, _mod_transport.NoSuchFile)
+        self.assertIsInstance(e.extra, NoSuchFile)
         self.assertEqual(e.extra.path, "\xa7")

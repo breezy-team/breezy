@@ -18,7 +18,8 @@
 
 import time
 
-from breezy import transport
+from dromedary.errors import NoSuchFile
+
 from breezy.tests.per_tree import TestCaseWithTree
 
 
@@ -49,4 +50,4 @@ class TestGetFileMTime(TestCaseWithTree):
         tree = self.get_basic_tree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertRaises(transport.NoSuchFile, tree.get_file_mtime, "unexistant")
+        self.assertRaises(NoSuchFile, tree.get_file_mtime, "unexistant")

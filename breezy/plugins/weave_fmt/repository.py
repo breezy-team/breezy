@@ -41,8 +41,9 @@ from vcsgraph import (
 )
 """,
 )
+from dromedary.errors import NoSuchFile
+
 from ... import debug, errors, lockdir, osutils, trace, urlutils
-from ... import transport as _mod_transport
 from ...bzr import lockable_files, tuned_gzip, versionedfile, weave, weavefile
 from ...bzr.repository import RepositoryFormatMetaDir
 from ...bzr.versionedfile import (
@@ -917,14 +918,14 @@ class TextVersionedFiles(VersionedFiles):
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return None
             else:
                 return None

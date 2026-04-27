@@ -18,16 +18,18 @@
 
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import LocalTransport, file_kind
+
 from ... import conflicts as _mod_conflicts
 from ... import errors, lock
 from ... import revision as _mod_revision
-from ... import transport as _mod_transport
 from ...bzr import conflicts as _mod_bzr_conflicts
 from ...bzr import inventory, xml5
 from ...bzr import transform as bzr_transform
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree
-from ...transport.local import LocalTransport, file_kind
 from ...workingtree import WorkingTreeFormat
 
 
@@ -113,7 +115,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     ):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         branch = from_branch if from_branch is not None else a_controldir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
@@ -163,7 +165,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             # we are being called directly and must probe.
             raise NotImplementedError
         if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+            raise transport_errors.NotLocalUrl(a_controldir.transport.base)
         wt = WorkingTree2(
             a_controldir.root_transport.local_abspath("."),
             _internal=True,
@@ -292,7 +294,7 @@ class WorkingTree2(PreDirStateWorkingTree):
                 try:
                     if file_kind(self.abspath(conflicted)) != "file":
                         text = False
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in (".THIS", ".OTHER"):
@@ -300,7 +302,7 @@ class WorkingTree2(PreDirStateWorkingTree):
                             kind = file_kind(self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
-                        except _mod_transport.NoSuchFile:
+                        except NoSuchFile:
                             text = False
                         if text is False:
                             break

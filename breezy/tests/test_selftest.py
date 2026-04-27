@@ -30,6 +30,9 @@ from functools import reduce
 from io import BytesIO, StringIO, TextIOWrapper
 
 import testtools.testresult.doubles
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.errors import NoSuchFile
 from testtools import ExtendedToOriginalDecorator, MultiTestResult
 from testtools.content import Content
 from testtools.content_type import ContentType
@@ -55,7 +58,6 @@ from ..bzr import bzrdir, groupcompress_repo, remote, workingtree_3, workingtree
 from ..git import workingtree as git_workingtree
 from ..symbol_versioning import deprecated_function, deprecated_in, deprecated_method
 from ..trace import mutter, note
-from ..transport import memory
 from . import TestUtil, features, test_server
 
 
@@ -130,13 +132,14 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from ..transport import _get_transport_modules
+        from dromedary import _get_transport_modules
+
         from .per_transport import transport_test_permutations
 
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
-            with contextlib.suppress(errors.DependencyNotPresent):
+            with contextlib.suppress(transport_errors.DependencyNotPresent):
                 permutation_count += len(
                     reduce(
                         getattr,
@@ -151,6 +154,8 @@ class TestTransportScenarios(tests.TestCase):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
+        from dromedary._transport_rs import Transport as _RustTransport
+
         from .per_transport import transport_test_permutations
 
         scenarios = transport_test_permutations()
@@ -158,9 +163,11 @@ class TestTransportScenarios(tests.TestCase):
         self.assertGreater(len(scenarios), 6)
         one_scenario = scenarios[0]
         self.assertIsInstance(one_scenario[0], str)
-        self.assertTrue(
-            issubclass(one_scenario[1]["transport_class"], breezy.transport.Transport)
-        )
+        # The Rust-backed transport classes inherit from the Rust
+        # ``Transport`` pyclass, not the pure-Python ``dromedary.Transport``
+        # wrapper, so allow either side of the hierarchy.
+        cls = one_scenario[1]["transport_class"]
+        self.assertTrue(issubclass(cls, (breezy.transport.Transport, _RustTransport)))
         self.assertTrue(
             issubclass(one_scenario[1]["transport_server"], breezy.transport.Server)
         )
@@ -798,7 +805,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from ..transport.readonly import ReadonlyTransportDecorator
+        from dromedary.readonly import ReadonlyTransportDecorator
 
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
@@ -813,8 +820,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath("foo/bar"))
 
     def test_get_readonly_url_http(self):
-        from ..transport.http.urllib import HttpTransport
-        from .http_server import HttpServer
+        from dromedary.http.urllib import HttpTransport
+        from dromedary.tests.http_server import HttpServer
 
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
@@ -855,9 +862,16 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
 
     def test_make_controldir_preserves_transport(self):
+        from dromedary._transport_rs.memory import (
+            MemoryTransport as _RustMemoryTransport,
+        )
+
         self.get_transport()
         result_bzrdir = self.make_controldir("subdir")
-        self.assertIsInstance(result_bzrdir.transport, memory.MemoryTransport)
+        # Transport.clone() drops the Python subclass wrapper — any
+        # MemoryTransport (Rust class or the dromedary.memory subclass) is
+        # acceptable here.
+        self.assertIsInstance(result_bzrdir.transport, _RustMemoryTransport)
         # should not be on disk, should only be in memory
         self.assertPathDoesNotExist("subdir")
 
@@ -2320,14 +2334,24 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         self.transport_server = test_server.FakeVFATServer
         self.assertFalse(self.get_url("t1").startswith("file://"))
         tree = self.make_branch_and_tree("t1")
-        base = tree.controldir.root_transport.base
-        self.assertStartsWith(base, "file://")
+        # The dromedary-backed FakeVFAT decorator forwards local_abspath, so
+        # create_workingtree no longer needs to rewrite the URL to a plain
+        # file:// one — the controldir keeps the decorator prefix but still
+        # resolves to a local path. Check the prefix is preserved (so we
+        # know we didn't accidentally fall through to a non-VFAT transport)
+        # and that all three controldirs share the same local backing.
+        root = tree.controldir.root_transport
+        self.assertTrue(
+            root.base.startswith("vfat+"),
+            f"expected vfat+ prefix, got {root.base!r}",
+        )
+        local_path = root.local_abspath(".")
         self.assertEqual(
-            tree.controldir.root_transport, tree.branch.controldir.root_transport
+            local_path, tree.branch.controldir.root_transport.local_abspath(".")
         )
         self.assertEqual(
-            tree.controldir.root_transport,
-            tree.branch.repository.controldir.root_transport,
+            local_path,
+            tree.branch.repository.controldir.root_transport.local_abspath("."),
         )
 
 
@@ -2496,7 +2520,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
-        from breezy.tests import stub_sftp
+        from dromedary.tests import stub_sftp
 
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
@@ -2519,7 +2543,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
         # Provide a list with one test - this test.
         # And generate a list of the tests in  the suite.
         self.assertRaises(
-            transport.NoSuchFile,
+            NoSuchFile,
             self.run_selftest,
             load_list="missing file name",
             list_only=True,
@@ -3489,9 +3513,7 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         fl.close()
 
     def test_load_unknown(self):
-        self.assertRaises(
-            transport.NoSuchFile, tests.load_test_id_list, "i_do_not_exist"
-        )
+        self.assertRaises(NoSuchFile, tests.load_test_id_list, "i_do_not_exist")
 
     def test_load_test_list(self):
         test_list_fname = "test.list"
@@ -4176,7 +4198,4 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         self.assertHookCalls(0, "no_hook")
 
     def test_run_hook_once(self):
-        tt = features.testtools
-        if tt.module.__version__ < (0, 9, 8):
-            raise tests.TestSkipped("testtools-0.9.8 required for addDetail")
         self.assertHookCalls(1, "run_hook_once")
