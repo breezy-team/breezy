@@ -2246,18 +2246,25 @@ class MergeIntoMergeType(Merge3Merger):
             TreeReference,
         )
 
+        # bzrformats's InventoryDirectory(parent_id=None) collapses
+        # the entry to a Root and drops the name; we need a regular
+        # named entry, so use target_id as the parent_id.  The actual
+        # tree position is set later via the trans-id system in
+        # _compute_transform; this parent_id is only used if/when the
+        # entry is added to an inventory.
+        new_parent_id = target_id
         if subdir.kind == "directory":
             merge_into_root = InventoryDirectory(
                 new_file_id,
                 name_in_target,
-                subdir.parent_id,
+                new_parent_id,
                 revision=subdir.revision,
             )
         elif subdir.kind == "file":
             merge_into_root = InventoryFile(
                 new_file_id,
                 name_in_target,
-                subdir.parent_id,
+                new_parent_id,
                 revision=subdir.revision,
                 text_sha1=subdir.text_sha1,
                 text_size=subdir.text_size,
@@ -2267,7 +2274,7 @@ class MergeIntoMergeType(Merge3Merger):
             merge_into_root = InventoryLink(
                 new_file_id,
                 name_in_target,
-                subdir.parent_id,
+                new_parent_id,
                 revision=subdir.revision,
                 symlink_target=subdir.symlink_target,
             )
@@ -2275,7 +2282,7 @@ class MergeIntoMergeType(Merge3Merger):
             merge_into_root = TreeReference(
                 new_file_id,
                 name_in_target,
-                subdir.parent_id,
+                new_parent_id,
                 revision=subdir.revision,
                 reference_revision=subdir.reference_revision,
             )
