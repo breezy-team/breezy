@@ -2089,8 +2089,14 @@ class TransformPreview(InventoryTreeTransform):
             return
         if entry.kind != "directory":
             return
-        for child_name in self._tree.root_inventory.get_children(entry.file_id):
-            childpath = joinpath(path, child_name)
+        # Use the tree's iter_child_entries rather than poking at
+        # root_inventory: PreviewTree doesn't expose an inventory.
+        try:
+            children = self._tree.iter_child_entries(path)
+        except NotImplementedError:
+            return
+        for child_entry in children:
+            childpath = joinpath(path, child_entry.name)
             yield self.trans_id_tree_path(childpath)
 
     def new_orphan(self, trans_id, parent_id):
