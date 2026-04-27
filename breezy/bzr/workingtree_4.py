@@ -2121,7 +2121,15 @@ class DirStateRevisionTree(InventoryTree):
         if current_entry[parent_index][0] != b"d":
             raise AssertionError()
         inv = Inventory(root_id=None, revision_id=self._revision_id)
-        root_revision = current_entry[parent_index][4] or None
+        # An empty tree_data slot in tree-N is the dirstate's stand-in
+        # for "this entry was last touched in this tree's revision",
+        # so default it to self._revision_id rather than None.  The
+        # original Python dirstate's `_generate_inventory` did this
+        # by storing tree_data verbatim (b"" → revision=b"") which
+        # callers later coerced; mapping b"" to self._revision_id is
+        # the equivalent and matches what update_basis_by_delta
+        # callers (e.g. test_no_parents_just_root) expect.
+        root_revision = current_entry[parent_index][4] or self._revision_id
         inv.add(
             InventoryDirectory(
                 file_id=current_id,
