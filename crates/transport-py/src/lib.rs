@@ -1,6 +1,8 @@
 use breezy_transport::lock::{FileLock, Lock as LockTrait, LockError};
 use breezy_transport::{Error, ReadStream, Transport as TransportTrait, UrlFragment, WriteStream};
 use log::debug;
+#[cfg(windows)]
+use pyo3::exceptions::PyOSError;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
@@ -1089,6 +1091,26 @@ impl PyFile {
     fn fileno(&self, py: Python) -> PyResult<i32> {
         use std::os::unix::io::AsRawFd;
         Ok(py.detach(|| self.0.get_ref().as_raw_fd()))
+    }
+
+    #[cfg(windows)]
+    fn fileno(&self, py: Python) -> PyResult<i32> {
+        // Convert the underlying Win32 HANDLE into an MSVCRT file descriptor
+        // so Python code can pass it to os.fstat / os.fsync. The descriptor
+        // is owned by the C runtime's fd table and is leaked when the Rust
+        // File closes its handle directly; this is acceptable for the
+        // current call-once usage pattern.
+        use std::os::windows::io::AsRawHandle;
+        const O_BINARY: i32 = 0x8000;
+        unsafe extern "C" {
+            fn _open_osfhandle(handle: isize, flags: i32) -> i32;
+        }
+        let handle = self.0.get_ref().as_raw_handle() as isize;
+        let fd = py.detach(|| unsafe { _open_osfhandle(handle, O_BINARY) });
+        if fd == -1 {
+            return Err(PyOSError::new_err("_open_osfhandle failed to allocate fd"));
+        }
+        Ok(fd)
     }
 }
 
