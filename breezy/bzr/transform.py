@@ -66,7 +66,8 @@ from bzrformats import inventory
 from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
 from bzrformats.inventory import NoSuchId
 
-from . import generate_ids, inventorytree
+from . import inventorytree
+from bzrformats import generate_ids
 from .conflicts import Conflict
 
 
