@@ -222,7 +222,6 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.version_info_formats.format_rio",
                 "breezy.bzr.xml_serializer",
                 "breezy.bzr.xml8",
-                "bzrformats.inventory",
                 "breezy.bzr.bzrdir",
                 "breezy.git.remote",
                 "breezy.git.commit",
@@ -278,7 +277,6 @@ class TestImportTariffs(ImportTariffTestCase):
                 "breezy.bugtracker",
                 "breezy.bundle.commands",
                 "breezy.cmd_version_info",
-                "bzrformats.dirstate",
                 "breezy.externalcommand",
                 "breezy.filters",
                 # foreign branch plugins import the foreign_vcs_registry from
