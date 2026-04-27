@@ -33,7 +33,10 @@ class TestExtract(TestCaseWithTransport):
             self.assertEqual(b"b-id", b_wt.path2id(""))
             self.assertEqual(b"c-id", b_wt.path2id("c"))
             self.assertEqual("c", b_wt.id2path(b"c-id"))
-            self.assertRaises(errors.BzrError, wt.id2path, b"b-id")
+            # bzrformats raises its own NoSuchId class which is not a BzrError.
+            from bzrformats.inventory import NoSuchId
+
+            self.assertRaises((errors.BzrError, NoSuchId), wt.id2path, b"b-id")
         self.assertEqual(b_wt.basedir, wt.abspath("b"))
         self.assertEqual(wt.get_parent_ids(), b_wt.get_parent_ids())
         self.assertEqual(wt.branch.last_revision(), b_wt.branch.last_revision())
