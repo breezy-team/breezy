@@ -105,25 +105,6 @@ class Revision:
                     "invalid property value {!r} for {!r}".format(value, name)
                 )
 
-    def get_history(self, repository):
-        """Return the canonical line-of-history for this revision.
-
-        If ghosts are present this may differ in result from a ghost-free
-        repository.
-        """
-        current_revision = self
-        reversed_result = []
-        while current_revision is not None:
-            reversed_result.append(current_revision.revision_id)
-            if not len(current_revision.parent_ids):
-                reversed_result.append(None)
-                current_revision = None
-            else:
-                next_revision_id = current_revision.parent_ids[0]
-                current_revision = repository.get_revision(next_revision_id)
-        reversed_result.reverse()
-        return reversed_result
-
     def get_summary(self):
         """Get the first line of the log message for this revision.
 
@@ -153,12 +134,39 @@ class Revision:
 
     def iter_bugs(self):
         """Iterate over the bugs associated with this revision."""
-        bug_property = self.properties.get("bugs", None)
-        if bug_property is None:
-            return iter([])
-        from . import bugtracker
+        return iter_bugs(self)
 
-        return bugtracker.decode_bug_urls(bug_property)
+
+def iter_bugs(revision):
+    """Iterate over the bugs associated with a revision."""
+    bug_property = revision.properties.get("bugs", None)
+    if bug_property is None:
+        return iter([])
+    from . import bugtracker
+
+    return bugtracker.decode_bug_urls(bug_property)
+
+
+def get_history(repository, revision_id: RevisionID) -> list[RevisionID | None]:
+    """Return the canonical line-of-history ending at `revision_id`.
+
+    Walks the left-most parent back to a parentless ancestor. The
+    result is ordered from the root to `revision_id`, with a leading
+    `None` when the oldest ancestor has no parents. If ghosts are
+    present this may differ from a ghost-free repository.
+    """
+    reversed_result: list[RevisionID | None] = []
+    current_id: RevisionID | None = revision_id
+    while current_id is not None:
+        reversed_result.append(current_id)
+        rev = repository.get_revision(current_id)
+        if not rev.parent_ids:
+            reversed_result.append(None)
+            current_id = None
+        else:
+            current_id = rev.parent_ids[0]
+    reversed_result.reverse()
+    return reversed_result
 
 
 def iter_ancestors(
