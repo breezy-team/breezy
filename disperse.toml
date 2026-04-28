@@ -1,5 +1,5 @@
 tag-name = "brz-$VERSION"
-news-file = "doc/en/release-notes/brz-3.3.txt"
+news-file = "doc/en/release-notes/brz-3.4.txt"
 verify-command = "make check"
 tarball-location = []
 release-timeout = 5
