@@ -375,8 +375,16 @@ class TreeTransform:
         """Set the reference associated with a directory."""
         unique_add(self._new_reference_revision, trans_id, revision_id)
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        Exactly one of ``file_id`` or ``source`` should be supplied. When
+        ``source`` is given as a ``(tree, path)`` pair, inventory-backed
+        implementations inherit the file id from that tree's entry at
+        that path; if the source tree has no entry there, a fresh id is
+        fabricated from the trans_id's final path. Implementations that
+        don't use file ids ignore both arguments.
+        """
         raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):

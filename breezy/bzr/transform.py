@@ -61,7 +61,7 @@ from ..transform import (
 )
 from ..transport.local import file_kind
 from ..tree import find_previous_path
-from . import inventory, inventorytree, multiparent
+from . import generate_ids, inventory, inventorytree, multiparent
 from .conflicts import Conflict
 
 
@@ -252,8 +252,11 @@ class TreeTransformBase(TreeTransform):
             else:
                 return self.trans_id_tree_path(path)
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        See ``TreeTransform.version_file`` for the full contract.
+        """
         raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):
@@ -1092,7 +1095,6 @@ def cook_path_conflict(
     fp,
     conflict_type,
     trans_id,
-    file_id,
     this_parent,
     this_name,
     other_parent,
@@ -1114,21 +1116,31 @@ def cook_path_conflict(
     Returns:
         A Conflict object.
     """
+    # this_parent / other_parent are trans_ids (ROOT_PARENT for the tree
+    # root, None when the file is absent in that tree); the file_id (if
+    # any) is recovered from the trans_id at cook time.
     if this_parent is None or this_name is None:
         this_path = "<deleted>"
     else:
-        parent_path = fp.get_path(tt.trans_id_file_id(this_parent))
-        this_path = osutils.pathjoin(parent_path, this_name)
+        this_path = osutils.pathjoin(fp.get_path(this_parent), this_name)
     if other_parent is None or other_name is None:
         other_path = "<deleted>"
     else:
         try:
-            parent_path = fp.get_path(tt.trans_id_file_id(other_parent))
+            parent_path = fp.get_path(other_parent)
         except NoFinalPath:
             # The other entry was in a path that doesn't exist in our tree.
             # Put it in the root.
             parent_path = ""
         other_path = osutils.pathjoin(parent_path, other_name)
+    # ``final_file_id`` returns None for trans_ids that exist only in
+    # ``_non_present_ids`` (the typical case when the file is new in
+    # OTHER or missing from THIS); ``inactive_file_id`` also consults
+    # that map so the resulting Conflict carries the file id that was
+    # originally passed in via ``trans_id_file_id``.
+    file_id = tt.final_file_id(trans_id)
+    if file_id is None:
+        file_id = tt.inactive_file_id(trans_id)
     return Conflict.factory(
         conflict_type, path=this_path, conflict_path=other_path, file_id=file_id
     )
@@ -1671,10 +1683,30 @@ class InventoryTreeTransform(DiskTreeTransform):
         self._limbo_children_names[parent][filename] = trans_id
         return limbo_name
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        Exactly one of ``file_id`` or ``source`` must be provided. With
+        ``source=(tree, path)`` the file id is inherited from that tree's
+        inventory at that path; if the tree has no entry there, a fresh
+        id is fabricated from the trans_id's final path.
+        """
         if file_id is None:
-            raise ValueError()
+            if source is None:
+                raise ValueError("version_file() requires either file_id or source")
+            src_tree, src_path = source
+            if src_path is not None and getattr(src_tree, "supports_file_ids", False):
+                file_id = src_tree.path2id(src_path)
+            if file_id is None:
+                # Source tree has nothing at that path (or doesn't use
+                # file ids). Fabricate from the final path — stable
+                # enough for this transform, and the only reasonable
+                # thing to do without a source of identity.
+                try:
+                    path = FinalPaths(self).get_path(trans_id)
+                except NoFinalPath:
+                    path = self._new_name.get(trans_id, "")
+                file_id = generate_ids.gen_file_id(path or "")
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 

@@ -174,8 +174,12 @@ class TreeTransformBase(TreeTransform):
         path = self.mapping.parse_file_id(file_id)
         return self.trans_id_tree_path(path)
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
+    def version_file(self, trans_id, file_id=None, *, source=None):
+        """Schedule a file to become versioned.
+
+        ``file_id`` and ``source`` are ignored: git trees have no
+        inventory ids to preserve.
+        """
         if trans_id in self._versioned:
             raise errors.DuplicateKey(key=trans_id)
         self._versioned.add(trans_id)
@@ -802,7 +806,17 @@ class TreeTransformBase(TreeTransform):
         if not raw_conflicts:
             return
         fp = FinalPaths(self)
+        from ..transform import NoFinalPath
         from .workingtree import ContentsConflict, TextConflict
+
+        def _resolve(parent_tid, name):
+            if parent_tid is None or name is None:
+                return None
+            try:
+                parent_path = fp.get_path(parent_tid)
+            except NoFinalPath:
+                parent_path = ""
+            return osutils.pathjoin(parent_path, name) if parent_path else name
 
         for c in raw_conflicts:
             if c[0] == "text conflict":
@@ -821,6 +835,30 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == "parent loop":
                 # TODO(jelmer): This should not make it to here
                 yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == "path conflict":
+                # Git trees don't carry inventory ids so the merger's
+                # three-way resolver, running on paths alone, never
+                # produces a "path conflict" on an all-git merge. This
+                # branch only fires in heterogeneous scenarios (e.g. a
+                # bzr tree being merged into a git working tree via
+                # a preview transform). TextConflict is a lossy fallback
+                # — it marks the surviving path but loses the "the
+                # other side moved it elsewhere" semantics that bzr's
+                # PathConflict expresses. Acceptable for now because
+                # git has no native path-conflict type to report.
+                (
+                    _,
+                    _trans_id,
+                    this_parent,
+                    this_name,
+                    other_parent,
+                    other_name,
+                ) = c
+                path = _resolve(this_parent, this_name) or _resolve(
+                    other_parent, other_name
+                )
+                if path is not None:
+                    yield TextConflict(path)
             else:
                 raise AssertionError(f"unknown conflict {c[0]}")
 
