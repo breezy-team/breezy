@@ -16,6 +16,7 @@
 
 """A generator which creates a rio stanza of the current tree info."""
 
+
 from breezy import errors, hooks
 from breezy.bzr import rio
 from breezy.revision import NULL_REVISION

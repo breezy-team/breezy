@@ -32,6 +32,7 @@ import contextlib
 import os
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from .branch import Branch
     from .revisiontree import RevisionTree

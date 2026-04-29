@@ -33,6 +33,8 @@ from ...controldir import (
     format_registry,
 )
 from ...i18n import gettext
+import vcsgraph.graph as graph
+
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
 
