@@ -1314,19 +1314,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 yield path, "V", entry.kind, entry
 
     def get_symlink_target(self, path):
-        """Get the target of a symbolic link.
-
-        Args:
-            path: Path to the symlink.
-
-        Returns:
-            str: Target path or None if not a symlink.
-        """
-        # Inventories store symlink targets in unicode
-        ie = self._path2ie(path)
-        if ie.kind != "symlink":
-            return None
-        return ie.symlink_target
+        # Inventories store symlink targets in unicode.  Non-symlink
+        # entries (file/directory/tree-reference) don't carry a target;
+        # callers that walk a tree across versions where the kind has
+        # changed need ``None`` rather than an AttributeError.
+        return getattr(self._path2ie(path), "symlink_target", None)
 
     def get_reference_revision(self, path):
         """Get the reference revision for a tree reference.
