@@ -28,8 +28,6 @@ from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
 
-import vcsgraph.errors
-
 from . import config as _mod_config
 from . import debug, errors, registry, repository, urlutils
 from . import revision as _mod_revision
