@@ -29,8 +29,8 @@ from collections.abc import Callable
 from typing import Optional
 
 import fastbencode as bencode
-from vcsgraph import graph, known_graph
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
+import vcsgraph.errors
+from vcsgraph import known_graph
 
 from .. import (
     branch,
@@ -2066,7 +2066,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         self._leave_lock = False
         # Cache of revision parents; misses are cached during read locks, and
         # write locks when no _real_repository has been set.
-        self._unstacked_provider = graph.CachingParentsProvider(
+        self._unstacked_provider = vcsgraph.graph.CachingParentsProvider(
             get_parent_map=self._get_parent_map_rpc
         )
         self._unstacked_provider.disable_cache()
@@ -2421,7 +2421,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
             repository's text store as the parent provider.
         """
         with self.lock_read():
-            return graph.Graph(self.texts)
+            return vcsgraph.graph.Graph(self.texts)
 
     def has_revision(self, revision_id):
         """Check if a revision is present in this repository.
@@ -2501,7 +2501,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format."""
         parents_provider = self._make_parents_provider(other_repository)
-        return graph.Graph(parents_provider)
+        return vcsgraph.graph.Graph(parents_provider)
 
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors."""
@@ -4175,7 +4175,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         providers = [self._unstacked_provider]
         if other is not None:
             providers.insert(0, other)
-        return graph.StackedParentsProvider(
+        return vcsgraph.graph.StackedParentsProvider(
             _LazyListJoin(providers, self._fallback_repositories)
         )
 
@@ -5852,7 +5852,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b"GhostRevisionsHaveNoRevno":
                     (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
-                    raise GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
+                    raise errors.GhostRevisionsHaveNoRevno(revid, ghost_revid) from e
                 raise
             if response[0] == b"ok":
                 return tuple([int(x) for x in response[1:]])
@@ -5947,10 +5947,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 (last_revid, last_revno),
                 (_mod_revision.NULL_REVISION, 0),
             ]
-            if last_rev is not None and not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            if last_rev is not None:
+                if not graph.is_ancestor(last_rev, revision_id):
+                    # our previous tip is not merged into stop_revision
+                    raise errors.DivergedBranches(self, other_branch)
+            try:
+                revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            except vcsgraph.errors.GhostRevisionsHaveNoRevno as e:
+                raise errors.GhostRevisionsHaveNoRevno(
+                    e.revision_id, e.ghost_revision_id
+                ) from e
             self.set_last_revision_info(revno, revision_id)
 
     def set_push_location(self, location):
@@ -6386,7 +6392,7 @@ error_translators.register(
 
 no_context_error_translators.register(
     b"GhostRevisionsHaveNoRevno",
-    lambda err: GhostRevisionsHaveNoRevno(*err.error_args),
+    lambda err: errors.GhostRevisionsHaveNoRevno(*err.error_args),
 )
 no_context_error_translators.register(
     b"IncompatibleRepositories",

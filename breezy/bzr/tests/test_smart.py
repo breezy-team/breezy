@@ -30,7 +30,6 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from breezy import branch as _mod_branch
 from breezy import controldir, errors, gpg, tests, transport, urlutils
@@ -43,6 +42,7 @@ from breezy.bzr.smart import packrepository as smart_packrepo
 from breezy.bzr.smart import repository as smart_repo
 from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
+from breezy.errors import GhostRevisionsHaveNoRevno
 from breezy.tests import test_server
 from breezy.transport import chroot, memory
 

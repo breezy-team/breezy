@@ -30,12 +30,12 @@ import zlib
 from io import BytesIO
 
 import fastbencode as bencode
-from vcsgraph.errors import GhostRevisionsHaveNoRevno
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
 from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
+from ...errors import GhostRevisionsHaveNoRevno
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
@@ -4290,16 +4290,11 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
         """Like translateTuple, but takes an already constructed
         ErrorFromSmartServer rather than a tuple.
         """
-        import vcsgraph.errors as vcsgraph_errors
-
         try:
             raise error_object
         except errors.ErrorFromSmartServer as server_error:
             translated_error = self.assertRaises(
-                (errors.BzrError, vcsgraph_errors.Error),
-                remote._translate_error,
-                server_error,
-                **context,
+                errors.BzrError, remote._translate_error, server_error, **context
             )
         return translated_error
 

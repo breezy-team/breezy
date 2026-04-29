@@ -18,8 +18,7 @@
 
 import pprint
 
-import vcsgraph.errors
-
+from breezy import errors
 from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
@@ -45,11 +44,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
-        """Generate a python module containing version information.
-
-        Args:
-            to_file: A file-like object to write the generated python module to.
-        """
+        """Write a Python module describing the current branch revision."""
         info = {
             "build_date": create_date_str(),
             "revno": None,
@@ -65,7 +60,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         else:
             try:
                 info["revno"] = self._get_revno_str(revision_id)
-            except vcsgraph.errors.GhostRevisionsHaveNoRevno:
+            except errors.GhostRevisionsHaveNoRevno:
                 pass
             info["revision_id"] = revision_id
             rev = self._branch.repository.get_revision(revision_id)

@@ -19,8 +19,6 @@
 import inspect
 import re
 
-import vcsgraph.errors
-
 from .. import controldir, errors, osutils, tests, urlutils
 
 
@@ -55,14 +53,6 @@ class TestErrors(tests.TestCase):
         error = errors.DuplicateHelpPrefix("foo")
         self.assertEqualDiff(
             "The prefix foo is in the help search path twice.", str(error)
-        )
-
-    def test_ghost_revisions_have_no_revno(self):
-        error = vcsgraph.errors.GhostRevisionsHaveNoRevno("target", "ghost_rev")
-        self.assertEqualDiff(
-            "Ghost revision 'ghost_rev' has no revno,"
-            " cannot determine revno for 'target'",
-            str(error),
         )
 
     def test_incompatibleVersion(self):

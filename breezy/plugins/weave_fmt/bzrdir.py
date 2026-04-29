@@ -20,6 +20,8 @@ import contextlib
 import os
 from io import BytesIO
 
+import vcsgraph.graph as graph
+
 from ... import errors, osutils, trace
 from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
@@ -38,7 +40,7 @@ lazy_import(
     globals(),
     """
 from breezy import (
-    branch as _mod_branch,,
+    branch as _mod_branch,
     lockdir,
     revision as _mod_revision,
     ui,

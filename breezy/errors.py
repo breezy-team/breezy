@@ -34,7 +34,6 @@ The module includes exceptions for:
 """
 
 from vcsgraph.errors import (  # noqa: F401
-    GhostRevisionsHaveNoRevno,
     GraphCycleError,
     NoCommonAncestor,
 )
@@ -3249,6 +3248,20 @@ class SSHVendorNotFound(BzrError):
         "Don't know how to handle SSH connections."
         " Please set BRZ_SSH environment variable."
     )
+
+
+class GhostRevisionsHaveNoRevno(BzrError):
+    """When searching for revnos, if we encounter a ghost, we are stuck."""
+
+    _fmt = (
+        "Could not determine revno for {%(revision_id)s} because"
+        " its ancestry shows a ghost at {%(ghost_revision_id)s}"
+    )
+
+    def __init__(self, revision_id, ghost_revision_id):
+        """Initialize with the revision and the ghost blocking revno lookup."""
+        self.revision_id = revision_id
+        self.ghost_revision_id = ghost_revision_id
 
 
 class GhostRevisionUnusableHere(BzrError):
