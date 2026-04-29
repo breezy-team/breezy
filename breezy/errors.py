@@ -1017,28 +1017,6 @@ class AlreadyCommitted(LockError):
         pass
 
 
-class LockFailed(LockError):
-    """Lock acquisition failed.
-
-    Raised when a lock cannot be acquired for a specified reason.
-    """
-
-    internal_error = False
-
-    _fmt = "Cannot lock %(lock)s: %(why)s"
-
-    def __init__(self, lock, why):
-        """Initialize with lock and failure reason.
-
-        Args:
-            lock: The lock that failed to be acquired.
-            why: The reason why the lock failed.
-        """
-        LockError.__init__(self, "")
-        self.lock = lock
-        self.why = why
-
-
 class UnlockableTransport(LockError):
     """Transport cannot be locked because it is read-only.
 

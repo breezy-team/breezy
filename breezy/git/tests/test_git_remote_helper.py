@@ -19,6 +19,7 @@
 """Tests for the git remote helper."""
 
 import os
+import site
 import subprocess
 import sys
 from io import BytesIO
@@ -94,6 +95,12 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         env = dict(os.environ)
         env["GIT_DIR"] = local_path
         env["PYTHONPATH"] = subprocess_pythonpath()
+        # ``HOME`` is overridden to a tempdir for the duration of the
+        # test, hiding the user-site directory; pin
+        # ``PYTHONUSERBASE`` so editable installs (whose `.pth` lives
+        # there) keep working in the spawned subprocess.
+        if site.USER_BASE is not None:
+            env["PYTHONUSERBASE"] = site.USER_BASE
         p = subprocess.Popen(
             [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
             stdin=subprocess.PIPE,
