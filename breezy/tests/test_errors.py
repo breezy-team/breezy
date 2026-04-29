@@ -19,8 +19,6 @@
 import inspect
 import re
 
-import vcsgraph.errors
-
 from .. import controldir, errors, osutils, tests, urlutils
 
 

@@ -20,6 +20,8 @@ import contextlib
 import os
 from io import BytesIO
 
+import vcsgraph.graph as graph
+
 from ... import errors, osutils, trace
 from ...bzr import lockable_files
 from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
@@ -31,8 +33,6 @@ from ...controldir import (
     format_registry,
 )
 from ...i18n import gettext
-import vcsgraph.graph as graph
-
 from ...lazy_import import lazy_import
 from ...transport import NoSuchFile, get_transport, local
 

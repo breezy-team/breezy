@@ -3259,6 +3259,7 @@ class GhostRevisionsHaveNoRevno(BzrError):
     )
 
     def __init__(self, revision_id, ghost_revision_id):
+        """Initialize with the revision and the ghost blocking revno lookup."""
         self.revision_id = revision_id
         self.ghost_revision_id = ghost_revision_id
 

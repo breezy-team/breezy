@@ -19,8 +19,6 @@
 
 from io import BytesIO
 
-import vcsgraph
-import vcsgraph.graph
 from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit

@@ -29,8 +29,8 @@ from collections.abc import Callable
 from typing import Optional
 
 import fastbencode as bencode
-from vcsgraph import graph, known_graph
 import vcsgraph.errors
+from vcsgraph import known_graph
 
 from .. import (
     branch,

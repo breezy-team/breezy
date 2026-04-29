@@ -32,10 +32,10 @@ from io import BytesIO
 import fastbencode as bencode
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
-from ...errors import GhostRevisionsHaveNoRevno
 from ... import transport as _mod_transport
 from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
+from ...errors import GhostRevisionsHaveNoRevno
 from ...revision import NULL_REVISION, Revision
 from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
