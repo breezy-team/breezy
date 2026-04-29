@@ -348,7 +348,7 @@ class ImportObjects(TestCaseWithTransport):
             b"bla",
             (None, "blobname"),
             None,
-            b"parentid",
+            b"rootid",
             b"somerevid",
             [],
             objs.__getitem__,
