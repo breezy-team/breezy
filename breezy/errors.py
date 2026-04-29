@@ -1017,53 +1017,26 @@ class AlreadyCommitted(LockError):
         pass
 
 
-class ReadOnlyError(LockError):
-    """Write attempted on read-only object.
+class LockFailed(LockError):
+    """Lock acquisition failed.
 
-    Raised when a write operation is attempted on an object that is read-only.
+    Raised when a lock cannot be acquired for a specified reason.
     """
 
-    _fmt = "A write attempt was made in a read only transaction on %(obj)s"
+    internal_error = False
 
-    # TODO: There should also be an error indicating that you need a write
-    # lock and don't have any lock at all... mbp 20070226
+    _fmt = "Cannot lock %(lock)s: %(why)s"
 
-    def __init__(self, obj):
-        """Initialize with the read-only object.
+    def __init__(self, lock, why):
+        """Initialize with lock and failure reason.
 
         Args:
-            obj: The object that is read-only.
+            lock: The lock that failed to be acquired.
+            why: The reason why the lock failed.
         """
-        self.obj = obj
-
-
-class OutSideTransaction(BzrError):
-    """Operation attempted outside of transaction.
-
-    Raised when a transaction-related operation is attempted after the
-    transaction has already finished.
-    """
-
-    _fmt = (
-        "A transaction related operation was attempted after the transaction finished."
-    )
-
-
-class ReadOnlyObjectDirtiedError(ReadOnlyError):
-    """Attempt to modify object in read-only transaction.
-
-    Raised when attempting to modify an object within a read-only transaction.
-    """
-
-    _fmt = "Cannot change object %(obj)r in read only transaction"
-
-    def __init__(self, obj):
-        """Initialize with the object that was attempted to be modified.
-
-        Args:
-            obj: The object that cannot be changed in read-only mode.
-        """
-        self.obj = obj
+        LockError.__init__(self, "")
+        self.lock = lock
+        self.why = why
 
 
 class UnlockableTransport(LockError):
@@ -1586,8 +1559,15 @@ class BoundBranchConnectionFailure(BzrError):
 
 
 # VersionedFile errors are now owned by bzrformats; re-export so
-# existing breezy.errors.X imports keep working.
+# existing breezy.errors.X imports keep working.  Same for the
+# transaction/read-only lock errors raised by bzrformats.weave and
+# bzrformats.versionedfile — keeping a separate copy here would
+# break ``assertRaises(breezy.errors.ReadOnlyError, ...)`` against
+# exceptions raised inside bzrformats.
 from bzrformats.errors import (  # noqa: E402
+    OutSideTransaction,
+    ReadOnlyError,
+    ReadOnlyObjectDirtiedError,
     VersionedFileError,
     VersionedFileInvalidChecksum,
 )
