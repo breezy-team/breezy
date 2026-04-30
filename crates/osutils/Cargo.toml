@@ -32,7 +32,7 @@ termion = ">=1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
-winapi = { version = "0.3", features = ["fileapi", "errhandlingapi", "winnt", "minwindef"] }
+winapi = { version = "0.3", features = ["fileapi", "errhandlingapi", "winnt", "minwindef", "winnls"] }
 
 [features]
 pyo3 = ["dep:pyo3"]

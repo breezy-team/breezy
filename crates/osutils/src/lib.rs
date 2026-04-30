@@ -370,7 +370,11 @@ fn _get_user_encoding() -> Option<String> {
 
 #[cfg(windows)]
 fn _get_user_encoding() -> Option<String> {
-    None
+    let cp = unsafe { winapi::um::winnls::GetACP() };
+    if cp == 0 {
+        return None;
+    }
+    Some(format!("cp{cp}"))
 }
 
 pub fn get_user_encoding() -> Option<String> {
