@@ -623,7 +623,10 @@ class DirState:
         # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
         # Because it means we can sync on the '\n'
         state_file = self._state_file
-        file_size = os.fstat(state_file.fileno()).st_size
+        if hasattr(state_file, "size"):
+            file_size = state_file.size()
+        else:
+            file_size = os.fstat(state_file.fileno()).st_size
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
@@ -812,7 +815,10 @@ class DirState:
         # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
         # Because it means we can sync on the '\n'
         state_file = self._state_file
-        file_size = os.fstat(state_file.fileno()).st_size
+        if hasattr(state_file, "size"):
+            file_size = state_file.size()
+        else:
+            file_size = os.fstat(state_file.fileno()).st_size
         # We end up with 2 extra fields, we should have a trailing '\n' to
         # ensure that we read the whole record, and we should have a precursur
         # b'' which ensures that we start after the previous '\n'
@@ -2528,8 +2534,13 @@ class DirState:
 
     def _maybe_fdatasync(self):
         """Flush to disk if possible and if not configured off."""
-        if self._config_stack.get("dirstate.fdatasync"):
-            osutils.fdatasync(self._state_file.fileno())
+        if not self._config_stack.get("dirstate.fdatasync"):
+            return
+        state_file = self._state_file
+        if hasattr(state_file, "fdatasync"):
+            state_file.fdatasync()
+        else:
+            osutils.fdatasync(state_file.fileno())
 
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""
