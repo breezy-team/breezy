@@ -16,8 +16,9 @@
 
 """A generator which creates a rio stanza of the current tree info."""
 
+from bzrformats.rio import Stanza
+
 from breezy import errors, hooks
-from breezy.bzr import rio
 from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
@@ -79,7 +80,10 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             files = rio.Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add("path", path)
-                files.add("revision", self._file_revisions[path])
+                rev = self._file_revisions[path]
+                if isinstance(rev, bytes):
+                    rev = rev.decode("utf-8")
+                files.add("revision", rev)
             info.add("file-revisions", files)
 
         to_file.write(info.to_string())

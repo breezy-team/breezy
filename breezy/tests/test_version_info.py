@@ -21,9 +21,9 @@ import re
 from io import BytesIO, StringIO
 
 import yaml
+from bzrformats.rio import read_stanzas
 
 from .. import registry, tests, version_info_formats
-from ..bzr import rio
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
     MissingTemplateVariable,
@@ -150,7 +150,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertEqual(["bloe"], stanza.get_all("bla"))
 
     def get_one_stanza(self, stanza, key):
-        new_stanzas = list(rio.read_stanzas(BytesIO(stanza.get(key).encode("utf8"))))
+        new_stanzas = list(read_stanzas(BytesIO(stanza.get(key).encode("utf8"))))
         self.assertEqual(1, len(new_stanzas))
         return new_stanzas[0]
 

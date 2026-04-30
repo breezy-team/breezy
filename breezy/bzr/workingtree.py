@@ -57,20 +57,20 @@ from breezy import (
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
-    rio as _mod_rio,
     )
 from bzrformats import generate_ids, inventory, xml5, xml7
+from bzrformats.rio import RioReader, Stanza
 """,
 )
 
 from bzrformats import serializer
+from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
 from bzrformats.errors import (
     BzrCheckError,
     NotVersionedError,
     ObjectNotLocked,
     RevisionNotPresent,
 )
-from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
 from bzrformats.errors import InvalidNormalization as _BzrFormatsInvalidNormalization
 from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
@@ -661,7 +661,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         raise errors.ConflictFormatError()
                 except StopIteration as err:
                     raise errors.ConflictFormatError() from err
-                reader = _mod_rio.RioReader(confile)
+                reader = RioReader(confile)
                 return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
                 confile.close()
@@ -1017,7 +1017,19 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = osutils.IterableFile(_mod_rio.rio_iter(stanzas, header))
+
+        def _lines():
+            yield header + b"\n"
+            first = True
+            for stanza in stanzas:
+                if not first:
+                    yield b"\n"
+                yield from stanza.to_lines()
+                first = False
+
+        from ..iterablefile import IterableFile
+
+        my_file = IterableFile(_lines())
         self._transport.put_file(
             filename, my_file, mode=self.controldir._get_file_mode()
         )
@@ -1034,9 +1046,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 file_id = self.path2id(path)
                 if file_id is None:
                     continue
-                yield _mod_rio.Stanza(
-                    file_id=file_id.decode("utf8"), hash=sha1.decode("ascii")
-                )
+                yield Stanza(file_id=file_id.decode("utf8"), hash=sha1.decode("ascii"))
 
         with self.lock_tree_write():
             self._put_rio("merge-hashes", iter_stanzas(), MERGE_MODIFIED_HEADER_1)
@@ -1063,7 +1073,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         raise errors.MergeModifiedFormatError()
                 except StopIteration as err:
                     raise errors.MergeModifiedFormatError() from err
-                for s in _mod_rio.RioReader(hashfile):
+                for s in RioReader(hashfile):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
                     file_id = cache_utf8.encode(s.get("file_id"))
@@ -1171,7 +1181,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # Capture descendant entries before removing the subtree
             # from my_inv, so we can re-add them under the new root.
             descendants = [
-                ie for _path, ie in my_inv.iter_entries(from_dir=file_id)
+                ie
+                for _path, ie in my_inv.iter_entries(from_dir=file_id)
                 if ie.file_id != file_id
             ]
             my_inv.remove_recursive_id(file_id)

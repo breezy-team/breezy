@@ -22,11 +22,12 @@ to facilitate code review and collaboration workflows.
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrformats.errors import RevisionNotPresent
 import base64
 import contextlib
 import re
 from io import BytesIO
+
+from bzrformats.errors import RevisionNotPresent
 
 from . import lazy_import
 
@@ -39,8 +40,9 @@ from breezy import (
     gpg,
     patch as _mod_patch,
     )
+from bzrformats import rio, rio_patch
 from breezy.bzr import (
-    rio_patch,
+    testament,
     )
 from breezy.bzr import rio
 from breezy.bzr.bundle import (
@@ -188,18 +190,29 @@ class BaseMergeDirective:
 
         :return: a list of lines
         """
-        time_str = _mod_patch.format_patch_date(self.time, self.timezone)
-        stanza = rio.Stanza(
-            revision_id=self.revision_id.decode("utf-8"),
-            timestamp=time_str,
-            target_branch=self.target_branch,
-            testament_sha1=self.testament_sha1.decode("utf-8"),
-        )
+        time_str = timestamp.format_patch_date(self.time, self.timezone)
+
+        # bzrformats.rio.Stanza values must be str, but breezy passes
+        # bytes for revision ids / sha1s and historically tolerated
+        # bytes for arbitrary fields too.
+        def _str(value):
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+            return value
+
+        stanza_kwargs = {
+            "revision_id": _str(self.revision_id),
+            "timestamp": time_str,
+            "target_branch": _str(self.target_branch),
+        }
+        if self.testament_sha1 is not None:
+            stanza_kwargs["testament_sha1"] = _str(self.testament_sha1)
+        stanza = rio.Stanza(**stanza_kwargs)
         for key in ("source_branch", "message"):
             if self.__dict__[key] is not None:
-                stanza.add(key, self.__dict__[key])
+                stanza.add(key, _str(self.__dict__[key]))
         if base_revision:
-            stanza.add("base_revision_id", self.base_revision_id.decode("utf-8"))
+            stanza.add("base_revision_id", _str(self.base_revision_id))
         lines = [b"# " + self._format_string + b"\n"]
         lines.extend(rio_patch.to_patch_lines(stanza))
         lines.append(b"# \n")
@@ -557,7 +570,7 @@ class MergeDirective(BaseMergeDirective):
         raise errors.NotAMergeDirective(firstline)
 
     @classmethod
-    def _from_lines(cls, line_iter):
+    def _from_lines(klass, line_iter):
         stanza = rio_patch.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
@@ -580,7 +593,7 @@ class MergeDirective(BaseMergeDirective):
             "source_branch",
             "message",
         ):
-            with contextlib.suppress(KeyError):
+            if key in stanza:
                 kwargs[key] = stanza.get(key)
         kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
         if "testament_sha1" in kwargs:
@@ -692,7 +705,7 @@ class MergeDirective2(BaseMergeDirective):
             return base64.b64decode(self.bundle)
 
     @classmethod
-    def _from_lines(cls, line_iter):
+    def _from_lines(klass, line_iter):
         stanza = rio_patch.read_patch_stanza(line_iter)
         patch = None
         bundle = None
@@ -726,7 +739,7 @@ class MergeDirective2(BaseMergeDirective):
             "message",
             "base_revision_id",
         ):
-            with contextlib.suppress(KeyError):
+            if key in stanza:
                 kwargs[key] = stanza.get(key)
         kwargs["revision_id"] = kwargs["revision_id"].encode("utf-8")
         kwargs["base_revision_id"] = kwargs["base_revision_id"].encode("utf-8")
