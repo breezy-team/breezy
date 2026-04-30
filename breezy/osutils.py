@@ -553,7 +553,10 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base) :].lstrip("/\\")
+    suffix = current[len(abs_base) :]
+    if suffix.startswith(("/", "\\")):
+        suffix = suffix[1:]
+    return suffix
 
 
 # XXX - TODO - we need better detection/integration of case-insensitive
