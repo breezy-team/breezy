@@ -98,8 +98,17 @@ impl std::error::Error for Error {}
 /// files, and matches the legacy Cython behaviour.
 pub fn read_dir(path: &[u8]) -> Result<Vec<Entry>, Error> {
     let dir_path = Path::new(std::ffi::OsStr::from_bytes(path));
-    let mut dir = Dir::open(dir_path, OFlag::O_RDONLY, Mode::empty())
-        .map_err(|e| Error::new(e, path.to_vec()))?;
+    // O_DIRECTORY ensures non-directories (sockets, fifos, regular files)
+    // surface as ENOTDIR rather than the type-specific error from open(2)
+    // — e.g. ENXIO for a listening Unix socket on Linux. Callers in breezy
+    // (notably breezy.bzr._dirstate_helpers_pyx) treat ENOTDIR as the
+    // signal that a path is not a walkable directory.
+    let mut dir = Dir::open(
+        dir_path,
+        OFlag::O_RDONLY | OFlag::O_DIRECTORY,
+        Mode::empty(),
+    )
+    .map_err(|e| Error::new(e, path.to_vec()))?;
 
     let mut entries = Vec::new();
     for entry in dir.iter() {
