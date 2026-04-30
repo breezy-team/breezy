@@ -18,8 +18,10 @@ pub enum CompressorKind {
 }
 
 #[cfg(feature = "pyo3")]
-impl pyo3::FromPyObject<'_> for CompressorKind {
-    fn extract_bound(ob: &pyo3::Bound<pyo3::PyAny>) -> pyo3::PyResult<Self> {
+impl pyo3::FromPyObject<'_, '_> for CompressorKind {
+    type Error = pyo3::PyErr;
+
+    fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
         use pyo3::prelude::*;
         let s: Cow<str> = ob.extract()?;
         match s.as_ref() {

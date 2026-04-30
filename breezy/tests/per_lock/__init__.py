@@ -19,7 +19,9 @@
 These test the conformance of all the lock variations to the expected API.
 """
 
-from breezy import _transport_rs, tests
+from dromedary import _transport_rs
+
+from breezy import tests
 
 
 class TestCaseWithLock(tests.TestCaseWithTransport):

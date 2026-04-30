@@ -228,8 +228,10 @@ import sys
 import time
 from stat import S_IEXEC
 
+from dromedary import _transport_rs
+from dromedary import errors as transport_errors
+
 from .. import (
-    _transport_rs,
     cache_utf8,
     config,
     debug,
@@ -3409,7 +3411,10 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = _transport_rs.ReadLock(self._filename)
+        try:
+            self._lock_token = _transport_rs.ReadLock(self._filename)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._filename) from e
         self._lock_state = "r"
         self._state_file = self._lock_token.f
         self._wipe_state()
@@ -3423,7 +3428,10 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = _transport_rs.WriteLock(self._filename)
+        try:
+            self._lock_token = _transport_rs.WriteLock(self._filename)
+        except transport_errors.LockContention as e:
+            raise errors.LockContention(self._filename) from e
         self._lock_state = "w"
         self._state_file = self._lock_token.f
         self._wipe_state()

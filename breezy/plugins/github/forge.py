@@ -21,10 +21,11 @@ import os
 from datetime import datetime
 from typing import Any
 
+from dromedary.errors import PermissionDenied, UnexpectedHttpStatus
+
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...config import AuthenticationConfig
-from ...errors import PermissionDenied, UnexpectedHttpStatus
 from ...forge import (
     AutoMergeUnavailable,
     Forge,

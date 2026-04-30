@@ -19,12 +19,13 @@
 Currently limited to referencing tools for migration.
 """
 
+from dromedary import register_transport_proto
+
 from ... import (
     controldir,
     errors,
     version_info,  # noqa: F401
 )
-from ...transport import register_transport_proto
 
 
 class CVSUnsupportedError(errors.UnsupportedVcs):

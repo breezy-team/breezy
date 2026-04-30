@@ -36,8 +36,9 @@ from breezy import (
 """,
 )
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, osutils
-from .. import transport as _mod_transport
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
 from . import rio
@@ -512,7 +513,7 @@ class ContentsConflict(PathConflict):
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + "." + suffix_to_remove)
             )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
@@ -613,7 +614,7 @@ class TextConflict(Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return
         if kind != "file":
             raise NotImplementedError("Conflict is not a file")

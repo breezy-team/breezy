@@ -28,12 +28,13 @@ import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
 
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
 from dulwich.index import blob_from_path_and_stat, commit_tree
 from dulwich.objects import Blob
 
-from .. import annotate, errors, osutils, trace, ui, urlutils
+from .. import annotate, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..transform import (
@@ -50,7 +51,6 @@ from ..transform import (
     joinpath,
     unique_add,
 )
-from ..transport.local import file_kind
 from ..tree import InterTree, TreeChange
 from .mapping import (
     decode_git_path,
@@ -270,7 +270,7 @@ class TreeTransformBase(TreeTransform):
                 try:
                     if self._tree.stored_kind(path) == "directory":
                         parents.append(trans_id)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     pass
             elif self.tree_kind(trans_id) == "directory":
                 parents.append(trans_id)
@@ -718,7 +718,7 @@ class TreeTransformBase(TreeTransform):
         try:
             if path is None or self._tree.kind(path) != "file":
                 return None
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         return path
 
@@ -1295,17 +1295,15 @@ class GitTreeTransform(DiskTreeTransform):
         """
         tree.lock_tree_write()
         try:
-            limbodir = urlutils.local_path_from_url(tree._transport.abspath("limbo"))
+            limbodir = tree._transport.local_abspath("limbo")
             try:
                 osutils.ensure_empty_directory_exists(limbodir)
-            except errors.DirectoryNotEmpty as err:
+            except osutils.DirectoryNotEmpty as err:
                 raise errors.ExistingLimbo(limbodir) from err
-            deletiondir = urlutils.local_path_from_url(
-                tree._transport.abspath("pending-deletion")
-            )
+            deletiondir = tree._transport.local_abspath("pending-deletion")
             try:
                 osutils.ensure_empty_directory_exists(deletiondir)
-            except errors.DirectoryNotEmpty as err:
+            except osutils.DirectoryNotEmpty as err:
                 raise errors.ExistingPendingDeletion(deletiondir) from err
         except BaseException:
             tree.unlock()
@@ -1347,7 +1345,7 @@ class GitTreeTransform(DiskTreeTransform):
             return None
         try:
             return file_kind(self._tree.abspath(path))
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -1711,7 +1709,7 @@ class GitTransformPreview(GitTreeTransform):
             for child in self._tree.iter_child_entries(path):
                 childpath = joinpath(path, child.name)
                 yield self.trans_id_tree_path(childpath)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return
 
     def new_orphan(self, trans_id, parent_id):
@@ -1825,12 +1823,12 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_file."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if trans_id in self._transform._new_contents:
             name = self._transform._limbo_name(trans_id)
             return open(name, "rb")
         if trans_id in self._transform._removed_contents:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         orig_path = self._transform.tree_path(trans_id)
         return self._transform._tree.get_file(orig_path)
 
@@ -1838,7 +1836,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_symlink_target."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if trans_id not in self._transform._new_contents:
             orig_path = self._transform.tree_path(trans_id)
             return self._transform._tree.get_symlink_target(orig_path)
@@ -1867,7 +1865,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             old_annotation = []
         try:
             lines = self.get_file_lines(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
@@ -1965,7 +1963,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_file_mtime."""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         if trans_id not in self._transform._new_contents:
             return self._transform._tree.get_file_mtime(
                 self._transform.tree_path(trans_id)
@@ -2093,7 +2091,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         """
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         for _child_trans_id in self._all_children(trans_id):
             entry, is_versioned = self._transform.final_entry(trans_id)
             if not is_versioned:

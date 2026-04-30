@@ -20,11 +20,13 @@ For more information about WSGI, see PEP 333:
     http://www.python.org/dev/peps/pep-0333/
 """
 
+import logging
 from io import BytesIO
 
-from ...bzr.smart import medium
-from ...transport import chroot, get_transport
-from ...urlutils import local_path_to_url
+from dromedary import chroot, get_transport_from_url
+from dromedary.urlutils import local_path_to_url
+
+from breezy.bzr.smart import medium
 
 
 def make_app(
@@ -43,17 +45,18 @@ def make_app(
     """
     local_url = local_path_to_url(root)
     if readonly:
-        base_transport = get_transport("readonly+" + local_url)
+        base_transport = get_transport_from_url("readonly+" + local_url)
     else:
-        base_transport = get_transport(local_url)
+        base_transport = get_transport_from_url(local_url)
     if load_plugins:
-        from ...plugin import load_plugins
+        from breezy.plugin import load_plugins
 
         load_plugins()
     if enable_logging:
-        import breezy.trace
-
-        breezy.trace.enable_default_logging()
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
     app = SmartWSGIApp(base_transport, prefix)
     app = RelpathSetter(app, "", path_var)
     return app
@@ -147,7 +150,7 @@ class SmartWSGIApp:
         # something.
         self.chroot_server = chroot.ChrootServer(backing_transport)
         self.chroot_server.start_server()
-        self.backing_transport = get_transport(self.chroot_server.get_url())
+        self.backing_transport = get_transport_from_url(self.chroot_server.get_url())
         self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
         # as all it does is remove the scheme registration from transport's

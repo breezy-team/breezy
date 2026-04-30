@@ -33,7 +33,7 @@ class BranchBuilder:
 
     For instance:
 
-    >>> from breezy.transport.memory import MemoryTransport
+    >>> from dromedary.memory import MemoryTransport
     >>> builder = BranchBuilder(MemoryTransport("memory:///"))
     >>> builder.start_series()
     >>> builder.build_snapshot(None, [

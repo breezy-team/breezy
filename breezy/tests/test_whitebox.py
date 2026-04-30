@@ -23,7 +23,9 @@ breezy components, particularly path manipulation utilities.
 import os
 import tempfile
 
-from .. import errors, osutils, tests
+from dromedary import errors as transport_errors
+
+from .. import osutils, tests
 from ..osutils import abspath, pathjoin, realpath, relpath
 
 
@@ -50,12 +52,14 @@ class MoreTests(tests.TestCaseWithTransport):
 
         # root = nothing
         self.assertEqual("", rp(dtmp))
-        self.assertRaises(errors.PathNotChild, rp, "/etc")
+        self.assertRaises(transport_errors.PathNotChild, rp, "/etc")
 
         # now some near-miss operations -- note that
         # os.path.commonprefix gets these wrong!
-        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2")
-        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2/foo")
+        self.assertRaises(transport_errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2")
+        self.assertRaises(
+            transport_errors.PathNotChild, rp, dtmp.rstrip("\\/") + "2/foo"
+        )
 
         # now operations based on relpath of files in current
         # directory, or nearby
@@ -65,4 +69,4 @@ class MoreTests(tests.TestCaseWithTransport):
         self.assertEqual("foo", rp("foo"))
         self.assertEqual("foo", rp("./foo"))
         self.assertEqual("foo", rp(abspath("foo")))
-        self.assertRaises(errors.PathNotChild, rp, "../foo")
+        self.assertRaises(transport_errors.PathNotChild, rp, "../foo")

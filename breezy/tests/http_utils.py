@@ -20,10 +20,12 @@ import re
 from io import BytesIO
 from urllib.request import parse_http_list, parse_keqv_list
 
-from .. import errors, tests, transport
+from dromedary import chroot
+from dromedary import errors as transport_errors
+from dromedary.tests import http_server
+
+from .. import tests, transport
 from ..bzr.smart import medium
-from ..transport import chroot
-from . import http_server
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -86,7 +88,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # but for now it's simpler to just feed the bytes directly.
         smart_protocol_request.accept_bytes(unused_bytes)
         if not (smart_protocol_request.next_read_size() == 0):
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 "not finished reading, but all data sent to protocol."
             )
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))

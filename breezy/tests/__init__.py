@@ -85,9 +85,12 @@ try:
 except ModuleNotFoundError:
     # lsprof not available
     pass
+from dromedary import errors as transport_errors
+from dromedary import memory, pathfilter
+from dromedary.errors import NoSuchFile
+
 from ..bzr.smart import client, request
 from ..tests import TestUtil, fixtures, test_server, treeshape, ui_testing
-from ..transport import memory, pathfilter
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -166,6 +169,17 @@ isolated_environ = {
     # use an env var so it propagates to subprocesses.
     "APPORT_DISABLE": "1",
 }
+
+
+def subprocess_pythonpath():
+    """Return a PYTHONPATH suitable for spawning a subprocess that imports breezy.
+
+    Includes dromedary's parent directory because dromedary is typically
+    installed editably outside ``sys.path``'s normal layout.
+    """
+    import dromedary
+
+    return ":".join([os.path.dirname(os.path.dirname(dromedary.__file__))] + sys.path)
 
 
 def override_os_environ(test, env=None):
@@ -3114,7 +3128,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         b = self.make_branch(relpath, format=format)
         try:
             return b.controldir.create_workingtree()
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
@@ -3143,7 +3157,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             self.fail(f"path {relpath} is not a directory; no such file")
         if not stat.S_ISDIR(mode):
             self.fail(f"path {relpath} is not a directory; has mode {mode:#o}")
@@ -3181,7 +3195,7 @@ class ChrootedTestCase(TestCaseWithTransport):
     """
 
     def setUp(self):
-        from breezy.tests import http_server
+        from dromedary.tests import http_server
 
         super().setUp()
         if self.vfs_transport_factory != memory.MemoryServer:
@@ -3932,7 +3946,7 @@ def load_test_id_list(file_name):
     try:
         ftest = open(file_name)
     except FileNotFoundError as err:
-        raise _mod_transport.NoSuchFile(file_name) from err
+        raise NoSuchFile(file_name) from err
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -4207,7 +4221,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_smart_add",
         "breezy.tests.test_smtp_connection",
         "breezy.tests.test_source",
-        "breezy.tests.test_ssh_transport",
         "breezy.tests.test_status",
         "breezy.tests.test_strace",
         "breezy.tests.test_subsume",
@@ -4217,7 +4230,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_test_server",
         "breezy.tests.test_textfile",
         "breezy.tests.test_textmerge",
-        "breezy.tests.test_cethread",
         "breezy.tests.test_timestamp",
         "breezy.tests.test_trace",
         "breezy.tests.test_transactions",

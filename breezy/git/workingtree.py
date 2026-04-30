@@ -39,6 +39,9 @@ import stat
 import sys
 from collections import defaultdict
 
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import FileLocked, GitFile
 from dulwich.ignore import IgnoreFilterManager
@@ -65,7 +68,6 @@ from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
-from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
 from .tree import MutableGitIndexTree
@@ -137,7 +139,7 @@ class TextConflict(_mod_conflicts.Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return
         if kind != "file":
             raise NotImplementedError("Conflict is not a file")
@@ -312,7 +314,7 @@ class ContentsConflict(_mod_conflicts.Conflict):
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + "." + suffix_to_remove)
             )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
@@ -587,7 +589,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         This removes index.lock if it exists and breaks the branch lock.
         """
-        with contextlib.suppress(_mod_transport.NoSuchFile):
+        with contextlib.suppress(NoSuchFile):
             self.control_transport.delete("index.lock")
         self.branch.break_lock()
 
@@ -638,7 +640,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         try:
             self._transport.stat(".git/cOnFiG")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             self.case_sensitive = True
         else:
             self.case_sensitive = False
@@ -683,7 +685,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 "MERGE_HEAD", b"\n".join(merges), mode=self.controldir._get_file_mode()
             )
         else:
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 self.control_transport.delete("MERGE_HEAD")
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -724,7 +726,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         parents = [] if last_rev == _mod_revision.NULL_REVISION else [last_rev]
         try:
             merges_bytes = self.control_transport.get_bytes("MERGE_HEAD")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -830,7 +832,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
                 try:
                     kind = self.kind(f)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     kind = None
 
                 abs_path = self.abspath(f)
@@ -1038,7 +1040,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     try:
                         kind = file_kind(fullpath)
                     except FileNotFoundError as err:
-                        raise _mod_transport.NoSuchFile(fullpath) from err
+                        raise NoSuchFile(fullpath) from err
                     if f != "" and self._directory_is_tree_reference(f):
                         kind = "tree-reference"
                     kinds[pos] = kind
@@ -1078,7 +1080,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             return self._lstat(path).st_mtime
         except FileNotFoundError as err:
-            raise _mod_transport.NoSuchFile(path) from err
+            raise NoSuchFile(path) from err
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1100,7 +1102,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             if self.kind(filename) == "directory":
                 filename += "/"
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             pass
         filename = filename.lstrip("/")
         ignore_manager = self._get_ignore_manager()
@@ -1177,7 +1179,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             except KeyError as err:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise _mod_transport.NoSuchFile(path) from err
+                raise NoSuchFile(path) from err
 
     def get_file_sha1(self, path, stat_value=None):
         """Get the SHA-1 hash of a file's current contents.
@@ -1194,7 +1196,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             if not self.is_versioned(path):
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
@@ -1264,7 +1266,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
-                raise _mod_transport.NoSuchFile(path) from err
+                raise NoSuchFile(path) from err
             entry = getattr(entry, "this", entry)
             return mode_kind(entry.mode)
 
@@ -1459,7 +1461,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     )
                 yield file_ie
             if not found_any and path != "":
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
 
     def conflicts(self):
         """Return the current conflicts in the working tree.
@@ -1780,7 +1782,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     parent_path = path
                     try:
                         kind = parent_tree.kind(parent_path)
-                    except _mod_transport.NoSuchFile:
+                    except NoSuchFile:
                         continue
                     if kind != "file":
                         # Note: this is slightly unnecessary, because symlinks
@@ -1959,7 +1961,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild as err:
+            except transport_errors.PathNotChild as err:
                 raise BadReferenceTarget(
                     self, sub_tree, "Target not inside tree."
                 ) from err
@@ -1993,7 +1995,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if hexsha is None:
             (index, subpath) = self._lookup_index(encode_git_path(path))
             if subpath is None:
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
@@ -2181,7 +2183,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_tree_write(), other_tree.lock_tree_write():
             try:
                 other_tree_path = self.relpath(other_tree.basedir)
-            except errors.PathNotChild as err:
+            except transport_errors.PathNotChild as err:
                 raise errors.BadSubsumeSource(
                     self, other_tree, "Tree is not contained by the other"
                 ) from err

@@ -16,6 +16,11 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Breezy.
 
+ * The transport layer has been extracted into a separate standalone
+   project, ``dromedary``. Breezy now depends on the external
+   ``dromedary`` package for its transport implementations (local,
+   sftp, http, memory, ssh, etc.) and URL utilities.
+
 New Features
 ************
 

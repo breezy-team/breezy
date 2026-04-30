@@ -16,9 +16,10 @@
 
 """Tests for repository write groups."""
 
+from dromedary import memory
+
 from breezy import errors
 from breezy.tests import per_repository, test_server
-from breezy.transport import memory
 
 
 class TestWriteGroup(per_repository.TestCaseWithRepository):

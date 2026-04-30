@@ -27,8 +27,9 @@ relationships.
 
 import os
 
+from dromedary.errors import NoSuchFile
+
 from .... import osutils
-from .... import transport as _mod_transport
 from . import TransportStore
 
 
@@ -171,13 +172,13 @@ class VersionedFileStore(TransportStore):
             The result of the transport put operation.
 
         Raises:
-            _mod_transport.NoSuchFile: If the directory doesn't exist and
+            NoSuchFile: If the directory doesn't exist and
                 the store is not configured for prefixing.
         """
         fn = self.filename(file_id)
         try:
             return self._transport.put_file(fn, f, mode=self._file_mode)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if not self._prefixed:
                 raise
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
@@ -250,7 +251,7 @@ class VersionedFileStore(TransportStore):
                 get_scope=self.get_scope,
                 **self._versionedfile_kwargs,
             )
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
@@ -288,7 +289,7 @@ class VersionedFileStore(TransportStore):
         _filename = self.filename(file_id)
         try:
             return self.get_weave(file_id, transaction, _filename=_filename)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             weave = self._make_new_versionedfile(
                 file_id, transaction, known_missing=True, _filename=_filename
             )

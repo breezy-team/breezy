@@ -24,6 +24,7 @@ import sys
 from collections import deque
 from io import BytesIO
 
+from dromedary import errors as transport_errors
 from fastbencode import bdecode_as_tuple, bencode
 
 import breezy
@@ -111,7 +112,9 @@ def _decode_tuple(req_line):
     if req_line is None or req_line == b"":
         return None
     if not req_line.endswith(b"\n"):
-        raise errors.SmartProtocolError(f"request {req_line!r} not terminated")
+        raise transport_errors.SmartProtocolError(
+            f"request {req_line!r} not terminated"
+        )
     return tuple(req_line[:-1].split(b"\x01"))
 
 
@@ -332,8 +335,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self._send_response(self.request.response)
             except KeyboardInterrupt:
                 raise
-            except errors.UnknownSmartMethod as err:
-                protocol_error = errors.SmartProtocolError(
+            except transport_errors.UnknownSmartMethod as err:
+                protocol_error = transport_errors.SmartProtocolError(
                     f"bad request '{err.verb.decode('ascii')}'"
                 )
                 failure = request.FailedSmartServerResponse(
@@ -892,7 +895,9 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         if prefix == b"chunked":
             self.state_accept = self._state_accept_expecting_length
         else:
-            raise errors.SmartProtocolError(f'Bad chunked body header: "{prefix}"')
+            raise transport_errors.SmartProtocolError(
+                f'Bad chunked body header: "{prefix}"'
+            )
 
     def _state_accept_expecting_length(self):
         """State function: Parse chunk length or control markers.
@@ -1246,7 +1251,7 @@ class SmartClientRequestProtocolOne(
         # trying to call with a body stream.
         self._request.finished_writing()
         self._request.finished_reading()
-        raise errors.UnknownSmartMethod(args[0])
+        raise transport_errors.UnknownSmartMethod(args[0])
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -1310,7 +1315,7 @@ class SmartClientRequestProtocolOne(
         ]
         if result_tuple[0] in v1_error_codes:
             self._request.finished_reading()
-            raise errors.ErrorFromSmartServer(result_tuple)
+            raise transport_errors.ErrorFromSmartServer(result_tuple)
 
     def _response_is_unknown_method(self, result_tuple):
         """Raise UnexpectedSmartServerResponse if the response is an 'unknonwn
@@ -1330,7 +1335,7 @@ class SmartClientRequestProtocolOne(
         ):
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()
-            raise errors.UnknownSmartMethod(self._last_verb)
+            raise transport_errors.UnknownSmartMethod(self._last_verb)
 
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
@@ -1382,7 +1387,7 @@ class SmartClientRequestProtocolOne(
         elif resp == (b"ok", b"2"):
             return 2
         else:
-            raise errors.SmartProtocolError(f"bad response {resp!r}")
+            raise transport_errors.SmartProtocolError(f"bad response {resp!r}")
 
     def _write_args(self, args):
         self._write_protocol_version()
@@ -1426,9 +1431,11 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
         elif response_status == b"failed\n":
             self.response_status = False
             self._request.finished_reading()
-            raise errors.ErrorFromSmartServer(result)
+            raise transport_errors.ErrorFromSmartServer(result)
         else:
-            raise errors.SmartProtocolError(f"bad protocol status {response_status!r}")
+            raise transport_errors.SmartProtocolError(
+                f"bad protocol status {response_status!r}"
+            )
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
@@ -1532,7 +1539,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
-            if not isinstance(exception.exc_value, errors.UnknownSmartMethod):
+            if not isinstance(exception.exc_value, transport_errors.UnknownSmartMethod):
                 log_exception_quietly()
             self.message_handler.protocol_error(exception.exc_value)
             # The state machine is ready to continue decoding, but the
@@ -1577,7 +1584,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             decoded = bdecode_as_tuple(prefixed_bytes)
         except ValueError as e:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"Bytes {prefixed_bytes!r} not bencoded"
             ) from e
         return decoded
@@ -1615,7 +1622,9 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _state_accept_expecting_headers(self):
         decoded = self._extract_prefixed_bencoded_data()
         if not isinstance(decoded, dict):
-            raise errors.SmartProtocolError(f"Header object {decoded!r} is not a dict")
+            raise transport_errors.SmartProtocolError(
+                f"Header object {decoded!r} is not a dict"
+            )
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.headers_received(decoded)
@@ -1633,7 +1642,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         elif message_part_kind == b"e":
             self.done()
         else:
-            raise errors.SmartProtocolError(
+            raise transport_errors.SmartProtocolError(
                 f"Bad message kind byte: {message_part_kind!r}"
             )
 
@@ -1825,7 +1834,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             raise AssertionError(
                 f"send_error({exception}) called, but response already sent."
             )
-        if isinstance(exception, errors.UnknownSmartMethod):
+        if isinstance(exception, transport_errors.UnknownSmartMethod):
             failure = request.FailedSmartServerResponse(
                 (b"UnknownMethod", exception.verb)
             )

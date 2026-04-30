@@ -33,6 +33,7 @@ from breezy.terminal import color_string, FG
 
 """,
 )
+
 from . import controldir, errors, osutils, trace
 from . import revision as _mod_revision
 from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno

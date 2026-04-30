@@ -24,14 +24,16 @@ the target filename, ensuring that readers never see a partially-written file.
 import os
 import stat
 
-from breezy import errors, osutils
+from dromedary import errors as transport_errors
+
+from breezy import osutils
 
 # not forksafe - but we dont fork.
 _pid = os.getpid()
 _hostname = None
 
 
-class AtomicFileAlreadyClosed(errors.PathError):
+class AtomicFileAlreadyClosed(transport_errors.PathError):
     """Raised when an operation is attempted on a closed AtomicFile."""
 
     _fmt = '"%(function)s" called on an AtomicFile after it was closed: "%(path)s"'
@@ -43,7 +45,7 @@ class AtomicFileAlreadyClosed(errors.PathError):
             path: The path of the file.
             function: The function that was called on the closed file.
         """
-        errors.PathError.__init__(self, path=path, extra=None)
+        transport_errors.PathError.__init__(self, path=path, extra=None)
         self.function = function
 
 

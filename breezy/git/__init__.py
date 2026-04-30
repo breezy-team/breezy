@@ -27,17 +27,20 @@ import sys
 
 dulwich_minimum_version = (0, 19, 11)
 
+from dromedary import errors as transport_errors
+from dromedary import (
+    register_lazy_transport,
+    register_transport_proto,
+)
+
+from breezy.transport import transport_server_registry
+
 from .. import __version__ as breezy_version
 from .. import errors as brz_errors
 from .. import trace, urlutils
 from ..commands import plugin_cmds
 from ..controldir import ControlDirFormat, Prober, format_registry
 from ..controldir import network_format_registry as controldir_network_format_registry
-from ..transport import (
-    register_lazy_transport,
-    register_transport_proto,
-    transport_server_registry,
-)
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -53,12 +56,12 @@ def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
     except ModuleNotFoundError as e:
-        raise brz_errors.DependencyNotPresent(
+        raise errors.DependencyNotPresent(
             "dulwich", "bzr-git: Please install dulwich, https://www.dulwich.io/"
         ) from e
     else:
         if dulwich_version < dulwich_minimum_version:
-            raise brz_errors.DependencyNotPresent(
+            raise errors.DependencyNotPresent(
                 "dulwich",
                 "bzr-git: Dulwich is too old; at least %d.%d.%d is required"
                 % dulwich_minimum_version,
@@ -142,7 +145,7 @@ class LocalGitProber(Prober):
         """
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport as err:
+        except transport_errors.InProcessTransport as err:
             raise brz_errors.NotBranchError(path=transport.base) from err
         if external_url.startswith("http:") or external_url.startswith("https:"):
             # Already handled by RemoteGitProber
@@ -263,7 +266,7 @@ class RemoteGitProber(Prober):
             # hgweb :(
             raise brz_errors.NotBranchError(transport.base)
         elif resp.status != 200:
-            raise brz_errors.UnexpectedHttpStatus(
+            raise transport_errors.UnexpectedHttpStatus(
                 url, resp.status, headers=resp.getheaders()
             )
 
@@ -294,7 +297,7 @@ class RemoteGitProber(Prober):
         """
         try:
             external_url = transport.external_url()
-        except brz_errors.InProcessTransport as err:
+        except transport_errors.InProcessTransport as err:
             raise brz_errors.NotBranchError(path=transport.base) from err
 
         if external_url.startswith("http:") or external_url.startswith("https:"):
