@@ -20,9 +20,11 @@
 import shutil
 import sys
 
+from dromedary import errors as transport_errors
+from dromedary import memory
+
 from breezy import branch, controldir, errors, info, osutils, tests, upgrade, urlutils
 from breezy.bzr import bzrdir
-from breezy.transport import memory
 
 
 class TestInfo(tests.TestCaseWithTransport):
@@ -1307,7 +1309,7 @@ Location:
             path = urlutils.unescape_for_display(url, "ascii")
             try:
                 return osutils.relpath(osutils.getcwd(), path)
-            except errors.PathNotChild:
+            except (transport_errors.PathNotChild, ValueError):
                 return path
 
         if tree_locked:

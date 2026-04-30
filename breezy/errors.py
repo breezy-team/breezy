@@ -214,23 +214,6 @@ class IncompatibleVersion(BzrError):
         self.current = current
 
 
-class InProcessTransport(BzrError):
-    """Transport is only accessible within the current process.
-
-    Raised when attempting to use an in-process transport from outside the process.
-    """
-
-    _fmt = "The transport '%(transport)s' is only accessible within this process."
-
-    def __init__(self, transport):
-        """Initialize with the problematic transport.
-
-        Args:
-            transport: The transport that is only accessible within this process.
-        """
-        self.transport = transport
-
-
 class InvalidRevisionNumber(BzrError):
     """Invalid revision number specified.
 
@@ -367,23 +350,6 @@ class NoWorkingTree(BzrError):
         self.base = base
 
 
-class NotLocalUrl(BzrError):
-    """URL is not a local path.
-
-    Raised when a local path is required but a non-local URL was provided.
-    """
-
-    _fmt = "%(url)s is not a local path."
-
-    def __init__(self, url):
-        """Initialize with the non-local URL.
-
-        Args:
-            url: The URL that is not a local path.
-        """
-        self.url = url
-
-
 class WorkingTreeAlreadyPopulated(InternalBzrError):
     """Working tree is already populated.
 
@@ -464,35 +430,6 @@ class StrictCommitFailed(BzrError):
     _fmt = "Commit refused because there are unknown files in the tree"
 
 
-# XXX: Should be unified with TransportError; they seem to represent the
-# same thing
-# RBC 20060929: I think that unifiying with TransportError would be a mistake
-# - this is finer than a TransportError - and more useful as such. It
-# differentiates between 'transport has failed' and 'operation on a transport
-# has failed.'
-class PathError(BzrError):
-    """Generic path-related error.
-
-    Base class for errors related to filesystem paths and operations.
-    """
-
-    _fmt = "Generic path error: %(path)r%(extra)s)"
-
-    def __init__(self, path, extra=None):
-        """Initialize with path and optional extra information.
-
-        Args:
-            path: The path that caused the error.
-            extra: Optional additional error information.
-        """
-        BzrError.__init__(self)
-        self.path = path
-        if extra:
-            self.extra = ": " + str(extra)
-        else:
-            self.extra = ""
-
-
 class RenameFailedFilesExist(BzrError):
     """Rename failed because both source and destination exist.
 
@@ -523,13 +460,7 @@ class RenameFailedFilesExist(BzrError):
             self.extra = ""
 
 
-class NotADirectory(PathError):
-    """Path is not a directory.
-
-    Raised when a directory is expected but the path points to a non-directory.
-    """
-
-    _fmt = '"%(path)s" is not a directory %(extra)s'
+from dromedary.errors import PathError
 
 
 class NotInWorkingDirectory(PathError):
@@ -539,15 +470,6 @@ class NotInWorkingDirectory(PathError):
     """
 
     _fmt = '"%(path)s" is not in the working directory %(extra)s'
-
-
-class DirectoryNotEmpty(PathError):
-    """Directory is not empty.
-
-    Raised when attempting to remove a directory that still contains files.
-    """
-
-    _fmt = 'Directory not empty: "%(path)s"%(extra)s'
 
 
 class HardLinkNotSupported(PathError):
@@ -579,24 +501,6 @@ class ReadingCompleted(InternalBzrError):
             request: The MediumRequest that has already completed reading.
         """
         self.request = request
-
-
-class ResourceBusy(PathError):
-    """Device or resource is busy.
-
-    Raised when a filesystem operation fails because the resource is busy.
-    """
-
-    _fmt = 'Device or resource busy: "%(path)s"%(extra)s'
-
-
-class PermissionDenied(PathError):
-    """Permission denied for path operation.
-
-    Raised when a filesystem operation is denied due to insufficient permissions.
-    """
-
-    _fmt = 'Permission denied: "%(path)s"%(extra)s'
 
 
 class UnstackableLocationError(BzrError):
@@ -644,72 +548,6 @@ class UnstackableRepositoryFormat(BzrError):
         self.url = url
 
 
-class ReadError(PathError):
-    """Error reading from file.
-
-    Raised when a read operation from a file fails.
-    """
-
-    _fmt = """Error reading from %(path)r%(extra)r."""
-
-
-class ShortReadvError(PathError):
-    """readv() operation read fewer bytes than expected.
-
-    Raised when a readv() operation reads fewer bytes than requested,
-    indicating a potential file corruption or read error.
-    """
-
-    _fmt = (
-        "readv() read %(actual)s bytes rather than %(length)s bytes"
-        ' at %(offset)s for "%(path)s"%(extra)s'
-    )
-
-    internal_error = True
-
-    def __init__(self, path, offset, length, actual, extra=None):
-        """Initialize with read operation details.
-
-        Args:
-            path: The file path where the short read occurred.
-            offset: The offset where the read was attempted.
-            length: The number of bytes requested.
-            actual: The actual number of bytes read.
-            extra: Optional additional error information.
-        """
-        PathError.__init__(self, path, extra=extra)
-        self.offset = offset
-        self.length = length
-        self.actual = actual
-
-
-class PathNotChild(PathError):
-    """Path is not a child of the specified base path.
-
-    Raised when a path is expected to be within a base directory but is not.
-    """
-
-    _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
-
-    internal_error = False
-
-    def __init__(self, path, base, extra=None):
-        """Initialize with the path, base, and optional extra information.
-
-        Args:
-            path: The path that is not a child of base.
-            base: The expected parent path.
-            extra: Optional additional error information.
-        """
-        BzrError.__init__(self)
-        self.path = path
-        self.base = base
-        if extra:
-            self.extra = ": " + str(extra)
-        else:
-            self.extra = ""
-
-
 class InvalidNormalization(PathError):
     """Path is not unicode normalized.
 
@@ -722,7 +560,7 @@ class InvalidNormalization(PathError):
 # TODO: This is given a URL; we try to unescape it but doing that from inside
 # the exception object is a bit undesirable.
 # TODO: Probably this behavior of should be a common superclass
-class NotBranchError(PathError):
+class NotBranchError(BzrError):
     """Location is not a branch.
 
     Raised when an operation expects a branch but the location does not contain one.
@@ -740,12 +578,10 @@ class NotBranchError(PathError):
         """
         from . import urlutils
 
-        path = urlutils.unescape_for_display(path, "ascii")
-        if detail is not None:
-            detail = ": " + detail
-        self.detail = detail
+        BzrError.__init__(self)
+        self.path = urlutils.unescape_for_display(path, "ascii")
+        self.detail = ": " + detail if detail is not None else detail
         self.controldir = controldir
-        PathError.__init__(self, path=path)
 
     def __repr__(self):
         """Return developer-friendly string representation of the error."""
@@ -1150,27 +986,53 @@ class ForbiddenControlFileError(BzrError):
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
 
 
-class LockError(InternalBzrError):
-    """Base class for lock-related errors.
+class LockError(BzrError):
+    """A lock-related error in breezy.
 
-    All exceptions from lock/unlock functions should inherit from this class.
-    The original exception is available as e.original_error.
+    This is the breezy concept of a lock error: it covers repository,
+    branch and working-tree locks. Transport-level file lock contention
+    raised by dromedary (LockContention/LockFailed) is intentionally a
+    separate hierarchy and is translated at the boundary by callers
+    that operate on a transport directly (see TransportLock).
     """
 
     _fmt = "Lock error: %(msg)s"
 
-    # All exceptions from the lock/unlock functions should be from
-    # this exception class.  They will be translated as necessary. The
-    # original exception is available as e.original_error
-    #
-    # New code should prefer to raise specific subclasses
-    def __init__(self, msg):
-        """Initialize with a lock error message.
+    internal_error = False
 
-        Args:
-            msg: Description of the lock error.
-        """
+    def __init__(self, msg=""):
+        """Create a lock error with an optional message."""
+        BzrError.__init__(self)
         self.msg = msg
+
+
+class LockContention(LockError):
+    """A lock could not be acquired because something else holds it."""
+
+    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
+
+    internal_error = False
+
+    def __init__(self, lock, msg=""):
+        """Create a lock contention error for ``lock``."""
+        BzrError.__init__(self)
+        self.lock = lock
+        self.msg = msg
+
+
+class LockFailed(LockError):
+    """A lock could not be created."""
+
+    _fmt = "Cannot lock %(lock)s: %(why)s"
+
+    internal_error = False
+
+    def __init__(self, lock, why):
+        """Create a lock failed error for ``lock`` with reason ``why``."""
+        BzrError.__init__(self)
+        self.lock = lock
+        self.why = why
+        self.msg = ""
 
 
 class LockActive(LockError):
@@ -1236,28 +1098,6 @@ class ReadOnlyError(LockError):
             obj: The object that is read-only.
         """
         self.obj = obj
-
-
-class LockFailed(LockError):
-    """Lock acquisition failed.
-
-    Raised when a lock cannot be acquired for a specified reason.
-    """
-
-    internal_error = False
-
-    _fmt = "Cannot lock %(lock)s: %(why)s"
-
-    def __init__(self, lock, why):
-        """Initialize with lock and failure reason.
-
-        Args:
-            lock: The lock that failed to be acquired.
-            why: The reason why the lock failed.
-        """
-        LockError.__init__(self, "")
-        self.lock = lock
-        self.why = why
 
 
 class OutSideTransaction(BzrError):
@@ -1330,28 +1170,6 @@ class UnlockableTransport(LockError):
             transport: The transport that cannot be locked.
         """
         self.transport = transport
-
-
-class LockContention(LockError):
-    """Lock contention detected.
-
-    Raised when a lock cannot be acquired because another process or
-    thread is already holding it.
-    """
-
-    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
-
-    internal_error = False
-
-    def __init__(self, lock, msg=""):
-        """Initialize with lock and optional message.
-
-        Args:
-            lock: The lock that could not be acquired.
-            msg: Optional message providing additional details.
-        """
-        self.lock = lock
-        self.msg = msg
 
 
 class LockBroken(LockError):
@@ -1933,47 +1751,7 @@ class NoSuchExportFormat(BzrError):
         self.format = format
 
 
-class TransportError(BzrError):
-    """Base class for transport-related errors.
-
-    Raised when operations on transports (network, filesystem, etc.) fail.
-    """
-
-    _fmt = "Transport error: %(msg)s %(orig_error)s"
-
-    def __init__(self, msg=None, orig_error=None):
-        """Initialize with transport error information.
-
-        Args:
-            msg: Optional error message.
-            orig_error: Optional original exception that caused the error.
-        """
-        if msg is None and orig_error is not None:
-            msg = str(orig_error)
-        if orig_error is None:
-            orig_error = ""
-        if msg is None:
-            msg = ""
-        self.msg = msg
-        self.orig_error = orig_error
-        BzrError.__init__(self)
-
-
-class SmartProtocolError(TransportError):
-    """Generic smart protocol error.
-
-    Raised when the smart protocol encounters an error.
-    """
-
-    _fmt = "Generic bzr smart protocol error: %(details)s"
-
-    def __init__(self, details):
-        """Initialize with error details.
-
-        Args:
-            details: Details about the smart protocol error.
-        """
-        self.details = details
+from dromedary.errors import TransportError
 
 
 class UnexpectedProtocolVersionMarker(TransportError):
@@ -1992,34 +1770,6 @@ class UnexpectedProtocolVersionMarker(TransportError):
             marker: The unexpected protocol version marker.
         """
         self.marker = marker
-
-
-class UnknownSmartMethod(InternalBzrError):
-    """Server does not recognize smart method.
-
-    Raised when the server receives a smart protocol request with
-    an unknown or unsupported method verb.
-    """
-
-    _fmt = "The server does not recognise the '%(verb)s' request."
-
-    def __init__(self, verb):
-        """Initialize with the unknown method verb.
-
-        Args:
-            verb: The smart method verb that is not recognized.
-        """
-        self.verb = verb
-
-
-# A set of semi-meaningful errors which can be thrown
-class TransportNotPossible(TransportError):
-    """Transport operation not possible.
-
-    Raised when a requested transport operation cannot be performed.
-    """
-
-    _fmt = "Transport operation not possible: %(msg)s %(orig_error)s"
 
 
 class SocketConnectionError(ConnectionError):
@@ -2070,140 +1820,7 @@ class ConnectionTimeout(ConnectionError):
         ConnectionError.__init__(self, f"{msg}{orig_error}")
 
 
-class InvalidRange(TransportError):
-    """Invalid range access in file.
-
-    Raised when attempting an invalid range access operation.
-    """
-
-    _fmt = "Invalid range access in %(path)s at %(offset)s: %(msg)s"
-
-    def __init__(self, path, offset, msg=None):
-        """Initialize with path, offset and optional message.
-
-        Args:
-            path: The path where the invalid range access was attempted.
-            offset: The invalid offset.
-            msg: Optional error message.
-        """
-        TransportError.__init__(self, msg)
-        self.path = path
-        self.offset = offset
-
-
-class InvalidHttpResponse(TransportError):
-    """Invalid HTTP response received.
-
-    Raised when an HTTP response is malformed or does not conform
-    to expected format.
-    """
-
-    _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
-
-    def __init__(self, path, msg, orig_error=None, headers=None):
-        """Initialize with response details.
-
-        Args:
-            path: The path that generated the invalid response.
-            msg: Error message describing the invalid response.
-            orig_error: Optional original exception.
-            headers: Optional HTTP headers from the response.
-        """
-        self.path = path
-        if orig_error is None:
-            orig_error = ""
-        else:
-            # This is reached for obscure and unusual errors so we want to
-            # preserve as much info as possible to ease debug.
-            orig_error = f": {orig_error!r}"
-        self.headers = headers
-        TransportError.__init__(self, msg, orig_error=orig_error)
-
-
-class UnexpectedHttpStatus(InvalidHttpResponse):
-    """Unexpected HTTP status code received.
-
-    Raised when an HTTP response contains a status code that was
-    not expected for the operation.
-    """
-
-    _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
-
-    def __init__(self, path, code, extra=None, headers=None):
-        """Initialize with HTTP status details.
-
-        Args:
-            path: The path that returned the unexpected status.
-            code: The unexpected HTTP status code.
-            extra: Optional additional information about the status.
-            headers: Optional HTTP headers from the response.
-        """
-        self.path = path
-        self.code = code
-        self.extra = extra or ""
-        full_msg = "status code %d unexpected" % code
-        if extra is not None:
-            full_msg += ": " + extra
-        InvalidHttpResponse.__init__(self, path, full_msg, headers=headers)
-
-
-class BadHttpRequest(UnexpectedHttpStatus):
-    """Bad HTTP request error.
-
-    Raised when an HTTP request is malformed or contains invalid parameters.
-    """
-
-    _fmt = "Bad http request for %(path)s: %(reason)s"
-
-    def __init__(self, path, reason):
-        """Initialize with path and reason for the bad request.
-
-        Args:
-            path: The path for which the bad request was made.
-            reason: The reason why the request is bad.
-        """
-        self.path = path
-        self.reason = reason
-        TransportError.__init__(self, reason)
-
-
-class InvalidHttpRange(InvalidHttpResponse):
-    """Invalid HTTP range header.
-
-    Raised when an HTTP range request contains an invalid range specification.
-    """
-
-    _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
-
-    def __init__(self, path, range, msg):
-        """Initialize with path, range and error message.
-
-        Args:
-            path: The path for which the invalid range was requested.
-            range: The invalid range specification.
-            msg: Error message describing the invalid range.
-        """
-        self.range = range
-        InvalidHttpResponse.__init__(self, path, msg)
-
-
-class HttpBoundaryMissing(InvalidHttpResponse):
-    """A multipart response ends with no boundary marker.
-
-    This is a special case caused by buggy proxies, described in
-    <https://bugs.launchpad.net/bzr/+bug/198646>.
-    """
-
-    _fmt = "HTTP MIME Boundary missing for %(path)s: %(msg)s"
-
-    def __init__(self, path, msg):
-        """Initialize with path and error message.
-
-        Args:
-            path: The path for which the boundary is missing.
-            msg: Error message describing the missing boundary.
-        """
-        InvalidHttpResponse.__init__(self, path, msg)
+from dromedary.errors import InvalidHttpResponse
 
 
 class InvalidHttpContentType(InvalidHttpResponse):
@@ -2226,39 +1843,17 @@ class InvalidHttpContentType(InvalidHttpResponse):
         InvalidHttpResponse.__init__(self, path, msg)
 
 
-class RedirectRequested(TransportError):
-    """HTTP redirect response received.
+class DependencyNotPresent(BzrError):
+    """Required dependency not present.
 
-    Raised when an HTTP request receives a redirect response that needs to be handled.
+    Raised when a required Python library or external dependency is not available.
     """
 
-    _fmt = "%(source)s is%(permanently)s redirected to %(target)s"
+    _fmt = 'Unable to import library "%(library)s": %(error)s'
 
-    def __init__(self, source, target, is_permanent=False):
-        """Initialize with redirect information.
-
-        Args:
-            source: The original URL that was redirected.
-            target: The target URL to redirect to.
-            is_permanent: Whether this is a permanent redirect.
-        """
-        self.source = source
-        self.target = target
-        if is_permanent:
-            self.permanently = " permanently"
-        else:
-            self.permanently = ""
-        TransportError.__init__(self)
-
-
-class TooManyRedirections(TransportError):
-    """Too many HTTP redirections encountered.
-
-    Raised when the number of HTTP redirections exceeds the maximum allowed limit,
-    potentially indicating a redirect loop.
-    """
-
-    _fmt = "Too many redirections"
+    def __init__(self, library, error):
+        """Create an error recording that ``library`` failed to import."""
+        BzrError.__init__(self, library=library, error=error)
 
 
 class ConflictsInTree(BzrError):
@@ -2269,24 +1864,6 @@ class ConflictsInTree(BzrError):
     """
 
     _fmt = "Working tree has conflicts."
-
-
-class DependencyNotPresent(BzrError):
-    """Required dependency not present.
-
-    Raised when a required Python library or external dependency is not available.
-    """
-
-    _fmt = 'Unable to import library "%(library)s": %(error)s'
-
-    def __init__(self, library, error):
-        """Initialize with the missing library and error information.
-
-        Args:
-            library: Name of the missing library.
-            error: The import error that occurred.
-        """
-        BzrError.__init__(self, library=library, error=error)
 
 
 class WorkingTreeNotRevision(BzrError):
@@ -3202,23 +2779,6 @@ class RootNotRich(BzrError):
     _fmt = """This operation requires rich root data storage"""
 
 
-class NoSmartMedium(InternalBzrError):
-    """Transport cannot tunnel smart protocol.
-
-    Raised when a transport does not support tunneling the smart protocol.
-    """
-
-    _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
-
-    def __init__(self, transport):
-        """Initialize with the transport that cannot tunnel smart protocol.
-
-        Args:
-            transport: The transport that doesn't support smart protocol tunneling.
-        """
-        self.transport = transport
-
-
 class UnknownSSH(BzrError):
     """Unknown SSH implementation specified.
 
@@ -3442,47 +3002,6 @@ class TagAlreadyExists(BzrError):
             tag_name: The name of the tag that already exists.
         """
         self.tag_name = tag_name
-
-
-class UnexpectedSmartServerResponse(BzrError):
-    """Smart server returned unexpected response.
-
-    Raised when the smart server returns a response that cannot be understood.
-    """
-
-    _fmt = "Could not understand response from smart server: %(response_tuple)r"
-
-    def __init__(self, response_tuple):
-        """Initialize with the unexpected response.
-
-        Args:
-            response_tuple: The response tuple that was not understood.
-        """
-        self.response_tuple = response_tuple
-
-
-class ErrorFromSmartServer(BzrError):
-    """An error was received from a smart server.
-
-    :seealso: UnknownErrorFromSmartServer
-    """
-
-    _fmt = "Error received from smart server: %(error_tuple)r"
-
-    internal_error = True
-
-    def __init__(self, error_tuple):
-        """Initialize with smart server error details.
-
-        Args:
-            error_tuple: The error tuple received from the smart server.
-        """
-        self.error_tuple = error_tuple
-        try:
-            self.error_verb = error_tuple[0]
-        except IndexError:
-            self.error_verb = None
-        self.error_args = error_tuple[1:]
 
 
 class RepositoryDataStreamError(BzrError):

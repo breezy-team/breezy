@@ -18,6 +18,8 @@
 
 from io import StringIO
 
+from dromedary import errors as transport_errors
+
 from ... import branch as _mod_branch
 from ... import controldir, errors, msgeditor, urlutils
 from ... import forge as _mod_forge
@@ -329,7 +331,7 @@ class cmd_propose_merge(Command):  # noqa: D101
                     proposal.merge(auto=True)
                 except _mod_forge.AutoMergeUnavailable as e:
                     note(gettext("Auto merge not available: %s"), e.msg)
-                except errors.PermissionDenied as e:
+                except transport_errors.PermissionDenied as e:
                     note(gettext("Permission denied enabling auto-merge: %s"), e.extra)
                 else:
                     note(gettext("Auto merge enabled"))

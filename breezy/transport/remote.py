@@ -22,11 +22,25 @@ imported from breezy.bzr.smart.
 
 __all__ = ["RemoteSSHTransport", "RemoteTCPTransport", "RemoteTransport"]
 
+import logging
 from io import BytesIO
 
-from .. import config, debug, errors, trace, transport, urlutils
-from ..bzr import remote
-from ..bzr.smart import client, medium
+import dromedary as _mod_dromedary
+from dromedary import urlutils
+from dromedary.errors import (
+    ErrorFromSmartServer,
+    ShortReadvError,
+    UnexpectedSmartServerResponse,
+    UnknownSmartMethod,
+    UnsupportedProtocol,
+)
+
+from breezy import config
+from breezy.bzr import remote
+from breezy.bzr.smart import client, medium
+
+logger = logging.getLogger("dromedary.remote")
+debug_logger = logging.getLogger("dromedary.hpss")
 
 
 class _SmartStat:
@@ -35,7 +49,7 @@ class _SmartStat:
         self.st_mode = mode
 
 
-class RemoteTransport(transport.ConnectedTransport):
+class RemoteTransport(_mod_dromedary.ConnectedTransport):
     """Connection to a smart server.
 
     The connection holds references to the medium that can be used to send
@@ -95,11 +109,10 @@ class RemoteTransport(transport.ConnectedTransport):
             credentials = None
             if medium is None:
                 medium, credentials = self._build_medium()
-                if debug.debug_flag_enabled("hpss"):
-                    trace.mutter(
-                        "hpss: Built a new medium: %s", medium.__class__.__name__
-                    )
-            self._shared_connection = transport._SharedConnection(
+                debug_logger.debug(
+                    "hpss: Built a new medium: %s", medium.__class__.__name__
+                )
+            self._shared_connection = _mod_dromedary._SharedConnection(
                 medium, credentials, self.base
             )
         elif medium is None:
@@ -139,7 +152,7 @@ class RemoteTransport(transport.ConnectedTransport):
         """Smart server transport can do read/write file operations."""
         try:
             resp = self._call2(b"Transport.is_readonly")
-        except errors.UnknownSmartMethod:
+        except UnknownSmartMethod:
             # XXX: nasty hack: servers before 0.16 don't have a
             # 'Transport.is_readonly' verb, so we do what clients before 0.16
             # did: assume False.
@@ -149,7 +162,7 @@ class RemoteTransport(transport.ConnectedTransport):
         elif resp == (b"no",):
             return False
         else:
-            raise errors.UnexpectedSmartServerResponse(resp)
+            raise UnexpectedSmartServerResponse(resp)
 
     def get_smart_client(self):
         """Get the smart client for this transport.
@@ -182,7 +195,7 @@ class RemoteTransport(transport.ConnectedTransport):
         """Call a method on the remote server."""
         try:
             return self._client.call(method, *args)
-        except errors.ErrorFromSmartServer as err:
+        except ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             context = {"relpath": args[0].decode("utf-8")} if args else {}
             self._translate_error(err, **context)
@@ -191,7 +204,7 @@ class RemoteTransport(transport.ConnectedTransport):
         """Call a method on the remote server with body bytes."""
         try:
             return self._client.call_with_body_bytes(method, args, body)
-        except errors.ErrorFromSmartServer as err:
+        except ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             context = {"relpath": args[0]} if args else {}
             self._translate_error(err, **context)
@@ -207,7 +220,7 @@ class RemoteTransport(transport.ConnectedTransport):
         elif resp == (b"no",):
             return False
         else:
-            raise errors.UnexpectedSmartServerResponse(resp)
+            raise UnexpectedSmartServerResponse(resp)
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file.
@@ -231,11 +244,11 @@ class RemoteTransport(transport.ConnectedTransport):
         remote = self._remote_path(relpath)
         try:
             resp, response_handler = self._client.call_expecting_body(b"get", remote)
-        except errors.ErrorFromSmartServer as err:
+        except ErrorFromSmartServer as err:
             self._translate_error(err, relpath)
         if resp != (b"ok",):
             response_handler.cancel_read_body()
-            raise errors.UnexpectedSmartServerResponse(resp)
+            raise UnexpectedSmartServerResponse(resp)
         return response_handler.read_body_bytes()
 
     def _serialise_optional_mode(self, mode):
@@ -258,8 +271,8 @@ class RemoteTransport(transport.ConnectedTransport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         self.put_bytes(relpath, b"", mode)
-        result = transport.AppendBasedFileStream(self, relpath)
-        transport._file_streams[self.abspath(relpath)] = result
+        result = _mod_dromedary.AppendBasedFileStream(self, relpath)
+        _mod_dromedary._file_streams[self.abspath(relpath)] = result
         return result
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
@@ -378,7 +391,7 @@ class RemoteTransport(transport.ConnectedTransport):
         )
         if resp[0] == b"appended":
             return int(resp[1])
-        raise errors.UnexpectedSmartServerResponse(resp)
+        raise UnexpectedSmartServerResponse(resp)
 
     def delete(self, relpath):
         """Delete a file at the given location.
@@ -390,7 +403,7 @@ class RemoteTransport(transport.ConnectedTransport):
         self._ensure_ok(resp)
 
     def external_url(self):
-        """See breezy.transport.Transport.external_url."""
+        """See dromedary.Transport.external_url."""
         # the external path for RemoteTransports is the base
         return self.base
 
@@ -428,15 +441,14 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_len += c.length
         if cur_request:
             requests.append(cur_request)
-        if debug.debug_flag_enabled("hpss"):
-            trace.mutter(
-                "%s.readv %s offsets => %s coalesced => %s requests (%s)",
-                self.__class__.__name__,
-                len(offsets),
-                len(coalesced),
-                len(requests),
-                sum(map(len, requests)),
-            )
+        debug_logger.debug(
+            "%s.readv %s offsets => %s coalesced => %s requests (%s)",
+            self.__class__.__name__,
+            len(offsets),
+            len(coalesced),
+            len(requests),
+            sum(map(len, requests)),
+        )
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         # turn the list of offsets into a single stack to iterate
@@ -453,13 +465,13 @@ class RemoteTransport(transport.ConnectedTransport):
                     [(c.start, c.length) for c in cur_request],
                 )
                 resp, response_handler = result
-            except errors.ErrorFromSmartServer as err:
+            except ErrorFromSmartServer as err:
                 self._translate_error(err, relpath)
 
             if resp[0] != b"readv":
                 # This should raise an exception
                 response_handler.cancel_read_body()
-                raise errors.UnexpectedSmartServerResponse(resp)
+                raise UnexpectedSmartServerResponse(resp)
 
             yield from self._handle_response(
                 offset_stack, cur_request, response_handler, data_map, next_offset
@@ -474,7 +486,7 @@ class RemoteTransport(transport.ConnectedTransport):
         data_offset = 0
         for c_offset in coalesced:
             if len(data) < c_offset.length:
-                raise errors.ShortReadvError(
+                raise ShortReadvError(
                     relpath, c_offset.start, c_offset.length, actual=len(data)
                 )
             for suboffset, subsize in c_offset.ranges:
@@ -536,7 +548,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def _ensure_ok(self, resp):
         if resp[0] != b"ok":
-            raise errors.UnexpectedSmartServerResponse(resp)
+            raise UnexpectedSmartServerResponse(resp)
 
     def _translate_error(self, err, relpath=None):
         remote._translate_error(err, path=relpath)
@@ -559,7 +571,7 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2(b"stat", self._remote_path(relpath))
         if resp[0] == b"stat":
             return _SmartStat(int(resp[1]), int(resp[2], 8))
-        raise errors.UnexpectedSmartServerResponse(resp)
+        raise UnexpectedSmartServerResponse(resp)
 
     # def lock_read(self, relpath):
     # """Lock the given file for shared (read) access.
@@ -594,7 +606,7 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2(b"list_dir", self._remote_path(relpath))
         if resp[0] == b"names":
             return [name.decode("utf-8") for name in resp[1:]]
-        raise errors.UnexpectedSmartServerResponse(resp)
+        raise UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
         """Iterate over all files recursively.
@@ -605,7 +617,7 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2(b"iter_files_recursive", self._remote_path(""))
         if resp[0] == b"names":
             return [name.decode("utf-8") for name in resp[1:]]
-        raise errors.UnexpectedSmartServerResponse(resp)
+        raise UnexpectedSmartServerResponse(resp)
 
 
 class RemoteTCPTransport(RemoteTransport):
@@ -680,7 +692,7 @@ class RemoteHTTPTransport(RemoteTransport):
             # url only for an intial construction (when the url came from the
             # command-line).
             http_url = base[len("bzr+") :]
-            self._http_transport = transport.get_transport_from_url(http_url)
+            self._http_transport = _mod_dromedary.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
         super().__init__(base, _from_transport=_from_transport)
@@ -730,14 +742,14 @@ class RemoteHTTPTransport(RemoteTransport):
             return redirected
 
 
-class HintingSSHTransport(transport.Transport):
+class HintingSSHTransport(_mod_dromedary.Transport):
     """Simple transport that handles ssh:// and points out bzr+ssh:// and git+ssh://."""
 
     # TODO(jelmer): Implement support for detecting whether the repository at the
     # other end is a git or bzr repository.
 
     def __init__(self, url):
-        raise transport.UnsupportedProtocol(
+        raise UnsupportedProtocol(
             url,
             f'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+{url}". '
             f'Use git+ssh for Git operations over SSH, e.g. "git+{url}".',
@@ -748,6 +760,6 @@ def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     # We may need a little more test framework support to construct an
     # appropriate RemoteTransport in the future.
-    from ..tests import test_server
+    from breezy.tests import test_server
 
     return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

@@ -4,12 +4,12 @@ version = { workspace = true }
 authors = ["Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Git support for Breezy"
-license = "GPL-2.0+"
+license = "GPL-2.0-or-later"
 homepage = "https://www.breezy-vcs.org/"
 
 [lib]
 
 [dependencies]
 breezy-osutils = { path = "../osutils" }
-breezy-urlutils = { path = "../urlutils" }
 breezy = { path = "../.." }
+dromedary = { workspace = true }

@@ -17,6 +17,8 @@
 import os
 
 import fastbencode as bencode
+from dromedary.errors import FileExists
+from dromedary.local import file_kind
 
 from .. import osutils, tests, trace, transform
 from .. import revision as _mod_revision
@@ -33,8 +35,6 @@ from ..transform import (
     _FileMover,
     resolve_conflicts,
 )
-from ..transport import FileExists
-from ..transport.local import file_kind
 from . import TestCaseInTempDir, features
 from .features import HardlinkFeature, SymlinkFeature
 

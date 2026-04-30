@@ -633,8 +633,8 @@ class TestRelpath(tests.TestCase):
         self.assertEqual("sub/subsubdir", osutils.relpath(cwd, subdir))
 
     def test_not_relative(self):
-        self.assertRaises(errors.PathNotChild, osutils.relpath, "C:/path", "H:/path")
-        self.assertRaises(errors.PathNotChild, osutils.relpath, "C:/", "H:/path")
+        self.assertRaises(ValueError, osutils.relpath, "C:/path", "H:/path")
+        self.assertRaises(ValueError, osutils.relpath, "C:/", "H:/path")
 
 
 class TestSafeUnicode(tests.TestCase):

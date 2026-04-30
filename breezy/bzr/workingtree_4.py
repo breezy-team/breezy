@@ -49,14 +49,17 @@ from breezy.bzr import (
 
 import contextlib
 
+from dromedary import errors as transport_errors
+from dromedary import get_transport_from_path
+from dromedary.errors import NoSuchFile
+from dromedary.local import file_kind
+
 from .. import cache_utf8, debug, errors, osutils, trace
 from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
-from ..transport import NoSuchFile, get_transport_from_path
-from ..transport.local import file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate
@@ -170,7 +173,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_tree_write():
             try:
                 sub_tree_path = self.relpath(sub_tree.basedir)
-            except errors.PathNotChild as e:
+            except transport_errors.PathNotChild as e:
                 raise BadReferenceTarget(
                     self, sub_tree, "Target not inside tree."
                 ) from e
@@ -777,12 +780,12 @@ class DirStateWorkingTree(InventoryWorkingTree):
             to_abs = self.abspath(to_dir)
             if not isdir(to_abs):
                 raise errors.BzrMoveFailedError(
-                    "", to_dir, errors.NotADirectory(to_abs)
+                    "", to_dir, transport_errors.NotADirectory(to_abs)
                 )
 
             if to_entry[1][0][0] != b"d":
                 raise errors.BzrMoveFailedError(
-                    "", to_dir, errors.NotADirectory(to_abs)
+                    "", to_dir, transport_errors.NotADirectory(to_abs)
                 )
 
             if self._inventory is not None:
@@ -1949,7 +1952,7 @@ class DirStateRevisionTree(InventoryTree):
                 raise NoSuchFile(path)
             ie = inv.get_entry(inv_file_id)
             if ie.kind != "directory":
-                raise errors.NotADirectory(path)
+                raise transport_errors.NotADirectory(path)
             return inv.iter_sorted_children(inv_file_id)
 
     def _comparison_data(self, entry, path):

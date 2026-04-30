@@ -21,8 +21,9 @@ import threading
 from dulwich.client import TCPGitClient
 from dulwich.repo import Repo
 
+from breezy.transport import transport_server_registry
+
 from ...tests import TestCase, TestCaseWithTransport
-from ...transport import transport_server_registry
 from ..server import BzrBackend, BzrTCPGitServer
 
 

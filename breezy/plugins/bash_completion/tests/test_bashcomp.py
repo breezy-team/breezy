@@ -40,7 +40,7 @@ class BashCompletionMixin:
         if self.script is None:
             self.script = self.get_script()
         env = dict(os.environ)
-        env["PYTHONPATH"] = ":".join(sys.path)
+        env["PYTHONPATH"] = tests.subprocess_pythonpath()
         proc = subprocess.Popen(
             [features.bash_feature.path, "--noprofile"],
             stdin=subprocess.PIPE,

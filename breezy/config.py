@@ -105,6 +105,9 @@ from breezy import (
 from breezy.i18n import gettext
 """,
 )
+from dromedary import errors as transport_errors
+from dromedary.errors import NoSuchFile
+
 from . import (
     bedding,
     commands,
@@ -2128,8 +2131,16 @@ class AuthenticationConfig:
         if user is None:
             if ask:
                 if prompt is None:
-                    # Create a default prompt suitable for most cases
-                    prompt = f"{scheme.upper()}" + " %(host)s username"
+                    # Create a default prompt suitable for most cases.
+                    # Include the realm when the server supplied one.
+                    if realm:
+                        prompt = (
+                            f"{scheme.upper()}"
+                            + " %(host)s"
+                            + f", Realm: '{realm}' username"
+                        )
+                    else:
+                        prompt = f"{scheme.upper()}" + " %(host)s username"
                 # Special handling for optional fields in the prompt
                 prompt_host = "%s:%d" % (host, port) if port is not None else host
                 user = ui.ui_factory.get_username(prompt, host=prompt_host)
@@ -2168,8 +2179,19 @@ class AuthenticationConfig:
         # Prompt user only if we could't find a password
         if password is None:
             if prompt is None:
-                # Create a default prompt suitable for most cases
-                prompt = f"{scheme.upper()}" + " %(user)s@%(host)s password"
+                # Create a default prompt suitable for most cases.
+                # Include the realm when the server offered one so
+                # users can tell apart multiple auth scopes on the
+                # same host — matching the old urllib transport's
+                # prompt shape that breezy's tests assert against.
+                if realm:
+                    prompt = (
+                        f"{scheme.upper()}"
+                        + " %(user)s@%(host)s"
+                        + f", Realm: '{realm}' password"
+                    )
+                else:
+                    prompt = f"{scheme.upper()}" + " %(user)s@%(host)s password"
             # Special handling for optional fields in the prompt
             prompt_host = "%s:%d" % (host, port) if port is not None else host
             password = ui.ui_factory.get_password(prompt, host=prompt_host, user=user)
@@ -2478,9 +2500,9 @@ class TransportConfig:
             for hook in OldConfigHooks["load"]:
                 hook(self)
             return f
-        except transport.NoSuchFile:
+        except NoSuchFile:
             return BytesIO()
-        except errors.PermissionDenied:
+        except transport_errors.PermissionDenied:
             trace.warning(
                 "Permission denied while trying to open configuration file %s.",
                 urlutils.unescape_for_display(
@@ -3400,12 +3422,84 @@ option_registry.register(
         help="""Whether to validate signatures in brz log.""",
     )
 )
-option_registry.register_lazy(
-    "ssl.ca_certs", "breezy.transport.http", "opt_ssl_ca_certs"
+
+
+def _ca_certs_from_store(path):
+    """Validate an ``ssl.ca_certs`` option value.
+
+    Options framework contract: ``from_unicode`` is a pure
+    validator/converter, not a place for side effects. The
+    ``dromedary.http.ssl_ca_certs`` hook that actually routes the
+    config value into the Rust HTTP transport is installed in
+    ``breezy/transport/__init__.py`` and reads this config value
+    via ``GlobalStack`` on every call — we used to mutate the hook
+    here, but that left stale paths pointing at test-scoped
+    tempfiles after the owning test tore down, poisoning every
+    subsequent ``HttpTransport`` construction for the rest of the
+    run.
+    """
+    if not os.path.exists(path):
+        raise ValueError(f"ca certs path {path} does not exist")
+    return path
+
+
+def _cert_reqs_from_store(unicode_str):
+    """Validate an ``ssl.cert_reqs`` option value.
+
+    Same no-side-effects contract as ``_ca_certs_from_store``.
+    """
+    import ssl
+
+    try:
+        value = {"required": ssl.CERT_REQUIRED, "none": ssl.CERT_NONE}[unicode_str]
+    except KeyError as e:
+        raise ValueError(f"invalid value {unicode_str}") from e
+    return value
+
+
+option_registry.register(
+    Option(
+        "ssl.ca_certs",
+        from_unicode=_ca_certs_from_store,
+        default=lambda: __import__(
+            "dromedary.http", fromlist=["default_ca_certs"]
+        ).default_ca_certs(),
+        invalid="warning",
+        help="""\
+Path to certification authority certificates to trust.
+
+This should be a valid path to a bundle containing all root Certificate
+Authorities used to verify an https server certificate.
+
+Use ssl.cert_reqs=none to disable certificate verification.
+""",
+    )
 )
 
-option_registry.register_lazy(
-    "ssl.cert_reqs", "breezy.transport.http", "opt_ssl_cert_reqs"
+
+def _ssl_cert_reqs_default():
+    """Return 'required' or 'none' depending on the platform default."""
+    import ssl as _ssl
+
+    from dromedary.http import default_cert_reqs
+
+    return "required" if default_cert_reqs() == _ssl.CERT_REQUIRED else "none"
+
+
+option_registry.register(
+    Option(
+        "ssl.cert_reqs",
+        default=_ssl_cert_reqs_default,
+        from_unicode=_cert_reqs_from_store,
+        invalid="error",
+        help="""\
+Whether to require a certificate from the remote side. (default:required)
+
+Possible values:
+ * none: Certificates ignored
+ * required: Certificates required and validated
+""",
+    )
 )
 
 
@@ -3852,7 +3946,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except (transport.NoSuchFile, errors.PermissionDenied):
+        except (NoSuchFile, transport_errors.PermissionDenied):
             # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
@@ -3873,7 +3967,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except transport.NoSuchFile:
+        except NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string(b"")
         if section_id in self.dirty_sections:
@@ -3962,7 +4056,7 @@ class TransportIniFileStore(IniFileStore):
         """
         try:
             return self.transport.get_bytes(self.file_name)
-        except errors.PermissionDenied:
+        except transport_errors.PermissionDenied:
             trace.warning(
                 "Permission denied while trying to load configuration store %s.",
                 self.external_url(),

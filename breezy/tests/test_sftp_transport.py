@@ -20,16 +20,18 @@ import socket
 import sys
 import time
 
-from breezy import config, controldir, errors, tests, ui
+from dromedary import errors as transport_errors
+from dromedary.tests.http_server import HttpServer
+
+from breezy import config, controldir, tests, ui
 from breezy import transport as _mod_transport
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
 
 from ..osutils import lexists
-from .http_server import HttpServer
 
 if features.paramiko.available():
-    from breezy.tests import stub_sftp
-    from breezy.transport import sftp as _mod_sftp
+    from dromedary import sftp as _mod_sftp
+    from dromedary.tests import stub_sftp
 
 
 def set_test_transport_to_sftp(testcase):
@@ -54,7 +56,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 
 class SFTPLockTests(TestCaseWithSFTPServer):
     def test_sftp_locks(self):
-        from ..errors import LockError
+        from dromedary.errors import LockContention
 
         t = self.get_transport()
 
@@ -63,14 +65,14 @@ class SFTPLockTests(TestCaseWithSFTPServer):
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert
-        self.assertRaises(LockError, t.lock_write, "bogus")
+        self.assertRaises(LockContention, t.lock_write, "bogus")
 
         l.unlock()
         self.assertFalse(lexists("bogus.write-lock"))
 
         with open("something.write-lock", "wb") as f:
             f.write(b"fake lock\n")
-        self.assertRaises(LockError, t.lock_write, "something")
+        self.assertRaises(LockContention, t.lock_write, "something")
         os.remove("something.write-lock")
 
         l = t.lock_write("something")
@@ -152,20 +154,22 @@ class SFTPNonServerTest(TestCase):
     def test_relpath(self):
         s = _mod_sftp.SFTPTransport("sftp://user@host.com/abs/path")
         self.assertRaises(
-            errors.PathNotChild, s.relpath, "sftp://user@host.com/~/rel/path/sub"
+            transport_errors.PathNotChild,
+            s.relpath,
+            "sftp://user@host.com/~/rel/path/sub",
         )
 
-    def test_get_paramiko_vendor(self):
-        """Test that if no 'ssh' is available we get builtin paramiko."""
-        from breezy.transport import ssh
-        from breezy.transport.ssh.paramiko import ParamikoVendor
+    def test_get_default_vendor(self):
+        """Test that if no 'ssh' is available we fall back to the default."""
+        from dromedary import ssh
+        from dromedary.ssh.russh import RusshVendor
 
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, "_ssh_vendor_manager")
         self.overrideEnv("PATH", ".")
         ssh._ssh_vendor_manager.clear_cache()
         vendor = ssh._get_ssh_vendor()
-        self.assertIsInstance(vendor, ParamikoVendor)
+        self.assertIsInstance(vendor, RusshVendor)
 
     def test_abspath_root_sibling_server(self):
         self.requireFeature(features.paramiko)
@@ -242,7 +246,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self._test_vendor = vendor
 
     def test_connection_paramiko(self):
-        from breezy.transport.ssh.paramiko import ParamikoVendor
+        from dromedary.ssh.paramiko import ParamikoVendor
 
         self.set_vendor(ParamikoVendor())
         t = self.get_transport()
@@ -279,19 +283,20 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.bogus_url = "sftp://{}:{}/".format(*s.getsockname())
 
     def set_vendor(self, vendor, subprocess_stderr=None):
-        from breezy.transport import ssh
+        from dromedary import ssh
 
         self.overrideAttr(ssh._ssh_vendor_manager, "_cached_ssh_vendor", vendor)
-        if subprocess_stderr is not None:
-            self.overrideAttr(ssh.SubprocessVendor, "_stderr_target", subprocess_stderr)
+        # subprocess_stderr is unused now that the subprocess ssh vendors live
+        # in Rust; it was previously a way to silence their stderr.
+        del subprocess_stderr
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error."""
-        from breezy.transport.ssh.paramiko import ParamikoVendor
+        from dromedary.ssh.paramiko import ParamikoVendor
 
         self.set_vendor(ParamikoVendor())
         t = _mod_transport.get_transport_from_url(self.bogus_url)
-        self.assertRaises(ConnectionError, t.get, "foobar")
+        self.assertRaises(transport_errors.ConnectionError, t.get, "foobar")
 
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor."""
@@ -300,7 +305,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         self.set_vendor(None, f)
         t = _mod_transport.get_transport_from_url(self.bogus_url)
         try:
-            self.assertRaises(ConnectionError, t.get, "foobar")
+            self.assertRaises(transport_errors.ConnectionError, t.get, "foobar")
         except NameError as e:
             if "global name 'SSHException'" in str(e):
                 self.knownFailure("Known NameError bug in paramiko 1.6.1")

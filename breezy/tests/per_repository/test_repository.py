@@ -19,6 +19,8 @@
 import re
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+
 from ... import (
     commit,
     controldir,
@@ -639,7 +641,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         local_bzrdir = self.make_controldir("local")
         try:
             local_repo = remote_repo.sprout(local_bzrdir)
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err
@@ -659,7 +661,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         remote_branch = remote_repo.controldir.create_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout("local")
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err
@@ -695,7 +697,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         ).open_branch()
         try:
             local_bzrdir = remote_branch.controldir.sprout("local")
-        except errors.TransportNotPossible as err:
+        except transport_errors.TransportNotPossible as err:
             raise tests.TestNotApplicable(
                 "Cannot lock_read old formats like AllInOne over HPSS."
             ) from err

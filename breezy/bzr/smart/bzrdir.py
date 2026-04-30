@@ -17,6 +17,7 @@
 """Server-side bzrdir related request implmentations."""
 
 import fastbencode as bencode
+from dromedary import errors as transport_errors
 
 from ... import branch, errors, repository, urlutils
 from ...controldir import network_format_registry
@@ -48,7 +49,7 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
         """
         try:
             t = self.transport_from_client_path(path)
-        except errors.PathNotChild:
+        except transport_errors.PathNotChild:
             # The client is trying to ask about a path that they have no access
             # to.
             # Ideally we'd return a FailedSmartServerResponse here rather than
@@ -80,7 +81,7 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
         """
         try:
             t = self.transport_from_client_path(path)
-        except errors.PathNotChild:
+        except transport_errors.PathNotChild:
             # The client is trying to ask about a path that they have no access
             # to.
             return SuccessfulSmartServerResponse((b"no",))

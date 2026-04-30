@@ -18,6 +18,10 @@
 
 import contextlib
 
+from dromedary import errors as transport_errors
+from dromedary import memory
+from dromedary.tests.http_server import HttpServer
+
 from breezy import branch as _mod_branch
 from breezy import (
     config,
@@ -35,9 +39,6 @@ from breezy import (
 from breezy import tree as _mod_tree
 from breezy.bzr import remote
 from breezy.tests import per_branch
-from breezy.transport import memory
-
-from ..http_server import HttpServer
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
@@ -465,7 +466,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (errors.LockError, errors.TransportNotPossible), source_branch.lock_write
+            (errors.LockError, transport_errors.TransportNotPossible),
+            source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c", lightweight=True)
         self.assertEqual(rev_id, checkout.last_revision())
@@ -482,7 +484,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises(
-            (errors.LockError, errors.TransportNotPossible), source_branch.lock_write
+            (errors.LockError, transport_errors.TransportNotPossible),
+            source_branch.lock_write,
         )
         checkout = source_branch.create_checkout("c")
         self.assertEqual(rev_id, checkout.last_revision())

@@ -26,6 +26,8 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
+from dromedary.memory import MemoryTransport
 from vcsgraph import (
     known_graph as _mod_known_graph,
 )
@@ -40,7 +42,6 @@ from ...tests import (
 )
 from ...tests.http_utils import TestCaseWithWebserver
 from ...tests.scenarios import load_tests_apply_scenarios
-from ...transport.memory import MemoryTransport
 from .. import groupcompress
 from .. import knit as _mod_knit
 from .. import versionedfile as versionedfile
@@ -886,7 +887,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def test_no_implicit_create(self):
         self.assertRaises(
-            transport.NoSuchFile,
+            NoSuchFile,
             WeaveFile,
             "foo",
             self.get_transport(),

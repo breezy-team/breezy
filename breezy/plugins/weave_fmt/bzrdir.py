@@ -20,7 +20,9 @@ import contextlib
 import os
 from io import BytesIO
 
-import vcsgraph.graph as graph
+from dromedary import errors as transport_errors
+from dromedary import local
+from dromedary.errors import NoSuchFile
 
 from ... import errors, osutils, trace
 from ...bzr import lockable_files
@@ -34,7 +36,7 @@ from ...controldir import (
 )
 from ...i18n import gettext
 from ...lazy_import import lazy_import
-from ...transport import NoSuchFile, get_transport, local
+from ...transport import get_transport
 
 lazy_import(
     globals(),
@@ -1116,7 +1118,7 @@ class BzrDirPreSplitOut(BzrDir):
         from_branch.clone(result, revision_id=revision_id, tag_selector=tag_selector)
         try:
             tree = self.open_workingtree()
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             # make a new one, this format always has to have one.
             result._init_workingtree()
         else:
@@ -1197,7 +1199,7 @@ class BzrDirPreSplitOut(BzrDir):
 
         try:
             return WorkingTreeFormat2().initialize(self)
-        except errors.NotLocalUrl:
+        except transport_errors.NotLocalUrl:
             # Even though we can't access the working tree, we need to
             # create its control files.
             return WorkingTreeFormat2()._stub_initialize_on_transport(

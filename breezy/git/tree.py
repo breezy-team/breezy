@@ -25,6 +25,9 @@ from collections import deque
 from functools import partial
 from io import BytesIO
 
+from dromedary import errors as transport_errors
+from dromedary.errors import FileExists, NoSuchFile
+from dromedary.local import file_kind
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.diff_tree import RenameDetector, tree_changes
@@ -50,12 +53,10 @@ from dulwich.objects import (
 
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils
-from .. import transport as _mod_transport
 from .. import tree as _mod_tree
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
-from ..transport.local import file_kind
 from ..tree import MissingNestedTree
 from .mapping import (
     decode_git_path,
@@ -535,7 +536,7 @@ class GitTree(_mod_tree.Tree):
             try:
                 if t.kind(p) == "directory":
                     return True
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 return False
             return False
 
@@ -566,7 +567,7 @@ class GitTree(_mod_tree.Tree):
                 with self.get_file(".gitmodules") as f:
                     config = GitConfigFile.from_file(f)
                     self._submodules = list(parse_submodules(config))
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 self._submodules = []
         return self._submodules
 
@@ -778,7 +779,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 encode_git_path(path), self.commit_id
             )
         except KeyError as err:
-            raise _mod_transport.NoSuchFile(path) from err
+            raise NoSuchFile(path) from err
         commit = store[commit_id]
         return commit.commit_time
 
@@ -832,7 +833,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
 
     def _lookup_path(self, path):
         if self.tree is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
 
         encoded_path = encode_git_path(path)
         parts = encoded_path.split(b"/")
@@ -848,7 +849,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             try:
                 mode, hexsha = obj[p]
             except KeyError as err:
-                raise _mod_transport.NoSuchFile(path) from err
+                raise NoSuchFile(path) from err
             if S_ISGITLINK(mode) and i != len(parts) - 1:
                 store = self._get_submodule_store(b"/".join(parts[: i + 1]))
                 hexsha = store[hexsha].tree
@@ -895,7 +896,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         """
         try:
             self._lookup_path(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return False
         else:
             return True
@@ -1113,7 +1114,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             NoSuchFile: If the file doesn't exist.
         """
         if self.tree is None:
-            raise _mod_transport.NoSuchFile(path)
+            raise NoSuchFile(path)
         return osutils.sha_string(self.get_file_text(path))
 
     def get_file_verifier(self, path, stat_value=None):
@@ -1184,7 +1185,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         """See Tree.path_content_summary."""
         try:
             (store, mode, hexsha) = self._lookup_path(path)
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return ("missing", None, None, None)
         kind = mode_kind(mode)
         if kind == "file":
@@ -1815,7 +1816,7 @@ class InterGitTrees(_mod_tree.InterTree):
                     else:
                         ret[path] = None
                 else:
-                    raise _mod_transport.NoSuchFile(path)
+                    raise NoSuchFile(path)
         return ret
 
     def find_source_paths(self, paths, recurse="none"):
@@ -1851,7 +1852,7 @@ class InterGitTrees(_mod_tree.InterTree):
                     else:
                         ret[path] = None
                 else:
-                    raise _mod_transport.NoSuchFile(path)
+                    raise NoSuchFile(path)
         return ret
 
 
@@ -2103,7 +2104,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             blob = Blob()
             try:
                 file, stat_val = self.get_file_with_stat(path)
-            except (_mod_transport.NoSuchFile, OSError):
+            except (NoSuchFile, OSError):
                 # TODO: Rather than come up with something here, use the old
                 # index
                 file = BytesIO()
@@ -2206,7 +2207,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 (parent, name) = posixpath.split(path)
                 try:
                     file_ie = self._get_file_ie(name, path, value, None)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     continue
                 if specific_files is None:
                     for dir_path, dir_ie in self._add_missing_parent_ids(
@@ -2257,7 +2258,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             size = value.size
         elif isinstance(value, ConflictedIndexEntry):
             if value.this is None:
-                raise _mod_transport.NoSuchFile(path)
+                raise NoSuchFile(path)
             mode = value.this.mode
             sha = value.this.sha
             size = value.this.size
@@ -2330,7 +2331,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         with self.lock_tree_write():
             for path in paths:
                 if self._unversion_path(path) == 0:
-                    raise _mod_transport.NoSuchFile(path)
+                    raise NoSuchFile(path)
             self._versioned_dirs = None
             self.flush()
 
@@ -2383,7 +2384,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             to_abs = self.abspath(to_dir)
             if not os.path.isdir(to_abs):
                 raise errors.BzrMoveFailedError(
-                    "", to_dir, errors.NotADirectory(to_abs)
+                    "", to_dir, transport_errors.NotADirectory(to_abs)
                 )
 
             for from_rel in from_paths:
@@ -2421,7 +2422,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if after:
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel)
+                        from_rel, to_rel, NoSuchFile(to_rel)
                     )
                 if self.basis_tree().is_versioned(to_rel):
                     raise errors.BzrMoveFailedError(
@@ -2432,7 +2433,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             else:
                 try:
                     self.kind(to_rel)
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     exc_type = errors.BzrRenameFailedError
                 else:
                     exc_type = errors.BzrMoveFailedError
@@ -2442,14 +2443,14 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     )
                 if not self.has_filename(from_rel):
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, _mod_transport.NoSuchFile(from_rel)
+                        from_rel, to_rel, NoSuchFile(from_rel)
                     )
                 kind = self.kind(from_rel)
                 if not self.is_versioned(from_rel) and kind != "directory":
                     raise exc_type(from_rel, to_rel, errors.NotVersionedError(from_rel))
                 if self.has_filename(to_rel):
                     raise errors.RenameFailedFilesExist(
-                        from_rel, to_rel, _mod_transport.FileExists(to_rel)
+                        from_rel, to_rel, FileExists(to_rel)
                     )
 
                 kind = self.kind(from_rel)
@@ -2467,7 +2468,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     self._rename_one(from_rel, to_rel)
                 except FileNotFoundError as err:
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel)
+                        from_rel, to_rel, NoSuchFile(to_rel)
                     ) from err
             if kind != "directory":
                 (index, _from_index_path) = self._lookup_index(from_path)

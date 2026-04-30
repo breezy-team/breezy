@@ -23,9 +23,10 @@ have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
 
+from dromedary import memory
+
 from breezy.tests import default_transport, multiply_tests, test_server
 from breezy.tests.per_controldir import make_scenarios
-from breezy.transport import memory
 
 from ...controldir import ControlDirFormat
 

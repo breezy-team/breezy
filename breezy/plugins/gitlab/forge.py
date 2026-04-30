@@ -22,6 +22,8 @@ import re
 import time
 from datetime import datetime
 
+from dromedary import errors as transport_errors
+
 from ... import bedding, controldir, errors, urlutils
 from ... import branch as _mod_branch
 from ...forge import (
@@ -445,7 +447,7 @@ def _unexpected_status(path, response):
     Raises:
         UnexpectedHttpStatus: Always raised with details from the response
     """
-    raise errors.UnexpectedHttpStatus(
+    raise transport_errors.UnexpectedHttpStatus(
         path,
         response.status,
         response.data.decode("utf-8", "replace"),
@@ -542,7 +544,7 @@ class GitLabMergeProposal(MergeProposal):
         """
         try:
             self._update(description=description)
-        except errors.UnexpectedHttpStatus as e:
+        except transport_errors.UnexpectedHttpStatus as e:
             # HACK: Some versions of GitLab apply the changes but fail with a 500
             # This appears to happen at least with version 15.5.6
             if e.code != 500:
@@ -903,7 +905,7 @@ class GitLab(Forge):
             resp = self.transport.request(
                 "GET", urlutils.join(self.base_url, path), headers=self.headers
             )
-        except errors.RedirectRequested as e:
+        except transport_errors.RedirectRequested as e:
             return urlutils.parse_url(e.target)[-1].strip("/")
         if resp.status != 200:
             _unexpected_status(path, resp)
@@ -1078,7 +1080,7 @@ class GitLab(Forge):
                 raise errors.AlreadyControlDirError(project_name)
             raise
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
             _unexpected_status("projects", response)
         project = json.loads(response.data)
@@ -1216,7 +1218,7 @@ class GitLab(Forge):
                 + "&".join(["{}={}".format(*item) for item in parameters.items()]),
             )
             if response.status == 403:
-                raise errors.PermissionDenied(response.text)
+                raise transport_errors.PermissionDenied(response.text)
             if response.status != 200:
                 _unexpected_status(path, response)
             page = response.getheader("X-Next-Page")
@@ -1268,7 +1270,7 @@ class GitLab(Forge):
         )
         response = self._api_request("GET", path)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         if response.status != 200:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -1309,7 +1311,7 @@ class GitLab(Forge):
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get("message"))
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
     def _merge_mr(self, project_id, iid, kwargs):
@@ -1334,7 +1336,7 @@ class GitLab(Forge):
         if response.status == 200:
             return json.loads(response.data)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
     def _post_merge_request_note(self, project_id, iid, kwargs):
@@ -1357,7 +1359,7 @@ class GitLab(Forge):
             json.loads(response.data)
             return
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
     def _create_mergerequest(
@@ -1409,7 +1411,7 @@ class GitLab(Forge):
             data = json.loads(response.data)
             raise GitLabError(data.get("message"), response)
         if response.status == 403:
-            raise errors.PermissionDenied(response.text)
+            raise transport_errors.PermissionDenied(response.text)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get("message"))
         if response.status == 422:
@@ -1690,7 +1692,7 @@ class GitLab(Forge):
             return
         try:
             response = self._api_request("GET", "user")
-        except errors.UnexpectedHttpStatus as e:
+        except transport_errors.UnexpectedHttpStatus as e:
             if e.code == 401:
                 raise GitLabLoginMissing(self.base_url) from e
             raise
@@ -1773,9 +1775,9 @@ class GitLab(Forge):
                 "GET",
                 f"https://{host}/api/v4/projects/{urlutils.quote(str(project), '')}",
             )
-        except errors.UnexpectedHttpStatus as e:
+        except transport_errors.UnexpectedHttpStatus as e:
             raise UnsupportedForge(url) from e
-        except errors.RedirectRequested as e:
+        except transport_errors.RedirectRequested as e:
             # GitLab doesn't send redirects for these URLs
             raise UnsupportedForge(url) from e
         else:

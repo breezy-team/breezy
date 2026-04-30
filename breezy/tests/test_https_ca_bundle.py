@@ -19,7 +19,8 @@
 import os
 import sys
 
-from ..transport.http import ca_bundle
+from dromedary.http import ca_bundle
+
 from . import TestCaseInTempDir, TestSkipped
 
 

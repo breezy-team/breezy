@@ -33,9 +33,10 @@ from breezy.bzr import (
 )
 import contextlib
 
+from dromedary.errors import NoSuchFile
+
 from .. import controldir, errors, lockdir, trace
 from .. import revision as _mod_revision
-from .. import transport as _mod_transport
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from .repository import RepositoryFormatMetaDir
 from .serializer import InventorySerializer, RevisionSerializer
@@ -148,14 +149,14 @@ class KnitRepository(MetaDirVersionedFileRepository):
         t.copy("inventory.new.kndx", "inventory.kndx")
         try:
             t.copy("inventory.new.knit", "inventory.knit")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # empty inventories knit
             t.delete("inventory.knit")
         # delete the temp inventory
         t.delete("inventory.new.kndx")
         try:
             t.delete("inventory.new.knit")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             # empty inventories knit
             pass
         # Force index reload (sanity check)
@@ -179,7 +180,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         t = self._transport.clone("knits")
         rel_url = self.texts._index._mapper.map((file_id, None))
         for suffix in (".kndx", ".knit"):
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 t.delete(rel_url + suffix)
 
     def _temp_inventories(self):

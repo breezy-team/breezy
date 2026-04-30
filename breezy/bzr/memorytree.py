@@ -22,11 +22,12 @@ See MemoryTree for more details.
 import os
 import stat
 
+from dromedary.memory import MemoryTransport
+
 from .. import errors, lock
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..osutils import sha_file
-from ..transport.memory import MemoryTransport
 from .inventory import Inventory
 from .inventorytree import MutableInventoryTree
 

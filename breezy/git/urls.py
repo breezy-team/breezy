@@ -70,13 +70,16 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
         except ValueError:
             return location
         else:
+            quoted_path = urlutils.quote(path, safe="/~")
+            if not quoted_path.startswith("/"):
+                quoted_path = "/" + quoted_path
             url = urlutils.URL(
                 scheme="git+ssh",
                 quoted_user=(urlutils.quote(username) if username else None),
                 quoted_password=None,
                 quoted_host=urlutils.quote(host),
                 port=None,
-                quoted_path=urlutils.quote(path, safe="/~"),
+                quoted_path=quoted_path,
             )
         location = str(url)
     elif url.scheme in SCHEME_REPLACEMENT:

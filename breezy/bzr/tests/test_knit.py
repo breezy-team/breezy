@@ -20,6 +20,7 @@ import gzip
 import sys
 from io import BytesIO
 
+from dromedary.errors import NoSuchFile
 from patiencediff import PatienceSequenceMatcher
 
 from ... import errors, osutils
@@ -266,7 +267,7 @@ class MockTransport:
 
     def get(self, filename):
         if self.file_lines is None:
-            raise _mod_transport.NoSuchFile(filename)
+            raise NoSuchFile(filename)
         else:
             return BytesIO(b"\n".join(self.file_lines))
 
@@ -295,7 +296,7 @@ class MockReadvFailingTransport(MockTransport):
             # we use 2 because the first offset is the pack header, the second
             # is the first actual content requset
             if count > 2:
-                raise _mod_transport.NoSuchFile(relpath)
+                raise NoSuchFile(relpath)
             yield result
 
 
@@ -595,8 +596,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)
         self.assertIsInstance(e.exc_info, tuple)
-        self.assertIs(e.exc_info[0], _mod_transport.NoSuchFile)
-        self.assertIsInstance(e.exc_info[1], _mod_transport.NoSuchFile)
+        self.assertIs(e.exc_info[0], NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], NoSuchFile)
         self.assertEqual("different-packname", e.exc_info[1].path)
 
     def test_missing_file_raises_no_such_file_with_no_reload(self):
@@ -604,7 +605,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess({"foo": (transport, "different-packname")})
-        self.assertListRaises(_mod_transport.NoSuchFile, access.get_raw_records, memos)
+        self.assertListRaises(NoSuchFile, access.get_raw_records, memos)
 
     def test_failing_readv_raises_retry(self):
         memos = self.make_pack_file()
@@ -624,8 +625,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)
         self.assertIsInstance(e.exc_info, tuple)
-        self.assertIs(e.exc_info[0], _mod_transport.NoSuchFile)
-        self.assertIsInstance(e.exc_info[1], _mod_transport.NoSuchFile)
+        self.assertIs(e.exc_info[0], NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], NoSuchFile)
         self.assertEqual("packname", e.exc_info[1].path)
 
     def test_failing_readv_raises_no_such_file_with_no_reload(self):
@@ -638,7 +639,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b"1234567890"], list(access.get_raw_records(memos[:1])))
         self.assertEqual([b"12345"], list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        self.assertListRaises(_mod_transport.NoSuchFile, access.get_raw_records, memos)
+        self.assertListRaises(NoSuchFile, access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
         access = pack_repo._DirectPackAccess({}, reload_func=None)
@@ -685,7 +686,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # this time we just raise an exception because we can't recover
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertRaises(_mod_transport.NoSuchFile, vf.annotate, key)
+        self.assertRaises(NoSuchFile, vf.annotate, key)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test__get_record_map_retries(self):
@@ -698,7 +699,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # this time we just raise an exception because we can't recover
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertRaises(_mod_transport.NoSuchFile, vf._get_record_map, keys)
+        self.assertRaises(NoSuchFile, vf._get_record_map, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_get_record_stream_retries(self):
@@ -718,7 +719,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertListRaises(
-            _mod_transport.NoSuchFile, vf.get_record_stream, keys, "topological", False
+            NoSuchFile, vf.get_record_stream, keys, "topological", False
         )
 
     def test_iter_lines_added_or_present_in_keys_retries(self):
@@ -741,9 +742,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertListRaises(
-            _mod_transport.NoSuchFile, vf.iter_lines_added_or_present_in_keys, keys
-        )
+        self.assertListRaises(NoSuchFile, vf.iter_lines_added_or_present_in_keys, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_get_record_stream_yields_disk_sorted_order(self):

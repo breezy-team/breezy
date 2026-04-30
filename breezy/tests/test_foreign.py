@@ -17,6 +17,8 @@
 
 """Tests for foreign VCS utility code."""
 
+from dromedary.errors import NoSuchFile
+
 from .. import (
     branch,
     controldir,
@@ -28,7 +30,6 @@ from .. import (
     tests,
     trace,
 )
-from .. import transport as _mod_transport
 from ..bzr import branch as bzrbranch
 from ..bzr import bzrdir, groupcompress_repo, lockable_files
 from ..bzr.pack_repo import PackCommitBuilder
@@ -271,7 +272,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                 _repository=found_repository,
                 name=name,
             )
-        except _mod_transport.NoSuchFile as err:
+        except NoSuchFile as err:
             raise errors.NotBranchError(path=transport.base) from err
 
 

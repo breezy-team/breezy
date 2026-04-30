@@ -37,6 +37,8 @@ from breezy import (
 
 import contextlib
 
+from dromedary.errors import NoSuchFile
+
 from .. import errors, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
@@ -191,7 +193,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         branch = self._uncommitted_branch()
         try:
             transform = branch._transport.get("stored-transform")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
         from ..shelf import Unshelver
 
@@ -311,7 +313,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         for l in _locs:
             try:
                 contents = self._transport.get_bytes(l)
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 pass
             else:
                 return contents.strip(b"\n").decode("utf-8")
@@ -380,7 +382,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         try:
             return self._transport.get_bytes("bound")[:-1].decode("utf-8")
-        except _mod_transport.NoSuchFile:
+        except NoSuchFile:
             return None
 
     def get_master_branch(self, possible_transports=None):
@@ -418,7 +420,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             else:
                 try:
                     self._transport.delete("bound")
-                except _mod_transport.NoSuchFile:
+                except NoSuchFile:
                     return False
                 return True
 
@@ -787,7 +789,7 @@ class BzrBranch8(BzrBranch):
                         )
                         for s in stanzas
                     }
-            except _mod_transport.NoSuchFile:
+            except NoSuchFile:
                 info_dict = {}
             self._reference_info = info_dict
             return info_dict
@@ -960,11 +962,11 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(path=name, controldir=controldir) from exc
         try:
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(
                 path=transport.base, controldir=controldir
             ) from exc
@@ -1044,7 +1046,7 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports,
             )
-        except _mod_transport.NoSuchFile as exc:
+        except NoSuchFile as exc:
             raise errors.NotBranchError(
                 path=transport.base, controldir=a_controldir
             ) from exc
@@ -1424,7 +1426,7 @@ class Converter5to6:
         # Clean up old files
         new_branch._transport.delete("revision-history")
         with branch.lock_write():
-            with contextlib.suppress(_mod_transport.NoSuchFile):
+            with contextlib.suppress(NoSuchFile):
                 branch.set_parent(None)
             branch.set_bound_location(None)
 

@@ -227,10 +227,9 @@ lazy_static! {
 
 #[cfg(windows)]
 pub fn legal_path(path: &Path) -> bool {
-    match path.to_str() {
-        Some(s) => VALID_WIN32_PATH_RE.is_match(s),
-        None => false,
-    }
+    path.to_str()
+        .map(|s| VALID_WIN32_PATH_RE.is_match(s))
+        .unwrap_or(false)
 }
 
 /// Return a quoted filename filename

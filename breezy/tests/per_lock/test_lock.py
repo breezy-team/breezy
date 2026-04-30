@@ -16,7 +16,9 @@
 
 """Tests for OS level locks."""
 
-from breezy import errors, osutils
+from dromedary import errors as transport_errors
+
+from breezy import osutils
 from breezy.tests import features
 from breezy.tests.per_lock import TestCaseWithLock
 
@@ -65,7 +67,7 @@ class TestLock(TestCaseWithLock):
         a_lock = self.read_lock("a-file")
         a_lock.unlock()
 
-        self.assertRaises(errors.LockFailed, self.write_lock, "a-file")
+        self.assertRaises(transport_errors.LockFailed, self.write_lock, "a-file")
 
     def test_write_lock(self):
         """Smoke test for write locks."""
@@ -94,14 +96,14 @@ class TestLock(TestCaseWithLock):
         a_lock = self.write_lock("a-file")
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
-        self.assertRaises(errors.LockContention, self.write_lock, "a-file")
+        self.assertRaises(transport_errors.LockContention, self.write_lock, "a-file")
 
     def _disabled_test_read_then_write_excludes(self):
         """If a file is read-locked, taking out a write lock should fail."""
         a_lock = self.read_lock("a-file")
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
-        self.assertRaises(errors.LockContention, self.write_lock, "a-file")
+        self.assertRaises(transport_errors.LockContention, self.write_lock, "a-file")
 
     def test_read_unlock_write(self):
         """Make sure that unlocking allows us to lock write."""
@@ -122,7 +124,7 @@ class TestLock(TestCaseWithLock):
         a_lock = self.write_lock("a-file")
         self.addCleanup(a_lock.unlock)
         # Taking out a lock on a locked file should raise LockContention
-        self.assertRaises(errors.LockContention, self.read_lock, "a-file")
+        self.assertRaises(transport_errors.LockContention, self.read_lock, "a-file")
 
     # TODO: jam 20070319 fcntl write locks are not currently fully
     #       mutually exclusive with read locks. This will be fixed
@@ -140,10 +142,14 @@ class TestLock(TestCaseWithLock):
         try:
             a_lock = self.read_lock("a-file")
             b_lock = self.read_lock("a-file")
-            self.assertRaises(errors.LockContention, self.write_lock, "a-file")
+            self.assertRaises(
+                transport_errors.LockContention, self.write_lock, "a-file"
+            )
             a_lock.unlock()
             a_lock = None
-            self.assertRaises(errors.LockContention, self.write_lock, "a-file")
+            self.assertRaises(
+                transport_errors.LockContention, self.write_lock, "a-file"
+            )
             b_lock.unlock()
             b_lock = None
             c_lock = self.write_lock("a-file")
