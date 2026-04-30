@@ -42,6 +42,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-py"
+version = "3.4.0"
+dependencies = [
+ "breezy-annotate",
+ "pyo3",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -191,6 +199,10 @@ dependencies = [
  "textwrap",
  "url",
 ]
+
+[[package]]
+name = "breezy-annotate"
+version = "3.4.0"
 
 [[package]]
 name = "breezy-git"

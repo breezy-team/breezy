@@ -1,0 +1,13 @@
+[package]
+name = "annotate-py"
+version = { workspace = true }
+edition = "2021"
+description = "Python bindings for breezy-annotate"
+license = "GPL-2.0-or-later"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module"] }
+breezy-annotate = { path = "../annotate" }

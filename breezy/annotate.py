@@ -30,6 +30,10 @@ import time
 from typing import TextIO
 
 from . import config, errors, osutils
+from ._annotator_rs import (
+    _apply_parent_annotations,  # noqa: F401
+    _merge_annotations,  # noqa: F401
+)
 from .repository import _strip_NULL_ghosts
 from .revision import CURRENT_REVISION, Revision, RevisionID
 from .tree import Tree
