@@ -156,12 +156,9 @@ class VersionedFileAnnotator(Annotator):
             parent_annotations,
             matching_blocks,
         ) = self._get_parent_annotations_and_matches(key, lines, parent_key)
-
-        for parent_idx, lines_idx, match_len in matching_blocks:
-            # For all matching regions we copy across the parent annotations
-            annotations[lines_idx : lines_idx + match_len] = parent_annotations[
-                parent_idx : parent_idx + match_len
-            ]
+        _mod_annotate._apply_parent_annotations(
+            annotations, parent_annotations, matching_blocks
+        )
 
     def _update_from_other_parents(
         self, key, annotations, lines, this_annotation, parent_key
@@ -171,47 +168,13 @@ class VersionedFileAnnotator(Annotator):
             parent_annotations,
             matching_blocks,
         ) = self._get_parent_annotations_and_matches(key, lines, parent_key)
-
-        last_ann = None
-        last_parent = None
-        last_res = None
-        # TODO: consider making all annotations unique and then using 'is'
-        #       everywhere. Current results claim that isn't any faster,
-        #       because of the time spent deduping
-        #       deduping also saves a bit of memory. For NEWS it saves ~1MB,
-        #       but that is out of 200-300MB for extracting everything, so a
-        #       fairly trivial amount
-        for parent_idx, lines_idx, match_len in matching_blocks:
-            # For lines which match this parent, we will now resolve whether
-            # this parent wins over the current annotation
-            ann_sub = annotations[lines_idx : lines_idx + match_len]
-            par_sub = parent_annotations[parent_idx : parent_idx + match_len]
-            if ann_sub == par_sub:
-                continue
-            for idx in range(match_len):
-                ann = ann_sub[idx]
-                par_ann = par_sub[idx]
-                ann_idx = lines_idx + idx
-                if ann == par_ann:
-                    # Nothing to change
-                    continue
-                if ann == this_annotation:
-                    # Originally claimed 'this', but it was really in this
-                    # parent
-                    annotations[ann_idx] = par_ann
-                    continue
-                # Resolve the fact that both sides have a different value for
-                # last modified
-                if ann == last_ann and par_ann == last_parent:
-                    annotations[ann_idx] = last_res
-                else:
-                    new_ann = set(ann)
-                    new_ann.update(par_ann)
-                    new_ann = tuple(sorted(new_ann))
-                    annotations[ann_idx] = new_ann
-                    last_ann = ann
-                    last_parent = par_ann
-                    last_res = new_ann
+        _mod_annotate._merge_annotations(
+            this_annotation,
+            annotations,
+            parent_annotations,
+            matching_blocks,
+            self._ann_tuple_cache,
+        )
 
     def _record_annotation(self, key, parent_keys, annotations):
         self._annotations_cache[key] = annotations

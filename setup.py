@@ -268,6 +268,11 @@ rust_extensions = [
         "breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension(
+        "breezy._annotator_rs",
+        "crates/annotate-py/Cargo.toml",
+        binding=Binding.PyO3,
+    ),
+    RustExtension(
         "breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3
     ),
     RustExtension(

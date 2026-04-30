@@ -1,0 +1,8 @@
+[package]
+name = "breezy-annotate"
+version = { workspace = true }
+edition = "2021"
+description = "Annotation helpers for breezy"
+license = "GPL-2.0-or-later"
+
+[lib]
