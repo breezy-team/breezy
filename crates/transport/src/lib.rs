@@ -70,7 +70,15 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
             _ => Error::Io(err),
         },
         #[cfg(windows)]
-        _ => Error::Io(err),
+        _ => match err.raw_os_error() {
+            // ERROR_INVALID_NAME — Windows rejects paths containing
+            // reserved characters such as ':' in the NULL_REVISION
+            // sentinel 'null:'. The same lookup on Linux reports
+            // ENOENT, so report NoSuchFile here for the same
+            // "file does not exist" contract.
+            Some(123) => Error::NoSuchFile(path.map(|p| p.to_string())),
+            _ => Error::Io(err),
+        },
     }
 }
 
