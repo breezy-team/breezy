@@ -28,6 +28,7 @@ import_exception!(breezy.errors, ReadError);
 import_exception!(breezy.errors, PathError);
 import_exception!(breezy.errors, DirectoryNotEmpty);
 import_exception!(breezy.errors, NotADirectory);
+import_exception!(breezy.errors, IllegalPath);
 import_exception!(breezy.urlutils, InvalidURL);
 
 #[pyclass(subclass)]
@@ -62,6 +63,7 @@ fn map_transport_err_to_py_err(e: Error, t: Option<Py<PyAny>>, p: Option<&UrlFra
         Error::ShortReadvError(path, offset, expected, got) => {
             ShortReadvError::new_err((path, offset, expected, got))
         }
+        Error::IllegalPath(name) => IllegalPath::new_err((pick_path(name),)),
     }
 }
 

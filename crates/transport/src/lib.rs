@@ -42,6 +42,8 @@ pub enum Error {
     NotADirectoryError(Option<String>),
 
     DirectoryNotEmptyError(Option<String>),
+
+    IllegalPath(Option<String>),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -72,11 +74,14 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
         #[cfg(windows)]
         _ => match err.raw_os_error() {
             // ERROR_INVALID_NAME — Windows rejects paths containing
-            // reserved characters such as ':' in the NULL_REVISION
-            // sentinel 'null:'. The same lookup on Linux reports
-            // ENOENT, so report NoSuchFile here for the same
-            // "file does not exist" contract.
-            Some(123) => Error::NoSuchFile(path.map(|p| p.to_string())),
+            // reserved characters such as ':' or '<>'. Linux accepts
+            // these characters, so there is no direct POSIX analogue;
+            // surface it as IllegalPath so callers can either treat it
+            // as "missing" (read paths) or skip the test as
+            // unsupported on this platform (write paths).
+            Some(123) => Error::IllegalPath(path.map(|p| p.to_string())),
+            // ERROR_DIR_NOT_EMPTY — equivalent to POSIX ENOTEMPTY.
+            Some(145) => Error::DirectoryNotEmptyError(path.map(|p| p.to_string())),
             _ => Error::Io(err),
         },
     }
