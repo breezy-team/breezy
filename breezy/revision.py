@@ -46,13 +46,15 @@ def iter_bugs(rev):
     return bugtracker.decode_bug_urls(rev.bug_urls())
 
 
-def get_history(repository, current_revision):
+def get_history(repository, current_revision) -> list["RevisionID | None"]:
     """Return the canonical line-of-history for this revision.
 
-    If ghosts are present this may differ in result from a ghost-free
-    repository.
+    Walks the left-most parent back to a parentless ancestor. The
+    result is ordered from the root to ``current_revision``, with a
+    leading ``None`` when the oldest ancestor has no parents. If ghosts
+    are present this may differ from a ghost-free repository.
     """
-    reversed_result = []
+    reversed_result: list[RevisionID | None] = []
     while current_revision is not None:
         reversed_result.append(current_revision.revision_id)
         if not len(current_revision.parent_ids):

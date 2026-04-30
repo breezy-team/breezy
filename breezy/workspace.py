@@ -74,11 +74,12 @@ def reset_tree(
     revert(local_tree, basis_tree, [subpath] if subpath else None)
     deletables: list[str] = []
     # TODO(jelmer): Use basis tree
-    for p in local_tree.extras():
-        if not is_inside(subpath, p):
-            continue
-        if not local_tree.is_ignored(p):
-            deletables.append(local_tree.abspath(p))
+    with local_tree.lock_read():
+        for p in local_tree.extras():
+            if not is_inside(subpath, p):
+                continue
+            if not local_tree.is_ignored(p):
+                deletables.append(local_tree.abspath(p))
     delete_items(deletables)
 
 

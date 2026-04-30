@@ -30,6 +30,7 @@ from typing import Optional
 
 import fastbencode as bencode
 import vcsgraph.errors
+import vcsgraph.graph
 from vcsgraph import known_graph
 
 from .. import (
