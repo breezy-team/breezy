@@ -37,7 +37,7 @@ class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
             self._module = _readdir_pyx
             self.reader = _readdir_pyx.UTF8DirReader
             return True
-        except ModuleNotFoundError:
+        except ImportError:
             return False
 
 
