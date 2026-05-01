@@ -327,6 +327,12 @@ class TransportRefsContainer(RefsContainer):
             f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
             return None
+        except ReadError:
+            # The ref name resolves to a directory rather than a file.
+            # On Windows transport.get raises this immediately; on POSIX
+            # it surfaces from the subsequent read instead. Either way,
+            # there's no ref to read.
+            return None
         with f:
             try:
                 header = f.read(len(SYMREF))
