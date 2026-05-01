@@ -104,11 +104,14 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         (out, err) = p.communicate(b"capabilities\n")
         lines = out.splitlines()
         self.assertIn(b"push", lines, f"no 'push' in {lines!r}, error: {err!r}")
+        # subprocess stderr on Windows lands as text mode by default,
+        # so '\n' becomes '\r\n' on the way out. Normalise before
+        # comparing.
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "
             b"for large repositories.\n",
-            err,
+            err.replace(b"\r\n", b"\n"),
         )
 
 
