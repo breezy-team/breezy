@@ -500,13 +500,15 @@ class TransportRefsContainer(RefsContainer):
             else:
 
                 def unlock():
+                    # Close the file handle before deleting; on Windows a
+                    # file that's still open can't be removed (os error 32).
+                    # GitFile.abort doesn't care if the lock has already
+                    # disappeared.
+                    gf.abort()
                     try:
                         transport.delete(lockname)
                     except NoSuchFile as err:
                         raise LockBroken(lockname) from err
-                    # GitFile.abort doesn't care if the lock has already
-                    # disappeared
-                    gf.abort()
 
                 return LogicalLockResult(unlock)
 
