@@ -394,6 +394,10 @@ if sys.platform == "win32":
             and isinstance(exception, OSError)
             and exception.errno == errno.EACCES
         ):
+            # shutil.rmtree may invoke us with a bytes path; the Rust
+            # make_writable binding only accepts str/PathLike.
+            if isinstance(path, bytes):
+                path = os.fsdecode(path)
             make_writable(path)
             function(path)
         else:
