@@ -670,7 +670,13 @@ pub fn relpath(base: &Path, path: &Path) -> Option<PathBuf> {
         }
     }
 
-    Some(s.into_iter().rev().collect::<PathBuf>())
+    let result: PathBuf = s.into_iter().rev().collect();
+    // breezy paths use forward slashes everywhere; PathBuf::collect on
+    // Windows joins components with '\\', which breaks downstream
+    // dirstate lookups that store '/'.
+    #[cfg(windows)]
+    let result = win32::fix_separators(result.as_path());
+    Some(result)
 }
 
 pub fn normalizepath<P: AsRef<Path>>(f: P) -> std::io::Result<PathBuf> {
