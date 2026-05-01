@@ -82,6 +82,9 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
             Some(123) => Error::IllegalPath(path.map(|p| p.to_string())),
             // ERROR_DIR_NOT_EMPTY — equivalent to POSIX ENOTEMPTY.
             Some(145) => Error::DirectoryNotEmptyError(path.map(|p| p.to_string())),
+            // ERROR_DIRECTORY — equivalent to POSIX ENOTDIR (caller asked
+            // for a directory operation on a regular file).
+            Some(267) => Error::NotADirectoryError(path.map(|p| p.to_string())),
             _ => Error::Io(err),
         },
     }
