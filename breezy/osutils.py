@@ -383,6 +383,10 @@ fstat = os.fstat
 
 if sys.platform == "win32":
     rename = _rename_wrap_exception(_win32_rename)
+    # Breezy treats paths as forward-slash everywhere; os.getcwd on
+    # Windows returns backslashes, so override with the _win32_getcwd
+    # variant that normalises separators.
+    getcwd = _win32_getcwd
 
     def _win32_delete_readonly(function, path, excinfo):
         """Error handler for shutil.rmtree function [for win32]
