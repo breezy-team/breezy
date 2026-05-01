@@ -2112,7 +2112,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # working copy as compared to the repository.
                 # Also, exclude root as mention in the above fast path.
                 changes = filter(
-                    lambda c: c[6][0] != "symlink" and c[4] != (None, None), changes
+                    lambda c: c.kind[0] != "symlink"
+                    and c.parent_id != (None, None),
+                    changes,
                 )
                 try:
                     next(iter(changes))
