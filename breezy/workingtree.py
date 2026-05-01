@@ -872,7 +872,10 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)
             if not self._supports_executable():
-                executable = entry is not None and entry.executable
+                # Some unversioned-path callers pass a bare TreeFile sentinel
+                # that has no executable attribute; treat that as not
+                # executable.
+                executable = bool(getattr(entry, "executable", False))
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
