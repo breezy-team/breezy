@@ -381,12 +381,21 @@ impl Transport for LocalTransport {
         Box::new(wd.into_iter().filter_map(move |e| match e {
             Ok(e) => {
                 if !e.file_type().is_dir() {
-                    Some(Ok(escape(
-                        os_str_as_bytes(
-                            e.path().strip_prefix(base.as_path()).unwrap().as_os_str(),
-                        ),
-                        None,
-                    )))
+                    let rel = e.path().strip_prefix(base.as_path()).unwrap();
+                    // Transport paths use '/' as the separator; convert
+                    // Windows '\\' before URL-escaping so the result is
+                    // a relative URL fragment, not a percent-escaped
+                    // backslash.
+                    #[cfg(windows)]
+                    let rel_bytes = rel
+                        .to_string_lossy()
+                        .replace('\\', "/")
+                        .into_bytes();
+                    #[cfg(windows)]
+                    let bytes = rel_bytes.as_slice();
+                    #[cfg(not(windows))]
+                    let bytes = os_str_as_bytes(rel.as_os_str());
+                    Some(Ok(escape(bytes, None)))
                 } else {
                     None
                 }
