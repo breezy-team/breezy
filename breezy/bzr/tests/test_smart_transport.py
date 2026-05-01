@@ -798,7 +798,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         try:
             self.assertEqual("", client_sock.recv(1))
         except OSError as e:
-            if e.errno not in (errno.EBADF,):
+            # POSIX raises EBADF, Windows raises WSAENOTSOCK (10038).
+            if e.errno not in (errno.EBADF, getattr(errno, "WSAENOTSOCK", -1)):
                 raise
         client_medium.get_request()
 
