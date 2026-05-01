@@ -370,7 +370,7 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
                                     relpath.to_owned(),
                                     offset,
                                     length as u64,
-                                    file.position() - offset,
+                                    file.position().saturating_sub(offset),
                                 ))
                             }
                             _ => return Err(map_io_err_to_transport_err(err, Some(relpath))),
@@ -383,7 +383,7 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
                                 relpath.to_owned(),
                                 offset,
                                 length as u64,
-                                file.position() - offset,
+                                file.position().saturating_sub(offset),
                             )),
                             _ => Err(map_io_err_to_transport_err(err, Some(relpath))),
                         },
