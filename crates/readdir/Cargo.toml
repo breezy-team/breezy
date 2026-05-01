@@ -1,0 +1,12 @@
+[package]
+name = "breezy-readdir"
+version = { workspace = true }
+edition = "2021"
+description = "Inode-ordered directory reader for Breezy"
+license = "GPL-2.0+"
+
+[lib]
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["dir", "fs"] }
+libc = "0.2"

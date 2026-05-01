@@ -1,0 +1,13 @@
+[package]
+name = "readdir-py"
+version = { workspace = true }
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[target.'cfg(unix)'.dependencies]
+pyo3 = { workspace = true, features = ["extension-module"] }
+breezy-readdir = { path = "../readdir" }
+libc = "0.2"
+nix = { workspace = true }

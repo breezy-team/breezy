@@ -225,7 +225,6 @@ if sys.platform == "win32":
     add_cython_extension("breezy.bzr._dirstate_helpers_pyx", libraries=["Ws2_32"])
 else:
     add_cython_extension("breezy.bzr._dirstate_helpers_pyx")
-    add_cython_extension("breezy._readdir_pyx")
 add_cython_extension("breezy.bzr._btree_serializer_pyx")
 
 
@@ -277,6 +276,15 @@ rust_extensions = [
     ),
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
+
+if sys.platform != "win32":
+    rust_extensions.append(
+        RustExtension(
+            "breezy._readdir_pyx",
+            "crates/readdir-py/Cargo.toml",
+            binding=Binding.PyO3,
+        )
+    )
 entry_points = {}
 
 if (
