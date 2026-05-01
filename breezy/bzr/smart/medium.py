@@ -531,13 +531,21 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         """
         SmartServerStreamMedium.__init__(self, backing_transport, timeout=timeout)
         if sys.platform == "win32":
-            # force binary mode for files
+            # force binary mode for real files; BytesIO and similar streams
+            # have a fileno attribute that raises io.UnsupportedOperation
+            # rather than returning, so handle that as "no fd to switch".
+            import io
             import msvcrt
 
             for f in (in_file, out_file):
                 fileno = getattr(f, "fileno", None)
-                if fileno:
-                    msvcrt.setmode(fileno(), os.O_BINARY)
+                if fileno is None:
+                    continue
+                try:
+                    fd = fileno()
+                except (io.UnsupportedOperation, OSError):
+                    continue
+                msvcrt.setmode(fd, os.O_BINARY)
         self._in = in_file
         self._out = out_file
 
