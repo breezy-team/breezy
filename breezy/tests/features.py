@@ -257,10 +257,22 @@ ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
 
 
 class _UTF8Filesystem(Feature):
-    """Is the filesystem UTF-8?"""
+    """Is the filesystem UTF-8 *and* able to store non-UTF-8 bytes?
+
+    Python 3.6+ reports getfilesystemencoding() == 'utf-8' on Windows,
+    but the underlying API is UTF-16 and won't accept arbitrary bytes,
+    so the probe used to succeed where the actual fs can't carry the
+    test fixtures. Test by trying to create a file with a non-UTF-8
+    byte name.
+    """
 
     def _probe(self):
-        return sys.getfilesystemencoding().upper() in ("UTF-8", "UTF8")
+        if sys.getfilesystemencoding().upper() not in ("UTF-8", "UTF8"):
+            return False
+        if sys.platform == "win32":
+            # Windows uses UTF-16 internally; raw bytes don't survive.
+            return False
+        return True
 
 
 UTF8Filesystem = _UTF8Filesystem()
