@@ -28,12 +28,15 @@ from ..features import SymlinkFeature
 
 
 def _zero_win32_stat_fields(stat_value):
-    """Rebuild a stat_result with st_dev/st_ino/st_nlink zeroed.
+    """Rebuild a stat_result with st_dev/st_ino/st_nlink zeroed and
+    timestamps truncated to whole seconds.
 
-    The walkdirs implementation on Windows reports those fields as 0
-    because the dirstate-cached walker doesn't preserve them. The
-    test's expected stats are produced by os.lstat which fills them
-    in, so normalise expected to match actual.
+    The walkdirs implementation on Windows reports st_dev/st_ino/st_nlink
+    as 0 (the dirstate-cached walker doesn't preserve them) and stores
+    timestamps with second precision (whatever was originally written
+    into the dirstate). The test's expected stats are produced by
+    os.lstat which fills the fields in at full precision, so normalise
+    expected to match actual.
     """
     return os.stat_result(
         (
@@ -44,9 +47,9 @@ def _zero_win32_stat_fields(stat_value):
             stat_value.st_uid,
             stat_value.st_gid,
             stat_value.st_size,
-            stat_value.st_atime,
-            stat_value.st_mtime,
-            stat_value.st_ctime,
+            int(stat_value.st_atime),
+            int(stat_value.st_mtime),
+            int(stat_value.st_ctime),
         )
     )
 
