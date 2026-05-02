@@ -349,10 +349,16 @@ pub mod win32 {
             }
         }
 
-        // If the path was empty or only contained root components, return the root component(s)
+        // If the path was empty or only contained root components, return
+        // the root marker. Empty path stays empty; '/' or '\\' stays as
+        // the root char so callers can still distinguish "current dir"
+        // from "filesystem root".
         if parts.is_empty() {
-            return PathBuf::from(if p.to_str().unwrap().starts_with('\\') {
+            let raw = p.to_str().unwrap();
+            return PathBuf::from(if raw.starts_with('\\') {
                 "\\"
+            } else if raw.starts_with('/') {
+                "/"
             } else {
                 ""
             });
