@@ -992,7 +992,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = os.fsencode(self.abspath(from_dir))
+        sep = os.fsencode(os.sep)
         for dirpath, dirnames, filenames in os.walk(encoded_from_dir):
+            # Normalise to '/' so callers don't see platform-native
+            # separators (Windows produces b'\\' which downstream path
+            # arithmetic, e.g. posixpath.relpath, can't undo).
+            if sep != b"/":
+                dirpath = dirpath.replace(sep, b"/")
             dir_relpath = dirpath[len(self.basedir) :].strip(b"/")
             if self.controldir.is_control_filename(os.fsdecode(dir_relpath)):
                 continue
@@ -1000,14 +1006,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     dirnames.remove(name)
                     continue
-                relpath = os.path.join(dir_relpath, name)
-                if not recurse_nested and self._directory_is_tree_reference(
-                    os.fsdecode(relpath)
-                ):
+                relpath = posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
+                if not recurse_nested and self._directory_is_tree_reference(relpath):
                     dirnames.remove(name)
                 if include_dirs:
-                    yield os.fsdecode(relpath)
-                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
+                    yield relpath
+                    if not self.is_versioned(relpath):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -1017,8 +1021,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
-                yp = os.path.join(dir_relpath, name)
-                yield os.fsdecode(yp)
+                yield posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree."""
