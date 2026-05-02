@@ -1368,8 +1368,30 @@ class TestCase(testtools.TestCase):
             other than by atime.
         """
         self.assertEqual(expected.st_size, actual.st_size, "st_size did not match")
-        self.assertEqual(expected.st_mtime, actual.st_mtime, "st_mtime did not match")
-        self.assertEqual(expected.st_ctime, actual.st_ctime, "st_ctime did not match")
+        if sys.platform == "win32":
+            # os.fstat and os.lstat go through different Win32 APIs
+            # (GetFileInformationByHandle vs GetFileAttributesEx) which
+            # can return mtime/ctime at different precisions. Compare
+            # them with a small tolerance instead of bit-equal.
+            self.assertAlmostEqual(
+                expected.st_mtime,
+                actual.st_mtime,
+                places=2,
+                msg="st_mtime did not match",
+            )
+            self.assertAlmostEqual(
+                expected.st_ctime,
+                actual.st_ctime,
+                places=2,
+                msg="st_ctime did not match",
+            )
+        else:
+            self.assertEqual(
+                expected.st_mtime, actual.st_mtime, "st_mtime did not match"
+            )
+            self.assertEqual(
+                expected.st_ctime, actual.st_ctime, "st_ctime did not match"
+            )
         if sys.platform == "win32":
             # On Win32 both 'dev' and 'ino' historically couldn't be
             # trusted, so older Python versions reported them as 0.
