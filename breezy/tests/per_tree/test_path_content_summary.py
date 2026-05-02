@@ -77,7 +77,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
 
     def test_file_content_summary_executable(self):
         tree = self.make_branch_and_tree("tree")
-        if not tree.supports_executable():
+        if not tree._supports_executable():
             raise tests.TestNotApplicable("tree does not support the executable bit")
         self.build_tree(["tree/path"])
         tree.add(["path"])
