@@ -17,7 +17,6 @@
 """Tests for the extra cases that WorkingTree.walkdirs can encounter."""
 
 import os
-import sys
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -25,33 +24,6 @@ from ..features import SymlinkFeature
 
 # tests to write:
 # type mismatches - file to link, dir, dir to file, link, link to file, dir
-
-
-def _zero_win32_stat_fields(stat_value):
-    """Rebuild a stat_result with st_dev/st_ino/st_nlink zeroed and
-    timestamps truncated to whole seconds.
-
-    The walkdirs implementation on Windows reports st_dev/st_ino/st_nlink
-    as 0 (the dirstate-cached walker doesn't preserve them) and stores
-    timestamps with second precision (whatever was originally written
-    into the dirstate). The test's expected stats are produced by
-    os.lstat which fills the fields in at full precision, so normalise
-    expected to match actual.
-    """
-    return os.stat_result(
-        (
-            stat_value.st_mode,
-            0,  # st_ino
-            0,  # st_dev
-            0,  # st_nlink
-            stat_value.st_uid,
-            stat_value.st_gid,
-            stat_value.st_size,
-            int(stat_value.st_atime),
-            int(stat_value.st_mtime),
-            int(stat_value.st_ctime),
-        )
-    )
 
 
 class DirBlock:
@@ -123,14 +95,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
                 dirblock.inventory_kind = kind
             if file_status != self.missing:
                 dirblock.disk_kind = kind
-                stat_value = os.lstat(dirblock.relpath)
-                if sys.platform == "win32":
-                    # walkdirs reports stats with st_dev/st_ino/st_nlink
-                    # zeroed on Windows (the dirstate-backed walker
-                    # doesn't carry those fields); zero them in expected
-                    # too so the comparison matches.
-                    stat_value = _zero_win32_stat_fields(stat_value)
-                dirblock.stat = stat_value
+                dirblock.stat = self.normaliseWalkdirStat(os.lstat(dirblock.relpath))
             dirblocks.append(dirblock)
 
         add_dirblock(paths[0], "file")

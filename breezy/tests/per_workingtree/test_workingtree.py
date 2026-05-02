@@ -918,8 +918,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree._write_inventory(inventory)
         tree.unlock()
         with tree.lock_read():
-            present_stat = os.lstat("present")
-            unknown_stat = os.lstat("unknown")
+            present_stat = self.normaliseWalkdirStat(os.lstat("present"))
+            unknown_stat = self.normaliseWalkdirStat(os.lstat("unknown"))
             expected_results = [
                 (
                     "",

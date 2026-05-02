@@ -1359,6 +1359,31 @@ class TestCase(testtools.TestCase):
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test, f"mode mismatch {mode:o} != {mode_test:o}")
 
+    def normaliseWalkdirStat(self, stat_value):
+        """Make an os.stat_result comparable to walkdirs() output on Windows.
+
+        WorkingTree.walkdirs caches stat results with st_dev/st_ino/st_nlink
+        zeroed and timestamps stored at second precision. Tests that
+        construct expected stats via os.lstat() must collapse the same
+        fields to compare equal on Windows.
+        """
+        if sys.platform != "win32":
+            return stat_value
+        return os.stat_result(
+            (
+                stat_value.st_mode,
+                0,  # st_ino
+                0,  # st_dev
+                0,  # st_nlink
+                stat_value.st_uid,
+                stat_value.st_gid,
+                stat_value.st_size,
+                int(stat_value.st_atime),
+                int(stat_value.st_mtime),
+                int(stat_value.st_ctime),
+            )
+        )
+
     def assertEqualStat(self, expected, actual):
         """Assert that expected and actual are the same stat result.
 
