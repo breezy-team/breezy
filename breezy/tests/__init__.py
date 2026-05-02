@@ -1371,13 +1371,12 @@ class TestCase(testtools.TestCase):
         self.assertEqual(expected.st_mtime, actual.st_mtime, "st_mtime did not match")
         self.assertEqual(expected.st_ctime, actual.st_ctime, "st_ctime did not match")
         if sys.platform == "win32":
-            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
-            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. We just force it to always be 0 to avoid any problems.
-            self.assertEqual(0, expected.st_dev)
-            self.assertEqual(0, actual.st_dev)
-            self.assertEqual(0, expected.st_ino)
-            self.assertEqual(0, actual.st_ino)
+            # On Win32 both 'dev' and 'ino' historically couldn't be
+            # trusted, so older Python versions reported them as 0.
+            # Modern Python (3.10+) does populate them, but the values
+            # may legitimately differ between two stat calls of the same
+            # file (e.g. via different paths), so we don't try to match.
+            pass
         else:
             self.assertEqual(expected.st_dev, actual.st_dev, "st_dev did not match")
             self.assertEqual(expected.st_ino, actual.st_ino, "st_ino did not match")
