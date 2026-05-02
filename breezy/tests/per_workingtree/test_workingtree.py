@@ -1060,11 +1060,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             or features.CaseInsCasePresFilenameFeature.available()
         )
         tree = self.make_branch_and_tree("test")
-        self.assertEqual(case_sensitive, tree.case_sensitive)
         if not isinstance(tree, InventoryWorkingTree):
+            # Git working trees always report case_sensitive=True
+            # regardless of the underlying filesystem; the rest of
+            # this test cheats with a bzr-specific format string.
             raise TestNotApplicable(
                 "get_format_string is only available on bzr working trees"
             )
+        self.assertEqual(case_sensitive, tree.case_sensitive)
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.controldir.get_workingtree_transport(None)
         try:
