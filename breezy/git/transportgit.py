@@ -1057,7 +1057,7 @@ class TransportObjectStore(PackBasedObjectStore):
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
             with contextlib.suppress(NoSuchFile):
-                self.transport.remove(target_pack_name)
+                self.pack_transport.delete(target_pack_name)
 
         if path:
             f.close()
