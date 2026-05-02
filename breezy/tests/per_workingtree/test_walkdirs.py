@@ -17,6 +17,7 @@
 """Tests for the extra cases that WorkingTree.walkdirs can encounter."""
 
 import os
+import sys
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -24,6 +25,30 @@ from ..features import SymlinkFeature
 
 # tests to write:
 # type mismatches - file to link, dir, dir to file, link, link to file, dir
+
+
+def _zero_win32_stat_fields(stat_value):
+    """Rebuild a stat_result with st_dev/st_ino/st_nlink zeroed.
+
+    The walkdirs implementation on Windows reports those fields as 0
+    because the dirstate-cached walker doesn't preserve them. The
+    test's expected stats are produced by os.lstat which fills them
+    in, so normalise expected to match actual.
+    """
+    return os.stat_result(
+        (
+            stat_value.st_mode,
+            0,  # st_ino
+            0,  # st_dev
+            0,  # st_nlink
+            stat_value.st_uid,
+            stat_value.st_gid,
+            stat_value.st_size,
+            stat_value.st_atime,
+            stat_value.st_mtime,
+            stat_value.st_ctime,
+        )
+    )
 
 
 class DirBlock:
@@ -95,7 +120,14 @@ class TestWalkdirs(TestCaseWithWorkingTree):
                 dirblock.inventory_kind = kind
             if file_status != self.missing:
                 dirblock.disk_kind = kind
-                dirblock.stat = os.lstat(dirblock.relpath)
+                stat_value = os.lstat(dirblock.relpath)
+                if sys.platform == "win32":
+                    # walkdirs reports stats with st_dev/st_ino/st_nlink
+                    # zeroed on Windows (the dirstate-backed walker
+                    # doesn't carry those fields); zero them in expected
+                    # too so the comparison matches.
+                    stat_value = _zero_win32_stat_fields(stat_value)
+                dirblock.stat = stat_value
             dirblocks.append(dirblock)
 
         add_dirblock(paths[0], "file")
