@@ -1693,7 +1693,11 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # it was extracted from WorkingTree.is_control_filename. If the
         # method's contract is extended beyond the current trivial
         # implementation, please add new tests for it to the appropriate place.
-        return filename == ".bzr" or filename.startswith(".bzr/")
+        return (
+            filename == ".bzr"
+            or filename.startswith(".bzr/")
+            or filename.startswith(".bzr\\")
+        )
 
     @classmethod
     def get_default_format(klass):
