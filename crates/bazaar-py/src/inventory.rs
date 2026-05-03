@@ -746,55 +746,6 @@ fn entry_to_py(py: Python, e: Entry) -> PyResult<Bound<PyAny>> {
     }
 }
 
-fn entry_from_py(py: Python, obj: PyObject) -> PyResult<Entry> {
-    let kind = obj.getattr(py, "kind")?.extract::<String>(py)?;
-    let kind = match kind.as_str() {
-        "file" => Kind::File,
-        "directory" => Kind::Directory,
-        "tree-reference" => Kind::TreeReference,
-        "symlink" => Kind::Symlink,
-        _ => panic!("Unknown kind"),
-    };
-
-    let file_id = obj.getattr(py, "file_id")?.extract::<Option<FileId>>(py)?;
-    let name = obj.getattr(py, "name")?.extract::<String>(py)?;
-    let parent_id = obj
-        .getattr(py, "parent_id")?
-        .extract::<Option<FileId>>(py)?;
-    let revision = obj
-        .getattr(py, "revision")?
-        .extract::<Option<RevisionId>>(py)?;
-    let executable = obj.getattr(py, "executable")?.extract::<Option<bool>>(py)?;
-    let text_id = obj.getattr(py, "text_id")?.extract::<Option<Vec<u8>>>(py)?;
-    let text_sha1 = obj
-        .getattr(py, "text_sha1")?
-        .extract::<Option<Vec<u8>>>(py)?;
-    let text_size = obj.getattr(py, "text_size")?.extract::<Option<u64>>(py)?;
-    let symlink_target = obj
-        .getattr(py, "symlink_target")?
-        .extract::<Option<String>>(py)?;
-    let reference_revision = obj
-        .getattr(py, "reference_revision")?
-        .extract::<Option<RevisionId>>(py)?;
-
-    let entry = bazaar::inventory::make_entry(
-        kind,
-        name,
-        parent_id,
-        file_id,
-        revision,
-        text_sha1,
-        text_size,
-        executable,
-        text_id,
-        symlink_target,
-        reference_revision,
-    )
-    .map_err(|e| inventory_err_to_py_err(e, py))?;
-
-    Ok(entry)
-}
-
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 #[pyo3(signature = (kind, name, parent_id=None, revision=None, file_id=None, text_sha1=None, text_size=None, executable=None, text_id=None, symlink_target=None, reference_revision=None))]

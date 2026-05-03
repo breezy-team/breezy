@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use breezy_osutils::Kind;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyIOError, PyOSError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyString, PyTuple};
@@ -156,7 +156,7 @@ fn path_to_pystring<'a>(py: Python<'a>, path: &'_ Path) -> PyResult<Bound<'a, Py
 
     let py_str = py_bytes.call_method1("decode", ("utf-8", "surrogateescape"))?;
 
-    Ok(py_str.downcast_into_exact::<PyString>()?)
+    Ok(py_str.cast_into_exact::<PyString>()?)
 }
 
 #[cfg(windows)]
@@ -603,7 +603,7 @@ fn IterableFile(py: Python, py_iterable: PyObject) -> PyResult<Bound<PyIterableF
                             err.to_string(),
                         )))
                     }
-                    Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
+                    Some(Ok(obj)) => match obj.cast::<PyBytes>() {
                         Err(err) => {
                             PyErr::restore(PyTypeError::new_err("unable to convert to bytes"), py);
                             Some(Err(std::io::Error::new(

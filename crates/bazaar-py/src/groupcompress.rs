@@ -9,13 +9,18 @@ use std::convert::TryInto;
 
 #[pyfunction]
 fn encode_base128_int(py: Python, value: u128) -> PyResult<Bound<PyBytes>> {
-    let ret = bazaar::groupcompress::delta::encode_base128_int(value);
+    let mut ret = Vec::new();
+    bazaar::groupcompress::delta::write_base128_int(&mut ret, value)
+        .map_err(|e| PyValueError::new_err(format!("Failed to encode: {}", e)))?;
     Ok(PyBytes::new(py, &ret))
 }
 
 #[pyfunction]
 fn decode_base128_int(value: Vec<u8>) -> PyResult<(u128, usize)> {
-    Ok(bazaar::groupcompress::delta::decode_base128_int(&value))
+    let mut cursor = std::io::Cursor::new(&value);
+    let val = bazaar::groupcompress::delta::read_base128_int(&mut cursor)
+        .map_err(|e| PyValueError::new_err(format!("Failed to decode: {}", e)))?;
+    Ok((val, cursor.position() as usize))
 }
 
 #[pyfunction]
@@ -27,15 +32,10 @@ fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<Bound<PyB
 
 #[pyfunction]
 fn decode_copy_instruction(data: Vec<u8>, cmd: u8, pos: usize) -> PyResult<(usize, usize, usize)> {
-    let ret = bazaar::groupcompress::delta::decode_copy_instruction(&data, cmd, pos);
-    if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "Invalid copy instruction",
-        ));
-    }
-    let ret = ret.unwrap();
-
-    Ok((ret.0, ret.1, ret.2))
+    let mut cursor = std::io::Cursor::new(&data[pos..]);
+    let (offset, length) = bazaar::groupcompress::delta::read_copy_instruction(&mut cursor, cmd)
+        .map_err(|_| PyValueError::new_err("Invalid copy instruction"))?;
+    Ok((offset, length, pos + cursor.position() as usize))
 }
 
 #[pyfunction]
@@ -46,8 +46,18 @@ fn apply_delta_to_source<'a>(
     delta_start: usize,
     delta_end: usize,
 ) -> PyResult<Bound<'a, PyBytes>> {
-    bazaar::groupcompress::delta::apply_delta_to_source(source, delta_start, delta_end)
-        .map_err(|e| PyErr::new::<PyValueError, _>(format!("Invalid delta: {}", e)))
+    if delta_start >= source.len() {
+        return Err(PyValueError::new_err("Invalid delta: delta starts after source"));
+    }
+    if delta_end > source.len() {
+        return Err(PyValueError::new_err("Invalid delta: delta ends after source"));
+    }
+    if delta_start >= delta_end {
+        return Err(PyValueError::new_err("Invalid delta: delta starts after it ends"));
+    }
+    let delta_bytes = &source[delta_start..delta_end];
+    bazaar::groupcompress::delta::apply_delta(source, delta_bytes)
+        .map_err(|e| PyValueError::new_err(format!("Invalid delta: {}", e)))
         .map(|x| PyBytes::new(py, &x))
 }
 
