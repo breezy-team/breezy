@@ -255,20 +255,10 @@ def _breezy_auth_header_trace(header_name):
 set_auth_header_trace(_breezy_auth_header_trace)
 
 
-# Plain http:// and https:// are handled by dromedary's own transports;
-# `breezy.bzr.smart.transport.get_smart_medium` knows how to wrap a
-# dromedary HttpTransport in a SmartClientHTTPMedium when bzr code needs
-# to tunnel the smart protocol over HTTP. Dromedary deliberately leaves
-# the WebDAV scheme registration to consumers, so register that here.
-register_urlparse_netloc_protocol("http+webdav")
-register_urlparse_netloc_protocol("https+webdav")
-register_lazy_transport(
-    "http+webdav://", "dromedary.webdav.webdav", "HttpDavTransport"
-)
-register_lazy_transport(
-    "https+webdav://", "dromedary.webdav.webdav", "HttpDavTransport"
-)
-
+# Plain http://, https://, and the WebDAV variants are handled by
+# dromedary's own transports; `breezy.bzr.smart.transport.get_smart_medium`
+# knows how to wrap a dromedary HttpTransport in a SmartClientHTTPMedium
+# when bzr code needs to tunnel the smart protocol over HTTP.
 
 register_transport_proto("nosmart+")
 register_lazy_transport(
