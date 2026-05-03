@@ -1038,9 +1038,18 @@ fn contains_whitespace(py: Python, text: Py<PyAny>) -> PyResult<bool> {
 #[pyfunction]
 fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<Py<PyAny>> {
     let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
-        None => Err(PathNotChild::new_err((start, path))),
-        Some(p) => Ok(p),
-    }?;
+        None => {
+            // Normalise paths to forward slashes for the error so the
+            // message matches across platforms.
+            #[cfg(windows)]
+            let (start, path) = (
+                breezy_osutils::path::win32::fix_separators(start.as_path()),
+                breezy_osutils::path::win32::fix_separators(path.as_path()),
+            );
+            return Err(PathNotChild::new_err((start, path)));
+        }
+        Some(p) => p,
+    };
 
     Ok(path_to_pystring(py, &path)?.into_any().unbind())
 }
