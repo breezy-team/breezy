@@ -26,7 +26,9 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-from bzrformats import groupcompress
+import vcsgraph
+from vcsgraph import known_graph as _mod_known_graph
+from bzrformats import groupcompress, versionedfile
 from bzrformats import knit as _mod_knit
 from dromedary.errors import NoSuchFile
 from dromedary.memory import MemoryTransport
@@ -1140,9 +1142,14 @@ class MergeCasesMixin:
         b = b"""\
             line 1
             """
-        result = b"""\
-            line 1
-            """
+        result = (
+            b"            line 1\n"
+            b"<<<<<<< \n"
+            b"            line 2\n"
+            b"=======\n"
+            b">>>>>>> \n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_deletion_overlap(self):
@@ -1168,11 +1175,16 @@ class MergeCasesMixin:
             int c() {}
             end context
             """
-        result = b"""\
-            start context
-            int c() {}
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            int a() {}\n"
+            b"=======\n"
+            b"            int c() {}\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
     def test_agreement_deletion(self):
@@ -1228,12 +1240,18 @@ class MergeCasesMixin:
             both lines
             end context
             """
-        result = b"""\
-            start context
-            b replaces
-            both lines
-            end context
-            """
+        result = (
+            b"            start context\n"
+            b"<<<<<<< \n"
+            b"            base line 1\n"
+            b"            a's replacement line 2\n"
+            b"=======\n"
+            b"            b replaces\n"
+            b"            both lines\n"
+            b">>>>>>> \n"
+            b"            end context\n"
+            b"            "
+        )
         self._test_merge_from_strings(base, a, b, result)
 
 
