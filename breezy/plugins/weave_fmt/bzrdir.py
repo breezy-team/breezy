@@ -487,7 +487,7 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.mkdir("revision-store")
         revision_transport = self.controldir.transport.clone("revision-store")
         # TODO permissions
-        from bzrformats._bzr_rs import revision_serializer_v5 as serializer_v5
+        from bzrformats._bzr_rs import revision_serializer_v5
         from .repository import RevisionTextStore
 
         revision_store = RevisionTextStore(
@@ -546,7 +546,7 @@ class ConvertBzrDir4To5(Converter):
         Returns:
             The loaded inventory object.
         """
-        from .xml4 import inventory_serializer_v4
+        from bzrformats.xml4 import inventory_serializer_v4
 
         with self.branch.repository.inventory_store.get(rev_id) as f:
             inv = xml4.inventory_serializer_v4.read_inventory(f)
@@ -563,7 +563,7 @@ class ConvertBzrDir4To5(Converter):
         Returns:
             The loaded inventory object.
         """
-        from ...bzr.xml5 import inventory_serializer_v5
+        from bzrformats.xml5 import inventory_serializer_v5
 
         inv_xml = self.inv_weave.get_lines(rev_id)
         inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)

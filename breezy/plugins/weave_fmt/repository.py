@@ -581,7 +581,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -645,7 +645,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -719,7 +719,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
         )
 
     def _get_revisions(self, repo_transport, repo):
-        from ...bzr.xml5 import revision_serializer_v5
+        from bzrformats.xml5 import revision_serializer_v5
 
         return RevisionTextStore(
             repo_transport.clone("revision-store"),
@@ -881,10 +881,8 @@ class TextVersionedFiles(VersionedFiles):
                 lines = adapter.get_bytes(
                     record, record.get_bytes_as(record.storage_kind)
                 )
-                with contextlib.suppress(errors.RevisionAlreadyPresent):
+                with contextlib.suppress(RevisionAlreadyPresent):
                     self.add_lines(record.key, None, lines)
-                except RevisionAlreadyPresent:
-                    pass
 
     def _load_text(self, key):
         """Load text content for a given key.
@@ -991,9 +989,11 @@ class RevisionTextStore(TextVersionedFiles):
         Returns:
             KnownGraph instance containing the ancestry.
         """
+        from vcsgraph.known_graph import KnownGraph
+
         keys = self.keys()
         parent_map = self.get_parent_map(keys)
-        kg = _mod_known_graph.KnownGraph(parent_map)
+        kg = KnownGraph(parent_map)
         return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
