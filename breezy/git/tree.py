@@ -2075,7 +2075,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = True
 
     def _apply_index_changes(self, changes):
-        for path, kind, _executability, reference_revision, symlink_target in changes:
+        for path, kind, executability, reference_revision, symlink_target in changes:
             if kind is None or kind == "directory":
                 (index, subpath) = self._lookup_index(encode_git_path(path))
                 try:
@@ -2090,11 +2090,17 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     kind,
                     reference_revision=reference_revision,
                     symlink_target=symlink_target,
+                    executable=executability,
                 )
         self.flush()
 
     def _index_add_entry(
-        self, path, kind, reference_revision=None, symlink_target=None
+        self,
+        path,
+        kind,
+        reference_revision=None,
+        symlink_target=None,
+        executable=None,
     ):
         if kind == "directory":
             # Git indexes don't contain directories
@@ -2153,7 +2159,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             trace.mutter("ignoring path with invalid newline in it: %r", path)
             return
         (index, index_path) = self._lookup_index(encoded_path)
-        index[index_path] = index_entry_from_stat(stat_val, hexsha)
+        if executable is not None and kind == "file":
+            mode = stat.S_IFREG | (0o755 if executable else 0o644)
+            index[index_path] = index_entry_from_stat(stat_val, hexsha, mode=mode)
+        else:
+            index[index_path] = index_entry_from_stat(stat_val, hexsha)
         self._index_dirty = True
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
@@ -2388,7 +2398,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
             for from_rel in from_paths:
                 from_tail = os.path.split(from_rel)[-1]
-                to_rel = os.path.join(to_dir, from_tail)
+                to_rel = posixpath.join(to_dir, from_tail)
                 self.rename_one(from_rel, to_rel, after=after)
                 rename_tuples.append((from_rel, to_rel))
             self.flush()

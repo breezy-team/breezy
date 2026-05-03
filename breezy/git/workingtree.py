@@ -947,7 +947,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
 
                 for name in os.listdir(abs_user_dir):
-                    subp = os.path.join(user_dir, name)
+                    subp = posixpath.join(user_dir, name) if user_dir else name
                     if self.is_control_filename(subp) or self.mapping.is_special_file(
                         subp
                     ):
@@ -1319,6 +1319,26 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items on case-insensitive FS."""
+        with self.lock_read():
+            if not self.case_sensitive:
+
+                def normalize(x):
+                    return x.lower()
+            elif sys.platform == "darwin":
+                import unicodedata
+
+                def normalize(x):
+                    return unicodedata.normalize("NFC", x)
+            else:
+                normalize = None
+            for path in paths:
+                if normalize is None or self.is_versioned(path):
+                    yield path.strip("/")
+                else:
+                    yield tree.get_canonical_path(self, path, normalize)
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
