@@ -51,29 +51,21 @@ def get_smart_medium(transport):
 
     Dispatches by transport type:
 
-    - :class:`breezy.transport.remote.RemoteTransport` already *is* a smart
-      transport; its connection is the medium.
     - HTTP transports (``http://``, ``https://``) are wrapped in a
       :class:`breezy.bzr.smart.http.SmartClientHTTPMedium` that tunnels the
       smart protocol over HTTP POST.
-    - :class:`NoSmartTransportDecorator` explicitly hides smart-medium
-      capability of whatever it wraps; raise :class:`NoSmartMedium` without
-      looking at the inner transport.
-    - Other :class:`TransportDecorator` instances (readonly+, trace+, ...)
-      delegate to whatever they wrap.
-    - Everything else (local filesystem, ftp, ...) cannot tunnel the smart
-      protocol and raises :class:`NoSmartMedium`.
-    """
-    # Avoid an import cycle: RemoteTransport imports this module.
-    from breezy.transport.nosmart import NoSmartTransportDecorator
-    from breezy.transport.remote import RemoteTransport
+    - Decorators wrapping a transport delegate to whatever they wrap, except
+      ``nosmart+...`` which deliberately hides the wrapped medium.
+    - Anything else exposing a ``get_smart_medium`` method (notably
+      :class:`breezy.transport.remote.RemoteTransport`) returns the result
+      of calling it.
+    - Everything else raises :class:`NoSmartMedium`.
 
-    if isinstance(transport, RemoteTransport):
-        return transport._get_connection()
-    if isinstance(transport, NoSmartTransportDecorator):
-        raise NoSmartMedium(transport)
-    if isinstance(transport, _TransportDecorator):
-        return get_smart_medium(transport._decorated)
+    The HTTP and decorator cases are checked first so this module does not
+    have to import ``breezy.transport.remote`` (which would pull in
+    ``breezy.bzr.remote``, ``breezy.bzr.smart.client`` and ``breezy.gpg``,
+    bloating the import tariff for ``bzr serve``).
+    """
     if isinstance(transport, _HttpTransport):
         from breezy.bzr.smart.http import SmartClientHTTPMedium
 
@@ -83,4 +75,15 @@ def get_smart_medium(transport):
         if transport._medium is None:
             transport._medium = SmartClientHTTPMedium(transport)
         return transport._medium
-    raise NoSmartMedium(transport)
+    if isinstance(transport, _TransportDecorator):
+        # NoSmartTransportDecorator is also a TransportDecorator; check its
+        # url-prefix marker so we can short-circuit without importing the
+        # breezy.transport.nosmart module.
+        prefix = type(transport)._get_url_prefix()
+        if prefix == "nosmart+":
+            raise NoSmartMedium(transport)
+        return get_smart_medium(transport._decorated)
+    method = getattr(transport, "get_smart_medium", None)
+    if method is None:
+        raise NoSmartMedium(transport)
+    return method()
