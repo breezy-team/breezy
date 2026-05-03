@@ -935,6 +935,10 @@ class VersionedFileRepository(Repository):
         )
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
+        if self.revisions.get_parent_map([key]):
+            raise errors.BzrError(
+                f"Revision id {revision.revision_id!r} already present in repository"
+            )
         self.revisions.add_lines(key, parents, lines)
 
     def _check_inventories(self, checker):
