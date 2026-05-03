@@ -564,6 +564,8 @@ def _cicp_canonical_relpath(base, path):
     suffix = current[len(abs_base) :]
     if suffix.startswith(("/", "\\")):
         suffix = suffix[1:]
+    if os.sep != "/":
+        suffix = suffix.replace(os.sep, "/")
     return suffix
 
 
