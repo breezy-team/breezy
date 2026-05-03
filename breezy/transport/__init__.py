@@ -255,19 +255,19 @@ def _breezy_auth_header_trace(header_name):
 set_auth_header_trace(_breezy_auth_header_trace)
 
 
-# Override dromedary's plain HttpTransport registration with one that knows
-# how to construct a bzr smart medium. The breezy module is loaded lazily on
-# first http:// access, so this doesn't pull in socket/ssl for commands that
-# never touch a remote.
-register_lazy_transport("http://", "breezy.transport.http", "HttpTransport")
-register_lazy_transport("https://", "breezy.transport.http", "HttpTransport")
-register_lazy_transport("http+urllib://", "breezy.transport.http", "HttpTransport")
-register_lazy_transport("https+urllib://", "breezy.transport.http", "HttpTransport")
-
+# Plain http:// and https:// are handled by dromedary's own transports;
+# `breezy.bzr.smart.transport.get_smart_medium` knows how to wrap a
+# dromedary HttpTransport in a SmartClientHTTPMedium when bzr code needs
+# to tunnel the smart protocol over HTTP. Dromedary deliberately leaves
+# the WebDAV scheme registration to consumers, so register that here.
 register_urlparse_netloc_protocol("http+webdav")
 register_urlparse_netloc_protocol("https+webdav")
-register_lazy_transport("http+webdav://", "breezy.transport.http", "HttpDavTransport")
-register_lazy_transport("https+webdav://", "breezy.transport.http", "HttpDavTransport")
+register_lazy_transport(
+    "http+webdav://", "dromedary.webdav.webdav", "HttpDavTransport"
+)
+register_lazy_transport(
+    "https+webdav://", "dromedary.webdav.webdav", "HttpDavTransport"
+)
 
 
 register_transport_proto("nosmart+")

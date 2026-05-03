@@ -39,32 +39,6 @@ from breezy.tests import TestNotApplicable, test_server
 from breezy.transport.remote import RemoteTransport
 
 
-def _dedupe_scenarios(scenarios):
-    """Drop duplicate scenario IDs, preferring the most specific transport class.
-
-    Both `breezy.transport.http` and `dromedary.http.urllib` are present in
-    the transport registry — breezy installs its smart-aware HttpTransport
-    on top of dromedary's, but doesn't displace dromedary's factory. Their
-    `get_test_permutations()` therefore both yield (HttpTransport, HttpServer)
-    and (HTTPS_transport, HTTPSServer) entries, with the same scenario id but
-    different transport classes. Keep the breezy subclass so the smart-medium
-    behaviour is exercised; drop the dromedary base.
-    """
-    by_id = {}
-    for name, params in scenarios:
-        existing = by_id.get(name)
-        if existing is None:
-            by_id[name] = params
-            continue
-        new_cls = params["transport_class"]
-        old_cls = existing["transport_class"]
-        if issubclass(new_cls, old_cls) and new_cls is not old_cls:
-            by_id[name] = params
-        # Otherwise keep the existing entry (already-seen wins on ties or
-        # when the new entry is a base class of what we already have).
-    return [(name, params) for name, params in by_id.items()]
-
-
 def load_tests(loader, standard_tests, pattern):
     """Multiply tests for transport implementations.
 
@@ -74,7 +48,7 @@ def load_tests(loader, standard_tests, pattern):
     discovery would otherwise pick it up under its `dromedary.*` module
     path and run it without scenario parameters.
     """
-    TransportTests.scenarios = _dedupe_scenarios(transport_test_permutations())
+    TransportTests.scenarios = transport_test_permutations()
     suite = loader.loadTestsFromTestCase(TransportTests)
     return testscenarios.load_tests_apply_scenarios(loader, suite, pattern)
 

@@ -1660,9 +1660,11 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives
         # bulk data, so we use that.
+        from breezy.bzr.smart.transport import get_smart_medium
+
         self.build_tree(["data-file"])
         http_transport = transport.get_transport_from_url(self.http_server.get_url())
-        medium = http_transport.get_smart_medium()
+        medium = get_smart_medium(http_transport)
         # Since we provide the medium, the url below will be mostly ignored
         # during the test, as long as the path is '/'.
         remote_transport = remote.RemoteTransport("bzr://fake_host/", medium=medium)
@@ -1671,11 +1673,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         )
 
     def test_http_send_smart_request(self):
+        from breezy.bzr.smart.transport import get_smart_medium
+
         post_body = b"hello\n"
         expected_reply_body = b"ok\x012\n"
 
         http_transport = transport.get_transport_from_url(self.http_server.get_url())
-        medium = http_transport.get_smart_medium()
+        medium = get_smart_medium(http_transport)
         response = medium.send_http_smart_request(post_body)
         reply_body = response.read()
         self.assertEqual(expected_reply_body, reply_body)
@@ -1720,12 +1724,14 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
 
     def test_probe_smart_server(self):
         """Test error handling against server refusing smart requests."""
+        from breezy.bzr.smart.transport import get_smart_medium
+
         t = self.get_readonly_transport()
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(
             transport_errors.SmartProtocolError,
-            t.get_smart_medium().send_http_smart_request,
+            get_smart_medium(t).send_http_smart_request,
             b"whatever",
         )
 
