@@ -17,6 +17,7 @@
 """Tests for repository commit builder."""
 
 import os
+import sys
 
 from breezy import errors, osutils, repository, tests
 from breezy import revision as _mod_revision
@@ -399,6 +400,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_rename_ref_changes(self):
         # renaming a reference changes the last modified.
+        if sys.platform == "win32":
+            # Windows can't rename a directory while a child working tree
+            # still has open dirstate handles inside it.
+            self.skipTest("Cannot reliably rename open working trees on Windows")
         tree = self.make_branch_and_tree(".")
         subtree = self.make_reference("reference")
         subtree.commit("")
