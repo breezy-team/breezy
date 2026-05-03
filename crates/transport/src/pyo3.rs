@@ -236,9 +236,9 @@ impl Transport for PyTransport {
 
     fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
         Python::attach(|py| {
-            let obj = self
-                .0
-                .call_method1(py, "ensure_base", (perms.map(|p| permissions_mode(&p)),))?;
+            let obj =
+                self.0
+                    .call_method1(py, "ensure_base", (perms.map(|p| permissions_mode(&p)),))?;
             Ok(obj.extract::<bool>(py)?)
         })
     }
@@ -293,9 +293,11 @@ impl Transport for PyTransport {
     ) -> Result<u64> {
         let f = py_read(f)?;
         Python::attach(|py| {
-            let ret = self
-                .0
-                .call_method1(py, "put_file", (relpath, f, mode.map(|p| permissions_mode(&p))))?;
+            let ret = self.0.call_method1(
+                py,
+                "put_file",
+                (relpath, f, mode.map(|p| permissions_mode(&p))),
+            )?;
             Ok(ret.extract::<u64>(py)?)
         })
     }
@@ -307,8 +309,11 @@ impl Transport for PyTransport {
         mode: Option<Permissions>,
     ) -> Result<()> {
         Python::attach(|py| {
-            self.0
-                .call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| permissions_mode(&p))))?;
+            self.0.call_method1(
+                py,
+                "put_bytes",
+                (relpath, bytes, mode.map(|p| permissions_mode(&p))),
+            )?;
             Ok(())
         })
     }
@@ -402,8 +407,11 @@ impl Transport for PyTransport {
 
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
         Python::attach(|py| {
-            self.0
-                .call_method1(py, "create_prefix", (permissions.map(|p| permissions_mode(&p)),))?;
+            self.0.call_method1(
+                py,
+                "create_prefix",
+                (permissions.map(|p| permissions_mode(&p)),),
+            )?;
             Ok(())
         })
     }

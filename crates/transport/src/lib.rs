@@ -42,6 +42,8 @@ pub enum Error {
     NotADirectoryError(Option<String>),
 
     DirectoryNotEmptyError(Option<String>),
+
+    IllegalPath(Option<String>),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -70,7 +72,21 @@ pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> E
             _ => Error::Io(err),
         },
         #[cfg(windows)]
-        _ => Error::Io(err),
+        _ => match err.raw_os_error() {
+            // ERROR_INVALID_NAME — Windows rejects paths containing
+            // reserved characters such as ':' or '<>'. Linux accepts
+            // these characters, so there is no direct POSIX analogue;
+            // surface it as IllegalPath so callers can either treat it
+            // as "missing" (read paths) or skip the test as
+            // unsupported on this platform (write paths).
+            Some(123) => Error::IllegalPath(path.map(|p| p.to_string())),
+            // ERROR_DIR_NOT_EMPTY — equivalent to POSIX ENOTEMPTY.
+            Some(145) => Error::DirectoryNotEmptyError(path.map(|p| p.to_string())),
+            // ERROR_DIRECTORY — equivalent to POSIX ENOTDIR (caller asked
+            // for a directory operation on a regular file).
+            Some(267) => Error::NotADirectoryError(path.map(|p| p.to_string())),
+            _ => Error::Io(err),
+        },
     }
 }
 
@@ -354,7 +370,7 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
                                     relpath.to_owned(),
                                     offset,
                                     length as u64,
-                                    file.position() - offset,
+                                    file.position().saturating_sub(offset),
                                 ))
                             }
                             _ => return Err(map_io_err_to_transport_err(err, Some(relpath))),
@@ -367,7 +383,7 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
                                 relpath.to_owned(),
                                 offset,
                                 length as u64,
-                                file.position() - offset,
+                                file.position().saturating_sub(offset),
                             )),
                             _ => Err(map_io_err_to_transport_err(err, Some(relpath))),
                         },

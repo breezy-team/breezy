@@ -1003,16 +1003,7 @@ class DiffFromTool(DiffPath):
         command = [t.format(**my_map) for t in self.command_template]
         if command == self.command_template:
             command += [old_path, new_path]
-        if sys.platform == "win32":  # Popen doesn't accept unicode on win32
-            command_encoded = []
-            for c in command:
-                if isinstance(c, str):
-                    command_encoded.append(c.encode("mbcs"))
-                else:
-                    command_encoded.append(c)
-            return command_encoded
-        else:
-            return command
+        return command
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)

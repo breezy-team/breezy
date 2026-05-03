@@ -19,6 +19,7 @@
 
 import os
 import stat
+import sys
 
 from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.diff_tree import TreeChange as DulwichTreeChange
@@ -106,6 +107,8 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.assertEqual([], list(subtree.unknowns()))
 
     def test_add_submodule_file(self):
+        if sys.platform == "win32":
+            self.skipTest("Windows: relative gitdir traversal triggers IllegalPath")
         os.mkdir(".git/modules")
         self.make_branch(".git/modules/asub", format="git-bare")
         os.mkdir("asub")

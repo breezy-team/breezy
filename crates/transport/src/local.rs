@@ -137,9 +137,20 @@ impl Transport for LocalTransport {
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn ReadStream + Send + Sync>> {
         let path = self._abspath(relpath)?;
-        let f =
-            std::fs::File::open(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
-        Ok(Box::new(f))
+        match std::fs::File::open(&path) {
+            Ok(f) => Ok(Box::new(f)),
+            Err(e) => {
+                // Windows reports ERROR_ACCESS_DENIED when File::open is
+                // pointed at a directory; Linux reports EISDIR. Normalise
+                // here so callers (notably the Git transport) see the
+                // IsADirectoryError they expect on both platforms.
+                #[cfg(windows)]
+                if e.kind() == std::io::ErrorKind::PermissionDenied && path.is_dir() {
+                    return Err(Error::IsADirectoryError(Some(relpath.to_string())));
+                }
+                Err(map_io_err_to_transport_err(e, Some(relpath)))
+            }
+        }
     }
 
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()> {
@@ -381,12 +392,18 @@ impl Transport for LocalTransport {
         Box::new(wd.into_iter().filter_map(move |e| match e {
             Ok(e) => {
                 if !e.file_type().is_dir() {
-                    Some(Ok(escape(
-                        os_str_as_bytes(
-                            e.path().strip_prefix(base.as_path()).unwrap().as_os_str(),
-                        ),
-                        None,
-                    )))
+                    let rel = e.path().strip_prefix(base.as_path()).unwrap();
+                    // Transport paths use '/' as the separator; convert
+                    // Windows '\\' before URL-escaping so the result is
+                    // a relative URL fragment, not a percent-escaped
+                    // backslash.
+                    #[cfg(windows)]
+                    let rel_bytes = rel.to_string_lossy().replace('\\', "/").into_bytes();
+                    #[cfg(windows)]
+                    let bytes = rel_bytes.as_slice();
+                    #[cfg(not(windows))]
+                    let bytes = os_str_as_bytes(rel.as_os_str());
+                    Some(Ok(escape(bytes, None)))
                 } else {
                     None
                 }

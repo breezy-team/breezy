@@ -312,13 +312,12 @@ class SmartClientMediumTests(tests.TestCase):
             [
                 sys.executable,
                 "-c",
+                # Use the binary buffers directly so newline translation
+                # in TextIOWrapper does not turn '\n' into '\r\n' on
+                # Windows.
                 "import sys\n"
-                'if sys.platform == "win32":\n'
-                "    import msvcrt, os\n"
-                "    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)\n"
-                "    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)\n"
-                "sys.stdout.write(sys.stdin.read(4))\n"
-                "sys.stdout.close()\n",
+                "sys.stdout.buffer.write(sys.stdin.buffer.read(4))\n"
+                "sys.stdout.buffer.flush()\n",
             ],
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -798,7 +797,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         try:
             self.assertEqual("", client_sock.recv(1))
         except OSError as e:
-            if e.errno not in (errno.EBADF,):
+            # POSIX raises EBADF, Windows raises WSAENOTSOCK (10038).
+            if e.errno not in (errno.EBADF, getattr(errno, "WSAENOTSOCK", -1)):
                 raise
         client_medium.get_request()
 

@@ -90,6 +90,7 @@ __all__ = [
     "readlink",
     "realpath",
     "relpath",
+    "set_normalization_mode",
     "set_or_unset_env",
     "sha_file",
     "sha_file_by_name",
@@ -174,6 +175,7 @@ from ._osutils_rs import (
     readlink,
     realpath,
     relpath,
+    set_normalization_mode,
     set_or_unset_env,
     sha_file,
     sha_file_by_name,
@@ -381,6 +383,10 @@ fstat = os.fstat
 
 if sys.platform == "win32":
     rename = _rename_wrap_exception(_win32_rename)
+    # Breezy treats paths as forward-slash everywhere; os.getcwd on
+    # Windows returns backslashes, so override with the _win32_getcwd
+    # variant that normalises separators.
+    getcwd = _win32_getcwd
 
     def _win32_delete_readonly(function, path, excinfo):
         """Error handler for shutil.rmtree function [for win32]
@@ -392,6 +398,10 @@ if sys.platform == "win32":
             and isinstance(exception, OSError)
             and exception.errno == errno.EACCES
         ):
+            # shutil.rmtree may invoke us with a bytes path; the Rust
+            # make_writable binding only accepts str/PathLike.
+            if isinstance(path, bytes):
+                path = os.fsdecode(path)
             make_writable(path)
             function(path)
         else:
@@ -551,7 +561,12 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base) :].lstrip("/")
+    suffix = current[len(abs_base) :]
+    if suffix.startswith(("/", "\\")):
+        suffix = suffix[1:]
+    if os.sep != "/":
+        suffix = suffix.replace(os.sep, "/")
+    return suffix
 
 
 # XXX - TODO - we need better detection/integration of case-insensitive

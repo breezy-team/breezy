@@ -292,7 +292,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             self.send_error(412, "Precondition Failed")
             return
         try:
-            os.rename(abs_from, abs_to)
+            # os.replace overwrites the destination atomically on both
+            # POSIX and Windows; os.rename on Windows refuses to overwrite.
+            os.replace(abs_from, abs_to)
         except FileNotFoundError:
             self.send_error(404, "File not found")
         except OSError:

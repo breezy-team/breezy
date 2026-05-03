@@ -18,6 +18,7 @@
 
 import os
 import stat
+import sys
 import time
 
 from dulwich.objects import S_IFGITLINK, Blob, Tag, Tree
@@ -29,7 +30,7 @@ from ...bzr import knit, versionedfile
 from ...bzr.inventory import Inventory
 from ...controldir import ControlDir
 from ...repository import Repository
-from ...tests import TestCaseWithTransport
+from ...tests import TestCaseWithTransport, TestSkipped
 from ..fetch import import_git_blob, import_git_submodule, import_git_tree
 from ..mapping import DEFAULT_FILE_MODE, BzrGitMappingv1
 from . import GitBranchBuilder
@@ -296,6 +297,13 @@ class DummyStoreUpdater:
 class ImportObjects(TestCaseWithTransport):
     def setUp(self):
         super().setUp()
+        if sys.platform == "win32":
+            # The fixtures use file ids like b"git:bla" which become
+            # path "git%3Abla" after URL-encoding and then "git:bla"
+            # again after unescaping in the local transport. Windows
+            # rejects paths containing ':' with ERROR_INVALID_NAME, so
+            # the underlying storage cannot exist on this platform.
+            raise TestSkipped("git:-prefixed file ids cannot be stored on Windows")
         self._mapping = BzrGitMappingv1()
         factory = knit.make_file_factory(True, versionedfile.PrefixMapper())
         self._texts = factory(self.get_transport("texts"))

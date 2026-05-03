@@ -1577,7 +1577,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         except _mod_transport.FileExists as e:
             raise errors.AlreadyControlDirError(transport.base) from e
         if sys.platform == "win32" and isinstance(transport, local.LocalTransport):
-            win32utils.set_file_attr_hidden(transport._abspath(".bzr"))
+            win32utils.set_file_attr_hidden(transport.local_abspath(".bzr"))
         file_mode = temp_control._file_mode
         del temp_control
         bzrdir_transport = transport.clone(".bzr")
@@ -1693,7 +1693,11 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # it was extracted from WorkingTree.is_control_filename. If the
         # method's contract is extended beyond the current trivial
         # implementation, please add new tests for it to the appropriate place.
-        return filename == ".bzr" or filename.startswith(".bzr/")
+        return (
+            filename == ".bzr"
+            or filename.startswith(".bzr/")
+            or filename.startswith(".bzr\\")
+        )
 
     @classmethod
     def get_default_format(klass):

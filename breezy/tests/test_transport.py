@@ -737,6 +737,17 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
     def setUp(self):
         super().setUp()
         self._server = self.transport_server()
+        if sys.platform == "win32":
+            from .stub_sftp import SFTPServerWithoutSSH
+
+            if isinstance(self._server, SFTPServerWithoutSSH):
+                # The SFTP loopback vendor passes socket.detach() to
+                # paramiko's SFTPClient. On Windows the resulting SOCKET
+                # handle isn't a usable fd, so the client never completes
+                # negotiation and the server thread fails with OSError 87.
+                raise tests.TestSkipped(
+                    "SFTP loopback transport is not functional on Windows"
+                )
         self.start_server(self._server)
 
     def get_transport(self, relpath=None):

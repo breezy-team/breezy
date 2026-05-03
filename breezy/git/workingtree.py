@@ -947,7 +947,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
 
                 for name in os.listdir(abs_user_dir):
-                    subp = os.path.join(user_dir, name)
+                    subp = posixpath.join(user_dir, name) if user_dir else name
                     if self.is_control_filename(subp) or self.mapping.is_special_file(
                         subp
                     ):
@@ -992,7 +992,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = os.fsencode(self.abspath(from_dir))
+        sep = os.fsencode(os.sep)
         for dirpath, dirnames, filenames in os.walk(encoded_from_dir):
+            # Normalise to '/' so callers don't see platform-native
+            # separators (Windows produces b'\\' which downstream path
+            # arithmetic, e.g. posixpath.relpath, can't undo).
+            if sep != b"/":
+                dirpath = dirpath.replace(sep, b"/")
             dir_relpath = dirpath[len(self.basedir) :].strip(b"/")
             if self.controldir.is_control_filename(os.fsdecode(dir_relpath)):
                 continue
@@ -1000,14 +1006,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     dirnames.remove(name)
                     continue
-                relpath = os.path.join(dir_relpath, name)
-                if not recurse_nested and self._directory_is_tree_reference(
-                    os.fsdecode(relpath)
-                ):
+                relpath = posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
+                if not recurse_nested and self._directory_is_tree_reference(relpath):
                     dirnames.remove(name)
                 if include_dirs:
-                    yield os.fsdecode(relpath)
-                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
+                    yield relpath
+                    if not self.is_versioned(relpath):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -1017,8 +1021,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
-                yp = os.path.join(dir_relpath, name)
-                yield os.fsdecode(yp)
+                yield posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree."""
@@ -1316,6 +1319,26 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items on case-insensitive FS."""
+        with self.lock_read():
+            if not self.case_sensitive:
+
+                def normalize(x):
+                    return x.lower()
+            elif sys.platform == "darwin":
+                import unicodedata
+
+                def normalize(x):
+                    return unicodedata.normalize("NFC", x)
+            else:
+                normalize = None
+            for path in paths:
+                if normalize is None or self.is_versioned(path):
+                    yield path.strip("/")
+                else:
+                    yield tree.get_canonical_path(self, path, normalize)
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False

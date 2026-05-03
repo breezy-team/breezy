@@ -12,22 +12,6 @@ breezy.tests.per_workingtree.test_canonical_path.TestCanonicalPaths.test_canonic
 breezy.tests.per_workingtree.test_canonical_path.TestCanonicalPaths.test_canonical_path_before_commit(GitWorkingTreeFormat)
 breezy.tests.per_workingtree.test_canonical_path.TestCanonicalPaths.test_canonical_path_dir(GitWorkingTreeFormat)
 
-# Inconsistent file ids (due to case sensitivity?)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat4)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat5)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat6)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat3)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat2)
-breezy.tests.per_workingtree.test_transform.TestTreeTransform.test_build(WorkingTreeFormat6,remote)
-
-# Tree thinks we're not case sensitive, test thinks we are
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat4)
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat5)
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat6)
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat3)
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat2)
-breezy.tests.per_workingtree.test_workingtree.TestWorkingTree.test_case_sensitive(WorkingTreeFormat6,remote)
-
 # Empty output from diff
 breezy.tests.test_diff.TestDiffFromTool.test_execute
 
@@ -44,11 +28,3 @@ breezy.tests.test_msgeditor.MsgEditorTest.test_unsupported_encoding_commit_messa
 
 # Filename ordering
 breezy.tests.test_nonascii.NormalizedFilename.test_platform
-
-breezy.tests.test_patch.PatchesTester.test_iter_patched_from_hunks
-breezy.tests.test_upstream_import.TestImport.test_unzip
-
-# Permission denied error accessing one of the files under .pc/
-breezy.plugins.quilt.tests.test_merge.StartCommitMergeHookTests.test_warning
-breezy.plugins.quilt.tests.test_merge.TestMergeHook.test_diverged_patches
-breezy.plugins.quilt.tests.test_merge.TestTreeUnapplyPatches.test_unapply

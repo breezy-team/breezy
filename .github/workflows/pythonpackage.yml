@@ -14,11 +14,11 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", '3.12', '3.13', '3.14']
-# See https://github.com/actions/toolkit/issues/399
-#        include:
-#          - os: ubuntu-latest
-#            python-version: pypy3
-#            experimental: true
+        include:
+          - os: macos-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.13"
       fail-fast: false
 
     steps:
@@ -36,6 +36,7 @@ jobs:
           brew install quilt
         if: "matrix.os == 'macos-latest'"
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -U pip "setuptools>=60" setuptools-gettext cython setuptools-rust
@@ -54,16 +55,21 @@ jobs:
       - name: Build docs
         run: |
           make docs PYTHON=python
+        if: "matrix.os == 'ubuntu-latest'"
       - name: Build extensions
         run: |
           make extensions PYTHON=python
-        if: "matrix.python-version != 'pypy3'"
+        if: "matrix.python-version != 'pypy3' && matrix.os != 'windows-latest'"
+      - name: Build extensions (Windows)
+        run: |
+          python setup.py build_ext --inplace
+        if: "matrix.os == 'windows-latest'"
       - name: Run ruff
         run: |
           python -m pip install ruff
           ruff check .
           ruff format --check .
-        if: "matrix.python-version != 'pypy3'"
+        if: "matrix.os == 'ubuntu-latest' && matrix.python-version != 'pypy3'"
       - name: Test suite run (Linux)
         run: |
           ./brz selftest

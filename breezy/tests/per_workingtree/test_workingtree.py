@@ -869,36 +869,34 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
-        try:
-            self.build_tree(["a\u030a"])
-        except UnicodeError as err:
-            raise TestSkipped("Filesystem does not support unicode filenames") from err
-        tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
         if not osutils.normalizes_filenames():
             raise TestSkipped("Filesystem does not normalize filenames")
         try:
-            tree.add(["a\u030a"])
-            with tree.lock_read():
-                self.assertEqual(
-                    [("", "directory"), ("\xe5", "file")],
-                    [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
-                )
-        finally:
-            osutils.normalized_filename = orig
+            self.build_tree(["a\u030a"])
+        except UnicodeError as err:
+            raise TestSkipped("Filesystem does not support unicode filenames") from err
+        tree = self.make_branch_and_tree(".")
+        tree.add(["a\u030a"])
+        with tree.lock_read():
+            self.assertEqual(
+                [("", "directory"), ("\xe5", "file")],
+                [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()],
+            )
 
     def test_non_normalized_add_inaccessible(self):
+        if osutils.normalizes_filenames():
+            raise TestSkipped(
+                "Filesystem normalizes filenames, so unnormalized paths are "
+                "always accessible"
+            )
         try:
             self.build_tree(["a\u030a"])
         except UnicodeError as err:
             raise TestSkipped("Filesystem does not support unicode filenames") from err
         tree = self.make_branch_and_tree(".")
-        orig = osutils.normalized_filename
-        osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
-        finally:
-            osutils.normalized_filename = orig
+        self.addCleanup(osutils.set_normalization_mode, "auto")
+        osutils.set_normalization_mode("inaccessible")
+        self.assertRaises(errors.InvalidNormalization, tree.add, ["a\u030a"])
 
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by
@@ -920,8 +918,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree._write_inventory(inventory)
         tree.unlock()
         with tree.lock_read():
-            present_stat = os.lstat("present")
-            unknown_stat = os.lstat("unknown")
+            present_stat = self.normaliseWalkdirStat(os.lstat("present"))
+            unknown_stat = self.normaliseWalkdirStat(os.lstat("unknown"))
             expected_results = [
                 (
                     "",
@@ -1053,13 +1051,23 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         then testing whether it exists with an uppercase name.
         """
         self.build_tree(["filename"])
-        case_sensitive = not features.CaseInsensitiveFilesystemFeature.available()
+        # CaseInsensitiveFilesystemFeature only fires for the unusual
+        # case-insensitive-but-not-preserving setup, so it returns False
+        # on regular Windows/macOS too. Check both insensitive feature
+        # forms to determine real case sensitivity.
+        case_sensitive = not (
+            features.CaseInsensitiveFilesystemFeature.available()
+            or features.CaseInsCasePresFilenameFeature.available()
+        )
         tree = self.make_branch_and_tree("test")
-        self.assertEqual(case_sensitive, tree.case_sensitive)
         if not isinstance(tree, InventoryWorkingTree):
+            # Git working trees always report case_sensitive=True
+            # regardless of the underlying filesystem; the rest of
+            # this test cheats with a bzr-specific format string.
             raise TestNotApplicable(
                 "get_format_string is only available on bzr working trees"
             )
+        self.assertEqual(case_sensitive, tree.case_sensitive)
         # now we cheat, and make a file that matches the case-sensitive name
         t = tree.controldir.get_workingtree_transport(None)
         try:

@@ -1678,7 +1678,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 osutils.rename(from_rel_abs, to_rel_abs)
             except OSError as e:
                 raise errors.BzrMoveFailedError(
-                    entry.from_rel, entry.to_rel, e[1]
+                    entry.from_rel, entry.to_rel, e.strerror or str(e)
                 ) from e
         if entry.change_id:
             to_id = inv.path2id(entry.to_rel)
@@ -2112,7 +2112,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # working copy as compared to the repository.
                 # Also, exclude root as mention in the above fast path.
                 changes = filter(
-                    lambda c: c[6][0] != "symlink" and c[4] != (None, None), changes
+                    lambda c: c.kind[0] != "symlink" and c.parent_id != (None, None),
+                    changes,
                 )
                 try:
                     next(iter(changes))

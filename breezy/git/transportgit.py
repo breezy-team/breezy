@@ -327,6 +327,12 @@ class TransportRefsContainer(RefsContainer):
             f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
             return None
+        except ReadError:
+            # The ref name resolves to a directory rather than a file.
+            # On Windows transport.get raises this immediately; on POSIX
+            # it surfaces from the subsequent read instead. Either way,
+            # there's no ref to read.
+            return None
         with f:
             try:
                 header = f.read(len(SYMREF))
@@ -500,12 +506,14 @@ class TransportRefsContainer(RefsContainer):
             else:
 
                 def unlock():
-                    try:
-                        transport.delete(lockname)
-                    except NoSuchFile as err:
-                        raise LockBroken(lockname) from err
-                    # GitFile.abort doesn't care if the lock has already
-                    # disappeared
+                    # gf.abort() closes the file handle AND removes the
+                    # lockfile from disk; on Windows we can't delete the
+                    # lockfile while the handle is still open. Detect
+                    # "lock was already gone" before abort so we still
+                    # raise LockBroken when the lockfile is missing.
+                    if not transport.has(lockname):
+                        gf.abort()
+                        raise LockBroken(lockname)
                     gf.abort()
 
                 return LogicalLockResult(unlock)
@@ -1048,8 +1056,8 @@ class TransportObjectStore(PackBasedObjectStore):
         if sys.platform == "win32":
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
-            with suppress(NoSuchFile):
-                self.transport.remove(target_pack_name)
+            with contextlib.suppress(NoSuchFile):
+                self.pack_transport.delete(target_pack_name)
 
         if path:
             f.close()

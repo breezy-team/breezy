@@ -432,7 +432,10 @@ impl SFTPClient {
     ) -> PyResult<SFTPFile> {
         let path = self._adjust_cwd(path);
         let h = py
-            .detach(|| self.sftp.open(path.as_str(), open_options_from_flags(flags), &attr.0))
+            .detach(|| {
+                self.sftp
+                    .open(path.as_str(), open_options_from_flags(flags), &attr.0)
+            })
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
         Ok(SFTPFile {
             sftp: Arc::clone(&self.sftp),
@@ -454,7 +457,11 @@ impl SFTPClient {
         let mode = mode.unwrap_or("rt");
         let flags = match mode {
             "rt" => sftp::protocol::SFTP_FLAG_READ,
-            "ab" => sftp::protocol::SFTP_FLAG_WRITE | sftp::protocol::SFTP_FLAG_CREAT | sftp::protocol::SFTP_FLAG_APPEND,
+            "ab" => {
+                sftp::protocol::SFTP_FLAG_WRITE
+                    | sftp::protocol::SFTP_FLAG_CREAT
+                    | sftp::protocol::SFTP_FLAG_APPEND
+            }
             "wb" => {
                 sftp::protocol::SFTP_FLAG_WRITE
                     | sftp::protocol::SFTP_FLAG_CREAT
@@ -463,7 +470,9 @@ impl SFTPClient {
             }
             "rb" => sftp::protocol::SFTP_FLAG_READ,
             "r+" | "rb+" | "b+" => {
-                sftp::protocol::SFTP_FLAG_READ | sftp::protocol::SFTP_FLAG_WRITE | sftp::protocol::SFTP_FLAG_CREAT
+                sftp::protocol::SFTP_FLAG_READ
+                    | sftp::protocol::SFTP_FLAG_WRITE
+                    | sftp::protocol::SFTP_FLAG_CREAT
             }
             "a+" | "ab+" => {
                 sftp::protocol::SFTP_FLAG_READ
@@ -480,7 +489,10 @@ impl SFTPClient {
         };
 
         let h = py
-            .detach(|| self.sftp.open(path.as_str(), open_options_from_flags(flags), &attr))
+            .detach(|| {
+                self.sftp
+                    .open(path.as_str(), open_options_from_flags(flags), &attr)
+            })
             .map_err(|e| sftp_error_to_py_err(e, Some(path.as_str())))?;
 
         let mut ret = SFTPFile {
@@ -525,10 +537,22 @@ pub fn _sftp_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         sftp::protocol::SSH_FXF_ACCESS_DISPOSITION,
     )?;
     m.add("SSH_FXF_CREATE_NEW", sftp::protocol::SSH_FXF_CREATE_NEW)?;
-    m.add("SSH_FXF_CREATE_TRUNCATE", sftp::protocol::SSH_FXF_CREATE_TRUNCATE)?;
-    m.add("SSH_FXF_OPEN_EXISTING", sftp::protocol::SSH_FXF_OPEN_EXISTING)?;
-    m.add("SSH_FXF_OPEN_OR_CREATE", sftp::protocol::SSH_FXF_OPEN_OR_CREATE)?;
-    m.add("SSH_FXF_TRUNCATE_EXISTING", sftp::protocol::SSH_FXF_TRUNCATE_EXISTING)?;
+    m.add(
+        "SSH_FXF_CREATE_TRUNCATE",
+        sftp::protocol::SSH_FXF_CREATE_TRUNCATE,
+    )?;
+    m.add(
+        "SSH_FXF_OPEN_EXISTING",
+        sftp::protocol::SSH_FXF_OPEN_EXISTING,
+    )?;
+    m.add(
+        "SSH_FXF_OPEN_OR_CREATE",
+        sftp::protocol::SSH_FXF_OPEN_OR_CREATE,
+    )?;
+    m.add(
+        "SSH_FXF_TRUNCATE_EXISTING",
+        sftp::protocol::SSH_FXF_TRUNCATE_EXISTING,
+    )?;
     m.add("SSH_FXF_APPEND_DATA", sftp::protocol::SSH_FXF_APPEND_DATA)?;
     m.add(
         "SSH_FXF_APPEND_DATA_ATOMIC",
@@ -538,16 +562,31 @@ pub fn _sftp_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("SSH_FXF_BLOCK_READ", sftp::protocol::SSH_FXF_BLOCK_READ)?;
     m.add("SSH_FXF_BLOCK_WRITE", sftp::protocol::SSH_FXF_BLOCK_WRITE)?;
     m.add("SSH_FXF_BLOCK_DELETE", sftp::protocol::SSH_FXF_BLOCK_DELETE)?;
-    m.add("SSH_FXF_BLOCK_ADVISORY", sftp::protocol::SSH_FXF_BLOCK_ADVISORY)?;
+    m.add(
+        "SSH_FXF_BLOCK_ADVISORY",
+        sftp::protocol::SSH_FXF_BLOCK_ADVISORY,
+    )?;
     m.add("SSH_FXF_NOFOLLOW", sftp::protocol::SSH_FXF_NOFOLLOW)?;
-    m.add("SSH_FXF_DELETE_ON_CLOSE", sftp::protocol::SSH_FXF_DELETE_ON_CLOSE)?;
+    m.add(
+        "SSH_FXF_DELETE_ON_CLOSE",
+        sftp::protocol::SSH_FXF_DELETE_ON_CLOSE,
+    )?;
     m.add(
         "SSH_FXF_ACCESS_AUDIT_ALARM_INFO",
         sftp::protocol::SSH_FXF_ACCESS_AUDIT_ALARM_INFO,
     )?;
-    m.add("SSH_FXF_ACCESS_BACKUP", sftp::protocol::SSH_FXF_ACCESS_BACKUP)?;
-    m.add("SSH_FXF_BACKUP_STREAM", sftp::protocol::SSH_FXF_BACKUP_STREAM)?;
-    m.add("SSH_FXF_OVERRIDE_OWNER", sftp::protocol::SSH_FXF_OVERRIDE_OWNER)?;
+    m.add(
+        "SSH_FXF_ACCESS_BACKUP",
+        sftp::protocol::SSH_FXF_ACCESS_BACKUP,
+    )?;
+    m.add(
+        "SSH_FXF_BACKUP_STREAM",
+        sftp::protocol::SSH_FXF_BACKUP_STREAM,
+    )?;
+    m.add(
+        "SSH_FXF_OVERRIDE_OWNER",
+        sftp::protocol::SSH_FXF_OVERRIDE_OWNER,
+    )?;
 
     m.add("SFTP_FLAG_READ", sftp::protocol::SFTP_FLAG_READ)?;
     m.add("SFTP_FLAG_WRITE", sftp::protocol::SFTP_FLAG_WRITE)?;

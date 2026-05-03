@@ -1145,6 +1145,9 @@ def get_canonical_path(tree, path, normalize):
       normalize: Function to normalize a filename for comparison
     Returns: The canonical path
     """
+    # Strip surrounding slashes so "foo/" and "foo" canonicalise the same;
+    # the case-sensitive fast path in get_canonical_paths already did this.
+    path = path.strip("/")
     # go walkin...
     cur_path = ""
     bit_iter = iter(path.split("/"))

@@ -16,11 +16,13 @@
 
 """Utilities for testing transport connections and hooks."""
 
+import sys
+
 from ..transport import Transport
 
 # SFTPTransport is the only bundled transport that properly counts connections
 # at the moment.
-from . import test_sftp_transport
+from . import TestSkipped, test_sftp_transport
 
 
 class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTPServer):
@@ -28,6 +30,12 @@ class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTP
 
     def setUp(self):
         """Set up the test case with connection tracking."""
+        if sys.platform == "win32":
+            # The SFTP loopback vendor passes socket.detach() to
+            # paramiko's SFTPClient. On Windows the resulting SOCKET
+            # handle isn't a usable fd, so the client never completes
+            # negotiation and the server thread fails with OSError 87.
+            raise TestSkipped("SFTP loopback transport is not functional on Windows")
         super().setUp()
         self.reset_connections()
 

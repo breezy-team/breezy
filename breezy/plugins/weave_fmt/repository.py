@@ -914,17 +914,20 @@ class TextVersionedFiles(VersionedFiles):
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
         path = self._map(key)
+        # On Windows, paths containing characters like ':' (NULL_REVISION
+        # sentinel 'null:') or '<>' raise IllegalPath rather than NoSuchFile;
+        # treat them as missing here since the file cannot exist on this fs.
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except _mod_transport.NoSuchFile:
+        except (_mod_transport.NoSuchFile, errors.IllegalPath):
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except _mod_transport.NoSuchFile:
+                except (_mod_transport.NoSuchFile, errors.IllegalPath):
                     return None
             else:
                 return None
