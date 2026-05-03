@@ -23,8 +23,14 @@ helper that knows how to build a smart medium from each kind of transport
 breezy understands.
 """
 
+from dromedary._transport_rs import TransportDecorator as _RustTransportDecorator
+from dromedary.decorator import TransportDecorator as _PyTransportDecorator
 from dromedary.errors import TransportError
 from dromedary.http.urllib import HttpTransport as _HttpTransport
+
+# Both decorator hierarchies expose ``_decorated`` and route arbitrary
+# attribute access to the wrapped transport. Match either when unwrapping.
+_TransportDecorator = (_PyTransportDecorator, _RustTransportDecorator)
 
 
 class NoSmartMedium(TransportError):
@@ -50,14 +56,24 @@ def get_smart_medium(transport):
     - HTTP transports (``http://``, ``https://``) are wrapped in a
       :class:`breezy.bzr.smart.http.SmartClientHTTPMedium` that tunnels the
       smart protocol over HTTP POST.
+    - :class:`NoSmartTransportDecorator` explicitly hides smart-medium
+      capability of whatever it wraps; raise :class:`NoSmartMedium` without
+      looking at the inner transport.
+    - Other :class:`TransportDecorator` instances (readonly+, trace+, ...)
+      delegate to whatever they wrap.
     - Everything else (local filesystem, ftp, ...) cannot tunnel the smart
       protocol and raises :class:`NoSmartMedium`.
     """
     # Avoid an import cycle: RemoteTransport imports this module.
+    from breezy.transport.nosmart import NoSmartTransportDecorator
     from breezy.transport.remote import RemoteTransport
 
     if isinstance(transport, RemoteTransport):
         return transport._get_connection()
+    if isinstance(transport, NoSmartTransportDecorator):
+        raise NoSmartMedium(transport)
+    if isinstance(transport, _TransportDecorator):
+        return get_smart_medium(transport._decorated)
     if isinstance(transport, _HttpTransport):
         from breezy.bzr.smart.http import SmartClientHTTPMedium
 
