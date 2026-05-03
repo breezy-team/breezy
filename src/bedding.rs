@@ -368,8 +368,16 @@ pub fn auto_user_id() -> std::io::Result<(Option<String>, Option<String>)> {
 
 /// If possible, return the assumed default email domain.
 ///
-/// Always returns `None` on Windows.
+/// On Windows there is no system-wide mailname file, so a default lookup with
+/// `mailname_file` set to `None` returns `None`. If a path is explicitly
+/// supplied, read the first line from it (this lets callers point at a
+/// per-user mailname file if they have one).
 #[cfg(windows)]
-pub fn get_default_mail_domain(_mailname_file: Option<&Path>) -> Option<String> {
-    None
+pub fn get_default_mail_domain(mailname_file: Option<&Path>) -> Option<String> {
+    let mailname_file = mailname_file?;
+
+    let file = std::fs::File::open(mailname_file).ok()?;
+    let reader = std::io::BufReader::new(file);
+    let domain = reader.lines().next()?.ok()?;
+    Some(domain.trim().to_string())
 }
