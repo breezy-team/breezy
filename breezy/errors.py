@@ -1546,6 +1546,7 @@ from bzrformats.errors import (  # noqa: E402
     OutSideTransaction,
     ReadOnlyError,
     ReadOnlyObjectDirtiedError,
+    RevisionNotPresent,
     VersionedFileError,
     VersionedFileInvalidChecksum,
 )
