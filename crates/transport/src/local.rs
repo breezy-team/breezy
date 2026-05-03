@@ -145,9 +145,7 @@ impl Transport for LocalTransport {
                 // here so callers (notably the Git transport) see the
                 // IsADirectoryError they expect on both platforms.
                 #[cfg(windows)]
-                if e.kind() == std::io::ErrorKind::PermissionDenied
-                    && path.is_dir()
-                {
+                if e.kind() == std::io::ErrorKind::PermissionDenied && path.is_dir() {
                     return Err(Error::IsADirectoryError(Some(relpath.to_string())));
                 }
                 Err(map_io_err_to_transport_err(e, Some(relpath)))
@@ -400,10 +398,7 @@ impl Transport for LocalTransport {
                     // a relative URL fragment, not a percent-escaped
                     // backslash.
                     #[cfg(windows)]
-                    let rel_bytes = rel
-                        .to_string_lossy()
-                        .replace('\\', "/")
-                        .into_bytes();
+                    let rel_bytes = rel.to_string_lossy().replace('\\', "/").into_bytes();
                     #[cfg(windows)]
                     let bytes = rel_bytes.as_slice();
                     #[cfg(not(windows))]
