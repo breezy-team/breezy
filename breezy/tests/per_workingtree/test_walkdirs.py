@@ -196,12 +196,12 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         self.build_tree(changed_paths)
         os.symlink("target", "dir2")
         os.symlink("target", "file2")
-        dir1_stat = os.lstat("dir1")
-        dir2_stat = os.lstat("dir2")
-        file1_stat = os.lstat("file1")
-        file2_stat = os.lstat("file2")
-        link1_stat = os.lstat("link1")
-        link2_stat = os.lstat("link2")
+        dir1_stat = self.normaliseWalkdirStat(os.lstat("dir1"))
+        dir2_stat = self.normaliseWalkdirStat(os.lstat("dir2"))
+        file1_stat = self.normaliseWalkdirStat(os.lstat("file1"))
+        file2_stat = self.normaliseWalkdirStat(os.lstat("file2"))
+        link1_stat = self.normaliseWalkdirStat(os.lstat("link1"))
+        link2_stat = self.normaliseWalkdirStat(os.lstat("link2"))
         expected_dirblocks = [
             (
                 "",
@@ -253,8 +253,8 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         tree.controldir.root_transport.delete("file1")
         changed_paths = ["dir1", "file1/"]
         self.build_tree(changed_paths)
-        dir1_stat = os.lstat("dir1")
-        file1_stat = os.lstat("file1")
+        dir1_stat = self.normaliseWalkdirStat(os.lstat("dir1"))
+        file1_stat = self.normaliseWalkdirStat(os.lstat("file1"))
         if tree.has_versioned_directories():
             expected_dirblocks = [
                 (
