@@ -44,6 +44,16 @@ load_tests = load_tests_apply_scenarios
 def _set_root_revision(inv, revision):
     """Replace inv.root with a new root entry carrying the given revision."""
     old = inv.root
+    if old is None:
+        inv.add(
+            InventoryDirectory(
+                file_id=inventory.ROOT_ID,
+                name="",
+                parent_id=None,
+                revision=revision,
+            )
+        )
+        return
     inv.delete(old.file_id)
     inv.add(
         InventoryDirectory(
@@ -1339,7 +1349,15 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_bytes = self.get_chk_bytes()
         base_inv = CHKInventory.from_inventory(chk_bytes, inv)
         inv.revision_id = b"expectedid"
-        _set_root_revision(inv, b"myrootrev")
+        inv.delete(inv.root.file_id)
+        inv.add(
+            InventoryDirectory(
+                file_id=b"myrootid",
+                name="",
+                parent_id=None,
+                revision=b"myrootrev",
+            )
+        )
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = InventoryDelta(
             [
@@ -1492,7 +1510,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_file_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.InventoryFile(
@@ -1518,7 +1536,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_file2_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         # \u30a9 == 'omega'
@@ -1545,7 +1563,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_dir_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.InventoryDirectory(
@@ -1565,7 +1583,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_dir2_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.InventoryDirectory(
@@ -1585,7 +1603,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_symlink_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.InventoryLink(
@@ -1610,7 +1628,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_symlink2_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.InventoryLink(
@@ -1636,7 +1654,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         )
 
     def test_tree_reference_entry_to_bytes(self):
-        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+        from bzrformats.inventory import _chk_inventory_bytes_to_entry, _chk_inventory_entry_to_bytes
 
         inv = CHKInventory(None)
         ie = inventory.TreeReference(
