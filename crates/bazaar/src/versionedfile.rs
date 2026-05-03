@@ -113,7 +113,6 @@ impl pyo3::FromPyObject<'_, '_> for Ordering {
     type Error = pyo3::PyErr;
 
     fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-        use pyo3::prelude::*;
         let s = ob.extract::<String>()?;
         match s.as_str() {
             "unordered" => Ok(Ordering::Unordered),
@@ -148,7 +147,6 @@ impl pyo3::FromPyObject<'_, '_> for VersionId {
     type Error = pyo3::PyErr;
 
     fn extract(ob: pyo3::Borrowed<'_, '_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
-        use pyo3::prelude::*;
         let bytes = ob.extract::<Vec<u8>>()?;
         Ok(VersionId(bytes))
     }

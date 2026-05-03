@@ -56,10 +56,10 @@ fn combine_annotations<'py>(
     }
 
     let one: &Bound<'py, PyTuple> = ann_one
-        .downcast::<PyTuple>()
+        .cast::<PyTuple>()
         .map_err(|_| PyTypeError::new_err("annotations must be tuples"))?;
     let two: &Bound<'py, PyTuple> = ann_two
-        .downcast::<PyTuple>()
+        .cast::<PyTuple>()
         .map_err(|_| PyTypeError::new_err("annotations must be tuples"))?;
 
     let one_len = one.len();

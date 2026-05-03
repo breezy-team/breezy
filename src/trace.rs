@@ -284,36 +284,6 @@ impl<F: Write + Send> log::Log for BreezyTraceLogger<F> {
     }
 }
 
-struct BreezyStderrLogger {}
-
-impl BreezyStderrLogger {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Default for BreezyStderrLogger {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl log::Log for BreezyStderrLogger {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.level() <= log::Level::Info
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        if self.enabled(record.metadata()) {
-            eprintln!("{}", record.args());
-        }
-    }
-
-    fn flush(&self) {
-        std::io::stderr().flush().ok();
-    }
-}
-
 const SHORT_FIELDS: [&str; 3] = ["VmPeak", "VmSize", "VmRSS"];
 
 /// Logs memory usage information for debugging purposes.

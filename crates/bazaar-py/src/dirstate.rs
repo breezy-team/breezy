@@ -193,7 +193,7 @@ fn bisect_dirblock(
 
     while lo < hi {
         let mid = (lo + hi) / 2;
-        let dirblock = dirblocks.get_item(mid)?.downcast_into::<PyTuple>()?;
+        let dirblock = dirblocks.get_item(mid)?.cast_into::<PyTuple>()?;
         let cur = dirblock.get_item(0)?;
 
         let cur_split = match cache.get_item(&cur)? {

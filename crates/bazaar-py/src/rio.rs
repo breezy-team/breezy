@@ -16,7 +16,7 @@ fn valid_tag(tag: &str) -> bool {
     bazaar::rio::valid_tag(tag)
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone, PartialEq)]
 struct Stanza {
     stanza: bazaar::rio::Stanza,
