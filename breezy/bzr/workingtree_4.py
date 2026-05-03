@@ -120,8 +120,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
-        # --- allow tests to select the dirstate iter_changes implementation
-        self._iter_changes = dirstate._process_entry
         self._repo_supports_tree_reference = getattr(
             self._branch.repository._format, "supports_tree_reference", False
         )
@@ -225,7 +223,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # try for a write lock - need permission to get one anyhow
                     # to break locks.
                     state.lock_write()
-                except _BzrFormatsLockContention:
+                except _BzrFormatsLockContention as err:
                     # oslocks fail when a process is still live: fail.
                     # TODO: get the locked lockdir info and give to the user to
                     # assist in debugging.
@@ -467,8 +465,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 stat_value = osutils.lstat(file_abspath)
             except FileNotFoundError:
                 return None
-        link_or_sha1 = dirstate.update_entry(
-            state, entry, file_abspath, stat_value=stat_value
+        link_or_sha1 = state._rs.update_entry(
+            entry[0], file_abspath.encode("utf-8"), stat_value
         )
         if entry[1][0][0] == b"f":
             if link_or_sha1 is None:
@@ -2600,7 +2598,7 @@ class DirStateRevisionTree(InventoryTree):
             relroot = relpath + "/" if relpath else ""
             # FIXME: stash the node in pending
             subdirs = []
-            for name, child in sorted(inv.get_children(entry.file_id).items()):
+            for name, child in sorted(inv.get_children(file_id).items()):
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None, child.kind))
                 if child.kind == _directory:
@@ -2645,19 +2643,7 @@ class InterDirStateTree(InterInventoryTree):
 
     @classmethod
     def make_source_parent_tree_python_dirstate(klass, test_case, source, target):
-        """Create parent tree using Python dirstate implementation.
-
-        Args:
-            test_case: The test case instance.
-            source: The source tree.
-            target: The target tree.
-
-        Returns:
-            A tuple of (basis_tree, target).
-        """
-        result = klass.make_source_parent_tree(source, target)
-        result[1]._iter_changes = dirstate.ProcessEntryPython
-        return result
+        return klass.make_source_parent_tree(source, target)
 
     _matching_from_tree_format = WorkingTreeFormat4()
     _matching_to_tree_format = WorkingTreeFormat4()
@@ -2771,15 +2757,14 @@ class InterDirStateTree(InterInventoryTree):
             # would be good here.
             search_specific_files_utf8.add(path.encode("utf8"))
 
-        iter_changes = self.target._iter_changes(
-            include_unchanged,
-            self.target._supports_executable(),
-            search_specific_files_utf8,
-            state,
+        iter_changes = state._rs.iter_changes(
             source_index,
             target_index,
+            include_unchanged,
             want_unversioned,
-            self.target,
+            search_specific_files_utf8,
+            self.target._repo_supports_tree_reference,
+            self.target.basedir.encode("utf-8"),
         )
 
         def _translate_kind_errors(it):
@@ -2788,7 +2773,7 @@ class InterDirStateTree(InterInventoryTree):
             except _BzrFormatsBadFileKindError as e:
                 raise errors.BadFileKindError(e.filename, e.kind) from e
 
-        return _translate_kind_errors(iter_changes.iter_changes())
+        return _translate_kind_errors(iter_changes)
 
     @staticmethod
     def is_compatible(source, target):

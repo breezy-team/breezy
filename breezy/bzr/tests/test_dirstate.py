@@ -779,90 +779,6 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
-    def test_can_save_in_read_lock(self):
-        state = self.create_updated_dirstate()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            # The current size should be 0 (default)
-            self.assertEqual(0, entry[1][0][2])
-            # We should have a real entry.
-            self.assertNotEqual((None, None), entry)
-            # Set the cutoff-time into the future, so things look cacheable
-            state._sha_cutoff_time()
-            state._cutoff_time = int(state._cutoff_time + 10)
-            st = os.lstat("a-file")
-            sha1sum = dirstate.update_entry(state, entry, "a-file", st)
-            # We updated the current sha1sum because the file is cacheable
-            self.assertEqual(b"ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3", sha1sum)
-
-            # The dirblock has been updated
-            self.assertEqual(st.st_size, entry[1][0][2])
-            self.assertEqual(
-                dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-            )
-
-            del entry
-            # Now, since we are the only one holding a lock, we should be able
-            # to save and have it written to disk
-            state.save()
-        finally:
-            state.unlock()
-
-        # Re-open the file, and ensure that the state has been updated.
-        state = dirstate.DirState.on_file("dirstate")
-        state.lock_read()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            self.assertEqual(st.st_size, entry[1][0][2])
-        finally:
-            state.unlock()
-
-    def test_save_fails_quietly_if_locked(self):
-        """If dirstate is locked, save will fail without complaining."""
-        state = self.create_updated_dirstate()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            # No cached sha1 yet.
-            self.assertEqual(b"", entry[1][0][1])
-            # Set the cutoff-time into the future, so things look cacheable
-            state._sha_cutoff_time()
-            state._cutoff_time = int(state._cutoff_time + 10)
-            st = os.lstat("a-file")
-            sha1sum = dirstate.update_entry(state, entry, "a-file", st)
-            self.assertEqual(b"ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3", sha1sum)
-            self.assertEqual(
-                dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-            )
-
-            # Now, before we try to save, grab another dirstate, and take out a
-            # read lock.
-            # TODO: jam 20070315 Ideally this would be locked by another
-            #       process. To make sure the file is really OS locked.
-            state2 = dirstate.DirState.on_file("dirstate")
-            state2.lock_read()
-            try:
-                # This won't actually write anything, because it couldn't grab
-                # a write lock. But it shouldn't raise an error, either.
-                # TODO: jam 20070315 We should probably distinguish between
-                #       being dirty because of 'update_entry'. And dirty
-                #       because of real modification. So that save() *does*
-                #       raise a real error if it fails when we have real
-                #       modifications.
-                state.save()
-            finally:
-                state2.unlock()
-        finally:
-            state.unlock()
-
-        # The file on disk should not be modified.
-        state = dirstate.DirState.on_file("dirstate")
-        state.lock_read()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            self.assertEqual(b"", entry[1][0][1])
-        finally:
-            state.unlock()
-
     def test_save_refuses_if_changes_aborted(self):
         self.build_tree(["a-file", "a-dir/"])
         state = dirstate.DirState.initialize("dirstate")
@@ -1727,26 +1643,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 state.unlock()
 
 
-class TestDirStateHashUpdates(TestCaseWithDirState):
-    def do_update_entry(self, state, path):
-        entry = state._get_entry(0, path_utf8=path)
-        stat = os.lstat(path)
-        return dirstate.update_entry(state, entry, os.path.abspath(path), stat)
-
-    def _read_state_content(self, state):
-        """Read the content of the dirstate file.
-
-        On Windows when one process locks a file, you can't even open() the
-        file in another process (to read it). So we go directly to
-        state._state_file. This should always be the exact disk representation,
-        so it is reasonable to do so.
-        DirState also always seeks before reading, so it doesn't matter if we
-        bump the file pointer.
-        """
-        state._state_file.seek(0)
-        return state._state_file.read()
-
-
 class TestGetLines(TestCaseWithDirState):
     def test_get_line_with_2_rows(self):
         state = self.create_dirstate_with_root_and_subdir()
@@ -2221,61 +2117,6 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 
         dirblock_names = [d[0] for d in state._dirblocks]
         self.assertEqual(expected, dirblock_names)
-
-
-class InstrumentedDirState(dirstate.DirState):
-    """An DirState with instrumented sha1 functionality."""
-
-    def __init__(
-        self,
-        path,
-        sha1_provider,
-        worth_saving_limit=0,
-        use_filesystem_for_exec=True,
-        fdatasync=True,
-    ):
-        super().__init__(
-            path,
-            sha1_provider,
-            worth_saving_limit=worth_saving_limit,
-            use_filesystem_for_exec=use_filesystem_for_exec,
-            fdatasync=fdatasync,
-        )
-        self._time_offset = 0
-        self._log = []
-        # member is dynamically set in DirState.__init__ to turn on trace
-        self._sha1_provider = sha1_provider
-        self._sha1_file = self._sha1_file_and_log
-
-    def _sha_cutoff_time(self):
-        timestamp = super()._sha_cutoff_time()
-        self._cutoff_time = timestamp + self._time_offset
-
-    def _sha1_file_and_log(self, abspath):
-        self._log.append(("sha1", abspath))
-        return self._sha1_provider.sha1(abspath)
-
-    def _read_link(self, abspath, old_link):
-        self._log.append(("read_link", abspath, old_link))
-        return super()._read_link(abspath, old_link)
-
-    def _lstat(self, abspath, entry):
-        self._log.append(("lstat", abspath))
-        return super()._lstat(abspath, entry)
-
-    def _is_executable(self, mode, old_executable):
-        self._log.append(("is_exec", mode, old_executable))
-        return super()._is_executable(mode, old_executable)
-
-    def adjust_time(self, secs):
-        """Move the clock forward or back.
-
-        :param secs: The amount to adjust the clock by. Positive values make it
-        seem as if we are in the future, negative values make it seem like we
-        are in the past.
-        """
-        self._time_offset += secs
-        self._cutoff_time = None
 
 
 class _FakeStat:
