@@ -699,7 +699,9 @@ class RemoteHTTPTransport(RemoteTransport):
 
     def _build_medium(self):
         # We let http_transport take care of the credentials
-        return self._http_transport.get_smart_medium(), None
+        from breezy.bzr.smart.transport import get_smart_medium
+
+        return get_smart_medium(self._http_transport), None
 
     def _remote_path(self, relpath):
         """After connecting, HTTP Transport only deals in relative URLs."""

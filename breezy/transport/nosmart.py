@@ -16,33 +16,22 @@
 
 """Implementation of Transport that never has a smart medium.
 
-This is mainly useful with HTTP transports, which sometimes have a smart medium
-and sometimes don't.  By using this decorator, you can force those transports
-to never have a smart medium.
+This is mainly useful with HTTP transports, which sometimes have a smart
+medium and sometimes don't. By wrapping a transport in this decorator, the
+:func:`breezy.bzr.smart.transport.get_smart_medium` dispatcher sees a plain
+``Transport`` rather than the underlying ``HttpTransport`` and raises
+``NoSmartMedium``.
 """
 
 from dromedary import decorator
 
-from breezy.bzr.smart import transport as _smart_transport
-
 
 class NoSmartTransportDecorator(decorator.TransportDecorator):
-    """A decorator for transports that disables get_smart_medium."""
+    """A decorator that hides the smart-medium capability of its inner transport."""
 
     @classmethod
     def _get_url_prefix(self):
         return "nosmart+"
-
-    def get_smart_medium(self):
-        """Raise NoSmartMedium exception to disable smart medium functionality.
-
-        This method intentionally raises an exception to prevent the use of
-        smart mediums, forcing the transport to use standard protocols.
-
-        Raises:
-            NoSmartMedium: Always raised to indicate no smart medium is available.
-        """
-        raise _smart_transport.NoSmartMedium(self)
 
 
 def get_test_permutations():

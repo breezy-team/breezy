@@ -366,8 +366,10 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium).
         """
+        from breezy.bzr.smart.transport import get_smart_medium
+
         base_transport = _mod_transport.get_transport(transport_base)
-        client_medium = base_transport.get_smart_medium()
+        client_medium = get_smart_medium(base_transport)
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
         self.assertEqual(expected, result)
