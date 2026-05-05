@@ -16,6 +16,7 @@
 
 import contextlib
 import os
+import sys
 
 from .. import branch as _mod_branch
 from .. import errors, option, tests
@@ -3215,6 +3216,10 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_nested_tree_subtree_renamed(self):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
+        if sys.platform == "win32":
+            # Renaming a subdirectory holding another WT's open dirstate
+            # handle is not permitted by Windows.
+            self.skipTest("Cannot rename open working tree on Windows")
         wt = self.make_branch_and_tree("tree", format="development-subtree")
         wt.lock_write()
         self.addCleanup(wt.unlock)
@@ -3264,6 +3269,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_nested_tree_subtree_renamed_and_modified(self):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
+        if sys.platform == "win32":
+            self.skipTest("Cannot rename open working tree on Windows")
         wt = self.make_branch_and_tree("tree", format="development-subtree")
         wt.lock_write()
         self.addCleanup(wt.unlock)
