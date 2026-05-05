@@ -1593,6 +1593,87 @@ class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
         self.assertEqual((user, password), got_pass)
 
 
+class TestTokenAuthHeader(tests.TestCaseInTempDir):
+    """Preemptive Authorization header derived from an authentication.conf token."""
+
+    def _make_transport(self, base_url="https://example.com/"):
+        from ..transport.http.urllib import HttpTransport
+
+        return HttpTransport(base_url)
+
+    def test_no_token_configured(self):
+        _setup_authentication_config(scheme="https", host="other.com", token="abc")
+        t = self._make_transport()
+        self.assertIsNone(t._token_auth_header("https://example.com/foo"))
+
+    def test_token_matches_host(self):
+        _setup_authentication_config(scheme="https", host="example.com", token="abc")
+        t = self._make_transport()
+        self.assertEqual("Bearer abc", t._token_auth_header("https://example.com/foo"))
+
+    def test_token_scheme_override(self):
+        _setup_authentication_config(
+            scheme="https",
+            host="example.com",
+            token="abc",
+            token_scheme="token",
+        )
+        t = self._make_transport()
+        self.assertEqual("token abc", t._token_auth_header("https://example.com/foo"))
+
+    def test_token_host_mismatch(self):
+        _setup_authentication_config(scheme="https", host="example.com", token="abc")
+        t = self._make_transport()
+        self.assertIsNone(t._token_auth_header("https://other.com/foo"))
+
+    def test_invalid_url(self):
+        _setup_authentication_config(scheme="https", host="example.com", token="abc")
+        t = self._make_transport()
+        self.assertIsNone(t._token_auth_header("not a url"))
+
+    def test_request_attaches_authorization_header(self):
+        _setup_authentication_config(scheme="https", host="example.com", token="abc")
+        t = self._make_transport()
+        captured = {}
+
+        def fake_open(request):
+            captured["headers"] = dict(request.header_items())
+            raise RuntimeError("stop here")
+
+        t._opener.open = fake_open
+        try:
+            t.request("GET", "https://example.com/foo")
+        except RuntimeError:
+            pass
+        self.assertEqual(
+            "Bearer abc",
+            captured["headers"].get("Authorization"),
+        )
+
+    def test_request_does_not_override_caller_authorization(self):
+        _setup_authentication_config(scheme="https", host="example.com", token="abc")
+        t = self._make_transport()
+        captured = {}
+
+        def fake_open(request):
+            captured["headers"] = dict(request.header_items())
+            raise RuntimeError("stop here")
+
+        t._opener.open = fake_open
+        try:
+            t.request(
+                "GET",
+                "https://example.com/foo",
+                headers={"Authorization": "Custom keep-me"},
+            )
+        except RuntimeError:
+            pass
+        self.assertEqual(
+            "Custom keep-me",
+            captured["headers"].get("Authorization"),
+        )
+
+
 class TestAuth(http_utils.TestCaseWithWebserver):
     """Test authentication scheme."""
 

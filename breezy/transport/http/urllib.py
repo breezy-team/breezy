@@ -1864,6 +1864,10 @@ class HttpTransport(ConnectedTransport):
             data = body
         if headers is None:
             headers = {}
+        if not any(h.lower() == "authorization" for h in headers):
+            token_header = self._token_auth_header(url)
+            if token_header is not None:
+                headers["Authorization"] = token_header
         request = Request(method, url, data, headers)
         request.follow_redirections = urlopen_kw.pop("retries", 0) > 0
         if urlopen_kw:
@@ -2066,6 +2070,29 @@ class HttpTransport(ConnectedTransport):
             "path": self._parsed_url.path,
         }
         return auth
+
+    def _token_auth_header(self, url):
+        """Build an Authorization header from a configured bearer token, if any.
+
+        Returns the formatted header value (e.g. "Bearer abc123") for the
+        request URL, or None when no token is configured for that location.
+        Tokens are looked up in authentication.conf via
+        :class:`config.AuthenticationConfig` and applied preemptively (no
+        server challenge required), unlike Basic/Digest auth.
+        """
+        try:
+            parsed = urlutils.URL.from_string(url)
+        except urlutils.InvalidURL:
+            return None
+        token, scheme = config.AuthenticationConfig().get_token(
+            parsed.scheme,
+            parsed.host,
+            port=parsed.port,
+            path=parsed.path,
+        )
+        if not token:
+            return None
+        return "{} {}".format(scheme, token)
 
     def get_smart_medium(self):
         """See Transport.get_smart_medium."""

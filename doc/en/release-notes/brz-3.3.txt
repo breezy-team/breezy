@@ -8,6 +8,12 @@ Breezy Release Notes
 brz 3.3.22
 ##########
 
+ * Honour ``token`` entries in ``authentication.conf`` by sending an
+   ``Authorization`` header preemptively over HTTP. ``brz gh-login`` and
+   ``brz gitlab-login`` now write a ``token`` field, so subsequent git
+   smart-HTTP fetch and push traffic to GitHub and GitLab reuses the
+   forge credentials rather than going anonymous. (Jelmer Vernooĳ)
+
  * Use the ``vcsgraph`` package for graph, topological sort and
    known graph implementations rather than local copies.
    (Jelmer Vernooĳ)
