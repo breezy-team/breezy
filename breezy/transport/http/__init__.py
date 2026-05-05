@@ -51,33 +51,25 @@ _ssl_ca_certs_known_locations = [
 
 
 def default_ca_certs():
-    """Get the default path to CA certificates for SSL verification.
+    """Return a path to a CA bundle if Breezy can find one on disk.
 
-    Searches for CA certificate bundles in platform-specific locations.
-    On Windows, looks for cacert.pem in the executable's directory.
-    On other platforms, searches a list of known locations and returns
-    the first existing path.
-
-    Returns:
-        str: Path to the CA certificate bundle. If no bundle is found,
-            returns the first known location as a default.
+    On Linux/BSD distros that ship a PEM bundle in a well-known location
+    we point at it explicitly; everywhere else we return ``None`` and let
+    ``ssl.create_default_context()`` load the system trust store via
+    ``SSLContext.load_default_certs()`` (which on Windows reads the
+    Windows certificate store and on other platforms falls back to
+    OpenSSL's defaults).
     """
-    if sys.platform == "win32":
-        return os.path.join(os.path.dirname(sys.executable), "cacert.pem")
-    elif sys.platform == "darwin":
-        # FIXME: Needs some default value for osx, waiting for osx installers
-        # guys feedback -- vila 2012-01-25
-        pass
-    else:
-        # Try known locations for friendly OSes providing the root certificates
-        # without making them hard to use for any https client.
-        for path in _ssl_ca_certs_known_locations:
-            if os.path.exists(path):
-                # First found wins
-                return path
-    # A default path that makes sense and will be mentioned in the error
-    # presented to the user, even if not correct for all platforms
-    return _ssl_ca_certs_known_locations[0]
+    if sys.platform in ("win32", "darwin"):
+        # Python's ssl module loads the system trust store itself on
+        # Windows; on macOS it depends on how Python was built (the
+        # python.org installer ships with certifi, Homebrew uses OpenSSL's
+        # defaults). In neither case should we invent a cafile path.
+        return None
+    for path in _ssl_ca_certs_known_locations:
+        if os.path.exists(path):
+            return path
+    return None
 
 
 def ca_certs_from_store(path):
@@ -119,21 +111,15 @@ def cert_reqs_from_store(unicode_str):
 
 
 def default_ca_reqs():
-    """Get the default certificate verification requirement for the platform.
+    """Return the default certificate verification requirement.
 
-    On Windows and macOS, returns "none" due to lack of native access to
-    root certificates. On other platforms, returns "required".
-
-    Returns:
-        str: Either "none" or "required" indicating the default certificate
-            verification requirement.
+    Always ``"required"``. Earlier versions defaulted to ``"none"`` on
+    Windows and macOS because Python lacked an out-of-the-box trust store
+    integration; that hasn't been true for a decade and silently disabling
+    verification is a serious security regression. Users who genuinely
+    need to skip verification can pass ``-Ossl.cert_reqs=none``.
     """
-    if sys.platform in ("win32", "darwin"):
-        # FIXME: Once we get a native access to root certificates there, this
-        # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15
-        return "none"
-    else:
-        return "required"
+    return "required"
 
 
 opt_ssl_ca_certs = config.Option(

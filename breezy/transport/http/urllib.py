@@ -539,17 +539,26 @@ class HTTPSConnection(AbstractHTTPConnection, http.client.HTTPSConnection):  # t
                 ca_certs = config_stack.get("ssl.ca_certs")
             else:
                 ca_certs = self.ca_certs
-            if ca_certs is None:
-                trace.warning(
-                    "No valid trusted SSL CA certificates file set. See "
-                    "'brz help ssl.ca_certs' for more information on setting "
-                    "trusted CAs."
-                )
+            # ``ca_certs is None`` is fine: ``ssl.create_default_context``
+            # will call ``load_default_certs`` and pick up the OS trust
+            # store. The wrap_socket call below surfaces a clear error if
+            # no roots end up loaded.
         try:
             ssl_context = ssl.create_default_context(
                 purpose=ssl.Purpose.SERVER_AUTH, cafile=ca_certs
             )
             ssl_context.check_hostname = cert_reqs != ssl.CERT_NONE
+            if cert_reqs != ssl.CERT_NONE and not ssl_context.get_ca_certs():
+                # Verification was requested but no roots are available;
+                # the connection would fail, so warn pre-emptively with a
+                # message that explains how to recover.
+                trace.warning(
+                    "No trusted SSL CA certificates available for verifying "
+                    "%s. Install certifi (pip install certifi) or set "
+                    "ssl.ca_certs to a CA bundle. See 'brz help "
+                    "ssl.ca_certs'.",
+                    host,
+                )
             if self.cert_file:
                 ssl_context.load_cert_chain(
                     keyfile=self.key_file, certfile=self.cert_file

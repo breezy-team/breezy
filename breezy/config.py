@@ -2697,9 +2697,10 @@ class Option:
             # Otherwise, fallback to the value defined at registration
             if callable(self.default):
                 value = self.default()
-                if not isinstance(value, str):
+                if value is not None and not isinstance(value, str):
                     raise AssertionError(
-                        f"Callable default value for '{self.name}' should be unicode"
+                        f"Callable default value for '{self.name}' should be"
+                        " unicode or None"
                     )
             else:
                 value = self.default
