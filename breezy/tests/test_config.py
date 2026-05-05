@@ -4505,6 +4505,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
             "port": 99,
             "path": "/foo",
             "realm": "realm",
+            "token": None,
+            "token_scheme": "Bearer",
         }
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
@@ -4528,6 +4530,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
             "port": None,
             "path": None,
             "realm": None,
+            "token": None,
+            "token_scheme": "Bearer",
         }
         self.assertEqual(CREDENTIALS, credentials)
 
