@@ -2370,7 +2370,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     self._index_del_entry(index, old_subpath)
                     self._versioned_dirs = None
             if new_path is not None and ie.kind != "directory":
-                self._index_add_entry(new_path, ie.kind)
+                # Carry the executable bit through; otherwise on filesystems
+                # that don't track it (notably Windows) the rewritten index
+                # entry would silently drop the +x mode after commit.
+                executable = getattr(ie, "executable", None)
+                self._index_add_entry(new_path, ie.kind, executable=executable)
         self.flush()
         self._set_merges_from_parent_ids([])
 
