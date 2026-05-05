@@ -67,7 +67,7 @@ from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
 from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
-from .mapping import decode_git_path, encode_git_path, mode_kind
+from .mapping import decode_git_path, encode_git_path, mode_is_executable, mode_kind
 from .tree import MutableGitIndexTree
 
 CONFLICT_SUFFIXES = [".BASE", ".OTHER", ".THIS"]
@@ -1229,19 +1229,34 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        """Check if a file is executable based on the basis tree.
+        """Check if a file is executable based on the index or basis tree.
 
-        This method checks executability from the basis tree when the
-        filesystem doesn't support executable bits.
+        This method is used when the filesystem doesn't support executable
+        bits (notably Windows). It first consults the Git index, falling back
+        to the basis tree for paths not yet recorded there.
 
         Args:
             path: The file path to check.
             stat_result: The os.stat result (unused).
 
         Returns:
-            True if the file is executable according to the basis tree.
+            True if the file is executable.
         """
-        return self.basis_tree().is_executable(path)
+        try:
+            (index, subpath) = self._lookup_index(encode_git_path(path))
+        except KeyError:
+            pass
+        else:
+            try:
+                entry = index[subpath]
+            except KeyError:
+                pass
+            else:
+                return mode_is_executable(entry.mode)
+        try:
+            return self.basis_tree().is_executable(path)
+        except _mod_transport.NoSuchFile:
+            return False
 
     def stored_kind(self, path):
         """Return the stored file kind for a path.
@@ -1335,10 +1350,25 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             else:
                 normalize = None
             for path in paths:
-                if normalize is None or self.is_versioned(path):
-                    yield path.strip("/")
+                stripped = path.strip("/")
+                if normalize is None:
+                    yield stripped
+                elif self._lookup_index_exact(stripped):
+                    # Exact-case match in the index; no canonicalisation needed.
+                    yield stripped
                 else:
                     yield tree.get_canonical_path(self, path, normalize)
+
+    def _lookup_index_exact(self, path):
+        """Return True if `path` is recorded in the index with exact casing."""
+        if path == "":
+            return True
+        encoded = encode_git_path(path)
+        if encoded in self.index:
+            return True
+        if self._versioned_dirs is None:
+            self._load_dirs()
+        return encoded in self._versioned_dirs
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False

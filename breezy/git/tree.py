@@ -2707,7 +2707,7 @@ def snapshot_workingtree(
                         blob = None
                     if blob is not None:
                         target.store.add_object(blob)
-                blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
+                blobs[path] = (live_entry.sha, cleanup_mode(mode))
     if want_unversioned:
         for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
             extra, _accessible = osutils.normalized_filename(extra)
