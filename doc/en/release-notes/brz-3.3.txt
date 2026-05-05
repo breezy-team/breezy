@@ -8,6 +8,8 @@ Breezy Release Notes
 brz 3.3.22
 ##########
 
+:3.3.22: 2026-05-05
+
  * Honour ``token`` entries in ``authentication.conf`` by sending an
    ``Authorization`` header preemptively over HTTP. ``brz gh-login`` and
    ``brz gitlab-login`` now write a ``token`` field, so subsequent git
@@ -25,15 +27,29 @@ brz 3.3.22
    implementations on ``BzrBranch``, ``RemoteBranch`` and
    ``LocalGitBranch``. (Jelmer Vernooĳ)
 
+ * Drive three-way merges by paths rather than by file ids, so
+   non-inventory trees (including the new generic ``MemoryTree``)
+   can participate in merges. (Jelmer Vernooĳ)
+
+ * Fix ``MalformedTransform: unversioned executability`` crash when
+   merging a git tree where THIS renames a file that OTHER modifies.
+   (Jelmer Vernooĳ)
+
  * Fix ``revision_tree()`` crash when a bzr revision id
    embeds a git tag SHA rather than a commit SHA.
    (Jelmer Vernooĳ)
+
+ * Fix TLS certificate verification error when accessing an HTTPS
+   server through an HTTP proxy. (L. Guruprasad)
 
  * Use the ``catalogus`` package for the registry implementation
    rather than a local copy. (Jelmer Vernooĳ)
 
  * Fix builtin command lookup when running brz commands in-process
    without going through ``main()``. (Jelmer Vernooĳ)
+
+ * Hold a read lock around ``workspace.extras()`` to avoid
+   inconsistent results under concurrent access. (Jelmer Vernooĳ)
 
 brz 3.3.21
 ##########
