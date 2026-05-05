@@ -122,7 +122,13 @@ class TestInvoke(tests.TestCaseInTempDir):
         command = "{} {{result}}".format(os.path.basename(sys.executable))
         retcode = mergetools.invoke(command, "test.txt", dummy_invoker)
         self.assertEqual(0, retcode)
-        self.assertEqual(sys.executable, self._exe)
+        # ``find_executable_on_path`` may resolve to a different copy of
+        # python.exe than ``sys.executable`` (e.g. py launcher), so just
+        # check the basename matches.
+        self.assertEqual(
+            os.path.basename(sys.executable),
+            os.path.basename(self._exe),
+        )
         self.assertEqual(["test.txt"], self._args)
 
     def test_success(self):

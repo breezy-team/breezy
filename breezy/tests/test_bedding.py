@@ -69,12 +69,17 @@ class TestConfigPath(tests.TestCase):
 class TestConfigPathFallback(tests.TestCaseInTempDir):
     def setUp(self):
         super().setUp()
+        if sys.platform == "win32":
+            # Windows resolves the config dir via AppData rather than
+            # $HOME/.bazaar, so this fallback class doesn't apply.
+            raise tests.TestNotApplicable(
+                "$HOME/.bazaar fallback is not used on Windows"
+            )
         self.overrideEnv("HOME", self.test_dir)
         self.overrideEnv("XDG_CACHE_HOME", "")
         bzr_home = os.path.join(self.test_dir, ".bazaar")
         os.mkdir(bzr_home)
-        # bedding returns forward-slash paths even on Windows.
-        self.bzr_home = bzr_home.replace(os.sep, "/")
+        self.bzr_home = bzr_home
 
     def test_config_dir(self):
         self.assertEqual(bedding.config_dir(), self.bzr_home)

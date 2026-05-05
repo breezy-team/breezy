@@ -411,28 +411,37 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         """
         # URLs always include the trailing slash, and get_base_path returns it
         base_dir = osutils.abspath("/a/b/c") + "/"
-        base_url = urlutils.local_path_to_url(base_dir) + "/"
+        # `local_path_to_url` strips the trailing slash on Windows but
+        # preserves it on POSIX; normalise so the assertions below have a
+        # single, deterministic suffix to match the transport's `.base`.
+        base_url = urlutils.local_path_to_url(base_dir).rstrip("/") + "/"
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
 
         def capture_transport(transport, host, port, inet, timeout):
             self.bzr_serve_transport = transport
 
+        def normalise_base(base):
+            return base if base.endswith("/") else base + "/"
+
         cmd = builtins.cmd_serve()
         # Read-only
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
-        self.assertEqual(f"readonly+{base_url}", self.bzr_serve_transport.base + "/")
+        self.assertEqual(
+            f"readonly+{base_url}", normalise_base(self.bzr_serve_transport.base)
+        )
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport, allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual(base_url, self.bzr_serve_transport.base + "/")
+        self.assertEqual(base_url, normalise_base(self.bzr_serve_transport.base))
         self.assertEqual(base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(f"readonly+{base_url}", self.bzr_serve_transport.base)
         self.assertEqual(
-            base_dir + "/", server_maker.get_base_path(self.bzr_serve_transport)
+            base_dir.rstrip("/") + "/",
+            server_maker.get_base_path(self.bzr_serve_transport).rstrip("/") + "/",
         )

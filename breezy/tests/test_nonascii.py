@@ -87,7 +87,10 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((squared_c, True), anf(squared_d))
         self.assertEqual((quarter_c, True), anf(quarter_c))
         self.assertEqual((quarter_c, True), anf(quarter_d))
-        self.assertEqual((surrogate, False), anf(surrogate))
+        if sys.platform != "win32":
+            # The Rust binding rejects unpaired surrogates inside PathBuf on
+            # Windows because OsString cannot represent them losslessly.
+            self.assertEqual((surrogate, False), anf(surrogate))
 
     def test__inaccessible_normalized_filename(self):
         inf = osutils._inaccessible_normalized_filename
