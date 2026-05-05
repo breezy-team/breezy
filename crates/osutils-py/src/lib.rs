@@ -1039,14 +1039,24 @@ fn contains_whitespace(py: Python, text: Py<PyAny>) -> PyResult<bool> {
 fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<Py<PyAny>> {
     let path = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => {
-            // Normalise paths to forward slashes for the error so the
-            // message matches across platforms.
+            // Normalise paths to forward slashes in the error message so the
+            // wording matches across platforms; PyO3's PathBuf conversion
+            // would otherwise re-introduce backslashes on Windows.
             #[cfg(windows)]
-            let (start, path) = (
-                breezy_osutils::path::win32::fix_separators(start.as_path()),
-                breezy_osutils::path::win32::fix_separators(path.as_path()),
+            let (start_str, path_str) = (
+                breezy_osutils::path::win32::fix_separators(start.as_path())
+                    .to_string_lossy()
+                    .into_owned(),
+                breezy_osutils::path::win32::fix_separators(path.as_path())
+                    .to_string_lossy()
+                    .into_owned(),
             );
-            return Err(PathNotChild::new_err((start, path)));
+            #[cfg(not(windows))]
+            let (start_str, path_str) = (
+                start.to_string_lossy().into_owned(),
+                path.to_string_lossy().into_owned(),
+            );
+            return Err(PathNotChild::new_err((start_str, path_str)));
         }
         Some(p) => p,
     };

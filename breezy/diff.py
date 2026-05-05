@@ -326,11 +326,6 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file, diff_opts):
 
         if not diff_opts:
             diff_opts = []
-        if sys.platform == "win32":
-            # Popen doesn't do the proper encoding for external commands
-            # Since we are dealing with an ANSI api, use mbcs encoding
-            old_label = old_label.encode("mbcs")
-            new_label = new_label.encode("mbcs")
         diffcmd = [
             "diff",
             "--label",
