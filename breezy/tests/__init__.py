@@ -1599,9 +1599,15 @@ class TestCase(testtools.TestCase):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
 
-        mode = "r" + ("b" if isinstance(content, bytes) else "")
-        with open(path, mode) as f:
-            s = f.read()
+        if isinstance(content, bytes):
+            with open(path, "rb") as f:
+                s = f.read()
+        else:
+            # newline="" disables Python's universal-newlines translation so
+            # callers can assert against an exact byte sequence (including
+            # CRLF when the file was written with `os.linesep`).
+            with open(path, newline="") as f:
+                s = f.read()
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
