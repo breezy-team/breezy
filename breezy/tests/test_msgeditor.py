@@ -321,13 +321,14 @@ if len(sys.argv) == 2:
         self.assertStartsWith(warnings[0], 'Could not start editor "eacces.py"')
 
     def test__create_temp_file_with_commit_template(self):
-        # check that commit template written properly
-        # and has platform native line-endings (CRLF on win32)
+        # check that commit template is written with consistent (LF) line
+        # endings; the function opens the file in binary mode to avoid
+        # mid-stream translation, so callers see the same bytes everywhere.
         create_file = msgeditor._create_temp_file_with_commit_template
         msgfilename, hasinfo = create_file(b"infotext", "----", b"start message")
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
-        expected = os.linesep.join(["start message", "", "", "----", "", "infotext"])
+        expected = "\n".join(["start message", "", "", "----", "", "infotext"])
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):

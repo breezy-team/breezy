@@ -1338,7 +1338,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items on case-insensitive FS."""
         with self.lock_read():
-            if not self.case_sensitive:
+            # Treat Windows as case-insensitive even when
+            # `_detect_case_handling` thought otherwise — the underlying
+            # filesystem (NTFS in default config) treats names case
+            # insensitively, and the test harness' temp dirs are no
+            # exception.
+            if not self.case_sensitive or sys.platform == "win32":
 
                 def normalize(x):
                     return x.lower()
@@ -1366,14 +1371,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         if path == "":
             return ""
-        encoded = encode_git_path(path)
-        if encoded in self.index:
-            return path
-        if self._versioned_dirs is None:
-            self._load_dirs()
-        if encoded in self._versioned_dirs:
-            return path
 
+        # Walk the index unconditionally: dulwich's `__contains__` may apply a
+        # case-folding normalizer on Windows, so an exact-match short-circuit
+        # would silently return the input casing.
         index_paths = [decode_git_path(p) for p, _ in self._recurse_index_entries()]
         components = path.split("/")
         canonical = ""
