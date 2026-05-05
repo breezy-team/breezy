@@ -15,10 +15,6 @@ breezy.tests.per_workingtree.test_canonical_path.TestCanonicalPaths.test_canonic
 # Empty output from diff
 breezy.tests.test_diff.TestDiffFromTool.test_execute
 
-# Default appears to be no ca certificates, no validation by default
-breezy.tests.test_https_urllib.CaCertsConfigTests.test_default_exists
-breezy.tests.test_https_urllib.CertReqsConfigTests.test_default
-
 # Unable to find fake test editor "./fed.py"
 breezy.tests.test_msgeditor.MsgEditorTest.test_edit_commit_message_with_ascii_infotext
 breezy.tests.test_msgeditor.MsgEditorTest.test_edit_commit_message_with_unicode_infotext
