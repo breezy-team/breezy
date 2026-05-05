@@ -1353,22 +1353,60 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 stripped = path.strip("/")
                 if normalize is None:
                     yield stripped
-                elif self._lookup_index_exact(stripped):
-                    # Exact-case match in the index; no canonicalisation needed.
-                    yield stripped
                 else:
-                    yield tree.get_canonical_path(self, path, normalize)
+                    yield self._canonicalize_path_via_index(stripped, normalize)
 
-    def _lookup_index_exact(self, path):
-        """Return True if `path` is recorded in the index with exact casing."""
+    def _canonicalize_path_via_index(self, path, normalize):
+        """Map ``path`` to its canonical form by walking the Git index.
+
+        Generic ``tree.get_canonical_path`` relies on ``iter_child_entries``,
+        which mixes filesystem and index state in ways that are unreliable
+        on case-insensitive Windows filesystems. Walk the index entries
+        directly instead so the comparison is purely byte-level.
+        """
         if path == "":
-            return True
+            return ""
         encoded = encode_git_path(path)
         if encoded in self.index:
-            return True
+            return path
         if self._versioned_dirs is None:
             self._load_dirs()
-        return encoded in self._versioned_dirs
+        if encoded in self._versioned_dirs:
+            return path
+
+        index_paths = [decode_git_path(p) for p, _ in self._recurse_index_entries()]
+        components = path.split("/")
+        canonical = ""
+        for idx, elt in enumerate(components):
+            if not elt:
+                continue
+            wanted = normalize(elt)
+            prefix = canonical + "/" if canonical else ""
+            best = None
+            seen_dirs: set[str] = set()
+            for ip in index_paths:
+                if not ip.startswith(prefix):
+                    continue
+                rest = ip[len(prefix) :]
+                if "/" in rest:
+                    head = rest.split("/", 1)[0]
+                    if head in seen_dirs:
+                        continue
+                    seen_dirs.add(head)
+                    candidate = head
+                else:
+                    candidate = rest
+                if candidate == elt:
+                    best = candidate
+                    break
+                if normalize(candidate) == wanted and best is None:
+                    best = candidate
+            if best is None:
+                # No match for this component; keep the remainder as-is.
+                tail = components[idx:]
+                return canonical + ("/" if canonical else "") + "/".join(tail)
+            canonical = canonical + "/" + best if canonical else best
+        return canonical
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
