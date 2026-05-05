@@ -2635,12 +2635,14 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 # entire changeset. This is because in platforms that
                 # do not support symlinks, they show up as None in the
                 # working copy as compared to the repository.
-                # Also, exclude root as mention in the above fast path.
-                changes = filter(
-                    lambda c: c[6][0] != "symlink" and c[4] != (None, None), changes
+                # Also, exclude root as mentioned in the above fast path.
+                changes = (
+                    c
+                    for c in changes
+                    if c.kind[0] != "symlink" and c.name != (None, None)
                 )
                 try:
-                    next(iter(changes))
+                    next(changes)
                 except StopIteration:
                     return False
                 return True

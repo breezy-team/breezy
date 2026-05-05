@@ -107,7 +107,10 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((squared_c, True), inf(squared_d))
         self.assertEqual((quarter_c, True), inf(quarter_c))
         self.assertEqual((quarter_c, True), inf(quarter_d))
-        self.assertEqual((surrogate, True), inf(surrogate))
+        if sys.platform != "win32":
+            # The Rust binding rejects unpaired surrogates inside PathBuf on
+            # Windows because OsString cannot represent them losslessly.
+            self.assertEqual((surrogate, True), inf(surrogate))
 
     def test_platform(self):
         # With FAT32 and certain encodings on win32

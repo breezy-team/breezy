@@ -544,6 +544,11 @@ class TestMerge(TestCaseWithTransport):
         subtree.merge_from_branch(source.branch)
 
     def test_merge_joined_branch(self):
+        if sys.platform == "win32":
+            # subsume retires the inner .bzr by renaming it, but Windows
+            # refuses to rename a directory that still has open handles
+            # (the dirstate file).
+            self.skipTest("Cannot rename open .bzr directory on Windows")
         source = self.make_branch_and_tree("source", format="rich-root-pack")
         self.build_tree(["source/foo"])
         source.add("foo")

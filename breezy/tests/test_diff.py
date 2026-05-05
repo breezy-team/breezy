@@ -1068,7 +1068,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
             tree,
             output,
         )
-        diff_obj._prepare_files("file", "file", file_id=b"file-id")
+        diff_obj._prepare_files("file", "file")
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, "old\\file", r"R.*old\\file$")
         # The new content should use the tree object, not a 'new' file anymore

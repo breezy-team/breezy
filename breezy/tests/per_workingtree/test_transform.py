@@ -606,6 +606,19 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_apply_case_conflict(self):
         """Ensure that a transform with case conflicts can always be applied."""
         tree = self.make_branch_and_tree("tree")
+        is_git = (
+            tree.controldir._format.__class__.__name__.startswith("LocalGitDir")
+            or "Git" in tree.__class__.__name__
+        )
+        if is_git and not tree.case_sensitive:
+            # The Git transform's conflict resolver does not yet rename
+            # colliding entries on a case-insensitive working tree, so the
+            # underlying `os.rename` collides with the existing file. Track
+            # this as a known failure rather than masking it.
+            raise tests.KnownFailure(
+                "Git transform doesn't resolve case conflicts on a "
+                "case-insensitive filesystem"
+            )
         transform = tree.transform()
         self.addCleanup(transform.finalize)
         transform.new_file("file", transform.root, [b"content"])

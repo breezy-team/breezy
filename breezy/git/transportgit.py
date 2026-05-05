@@ -213,6 +213,11 @@ class TransportRefsContainer(RefsContainer):
         self.worktree_transport = worktree_transport
         self._packed_refs = None
         self._peeled_refs = None
+        # Open lock-file handles, keyed by ref name. Tracked so that
+        # `unlock_ref` can close the in-process lock holder before
+        # deleting the on-disk lock file (Windows refuses to delete a
+        # file that is still open).
+        self._held_locks: dict[bytes, object] = {}
 
     def __repr__(self):
         """Return string representation of the refs container."""
@@ -472,6 +477,12 @@ class TransportRefsContainer(RefsContainer):
         """
         transport = self.worktree_transport if name == b"HEAD" else self.transport
         lockname = name + b".lock"
+        # If we hold the lock in this process, drop the file handle first;
+        # Windows refuses to delete a file with an open handle.
+        held = self._held_locks.pop(name, None)
+        if held is not None:
+            with contextlib.suppress(Exception):
+                held.abort()
         with contextlib.suppress(NoSuchFile):
             transport.delete(urlutils.quote_from_bytes(lockname))
 
@@ -504,15 +515,20 @@ class TransportRefsContainer(RefsContainer):
             except FileLocked as e:
                 raise LockContention(name, e) from e
             else:
+                self._held_locks[name] = gf
 
                 def unlock():
                     # gf.abort() closes the file handle AND removes the
-                    # lockfile from disk; on Windows we can't delete the
-                    # lockfile while the handle is still open. Detect
-                    # "lock was already gone" before abort so we still
-                    # raise LockBroken when the lockfile is missing.
+                    # lockfile from disk. On Windows we can't delete the
+                    # lockfile while the handle is still open, so a prior
+                    # `break_lock` will have already popped us from
+                    # `_held_locks` and aborted gf to clear the way. Treat
+                    # an absent registry entry the same as a missing
+                    # lockfile and raise LockBroken.
+                    still_registered = self._held_locks.pop(name, None) is not None
                     if not transport.has(lockname):
-                        gf.abort()
+                        if still_registered:
+                            gf.abort()
                         raise LockBroken(lockname)
                     gf.abort()
 
