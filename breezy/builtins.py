@@ -4660,6 +4660,11 @@ class cmd_commit(Command):  # noqa: D101
             if file:
                 with open(file, "rb") as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
+                # Match the behaviour of the inline `--message` option and
+                # strip CRLF so commit messages from text-mode-written files
+                # don't trip the validator on Windows.
+                if "\r" in my_message:
+                    my_message = my_message.replace("\r\n", "\n").replace("\r", "\n")
             elif message is not None:
                 my_message = message
             else:
