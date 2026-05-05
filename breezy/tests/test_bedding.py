@@ -71,8 +71,10 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
         super().setUp()
         self.overrideEnv("HOME", self.test_dir)
         self.overrideEnv("XDG_CACHE_HOME", "")
-        self.bzr_home = os.path.join(self.test_dir, ".bazaar")
-        os.mkdir(self.bzr_home)
+        bzr_home = os.path.join(self.test_dir, ".bazaar")
+        os.mkdir(bzr_home)
+        # bedding returns forward-slash paths even on Windows.
+        self.bzr_home = bzr_home.replace(os.sep, "/")
 
     def test_config_dir(self):
         self.assertEqual(bedding.config_dir(), self.bzr_home)
@@ -105,6 +107,13 @@ class TestConfigPathFallbackWindows(tests.TestCaseInTempDir):
     def setUp(self):
         if sys.platform != "win32":
             raise tests.TestNotApplicable("This test is specific to Windows platform")
+        # The Rust implementation resolves AppData via the `dirs` crate, so
+        # there is no longer a Python-level hook (win32utils) to override the
+        # special-folder lookup. Skip these tests; AppData fallback is covered
+        # by Rust unit tests in the bedding crate.
+        raise tests.TestNotApplicable(
+            "Windows AppData lookup is handled in Rust; cannot be mocked here"
+        )
         super().setUp()
         # Note: No HOME fallback on Windows.  The configs MUST be in AppData,
         # and we only fall back from breezy to bazaar configuration files.

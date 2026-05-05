@@ -1029,12 +1029,15 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch = self.make_branch("branch", format="knit")
         branch.set_push_location("http://foobar")
         local_path = osutils.getcwd().encode("utf8")
-        # Surprisingly ConfigObj doesn't create a trailing newline
-        self.check_file_contents(
-            bedding.locations_config_path(),
+        # Surprisingly ConfigObj doesn't create a trailing newline.
+        # ConfigObj writes CRLF on Windows; normalise before comparing.
+        with open(bedding.locations_config_path(), "rb") as f:
+            actual = f.read().replace(b"\r\n", b"\n")
+        self.assertEqual(
             b"[%s/branch]\n"
             b"push_location = http://foobar\n"
             b"push_location:policy = norecurse\n" % (local_path,),
+            actual,
         )
 
     def test_autonick_urlencoded(self):
@@ -3267,6 +3270,8 @@ foo:policy = appendpath
         self.assertEqual("example<", section.locals["branchname"])
 
     def test_branch_name_basename(self):
+        if sys.platform == "win32":
+            self.skipTest("Unix-style file:///parent URLs are not valid on Win32")
         store = self.get_store(self)
         store._load_from_string(
             dedent(
@@ -3301,6 +3306,8 @@ class TestStartingPathMatcher(TestStore):
 
     def test_url_vs_local_paths(self):
         # The matcher location is an url and the section names are local paths
+        if sys.platform == "win32":
+            self.skipTest("Unix-style file:///foo URLs are not valid on Win32")
         self.assertSectionIDs(
             ["/foo/bar", "/foo"],
             "file:///foo/bar/baz",
@@ -3312,6 +3319,8 @@ class TestStartingPathMatcher(TestStore):
 
     def test_local_path_vs_url(self):
         # The matcher location is a local path and the section names are urls
+        if sys.platform == "win32":
+            self.skipTest("Unix-style file:///foo URLs are not valid on Win32")
         self.assertSectionIDs(
             ["file:///foo/bar", "file:///foo"],
             "/foo/bar/baz",

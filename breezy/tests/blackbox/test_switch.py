@@ -394,8 +394,9 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def assertParent(self, expected_parent, branch):
         """Verify that the parent is not None and is set correctly."""
-        branch.get_parent()
-        self.assertIsSameRealPath(
+        # `branch.get_parent()` returns a URL; compare URLs directly because
+        # `osutils.realpath` chokes on `file://` syntax on Windows.
+        self.assertEqual(
             urlutils.local_path_to_url(expected_parent), branch.get_parent()
         )
 
