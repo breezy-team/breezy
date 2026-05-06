@@ -23,8 +23,8 @@ from io import BytesIO
 
 from ... import osutils
 from bzrformats import inventory, inventory_delta
-from bzrformats.inventory import Inventory
-from bzrformats.inventory_delta import InventoryDeltaError
+from bzrformats.inventory import Inventory, _make_delta
+from bzrformats.inventory_delta import InventoryDelta, InventoryDeltaError
 
 from ...revision import NULL_REVISION
 from . import TestCase

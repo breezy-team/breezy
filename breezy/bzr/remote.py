@@ -3983,7 +3983,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         if response_tuple[0] != b"ok":
             raise transport_errors.UnexpectedSmartServerResponse(response_tuple)
         serializer_format = response_tuple[1].decode("ascii")
-        serializer = revision_format_registry.get(serializer_format)
+        serializer = serializer_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
         chunks = []

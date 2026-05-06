@@ -31,6 +31,7 @@ from io import BytesIO
 
 import fastbencode as bencode
 from bzrformats import inventory, inventory_delta, versionedfile
+from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
 from bzrformats.errors import RevisionNotPresent
 from bzrformats.revision import Revision
@@ -46,7 +47,6 @@ from breezy.transport.remote import (
 
 from ... import branch, config, controldir, errors, repository, tests, treebuilder
 from ... import transport as _mod_transport
-from ..._bzr_rs import revision_bencode_serializer
 from ...branch import Branch
 from ...errors import GhostRevisionsHaveNoRevno
 from ...revision import NULL_REVISION

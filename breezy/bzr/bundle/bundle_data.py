@@ -28,7 +28,7 @@ from bzrformats.inventory import (
     InventoryLink,
     NoSuchId,
 )
-from bzrformats.xml5 import inventory_serializer_v5 as serializer_v5
+from bzrformats.xml5 import inventory_serializer_v5
 
 from ... import cache_utf8, osutils
 from ...errors import BzrError, TestamentMismatch

@@ -18,6 +18,7 @@
 
 from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
 from bzrformats.errors import RevisionNotPresent
+from bzrformats.revision import Revision
 
 import breezy
 from breezy import errors

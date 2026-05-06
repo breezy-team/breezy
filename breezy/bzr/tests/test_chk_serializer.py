@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrformats._bzr_rs import revision_bencode_serializer as chk_bencode_serializer
+from bzrformats._bzr_rs import revision_bencode_serializer
 from bzrformats.revision import Revision
 
 from . import TestCase
@@ -112,7 +112,7 @@ class TestBEncodeSerializer1(TestCase):
             timestamp=1242385452,
             timezone=3600,
         )
-        self.assertRoundTrips(chk_bencode_serializer, rev)
+        self.assertRoundTrips(revision_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):
         rev = Revision(
@@ -125,4 +125,4 @@ class TestBEncodeSerializer1(TestCase):
             timestamp=1242385452,
             timezone=3600,
         )
-        self.assertRoundTrips(chk_bencode_serializer, rev)
+        self.assertRoundTrips(revision_bencode_serializer, rev)

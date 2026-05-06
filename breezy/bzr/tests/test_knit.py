@@ -22,6 +22,7 @@ from io import BytesIO
 
 from bzrformats import knit, multiparent, pack
 from bzrformats.errors import ReadOnlyError as BzrReadOnlyError
+from bzrformats.index import CombinedGraphIndex, GraphIndex, GraphIndexBuilder
 from bzrformats.knit import (
     AnnotatedKnitContent,
     KnitContent,

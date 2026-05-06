@@ -16,6 +16,8 @@
 
 """Tests for repository implementations - tests a repository format."""
 
+import contextlib
+
 from bzrformats import inventory, versionedfile
 from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
 from bzrformats.inventory import CHKInventory, InventoryDirectory
