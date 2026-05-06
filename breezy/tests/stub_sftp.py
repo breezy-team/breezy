@@ -567,6 +567,20 @@ class SFTPServerWithoutSSH(SFTPServer):
     def get_host_key(self):
         return None
 
+    def start_server(self, backing_server=None):
+        if sys.platform == "win32":
+            # The loopback vendor calls SFTPClient(sock.detach()), which
+            # paramiko cannot construct from a Windows socket file
+            # descriptor (raises "The parameter is incorrect", os error
+            # 87). Refusing to start the server here lets test scenarios
+            # that key off the server bail out cleanly.
+            from breezy.tests import TestNotApplicable
+
+            raise TestNotApplicable(
+                "Loopback SFTPClient is incompatible with Windows sockets"
+            )
+        super().start_server(backing_server)
+
 
 class SFTPAbsoluteServer(SFTPServerWithoutSSH):
     """A test server for sftp transports, using absolute urls."""
