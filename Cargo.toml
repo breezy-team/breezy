@@ -16,7 +16,7 @@ include = [
 ]
 
 [workspace]
-members = []
+members = ["crates/*"]
 
 [workspace.package]
 version = "3.4.0"
