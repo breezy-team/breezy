@@ -535,9 +535,7 @@ class TransportRefsContainer(RefsContainer):
                     # `_held_locks` and aborted gf to clear the way. Treat
                     # an absent registry entry the same as a missing
                     # lockfile and raise LockBroken.
-                    still_registered = (
-                        self._held_locks.pop(lock_key, None) is not None
-                    )
+                    still_registered = self._held_locks.pop(lock_key, None) is not None
                     if not transport.has(lockname):
                         if still_registered:
                             gf.abort()
