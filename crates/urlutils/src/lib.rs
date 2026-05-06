@@ -638,14 +638,12 @@ pub mod win32 {
         // ``//HOST/share/`` even though ``\\HOST\share`` should round-trip
         // without one. Strip a single trailing slash unless the result is
         // just the root.
-        let win32_path = if win32_path.len() > 1
-            && win32_path.ends_with('/')
-            && !win32_path.ends_with("://")
-        {
-            &win32_path[..win32_path.len() - 1]
-        } else {
-            win32_path
-        };
+        let win32_path =
+            if win32_path.len() > 1 && win32_path.ends_with('/') && !win32_path.ends_with("://") {
+                &win32_path[..win32_path.len() - 1]
+            } else {
+                win32_path
+            };
         if win32_path.starts_with("//") {
             Ok(format!(
                 "file:{}",

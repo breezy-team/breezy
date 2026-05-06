@@ -52,11 +52,22 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
     use winreg::enums::HKEY_LOCAL_MACHINE;
     use winreg::RegKey;
-    let exts = env::var("PATHEXT").unwrap_or_default();
-    let exts = exts
+    let pathext = env::var("PATHEXT").unwrap_or_default();
+    let pathext_exts = pathext
         .split(';')
-        .map(|ext| ext.to_lowercase())
+        .filter(|ext| !ext.is_empty())
+        .map(|ext| {
+            if ext.starts_with('.') {
+                ext.to_lowercase()
+            } else {
+                format!(".{}", ext.to_lowercase())
+            }
+        })
         .collect::<Vec<_>>();
+    // If `name` already has an extension, only try that exact one; otherwise
+    // try `name` itself plus each PATHEXT entry. Always probe `name` with no
+    // extra extension first, so e.g. `find_executable_on_path("foo.bat")`
+    // matches `foo.bat` directly rather than `foo.bat.exe`.
     let (name, exts) = {
         let path = PathBuf::from(name);
         let ext = path
@@ -70,10 +81,15 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
             .to_str()
             .unwrap_or_default()
             .to_owned();
-        if !exts.is_empty() && !exts.contains(&ext) {
-            (stem, vec![ext])
+        if !ext.is_empty() {
+            // User specified a specific extension; only look for that.
+            (name.to_owned(), vec![String::new()])
+        } else if pathext_exts.is_empty() {
+            (stem, vec![String::new()])
         } else {
-            (stem, exts)
+            let mut e = vec![String::new()];
+            e.extend(pathext_exts);
+            (stem, e)
         }
     };
     let paths = env::var("PATH").unwrap_or_default();
@@ -86,11 +102,34 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
             }
         }
     }
-    if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE)
+    // Fall back to the App Paths registry. Each application registers under
+    // a subkey like `App Paths\\iexplore.exe`, with the executable's full
+    // path as the (default) value of that subkey.
+    if let Ok(app_paths) = RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths")
     {
-        if let Ok(value) = reg_key.get_value::<String, _>(name) {
-            return Some(value);
+        let mut candidates: Vec<String> = Vec::new();
+        if name.contains('.') {
+            candidates.push(name.clone());
+        } else {
+            // Try the bare name plus name + each PATHEXT extension.
+            candidates.push(name.clone());
+            for ext in &exts {
+                if !ext.is_empty() {
+                    candidates.push(format!("{}{}", name, ext));
+                }
+            }
+            // Default to .exe if PATHEXT is empty (matches common usage).
+            if !candidates.iter().any(|c| c.ends_with(".exe")) {
+                candidates.push(format!("{}.exe", name));
+            }
+        }
+        for candidate in &candidates {
+            if let Ok(subkey) = app_paths.open_subkey(candidate) {
+                if let Ok(value) = subkey.get_value::<String, _>("") {
+                    return Some(value);
+                }
+            }
         }
     }
     None
@@ -512,10 +551,7 @@ pub mod posix {
         // POSIX semantics: any path starting with '/' is absolute, even on
         // Windows where ``Path::is_absolute`` would otherwise demand a
         // drive letter.
-        let starts_with_slash = path
-            .to_str()
-            .map(|s| s.starts_with('/'))
-            .unwrap_or(false);
+        let starts_with_slash = path.to_str().map(|s| s.starts_with('/')).unwrap_or(false);
         if path.is_absolute() || starts_with_slash {
             return Ok(path.to_path_buf());
         }
