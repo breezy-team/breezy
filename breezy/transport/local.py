@@ -71,7 +71,10 @@ class EmulatedWin32LocalTransport(LocalTransport):  # type:ignore
         """
         if base[-1] != "/":
             base = base + "/"
-        super(LocalTransport, self).__init__(base)
+        # LocalTransport is a PyO3 extension type; its __new__ already
+        # consumed `base`, so just record the local path here. Calling
+        # super().__init__(base) would dispatch to object.__init__ and
+        # raise on Python 3 because base is an extra positional arg.
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
