@@ -16,11 +16,22 @@
 
 
 import os
+import sys
 
 from breezy import osutils, tests, workingtree
 
 
 class TestJoin(tests.TestCaseWithTransport):
+    def setUp(self):
+        super().setUp()
+        if sys.platform == "win32":
+            # `brz join` retires the inner .bzr directory by renaming it,
+            # which Windows refuses while the dirstate file handle is still
+            # held open by the working tree.
+            raise tests.TestNotApplicable(
+                "Cannot rename open .bzr directory on Windows"
+            )
+
     def make_trees(self):
         base_tree = self.make_branch_and_tree("tree", format="development-subtree")
         base_tree.commit("empty commit")

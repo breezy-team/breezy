@@ -114,11 +114,19 @@ impl<'py> Exporter<'_, 'py> {
         let inspect = self.py.import("inspect")?;
         let sourcepath = inspect.call_method1("getsourcefile", (module,))?;
         // TODO: fix this to do the right thing rather than rely on cwd
-        let relpath: String = self
+        let relpath: String = match self
             .py
             .import("os.path")?
-            .call_method1("relpath", (sourcepath,))?
-            .extract()?;
+            .call_method1("relpath", (&sourcepath,))
+        {
+            Ok(p) => p.extract()?,
+            Err(e) if e.is_instance_of::<pyo3::exceptions::PyValueError>(self.py) => {
+                // On Windows, sourcepath and cwd may live on different drives,
+                // which makes a relative path impossible.
+                sourcepath.extract()?
+            }
+            Err(e) => return Err(e),
+        };
         let lines: Vec<String> = inspect
             .call_method1("findsource", (module,))?
             .get_item(0)?

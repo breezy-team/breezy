@@ -22,7 +22,9 @@ from breezy.tests import TestCaseWithTransport
 class TestAliases(TestCaseWithTransport):
     def test_aliases(self):
         def bzr(args, **kwargs):
-            return self.run_bzr(args, **kwargs)[0]
+            # Normalise CRLF to LF; the captured output goes through text-mode
+            # stdout on Windows, which inflates `\n` to `\r\n`.
+            return self.run_bzr(args, **kwargs)[0].replace("\r\n", "\n")
 
         def bzr_catch_error(args, **kwargs):
             return self.run_bzr(args, **kwargs)[1]

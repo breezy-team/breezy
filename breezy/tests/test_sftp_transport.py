@@ -51,6 +51,14 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
     def setUp(self):
         super().setUp()
         self.requireFeature(features.paramiko)
+        if sys.platform == "win32":
+            # The loopback SFTP vendor calls SFTPClient(sock.detach()), which
+            # paramiko cannot construct from a Windows socket file descriptor
+            # (raises "The parameter is incorrect", os error 87). Until the
+            # vendor is reworked, skip the in-process SFTP tests on Windows.
+            raise tests.TestNotApplicable(
+                "Loopback SFTPClient is incompatible with Windows sockets"
+            )
         set_test_transport_to_sftp(self)
 
 

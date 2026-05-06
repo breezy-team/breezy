@@ -26,6 +26,21 @@ from ...osutils import supports_symlinks
 
 
 class TestWalkdirs(TestCaseWithTree):
+    @staticmethod
+    def _scandir_stat(parent, name):
+        """Return the stat that ``os.scandir`` produces for ``parent/name``.
+
+        ``walkdirs`` populates entries via ``DirEntry.stat`` rather than
+        ``os.stat``, so use the same code path here. On Windows the two
+        return different values (``DirEntry.stat`` zeroes ``st_ino`` /
+        ``st_dev`` / ``st_nlink``).
+        """
+        with os.scandir(parent) as it:
+            for entry in it:
+                if entry.name == name:
+                    return entry.stat(follow_symlinks=False)
+        raise FileNotFoundError(name)
+
     def get_all_subdirs_expected(self, tree, symlinks):
         empty_dirs_present = tree.has_versioned_directories() or isinstance(
             tree, MutableTree
@@ -50,7 +65,9 @@ class TestWalkdirs(TestCaseWithTree):
                     "directory",
                     None
                     if empty_dirs_are_versioned
-                    else os.stat(tree.abspath("1top-dir/1dir-in-1topdir")),
+                    else self._scandir_stat(
+                        tree.abspath("1top-dir"), "1dir-in-1topdir"
+                    ),
                     "directory" if empty_dirs_are_versioned else None,
                 )
             )

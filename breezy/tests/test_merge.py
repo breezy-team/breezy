@@ -16,6 +16,7 @@
 
 import contextlib
 import os
+import sys
 
 from bzrformats import inventory, knit, versionedfile
 from bzrformats.inventory import NoSuchId
@@ -545,6 +546,11 @@ class TestMerge(TestCaseWithTransport):
         subtree.merge_from_branch(source.branch)
 
     def test_merge_joined_branch(self):
+        if sys.platform == "win32":
+            # subsume retires the inner .bzr by renaming it, but Windows
+            # refuses to rename a directory that still has open handles
+            # (the dirstate file).
+            self.skipTest("Cannot rename open .bzr directory on Windows")
         source = self.make_branch_and_tree("source", format="rich-root-pack")
         self.build_tree(["source/foo"])
         source.add("foo")
@@ -3281,6 +3287,10 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_nested_tree_subtree_renamed(self):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
+        if sys.platform == "win32":
+            # Renaming a subdirectory holding another WT's open dirstate
+            # handle is not permitted by Windows.
+            self.skipTest("Cannot rename open working tree on Windows")
         wt = self.make_branch_and_tree("tree", format="development-subtree")
         wt.lock_write()
         self.addCleanup(wt.unlock)
@@ -3330,6 +3340,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
     def test_nested_tree_subtree_renamed_and_modified(self):
         # Tested with a real WT, because BranchBuilder/MemoryTree don't handle
         # 'tree-reference'
+        if sys.platform == "win32":
+            self.skipTest("Cannot rename open working tree on Windows")
         wt = self.make_branch_and_tree("tree", format="development-subtree")
         wt.lock_write()
         self.addCleanup(wt.unlock)

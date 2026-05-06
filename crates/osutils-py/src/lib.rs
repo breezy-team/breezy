@@ -799,9 +799,17 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
 }
 
 #[pyfunction]
-#[cfg(unix)]
 fn get_umask() -> PyResult<u32> {
-    Ok(breezy_osutils::get_umask().bits() as u32)
+    #[cfg(unix)]
+    {
+        Ok(breezy_osutils::get_umask().bits() as u32)
+    }
+    #[cfg(not(unix))]
+    {
+        // umask is not meaningful on Windows; mirror Python's behaviour
+        // of reporting 0 since there's no way to set/read it.
+        Ok(0)
+    }
 }
 
 #[pyfunction]
@@ -957,11 +965,36 @@ fn win32_abspath(path: PathBuf) -> PyResult<String> {
         .ok_or_else(|| PyValueError::new_err("Path is not valid UTF-8"))
 }
 
-#[cfg(unix)]
 #[pyfunction]
 fn kind_from_mode(mode: u32) -> &'static str {
-    use nix::sys::stat::SFlag;
-    breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode.try_into().unwrap()))
+    #[cfg(unix)]
+    {
+        use nix::sys::stat::SFlag;
+        breezy_osutils::file::kind_from_mode(SFlag::from_bits_truncate(mode.try_into().unwrap()))
+    }
+    #[cfg(not(unix))]
+    {
+        // POSIX S_IFMT/S_IFx constants. Windows Python sets these on os.stat
+        // results via the C runtime's stat.h.
+        const S_IFMT: u32 = 0o170000;
+        const S_IFDIR: u32 = 0o040000;
+        const S_IFCHR: u32 = 0o020000;
+        const S_IFBLK: u32 = 0o060000;
+        const S_IFREG: u32 = 0o100000;
+        const S_IFIFO: u32 = 0o010000;
+        const S_IFLNK: u32 = 0o120000;
+        const S_IFSOCK: u32 = 0o140000;
+        match mode & S_IFMT {
+            S_IFDIR => "directory",
+            S_IFCHR => "chardev",
+            S_IFBLK => "block",
+            S_IFREG => "file",
+            S_IFIFO => "fifo",
+            S_IFLNK => "symlink",
+            S_IFSOCK => "socket",
+            _ => "unknown",
+        }
+    }
 }
 
 #[pyfunction]
@@ -1005,14 +1038,30 @@ fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
 }
 
 #[pyfunction]
-fn relpath(py: Python, base: PathBuf, path: PathBuf) -> PyResult<PyObject> {
-    let rel = match breezy_osutils::path::relpath(base.as_path(), path.as_path()) {
-        None => Err(PathNotChild::new_err((
-            path.to_string_lossy().into_owned(),
-            base.to_string_lossy().into_owned(),
-        ))),
-        Some(p) => Ok(p),
-    }?;
+fn relpath(py: Python, path: PathBuf, start: PathBuf) -> PyResult<Py<PyAny>> {
+    let rel = match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
+        None => {
+            // Normalise paths to forward slashes in the error message so the
+            // wording matches across platforms; PyO3's PathBuf conversion
+            // would otherwise re-introduce backslashes on Windows.
+            #[cfg(windows)]
+            let (start_str, path_str) = (
+                breezy_osutils::path::win32::fix_separators(start.as_path())
+                    .to_string_lossy()
+                    .into_owned(),
+                breezy_osutils::path::win32::fix_separators(path.as_path())
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+            #[cfg(not(windows))]
+            let (start_str, path_str) = (
+                start.to_string_lossy().into_owned(),
+                path.to_string_lossy().into_owned(),
+            );
+            return Err(PathNotChild::new_err((start_str, path_str)));
+        }
+        Some(p) => p,
+    };
 
     Ok(path_to_pystring(py, &rel)?.into_any().unbind())
 }
@@ -1505,9 +1554,7 @@ fn _osutils_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
     posixm.add_wrapped(wrap_pyfunction!(posix_normpath))?;
     m.add_submodule(&posixm)?;
-    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
-    #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
