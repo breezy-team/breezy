@@ -15,11 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import datetime
+import sys
 import time
 
 from vcsgraph.errors import NoCommonAncestor
 
-from breezy import errors
+from breezy import errors, tests
 from breezy import revision as _mod_revision
 from breezy.tests import TestCaseWithTransport
 
@@ -748,6 +749,10 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
         )
 
     def test_no_such_file_with_colon(self):
+        if sys.platform == "win32":
+            raise tests.TestNotApplicable(
+                "':' is not a legal character in Windows filenames"
+            )
         spec = RevisionSpec.from_string("annotate:annotate-tree/fi:le2:1")
         e = self.assertRaises(
             InvalidRevisionSpec, spec.as_revision_id, self.tree.branch

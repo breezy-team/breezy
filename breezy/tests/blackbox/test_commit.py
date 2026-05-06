@@ -170,7 +170,7 @@ brz: ERROR: No changes to commit.\
         _out, err = self.run_bzr_raw(
             ["commit", "-m", "Wrong filename", "\xa7"], encoding="utf-8", retcode=3
         )
-        self.assertContainsRe(err, b'(?m)not versioned: "\xc2\xa7"$')
+        self.assertContainsRe(err, b'(?m)not versioned: "\xc2\xa7"\r?$')
 
     def test_non_ascii_file_unversioned_iso_8859_5(self):
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -181,7 +181,7 @@ brz: ERROR: No changes to commit.\
             ["commit", "-m", "Wrong filename", "\xa7"], encoding="iso-8859-5", retcode=3
         )
         self.assertNotContainsString(err, b"\xc2\xa7")
-        self.assertContainsRe(err, b'(?m)not versioned: "\xfd"$')
+        self.assertContainsRe(err, b'(?m)not versioned: "\xfd"\r?$')
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught."""
@@ -561,7 +561,7 @@ altered in u2
         self.assertEqual(b"", output)
         self.assertContainsRe(
             err,
-            b"brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n",
+            b"brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused\\.\r?\n",
         )
 
     def test_no_bugs_no_properties(self):

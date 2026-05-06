@@ -4760,6 +4760,11 @@ class cmd_commit(Command):  # noqa: D101
             if file:
                 with open(file, "rb") as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
+                # Match the behaviour of the inline `--message` option and
+                # strip CRLF so commit messages from text-mode-written files
+                # don't trip the validator on Windows.
+                if "\r" in my_message:
+                    my_message = my_message.replace("\r\n", "\n").replace("\r", "\n")
             elif message is not None:
                 my_message = message
             else:
@@ -5498,13 +5503,19 @@ class cmd_selftest(Command):  # noqa: D101
             # FIXME: This has been fixed in subunit trunk (>0.0.5) so the
             # following code can be deleted when it's sufficiently deployed
             # -- vila/mgz 20100514
-            if (
-                sys.platform == "win32"
-                and getattr(sys.stdout, "fileno", None) is not None
-            ):
+            if sys.platform == "win32":
                 import msvcrt
 
-                msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+                # Some sys.stdout substitutes (e.g. StringIO during tests)
+                # advertise a `fileno` method that raises rather than
+                # returning a real descriptor; skip the binary mode flip in
+                # that case.
+                try:
+                    fileno = sys.stdout.fileno()
+                except (AttributeError, OSError, ValueError):
+                    fileno = None
+                if fileno is not None:
+                    msvcrt.setmode(fileno, os.O_BINARY)
         if subunit2:
             try:
                 from .tests import SubUnitBzrRunnerv2

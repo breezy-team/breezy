@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import sys
 
 from breezy import errors, tests, workingtree
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
@@ -88,6 +89,12 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_add_non_subtree(self):
         tree, _sub_tree = self.make_trees()
+        if sys.platform == "win32":
+            # Windows can't rename a directory while any handle inside
+            # it is still open, and the dirstate-backed working tree
+            # keeps file handles around even after unlock until the
+            # Python object is collected.
+            self.skipTest("Cannot reliably rename open working trees on Windows")
         os.rename("tree/sub-tree", "sibling")
         sibling = workingtree.WorkingTree.open("sibling")
         try:

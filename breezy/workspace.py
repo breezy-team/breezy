@@ -22,6 +22,7 @@ high performance in large trees with a small number of changes.
 
 import errno
 import os
+import posixpath
 import shutil
 from contextlib import ExitStack
 
@@ -253,7 +254,7 @@ class Workspace:
 
     def tree_path(self, path=""):
         """Return a path relative to the tree subpath used by this workspace."""
-        return os.path.join(self.subpath, path)
+        return posixpath.join(self.subpath, path)
 
     def abspath(self, path=""):
         """Return an absolute path for the tree."""

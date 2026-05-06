@@ -146,4 +146,6 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.overrideEnv("BRZ_LOG", brz_log)
         out, _err = self.run_brz_subprocess("version")
         uni_out = out.decode(enc)
-        self.assertContainsRe(uni_out, "(?m)^  Breezy log file: .*/\xa7$")
+        # On Windows ``os.path.join`` uses a backslash before the final
+        # path component, so accept either separator.
+        self.assertContainsRe(uni_out, "(?m)^  Breezy log file: .*[/\\\\]\xa7\r?$")

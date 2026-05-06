@@ -92,7 +92,16 @@ pub struct DynamicHelpTopic {
 impl HelpContents {
     fn get_contents(&self, topic: &str) -> Cow<'_, str> {
         match self {
-            HelpContents::Text(text) => Cow::Borrowed(text),
+            HelpContents::Text(text) => {
+                // Help topics are bundled via `include_str!`, so a Windows
+                // checkout with `core.autocrlf=true` would otherwise leak
+                // `\r\n` line endings into the rendered output.
+                if text.contains('\r') {
+                    Cow::Owned(text.replace("\r\n", "\n").replace('\r', ""))
+                } else {
+                    Cow::Borrowed(text)
+                }
+            }
             HelpContents::Callback(ref callback) => callback(topic).into(),
             HelpContents::Closure(ref callback) => callback(topic).into(),
         }

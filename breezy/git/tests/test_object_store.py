@@ -241,6 +241,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
         self.assertEqual(["foo", ""], [p[0] for p in entries])
 
     def test_merge(self):
+        self.requireFeature(SymlinkFeature(self.test_dir))
         basis_tree = self.make_branch_and_tree("base")
         self.build_tree(["base/foo/"])
         basis_tree.add(["foo"])
