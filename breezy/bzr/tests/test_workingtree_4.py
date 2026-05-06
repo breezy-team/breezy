@@ -26,7 +26,7 @@ from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from ... import errors, osutils
-from ...bzr.inventory_delta import InventoryDelta
+from bzrformats.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree

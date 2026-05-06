@@ -27,7 +27,7 @@ from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
+from bzrformats.inventory import ROOT_ID, Inventory, InventoryDirectory
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree
@@ -220,7 +220,6 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                 message="Message",
                 properties={},
                 inventory_sha1=sha1,
-                parent_ids=parent_ids,
                 revision_id=revision_id,
                 parent_ids=parent_ids,
             )

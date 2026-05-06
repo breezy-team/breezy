@@ -24,7 +24,7 @@ from bzrformats.inventory import ROOT_ID
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_repository import TestCaseWithRepository
 
-from ...bzr.inventory import ROOT_ID
+from bzrformats.inventory import ROOT_ID
 
 
 class TestFetchSameRepository(TestCaseWithRepository):

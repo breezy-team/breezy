@@ -20,7 +20,7 @@ import warnings
 from breezy import bugtracker, revision
 from breezy.tests import TestCase, TestCaseWithTransport
 
-from ..revision import NULL_REVISION, get_history, iter_bugs
+from ..revision import NULL_REVISION, iter_bugs
 from .matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
@@ -218,13 +218,13 @@ class TestCommonAncestor(TestCaseWithTransport):
         tree.commit("2", rev_id=b"2", allow_pointless=True)
         tree.commit("3", rev_id=b"3", allow_pointless=True)
         rev = tree.branch.repository.get_revision(b"1")
-        history = get_history(tree.branch.repository, rev)
+        history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, b"1"], history)
         rev = tree.branch.repository.get_revision(b"2")
-        history = get_history(tree.branch.repository, rev)
+        history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, b"1", b"2"], history)
         rev = tree.branch.repository.get_revision(b"3")
-        history = get_history(tree.branch.repository, rev)
+        history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, b"1", b"2", b"3"], history)
 
 

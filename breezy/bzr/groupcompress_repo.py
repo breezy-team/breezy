@@ -155,7 +155,7 @@ class GCPack(NewPack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = _mod_pack.ContainerWriter(self._write_data)
+        self._writer = pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = "open"

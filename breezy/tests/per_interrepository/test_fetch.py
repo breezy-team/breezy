@@ -28,7 +28,7 @@ from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory_delta import InventoryDelta
+from bzrformats.inventory_delta import InventoryDelta
 from ...bzr.vf_search import SearchResult
 from ...errors import NoSuchRevision
 from ...repository import WriteGroup
@@ -558,7 +558,6 @@ class TestInterRepository(TestCaseWithInterRepository):
             committer="Foo Bar <foo@example.com>",
             message="Message",
             inventory_sha1=sha1,
-            parent_ids=[b"a"],
             revision_id=b"b",
             parent_ids=[b"a"],
             properties={},

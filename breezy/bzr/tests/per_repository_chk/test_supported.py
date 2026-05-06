@@ -26,7 +26,6 @@ from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
 from breezy.tests import TestNotApplicable
 
 from ...remote import RemoteRepository
-from ...versionedfile import VersionedFiles
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):

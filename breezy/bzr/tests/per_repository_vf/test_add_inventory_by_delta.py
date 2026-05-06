@@ -17,7 +17,7 @@
 """Tests for Repository.add_inventory_by_delta."""
 
 from breezy import errors, revision
-from breezy.bzr.inventory_delta import InventoryDelta
+from bzrformats.inventory_delta import InventoryDelta
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

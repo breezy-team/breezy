@@ -43,6 +43,7 @@ from breezy import (
     hooks,
     log,
     merge as _mod_merge,
+    osutils,
     patch,
     revision as _mod_revision,
     symbol_versioning,

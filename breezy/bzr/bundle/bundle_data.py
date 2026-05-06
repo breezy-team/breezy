@@ -30,7 +30,7 @@ from bzrformats.inventory import (
 )
 from bzrformats.xml5 import inventory_serializer_v5 as serializer_v5
 
-from ... import cache_utf8, timestamp
+from ... import cache_utf8, osutils
 from ...errors import BzrError, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision

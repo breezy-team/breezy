@@ -31,7 +31,6 @@ from breezy.tests import TestNotApplicable, multiply_scenarios
 from ....repository import WriteGroup
 from ....revision import NULL_REVISION, Revision, RevisionID
 from ....tests.scenarios import load_tests_apply_scenarios
-from ...inventory import Inventory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
 

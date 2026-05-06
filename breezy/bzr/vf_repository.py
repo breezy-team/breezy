@@ -52,7 +52,15 @@ from breezy.bzr.testament import Testament
 )
 
 from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionAlreadyPresent, RevisionNotPresent
-from bzrformats.inventory import Inventory, NoSuchId, entry_factory
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    NoSuchId,
+    entry_factory,
+)
+from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
 from .. import errors
@@ -585,9 +593,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         change.name[1],
                         change.parent_id[1],
                         revision=revision,
-                        executable=executable,
-                        text_size=text_size,
-                        text_sha1=text_sha1,
+                        executable=entry_kwargs["executable"],
+                        text_size=entry_kwargs["text_size"],
+                        text_sha1=entry_kwargs["text_sha1"],
                     )
                 elif kind == "symlink":
                     # Wants a path hint?
@@ -663,15 +671,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     )
                 else:
                     raise AssertionError("unknown kind {!r}".format(kind))
-                entry_kwargs["revision"] = (
-                    parent_entry.revision if carried_over else modified_rev
-                )
-                entry = _entry_factory[kind](
-                    file_id=file_id,
-                    name=entry_name,
-                    parent_id=entry_parent_id,
-                    **entry_kwargs,
-                )
             else:
                 entry = None
             new_path = change.path[1]

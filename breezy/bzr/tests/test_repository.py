@@ -74,10 +74,10 @@ from breezy.errors import UnknownFormatError
 from breezy.repository import RepositoryFormat
 from breezy.tests import TestCase, TestCaseWithTransport
 
+from bzrformats.index import GraphIndex
+
 from ...errors import UnknownFormatError
 from ...repository import RepositoryFormat
-from ..btree_index import BTreeBuilder, BTreeGraphIndex
-from ..index import GraphIndex
 
 
 class TestDefaultFormat(TestCase):
