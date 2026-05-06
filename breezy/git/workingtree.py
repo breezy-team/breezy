@@ -655,10 +655,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Detect whether the filesystem is case-sensitive.
 
         Sets self.case_sensitive based on whether we can stat a file
-        with different casing than the actual file.
+        with different casing than the actual file. ``self._transport``
+        is rooted at ``.git/`` already, so probe ``cOnFiG`` directly
+        rather than ``.git/cOnFiG`` (which would resolve to
+        ``.git/.git/cOnFiG`` and never exist).
         """
         try:
-            self._transport.stat(".git/cOnFiG")
+            self._transport.stat("cOnFiG")
         except _mod_transport.NoSuchFile:
             self.case_sensitive = True
         else:
