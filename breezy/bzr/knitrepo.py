@@ -39,6 +39,7 @@ from dromedary.errors import NoSuchFile
 from .. import controldir, errors, lockdir, trace
 from .. import revision as _mod_revision
 from ..repository import InterRepository, IsInWriteGroupError, Repository
+from . import lockable_files
 from .repository import RepositoryFormatMetaDir
 from .vf_repository import (
     InterSameDataRepository,

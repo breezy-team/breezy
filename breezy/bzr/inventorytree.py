@@ -418,8 +418,7 @@ class InventoryTree(Tree):
                             f"{inventory!r} != {self.root_inventory!r}"
                         )
                     if inv_file_id is not None:
-                        inventory_file_ids.append(inv_file_id)
-                inventory_file_ids = set(inventory_file_ids)
+                        inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None
 

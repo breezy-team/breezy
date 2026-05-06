@@ -58,12 +58,13 @@ from bzrformats.inventory import (
     InventoryFile,
     InventoryLink,
     NoSuchId,
+    TreeReference,
     entry_factory,
 )
 from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
-from .. import errors
+from .. import debug, errors
 from ..decorators import only_raises
 from ..repository import (
     CommitBuilder,
@@ -1965,8 +1966,7 @@ class StreamSink:
                     write_group_tokens = self.target_repo.suspend_write_group()
                     return write_group_tokens, missing_keys
                 hint = self.target_repo.commit_write_group()
-                to_serializer = self.target_repo._format._inventory_serializer
-                src_serializer = src_format._inventory_serializer
+                dest_format = self.target_repo._format
                 if (
                     dest_format._revision_serializer != src_format._revision_serializer
                     or dest_format._inventory_serializer
@@ -1995,7 +1995,8 @@ class StreamSink:
             raise ObjectNotLocked(self)
         if not self.target_repo.is_in_write_group():
             raise errors.BzrError("you must already be in a write group")
-        to_serializer = self.target_repo._format._inventory_serializer
+        dest_format = self.target_repo._format
+        to_serializer = dest_format._inventory_serializer
         src_serializer = src_format._inventory_serializer
         src_revision_serializer = src_format._revision_serializer
         new_pack = None
