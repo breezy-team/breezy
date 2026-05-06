@@ -255,10 +255,8 @@ class RenameMap:
         file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
         for f in matches.values():
-            with contextlib.suppress(errors.NoSuchId):
+            with contextlib.suppress(NoSuchId):
                 file_id_query.append(self.tree.id2path(f))
-            except NoSuchId:
-                pass
         for old_path, entry in self.tree.iter_entries_by_dir(
             specific_files=file_id_query
         ):

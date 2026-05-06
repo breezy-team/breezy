@@ -30,6 +30,8 @@ from dromedary.errors import FileExists, NoSuchFile
 from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 
 from .. import errors as bzr_errors
+from .. import registry, trace
+from .._git_rs import get_cache_dir
 
 
 def get_remote_cache_transport(repository):

@@ -44,7 +44,6 @@ from bzrformats import rio, rio_patch
 from breezy.bzr import (
     testament,
     )
-from breezy.bzr import rio
 from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
