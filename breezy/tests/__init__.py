@@ -37,10 +37,12 @@ import pprint
 import random
 import re
 import shlex
+import shutil
 import site
 import stat
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import time
@@ -180,6 +182,36 @@ def subprocess_pythonpath():
     import dromedary
 
     return ":".join([os.path.dirname(os.path.dirname(dromedary.__file__))] + sys.path)
+
+
+def python_executable():
+    """Return a path to a real Python interpreter.
+
+    ``sys.executable`` is set from CPython's path-resolution code, which when
+    breezy is launched through the embedded ``brz`` binary can leave the
+    interpreter path pointing at the brz launcher rather than a real Python
+    (notably on macOS framework Python). Tests that spawn
+    ``[sys.executable, ...]`` then end up running brz again with arbitrary
+    script arguments, which fails. Resolve ``sys.executable`` to a usable
+    interpreter, falling back to looking next to ``sys.base_prefix`` and
+    finally to ``shutil.which``.
+    """
+    candidate = sys.executable
+    if candidate and os.path.basename(candidate).lower().startswith("python"):
+        return candidate
+    bindir = sysconfig.get_config_var("BINDIR")
+    name = sysconfig.get_config_var("PYTHON")
+    if not name:
+        name = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    if bindir:
+        guess = os.path.join(bindir, name)
+        if os.path.isfile(guess):
+            return guess
+    found = shutil.which(name) or shutil.which("python3") or shutil.which("python")
+    if found:
+        return found
+    # Nothing better available; fall back to whatever we were given.
+    return sys.executable
 
 
 def override_os_environ(test, env=None):
@@ -2383,7 +2415,7 @@ class TestCase(testtools.TestCase):
     def get_brz_command(self):
         bzr_path = self.get_brz_path()
         if bzr_path.endswith("__main__.py"):
-            return [sys.executable, "-m", "breezy"]
+            return [python_executable(), "-m", "breezy"]
         else:
             return [bzr_path]
 

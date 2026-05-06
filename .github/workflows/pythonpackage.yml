@@ -14,11 +14,9 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", '3.12', '3.13', '3.14']
-# See https://github.com/actions/toolkit/issues/399
-#        include:
-#          - os: ubuntu-latest
-#            python-version: pypy3
-#            experimental: true
+        include:
+          - os: macos-latest
+            python-version: "3.13"
       fail-fast: false
 
     steps:
@@ -74,7 +72,7 @@ jobs:
         if: "matrix.os == 'ubuntu-latest'"
       - name: Test suite run (Mac OS)
         run: |
-          ./brz selftest --subunit2 | subunit-filter --fixup-expected-failures=xfail.macos -s --passthrough | subunit2pyunit
+          ./brz selftest -v
         env:
           PYTHONHASHSEED: random
           BRZ_PLUGIN_PATH: -site:-user

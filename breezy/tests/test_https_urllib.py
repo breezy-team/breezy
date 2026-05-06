@@ -28,9 +28,16 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
         return config.MemoryStack(content.encode("utf-8"))
 
     def test_default_exists(self):
-        """Check that the default we provide exists for the tested platform."""
+        """Check that the default we provide exists for the tested platform.
+
+        On Windows and macOS Breezy doesn't ship a path; the SSL context
+        loads the OS trust store via ``SSLContext.load_default_certs()``.
+        On Linux/BSD we point at whichever known PEM bundle is present.
+        """
         stack = self.get_stack("")
-        self.assertPathExists(stack.get("ssl.ca_certs"))
+        ca_certs = stack.get("ssl.ca_certs")
+        if ca_certs is not None:
+            self.assertPathExists(ca_certs)
 
     def test_specified(self):
         self.build_tree(["cacerts.pem"])
