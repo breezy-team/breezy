@@ -410,6 +410,13 @@ class ContentsConflict(_mod_conflicts.Conflict):
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
+    # Per-process registry of held index lockfiles, keyed by absolute path.
+    # On Windows an open lockfile cannot be deleted, so `break_lock` from a
+    # sibling GitWorkingTree (e.g. one returned by reopening the same control
+    # directory) needs the holder's GitFile so it can abort it before
+    # unlinking `index.lock`.
+    _held_index_locks: "dict[str, object]" = {}
+
     def __init__(self, controldir, repo, branch):
         """Initialize a Git working tree.
 
@@ -527,6 +534,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 )
             except FileLocked as err:
                 raise errors.LockContention("index") from err
+            self._held_index_locks[
+                self.control_transport.local_abspath("index.lock")
+            ] = self._index_file
             self._read_index()
         elif self._lock_mode == "r":
             raise errors.ReadOnlyError(self)
@@ -587,6 +597,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         This removes index.lock if it exists and breaks the branch lock.
         """
+        # If another GitWorkingTree in this process holds the index lock,
+        # abort its lock file first — Windows refuses to unlink a file with
+        # an open writable handle.
+        lock_path = self.control_transport.local_abspath("index.lock")
+        held = self._held_index_locks.pop(lock_path, None)
+        if held is not None:
+            with contextlib.suppress(Exception):
+                held.abort()
         with contextlib.suppress(_mod_transport.NoSuchFile):
             self.control_transport.delete("index.lock")
         self.branch.break_lock()
@@ -617,6 +635,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     # Something else already triggered a write of the index
                     # file by calling .flush()
                     self._index_file.abort()
+                self._held_index_locks.pop(
+                    self.control_transport.local_abspath("index.lock"), None
+                )
                 self._index_file = None
             self._lock_mode = None
             self.index = None
