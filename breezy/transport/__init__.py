@@ -102,6 +102,7 @@ from dromedary.errors import (
 from dromedary.http import (
     set_auth_header_trace,
     set_credential_lookup,
+    set_token_provider,
     set_user_agent,
 )
 
@@ -234,6 +235,24 @@ def _breezy_credential_lookup(
 
 
 set_credential_lookup(_breezy_credential_lookup)
+
+
+def _breezy_token_provider(protocol, host, port=None, path=None):
+    """Return a preemptive bearer token from authentication.conf.
+
+    The dromedary HTTP client invokes this before each request that
+    has no explicit ``Authorization`` header. We delegate to
+    ``AuthenticationConfig.get_token`` so a single ``token`` field
+    in ``authentication.conf`` (typically populated by ``brz
+    gh-login`` / ``brz gitlab-login``) authenticates HTTP fetch and
+    push without a 401 challenge.
+    """
+    from breezy import config
+
+    return config.AuthenticationConfig().get_token(protocol, host, port=port, path=path)
+
+
+set_token_provider(_breezy_token_provider)
 
 
 def _breezy_auth_header_trace(header_name):

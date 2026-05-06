@@ -4619,6 +4619,38 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertEqual(CREDENTIALS, credentials)
 
 
+class TestAuthenticationGetToken(tests.TestCaseInTempDir):
+    """Tests for ``AuthenticationConfig.get_token``."""
+
+    def _seed(self, **kwargs):
+        conf = config.AuthenticationConfig()
+        conf._get_config().update({"site": kwargs})
+        conf._save()
+        return conf
+
+    def test_no_section_returns_pair_of_none(self):
+        conf = config.AuthenticationConfig()
+        self.assertEqual((None, None), conf.get_token("https", "example.com"))
+
+    def test_section_without_token_returns_pair_of_none(self):
+        conf = self._seed(scheme="https", host="example.com", user="alice")
+        self.assertEqual((None, None), conf.get_token("https", "example.com"))
+
+    def test_token_defaults_scheme_to_bearer(self):
+        conf = self._seed(scheme="https", host="example.com", token="abc")
+        self.assertEqual(("abc", "Bearer"), conf.get_token("https", "example.com"))
+
+    def test_token_scheme_override_is_returned(self):
+        conf = self._seed(
+            scheme="https", host="example.com", token="abc", token_scheme="token"
+        )
+        self.assertEqual(("abc", "token"), conf.get_token("https", "example.com"))
+
+    def test_host_mismatch_returns_pair_of_none(self):
+        conf = self._seed(scheme="https", host="example.com", token="abc")
+        self.assertEqual((None, None), conf.get_token("https", "other.com"))
+
+
 class TestAuthenticationConfig(tests.TestCaseInTempDir):
     """Test AuthenticationConfig behaviour."""
 

@@ -1352,6 +1352,102 @@ def _setup_authentication_config(**kwargs):
     conf._save()
 
 
+class TestBearerTokenAuth(tests.TestCaseInTempDir):
+    """End-to-end coverage of bearer-token auth driven by
+    ``authentication.conf``. Spins up a stdlib ``HTTPServer`` so we
+    can observe the ``Authorization`` header dromedary actually puts
+    on the wire when breezy's token provider is in play.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        class _Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.server.last_authorization = self.headers.get("Authorization")
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+            def log_message(self, *args, **kwargs):
+                pass
+
+        self._server = HTTPServer(("127.0.0.1", 0), _Handler)
+        self._server.last_authorization = None
+        self._thread = threading.Thread(target=self._server.serve_forever)
+        self._thread.daemon = True
+        self._thread.start()
+        self.addCleanup(self._stop_server)
+
+    def _stop_server(self):
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
+
+    def _url(self, path="/"):
+        host, port = self._server.server_address
+        return f"http://{host}:{port}{path}"
+
+    def _make_transport(self):
+        # ``transport.get_transport_from_url`` would route through
+        # the registry, but for these tests we only need a bare
+        # HttpTransport — the request path is what we want to
+        # observe, not transport registration.
+        from dromedary.http.urllib import HttpTransport
+
+        return HttpTransport(self._url("/"))
+
+    def test_token_attached_for_matching_host(self):
+        host = self._server.server_address[0]
+        port = self._server.server_address[1]
+        _setup_authentication_config(
+            scheme="http", host=host, port=port, token="abc123"
+        )
+        t = self._make_transport()
+        resp = t.request("GET", self._url("/foo"))
+        self.assertEqual(200, resp.status)
+        self.assertEqual("Bearer abc123", self._server.last_authorization)
+
+    def test_token_scheme_override_attached(self):
+        host = self._server.server_address[0]
+        port = self._server.server_address[1]
+        _setup_authentication_config(
+            scheme="http",
+            host=host,
+            port=port,
+            token="abc123",
+            token_scheme="token",
+        )
+        t = self._make_transport()
+        resp = t.request("GET", self._url("/"))
+        self.assertEqual(200, resp.status)
+        self.assertEqual("token abc123", self._server.last_authorization)
+
+    def test_no_token_for_mismatched_host(self):
+        _setup_authentication_config(
+            scheme="http", host="other.invalid", token="abc123"
+        )
+        t = self._make_transport()
+        resp = t.request("GET", self._url("/"))
+        self.assertEqual(200, resp.status)
+        self.assertIsNone(self._server.last_authorization)
+
+    def test_explicit_authorization_wins(self):
+        host = self._server.server_address[0]
+        port = self._server.server_address[1]
+        _setup_authentication_config(
+            scheme="http", host=host, port=port, token="abc123"
+        )
+        t = self._make_transport()
+        resp = t.request(
+            "GET", self._url("/"), headers={"Authorization": "Custom keep-me"}
+        )
+        self.assertEqual(200, resp.status)
+        self.assertEqual("Custom keep-me", self._server.last_authorization)
+
+
 class TestAuth(http_utils.TestCaseWithWebserver):
     """Test authentication scheme."""
 

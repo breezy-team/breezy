@@ -2073,7 +2073,10 @@ class AuthenticationConfig:
         )
         if credentials is None:
             return None, None
-        return credentials.get("token"), credentials.get("token_scheme") or "Bearer"
+        token = credentials.get("token")
+        if token is None:
+            return None, None
+        return token, credentials.get("token_scheme") or "Bearer"
 
     def set_credentials(
         self,
