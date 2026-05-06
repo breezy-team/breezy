@@ -203,6 +203,15 @@ def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
 class TransportRefsContainer(RefsContainer):
     """Refs container that reads refs from a transport."""
 
+    # Process-wide registry of currently-held lockfile handles, keyed by the
+    # absolute filesystem path of the `.lock` file. Entries are populated by
+    # `lock_ref` and consumed by `unlock_ref` so a `break_lock` from another
+    # `TransportRefsContainer` instance (e.g. a parallel `Branch.open` of the
+    # same on-disk repo) can drop the holder's open file handle before
+    # unlinking the lock file. Without this, Windows refuses to delete a
+    # file that is still open and `break_lock` fails with `os error 32`.
+    _held_locks: dict[str, object] = {}
+
     def __init__(self, transport, worktree_transport=None):
         """Initialize the TransportRefsContainer.
 
@@ -330,6 +339,12 @@ class TransportRefsContainer(RefsContainer):
         try:
             f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
+            return None
+        except ReadError:
+            # The ref name resolves to a directory rather than a file.
+            # On Windows transport.get raises this immediately; on POSIX
+            # it surfaces from the subsequent read instead. Either way,
+            # there's no ref to read.
             return None
         with f:
             try:
@@ -469,9 +484,20 @@ class TransportRefsContainer(RefsContainer):
             name: Name of the reference to unlock.
         """
         transport = self.worktree_transport if name == b"HEAD" else self.transport
-        lockname = name + b".lock"
+        lockname = urlutils.quote_from_bytes(name + b".lock")
+        # If anyone in this process holds the lock, drop the file handle
+        # first; Windows refuses to delete a file with an open handle.
+        try:
+            lock_key = transport.local_abspath(lockname)
+        except NotLocalUrl:
+            lock_key = None
+        if lock_key is not None:
+            held = self._held_locks.pop(lock_key, None)
+            if held is not None:
+                with contextlib.suppress(Exception):
+                    held.abort()
         with contextlib.suppress(NoSuchFile):
-            transport.delete(urlutils.quote_from_bytes(lockname))
+            transport.delete(lockname)
 
     def lock_ref(self, name):
         """Lock a reference for exclusive access.
@@ -502,14 +528,22 @@ class TransportRefsContainer(RefsContainer):
             except FileLocked as e:
                 raise LockContention(name, e) from e
             else:
+                lock_key = transport.local_abspath(lockname)
+                self._held_locks[lock_key] = gf
 
                 def unlock():
-                    try:
-                        transport.delete(lockname)
-                    except NoSuchFile as err:
-                        raise LockBroken(lockname) from err
-                    # GitFile.abort doesn't care if the lock has already
-                    # disappeared
+                    # gf.abort() closes the file handle AND removes the
+                    # lockfile from disk. On Windows we can't delete the
+                    # lockfile while the handle is still open, so a prior
+                    # `break_lock` will have already popped us from
+                    # `_held_locks` and aborted gf to clear the way. Treat
+                    # an absent registry entry the same as a missing
+                    # lockfile and raise LockBroken.
+                    still_registered = self._held_locks.pop(lock_key, None) is not None
+                    if not transport.has(lockname):
+                        if still_registered:
+                            gf.abort()
+                        raise LockBroken(lockname)
                     gf.abort()
 
                 return LogicalLockResult(unlock)
@@ -1052,8 +1086,8 @@ class TransportObjectStore(PackBasedObjectStore):
         if sys.platform == "win32":
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
-            with suppress(NoSuchFile):
-                self.transport.remove(target_pack_name)
+            with contextlib.suppress(NoSuchFile):
+                self.pack_transport.delete(target_pack_name)
 
         if path:
             f.close()

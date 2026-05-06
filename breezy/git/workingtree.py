@@ -70,7 +70,7 @@ from .. import transport as _mod_transport
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
-from .mapping import decode_git_path, encode_git_path, mode_kind
+from .mapping import decode_git_path, encode_git_path, mode_is_executable, mode_kind
 from .tree import MutableGitIndexTree
 
 CONFLICT_SUFFIXES = [".BASE", ".OTHER", ".THIS"]
@@ -413,6 +413,13 @@ class ContentsConflict(_mod_conflicts.Conflict):
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
+    # Per-process registry of held index lockfiles, keyed by absolute path.
+    # On Windows an open lockfile cannot be deleted, so `break_lock` from a
+    # sibling GitWorkingTree (e.g. one returned by reopening the same control
+    # directory) needs the holder's GitFile so it can abort it before
+    # unlinking `index.lock`.
+    _held_index_locks: "dict[str, object]" = {}
+
     def __init__(self, controldir, repo, branch):
         """Initialize a Git working tree.
 
@@ -530,6 +537,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 )
             except FileLocked as err:
                 raise errors.LockContention("index") from err
+            self._held_index_locks[
+                self.control_transport.local_abspath("index.lock")
+            ] = self._index_file
             self._read_index()
         elif self._lock_mode == "r":
             raise errors.ReadOnlyError(self)
@@ -590,7 +600,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
         This removes index.lock if it exists and breaks the branch lock.
         """
-        with contextlib.suppress(NoSuchFile):
+        # If another GitWorkingTree in this process holds the index lock,
+        # abort its lock file first — Windows refuses to unlink a file with
+        # an open writable handle.
+        lock_path = self.control_transport.local_abspath("index.lock")
+        held = self._held_index_locks.pop(lock_path, None)
+        if held is not None:
+            with contextlib.suppress(Exception):
+                held.abort()
+        with contextlib.suppress(_mod_transport.NoSuchFile):
             self.control_transport.delete("index.lock")
         self.branch.break_lock()
 
@@ -620,6 +638,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     # Something else already triggered a write of the index
                     # file by calling .flush()
                     self._index_file.abort()
+                self._held_index_locks.pop(
+                    self.control_transport.local_abspath("index.lock"), None
+                )
                 self._index_file = None
             self._lock_mode = None
             self.index = None
@@ -950,7 +971,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
 
                 for name in os.listdir(abs_user_dir):
-                    subp = os.path.join(user_dir, name)
+                    subp = posixpath.join(user_dir, name) if user_dir else name
                     if self.is_control_filename(subp) or self.mapping.is_special_file(
                         subp
                     ):
@@ -995,7 +1016,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = os.fsencode(self.abspath(from_dir))
+        sep = os.fsencode(os.sep)
         for dirpath, dirnames, filenames in os.walk(encoded_from_dir):
+            # Normalise to '/' so callers don't see platform-native
+            # separators (Windows produces b'\\' which downstream path
+            # arithmetic, e.g. posixpath.relpath, can't undo).
+            if sep != b"/":
+                dirpath = dirpath.replace(sep, b"/")
             dir_relpath = dirpath[len(self.basedir) :].strip(b"/")
             if self.controldir.is_control_filename(os.fsdecode(dir_relpath)):
                 continue
@@ -1003,14 +1030,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     dirnames.remove(name)
                     continue
-                relpath = os.path.join(dir_relpath, name)
-                if not recurse_nested and self._directory_is_tree_reference(
-                    os.fsdecode(relpath)
-                ):
+                relpath = posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
+                if not recurse_nested and self._directory_is_tree_reference(relpath):
                     dirnames.remove(name)
                 if include_dirs:
-                    yield os.fsdecode(relpath)
-                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
+                    yield relpath
+                    if not self.is_versioned(relpath):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -1020,8 +1045,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     continue
                 if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
-                yp = os.path.join(dir_relpath, name)
-                yield os.fsdecode(yp)
+                yield posixpath.join(os.fsdecode(dir_relpath), os.fsdecode(name))
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree."""
@@ -1229,19 +1253,34 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        """Check if a file is executable based on the basis tree.
+        """Check if a file is executable based on the index or basis tree.
 
-        This method checks executability from the basis tree when the
-        filesystem doesn't support executable bits.
+        This method is used when the filesystem doesn't support executable
+        bits (notably Windows). It first consults the Git index, falling back
+        to the basis tree for paths not yet recorded there.
 
         Args:
             path: The file path to check.
             stat_result: The os.stat result (unused).
 
         Returns:
-            True if the file is executable according to the basis tree.
+            True if the file is executable.
         """
-        return self.basis_tree().is_executable(path)
+        try:
+            (index, subpath) = self._lookup_index(encode_git_path(path))
+        except KeyError:
+            pass
+        else:
+            try:
+                entry = index[subpath]
+            except KeyError:
+                pass
+            else:
+                return mode_is_executable(entry.mode)
+        try:
+            return self.basis_tree().is_executable(path)
+        except _mod_transport.NoSuchFile:
+            return False
 
     def stored_kind(self, path):
         """Return the stored file kind for a path.
@@ -1319,6 +1358,80 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items on case-insensitive FS."""
+        with self.lock_read():
+            # Treat Windows as case-insensitive even when
+            # `_detect_case_handling` thought otherwise — the underlying
+            # filesystem (NTFS in default config) treats names case
+            # insensitively, and the test harness' temp dirs are no
+            # exception.
+            if not self.case_sensitive or sys.platform == "win32":
+
+                def normalize(x):
+                    return x.lower()
+            elif sys.platform == "darwin":
+                import unicodedata
+
+                def normalize(x):
+                    return unicodedata.normalize("NFC", x)
+            else:
+                normalize = None
+            for path in paths:
+                stripped = path.strip("/")
+                if normalize is None:
+                    yield stripped
+                else:
+                    yield self._canonicalize_path_via_index(stripped, normalize)
+
+    def _canonicalize_path_via_index(self, path, normalize):
+        """Map ``path`` to its canonical form by walking the Git index.
+
+        Generic ``tree.get_canonical_path`` relies on ``iter_child_entries``,
+        which mixes filesystem and index state in ways that are unreliable
+        on case-insensitive Windows filesystems. Walk the index entries
+        directly instead so the comparison is purely byte-level.
+        """
+        if path == "":
+            return ""
+
+        # Walk the index unconditionally: dulwich's `__contains__` may apply a
+        # case-folding normalizer on Windows, so an exact-match short-circuit
+        # would silently return the input casing.
+        index_paths = [decode_git_path(p) for p, _ in self._recurse_index_entries()]
+        components = path.split("/")
+        canonical = ""
+        for idx, elt in enumerate(components):
+            if not elt:
+                continue
+            wanted = normalize(elt)
+            prefix = canonical + "/" if canonical else ""
+            best = None
+            seen_dirs: set[str] = set()
+            for ip in index_paths:
+                if not ip.startswith(prefix):
+                    continue
+                rest = ip[len(prefix) :]
+                if "/" in rest:
+                    head = rest.split("/", 1)[0]
+                    if head in seen_dirs:
+                        continue
+                    seen_dirs.add(head)
+                    candidate = head
+                else:
+                    candidate = rest
+                if candidate == elt:
+                    best = candidate
+                    break
+                if normalize(candidate) == wanted and best is None:
+                    best = candidate
+            if best is None:
+                # No match for this component; keep the remainder as-is.
+                tail = components[idx:]
+                return canonical + ("/" if canonical else "") + "/".join(tail)
+            canonical = canonical + "/" + best if canonical else best
+        return canonical
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False

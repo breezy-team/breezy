@@ -18,7 +18,7 @@
 
 import socket
 
-from breezy import revision
+from breezy import revision, tests
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -56,6 +56,8 @@ class TestChangesFrom(TestCaseWithWorkingTree):
         self.assertEqual([], d.modified)
 
     def test_socket(self):
+        if not hasattr(socket, "AF_UNIX"):
+            raise tests.TestSkipped("AF_UNIX is not available on this platform")
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.bind("tree/socketpath")
         s.listen(1)

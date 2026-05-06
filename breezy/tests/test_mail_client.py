@@ -230,9 +230,8 @@ class TestClaws(tests.TestCase):
         cmdline = claws._get_compose_commandline(
             "jrandom@example.org", "\xb5cosm of fun!", "file%"
         )
-        subject_string = urlutils.quote(
-            "\xb5cosm of fun!".encode(osutils.get_user_encoding(), "replace")
-        )
+        # ``_encode_safe`` is now a no-op, so the URL is UTF-8 quoted.
+        subject_string = urlutils.quote("\xb5cosm of fun!")
         self.assertEqual(
             [
                 "--compose",

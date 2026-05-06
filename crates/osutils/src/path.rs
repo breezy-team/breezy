@@ -52,11 +52,22 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
     use winreg::enums::HKEY_LOCAL_MACHINE;
     use winreg::RegKey;
-    let exts = env::var("PATHEXT").unwrap_or_default();
-    let exts = exts
+    let pathext = env::var("PATHEXT").unwrap_or_default();
+    let pathext_exts = pathext
         .split(';')
-        .map(|ext| ext.to_lowercase())
+        .filter(|ext| !ext.is_empty())
+        .map(|ext| {
+            if ext.starts_with('.') {
+                ext.to_lowercase()
+            } else {
+                format!(".{}", ext.to_lowercase())
+            }
+        })
         .collect::<Vec<_>>();
+    // If `name` already has an extension, only try that exact one; otherwise
+    // try `name` itself plus each PATHEXT entry. Always probe `name` with no
+    // extra extension first, so e.g. `find_executable_on_path("foo.bat")`
+    // matches `foo.bat` directly rather than `foo.bat.exe`.
     let (name, exts) = {
         let path = PathBuf::from(name);
         let ext = path
@@ -70,10 +81,15 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
             .to_str()
             .unwrap_or_default()
             .to_owned();
-        if !exts.is_empty() && !exts.contains(&ext) {
-            (stem, vec![ext])
+        if !ext.is_empty() {
+            // User specified a specific extension; only look for that.
+            (name.to_owned(), vec![String::new()])
+        } else if pathext_exts.is_empty() {
+            (stem, vec![String::new()])
         } else {
-            (stem, exts)
+            let mut e = vec![String::new()];
+            e.extend(pathext_exts);
+            (stem, e)
         }
     };
     let paths = env::var("PATH").unwrap_or_default();
@@ -86,11 +102,34 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
             }
         }
     }
-    if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE)
+    // Fall back to the App Paths registry. Each application registers under
+    // a subkey like `App Paths\\iexplore.exe`, with the executable's full
+    // path as the (default) value of that subkey.
+    if let Ok(app_paths) = RegKey::predef(HKEY_LOCAL_MACHINE)
         .open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths")
     {
-        if let Ok(value) = reg_key.get_value::<String, _>(name) {
-            return Some(value);
+        let mut candidates: Vec<String> = Vec::new();
+        if name.contains('.') {
+            candidates.push(name.clone());
+        } else {
+            // Try the bare name plus name + each PATHEXT extension.
+            candidates.push(name.clone());
+            for ext in &exts {
+                if !ext.is_empty() {
+                    candidates.push(format!("{}{}", name, ext));
+                }
+            }
+            // Default to .exe if PATHEXT is empty (matches common usage).
+            if !candidates.iter().any(|c| c.ends_with(".exe")) {
+                candidates.push(format!("{}.exe", name));
+            }
+        }
+        for candidate in &candidates {
+            if let Ok(subkey) = app_paths.open_subkey(candidate) {
+                if let Ok(value) = subkey.get_value::<String, _>("") {
+                    return Some(value);
+                }
+            }
         }
     }
     None
@@ -167,21 +206,45 @@ pub fn inaccessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> 
     })
 }
 
-/// Get the unicode normalized path, and if you can access the file.
+/// Override for the platform default behaviour of [`normalized_filename`].
 ///
-/// On platforms where the system normalizes filenames (Mac OSX),
-/// you can access a file by any path which will normalize correctly.
-/// On platforms where the system does not normalize filenames
-/// (everything else), you have to access a file by its exact path.
-///
-/// Internally, bzr only supports NFC normalization, since that is
-/// the standard for XML documents.
-///
-/// So return the normalized path, and a flag indicating if the file
-/// can be accessed by that path.
-#[cfg(target_os = "macos")]
-pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
-    accessible_normalized_filename(path)
+/// Tests need to exercise both the accessible (macOS-like) and inaccessible
+/// (Linux/Windows-like) code paths regardless of the host platform. Setting a
+/// non-`Auto` mode forces the corresponding implementation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NormalizationMode {
+    /// Use the platform default: accessible on macOS, inaccessible elsewhere.
+    Auto,
+    /// Force `accessible_normalized_filename` (filesystem normalizes paths).
+    Accessible,
+    /// Force `inaccessible_normalized_filename` (filesystem does not).
+    Inaccessible,
+}
+
+thread_local! {
+    static NORMALIZATION_MODE: std::cell::Cell<NormalizationMode> =
+        const { std::cell::Cell::new(NormalizationMode::Auto) };
+}
+
+/// Set the normalization mode for the current thread, returning the previous mode.
+pub fn set_normalization_mode(mode: NormalizationMode) -> NormalizationMode {
+    NORMALIZATION_MODE.with(|m| m.replace(mode))
+}
+
+/// Return the normalization mode for the current thread.
+pub fn normalization_mode() -> NormalizationMode {
+    NORMALIZATION_MODE.with(|m| m.get())
+}
+
+fn platform_default_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
+    #[cfg(target_os = "macos")]
+    {
+        accessible_normalized_filename(path)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        inaccessible_normalized_filename(path)
+    }
 }
 
 /// Get the unicode normalized path, and if you can access the file.
@@ -196,10 +259,14 @@ pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
 ///
 /// So return the normalized path, and a flag indicating if the file
 /// can be accessed by that path.
-
-#[cfg(not(target_os = "macos"))]
+///
+/// The behaviour can be overridden for testing via [`set_normalization_mode`].
 pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
-    inaccessible_normalized_filename(path)
+    match normalization_mode() {
+        NormalizationMode::Auto => platform_default_normalized_filename(path),
+        NormalizationMode::Accessible => accessible_normalized_filename(path),
+        NormalizationMode::Inaccessible => inaccessible_normalized_filename(path),
+    }
 }
 
 pub fn normalizes_filenames() -> bool {
@@ -297,40 +364,67 @@ pub mod win32 {
         use path_clean::PathClean;
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
-        Ok(fixdrive(&fix_separators(ap.as_path())))
+        let ap = fixdrive(&fix_separators(ap.as_path()));
+        // ``path_clean`` may leave a trailing ``/`` on UNC paths like
+        // ``//HOST/share/``; strip it so the result mirrors what
+        // ``ntpath.abspath`` returns on Windows.
+        let s = ap.to_str().unwrap_or_default();
+        let trimmed = if s.len() > 3 && s.ends_with('/') {
+            PathBuf::from(&s[..s.len() - 1])
+        } else {
+            ap
+        };
+        Ok(trimmed)
     }
 
     pub fn normpath<P: AsRef<Path>>(p: P) -> PathBuf {
-        let mut parts = Vec::new();
+        let mut prefix: Option<&std::ffi::OsStr> = None;
+        let mut has_root = false;
+        let mut parts: Vec<&std::ffi::OsStr> = Vec::new();
 
         // Split the path into its components
         let p = p.as_ref().to_path_buf();
         for component in p.components() {
             match component {
-                // Ignore empty components and "."
-                std::path::Component::Normal(c) if c != "." => parts.push(c),
-                // Pop the last component if ".." is encountered
-                std::path::Component::Normal(c) if c == ".." => if parts.pop().is_some() {},
-                // Ignore root components ("\" on Windows)
-                std::path::Component::RootDir => {}
-                // Ignore non-Unicode components
-                _ => {
-                    return p;
+                // Drop "." entries; they don't affect the path.
+                std::path::Component::CurDir => {}
+                // Pop the last component for "..".
+                std::path::Component::ParentDir => {
+                    parts.pop();
                 }
+                std::path::Component::RootDir => {
+                    has_root = true;
+                }
+                std::path::Component::Prefix(p) => {
+                    prefix = Some(p.as_os_str());
+                }
+                std::path::Component::Normal(c) => parts.push(c),
             }
         }
 
-        // If the path was empty or only contained root components, return the root component(s)
-        if parts.is_empty() {
-            return PathBuf::from(if p.to_str().unwrap().starts_with('\\') {
+        // Reassemble: prefix (drive letter or UNC), root marker, then
+        // the surviving components.
+        if prefix.is_none() && parts.is_empty() {
+            let raw = p.to_str().unwrap();
+            return PathBuf::from(if raw.starts_with('\\') {
                 "\\"
+            } else if raw.starts_with('/') {
+                "/"
             } else {
                 ""
             });
         }
 
-        // Join the normalized components into a path string
         let mut path = PathBuf::new();
+        if let Some(prefix) = prefix {
+            path.push(prefix);
+        }
+        if has_root {
+            // PathBuf::push of a relative segment after a drive prefix on
+            // Windows would otherwise produce "C:foo" rather than "C:/foo";
+            // pushing the absolute root marker first forces the separator.
+            path.push(std::path::MAIN_SEPARATOR_STR);
+        }
         for part in &parts {
             path.push(part);
         }
@@ -352,17 +446,104 @@ pub mod win32 {
         fix_separators(&p)
     }
 
+    /// Strip the `\\?\` extended-length path prefix that
+    /// `std::fs::canonicalize` adds on Windows. The prefix lets paths exceed
+    /// MAX_PATH but breaks downstream code that expects a regular drive path.
+    /// `ntpath.realpath` strips it when the result still fits, and we mirror
+    /// that behaviour here.
+    fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
+        let s = match path.to_str() {
+            Some(s) => s,
+            None => return path,
+        };
+        if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+            // \\?\UNC\server\share\... -> \\server\share\...
+            return PathBuf::from(format!(r"\\{rest}"));
+        }
+        if let Some(rest) = s.strip_prefix(r"\\?\") {
+            // Only strip when followed by a drive letter; \\?\Volume{...}
+            // and similar forms don't have a non-verbatim equivalent.
+            let bytes = rest.as_bytes();
+            if bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic() {
+                return PathBuf::from(rest);
+            }
+        }
+        path
+    }
+
+    /// Canonicalise the longest prefix of `f` that exists on disk, leaving
+    /// the rest as-is. `std::fs::canonicalize` requires the entire path to
+    /// exist, but Python's `ntpath.realpath` (and the rest of the codebase)
+    /// expects realpath to be tolerant of missing tail components.
+    fn canonicalize_existing_prefix(f: &Path) -> std::io::Result<PathBuf> {
+        match std::fs::canonicalize(f) {
+            Ok(p) => Ok(p),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                let parent = match f.parent() {
+                    Some(p) if !p.as_os_str().is_empty() => p,
+                    // No parent: return absolute path without canonicalisation.
+                    _ => return abspath(f),
+                };
+                let base = match f.file_name() {
+                    Some(b) => b,
+                    None => return abspath(f),
+                };
+                let mut canonical_parent = canonicalize_existing_prefix(parent)?;
+                canonical_parent.push(base);
+                Ok(canonical_parent)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
-        std::fs::canonicalize(f)
+        let canonical = canonicalize_existing_prefix(f)?;
+        let stripped = strip_verbatim_prefix(canonical);
+        Ok(fixdrive(fix_separators(stripped.as_path()).as_path()))
     }
 
     #[cfg(test)]
     mod test {
+        use super::strip_verbatim_prefix;
+        use std::path::PathBuf;
+
         #[test]
         fn test_abspath() {
             assert_eq!(
                 super::abspath(std::path::Path::new("C:/foo/bar")).unwrap(),
                 std::path::Path::new("C:/foo/bar")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_drive() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\C:\Users\foo")),
+                PathBuf::from(r"C:\Users\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_unc() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\UNC\server\share\foo")),
+                PathBuf::from(r"\\server\share\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_unknown_kept() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"\\?\Volume{abc}\foo")),
+                PathBuf::from(r"\\?\Volume{abc}\foo")
+            );
+        }
+
+        #[test]
+        fn test_strip_verbatim_prefix_no_prefix() {
+            assert_eq!(
+                strip_verbatim_prefix(PathBuf::from(r"C:\Users\foo")),
+                PathBuf::from(r"C:\Users\foo")
             );
         }
     }
@@ -375,7 +556,11 @@ pub mod posix {
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
         use path_clean::PathClean;
-        if path.is_absolute() {
+        // POSIX semantics: any path starting with '/' is absolute, even on
+        // Windows where ``Path::is_absolute`` would otherwise demand a
+        // drive letter.
+        let starts_with_slash = path.to_str().map(|s| s.starts_with('/')).unwrap_or(false);
+        if path.is_absolute() || starts_with_slash {
             return Ok(path.to_path_buf());
         }
         let cwd = std::env::current_dir()?;
@@ -384,27 +569,29 @@ pub mod posix {
     }
 
     pub fn normpath(path: &Path) -> PathBuf {
-        let mut stack = Vec::new();
+        let mut absolute = false;
+        let mut stack: Vec<&OsStr> = Vec::new();
 
         for component in path.components() {
             match component {
                 Component::Prefix(_) => {
-                    // skip the prefix, if any
-                    stack.clear();
-                    stack.push(component.as_os_str());
+                    // POSIX semantics: drop any drive-letter prefix that
+                    // Windows might have parsed.
                 }
                 Component::RootDir => {
-                    // keep the root
+                    absolute = true;
                     stack.clear();
-                    stack.push(component.as_os_str());
                 }
                 Component::CurDir => {
                     // skip the current directory
                 }
                 Component::ParentDir => {
-                    if stack.len() > 1 {
-                        // pop the previous component if not the root
+                    if !stack.is_empty() {
                         stack.pop();
+                    } else if !absolute {
+                        // ".." with no preceding component is significant
+                        // for relative paths; preserve it.
+                        stack.push(OsStr::new(".."));
                     }
                 }
                 Component::Normal(c) => {
@@ -413,12 +600,26 @@ pub mod posix {
             }
         }
 
-        // Join the path components back
-        let mut result = PathBuf::new();
-        for c in stack {
-            result.push(c);
-        }
-        result
+        // Reassemble with explicit forward slashes so the result is the same
+        // string regardless of host platform; ``Path::join`` would otherwise
+        // use `\` on Windows when re-rendering a POSIX path.
+        let parts: Vec<String> = stack
+            .iter()
+            .map(|s| s.to_string_lossy().into_owned())
+            .collect();
+        let joined = parts.join("/");
+        let rendered = if absolute {
+            if joined.is_empty() {
+                "/".to_string()
+            } else {
+                format!("/{joined}")
+            }
+        } else if joined.is_empty() {
+            ".".to_string()
+        } else {
+            joined
+        };
+        PathBuf::from(rendered)
     }
 
     pub fn realpath<P: AsRef<Path>>(filename: P) -> std::io::Result<PathBuf> {
@@ -554,7 +755,13 @@ pub fn relpath(base: &Path, path: &Path) -> Option<PathBuf> {
         }
     }
 
-    Some(s.into_iter().rev().collect::<PathBuf>())
+    let result: PathBuf = s.into_iter().rev().collect();
+    // breezy paths use forward slashes everywhere; PathBuf::collect on
+    // Windows joins components with '\\', which breaks downstream
+    // dirstate lookups that store '/'.
+    #[cfg(windows)]
+    let result = win32::fix_separators(result.as_path());
+    Some(result)
 }
 
 pub fn normalizepath<P: AsRef<Path>>(f: P) -> std::io::Result<PathBuf> {

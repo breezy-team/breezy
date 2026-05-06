@@ -26,7 +26,7 @@ from io import BytesIO
 
 from dulwich.repo import Repo
 
-from ...tests import TestCaseWithTransport, subprocess_pythonpath
+from ...tests import TestCaseWithTransport, python_executable, subprocess_pythonpath
 from ...tests.features import PathFeature
 from ..git_remote_helper import RemoteHelper, fetch, open_local_dir
 from ..object_store import get_object_store
@@ -102,7 +102,12 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         if site.USER_BASE is not None:
             env["PYTHONUSERBASE"] = site.USER_BASE
         p = subprocess.Popen(
-            [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
+            [
+                python_executable(),
+                git_remote_bzr_path,
+                local_path,
+                remote_dir.user_url,
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -111,11 +116,14 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         (out, err) = p.communicate(b"capabilities\n")
         lines = out.splitlines()
         self.assertIn(b"push", lines, f"no 'push' in {lines!r}, error: {err!r}")
+        # subprocess stderr on Windows lands as text mode by default,
+        # so '\n' becomes '\r\n' on the way out. Normalise before
+        # comparing.
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "
             b"for large repositories.\n",
-            err,
+            err.replace(b"\r\n", b"\n"),
         )
 
 

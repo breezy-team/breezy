@@ -65,7 +65,7 @@ class GrepOptions:
     pattern = None
     include = None
     exclude = None
-    fixed_string = False
+    fixed_string: "bool | None" = False
     files_with_matches = False
     files_without_match = False
     color = None

@@ -37,10 +37,12 @@ import pprint
 import random
 import re
 import shlex
+import shutil
 import site
 import stat
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import time
@@ -180,6 +182,36 @@ def subprocess_pythonpath():
     import dromedary
 
     return ":".join([os.path.dirname(os.path.dirname(dromedary.__file__))] + sys.path)
+
+
+def python_executable():
+    """Return a path to a real Python interpreter.
+
+    ``sys.executable`` is set from CPython's path-resolution code, which when
+    breezy is launched through the embedded ``brz`` binary can leave the
+    interpreter path pointing at the brz launcher rather than a real Python
+    (notably on macOS framework Python). Tests that spawn
+    ``[sys.executable, ...]`` then end up running brz again with arbitrary
+    script arguments, which fails. Resolve ``sys.executable`` to a usable
+    interpreter, falling back to looking next to ``sys.base_prefix`` and
+    finally to ``shutil.which``.
+    """
+    candidate = sys.executable
+    if candidate and os.path.basename(candidate).lower().startswith("python"):
+        return candidate
+    bindir = sysconfig.get_config_var("BINDIR")
+    name = sysconfig.get_config_var("PYTHON")
+    if not name:
+        name = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    if bindir:
+        guess = os.path.join(bindir, name)
+        if os.path.isfile(guess):
+            return guess
+    found = shutil.which(name) or shutil.which("python3") or shutil.which("python")
+    if found:
+        return found
+    # Nothing better available; fall back to whatever we were given.
+    return sys.executable
 
 
 def override_os_environ(test, env=None):
@@ -1373,6 +1405,31 @@ class TestCase(testtools.TestCase):
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test, f"mode mismatch {mode:o} != {mode_test:o}")
 
+    def normaliseWalkdirStat(self, stat_value):
+        """Make an os.stat_result comparable to walkdirs() output on Windows.
+
+        WorkingTree.walkdirs caches stat results with st_dev/st_ino/st_nlink
+        zeroed and timestamps stored at second precision. Tests that
+        construct expected stats via os.lstat() must collapse the same
+        fields to compare equal on Windows.
+        """
+        if sys.platform != "win32":
+            return stat_value
+        return os.stat_result(
+            (
+                stat_value.st_mode,
+                0,  # st_ino
+                0,  # st_dev
+                0,  # st_nlink
+                stat_value.st_uid,
+                stat_value.st_gid,
+                stat_value.st_size,
+                int(stat_value.st_atime),
+                int(stat_value.st_mtime),
+                int(stat_value.st_ctime),
+            )
+        )
+
     def assertEqualStat(self, expected, actual):
         """Assert that expected and actual are the same stat result.
 
@@ -1382,16 +1439,37 @@ class TestCase(testtools.TestCase):
             other than by atime.
         """
         self.assertEqual(expected.st_size, actual.st_size, "st_size did not match")
-        self.assertEqual(expected.st_mtime, actual.st_mtime, "st_mtime did not match")
-        self.assertEqual(expected.st_ctime, actual.st_ctime, "st_ctime did not match")
         if sys.platform == "win32":
-            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
-            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. We just force it to always be 0 to avoid any problems.
-            self.assertEqual(0, expected.st_dev)
-            self.assertEqual(0, actual.st_dev)
-            self.assertEqual(0, expected.st_ino)
-            self.assertEqual(0, actual.st_ino)
+            # os.fstat and os.lstat go through different Win32 APIs
+            # (GetFileInformationByHandle vs GetFileAttributesEx) which
+            # can return mtime/ctime at different precisions. Compare
+            # them with a small tolerance instead of bit-equal.
+            self.assertAlmostEqual(
+                expected.st_mtime,
+                actual.st_mtime,
+                places=2,
+                msg="st_mtime did not match",
+            )
+            self.assertAlmostEqual(
+                expected.st_ctime,
+                actual.st_ctime,
+                places=2,
+                msg="st_ctime did not match",
+            )
+        else:
+            self.assertEqual(
+                expected.st_mtime, actual.st_mtime, "st_mtime did not match"
+            )
+            self.assertEqual(
+                expected.st_ctime, actual.st_ctime, "st_ctime did not match"
+            )
+        if sys.platform == "win32":
+            # On Win32 both 'dev' and 'ino' historically couldn't be
+            # trusted, so older Python versions reported them as 0.
+            # Modern Python (3.10+) does populate them, but the values
+            # may legitimately differ between two stat calls of the same
+            # file (e.g. via different paths), so we don't try to match.
+            pass
         else:
             self.assertEqual(expected.st_dev, actual.st_dev, "st_dev did not match")
             self.assertEqual(expected.st_ino, actual.st_ino, "st_ino did not match")
@@ -1567,9 +1645,15 @@ class TestCase(testtools.TestCase):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
 
-        mode = "r" + ("b" if isinstance(content, bytes) else "")
-        with open(path, mode) as f:
-            s = f.read()
+        if isinstance(content, bytes):
+            with open(path, "rb") as f:
+                s = f.read()
+        else:
+            # newline="" disables Python's universal-newlines translation so
+            # callers can assert against an exact byte sequence (including
+            # CRLF when the file was written with `os.linesep`).
+            with open(path, newline="") as f:
+                s = f.read()
         self.assertEqualDiff(content, s)
 
     def assertDocstring(self, expected_docstring, obj):
@@ -2383,7 +2467,7 @@ class TestCase(testtools.TestCase):
     def get_brz_command(self):
         bzr_path = self.get_brz_path()
         if bzr_path.endswith("__main__.py"):
-            return [sys.executable, "-m", "breezy"]
+            return [python_executable(), "-m", "breezy"]
         else:
             return [bzr_path]
 

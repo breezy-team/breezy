@@ -29,6 +29,18 @@ fn map_gettext_error(err: gettext::Error) -> PyErr {
     }
 }
 
+fn path_to_forward_string(path: &std::path::Path, what: &str) -> PyResult<String> {
+    let s = path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| PyValueError::new_err(format!("Invalid {what}")))?;
+    if cfg!(windows) {
+        Ok(s.replace('\\', "/"))
+    } else {
+        Ok(s)
+    }
+}
+
 #[pyfunction(name = "disable_i18n")]
 fn i18n_disable_i18n() {
     breezy::i18n::disable();
@@ -94,76 +106,50 @@ fn ensure_config_dir_exists(path: Option<PathBuf>) -> PyResult<()> {
 #[pyfunction]
 fn config_dir() -> PyResult<String> {
     let path = breezy::bedding::config_dir()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))
+    path_to_forward_string(&path, "config directory")
 }
 
 #[pyfunction]
 fn _config_dir() -> PyResult<(String, String)> {
     let (path, kind) = breezy::bedding::_config_dir()?;
-
-    let path = path
-        .to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid config directory"))?;
-
+    let path = path_to_forward_string(&path, "config directory")?;
     Ok((path, kind.to_string()))
 }
 
 #[pyfunction]
 fn bazaar_config_dir() -> PyResult<String> {
     let path = breezy::bedding::bazaar_config_dir()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid bazaar config directory"))
+    path_to_forward_string(&path, "bazaar config directory")
 }
 
 #[pyfunction]
 fn config_path() -> PyResult<String> {
     let path = breezy::bedding::config_path()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid config path"))
+    path_to_forward_string(&path, "config path")
 }
 
 #[pyfunction]
 fn locations_config_path() -> PyResult<String> {
     let path = breezy::bedding::locations_config_path()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid locations config path"))
+    path_to_forward_string(&path, "locations config path")
 }
 
 #[pyfunction]
 fn authentication_config_path() -> PyResult<String> {
     let path = breezy::bedding::authentication_config_path()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid authentication config path"))
+    path_to_forward_string(&path, "authentication config path")
 }
 
 #[pyfunction]
 fn user_ignore_config_path() -> PyResult<String> {
     let path = breezy::bedding::user_ignore_config_path()?;
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid user ignore config path"))
+    path_to_forward_string(&path, "user ignore config path")
 }
 
 #[pyfunction]
 fn crash_dir() -> PyResult<String> {
     let path = breezy::bedding::crash_dir();
-
-    path.to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| PyValueError::new_err("Invalid crash directory"))
+    path_to_forward_string(&path, "crash directory")
 }
 
 #[pyfunction]
