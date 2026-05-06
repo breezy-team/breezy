@@ -1474,7 +1474,9 @@ class TestRunner(tests.TestCase):
                 self.fail("Now print that log!")
 
         bio = BytesIO()
-        out = TextIOWrapper(bio, "ascii", "backslashreplace")
+        # newline="" keeps test output line endings as plain LF on every
+        # platform — the regex below assumes \n delimiters.
+        out = TextIOWrapper(bio, "ascii", "backslashreplace", newline="")
         self.overrideAttr(osutils, "get_terminal_encoding", lambda trace=False: "ascii")
         self.run_test_runner(
             tests.TextTestRunner(stream=out), FailureWithUnicode("test_log_unicode")
@@ -2335,7 +2337,9 @@ class SelfTestHelper:
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
         bio = BytesIO()
-        output = TextIOWrapper(bio, "utf-8")
+        # newline="" disables LF→os.linesep translation, so the assertions
+        # below see plain LF terminators on every platform.
+        output = TextIOWrapper(bio, "utf-8", newline="")
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -3812,7 +3816,7 @@ class _Selftest:
 
     def _run_selftest(self, **kwargs):
         bio = BytesIO()
-        sio = TextIOWrapper(bio, "utf-8")
+        sio = TextIOWrapper(bio, "utf-8", newline="")
         self._inject_stream_into_subunit(bio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         sio.flush()

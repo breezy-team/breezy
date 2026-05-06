@@ -1082,7 +1082,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
             cwd=cwd,
         )
         (result, _err) = proc.communicate()
-        self.assertContainsRe(result.replace("\r\n", "\n"), regex)
+        self.assertContainsRe(result.replace(b"\r\n", b"\n"), regex)
 
     def test_prepare_files(self):
         output = BytesIO()
