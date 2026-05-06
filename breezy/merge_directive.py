@@ -189,7 +189,9 @@ class BaseMergeDirective:
 
         :return: a list of lines
         """
-        time_str = timestamp.format_patch_date(self.time, self.timezone)
+        from ._patch_rs import format_patch_date
+
+        time_str = format_patch_date(self.time, self.timezone)
 
         # bzrformats.rio.Stanza values must be str, but breezy passes
         # bytes for revision ids / sha1s and historically tolerated
@@ -569,7 +571,7 @@ class MergeDirective(BaseMergeDirective):
         raise errors.NotAMergeDirective(firstline)
 
     @classmethod
-    def _from_lines(klass, line_iter):
+    def _from_lines(cls, line_iter):
         stanza = rio_patch.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
@@ -704,7 +706,7 @@ class MergeDirective2(BaseMergeDirective):
             return base64.b64decode(self.bundle)
 
     @classmethod
-    def _from_lines(klass, line_iter):
+    def _from_lines(cls, line_iter):
         stanza = rio_patch.read_patch_stanza(line_iter)
         patch = None
         bundle = None

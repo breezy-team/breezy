@@ -16,6 +16,7 @@
 
 """Tree classes, representing directory at point in time."""
 
+import contextlib
 import os
 import re
 import stat
@@ -451,7 +452,7 @@ class InventoryTree(Tree):
         with self.lock_read():
             ie = self._path2ie(path)
             if ie.kind != "directory":
-                raise errors.NotADirectory(path)
+                raise transport_errors.NotADirectory(path)
             return iter(self.root_inventory.iter_sorted_children(ie.file_id))
 
     def _get_plan_merge_data(self, path, other, base):

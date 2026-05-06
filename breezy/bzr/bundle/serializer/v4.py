@@ -28,8 +28,9 @@ import re
 from io import BytesIO
 
 import fastbencode as bencode
-from bzrformats import pack, serializer
+from bzrformats import multiparent, pack, serializer
 from bzrformats import versionedfile as _mod_versionedfile
+from bzrformats.inventory import _make_delta
 
 from .... import errors, lru_cache, osutils, trace, ui
 from .... import repository as _mod_repository
@@ -1020,7 +1021,7 @@ class RevisionInstaller:
         """
         if self._repository.has_revision(revision_id):
             return
-        revision = self._source_revision_serializer.read_revision_from_string(text)
+        revision = self._source_serializer.read_revision_from_string(text)
         self._repository.add_revision(revision.revision_id, revision)
 
     def _install_signature(self, revision_id, metadata, text):

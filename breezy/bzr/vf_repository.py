@@ -64,7 +64,7 @@ from bzrformats.inventory import (
 from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
-from .. import debug, errors
+from .. import debug, errors, osutils
 from ..decorators import only_raises
 from ..repository import (
     CommitBuilder,
