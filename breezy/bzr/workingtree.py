@@ -1027,7 +1027,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 yield from stanza.to_lines()
                 first = False
 
-        from ..iterablefile import IterableFile
+        from ..osutils import IterableFile
 
         my_file = IterableFile(_lines())
         self._transport.put_file(
