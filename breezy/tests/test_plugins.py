@@ -710,7 +710,7 @@ class TestDisablePlugin(BaseTestPlugins):
         self.create_plugin("good")
         self.create_plugin("bad")
         self.create_plugin_package("ugly")
-        self.overrideEnv("BRZ_DISABLE_PLUGINS", "bad:ugly")
+        self.overrideEnv("BRZ_DISABLE_PLUGINS", os.pathsep.join(["bad", "ugly"]))
         self.load_with_paths(["."])
         self.assertEqual({"good"}, self.plugins.keys())
         self.assertPluginModules(
@@ -785,7 +785,11 @@ class TestEnvPluginsAt(tests.TestCase):
         )
 
     def test_only_package(self):
-        self.assertEqual([("py", "/opt/b/py")], self._get_paths("/opt/b/py"))
+        # POSIX-rooted path: on Windows it gets a drive-letter prefix but is
+        # otherwise unchanged, so compare against os.path.abspath.
+        self.assertEqual(
+            [("py", os.path.abspath("/opt/b/py"))], self._get_paths("/opt/b/py")
+        )
 
     def test_bad_name(self):
         self.assertEqual([], self._get_paths("/usr/local/bzr-git"))

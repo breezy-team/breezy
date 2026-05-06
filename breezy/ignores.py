@@ -17,7 +17,6 @@
 """Lists of ignore files, etc."""
 
 import contextlib
-import os
 from collections.abc import Iterable
 from io import BytesIO
 from typing import BinaryIO
@@ -184,7 +183,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
             newline = b"\r\n" if file_contents.find(b"\r\n") != -1 else b"\n"
     else:
         file_contents = b""
-        newline = os.linesep.encode()
+        newline = b"\n"
 
     with BytesIO(file_contents) as sio:
         ignores = parse_ignore_file(sio)

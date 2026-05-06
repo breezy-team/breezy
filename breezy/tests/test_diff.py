@@ -1057,7 +1057,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         output = BytesIO()
         tree = self.make_branch_and_tree("tree")
         self.build_tree_contents([("tree/file", b"content")])
-        tree.add("file", b"file-id")
+        tree.add(["file"], ids=[b"file-id"])
         tree.commit("old tree")
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -1070,7 +1070,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
             tree,
             output,
         )
-        diff_obj._prepare_files("file", "file", file_id=b"file-id")
+        diff_obj._prepare_files("file", "file")
         # The old content should be readonly
         self.assertReadableByAttrib(diff_obj._root, "old\\file", r"R.*old\\file$")
         # The new content should use the tree object, not a 'new' file anymore
@@ -1084,7 +1084,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
             cwd=cwd,
         )
         (result, _err) = proc.communicate()
-        self.assertContainsRe(result.replace("\r\n", "\n"), regex)
+        self.assertContainsRe(result.replace(b"\r\n", b"\n"), regex)
 
     def test_prepare_files(self):
         output = BytesIO()
@@ -1140,7 +1140,11 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             relpath = dirname + "/" + filename
             fullpath = diffobj._safe_filename("safe", relpath)
             self.assertEqual(fullpath, fullpath.encode(encoding).decode(encoding))
-            self.assertTrue(fullpath.startswith(diffobj._root + "/safe"))
+            # ``_root`` is a native temp path (with backslashes on Windows);
+            # ``fullpath`` is normalised to forward slashes by ``pathjoin``.
+            self.assertTrue(
+                fullpath.startswith(diffobj._root.replace(os.sep, "/") + "/safe")
+            )
 
     def test_unencodable_filename(self):
         diffobj = diff.DiffFromTool(
@@ -1157,7 +1161,11 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             relpath = dirname + "/" + filename
             fullpath = diffobj._safe_filename("safe", relpath)
             self.assertEqual(fullpath, fullpath.encode(encoding).decode(encoding))
-            self.assertTrue(fullpath.startswith(diffobj._root + "/safe"))
+            # ``_root`` is a native temp path (with backslashes on Windows);
+            # ``fullpath`` is normalised to forward slashes by ``pathjoin``.
+            self.assertTrue(
+                fullpath.startswith(diffobj._root.replace(os.sep, "/") + "/safe")
+            )
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):

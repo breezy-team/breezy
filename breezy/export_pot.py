@@ -135,7 +135,12 @@ class _ModuleContext:
         """Get new context from module object and parse source for linenos."""
         sourcepath = inspect.getsourcefile(module)
         # TODO: fix this to do the right thing rather than rely on cwd
-        relpath = os.path.relpath(sourcepath)
+        try:
+            relpath = os.path.relpath(sourcepath)
+        except ValueError:
+            # On Windows, sourcepath and cwd may live on different drives,
+            # which makes a relative path impossible.
+            relpath = sourcepath
         return cls(
             relpath,
             _source_info=_parse_source(
