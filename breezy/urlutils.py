@@ -87,7 +87,6 @@ from ._urlutils_rs import (  # noqa: F401
     derive_to_location,
     dirname,
     escape,
-    file_relpath,
     is_url,
     join,
     join_segment_parameters,
@@ -104,6 +103,9 @@ from ._urlutils_rs import (  # noqa: F401
     strip_trailing_slash,
     unescape,
 )
+from ._urlutils_rs import (
+    file_relpath as _rs_file_relpath,  # noqa: F401
+)
 from ._urlutils_rs import posix as posix_rs
 from ._urlutils_rs import win32 as win32_rs
 
@@ -118,6 +120,24 @@ WIN32_MIN_ABS_FILEURL_LENGTH = len("file:///C:/")
 
 if sys.platform == "win32":
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
+
+
+def file_relpath(base, path):
+    """Compute just the relative sub-portion of a url.
+
+    This wraps the Rust implementation so tests can swap in alternative
+    ``local_path_from_url`` / ``MIN_ABS_FILEURL_LENGTH`` / path helpers
+    via :meth:`overrideAttr` and exercise both POSIX and Win32 semantics
+    on a single host.
+    """
+    from . import osutils
+
+    if len(base) < MIN_ABS_FILEURL_LENGTH:
+        raise ValueError("URL too short", base)
+    base_path = osutils.normpath(local_path_from_url(base))
+    target_path = osutils.normpath(local_path_from_url(path))
+    rel = osutils.relpath(base_path, target_path)
+    return escape(rel)
 
 
 _url_hex_escapes_re = re.compile("(%[0-9a-fA-F]{2})")
