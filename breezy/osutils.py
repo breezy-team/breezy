@@ -803,7 +803,13 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
                 name = fsdecode(entry.name)
                 statvalue = entry.stat(follow_symlinks=False)
                 kind = file_kind_from_stat_mode(statvalue.st_mode)
-                dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
+                # ``DirEntry.path`` uses the platform separator. Breezy
+                # treats the relpath portion as POSIX-style throughout, so
+                # normalise here to keep callers (and tests) deterministic.
+                entry_path = entry.path
+                if os.sep != "/":
+                    entry_path = entry_path.replace(os.sep, "/")
+                dirblock.append((relprefix + name, name, kind, statvalue, entry_path))
         except NotADirectoryError:
             pass
         dirblock.sort()

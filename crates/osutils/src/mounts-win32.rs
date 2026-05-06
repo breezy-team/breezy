@@ -64,9 +64,34 @@ pub struct MountEntry {
     pub options: String,
 }
 
-/// Windows has no /etc/mtab equivalent; return an empty iterator.
-pub fn read_mtab<P: AsRef<Path>>(_path: P) -> impl Iterator<Item = MountEntry> {
-    std::iter::empty()
+/// Parse an mtab-style file. Windows has no system-wide mtab, but callers
+/// pass explicit paths (typically test fixtures), so honour those.
+pub fn read_mtab<P: AsRef<Path>>(path: P) -> impl Iterator<Item = MountEntry> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    use std::path::PathBuf;
+
+    let entries: Vec<MountEntry> = match File::open(path) {
+        Ok(file) => BufReader::new(file)
+            .lines()
+            .filter_map(|line| line.ok())
+            .filter(|line| !line.starts_with('#'))
+            .filter_map(|line| {
+                let cols: Vec<&str> = line.split_whitespace().collect();
+                if cols.len() >= 4 {
+                    Some(MountEntry {
+                        path: PathBuf::from(cols[1]),
+                        fs_type: cols[2].to_string(),
+                        options: cols[3].to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect(),
+        Err(_) => Vec::new(),
+    };
+    entries.into_iter()
 }
 
 pub fn supports_hardlinks<P: AsRef<Path>>(path: P) -> Option<bool> {

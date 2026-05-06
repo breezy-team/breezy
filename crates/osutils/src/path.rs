@@ -330,22 +330,24 @@ pub mod win32 {
     }
 
     pub fn normpath<P: AsRef<Path>>(p: P) -> PathBuf {
-        let mut parts = Vec::new();
+        let mut parts: Vec<&std::ffi::OsStr> = Vec::new();
 
         // Split the path into its components
         let p = p.as_ref().to_path_buf();
         for component in p.components() {
             match component {
-                // Ignore empty components and "."
-                std::path::Component::Normal(c) if c != "." => parts.push(c),
-                // Pop the last component if ".." is encountered
-                std::path::Component::Normal(c) if c == ".." => if parts.pop().is_some() {},
-                // Ignore root components ("\" on Windows)
-                std::path::Component::RootDir => {}
-                // Ignore non-Unicode components
-                _ => {
-                    return p;
+                // Drop "." entries; they don't affect the path.
+                std::path::Component::CurDir => {}
+                // Pop the last component for "..".
+                std::path::Component::ParentDir => {
+                    parts.pop();
                 }
+                // Ignore root components ("\" on Windows).
+                std::path::Component::RootDir => {}
+                // Skip the prefix marker (e.g. drive letter); it gets
+                // re-added separately when reassembling.
+                std::path::Component::Prefix(_) => {}
+                std::path::Component::Normal(c) => parts.push(c),
             }
         }
 
@@ -506,27 +508,29 @@ pub mod posix {
     }
 
     pub fn normpath(path: &Path) -> PathBuf {
-        let mut stack = Vec::new();
+        let mut absolute = false;
+        let mut stack: Vec<&OsStr> = Vec::new();
 
         for component in path.components() {
             match component {
                 Component::Prefix(_) => {
-                    // skip the prefix, if any
-                    stack.clear();
-                    stack.push(component.as_os_str());
+                    // POSIX semantics: drop any drive-letter prefix that
+                    // Windows might have parsed.
                 }
                 Component::RootDir => {
-                    // keep the root
+                    absolute = true;
                     stack.clear();
-                    stack.push(component.as_os_str());
                 }
                 Component::CurDir => {
                     // skip the current directory
                 }
                 Component::ParentDir => {
-                    if stack.len() > 1 {
-                        // pop the previous component if not the root
+                    if !stack.is_empty() {
                         stack.pop();
+                    } else if !absolute {
+                        // ".." with no preceding component is significant
+                        // for relative paths; preserve it.
+                        stack.push(OsStr::new(".."));
                     }
                 }
                 Component::Normal(c) => {
@@ -535,12 +539,26 @@ pub mod posix {
             }
         }
 
-        // Join the path components back
-        let mut result = PathBuf::new();
-        for c in stack {
-            result.push(c);
-        }
-        result
+        // Reassemble with explicit forward slashes so the result is the same
+        // string regardless of host platform; ``Path::join`` would otherwise
+        // use `\` on Windows when re-rendering a POSIX path.
+        let parts: Vec<String> = stack
+            .iter()
+            .map(|s| s.to_string_lossy().into_owned())
+            .collect();
+        let joined = parts.join("/");
+        let rendered = if absolute {
+            if joined.is_empty() {
+                "/".to_string()
+            } else {
+                format!("/{joined}")
+            }
+        } else if joined.is_empty() {
+            ".".to_string()
+        } else {
+            joined
+        };
+        PathBuf::from(rendered)
     }
 
     pub fn realpath<P: AsRef<Path>>(filename: P) -> std::io::Result<PathBuf> {
