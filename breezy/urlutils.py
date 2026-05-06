@@ -82,10 +82,8 @@ unquote = urlparse.unquote
 
 from ._urlutils_rs import (  # noqa: F401
     _find_scheme_and_separator,
-    basename,
     combine_paths,
     derive_to_location,
-    dirname,
     escape,
     is_url,
     join,
@@ -96,7 +94,6 @@ from ._urlutils_rs import (  # noqa: F401
     local_path_to_url,
     normalize_url,
     relative_url,
-    split,
     split_segment_parameters,
     split_segment_parameters_raw,
     strip_segment_parameters,
@@ -104,10 +101,49 @@ from ._urlutils_rs import (  # noqa: F401
     unescape,
 )
 from ._urlutils_rs import (
+    basename as _rs_basename,
+)
+from ._urlutils_rs import (
+    dirname as _rs_dirname,
+)
+from ._urlutils_rs import (
     file_relpath as _rs_file_relpath,  # noqa: F401
 )
 from ._urlutils_rs import posix as posix_rs
+from ._urlutils_rs import (
+    split as _rs_split,
+)
 from ._urlutils_rs import win32 as win32_rs
+
+
+def _validate_local_file_url(url):
+    """On Windows, reject ``file:///`` URLs that lack a drive letter."""
+    if sys.platform != "win32":
+        return
+    if not isinstance(url, str) or not url.startswith("file://"):
+        return
+    # Reuse the Win32 ``local_path_from_url`` checks; it raises
+    # ``InvalidURL`` for non-drive ``file:///foo`` and similar.
+    win32_rs.local_path_from_url(url)
+
+
+def split(url, exclude_trailing_slash=True):
+    """Split a URL into its parent and basename, validating file URLs."""
+    _validate_local_file_url(url)
+    return _rs_split(url, exclude_trailing_slash)
+
+
+def basename(url, exclude_trailing_slash=True):
+    """Return the last element of the URL path."""
+    _validate_local_file_url(url)
+    return _rs_basename(url, exclude_trailing_slash)
+
+
+def dirname(url, exclude_trailing_slash=True):
+    """Return the parent component of the URL path."""
+    _validate_local_file_url(url)
+    return _rs_dirname(url, exclude_trailing_slash)
+
 
 _posix_local_path_to_url = posix_rs.local_path_to_url
 _win32_local_path_to_url = win32_rs.local_path_to_url

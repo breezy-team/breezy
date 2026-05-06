@@ -326,7 +326,17 @@ pub mod win32 {
         use path_clean::PathClean;
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
-        Ok(fixdrive(&fix_separators(ap.as_path())))
+        let ap = fixdrive(&fix_separators(ap.as_path()));
+        // ``path_clean`` may leave a trailing ``/`` on UNC paths like
+        // ``//HOST/share/``; strip it so the result mirrors what
+        // ``ntpath.abspath`` returns on Windows.
+        let s = ap.to_str().unwrap_or_default();
+        let trimmed = if s.len() > 3 && s.ends_with('/') {
+            PathBuf::from(&s[..s.len() - 1])
+        } else {
+            ap
+        };
+        Ok(trimmed)
     }
 
     pub fn normpath<P: AsRef<Path>>(p: P) -> PathBuf {
@@ -499,7 +509,14 @@ pub mod posix {
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
         use path_clean::PathClean;
-        if path.is_absolute() {
+        // POSIX semantics: any path starting with '/' is absolute, even on
+        // Windows where ``Path::is_absolute`` would otherwise demand a
+        // drive letter.
+        let starts_with_slash = path
+            .to_str()
+            .map(|s| s.starts_with('/'))
+            .unwrap_or(false);
+        if path.is_absolute() || starts_with_slash {
             return Ok(path.to_path_buf());
         }
         let cwd = std::env::current_dir()?;

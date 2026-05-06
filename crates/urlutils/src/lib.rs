@@ -634,6 +634,18 @@ pub mod win32 {
         }
         let win32_path = breezy_osutils::path::win32::abspath(path.as_ref())?;
         let win32_path = win32_path.as_path().to_str().unwrap();
+        // ``path_clean`` can leave a trailing slash on UNC roots like
+        // ``//HOST/share/`` even though ``\\HOST\share`` should round-trip
+        // without one. Strip a single trailing slash unless the result is
+        // just the root.
+        let win32_path = if win32_path.len() > 1
+            && win32_path.ends_with('/')
+            && !win32_path.ends_with("://")
+        {
+            &win32_path[..win32_path.len() - 1]
+        } else {
+            win32_path
+        };
         if win32_path.starts_with("//") {
             Ok(format!(
                 "file:{}",
