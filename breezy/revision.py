@@ -111,18 +111,7 @@ class Revision:
         If ghosts are present this may differ in result from a ghost-free
         repository.
         """
-        current_revision = self
-        reversed_result = []
-        while current_revision is not None:
-            reversed_result.append(current_revision.revision_id)
-            if not len(current_revision.parent_ids):
-                reversed_result.append(None)
-                current_revision = None
-            else:
-                next_revision_id = current_revision.parent_ids[0]
-                current_revision = repository.get_revision(next_revision_id)
-        reversed_result.reverse()
-        return reversed_result
+        return get_history(repository, self)
 
     def get_summary(self):
         """Get the first line of the log message for this revision.
@@ -154,6 +143,25 @@ class Revision:
     def iter_bugs(self):
         """Iterate over the bugs associated with this revision."""
         return iter_bugs(self)
+
+
+def get_history(repository, current_revision):
+    """Return the canonical line-of-history for ``current_revision``.
+
+    If ghosts are present this may differ in result from a ghost-free
+    repository.
+    """
+    reversed_result = []
+    while current_revision is not None:
+        reversed_result.append(current_revision.revision_id)
+        if not len(current_revision.parent_ids):
+            reversed_result.append(None)
+            current_revision = None
+        else:
+            next_revision_id = current_revision.parent_ids[0]
+            current_revision = repository.get_revision(next_revision_id)
+    reversed_result.reverse()
+    return reversed_result
 
 
 def iter_bugs(revision):

@@ -16,9 +16,10 @@
 
 """File annotate based on VersionedFiles."""
 
-from bzrformats.errors import RevisionNotPresent
-import vcsgraph
+from typing import TYPE_CHECKING
 
+import vcsgraph
+from bzrformats.errors import RevisionNotPresent
 from vcsgraph import (
     known_graph as _mod_known_graph,
 )
@@ -28,7 +29,7 @@ from .. import errors, osutils, ui
 from ..annotate import Annotator
 
 if TYPE_CHECKING:
-    from .versionedfile import VersionedFiles
+    from bzrformats.versionedfile import VersionedFiles
 
 
 class VersionedFileAnnotator(Annotator):
