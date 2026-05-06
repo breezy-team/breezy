@@ -17,7 +17,15 @@
 """Tests for maps built on a CHK versionedfiles facility."""
 
 from bzrformats import chk_map, groupcompress
-from bzrformats.chk_map import CHKMap, InternalNode, LeafNode, common_prefix_pair
+from bzrformats.chk_map import (
+    CHKMap,
+    InternalNode,
+    LeafNode,
+    _bytes_to_text_key,
+    _search_key_16,
+    _search_key_255,
+    common_prefix_pair,
+)
 
 from ... import osutils, tests
 

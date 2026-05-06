@@ -22,6 +22,7 @@ from bzrformats.errors import RevisionNotPresent
 import breezy
 from breezy import errors
 from breezy.bzr.bzrdir import BzrDir
+from breezy.reconcile import Reconciler, reconcile
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,

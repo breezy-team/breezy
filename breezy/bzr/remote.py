@@ -32,6 +32,7 @@ import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
 from bzrformats import inventory_delta
+from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.inventory import Inventory
 from bzrformats.serializer import revision_format_registry as serializer_format_registry
@@ -4645,9 +4646,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         """
         for content in substream:
             revision_bytes = content.get_bytes_as("fulltext")
-            revision = self.from_revision_serialiser.read_revision_from_string(
-                revision_bytes
-            )
+            revision = self.from_serialiser.read_revision_from_string(revision_bytes)
             self.seen_revs.add(content.key[-1])
             self.referenced_revs.update(revision.parent_ids)
             yield content

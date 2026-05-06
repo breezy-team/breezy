@@ -54,6 +54,7 @@ from bzrformats.pack_repo import RetryWithNewPacks
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
 from .. import debug, errors, lockdir, osutils
+from .. import transport as _mod_transport
 from ..bzr import lockable_files
 from ..decorators import only_raises
 from ..lock import LogicalLockResult
