@@ -103,7 +103,6 @@ class ForeignRevision(Revision):
         super().__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
-        return self
 
 
 class ForeignVcs:

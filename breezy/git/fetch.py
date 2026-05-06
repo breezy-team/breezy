@@ -25,6 +25,7 @@ from bzrformats.inventory import (
     InventoryLink,
     TreeReference,
 )
+from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.versionedfile import ChunkedContentFactory
 from dromedary.errors import NoSuchFile
 from dulwich.object_store import tree_lookup_path
@@ -184,10 +185,6 @@ def import_git_blob(
     else:
         old_path = None
 
-    if kind == "symlink":
-        ie = InventoryLink(file_id, decoded_name, parent_id, **kwargs)
-    else:
-        ie = InventoryFile(file_id, decoded_name, parent_id, **kwargs)
     invdelta.append((old_path, decoded_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, (ie.file_id, ie.revision), path)
