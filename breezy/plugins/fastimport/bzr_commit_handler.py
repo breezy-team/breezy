@@ -852,7 +852,7 @@ class CommitHandler(processor.CommitHandler):
         self.cache_mgr.inventories[self.revision_id] = inv
         # print "committed %s" % self.revision_id
 
-    def _get_final_delta(self):
+    def _get_final_delta(self) -> InventoryDelta:
         """Generate the final inventory delta for this commit.
 
         Includes smart post-processing like pruning directories that would

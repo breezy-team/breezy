@@ -77,7 +77,6 @@ class GrepOptions:
     patternc = None
     sub_patternc = None
     print_revno = None
-    fixed_string = None
     outf = None
     show_color = False
 

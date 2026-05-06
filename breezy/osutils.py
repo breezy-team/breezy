@@ -470,7 +470,7 @@ def get_terminal_encoding(trace=False):
     return output_encoding
 
 
-_extension_load_failures = []
+_extension_load_failures: list[str] = []
 
 
 def failed_to_load_extension(exception):
