@@ -699,10 +699,9 @@ class BundleInfoV4:
                 _file_id,
             ) in bundle_reader.iter_records():
                 if repo_kind == "info":
-                    (
-                        revision_serializer,
-                        _inventory_serializer,
-                    ) = self._serializer.get_source_serializer(metadata)
+                    revision_serializer = self._serializer.get_source_serializer(
+                        metadata
+                    )
                 if repo_kind == "revision":
                     rev = revision_serializer.read_revision_from_string(bytes)
                     self.__real_revisions.append(rev)

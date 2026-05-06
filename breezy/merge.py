@@ -2737,7 +2737,7 @@ class _PlanMerge(_PlanMergeBase):
     def _build_weave(self):
         from bzrformats import weave
 
-        from .tsort import merge_sort
+        from vcsgraph.tsort import merge_sort
 
         self._weave = weave.Weave(weave_name="in_memory_weave", allow_reserved=True)
         parent_map = self._find_recursive_lcas()

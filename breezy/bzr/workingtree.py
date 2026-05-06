@@ -943,7 +943,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             except NoSuchFile:
                 pass
             else:
-                from .xml7 import inventory_serializer_v7
+                from bzrformats.xml7 import inventory_serializer_v7
 
                 try:
                     inv = xml7.inventory_serializer_v7.read_inventory_from_lines(
@@ -1138,7 +1138,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         A new branch will be created, relative to the path for this tree.
         """
-        from .inventory import InventoryDirectory
+        from bzrformats.inventory import InventoryDirectory
 
         def mkdirs(path):
             segments = osutils.splitpath(path)

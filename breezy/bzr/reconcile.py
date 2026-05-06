@@ -32,7 +32,7 @@ from .. import revision as _mod_revision
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from ..tsort import topo_sort
+from vcsgraph.tsort import topo_sort
 
 
 class VersionedFileRepoReconciler:

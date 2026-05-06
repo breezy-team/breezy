@@ -25,6 +25,7 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any
 
+from bzrformats import multiparent
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -2085,6 +2086,7 @@ class TransformPreview(InventoryTreeTransform):
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
+        try:
             entry = next(self._tree.iter_entries_by_dir(specific_files=[path]))[1]
         except StopIteration:
             return
