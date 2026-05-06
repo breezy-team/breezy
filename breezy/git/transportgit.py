@@ -199,6 +199,15 @@ def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
 class TransportRefsContainer(RefsContainer):
     """Refs container that reads refs from a transport."""
 
+    # Process-wide registry of currently-held lockfile handles, keyed by the
+    # absolute filesystem path of the `.lock` file. Entries are populated by
+    # `lock_ref` and consumed by `unlock_ref` so a `break_lock` from another
+    # `TransportRefsContainer` instance (e.g. a parallel `Branch.open` of the
+    # same on-disk repo) can drop the holder's open file handle before
+    # unlinking the lock file. Without this, Windows refuses to delete a
+    # file that is still open and `break_lock` fails with `os error 32`.
+    _held_locks: dict[str, object] = {}
+
     def __init__(self, transport, worktree_transport=None):
         """Initialize the TransportRefsContainer.
 
@@ -213,11 +222,6 @@ class TransportRefsContainer(RefsContainer):
         self.worktree_transport = worktree_transport
         self._packed_refs = None
         self._peeled_refs = None
-        # Open lock-file handles, keyed by ref name. Tracked so that
-        # `unlock_ref` can close the in-process lock holder before
-        # deleting the on-disk lock file (Windows refuses to delete a
-        # file that is still open).
-        self._held_locks: dict[bytes, object] = {}
 
     def __repr__(self):
         """Return string representation of the refs container."""
@@ -476,15 +480,20 @@ class TransportRefsContainer(RefsContainer):
             name: Name of the reference to unlock.
         """
         transport = self.worktree_transport if name == b"HEAD" else self.transport
-        lockname = name + b".lock"
-        # If we hold the lock in this process, drop the file handle first;
-        # Windows refuses to delete a file with an open handle.
-        held = self._held_locks.pop(name, None)
-        if held is not None:
-            with contextlib.suppress(Exception):
-                held.abort()
+        lockname = urlutils.quote_from_bytes(name + b".lock")
+        # If anyone in this process holds the lock, drop the file handle
+        # first; Windows refuses to delete a file with an open handle.
+        try:
+            lock_key = transport.local_abspath(lockname)
+        except NotLocalUrl:
+            lock_key = None
+        if lock_key is not None:
+            held = self._held_locks.pop(lock_key, None)
+            if held is not None:
+                with contextlib.suppress(Exception):
+                    held.abort()
         with contextlib.suppress(NoSuchFile):
-            transport.delete(urlutils.quote_from_bytes(lockname))
+            transport.delete(lockname)
 
     def lock_ref(self, name):
         """Lock a reference for exclusive access.
@@ -515,7 +524,8 @@ class TransportRefsContainer(RefsContainer):
             except FileLocked as e:
                 raise LockContention(name, e) from e
             else:
-                self._held_locks[name] = gf
+                lock_key = transport.local_abspath(lockname)
+                self._held_locks[lock_key] = gf
 
                 def unlock():
                     # gf.abort() closes the file handle AND removes the
@@ -525,7 +535,9 @@ class TransportRefsContainer(RefsContainer):
                     # `_held_locks` and aborted gf to clear the way. Treat
                     # an absent registry entry the same as a missing
                     # lockfile and raise LockBroken.
-                    still_registered = self._held_locks.pop(name, None) is not None
+                    still_registered = (
+                        self._held_locks.pop(lock_key, None) is not None
+                    )
                     if not transport.has(lockname):
                         if still_registered:
                             gf.abort()
