@@ -35,7 +35,7 @@ from bzrformats.versionedfile import (
     record_to_fulltext_bytes,
 )
 
-from ... import errors, estimate_compressed_size, osutils, trace, ui
+from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import vf_search

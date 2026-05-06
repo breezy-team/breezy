@@ -70,6 +70,7 @@ from . import testament as _mod_testament
 from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
 from .inventorytree import InventoryRevisionTree
+from .lockable_files import LockableFiles
 from .smart import client, vfs
 from .smart import repository as smart_repo
 from .smart import transport as _smart_transport
