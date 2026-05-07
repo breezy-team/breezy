@@ -135,7 +135,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(bio)
         bio.seek(0)
-        stanzas = list(rio.read_stanzas(bio))
+        stanzas = list(read_stanzas(bio))
         self.assertEqual(1, len(stanzas))
         return stanzas[0]
 
