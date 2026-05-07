@@ -16,6 +16,8 @@
 
 """Annotate."""
 
+import contextlib
+
 from bzrformats.versionedfile import UnavailableRepresentation
 from dulwich.object_store import tree_lookup_path
 from vcsgraph.graph import Graph
