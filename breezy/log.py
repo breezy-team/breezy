@@ -47,7 +47,6 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-from bzrformats.errors import RevisionNotPresent
 import codecs
 import itertools
 import re

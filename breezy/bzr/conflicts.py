@@ -40,7 +40,7 @@ from bzrformats import rio
 from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
-from .. import errors, osutils
+from .. import osutils
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
 

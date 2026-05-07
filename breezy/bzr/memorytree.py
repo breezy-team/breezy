@@ -22,13 +22,12 @@ See MemoryTree for more details.
 import os
 import stat
 
+from bzrformats.inventory import Inventory
 from dromedary.memory import MemoryTransport
 
 from .. import errors, lock
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from bzrformats.inventory import Inventory
-
 from ..osutils import sha_file
 from .inventorytree import MutableInventoryTree
 

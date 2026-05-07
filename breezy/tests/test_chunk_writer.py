@@ -20,6 +20,7 @@
 import zlib
 
 from bzrformats import chunk_writer
+
 from . import TestCaseWithTransport
 
 

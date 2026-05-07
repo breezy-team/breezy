@@ -1542,14 +1542,6 @@ class BoundBranchConnectionFailure(BzrError):
 # bzrformats.versionedfile — keeping a separate copy here would
 # break ``assertRaises(breezy.errors.ReadOnlyError, ...)`` against
 # exceptions raised inside bzrformats.
-from bzrformats.errors import (  # noqa: E402
-    OutSideTransaction,
-    ReadOnlyError,
-    ReadOnlyObjectDirtiedError,
-    RevisionNotPresent,
-    VersionedFileError,
-    VersionedFileInvalidChecksum,
-)
 
 
 class NoSuchExportFormat(BzrError):

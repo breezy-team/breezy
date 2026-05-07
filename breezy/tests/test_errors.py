@@ -19,9 +19,8 @@
 import inspect
 import re
 
-from dromedary import errors as transport_errors
-
 from bzrformats.inventory import NoSuchId
+from dromedary import errors as transport_errors
 
 from .. import controldir, errors, osutils, tests, urlutils
 from ..bzr.smart import transport as _smart_transport

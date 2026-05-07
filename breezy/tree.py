@@ -21,10 +21,10 @@ __docformat__ = "google"
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Optional, cast
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from . import errors, lock, osutils, trace
-from bzrformats.inventory import NoSuchId
 from . import revision as _mod_revision
 from .inter import InterObject
 

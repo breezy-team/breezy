@@ -19,6 +19,7 @@ import sys
 
 from bzrformats import inventory, versionedfile
 from bzrformats.errors import BzrCheckError, RevisionNotPresent
+from bzrformats.inventory_delta import InventoryDelta
 
 from breezy import errors, osutils, repository
 from breezy.bzr.vf_search import SearchResult
@@ -28,11 +29,6 @@ from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from bzrformats.inventory_delta import InventoryDelta
-from ...bzr.vf_search import SearchResult
-from ...errors import NoSuchRevision
-from ...repository import WriteGroup
-from ...revision import NULL_REVISION, Revision
 from .test_interrepository import check_repo_format_for_funky_id_on_win32
 
 
@@ -568,7 +564,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         try:
             self.assertRaises(RevisionNotPresent, target.fetch, source)
         except errors.NoRoundtrippingSupport:
-            raise TestNotApplicable("roundtripping not supported")
+            raise TestNotApplicable("roundtripping not supported") from None
         self.assertFalse(target.has_revision(b"b"))
 
     def test_fetch_funky_file_id(self):

@@ -51,7 +51,14 @@ from breezy.bzr.testament import Testament
 """,
 )
 
-from bzrformats.errors import BzrCheckError, ObjectNotLocked, RevisionAlreadyPresent, RevisionNotPresent
+from typing import TYPE_CHECKING
+
+from bzrformats.errors import (
+    BzrCheckError,
+    ObjectNotLocked,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
 from bzrformats.inventory import (
     Inventory,
     InventoryDirectory,
@@ -61,8 +68,8 @@ from bzrformats.inventory import (
     TreeReference,
     entry_factory,
 )
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from bzrformats.inventory_delta import InventoryDelta
-from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
 from .. import debug, errors, osutils
 from ..decorators import only_raises
@@ -76,8 +83,10 @@ from ..repository import (
 )
 from ..trace import mutter, note
 from .inventorytree import InventoryTreeChange
-from bzrformats.inventory import _make_delta as make_inventory_delta
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
+
+if TYPE_CHECKING:
+    from bzrformats.serializer import InventorySerializer, RevisionSerializer
 
 
 def _to_bzr_revision(revision):
@@ -1715,6 +1724,7 @@ class VersionedFileRepository(Repository):
         return result
 
     def get_serializer_format(self):
+        """Return the format of the inventory serializer."""
         return self._inventory_serializer.format_num
 
     def _get_inventory_xml(self, revision_id):
@@ -1996,8 +2006,6 @@ class StreamSink:
         if not self.target_repo.is_in_write_group():
             raise errors.BzrError("you must already be in a write group")
         dest_format = self.target_repo._format
-        to_serializer = dest_format._inventory_serializer
-        src_serializer = src_format._inventory_serializer
         src_revision_serializer = src_format._revision_serializer
         new_pack = None
         if (
@@ -2829,7 +2837,9 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = make_inventory_delta(parent_tree.root_inventory, basis_tree.root_inventory)
+            delta = make_inventory_delta(
+                parent_tree.root_inventory, basis_tree.root_inventory
+            )
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents
             )

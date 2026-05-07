@@ -20,7 +20,7 @@ import contextlib
 from bzrformats import generate_ids, inventory, serializer
 from bzrformats.inventory import NoSuchId
 from bzrformats.inventory_delta import InventoryDelta
-from fastimport import helpers, processor
+from fastimport import processor
 
 from ... import debug, errors, osutils, revision
 from ...trace import mutter, note, warning
@@ -594,9 +594,7 @@ class CommitHandler(processor.CommitHandler):
                 f"Cannot import items of kind '{kind}' yet - ignoring '{path}'"
             )
             return
-        ie = inventory.make_entry(
-            kind, basename, parent_id, file_id, **entry_kwargs
-        )
+        ie = inventory.make_entry(kind, basename, parent_id, file_id, **entry_kwargs)
         if kind == "directory":
             self.directory_entries[path] = ie
         # Record it
@@ -1102,6 +1100,7 @@ class CommitHandler(processor.CommitHandler):
                             del self.directory_entries[child_path]
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
+        """Record a rename."""
         new_basename, new_parent_id = self._ensure_directory(
             new_path, self.basis_inventory
         )

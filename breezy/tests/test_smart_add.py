@@ -16,9 +16,10 @@
 
 from io import StringIO
 
-from .. import add, errors, tests
 from bzrformats import inventory
 from bzrformats.inventory import NoSuchId
+
+from .. import add, tests
 
 
 class AddCustomIDAction(add.AddAction):

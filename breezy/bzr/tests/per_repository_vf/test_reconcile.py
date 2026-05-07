@@ -16,14 +16,13 @@
 
 """Tests for reconciliation of repositories."""
 
-from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
 from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
 from bzrformats.revision import Revision
 
 import breezy
 from breezy import errors
 from breezy.bzr.bzrdir import BzrDir
-from breezy.reconcile import Reconciler, reconcile
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
@@ -31,6 +30,7 @@ from breezy.bzr.tests.per_repository_vf import (
 from breezy.bzr.tests.per_repository_vf.helpers import (
     TestCaseWithBrokenRevisionIndex,
 )
+from breezy.reconcile import Reconciler, reconcile
 from breezy.tests import TestSkipped
 from breezy.tests.matchers import MatchesAncestry
 

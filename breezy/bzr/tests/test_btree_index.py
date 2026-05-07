@@ -20,12 +20,12 @@
 import pprint
 import zlib
 
-from ... import osutils, tests, transport
-from bzrformats import lru_cache
-from bzrformats.lru_cache import FIFOCache
-from ...tests import TestCaseWithTransport, features, scenarios
-from bzrformats import btree_index
+from bzrformats import btree_index, lru_cache
 from bzrformats import index as _mod_index
+from bzrformats.lru_cache import FIFOCache
+
+from ... import osutils, tests, transport
+from ...tests import TestCaseWithTransport, features, scenarios
 
 load_tests = scenarios.load_tests_apply_scenarios
 

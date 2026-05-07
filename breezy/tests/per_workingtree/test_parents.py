@@ -19,9 +19,15 @@
 import os
 from io import BytesIO
 
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+)
+
 from ... import errors
 from ... import revision as _mod_revision
-from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile, InventoryLink
 from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable
 from ...uncommit import uncommit
@@ -508,9 +514,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             builder.commit("Message")
 
     def add_dir(self, inv, rev_id, file_id, parent_id, name):
-        inv.add(
-            InventoryDirectory(file_id, name, parent_id, revision=rev_id)
-        )
+        inv.add(InventoryDirectory(file_id, name, parent_id, revision=rev_id))
 
     def add_file(self, inv, rev_id, file_id, parent_id, name, sha, size):
         inv.add(

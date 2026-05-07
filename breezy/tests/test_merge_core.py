@@ -18,8 +18,9 @@ import os
 import sys
 import tempfile
 
-from .. import controldir, errors, merge_directive, osutils
 from bzrformats import generate_ids
+
+from .. import controldir, errors, merge_directive, osutils
 from ..bzr.conflicts import ContentsConflict, PathConflict, TextConflict
 from ..merge import Diff3Merger, Merge3Merger, Merger, WeaveMerger
 from ..osutils import getcwd, pathjoin

@@ -18,8 +18,9 @@
 
 """Tests for text merging functionality."""
 
-from breezy.tests import TestCase
 from bzrformats.textmerge import Merge2
+
+from breezy.tests import TestCase
 
 
 class TestMerge2(TestCase):

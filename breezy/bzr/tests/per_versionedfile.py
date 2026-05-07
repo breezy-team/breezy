@@ -26,13 +26,8 @@ import itertools
 from gzip import GzipFile
 from io import BytesIO
 
-import vcsgraph
-from vcsgraph import known_graph as _mod_known_graph
 from bzrformats import groupcompress, versionedfile
 from bzrformats import knit as _mod_knit
-from dromedary.errors import NoSuchFile
-from dromedary.memory import MemoryTransport
-
 from bzrformats.errors import (
     OutSideTransaction,
     ReadOnlyError,
@@ -53,6 +48,9 @@ from bzrformats.versionedfile import (
 )
 from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
 from bzrformats.weavefile import write_weave
+from dromedary.errors import NoSuchFile
+from dromedary.memory import MemoryTransport
+from vcsgraph import known_graph as _mod_known_graph
 
 from ... import errors, osutils, progress, transport, ui
 from ...tests import (

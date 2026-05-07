@@ -98,6 +98,7 @@ class ForeignRevision(Revision):
     """
 
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
+        """Create a ForeignRevision object."""
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
         super().__init__(*args, **kwargs)

@@ -23,12 +23,12 @@ import struct
 import tempfile
 
 from bzrformats import dirstate, inventory
+from bzrformats.inventory import _make_delta as make_inventory_delta
 
 from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
-from bzrformats.inventory import _make_delta as make_inventory_delta
 from .. import inventorytree, workingtree_4
 
 # TODO:
@@ -2886,7 +2886,9 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
-        delta = make_inventory_delta(target_tree.root_inventory, basis_tree.root_inventory)
+        delta = make_inventory_delta(
+            target_tree.root_inventory, basis_tree.root_inventory
+        )
         state.update_basis_by_delta(delta, b"target")
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(

@@ -32,9 +32,9 @@ import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
 from bzrformats import inventory_delta
-from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.errors import BzrCheckError, RevisionNotPresent
 from bzrformats.inventory import Inventory
+from bzrformats.inventory_delta import InventoryDelta
 from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile, SmartProtocolError

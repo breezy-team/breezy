@@ -20,12 +20,10 @@ from bzrformats import btree_index
 from bzrformats.errors import BzrCheckError
 from bzrformats.versionedfile import VersionedFiles
 
-from breezy import errors, osutils, repository
+from breezy import osutils, repository
 from breezy.bzr.remote import RemoteRepository
 from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
 from breezy.tests import TestNotApplicable
-
-from ...remote import RemoteRepository
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):

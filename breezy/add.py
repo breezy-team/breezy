@@ -19,8 +19,9 @@
 import os
 import sys
 
-from . import errors, osutils, ui
 from bzrformats.inventory import NoSuchId
+
+from . import osutils, ui
 from .i18n import gettext
 
 

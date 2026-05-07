@@ -41,10 +41,11 @@ To get a WorkingTree, call controldir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from bzrformats.errors import RevisionNotPresent
 import contextlib
 import os
 from typing import TYPE_CHECKING
+
+from bzrformats.errors import RevisionNotPresent
 
 if TYPE_CHECKING:
     from .branch import Branch

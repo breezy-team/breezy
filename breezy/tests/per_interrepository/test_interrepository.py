@@ -18,18 +18,16 @@
 
 import sys
 
+from bzrformats.inventory import Inventory, InventoryDirectory
+
 import breezy
 import breezy.errors as errors
 import breezy.gpg
-from bzrformats.inventory import Inventory, InventoryDirectory
 from breezy.repository import WriteGroup
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from bzrformats.inventory import ROOT_ID, Inventory, InventoryDirectory
-from ...repository import WriteGroup
-from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree
 from ..matchers import MatchesAncestry
 

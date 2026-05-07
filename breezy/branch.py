@@ -27,7 +27,7 @@ import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
-from bzrformats.errors import BzrCheckError, RevisionNotPresent
+from bzrformats.errors import BzrCheckError
 from dromedary import errors as transport_errors
 
 from . import config as _mod_config

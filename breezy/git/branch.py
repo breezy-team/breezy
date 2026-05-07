@@ -23,13 +23,13 @@ from functools import partial
 from io import BytesIO
 
 import vcsgraph.errors
+from bzrformats.errors import ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.config import parse_submodules
 from dulwich.object_store import peel_sha
 from dulwich.objects import ZERO_SHA, NotCommitError
-from bzrformats.errors import ObjectNotLocked, RevisionNotPresent
 from dulwich.repo import check_ref_format
 
 from .. import (

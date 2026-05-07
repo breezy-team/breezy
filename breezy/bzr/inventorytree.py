@@ -47,6 +47,8 @@ from bzrformats import (
 )
 from bzrformats.errors import (
     BadFileKindError as _BzrFormatsBadFileKindError,
+)
+from bzrformats.errors import (
     RevisionNotPresent,
 )
 
@@ -123,6 +125,7 @@ class InventoryTreeChange(TreeChange):
         )
 
     def __eq__(self, other):
+        """Compare two InventoryTreeChange objects."""
         if isinstance(other, TreeChange) or hasattr(other, "_as_tuple"):
             return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
@@ -394,12 +397,13 @@ class InventoryTree(Tree):
             NoSuchFile: If path doesn't exist.
             NotADirectory: If path is not a directory.
         """
-        inv, ie = self._path2inv_ie(path)
-        if ie is None:
-            raise _mod_transport.NoSuchFile(path)
-        if ie.kind != "directory":
-            raise transport_errors.NotADirectory(path)
-        return inv.iter_sorted_children(ie.file_id)
+        with self.lock_read():
+            inv, ie = self._path2inv_ie(path)
+            if ie is None:
+                raise _mod_transport.NoSuchFile(path)
+            if ie.kind != "directory":
+                raise transport_errors.NotADirectory(path)
+            return inv.iter_sorted_children(ie.file_id)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
@@ -447,13 +451,6 @@ class InventoryTree(Tree):
                         yield p, e
 
             return iter_entries(self.root_inventory)
-
-    def iter_child_entries(self, path):
-        with self.lock_read():
-            ie = self._path2ie(path)
-            if ie.kind != "directory":
-                raise transport_errors.NotADirectory(path)
-            return iter(self.root_inventory.iter_sorted_children(ie.file_id))
 
     def _get_plan_merge_data(self, path, other, base):
         from bzrformats import versionedfile
@@ -1314,10 +1311,13 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 yield path, "V", entry.kind, entry
 
     def get_symlink_target(self, path):
-        # Inventories store symlink targets in unicode.  Non-symlink
-        # entries (file/directory/tree-reference) don't carry a target;
-        # callers that walk a tree across versions where the kind has
-        # changed need ``None`` rather than an AttributeError.
+        """Return the target of a symlink.
+
+        Inventories store symlink targets in unicode.  Non-symlink
+        entries (file/directory/tree-reference) don't carry a target;
+        callers that walk a tree across versions where the kind has
+        changed need ``None`` rather than an AttributeError.
+        """
         return getattr(self._path2ie(path), "symlink_target", None)
 
     def get_reference_revision(self, path):

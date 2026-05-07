@@ -29,6 +29,7 @@ import fastbencode as bencode
 from bzrformats import inventory as _mod_inventory
 from bzrformats import inventory_delta, pack
 from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from bzrformats.versionedfile import (
     ChunkedContentFactory,
     NetworkRecordStream,
@@ -39,7 +40,6 @@ from ... import errors, osutils, trace, ui, zlib_util
 from ... import revision as _mod_revision
 from ...repository import _strip_NULL_ghosts, network_format_registry
 from .. import vf_search
-from bzrformats.inventory import _make_delta as make_inventory_delta
 from ..bzrdir import BzrDir
 from .request import (
     FailedSmartServerResponse,

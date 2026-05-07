@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Revision object and related functions."""
+
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
@@ -55,6 +57,7 @@ class Revision:
     timezone: int
 
     def __init__(self, revision_id: RevisionID, properties=None, **args) -> None:
+        """Create a Revision object."""
         self.revision_id = revision_id
         if properties is None:
             self.properties = {}
@@ -68,15 +71,18 @@ class Revision:
         self.__dict__.update(args)
 
     def __repr__(self):
+        """Return a string representation of the Revision."""
         return "<Revision id {}>".format(self.revision_id)
 
     def datetime(self):
+        """Return the timestamp as a datetime object."""
         import datetime
 
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(self.timestamp)
 
     def __eq__(self, other):
+        """Compare two Revision objects."""
         if not isinstance(other, Revision):
             return False
         return (
@@ -91,6 +97,7 @@ class Revision:
         )
 
     def __ne__(self, other):
+        """Check if two Revision objects are not equal."""
         return not self.__eq__(other)
 
     def _check_properties(self):
@@ -177,6 +184,7 @@ def iter_bugs(revision):
 def iter_ancestors(
     revision_id: RevisionID, revision_source, only_present: bool = False
 ):
+    """Iterate over ancestors of a revision."""
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
@@ -241,6 +249,7 @@ def check_not_reserved_id(revision_id: RevisionID) -> None:
 
 
 def is_null(revision_id: RevisionID) -> bool:
+    """Check if a revision ID is the null revision ID."""
     if revision_id is None:
         raise ValueError(
             "NULL_REVISION should be used for the null revision instead of None."

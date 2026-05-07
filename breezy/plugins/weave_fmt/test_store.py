@@ -20,11 +20,11 @@ import gzip
 import os
 from io import BytesIO
 
+from bzrformats.weave import WeaveFile
 from dromedary.memory import MemoryTransport
 
 from ... import errors as errors
 from ... import transactions, transport
-from bzrformats.weave import WeaveFile
 from ...errors import BzrError
 from ...tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 from .store import TransportStore

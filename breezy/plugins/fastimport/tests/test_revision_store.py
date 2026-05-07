@@ -15,9 +15,10 @@
 
 """Direct tests of the revision_store classes."""
 
-from .... import errors, osutils, tests
 from bzrformats import inventory
 from bzrformats.inventory import NoSuchId
+
+from .... import osutils, tests
 from .. import revision_store
 from . import FastimportFeature
 

@@ -74,11 +74,6 @@ from breezy.errors import UnknownFormatError
 from breezy.repository import RepositoryFormat
 from breezy.tests import TestCase, TestCaseWithTransport
 
-from bzrformats.index import GraphIndex
-
-from ...errors import UnknownFormatError
-from ...repository import RepositoryFormat
-
 
 class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):

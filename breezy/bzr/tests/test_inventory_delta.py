@@ -21,11 +21,11 @@ See doc/developer/inventory.txt for more information.
 
 from io import BytesIO
 
-from ... import osutils
 from bzrformats import inventory, inventory_delta
 from bzrformats.inventory import Inventory, _make_delta
 from bzrformats.inventory_delta import InventoryDelta, InventoryDeltaError
 
+from ... import osutils
 from ...revision import NULL_REVISION
 from . import TestCase
 
@@ -152,9 +152,7 @@ None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
                 b"entry-version",
                 True,
                 True,
-                inventory_delta.InventoryDelta(
-                    [(None, "", b"an-id", expected_entry)]
-                ),
+                inventory_delta.InventoryDelta([(None, "", b"an-id", expected_entry)]),
             ),
             parse_result,
         )
@@ -447,7 +445,9 @@ class TestSerialization(TestCase):
             b"entry-version",
             delta,
         )
-        self.assertContainsRe(str(err), "no version for fileid (b?'TREE_ROOT'|TREE_ROOT)$")
+        self.assertContainsRe(
+            str(err), "no version for fileid (b?'TREE_ROOT'|TREE_ROOT)$"
+        )
 
     def test_nonrichroot_versioned_root_errors(self):
         old_inv = Inventory(None)
@@ -525,9 +525,7 @@ class TestSerialization(TestCase):
         root_entry = inventory.InventoryDirectory(
             b"TREE_ROOT", "", None, revision=b"some-version"
         )
-        delta = inventory_delta.InventoryDelta(
-            [(None, "", b"TREE_ROOT", root_entry)]
-        )
+        delta = inventory_delta.InventoryDelta([(None, "", b"TREE_ROOT", root_entry)])
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True
         )
@@ -726,5 +724,3 @@ None\x00/configure\x00exec-id\x00new-root-id\x00old-rev\x00file\x0030\x00Y\x00so
         serialized = b"".join(lines)
         self.assertIsInstance(serialized, bytes)
         self.assertEqual(expected, serialized)
-
-

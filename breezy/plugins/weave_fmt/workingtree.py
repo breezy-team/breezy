@@ -18,6 +18,7 @@
 
 from io import BytesIO
 
+from bzrformats import inventory, xml5
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import LocalTransport, file_kind
@@ -26,8 +27,6 @@ from ... import conflicts as _mod_conflicts
 from ... import errors, lock
 from ... import revision as _mod_revision
 from ...bzr import conflicts as _mod_bzr_conflicts
-from bzrformats import inventory
-from bzrformats import xml5
 from ...bzr import transform as bzr_transform
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree

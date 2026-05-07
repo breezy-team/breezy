@@ -19,6 +19,8 @@
 import re
 from io import BytesIO
 
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from ... import (
@@ -34,8 +36,6 @@ from ... import (
     workingtree,
 )
 from ... import delta as _mod_delta
-from bzrformats.inventory import NoSuchId
-from bzrformats.errors import RevisionNotPresent
 from ... import revision as _mod_revision
 from ...bzr import branch as _mod_bzrbranch
 from ...bzr import knitpack_repo, remote
@@ -397,9 +397,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         a = tree.commit(message, allow_pointless=True)
         rev = tree.branch.repository.get_revision(a)
-        serializer = getattr(
-            tree.branch.repository, "_revision_serializer", None
-        )
+        serializer = getattr(tree.branch.repository, "_revision_serializer", None)
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.

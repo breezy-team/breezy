@@ -20,14 +20,14 @@ import sys
 import tempfile
 from io import BytesIO
 
+from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
 from ...tests import features, test_commit
 from ...tree import InterTree
-from bzrformats import inventory
-from bzrformats.inventory import NoSuchId
 from .. import bzrdir, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
@@ -101,7 +101,11 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from bzrformats.inventory import InventoryDirectory, InventoryFile, InventoryLink
+        from bzrformats.inventory import (
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink,
+        )
 
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)

@@ -36,7 +36,7 @@ from bzrformats.errors import RevisionNotPresent
 from bzrformats.serializer import InventorySerializer, RevisionSerializer
 from dromedary.errors import NoSuchFile
 
-from .. import controldir, errors, lockdir, trace
+from .. import controldir, lockdir, trace
 from .. import revision as _mod_revision
 from ..repository import InterRepository, IsInWriteGroupError, Repository
 from . import lockable_files

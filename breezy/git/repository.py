@@ -17,9 +17,9 @@
 
 """An adapter between a Git Repository and a Breezy one."""
 
-from bzrformats.errors import RevisionNotPresent
 from io import BytesIO
 
+from bzrformats.errors import RevisionNotPresent
 from dulwich.errors import NotCommitError
 from dulwich.object_store import peel_sha, tree_lookup_path
 from dulwich.objects import ZERO_SHA, Commit
@@ -424,17 +424,17 @@ class LocalGitRepository(GitRepository):
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:
-                raise RevisionNotPresent(revid, self)
+                raise RevisionNotPresent(revid, self) from None
             try:
                 commit = self._git.object_store[commit_id]
             except KeyError:
-                raise RevisionNotPresent(revid, self)
+                raise RevisionNotPresent(revid, self) from None
             root_tree = commit.tree
             for fileid, identifier in files:
                 try:
                     path = mapping.parse_file_id(fileid)
                 except ValueError:
-                    raise RevisionNotPresent((fileid, revid), self)
+                    raise RevisionNotPresent((fileid, revid), self) from None
                 try:
                     _mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__,
@@ -443,7 +443,7 @@ class LocalGitRepository(GitRepository):
                     )
                     obj = self._git.object_store[item_id]
                 except KeyError:
-                    raise RevisionNotPresent((fileid, revid), self)
+                    raise RevisionNotPresent((fileid, revid), self) from None
                 else:
                     if obj.type_name == b"tree":
                         yield (identifier, [])

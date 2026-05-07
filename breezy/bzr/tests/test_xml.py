@@ -16,19 +16,15 @@
 
 from io import BytesIO
 
+from bzrformats import inventory, serializer, xml6, xml7, xml8
+from bzrformats import xml_serializer as bzrformats_xml_serializer
+from bzrformats._bzr_rs import revision_serializer_v5, revision_serializer_v8
+from bzrformats.inventory import Inventory
 from bzrformats.xml5 import inventory_serializer_v5
-from bzrformats._bzr_rs import revision_serializer_v5
 
 import breezy.osutils
 
 from ... import fifo_cache
-from bzrformats import inventory
-from bzrformats import serializer
-from bzrformats import xml_serializer as bzrformats_xml_serializer
-from bzrformats.inventory import Inventory
-
-from bzrformats import xml6, xml7, xml8
-from bzrformats._bzr_rs import revision_serializer_v8
 from . import TestCase
 
 _revision_v5 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
@@ -364,6 +360,7 @@ class TestSerializer(TestCase):
     def test_empty_property_value(self):
         """Create an empty property value check that it serializes correctly."""
         from bzrformats.revision import Revision
+
         rev = revision_serializer_v5.read_revision_from_string(_revision_v5)
         props = {"empty": "", "one": "one"}
         rev = Revision(
@@ -386,24 +383,37 @@ class TestSerializer(TestCase):
         inv.delete(b"tree-root-321")
         inv.add(
             inventory.InventoryDirectory(
-                b"tree-root-321", "", None, revision=b"rev_outer",
+                b"tree-root-321",
+                "",
+                None,
+                revision=b"rev_outer",
             )
         )
         inv.add(
             inventory.InventoryFile(
-                b"file-id", "file", b"tree-root-321",
-                revision=b"rev_outer", text_sha1=b"A", text_size=1,
+                b"file-id",
+                "file",
+                b"tree-root-321",
+                revision=b"rev_outer",
+                text_sha1=b"A",
+                text_size=1,
             )
         )
         inv.add(
             inventory.InventoryDirectory(
-                b"dir-id", "dir", b"tree-root-321", revision=b"rev_outer",
+                b"dir-id",
+                "dir",
+                b"tree-root-321",
+                revision=b"rev_outer",
             )
         )
         inv.add(
             inventory.InventoryLink(
-                b"link-id", "link", b"tree-root-321",
-                revision=b"rev_outer", symlink_target="a",
+                b"link-id",
+                "link",
+                b"tree-root-321",
+                revision=b"rev_outer",
+                symlink_target="a",
             )
         )
         return inv
@@ -451,16 +461,23 @@ class TestSerializer(TestCase):
         s_v7 = xml7.inventory_serializer_v7
         inv = Inventory(b"tree-root-321", revision_id=b"rev-outer")
         inv.delete(b"tree-root-321")
-        inv.add(inventory.InventoryDirectory(
-            b"tree-root-321", "", None, revision=b"root-rev",
-        ))
+        inv.add(
+            inventory.InventoryDirectory(
+                b"tree-root-321",
+                "",
+                None,
+                revision=b"root-rev",
+            )
+        )
         inv.add(
             inventory.TreeReference(
                 b"nested-id", "nested", b"tree-root-321", b"rev-outer", b"rev-inner"
             )
         )
         self.assertRaises(
-            serializer.UnsupportedInventoryKind, inventory_serializer_v5.write_inventory_to_lines, inv
+            serializer.UnsupportedInventoryKind,
+            inventory_serializer_v5.write_inventory_to_lines,
+            inv,
         )
         self.assertRaises(
             serializer.UnsupportedInventoryKind, s_v6.write_inventory_to_lines, inv
@@ -504,9 +521,7 @@ class TestSerializer(TestCase):
 
     def test_revision_text_v8_complex(self):
         """Pack revision to XML v8."""
-        rev = revision_serializer_v8.read_revision_from_string(
-            _expected_rev_v8_complex
-        )
+        rev = revision_serializer_v8.read_revision_from_string(_expected_rev_v8_complex)
         serialized = revision_serializer_v8.write_revision_to_lines(rev)
         self.assertEqualDiff(b"".join(serialized), _expected_rev_v8_complex)
 

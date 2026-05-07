@@ -19,7 +19,7 @@
 from bzrformats import knit
 from bzrformats.errors import RevisionNotPresent
 
-from .. import annotate, errors, revision, tests
+from .. import annotate, revision, tests
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -140,9 +140,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     def test_annotate_missing(self):
         self.make_simple_text()
-        self.assertRaises(
-            RevisionNotPresent, self.ann.annotate, (b"not", b"present")
-        )
+        self.assertRaises(RevisionNotPresent, self.ann.annotate, (b"not", b"present"))
 
     def test_annotate_simple(self):
         self.make_simple_text()

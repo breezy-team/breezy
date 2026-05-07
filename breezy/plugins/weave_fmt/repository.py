@@ -40,7 +40,11 @@ from bzrformats import xml5
 )
 from bzrformats import tuned_gzip, versionedfile, weave, weavefile
 from bzrformats._bzr_rs import revision_serializer_v5
-from bzrformats.errors import ObjectNotLocked, RevisionAlreadyPresent, RevisionNotPresent
+from bzrformats.errors import (
+    ObjectNotLocked,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
 from bzrformats.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,

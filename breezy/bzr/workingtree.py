@@ -91,7 +91,6 @@ from ..tree import (
     get_canonical_path,
 )
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry
-from . import rio as _mod_rio
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 
 MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
@@ -321,6 +320,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     def set_inventory(self, new_inventory_list):
+        """Set the inventory of the working tree."""
         from bzrformats.inventory import (
             Inventory,
             InventoryDirectory,
@@ -943,8 +943,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             except NoSuchFile:
                 pass
             else:
-                from bzrformats.xml7 import inventory_serializer_v7
-
                 try:
                     inv = xml7.inventory_serializer_v7.read_inventory_from_lines(
                         xml_lines
@@ -1089,6 +1087,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 hashfile.close()
 
     def subsume(self, other_tree):
+        """Subsume another tree into this one."""
         with self.lock_write():
             if other_tree.path2id("") == self.path2id(""):
                 raise errors.BadSubsumeSource(
@@ -1123,7 +1122,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 inv.add(new_dir)
                 # Add all entries from the other tree, reparenting
                 # root children to the new directory
-                for path, entry in other_inv.iter_entries():
+                for _path, entry in other_inv.iter_entries():
                     if entry.file_id == other_root.file_id:
                         continue
                     inv.add(entry)
@@ -1138,7 +1137,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         A new branch will be created, relative to the path for this tree.
         """
-        from bzrformats.inventory import InventoryDirectory
 
         def mkdirs(path):
             segments = osutils.splitpath(path)

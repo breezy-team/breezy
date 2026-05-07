@@ -53,7 +53,6 @@ from breezy.transactions import WriteTransaction
 """,
 )
 import vcsgraph.graph
-
 from bzrformats import versionedfile, weave, xml4, xml5
 
 
@@ -445,7 +444,9 @@ class ConvertBzrDir4To5(Converter):
         self.controldir.transport.delete_tree("text-store")
 
     def _convert_working_inv(self):
-        inv = xml4.inventory_serializer_v4.read_inventory(self.branch._transport.get("inventory"))
+        inv = xml4.inventory_serializer_v4.read_inventory(
+            self.branch._transport.get("inventory")
+        )
         f = BytesIO()
         xml5.inventory_serializer_v5.write_inventory(inv, f, working=True)
         self.branch._transport.put_bytes(
@@ -490,6 +491,7 @@ class ConvertBzrDir4To5(Converter):
         revision_transport = self.controldir.transport.clone("revision-store")
         # TODO permissions
         from bzrformats._bzr_rs import revision_serializer_v5
+
         from .repository import RevisionTextStore
 
         revision_store = RevisionTextStore(
@@ -548,8 +550,6 @@ class ConvertBzrDir4To5(Converter):
         Returns:
             The loaded inventory object.
         """
-        from bzrformats.xml4 import inventory_serializer_v4
-
         with self.branch.repository.inventory_store.get(rev_id) as f:
             inv = xml4.inventory_serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
@@ -565,8 +565,6 @@ class ConvertBzrDir4To5(Converter):
         Returns:
             The loaded inventory object.
         """
-        from bzrformats.xml5 import inventory_serializer_v5
-
         inv_xml = self.inv_weave.get_lines(rev_id)
         inv = xml5.inventory_serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
@@ -612,7 +610,8 @@ class ConvertBzrDir4To5(Converter):
 
     def _replace_entry_revision(self, inv, ie, revision):
         """Replace ie in inv with an otherwise-identical entry carrying
-        the given revision. InventoryEntry is immutable."""
+        the given revision. InventoryEntry is immutable.
+        """
         inv.delete(ie.file_id)
         kwargs = {"revision": revision}
         if ie.kind == "file":

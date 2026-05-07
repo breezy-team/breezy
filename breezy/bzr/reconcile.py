@@ -24,15 +24,15 @@ __all__ = [
 ]
 
 import vcsgraph.errors
-from bzrformats.errors import BzrCheckError, RevisionNotPresent
+from bzrformats.errors import BzrCheckError
 from bzrformats.versionedfile import AdapterFactory, ChunkedContentFactory
+from vcsgraph.tsort import topo_sort
 
-from .. import errors, ui
 from .. import revision as _mod_revision
+from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from vcsgraph.tsort import topo_sort
 
 
 class VersionedFileRepoReconciler:

@@ -16,8 +16,9 @@
 
 """Walk multiple trees simultaneously."""
 
-from . import errors, osutils
 from bzrformats.inventory import NoSuchId
+
+from . import osutils
 
 
 class MultiWalker:

@@ -18,8 +18,8 @@
 
 import sys
 
-from breezy import errors
 from bzrformats.inventory import NoSuchId
+
 from breezy.tests import TestSkipped
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

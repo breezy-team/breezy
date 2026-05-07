@@ -16,8 +16,9 @@
 
 """Command for finding file references in repository inventories."""
 
-from ... import commands, controldir, errors
 from bzrformats.inventory import NoSuchId
+
+from ... import commands, controldir
 
 
 class cmd_file_refs(commands.Command):

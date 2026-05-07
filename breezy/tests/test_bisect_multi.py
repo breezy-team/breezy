@@ -17,6 +17,7 @@
 """Tests for bisect_multi."""
 
 from bzrformats.bisect_multi import bisect_multi_bytes
+
 from . import TestCase
 
 

@@ -17,9 +17,8 @@
 
 """Tests of the 'brz dump-btree' command."""
 
-from dromedary.tests import http_server
-
 from bzrformats import btree_index
+from dromedary.tests import http_server
 
 from breezy import tests
 

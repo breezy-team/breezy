@@ -138,13 +138,9 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(ObjectNotLocked, signatures.keys)
         self.assertRaises(ObjectNotLocked, revisions.keys)
         self.assertRaises(ObjectNotLocked, inventories.keys)
-        self.assertRaises(
-            ObjectNotLocked, signatures.add_lines, ("foo",), [], []
-        )
+        self.assertRaises(ObjectNotLocked, signatures.add_lines, ("foo",), [], [])
         self.assertRaises(ObjectNotLocked, revisions.add_lines, ("foo",), [], [])
-        self.assertRaises(
-            ObjectNotLocked, inventories.add_lines, ("foo",), [], []
-        )
+        self.assertRaises(ObjectNotLocked, inventories.add_lines, ("foo",), [], [])
 
     def test__get_sink(self):
         repo = self.make_repository("repo")

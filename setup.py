@@ -217,8 +217,6 @@ def add_cython_extension(module_name, libraries=None, extra_source=None):
     )
 
 
-
-
 if unavailable_files:
     print("C extension(s) not found:")
     print("   {}".format("\n  ".join(unavailable_files)))

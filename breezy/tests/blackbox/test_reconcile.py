@@ -16,8 +16,9 @@
 
 """Black box tests for the reconcile command."""
 
-from breezy import controldir, tests
 from bzrformats import inventory
+
+from breezy import controldir, tests
 from breezy.repository import WriteGroup
 
 

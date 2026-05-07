@@ -39,6 +39,7 @@ import stat
 import sys
 from collections import defaultdict
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
@@ -64,7 +65,6 @@ from .. import branch as _mod_branch
 from .. import conflicts as _mod_conflicts
 from .. import controldir as _mod_controldir
 from .. import errors, globbing, lock, osutils, trace, tree, urlutils, workingtree
-from bzrformats.inventory import NoSuchId
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
 from ..decorators import only_raises

@@ -18,14 +18,14 @@
 
 from io import BytesIO
 
+from bzrformats import btree_index
+from bzrformats.errors import NotVersionedError
 from dromedary import errors as transport_errors
 
-from .. import errors, osutils, transport
+from .. import osutils, transport
 from ..commands import Command, display_command
 from ..option import Option
 from ..workingtree import WorkingTree
-from bzrformats import btree_index
-from bzrformats.errors import NotVersionedError
 
 
 def as_tuples(obj):

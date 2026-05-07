@@ -18,6 +18,7 @@
 
 import contextlib
 
+from bzrformats import inventory
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import LocalTransport
@@ -26,8 +27,6 @@ from .. import revision as _mod_revision
 from .. import trace
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
-from bzrformats import inventory
-
 from . import bzrdir, hashcache
 from . import transform as bzr_transform
 from .lockable_files import LockableFiles

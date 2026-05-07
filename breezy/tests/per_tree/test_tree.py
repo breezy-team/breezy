@@ -14,11 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
-from bzrformats.inventory import NoSuchId
-
-from breezy import conflicts, errors, osutils, revisiontree, tests
+from breezy import conflicts, osutils, revisiontree, tests
 from breezy.bzr import workingtree_4
 from breezy.tests.per_tree import TestCaseWithTree
 

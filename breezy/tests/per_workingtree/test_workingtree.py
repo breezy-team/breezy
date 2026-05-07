@@ -21,6 +21,7 @@ import errno
 import os
 from io import StringIO
 
+from bzrformats.inventory import Inventory
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
@@ -29,7 +30,6 @@ from ... import config, controldir, errors, merge, osutils, tests, trace, urluti
 from ... import revision as _mod_revision
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
-from bzrformats.inventory import Inventory
 from ...bzr.workingtree import InventoryWorkingTree
 from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree

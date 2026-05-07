@@ -18,9 +18,8 @@
 
 import os
 
-from dromedary.errors import NoSuchFile
-
 from bzrformats import errors as bzrformats_errors
+from dromedary.errors import NoSuchFile
 
 from breezy import errors, osutils, tests
 from breezy.tests import features

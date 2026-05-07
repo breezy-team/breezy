@@ -18,14 +18,13 @@
 
 from typing import TYPE_CHECKING
 
-import vcsgraph
 from bzrformats.errors import RevisionNotPresent
 from vcsgraph import (
     known_graph as _mod_known_graph,
 )
 
 from .. import annotate as _mod_annotate
-from .. import errors, osutils, ui
+from .. import osutils, ui
 from ..annotate import Annotator
 
 if TYPE_CHECKING:

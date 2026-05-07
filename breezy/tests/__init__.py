@@ -52,11 +52,11 @@ from io import BytesIO, StringIO, TextIOWrapper
 from unittest import SkipTest as TestSkipped
 
 import testtools
+from bzrformats import chk_map
 from catalogus import pyutils
 from testtools import content
 
 import breezy
-from bzrformats import chk_map
 
 from .. import (
     branchbuilder,

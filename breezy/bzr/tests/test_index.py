@@ -16,10 +16,10 @@
 
 """Tests for indices."""
 
+from bzrformats import index as _mod_index
 from dromedary.errors import NoSuchFile
 
 from ... import tests, transport
-from bzrformats import index as _mod_index
 
 
 class ErrorTests(tests.TestCase):

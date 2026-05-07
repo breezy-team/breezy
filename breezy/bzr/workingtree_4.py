@@ -50,10 +50,10 @@ from bzrformats import generate_ids
 import contextlib
 
 from bzrformats import dirstate
-from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
 from bzrformats.dirstate import DirstateCorrupt as _BzrFormatsDirstateCorrupt
 from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
 from bzrformats.errors import LockContention as _BzrFormatsLockContention
+from bzrformats.errors import NotVersionedError, ObjectNotLocked, RevisionNotPresent
 from bzrformats.inventory import (
     ROOT_ID,
     Inventory,
@@ -63,6 +63,7 @@ from bzrformats.inventory import (
     NoSuchId,
     TreeReference,
 )
+from bzrformats.inventory import _make_delta as make_inventory_delta
 from dromedary import errors as transport_errors
 from dromedary import get_transport_from_path
 from dromedary.errors import NoSuchFile
@@ -76,7 +77,6 @@ from ..mutabletree import BadReferenceTarget, MutableTree
 from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
-from bzrformats.inventory import _make_delta as make_inventory_delta
 from .inventorytree import InterInventoryTree, InventoryRevisionTree, InventoryTree
 from .lockable_files import LockableFiles
 from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
@@ -761,9 +761,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 entry_present,
             ) = state._get_block_entry_index(to_entry_dirname, to_basename, 0)
             if not entry_present:
-                raise errors.BzrMoveFailedError(
-                    "", to_dir, NotVersionedError(to_dir)
-                )
+                raise errors.BzrMoveFailedError("", to_dir, NotVersionedError(to_dir))
             to_entry = state._dirblocks[to_entry_block_index][1][to_entry_entry_index]
             # get a handle on the block itself.
             to_block_index = state._ensure_block(
@@ -956,7 +954,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                             to_block_index = state._ensure_block(
                                 to_block_index, to_entry_index, to_dir_utf8
                             )
-                            to_block = state._dirblocks[to_block_index]
+                            state._dirblocks[to_block_index]
 
                             # Grab a copy since move_one may update the list.
                             for entry in from_block[1][:]:
@@ -2643,6 +2641,7 @@ class InterDirStateTree(InterInventoryTree):
 
     @classmethod
     def make_source_parent_tree_python_dirstate(klass, test_case, source, target):
+        """Create a source parent tree using python dirstate."""
         return klass.make_source_parent_tree(source, target)
 
     _matching_from_tree_format = WorkingTreeFormat4()

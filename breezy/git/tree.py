@@ -25,6 +25,7 @@ from collections import deque
 from functools import partial
 from io import BytesIO
 
+from bzrformats.errors import NotVersionedError, ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.local import file_kind
@@ -41,8 +42,15 @@ from dulwich.index import (
     index_entry_from_stat,
 )
 from dulwich.object_store import BaseObjectStore, OverlayObjectStore, iter_tree_contents
-from bzrformats.errors import NotVersionedError, ObjectNotLocked
-from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Commit, ObjectID, Tree
+from dulwich.objects import (
+    S_IFGITLINK,
+    S_ISGITLINK,
+    ZERO_SHA,
+    Blob,
+    Commit,
+    ObjectID,
+    Tree,
+)
 
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace, urlutils

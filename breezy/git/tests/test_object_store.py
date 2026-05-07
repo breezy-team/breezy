@@ -20,11 +20,11 @@ import os
 import shutil
 import stat
 
+from bzrformats.inventory import InventoryDirectory, InventoryFile
 from dulwich.objects import Blob, Tree
 from vcsgraph.graph import DictParentsProvider, Graph
 
 from ...branchbuilder import BranchBuilder
-from bzrformats.inventory import InventoryDirectory, InventoryFile
 from ...errors import NoSuchRevision
 from ...tests import TestCase, TestCaseWithTransport
 from ...tests.features import SymlinkFeature

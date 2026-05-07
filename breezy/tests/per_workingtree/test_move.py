@@ -18,8 +18,9 @@
 
 import os
 
-from breezy import errors, osutils, tests
 from bzrformats import errors as bzrformats_errors
+
+from breezy import errors, osutils, tests
 from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

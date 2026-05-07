@@ -19,6 +19,7 @@
 import os
 import sys
 
+from bzrformats.errors import NotVersionedError
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 
@@ -26,7 +27,6 @@ import breezy.bzr
 import breezy.git
 
 from . import controldir, errors, lazy_import, transport
-from bzrformats.errors import NotVersionedError
 
 lazy_import.lazy_import(
     globals(),

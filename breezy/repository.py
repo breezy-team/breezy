@@ -23,7 +23,6 @@ data in Breezy.
 
 __docformat__ = "google"
 
-from bzrformats.errors import RevisionNotPresent
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 

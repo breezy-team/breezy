@@ -25,8 +25,9 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any
 
-from bzrformats import multiparent
-from dromedary import errors as transport_errors
+from bzrformats import generate_ids, inventory, multiparent
+from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
 
@@ -63,12 +64,7 @@ from ..transform import (
     unique_add,
 )
 from ..tree import find_previous_path
-from bzrformats import inventory
-from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
-from bzrformats.inventory import NoSuchId
-
 from . import inventorytree
-from bzrformats import generate_ids
 from .conflicts import Conflict
 
 
@@ -1789,6 +1785,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             else:
                 mover.apply_deletions()
         from bzrformats.inventory_delta import InventoryDelta
+
         if self.final_file_id(self.root) is None:
             inventory_delta = [e for e in inventory_delta if e[0] != ""]
         if not isinstance(inventory_delta, InventoryDelta):

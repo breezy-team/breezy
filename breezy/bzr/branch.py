@@ -42,7 +42,6 @@ from dromedary.errors import NoSuchFile
 from .. import errors, urlutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from . import lockable_files
 from ..branch import (
     Branch,
     BranchFormat,
@@ -54,7 +53,7 @@ from ..controldir import ControlDir
 from ..decorators import only_raises
 from ..lock import LogicalLockResult, _RelockDebugMixin
 from ..trace import mutter
-from . import bzrdir
+from . import bzrdir, lockable_files
 from .repository import MetaDirRepository
 
 if TYPE_CHECKING:

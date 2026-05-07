@@ -23,10 +23,10 @@ import time
 from bzrformats import dirstate, inventory
 from bzrformats.errors import ObjectNotLocked
 from bzrformats.inventory import NoSuchId
+from bzrformats.inventory_delta import InventoryDelta
 from dromedary import errors as transport_errors
 
 from ... import errors, osutils
-from bzrformats.inventory_delta import InventoryDelta
 from ...lockdir import LockDir
 from ...tests import TestCaseWithTransport, TestSkipped, features
 from ...tree import InterTree
@@ -897,7 +897,6 @@ class TestCorruptDirstate(TestCaseWithTransport):
 
         # self.assertRaises(Exception, tree.update_basis_by_delta,
         from bzrformats.errors import InconsistentDelta as BzrInconsistentDelta
-        from bzrformats.inventory_delta import InventoryDelta
 
         new_dir = inventory.InventoryDirectory(
             file_id=b"dir-id",

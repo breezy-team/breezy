@@ -23,7 +23,6 @@ fast access to repository data through specialized indices.
 """
 
 import contextlib
-import hashlib
 import re
 import sys
 
