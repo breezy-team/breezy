@@ -17,6 +17,7 @@
 
 from bzrformats import generate_ids, inventory, serializer
 from bzrformats.inventory import NoSuchId
+from bzrformats.inventory_delta import InventoryDelta
 from fastimport import helpers, processor
 
 from ... import debug, errors, osutils, revision
