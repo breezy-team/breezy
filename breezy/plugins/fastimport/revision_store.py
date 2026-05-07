@@ -202,6 +202,7 @@ class RevisionStore:
         if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
+            inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
                 # The very first root needs to carry the revision; rebuild
                 # it since InventoryEntry is immutable.

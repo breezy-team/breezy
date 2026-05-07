@@ -15,6 +15,8 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
+import contextlib
+
 from bzrformats import generate_ids, inventory, serializer
 from bzrformats.inventory import NoSuchId
 from bzrformats.inventory_delta import InventoryDelta
