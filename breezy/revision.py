@@ -134,7 +134,7 @@ class Revision:
         authors = self.properties.get("authors", None)
         if authors is None:
             author = self.properties.get("author", self.committer)
-            if author is None:
+            if not author:
                 return []
             return [author]
         else:
@@ -171,7 +171,7 @@ def iter_bugs(revision):
         return iter([])
     from . import bugtracker
 
-    return bugtracker.decode_bug_urls(bug_property)
+    return bugtracker.decode_bug_urls(bug_property.splitlines())
 
 
 def iter_ancestors(
@@ -231,7 +231,7 @@ def is_reserved_id(revision_id: RevisionID) -> bool:
     Returns:
       True if the revision is reserved, False otherwise
     """
-    return isinstance(revision_id, bytes) and revision_id.endswith(b":")
+    return revision_id.endswith(b":")
 
 
 def check_not_reserved_id(revision_id: RevisionID) -> None:
