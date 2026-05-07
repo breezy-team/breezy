@@ -52,6 +52,8 @@ from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
 """,
 )
+import vcsgraph.graph
+
 from bzrformats import versionedfile, weave, xml4, xml5
 
 
@@ -640,7 +642,7 @@ class ConvertBzrDir4To5(Converter):
             w = weave.Weave(file_id)
             self.text_weaves[file_id] = w
         parent_candiate_entries = ie.parent_candidates(parent_invs)
-        heads = graph.Graph(self).heads(parent_candiate_entries)
+        heads = vcsgraph.graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
         previous_entries = {head: parent_candiate_entries[head] for head in heads}
