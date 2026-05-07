@@ -87,6 +87,8 @@ def store_github_token(token):
     auth_config = AuthenticationConfig()
     auth_config._set_option("Github", "scheme", "https")
     auth_config._set_option("Github", "url", API_GITHUB_URL)
+    auth_config._set_option("Github", "host", GITHUB_HOST)
+    auth_config._set_option("Github", "token", token)
     auth_config._set_option("Github", "private_token", token)
 
 

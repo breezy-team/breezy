@@ -960,7 +960,7 @@ class NonDirectoryParent(HandledConflict):
             raise NotImplementedError(self.action_take_other)
 
 
-ctype = {}
+ctype: dict[str, type[Conflict]] = {}
 
 
 def register_types(*conflict_types):

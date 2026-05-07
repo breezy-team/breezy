@@ -302,9 +302,14 @@ def store_gitlab_token(name, url, private_token):
     """
     from ...config import AuthenticationConfig
 
+    (scheme, _user, _password, host, _port, _path) = urlutils.parse_url(url)
     auth_config = AuthenticationConfig()
     auth_config._set_option(name, "url", url)
     auth_config._set_option(name, "forge", "gitlab")
+    auth_config._set_option(name, "scheme", scheme or "https")
+    if host:
+        auth_config._set_option(name, "host", host)
+    auth_config._set_option(name, "token", private_token)
     auth_config._set_option(name, "private_token", private_token)
 
 

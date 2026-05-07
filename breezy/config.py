@@ -1844,7 +1844,7 @@ class TreeConfig(IniBasedConfig):
             self._config.remove_option(option_name, section_name)
 
 
-_authentication_config_permission_errors = set()
+_authentication_config_permission_errors: set[str] = set()
 
 
 class AuthenticationConfig:
@@ -1967,14 +1967,18 @@ class AuthenticationConfig:
           This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
-           - user: can't be different from the provided user if any,
+           - user: can't be different from the provided user if any. May be
+             None for token-only entries.
            - scheme: the server protocol,
            - host: the server address,
            - port: the server port (can be None),
            - path: the absolute server path (can be None),
            - realm: the http specific authentication realm (can be None),
            - password: the decoded password, could be None if the credential
-             defines only the user
+             defines only the user or only a token
+           - token: bearer token to send via Authorization header, or None
+           - token_scheme: HTTP auth scheme to use with the token (defaults
+             to "Bearer"),
            - verify_certificates: https specific, True if the server
              certificate should be verified, False otherwise.
         """
@@ -1986,6 +1990,7 @@ class AuthenticationConfig:
             a_scheme, a_host, a_user, a_path = map(
                 auth_def.get, ["scheme", "host", "user", "path"]
             )
+            a_token = auth_def.get("token")
 
             try:
                 a_port = auth_def.as_int("port")
@@ -2016,8 +2021,8 @@ class AuthenticationConfig:
             if a_user is not None and user is not None and a_user != user:
                 # Never contradict the caller about the user to be used
                 continue
-            if a_user is None:
-                # Can't find a user
+            if a_user is None and a_token is None:
+                # No user and no token — nothing useful in this section
                 continue
             # Prepare a credentials dictionary with additional keys
             # for the credential providers
@@ -2030,6 +2035,8 @@ class AuthenticationConfig:
                 "path": path,
                 "realm": realm,
                 "password": auth_def.get("password", None),
+                "token": a_token,
+                "token_scheme": auth_def.get("token_scheme", "Bearer"),
                 "verify_certificates": a_verify_certificates,
             }
             # Decode the password in the credentials (or get one)
@@ -2046,6 +2053,30 @@ class AuthenticationConfig:
             )
 
         return credentials
+
+    def get_token(self, scheme, host, port=None, path=None, realm=None):
+        """Get a bearer token from the authentication file, if configured.
+
+        Args:
+          scheme: protocol
+          host: the server address
+          port: the associated port (optional)
+          path: the absolute path on the server (optional)
+          realm: the http specific authentication realm (optional)
+
+        Returns:
+          A (token, token_scheme) tuple, or (None, None) if no token is
+          configured for this location.
+        """
+        credentials = self.get_credentials(
+            scheme, host, port=port, user=None, path=path, realm=realm
+        )
+        if credentials is None:
+            return None, None
+        token = credentials.get("token")
+        if token is None:
+            return None, None
+        return token, credentials.get("token_scheme") or "Bearer"
 
     def set_credentials(
         self,
