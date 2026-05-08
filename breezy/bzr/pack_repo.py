@@ -395,8 +395,8 @@ class RepositoryPackCollection:
         # XXX: This should call self.reset()
         self.repo = repo
         self.transport = transport
-        self._index_transport = index_transport
-        self._upload_transport = upload_transport
+        self._index_transport = _mod_transport.ErrorConvertingTransport(index_transport)
+        self._upload_transport = _mod_transport.ErrorConvertingTransport(upload_transport)
         self._pack_transport = pack_transport
         self._index_builder_class = index_builder_class
         self._index_class = index_class

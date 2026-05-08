@@ -274,6 +274,47 @@ def _breezy_auth_header_trace(header_name):
 set_auth_header_trace(_breezy_auth_header_trace)
 
 
+class ErrorConvertingTransport:
+    """Wrap a dromedary transport, converting dromedary errors to bzrformats errors.
+
+    bzrformats index code (BTreeGraphIndex, CombinedGraphIndex) catches
+    bzrformats.transport.NoSuchFile to trigger pack-list reloads.  When breezy
+    passes a raw dromedary transport into bzrformats, dromedary.errors.NoSuchFile
+    leaks out instead and the reload never fires.  This wrapper sits between the
+    two layers and converts the error at the boundary.
+    """
+
+    def __init__(self, transport):
+        self._transport = transport
+
+    def __getattr__(self, name):
+        return getattr(self._transport, name)
+
+    def _convert(self, e):
+        from bzrformats.transport import NoSuchFile as BzrformatsNoSuchFile
+        raise BzrformatsNoSuchFile(e.path) from e
+
+    def get_bytes(self, relpath):
+        try:
+            return self._transport.get_bytes(relpath)
+        except NoSuchFile as e:
+            self._convert(e)
+
+    def readv(self, relpath, offsets, adjust_for_latency=False, upper_limit=None):
+        try:
+            yield from self._transport.readv(
+                relpath,
+                offsets,
+                adjust_for_latency=adjust_for_latency,
+                upper_limit=upper_limit,
+            )
+        except NoSuchFile as e:
+            self._convert(e)
+
+    def recommended_page_size(self):
+        return self._transport.recommended_page_size()
+
+
 # Plain http://, https://, and the WebDAV variants are handled by
 # dromedary's own transports; `breezy.bzr.smart.transport.get_smart_medium`
 # knows how to wrap a dromedary HttpTransport in a SmartClientHTTPMedium
