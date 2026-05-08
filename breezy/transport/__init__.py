@@ -292,6 +292,7 @@ class ErrorConvertingTransport:
 
     def _convert(self, e):
         from bzrformats.transport import NoSuchFile as BzrformatsNoSuchFile
+
         raise BzrformatsNoSuchFile(e.path) from e
 
     def get_bytes(self, relpath):

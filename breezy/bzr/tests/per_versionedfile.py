@@ -48,7 +48,6 @@ from bzrformats.versionedfile import (
 )
 from bzrformats.weave import WeaveFile, WeaveInvalidChecksum
 from bzrformats.weavefile import write_weave
-from dromedary.errors import NoSuchFile
 from dromedary.memory import MemoryTransport
 from vcsgraph import known_graph as _mod_known_graph
 

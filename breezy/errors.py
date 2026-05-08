@@ -1550,6 +1550,7 @@ class ReadOnlyError(LockError):
     _fmt = "A write attempt was made in a read only transaction on %(obj)s"
 
     def __init__(self, obj):
+        """Create a new ReadOnlyError for obj."""
         BzrError.__init__(self, obj=obj)
         self.obj = obj
 
@@ -1560,6 +1561,7 @@ class ReadOnlyObjectDirtiedError(ReadOnlyError):
     _fmt = "Cannot change object %(obj)r in read only transaction"
 
     def __init__(self, obj):
+        """Create a new ReadOnlyObjectDirtiedError for obj."""
         ReadOnlyError.__init__(self, obj=obj)
 
 

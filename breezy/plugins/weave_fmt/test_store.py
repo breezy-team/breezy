@@ -20,8 +20,8 @@ import gzip
 import os
 from io import BytesIO
 
-from bzrformats.weave import WeaveFile
 from bzrformats.errors import OutSideTransaction, ReadOnlyError
+from bzrformats.weave import WeaveFile
 from dromedary.memory import MemoryTransport
 
 from ... import errors as errors

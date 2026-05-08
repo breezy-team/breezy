@@ -21,8 +21,8 @@ import tempfile
 from io import BytesIO
 
 from bzrformats import inventory
-from bzrformats.inventory import NoSuchId
 from bzrformats.errors import VersionedFileInvalidChecksum
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from ... import diff, errors, merge, osutils, tests, treebuilder
