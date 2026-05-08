@@ -579,7 +579,7 @@ class TestSerializer(TestCase):
             inventory_serializer_v5.read_inventory_from_lines,
             [b"<Notquitexml"],
         )
-        self.assertEqual(str(e), "unclosed token: line 1, column 0")
+        self.assertEqual(str(e), "Malformed XML. 1:13 Unexpected end of stream")
 
 
 class TestEncodeAndEscape(TestCase):

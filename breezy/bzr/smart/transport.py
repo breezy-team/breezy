@@ -75,8 +75,6 @@ def get_smart_medium(transport):
     method = getattr(transport, "get_smart_medium", None)
     if method is not None:
         return method()
-    # HTTP(S) transports come from dromedary and don't know about the
-    # bzr smart protocol. Wrap them ourselves.
     if isinstance(transport, (_HttpTransport, _HttpDavTransport)):
         from breezy.bzr.smart.http import SmartClientHTTPMedium
 

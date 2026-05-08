@@ -76,6 +76,7 @@ from ..smart.repository import (
     SmartServerRepositoryGetStream_1_19,
     _stream_to_byte_stream,
 )
+from ..smart.transport import get_smart_medium
 
 load_tests = load_tests_apply_scenarios
 

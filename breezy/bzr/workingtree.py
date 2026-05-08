@@ -225,10 +225,16 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def _serialize(self, inventory, out_file):
-        xml5.inventory_serializer_v5.write_inventory(
-            self._inventory, out_file, working=True
-        )
+    def _serialize(self, inv, out_file):
+        # xml5's serializer only knows how to write the flat ``Inventory``
+        # shape. If the inventory came from a CHK-format repository it will
+        # be a ``CHKInventory``, so flatten it first.
+        if not isinstance(inv, inventory.Inventory):
+            flat = inventory.Inventory(root_id=None, revision_id=inv.revision_id)
+            for _path, entry in inv.iter_entries():
+                flat.add(entry.copy())
+            inv = flat
+        xml5.inventory_serializer_v5.write_inventory(inv, out_file, working=True)
 
     def _deserialize(self, in_file):
         return xml5.inventory_serializer_v5.read_inventory(in_file)
@@ -616,10 +622,19 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _basis_inventory_name(self):
         return "basis-inventory-cache"
 
-    def _create_basis_xml_from_inventory(self, revision_id, inventory):
+    def _create_basis_xml_from_inventory(self, revision_id, inv):
         """Create the text that will be saved in basis-inventory."""
-        inventory.revision_id = revision_id
-        return xml7.inventory_serializer_v7.write_inventory_to_lines(inventory)
+        # xml7's serializer only knows how to write the flat ``Inventory``
+        # shape. If the parent tree came from a CHK-format repository the
+        # inventory is a ``CHKInventory``, so flatten it first.
+        if not isinstance(inv, inventory.Inventory):
+            flat = inventory.Inventory(root_id=None, revision_id=revision_id)
+            for _path, entry in inv.iter_entries():
+                flat.add(entry.copy())
+            inv = flat
+        else:
+            inv.revision_id = revision_id
+        return xml7.inventory_serializer_v7.write_inventory_to_lines(inv)
 
     def set_conflicts(self, conflicts):
         """Set the list of conflicts for this working tree.

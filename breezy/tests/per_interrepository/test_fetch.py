@@ -465,7 +465,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
         with to_repo.lock_write(), WriteGroup(to_repo, suppress_errors=True):
-            inv = tree.branch.repository.get_inventory(rev1)
+            src_inv = tree.branch.repository.get_inventory(rev1)
+            inv = inventory.Inventory(None, src_inv.revision_id)
+            for _path, ie in src_inv.iter_entries_by_dir():
+                inv.add(ie.copy())
             to_repo.add_inventory(rev1, inv, [])
             rev = tree.branch.repository.get_revision(rev1)
             to_repo.add_revision(rev1, rev, inv=inv)
