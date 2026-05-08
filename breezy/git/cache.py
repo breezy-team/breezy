@@ -1630,7 +1630,7 @@ def remove_readonly_transport_decorator(transport):
         Transport without read-only decorator.
 
     Raises:
-        ReadOnlyError: If transport cannot be made writable.
+        bzr_errors.ReadOnlyError: If transport cannot be made writable.
     """
     if transport.is_readonly():
         try:

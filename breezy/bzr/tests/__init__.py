@@ -49,7 +49,6 @@ def load_tests(loader, basic_tests, pattern):
         "test_conflicts",
         "test_generate_ids",
         "test_hashcache",
-        "test_index",
         "test_inv",
         "test_inventory_delta",
         "test_knit",
@@ -74,7 +73,6 @@ def load_tests(loader, basic_tests, pattern):
         "test_vfs_ratchet",
         "test_workingtree",
         "test_workingtree_4",
-        "test_weave",
         "test_xml",
     ]
 

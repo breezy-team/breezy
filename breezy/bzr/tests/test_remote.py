@@ -32,7 +32,7 @@ from io import BytesIO
 import fastbencode as bencode
 from bzrformats import inventory, inventory_delta, versionedfile
 from bzrformats._bzr_rs import revision_bencode_serializer
-from bzrformats.errors import RevisionNotPresent
+from bzrformats.errors import ReadOnlyError, RevisionNotPresent
 from bzrformats.revision import Revision
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile

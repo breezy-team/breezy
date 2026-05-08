@@ -22,6 +22,7 @@ from io import BytesIO
 
 from bzrformats import inventory
 from bzrformats.inventory import NoSuchId
+from bzrformats.errors import VersionedFileInvalidChecksum
 from dromedary.errors import NoSuchFile
 
 from ... import diff, errors, merge, osutils, tests, treebuilder
@@ -647,7 +648,7 @@ class BundleTester:
         self.assertRaises(
             (
                 errors.TestamentMismatch,
-                errors.VersionedFileInvalidChecksum,
+                VersionedFileInvalidChecksum,
                 errors.BadBundle,
             ),
             self.get_invalid_bundle,

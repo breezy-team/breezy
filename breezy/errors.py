@@ -1544,6 +1544,25 @@ class BoundBranchConnectionFailure(BzrError):
 # exceptions raised inside bzrformats.
 
 
+class ReadOnlyError(LockError):
+    """A write attempt was made in a read-only transaction."""
+
+    _fmt = "A write attempt was made in a read only transaction on %(obj)s"
+
+    def __init__(self, obj):
+        BzrError.__init__(self, obj=obj)
+        self.obj = obj
+
+
+class ReadOnlyObjectDirtiedError(ReadOnlyError):
+    """Cannot change object in a read-only transaction."""
+
+    _fmt = "Cannot change object %(obj)r in read only transaction"
+
+    def __init__(self, obj):
+        ReadOnlyError.__init__(self, obj=obj)
+
+
 class NoSuchExportFormat(BzrError):
     """Export format not supported.
 
