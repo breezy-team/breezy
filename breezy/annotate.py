@@ -203,7 +203,10 @@ def _expand_annotations(annotations, branch, current_rev: Revision | None = None
     last_origin = None
     revisions: dict[RevisionID, Revision] = {}
     if CURRENT_REVISION in revision_ids:
-        assert current_rev is not None
+        if current_rev is None:
+            raise AssertionError(
+                "current_rev must be set when annotating working tree changes"
+            )
         revision_id_to_revno[CURRENT_REVISION] = ("%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
     revisions.update(
