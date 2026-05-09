@@ -1501,8 +1501,8 @@ class TestNewPack(TestCaseWithTransport):
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(hashlib.md5()))  # noqa: S324
-        self.assertIs(pack.upload_transport, upload_transport)
-        self.assertIs(pack.index_transport, index_transport)
+        self.assertIs(pack.upload_transport._transport, upload_transport)
+        self.assertIs(pack.index_transport._transport, index_transport)
         self.assertIs(pack.pack_transport, pack_transport)
         self.assertEqual(None, pack.index_sizes)
         self.assertEqual(20, len(pack.random_name))
