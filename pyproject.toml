@@ -153,6 +153,7 @@ ignore = [
     "S106",  # "hardcoded password"; false positives on "pwd"
     "S110",  # "consider logging exception"
 
+    "S101",  # use of assert
     "S317",  # use defusedxml
 
     # This triggers for docstrings that uses __doc__

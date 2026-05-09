@@ -19,7 +19,8 @@
 from bzrformats import knit
 from bzrformats.errors import RevisionNotPresent
 
-from .. import annotate, revision, tests
+from ... import revision
+from .. import annotate, tests
 
 
 def load_tests(loader, standard_tests, pattern):

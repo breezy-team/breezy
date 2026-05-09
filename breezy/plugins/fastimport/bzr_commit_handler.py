@@ -574,18 +574,40 @@ class CommitHandler(processor.CommitHandler):
         # Create the new InventoryEntry
         basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
-        entry_kwargs = {"revision": self.revision_id}
         if kind == "file":
-            entry_kwargs["executable"] = is_executable
-            entry_kwargs["text_sha1"] = osutils.sha_string(data)
-            entry_kwargs["text_size"] = len(data)
+            assert data is not None
+            ie = inventory.make_entry(
+                kind,
+                basename,
+                parent_id,
+                file_id,
+                revision=self.revision_id,
+                executable=is_executable,
+                text_sha1=osutils.sha_string(data),
+                text_size=len(data),
+            )
             self.data_for_commit[file_id] = data
         elif kind == "directory":
+            ie = inventory.make_entry(
+                kind,
+                basename,
+                parent_id,
+                file_id,
+                revision=self.revision_id,
+            )
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b""
         elif kind == "symlink":
-            entry_kwargs["symlink_target"] = self._decode_path(data)
+            assert data is not None
+            ie = inventory.make_entry(
+                kind,
+                basename,
+                parent_id,
+                file_id,
+                revision=self.revision_id,
+                symlink_target=self._decode_path(data),
+            )
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b""
@@ -594,7 +616,6 @@ class CommitHandler(processor.CommitHandler):
                 f"Cannot import items of kind '{kind}' yet - ignoring '{path}'"
             )
             return
-        ie = inventory.make_entry(kind, basename, parent_id, file_id, **entry_kwargs)
         if kind == "directory":
             self.directory_entries[path] = ie
         # Record it
@@ -688,7 +709,7 @@ class CommitHandler(processor.CommitHandler):
                 raise KeyError
             try:
                 file_id = inv.path2id(dirname)
-            except NoSuchId:
+            except NoSuchId as e:
                 # In a CHKInventory, this is raised if there's no root yet
                 raise KeyError from e
             if file_id is None:
