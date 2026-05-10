@@ -21,7 +21,6 @@
 import os
 import site
 import subprocess
-import sys
 from io import BytesIO
 
 from dulwich.repo import Repo
