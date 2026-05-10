@@ -50,7 +50,6 @@ from bzrformats.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
 )
-from dromedary.errors import NoSuchFile
 
 from ... import debug, errors, lockdir, osutils, trace, urlutils
 from ...bzr import lockable_files
