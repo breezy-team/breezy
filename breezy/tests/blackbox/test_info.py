@@ -22,7 +22,17 @@ import shutil
 from dromedary import errors as transport_errors
 from dromedary import memory
 
-from breezy import branch, controldir, errors, info, lock, osutils, tests, upgrade, urlutils
+from breezy import (
+    branch,
+    controldir,
+    errors,
+    info,
+    lock,
+    osutils,
+    tests,
+    upgrade,
+    urlutils,
+)
 from breezy.bzr import bzrdir
 
 
