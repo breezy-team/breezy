@@ -22,13 +22,14 @@ import os
 import struct
 import tempfile
 
-from ... import controldir, errors, osutils, tests
+from bzrformats import dirstate, inventory
+from bzrformats.inventory import _make_delta as make_inventory_delta
+
+from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
 from ...tests import features, test_osutils
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import dirstate, inventory, inventorytree, workingtree_4
-from ..inventory import _make_delta
-from ..inventory_delta import InventoryDelta
+from .. import inventorytree, workingtree_4
 
 # TODO:
 # TESTS to write:
@@ -778,90 +779,6 @@ class TestDirStateOnFile(TestCaseWithDirState):
         finally:
             state.unlock()
 
-    def test_can_save_in_read_lock(self):
-        state = self.create_updated_dirstate()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            # The current size should be 0 (default)
-            self.assertEqual(0, entry[1][0][2])
-            # We should have a real entry.
-            self.assertNotEqual((None, None), entry)
-            # Set the cutoff-time into the future, so things look cacheable
-            state._sha_cutoff_time()
-            state._cutoff_time += 10.0
-            st = os.lstat("a-file")
-            sha1sum = dirstate.update_entry(state, entry, "a-file", st)
-            # We updated the current sha1sum because the file is cacheable
-            self.assertEqual(b"ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3", sha1sum)
-
-            # The dirblock has been updated
-            self.assertEqual(st.st_size, entry[1][0][2])
-            self.assertEqual(
-                dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-            )
-
-            del entry
-            # Now, since we are the only one holding a lock, we should be able
-            # to save and have it written to disk
-            state.save()
-        finally:
-            state.unlock()
-
-        # Re-open the file, and ensure that the state has been updated.
-        state = dirstate.DirState.on_file("dirstate")
-        state.lock_read()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            self.assertEqual(st.st_size, entry[1][0][2])
-        finally:
-            state.unlock()
-
-    def test_save_fails_quietly_if_locked(self):
-        """If dirstate is locked, save will fail without complaining."""
-        state = self.create_updated_dirstate()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            # No cached sha1 yet.
-            self.assertEqual(b"", entry[1][0][1])
-            # Set the cutoff-time into the future, so things look cacheable
-            state._sha_cutoff_time()
-            state._cutoff_time += 10.0
-            st = os.lstat("a-file")
-            sha1sum = dirstate.update_entry(state, entry, "a-file", st)
-            self.assertEqual(b"ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3", sha1sum)
-            self.assertEqual(
-                dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-            )
-
-            # Now, before we try to save, grab another dirstate, and take out a
-            # read lock.
-            # TODO: jam 20070315 Ideally this would be locked by another
-            #       process. To make sure the file is really OS locked.
-            state2 = dirstate.DirState.on_file("dirstate")
-            state2.lock_read()
-            try:
-                # This won't actually write anything, because it couldn't grab
-                # a write lock. But it shouldn't raise an error, either.
-                # TODO: jam 20070315 We should probably distinguish between
-                #       being dirty because of 'update_entry'. And dirty
-                #       because of real modification. So that save() *does*
-                #       raise a real error if it fails when we have real
-                #       modifications.
-                state.save()
-            finally:
-                state2.unlock()
-        finally:
-            state.unlock()
-
-        # The file on disk should not be modified.
-        state = dirstate.DirState.on_file("dirstate")
-        state.lock_read()
-        try:
-            entry = state._get_entry(0, path_utf8=b"a-file")
-            self.assertEqual(b"", entry[1][0][1])
-        finally:
-            state.unlock()
-
     def test_save_refuses_if_changes_aborted(self):
         self.build_tree(["a-file", "a-dir/"])
         state = dirstate.DirState.initialize("dirstate")
@@ -963,15 +880,17 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.addCleanup(state.unlock)
         id_index = state._get_id_index()
         self.assertEqual([b"a-root-value", b"subdir-id"], sorted(id_index.file_ids()))
-        state.add("file-name", b"file-id", "file", None, "")
+        state.add("file-name", b"file-id", "file", None, b"")
         self.assertEqual(
-            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+            [b"a-root-value", b"file-id", b"subdir-id"],
+            sorted(id_index.file_ids()),
         )
         state.update_minimal(
             (b"", b"new-name", b"file-id"), b"f", path_utf8=b"new-name"
         )
         self.assertEqual(
-            [b"a-root-value", b"file-id", b"subdir-id"], sorted(id_index.file_ids())
+            [b"a-root-value", b"file-id", b"subdir-id"],
+            sorted(id_index.file_ids()),
         )
         self.assertEqual(
             [(b"", b"new-name", b"file-id")], sorted(id_index.get(b"file-id"))
@@ -1510,11 +1429,13 @@ class TestDirStateManipulations(TestCaseWithDirState):
         once dirstate is stable and if it is merged with WorkingTree3, consider
         removing this copy of the test.
         """
+        from bzrformats.errors import NotVersionedError as BzrNotVersionedError
+
         self.build_tree(["unversioned/", "unversioned/a file"])
         state = dirstate.DirState.initialize("dirstate")
         self.addCleanup(state.unlock)
         self.assertRaises(
-            errors.NotVersionedError,
+            BzrNotVersionedError,
             state.add,
             "unversioned/a file",
             b"a-file-id",
@@ -1680,13 +1601,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
         self.assertEqual(entry, expected_entry)
 
     def test_add_forbidden_names(self):
+        from bzrformats.inventory import InvalidEntryName
+
         state = dirstate.DirState.initialize("dirstate")
         self.addCleanup(state.unlock)
         self.assertRaises(
-            errors.BzrError, state.add, ".", b"ass-id", "directory", None, None
+            InvalidEntryName, state.add, ".", b"ass-id", "directory", None, None
         )
         self.assertRaises(
-            errors.BzrError, state.add, "..", b"ass-id", "directory", None, None
+            InvalidEntryName, state.add, "..", b"ass-id", "directory", None, None
         )
 
     def test_set_state_with_rename_b_a_bug_395556(self):
@@ -1718,63 +1641,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 self.assertEqual(expected_result1, values)
             finally:
                 state.unlock()
-
-
-class TestDirStateHashUpdates(TestCaseWithDirState):
-    def do_update_entry(self, state, path):
-        entry = state._get_entry(0, path_utf8=path)
-        stat = os.lstat(path)
-        return dirstate.update_entry(state, entry, os.path.abspath(path), stat)
-
-    def _read_state_content(self, state):
-        """Read the content of the dirstate file.
-
-        On Windows when one process locks a file, you can't even open() the
-        file in another process (to read it). So we go directly to
-        state._state_file. This should always be the exact disk representation,
-        so it is reasonable to do so.
-        DirState also always seeks before reading, so it doesn't matter if we
-        bump the file pointer.
-        """
-        state._state_file.seek(0)
-        return state._state_file.read()
-
-    def test_worth_saving_limit_avoids_writing(self):
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["c", "d"])
-        tree.lock_write()
-        tree.add(["c", "d"], ids=[b"c-id", b"d-id"])
-        tree.commit("add c and d")
-        state = InstrumentedDirState.on_file(
-            tree.current_dirstate()._filename, worth_saving_limit=2
-        )
-        tree.unlock()
-        state.lock_write()
-        self.addCleanup(state.unlock)
-        state._read_dirblocks_if_needed()
-        state.adjust_time(+20)  # Allow things to be cached
-        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED, state._dirblock_state)
-        content = self._read_state_content(state)
-        self.do_update_entry(state, b"c")
-        self.assertEqual(1, len(state._known_hash_changes))
-        self.assertEqual(
-            dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-        )
-        state.save()
-        # It should not have set the state to IN_MEMORY_UNMODIFIED because the
-        # hash values haven't been written out.
-        self.assertEqual(
-            dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-        )
-        self.assertEqual(content, self._read_state_content(state))
-        self.assertEqual(
-            dirstate.DirState.IN_MEMORY_HASH_MODIFIED, state._dirblock_state
-        )
-        self.do_update_entry(state, b"d")
-        self.assertEqual(2, len(state._known_hash_changes))
-        state.save()
-        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED, state._dirblock_state)
-        self.assertEqual(0, len(state._known_hash_changes))
 
 
 class TestGetLines(TestCaseWithDirState):
@@ -1867,7 +1733,7 @@ class TestGetLines(TestCaseWithDirState):
                 ],
             )
         ]
-        dirblocks.append(("", root_entries))
+        dirblocks.append((b"", root_entries))
         # add two files in the root
         subdir_entry = (
             (b"", b"subdir", b"subdir-id"),
@@ -1881,7 +1747,7 @@ class TestGetLines(TestCaseWithDirState):
                 (b"f", b"sha1value", 34, False, packed_stat),  # current tree details
             ],
         )
-        dirblocks.append(("", [subdir_entry, afile_entry]))
+        dirblocks.append((b"", [subdir_entry, afile_entry]))
         # and one in subdir
         file_entry2 = (
             (b"subdir", b"2file", b"2file-id"),
@@ -1889,7 +1755,7 @@ class TestGetLines(TestCaseWithDirState):
                 (b"f", b"sha1value", 23, False, packed_stat),  # current tree details
             ],
         )
-        dirblocks.append(("subdir", [file_entry2]))
+        dirblocks.append((b"subdir", [file_entry2]))
         state = dirstate.DirState.initialize("dirstate")
         try:
             state._set_data([], dirblocks)
@@ -2247,59 +2113,10 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
         # *really* cheesy way to just get an empty tree
         repo = self.make_repository("repo")
         empty_tree = repo.revision_tree(_mod_revision.NULL_REVISION)
-        state.set_parent_trees([("null:", empty_tree)], [])
+        state.set_parent_trees([(b"null:", empty_tree)], [])
 
         dirblock_names = [d[0] for d in state._dirblocks]
         self.assertEqual(expected, dirblock_names)
-
-
-class InstrumentedDirState(dirstate.DirState):
-    """An DirState with instrumented sha1 functionality."""
-
-    def __init__(
-        self, path, sha1_provider, worth_saving_limit=0, use_filesystem_for_exec=True
-    ):
-        super().__init__(
-            path,
-            sha1_provider,
-            worth_saving_limit=worth_saving_limit,
-            use_filesystem_for_exec=use_filesystem_for_exec,
-        )
-        self._time_offset = 0
-        self._log = []
-        # member is dynamically set in DirState.__init__ to turn on trace
-        self._sha1_provider = sha1_provider
-        self._sha1_file = self._sha1_file_and_log
-
-    def _sha_cutoff_time(self):
-        timestamp = super()._sha_cutoff_time()
-        self._cutoff_time = timestamp + self._time_offset
-
-    def _sha1_file_and_log(self, abspath):
-        self._log.append(("sha1", abspath))
-        return self._sha1_provider.sha1(abspath)
-
-    def _read_link(self, abspath, old_link):
-        self._log.append(("read_link", abspath, old_link))
-        return super()._read_link(abspath, old_link)
-
-    def _lstat(self, abspath, entry):
-        self._log.append(("lstat", abspath))
-        return super()._lstat(abspath, entry)
-
-    def _is_executable(self, mode, old_executable):
-        self._log.append(("is_exec", mode, old_executable))
-        return super()._is_executable(mode, old_executable)
-
-    def adjust_time(self, secs):
-        """Move the clock forward or back.
-
-        :param secs: The amount to adjust the clock by. Positive values make it
-        seem as if we are in the future, negative values make it seem like we
-        are in the past.
-        """
-        self._time_offset += secs
-        self._cutoff_time = None
 
 
 class _FakeStat:
@@ -2639,17 +2456,28 @@ class TestDirstateValidation(TestCaseWithDirState):
         finally:
             state.unlock()
 
+    def _inject_corrupt_last_block_entry(self, state, bad_entry):
+        """Append ``bad_entry`` to the last dirblock and write it back.
+
+        ``state._dirblocks`` is a read-through snapshot of the Rust-owned
+        dirblocks, so mutating it in place does not persist.  Assemble
+        the corrupted dirblocks and reassign via the setter.
+        """
+        dirblocks = state._dirblocks
+        dirblocks[-1][1].append(bad_entry)
+        state._dirblocks = dirblocks
+
     def test_dirblock_not_sorted(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # we're appending to the dirblock, but this name comes before some of
         # the existing names; that's wrong
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"h", b"aaaa", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
         self.assertContainsRe(str(e), "not sorted")
@@ -2657,31 +2485,31 @@ class TestDirstateValidation(TestCaseWithDirState):
     def test_dirblock_name_mismatch(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # add an entry with the wrong directory name
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"", b"z", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
-        self.assertContainsRe(str(e), "doesn't match directory name")
+        self.assertContainsRe(str(e), r"doesn't match (?:block )?directory name")
 
     def test_dirblock_missing_rename(self):
         _tree, state, _expected = self.create_renamed_dirstate()
         state._read_dirblocks_if_needed()
-        last_dirblock = state._dirblocks[-1]
         # make another entry for a-id, without a correct 'r' pointer to
         # the real occurrence in the working tree
-        last_dirblock[1].append(
+        self._inject_corrupt_last_block_entry(
+            state,
             (
                 (b"h", b"z", b"a-id"),
                 [(b"a", b"", 0, False, b""), (b"a", b"", 0, False, b"")],
-            )
+            ),
         )
         e = self.assertRaises(AssertionError, state._validate)
-        self.assertContainsRe(str(e), "file a-id is absent in row")
+        self.assertContainsRe(str(e), "file a-id absent but previously present")
 
 
 class TestDirstateTreeReference(TestCaseWithDirState):
@@ -2701,7 +2529,9 @@ class TestDirstateTreeReference(TestCaseWithDirState):
         )
 
         try:
-            self.assertEqual(expected, state._find_block(key))
+            block_index, present = state._find_block_index_from_key(key)
+            self.assertTrue(present)
+            self.assertEqual(expected, state._dirblocks[block_index])
         finally:
             state.unlock()
 
@@ -2919,10 +2749,10 @@ class Test_InvEntryToDetails(tests.TestCase):
     def test_unicode_symlink(self):
         target = "link-targ\N{EURO SIGN}t"
         inv_entry = inventory.InventoryLink(
-            b"link-file-id",
-            "nam\N{EURO SIGN}e",
-            b"link-parent-id",
-            b"link-revision-id",
+            file_id=b"link-file-id",
+            name="nam\N{EURO SIGN}e",
+            parent_id=b"link-parent-id",
+            revision=b"link-revision-id",
             symlink_target=target,
         )
         self.assertDetails(
@@ -2980,11 +2810,21 @@ class TestUpdateBasisByDelta(tests.TestCase):
         except KeyError:
             dir_id = osutils.basename(dirname).encode("utf-8") + b"-id"
         if is_dir:
-            ie = inventory.InventoryDirectory(file_id, basename, dir_id, rev_id)
+            ie = inventory.InventoryDirectory(
+                file_id=file_id,
+                name=basename,
+                parent_id=dir_id,
+                revision=rev_id,
+            )
             dir_ids[path] = file_id
         else:
             ie = inventory.InventoryFile(
-                file_id, basename, dir_id, rev_id, text_size=0, text_sha1=b""
+                file_id=file_id,
+                name=basename,
+                parent_id=dir_id,
+                revision=rev_id,
+                text_size=0,
+                text_sha1=b"",
             )
         return ie
 
@@ -2999,7 +2839,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
                 path, file_id, ie_rev_id = info
             if path == "":
                 # Replace the root entry
-                inv.rename_id(inv.root.file_id, file_id)
+                inv.change_root_id(file_id)
                 dir_ids[""] = file_id
             else:
                 inv.add(self.path_to_ie(path, file_id, ie_rev_id, dir_ids))
@@ -3015,6 +2855,8 @@ class TestUpdateBasisByDelta(tests.TestCase):
 
     def create_inv_delta(self, delta, rev_id):
         """Translate a 'delta shape' into an actual InventoryDelta."""
+        from bzrformats.inventory_delta import InventoryDelta
+
         dir_ids = {"": b"root-id"}
         inv_delta = []
         for old_path, new_path, file_id in delta:
@@ -3044,7 +2886,9 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
-        delta = _make_delta(target_tree.root_inventory, basis_tree.root_inventory)
+        delta = make_inventory_delta(
+            target_tree.root_inventory, basis_tree.root_inventory
+        )
         state.update_basis_by_delta(delta, b"target")
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(
@@ -3081,8 +2925,13 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(
             active_tree.root_inventory, [(b"basis", basis_tree)], []
         )
+        from bzrformats.errors import InconsistentDelta as BzrInconsistentDelta
+
         self.assertRaises(
-            errors.InconsistentDelta, state.update_basis_by_delta, inv_delta, b"target"
+            BzrInconsistentDelta,
+            state.update_basis_by_delta,
+            inv_delta,
+            b"target",
         )
         # try:
         ##     state.update_basis_by_delta(inv_delta, b'target')

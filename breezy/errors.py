@@ -172,24 +172,6 @@ class BranchError(BzrError):
         BzrError.__init__(self, branch=branch)
 
 
-class BzrCheckError(InternalBzrError):
-    """Internal consistency check failure.
-
-    Raised when an internal consistency check fails, indicating a bug in bzr.
-    """
-
-    _fmt = "Internal check failed: %(msg)s"
-
-    def __init__(self, msg):
-        """Initialize with an error message.
-
-        Args:
-            msg: Description of what check failed.
-        """
-        BzrError.__init__(self)
-        self.msg = msg
-
-
 class IncompatibleVersion(BzrError):
     """Incompatible API version error.
 
@@ -301,26 +283,6 @@ class NoPublicBranch(BzrError):
 
         public_location = urlutils.unescape_for_display(branch.base, "ascii")
         BzrError.__init__(self, branch_url=public_location)
-
-
-class NoSuchId(BzrError):
-    """File ID not found in tree.
-
-    Raised when a requested file ID is not present in the tree.
-    """
-
-    _fmt = 'The file id "%(file_id)s" is not present in the tree %(tree)s.'
-
-    def __init__(self, tree, file_id):
-        """Initialize with the tree and missing file ID.
-
-        Args:
-            tree: The tree where the file ID was not found.
-            file_id: The file ID that was not found.
-        """
-        BzrError.__init__(self)
-        self.file_id = file_id
-        self.tree = tree
 
 
 class NotStacked(BranchError):
@@ -882,31 +844,6 @@ class AlreadyVersionedError(BzrError):
             self.context_info = context_info + ". "
 
 
-class NotVersionedError(BzrError):
-    """Path is not versioned but was expected to be.
-
-    Raised when attempting to perform a version control operation on a path
-    that is not under version control.
-    """
-
-    _fmt = "%(context_info)s%(path)s is not versioned."
-
-    def __init__(self, path, context_info=None):
-        """Initialize with path and context information.
-
-        Args:
-            path: The path which is not versioned, in user-friendly form.
-            context_info: Optional context information explaining why this
-                path was expected to be versioned.
-        """
-        BzrError.__init__(self)
-        self.path = path
-        if context_info is None:
-            self.context_info = ""
-        else:
-            self.context_info = context_info + ". "
-
-
 class PathsNotVersionedError(BzrError):
     """Multiple paths are not versioned.
 
@@ -1078,78 +1015,6 @@ class AlreadyCommitted(LockError):
     def __init__(self):
         """Initialize the AlreadyCommitted exception."""
         pass
-
-
-class ReadOnlyError(LockError):
-    """Write attempted on read-only object.
-
-    Raised when a write operation is attempted on an object that is read-only.
-    """
-
-    _fmt = "A write attempt was made in a read only transaction on %(obj)s"
-
-    # TODO: There should also be an error indicating that you need a write
-    # lock and don't have any lock at all... mbp 20070226
-
-    def __init__(self, obj):
-        """Initialize with the read-only object.
-
-        Args:
-            obj: The object that is read-only.
-        """
-        self.obj = obj
-
-
-class OutSideTransaction(BzrError):
-    """Operation attempted outside of transaction.
-
-    Raised when a transaction-related operation is attempted after the
-    transaction has already finished.
-    """
-
-    _fmt = (
-        "A transaction related operation was attempted after the transaction finished."
-    )
-
-
-class ObjectNotLocked(LockError):
-    """Object is not locked.
-
-    Raised when an operation requires a locked object but the object is
-    not currently locked.
-
-    Note:
-        This indicates that any particular object is not locked. See also
-        LockNotHeld which means that a particular *lock* object is not held
-        by the caller -- perhaps they should be unified.
-    """
-
-    _fmt = "%(obj)r is not locked"
-
-    def __init__(self, obj):
-        """Initialize with the unlocked object.
-
-        Args:
-            obj: The object that is not locked.
-        """
-        self.obj = obj
-
-
-class ReadOnlyObjectDirtiedError(ReadOnlyError):
-    """Attempt to modify object in read-only transaction.
-
-    Raised when attempting to modify an object within a read-only transaction.
-    """
-
-    _fmt = "Cannot change object %(obj)r in read only transaction"
-
-    def __init__(self, obj):
-        """Initialize with the object that was attempted to be modified.
-
-        Args:
-            obj: The object that cannot be changed in read-only mode.
-        """
-        self.obj = obj
 
 
 class UnlockableTransport(LockError):
@@ -1671,65 +1536,33 @@ class BoundBranchConnectionFailure(BzrError):
         self.error = error
 
 
-class VersionedFileError(BzrError):
-    """Base class for versioned file errors.
-
-    Raised when operations on versioned files encounter problems.
-    """
-
-    _fmt = "Versioned file error"
-
-
-class RevisionNotPresent(VersionedFileError):
-    """Revision not present in versioned file.
-
-    Raised when attempting to access a revision that does not exist
-    in the specified versioned file.
-    """
-
-    _fmt = 'Revision {%(revision_id)s} not present in "%(file_id)s".'
-
-    def __init__(self, revision_id, file_id):
-        """Initialize with revision and file information.
-
-        Args:
-            revision_id: The revision ID that is not present.
-            file_id: The file ID where the revision was not found.
-        """
-        VersionedFileError.__init__(self)
-        self.revision_id = revision_id
-        self.file_id = file_id
+# VersionedFile errors are now owned by bzrformats; re-export so
+# existing breezy.errors.X imports keep working.  Same for the
+# transaction/read-only lock errors raised by bzrformats.weave and
+# bzrformats.versionedfile — keeping a separate copy here would
+# break ``assertRaises(breezy.errors.ReadOnlyError, ...)`` against
+# exceptions raised inside bzrformats.
 
 
-class RevisionAlreadyPresent(VersionedFileError):
-    """Revision already present in versioned file.
+class ReadOnlyError(LockError):
+    """A write attempt was made in a read-only transaction."""
 
-    Raised when attempting to add a revision that already exists
-    in the specified versioned file.
-    """
+    _fmt = "A write attempt was made in a read only transaction on %(obj)s"
 
-    _fmt = 'Revision {%(revision_id)s} already present in "%(file_id)s".'
-
-    def __init__(self, revision_id, file_id):
-        """Initialize with revision and file information.
-
-        Args:
-            revision_id: The revision ID that is already present.
-            file_id: The file ID where the revision already exists.
-        """
-        VersionedFileError.__init__(self)
-        self.revision_id = revision_id
-        self.file_id = file_id
+    def __init__(self, obj):
+        """Create a new ReadOnlyError for obj."""
+        BzrError.__init__(self, obj=obj)
+        self.obj = obj
 
 
-class VersionedFileInvalidChecksum(VersionedFileError):
-    """Text checksum validation failed.
+class ReadOnlyObjectDirtiedError(ReadOnlyError):
+    """Cannot change object in a read-only transaction."""
 
-    Raised when the checksum of text in a versioned file does not match
-    the expected checksum, indicating data corruption.
-    """
+    _fmt = "Cannot change object %(obj)r in read only transaction"
 
-    _fmt = "Text did not match its checksum: %(msg)s"
+    def __init__(self, obj):
+        """Create a new ReadOnlyObjectDirtiedError for obj."""
+        ReadOnlyError.__init__(self, obj=obj)
 
 
 class NoSuchExportFormat(BzrError):

@@ -487,8 +487,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             return
         # setify to get item by item differences, but we can only do this
         # when all the ids are unique on both sides.
-        left_dict = {item[0]: item for item in left_changes}
-        right_dict = {item[0]: item for item in right_changes}
+        left_dict = {item.file_id: item for item in left_changes}
+        right_dict = {item.file_id: item for item in right_changes}
         if len(left_dict) != len(left_changes) or len(right_dict) != len(right_changes):
             # Can't do a direct comparison. We could do a sequence diff, but
             # for now just do a regular assertEqual for now.

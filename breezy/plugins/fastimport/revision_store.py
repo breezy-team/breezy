@@ -18,10 +18,10 @@
 from io import BytesIO
 
 import vcsgraph.graph as _mod_graph
+from bzrformats import inventory
+from bzrformats.inventory import NoSuchId
 
-from ... import errors
 from ... import revision as _mod_revision
-from ...bzr import inventory
 from ...bzr.inventorytree import InventoryTreeChange
 
 
@@ -47,7 +47,7 @@ class _TreeShim:
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
-                raise errors.NoSuchId(self, file_id)
+                raise NoSuchId(self, file_id)
             return new_path
         return self._basis_inv.id2path(file_id)
 
@@ -115,7 +115,7 @@ class _TreeShim:
             # probably is better to optimize for that
             try:
                 old_ie = basis_inv.get_entry(file_id)
-            except errors.NoSuchId as e:
+            except NoSuchId:
                 old_ie = None
                 if ie is None:
                     raise AssertionError("How is both old and new None?") from e
@@ -201,26 +201,31 @@ class RevisionStore:
         if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
+            inv = inventory.Inventory(revision_id=revision_id)
             if self.expects_rich_root():
-                inv = inventory.Inventory(root_id=None, revision_id=revision_id)
-                # The very first root needs to have the right revision
-                root = inventory.InventoryDirectory(
-                    inventory.ROOT_ID, "", None, revision_id
+                # The very first root needs to carry the revision; rebuild
+                # it since InventoryEntry is immutable.
+                old_root = inv.root
+                inv.delete(old_root.file_id)
+                inv.add(
+                    inventory.InventoryDirectory(
+                        file_id=old_root.file_id,
+                        name=old_root.name,
+                        parent_id=None,
+                        revision=revision_id,
+                    )
                 )
-                inv.add(root)
-            else:
-                inv = inventory.Inventory(revision_id=revision_id)
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
-        from ...bzr import chk_map
+        from bzrformats import chk_map
 
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
-        inventory_serializer = self.repo._format._inventory_serializer
-        search_key_name = inventory_serializer.search_key_name
-        maximum_size = inventory_serializer.maximum_size
+        serializer = self.repo._format._inventory_serializer
+        search_key_name = serializer.search_key_name
+        maximum_size = serializer.maximum_size
 
         # Maybe the rest of this ought to be part of the CHKInventory API?
         inv = inventory.CHKInventory(search_key_name)
@@ -302,7 +307,7 @@ class RevisionStore:
         for inv in self._rev_parent_invs:
             try:
                 old_rev = inv.get_entry(ie.file_id).revision
-            except errors.NoSuchId:
+            except NoSuchId:
                 pass
             else:
                 if old_rev in head_set:

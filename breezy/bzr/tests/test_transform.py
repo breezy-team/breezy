@@ -337,7 +337,7 @@ class TestBuildTree(TestCaseWithTransport):
         target.lock_write()
         self.addCleanup(target.unlock)
         state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
+        state._cutoff_time = int(time.time()) + 60
         build_tree(source.basis_tree(), target, source)
         entry = state._get_entry(0, path_utf8=b"file1")
         self.assertEqual(sha1, entry[1][0][1])
@@ -530,7 +530,7 @@ class TestBuildTree(TestCaseWithTransport):
         # We make use of the fact that DirState caches its cutoff time. So we
         # set the 'safe' time to one minute in the future.
         state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
+        state._cutoff_time = int(time.time()) + 60
         build_tree(source.basis_tree(), target)
         entry1_sha = osutils.sha_file_by_name("source/file1")
         entry2_sha = osutils.sha_file_by_name("source/dir/file2")

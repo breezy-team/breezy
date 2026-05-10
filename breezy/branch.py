@@ -27,6 +27,7 @@ import itertools
 from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 import vcsgraph.errors
+from bzrformats.errors import BzrCheckError
 from dromedary import errors as transport_errors
 
 from . import config as _mod_config
@@ -1321,8 +1322,10 @@ class Branch(ControlComponent):
             actual_revno = refs[("lefthand-distance", last_revision_id)]
             if actual_revno != last_revno:
                 result.errors.append(
-                    errors.BzrCheckError(
-                        f"revno does not match len(mainline) {last_revno} != {actual_revno}"
+                    BzrCheckError(
+                        "revno does not match len(mainline) {} != {}".format(
+                            last_revno, actual_revno
+                        )
                     )
                 )
             # TODO: We should probably also check that self.revision_history

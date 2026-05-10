@@ -19,13 +19,16 @@
 import hashlib
 import time
 
-from .. import _bzr_rs, controldir, debug, errors, osutils, trace, ui
+from bzrformats import chk_map, chk_serializer, inventory, pack, versionedfile
+from bzrformats import index as _mod_index
+from bzrformats._bzr_rs import revision_bencode_serializer
+from bzrformats.btree_index import BTreeBuilder, BTreeGraphIndex
+from bzrformats.errors import BzrCheckError
+from bzrformats.errors import NoSuchRevision as _BzrFormatsNoSuchRevision
+from bzrformats.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
+
+from .. import controldir, debug, errors, osutils, trace, ui
 from .. import revision as _mod_revision
-from ..bzr import chk_map, chk_serializer, inventory, versionedfile
-from ..bzr import index as _mod_index
-from ..bzr import pack as _mod_pack
-from ..bzr.btree_index import BTreeBuilder, BTreeGraphIndex
-from ..bzr.groupcompress import GroupCompressVersionedFiles, _GCGraphIndex
 from ..bzr.vf_repository import StreamSource
 from .pack_repo import (
     NewPack,
@@ -152,7 +155,7 @@ class GCPack(NewPack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = _mod_pack.ContainerWriter(self._write_data)
+        self._writer = pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = "open"
@@ -780,7 +783,6 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                     record.parents,
                     record.sha1,
                     canonical_inv.to_lines(),
-                    chunks_are_lines=True,
                 )
             # We have finished processing all of the inventory records, we
             # don't need these sets anymore
@@ -876,7 +878,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 chk_diff, text_keys, chk_map._bytes_to_text_key
             ):
                 pass
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, _BzrFormatsNoSuchRevision):
             # XXX: It would be nice if we could give a more precise error here.
             problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
@@ -887,7 +889,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         try:
             for _interesting_rec, _interesting_map in chk_diff:
                 pass
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, _BzrFormatsNoSuchRevision):
             problems.append(
                 "missing chk node(s) for parent_id_basename_to_file_id maps"
             )
@@ -907,8 +909,8 @@ class CHKInventoryRepository(PackRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Overridden to change pack collection class."""
         super().__init__(
@@ -916,8 +918,8 @@ class CHKInventoryRepository(PackRepository):
             a_controldir,
             control_files,
             _commit_builder_class,
-            _revision_serializer,
             _inventory_serializer,
+            _revision_serializer,
         )
         index_transport = self._transport.clone("indices")
         self._pack_collection = GCRepositoryPackCollection(
@@ -1025,10 +1027,12 @@ class CHKInventoryRepository(PackRepository):
         This is a simplified form of create_by_apply_delta which knows that all
         the old values must be None, so everything is a create.
         """
+        from bzrformats.inventory import _chk_inventory_entry_to_bytes
+
         serializer = self._format._inventory_serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = revision_id
-        entry_to_bytes = inventory._chk_inventory_entry_to_bytes
+        entry_to_bytes = _chk_inventory_entry_to_bytes
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
@@ -1113,6 +1117,10 @@ class CHKInventoryRepository(PackRepository):
                 basis_tree.lock_read()
                 basis_inv = basis_tree.root_inventory
         try:
+            from bzrformats.inventory_delta import InventoryDelta
+
+            if not isinstance(delta, InventoryDelta):
+                delta = InventoryDelta(delta)
             result = basis_inv.create_by_apply_delta(
                 delta, new_revision_id, propagate_caches=propagate_caches
             )
@@ -1261,10 +1269,7 @@ class CHKInventoryRepository(PackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if (
-            self._format._inventory_serializer == to_format._inventory_serializer
-            and self._format._revision_serializer == to_format._revision_serializer
-        ):
+        if self._format._inventory_serializer == to_format._inventory_serializer:
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different.
             # Actually, this test is just slightly looser than exact so that
@@ -1300,7 +1305,7 @@ class CHKInventoryRepository(PackRepository):
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
         if inconsistencies:
-            raise errors.BzrCheckError("Revision index has inconsistent parents.")
+            raise BzrCheckError("Revision index has inconsistent parents.")
 
 
 class GroupCHKStreamSource(StreamSource):
@@ -1544,8 +1549,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     supports_chks = True
     _commit_builder_class = PackCommitBuilder
     rich_root_data = True
-    _revision_serializer = _bzr_rs.revision_bencode_serializer
     _inventory_serializer = chk_serializer.inventory_chk_serializer_255_bigpage_10
+    _revision_serializer = revision_bencode_serializer
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder

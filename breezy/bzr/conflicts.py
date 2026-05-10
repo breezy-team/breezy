@@ -36,12 +36,13 @@ from breezy import (
 """,
 )
 
+from bzrformats import rio
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
-from .. import errors, osutils
+from .. import osutils
 from ..conflicts import Conflict as BaseConflict
 from ..conflicts import ConflictList as BaseConflictList
-from . import rio
 
 CONFLICT_SUFFIXES = (".THIS", ".BASE", ".OTHER")
 
@@ -520,7 +521,7 @@ class ContentsConflict(PathConflict):
             pass
         try:
             this_path = tt._tree.id2path(self.file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             # The file is not present anymore. This may happen if the user
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the

@@ -28,9 +28,24 @@ WorkingTree.open(dir).
 
 __docformat__ = "google"
 
+"""WorkingTree object and friends.
+
+A WorkingTree represents the editable working copy of a branch.
+Operations which represent the WorkingTree are also done here,
+such as renaming or adding files.
+
+At the moment every WorkingTree has its own branch.  Remote
+WorkingTrees aren't supported.
+
+To get a WorkingTree, call controldir.open_workingtree() or
+WorkingTree.open(dir).
+"""
+
 import contextlib
 import os
 from typing import TYPE_CHECKING
+
+from bzrformats.errors import RevisionNotPresent
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -354,7 +369,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
-        except (errors.RevisionNotPresent, errors.NoSuchRevision):
+        except (RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
             # occurred. If the revision is present, its a problem, if its not
             # its a ghost.

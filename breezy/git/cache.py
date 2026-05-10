@@ -21,6 +21,9 @@ import hashlib
 import os
 import threading
 
+from bzrformats import btree_index as _mod_btree_index
+from bzrformats import index as _mod_index
+from bzrformats import versionedfile
 from dromedary import errors as transport_errors
 from dromedary import get_transport_from_path
 from dromedary.errors import FileExists, NoSuchFile
@@ -29,9 +32,6 @@ from dulwich.objects import ShaFile, hex_to_sha, sha_to_hex
 from .. import errors as bzr_errors
 from .. import registry, trace
 from .._git_rs import get_cache_dir
-from ..bzr import btree_index as _mod_btree_index
-from ..bzr import index as _mod_index
-from ..bzr import versionedfile
 
 
 def get_remote_cache_transport(repository):
@@ -1630,7 +1630,7 @@ def remove_readonly_transport_decorator(transport):
         Transport without read-only decorator.
 
     Raises:
-        ReadOnlyError: If transport cannot be made writable.
+        bzr_errors.ReadOnlyError: If transport cannot be made writable.
     """
     if transport.is_readonly():
         try:

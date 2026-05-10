@@ -38,9 +38,12 @@ from breezy import (
     textfile,
     ui,
     )
+from bzrformats import generate_ids
+from bzrformats.errors import RevisionNotPresent
 from breezy.i18n import gettext
 """,
 )
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from . import decorators, errors, hooks, osutils, registry, trace, transform
@@ -1215,7 +1218,7 @@ class Merge3Merger:
 
             try:
                 base_path = self.base_tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 base_path = None
                 base_ie = _none_entry
             else:
@@ -1225,7 +1228,7 @@ class Merge3Merger:
 
             try:
                 this_path = self.this_tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 this_ie = _none_entry
                 this_path = None
             else:
@@ -1969,7 +1972,7 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        from .bzr.versionedfile import PlanWeaveMerge
+        from bzrformats.versionedfile import PlanWeaveMerge
 
         base = self.base_tree if self.cherrypick else None
         plan = self._generate_merge_plan(this_path, base)
@@ -2222,26 +2225,69 @@ class MergeIntoMergeType(Merge3Merger):
         if target_id is None:
             raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
-        from .bzr import generate_ids
-        from .bzr.inventory import InventoryDirectory
-
+        # Pick the file-id for the new root: re-use the source's unless
+        # it already exists in the target (common case is both trees
+        # sharing TREE_ROOT), in which case mint a fresh one. Non-root
+        # clashes still fall through and will show up as conflicts.
+        new_file_id = subdir.file_id
         try:
-            self.this_tree.id2path(subdir.file_id)
-        except errors.NoSuchId:
-            file_id = subdir.file_id
+            self.this_tree.id2path(new_file_id)
+        except NoSuchId:
+            pass
         else:
-            # Give the root a new file-id.
-            # This can happen fairly easily if the directory we are
-            # incorporating is the root, and both trees have 'TREE_ROOT' as
-            # their root_id.  Users will expect this to Just Work, so we
-            # change the file-id here.
-            # Non-root file-ids could potentially conflict too.  That's really
-            # an edge case, so we don't do anything special for those.  We let
-            # them cause conflicts.
-            file_id = generate_ids.gen_file_id(name_in_target)
-        merge_into_root = InventoryDirectory(
-            file_id, name_in_target, target_id, subdir.revision
+            new_file_id = generate_ids.gen_file_id(name_in_target)
+        # InventoryEntry is immutable; build the renamed root from
+        # scratch. Each kind needs its own fields, so handle them
+        # one at a time rather than through a shared kwargs dict.
+        from bzrformats.inventory import (
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink,
+            TreeReference,
         )
+
+        # bzrformats's InventoryDirectory(parent_id=None) collapses
+        # the entry to a Root and drops the name; we need a regular
+        # named entry, so use target_id as the parent_id.  The actual
+        # tree position is set later via the trans-id system in
+        # _compute_transform; this parent_id is only used if/when the
+        # entry is added to an inventory.
+        new_parent_id = target_id
+        if subdir.kind == "directory":
+            merge_into_root = InventoryDirectory(
+                new_file_id,
+                name_in_target,
+                new_parent_id,
+                revision=subdir.revision,
+            )
+        elif subdir.kind == "file":
+            merge_into_root = InventoryFile(
+                new_file_id,
+                name_in_target,
+                new_parent_id,
+                revision=subdir.revision,
+                text_sha1=subdir.text_sha1,
+                text_size=subdir.text_size,
+                executable=subdir.executable,
+            )
+        elif subdir.kind == "symlink":
+            merge_into_root = InventoryLink(
+                new_file_id,
+                name_in_target,
+                new_parent_id,
+                revision=subdir.revision,
+                symlink_target=subdir.symlink_target,
+            )
+        elif subdir.kind == "tree-reference":
+            merge_into_root = TreeReference(
+                new_file_id,
+                name_in_target,
+                new_parent_id,
+                revision=subdir.revision,
+                reference_revision=subdir.reference_revision,
+            )
+        else:
+            raise AssertionError(f"unexpected kind: {subdir.kind!r}")
         yield (merge_into_root, target_id, "")
         if subdir.kind != "directory":
             # No children, so we are done.
@@ -2385,7 +2431,7 @@ class _PlanMergeBase:
         result = {}
         for record in self.vf.get_record_stream(keys, "unordered", True):
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent(record.key, self.vf)
+                raise RevisionNotPresent(record.key, self.vf)
             result[record.key[-1]] = record.get_bytes_as("lines")
         return result
 
@@ -2689,9 +2735,8 @@ class _PlanMerge(_PlanMergeBase):
         return all_texts
 
     def _build_weave(self):
+        from bzrformats import weave
         from vcsgraph.tsort import merge_sort
-
-        from .bzr import weave
 
         self._weave = weave.Weave(weave_name="in_memory_weave", allow_reserved=True)
         parent_map = self._find_recursive_lcas()

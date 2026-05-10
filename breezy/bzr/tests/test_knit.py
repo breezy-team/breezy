@@ -20,22 +20,10 @@ import gzip
 import sys
 from io import BytesIO
 
-from dromedary.errors import NoSuchFile
-from patiencediff import PatienceSequenceMatcher
-
-from ... import errors, osutils
-from ... import transport as _mod_transport
-from ...bzr import multiparent
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestCaseWithTransport,
-    TestNotApplicable,
-    features,
-)
-from .. import knit, knitpack_repo, pack, pack_repo
-from ..index import *  # noqa: F403
-from ..knit import (
+from bzrformats import knit, multiparent, pack
+from bzrformats.errors import ReadOnlyError as BzrReadOnlyError
+from bzrformats.index import CombinedGraphIndex, GraphIndex, GraphIndexBuilder
+from bzrformats.knit import (
     AnnotatedKnitContent,
     KnitContent,
     KnitCorrupt,
@@ -51,15 +39,28 @@ from ..knit import (
     _VFContentMapGenerator,
     make_file_factory,
 )
-from ..versionedfile import (
+from bzrformats.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
     RecordingVersionedFilesDecorator,
     network_bytes_to_kind_and_offset,
 )
+from dromedary.errors import NoSuchFile
+from patiencediff import PatienceSequenceMatcher
+
+from ... import osutils
+from ... import transport as _mod_transport
+from ...tests import (
+    TestCase,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    TestNotApplicable,
+    features,
+)
+from .. import knitpack_repo, pack_repo
 
 compiled_knit_feature = features.ModuleAvailableFeature(
-    "breezy.bzr._knit_load_data_pyx"
+    "bzrformats._knit_load_data_pyx"
 )
 
 
@@ -946,9 +947,9 @@ class LowLevelKnitDataTests(TestCase):
 class LowLevelKnitIndexTests(TestCase):
     @property
     def _load_data(self):
-        from .._knit_load_data_py import _load_data_py
+        from bzrformats.knit import _load_data
 
-        return _load_data_py
+        return _load_data
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
@@ -1362,7 +1363,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     @property
     def _load_data(self):
-        from .._knit_load_data_pyx import _load_data_c
+        from bzrformats._knit_load_data_pyx import _load_data_c
 
         return _load_data_c
 
@@ -1805,7 +1806,7 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(
-            errors.ReadOnlyError,
+            BzrReadOnlyError,
             index.add_records,
             [((b"new",), b"fulltext,no-eol", (None, 50, 60), [b"separate"])],
         )
@@ -2223,7 +2224,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(
-            errors.ReadOnlyError,
+            BzrReadOnlyError,
             index.add_records,
             [((b"new",), b"fulltext,no-eol", (None, 50, 60), [(b"separate",)])],
         )

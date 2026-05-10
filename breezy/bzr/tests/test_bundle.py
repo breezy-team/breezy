@@ -20,13 +20,16 @@ import sys
 import tempfile
 from io import BytesIO
 
+from bzrformats import inventory
+from bzrformats.errors import VersionedFileInvalidChecksum
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 
 from ... import diff, errors, merge, osutils, tests, treebuilder
 from ... import revision as _mod_revision
 from ...tests import features, test_commit
 from ...tree import InterTree
-from .. import bzrdir, inventory, knitrepo
+from .. import bzrdir, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
 from ..bundle.serializer import read_bundle, v09, v4, write_bundle
@@ -51,7 +54,7 @@ def get_inventory_text(repo, revision_id):
 
 class MockTree(InventoryTree):
     def __init__(self):
-        from ..inventory import ROOT_ID, InventoryDirectory
+        from bzrformats.inventory import ROOT_ID, InventoryDirectory
 
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
@@ -99,7 +102,11 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import InventoryDirectory, InventoryFile, InventoryLink
+        from bzrformats.inventory import (
+            InventoryDirectory,
+            InventoryFile,
+            InventoryLink,
+        )
 
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
@@ -138,7 +145,7 @@ class MockTree(InventoryTree):
         try:
             return self.paths[file_id]
         except KeyError as e:
-            raise errors.NoSuchId(file_id, self) from e
+            raise NoSuchId(file_id, self) from e
 
     def get_file(self, path):
         result = BytesIO()
@@ -254,7 +261,7 @@ class BTreeTester(tests.TestCase):
     def make_tree_2(self):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file", "grandparent/alt_parent/file")
-        self.assertRaises(errors.NoSuchId, btree.id2path, b"e")
+        self.assertRaises(NoSuchId, btree.id2path, b"e")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
         btree.note_id(b"e", "grandparent/parent/file")
         return btree
@@ -305,7 +312,7 @@ class BTreeTester(tests.TestCase):
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        self.assertRaises(errors.NoSuchId, btree.id2path, b"c")
+        self.assertRaises(NoSuchId, btree.id2path, b"c")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
@@ -641,7 +648,7 @@ class BundleTester:
         self.assertRaises(
             (
                 errors.TestamentMismatch,
-                errors.VersionedFileInvalidChecksum,
+                VersionedFileInvalidChecksum,
                 errors.BadBundle,
             ),
             self.get_invalid_bundle,

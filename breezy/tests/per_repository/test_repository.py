@@ -19,6 +19,8 @@
 import re
 from io import BytesIO
 
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from ... import (
@@ -515,12 +517,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(b"bar", extracted["file2"])
         self.assertEqual(b"baz", extracted["file1-new"])
         self.assertRaises(
-            errors.RevisionNotPresent,
+            RevisionNotPresent,
             list,
             repository.iter_files_bytes([(file1_id, b"rev3", "file1-notpresent")]),
         )
         self.assertRaises(
-            (errors.RevisionNotPresent, errors.NoSuchId),
+            (RevisionNotPresent, NoSuchId),
             list,
             repository.iter_files_bytes([(b"file3-id", b"rev3", "file1-notpresent")]),
         )

@@ -32,24 +32,24 @@ from breezy import (
     revision as _mod_revision,
     ui,
     )
-from breezy.bzr import (
-    pack,
-    )
-from breezy.bzr.knit import (
+from bzrformats import pack
+from bzrformats.knit import (
     _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
     )
 """,
 )
-
-from ..bzr import btree_index
-from ..bzr.index import (
+from bzrformats import btree_index, xml5, xml6, xml7
+from bzrformats._bzr_rs import revision_serializer_v5
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
+from bzrformats.index import (
     CombinedGraphIndex,
     GraphIndex,
     GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
 )
+
 from ..bzr.vf_repository import StreamSource
 from .knitrepo import KnitRepository
 from .pack_repo import (
@@ -76,8 +76,8 @@ class KnitPackRepository(PackRepository, KnitRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Initialize a KnitPackRepository.
 
@@ -95,8 +95,8 @@ class KnitPackRepository(PackRepository, KnitRepository):
             a_controldir,
             control_files,
             _commit_builder_class,
-            _revision_serializer,
             _inventory_serializer,
+            _revision_serializer,
         )
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
@@ -189,16 +189,12 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -239,16 +235,12 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     supports_tree_reference = True
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -289,16 +281,12 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     supports_tree_reference = False
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # What index classes to use
     index_builder_class = InMemoryGraphIndex
@@ -337,16 +325,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6")
@@ -383,16 +367,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -434,16 +414,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     index_class = GraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         matching = controldir.format_registry.make_controldir("1.6.1-rich-root")
@@ -490,16 +466,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9")
@@ -535,16 +507,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("1.9-rich-root")
@@ -584,16 +552,12 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     index_class = btree_index.BTreeGraphIndex
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("development5-subtree")
@@ -821,8 +785,7 @@ class KnitPacker(Packer):
                 if output_lines is not None:
                     output_lines(knit._parse_record(key[-1], raw_data)[0])
                 else:
-                    df, _ = knit._parse_record_header(key, raw_data)
-                    df.close()
+                    knit._parse_record_header(key, raw_data)
                 pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
@@ -895,8 +858,7 @@ class KnitPacker(Packer):
                         yield line, key
                 else:
                     # check the header only
-                    df, _ = knit._parse_record_header(key, raw_data)
-                    df.close()
+                    knit._parse_record_header(key, raw_data)
                 pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size), references)
                 pb.update("Copied record", record_index)
@@ -1045,7 +1007,7 @@ class KnitPacker(Packer):
                 # keys.
                 trace.mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
-                raise errors.RevisionNotPresent(a_missing_key[1], a_missing_key[0])
+                raise RevisionNotPresent(a_missing_key[1], a_missing_key[0])
         # copy text keys and adjust values
         self.pb.update("Copying content texts", 3)
         total_items, readv_group_iter = self._least_readv_node_readv(text_nodes)
@@ -1320,8 +1282,10 @@ class KnitReconcilePacker(KnitPacker):
         # 5) check that nothing inserted has a reference outside the keyspace.
         missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrCheckError(
-                f"Reference to missing compression parents {missing_text_keys!r}"
+            raise BzrCheckError(
+                "Reference to missing compression parents {!r}".format(
+                    missing_text_keys
+                )
             )
         self._log_copied_texts()
 

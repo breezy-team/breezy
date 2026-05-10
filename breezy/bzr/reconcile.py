@@ -24,14 +24,15 @@ __all__ = [
 ]
 
 import vcsgraph.errors
+from bzrformats.errors import BzrCheckError
+from bzrformats.versionedfile import AdapterFactory, ChunkedContentFactory
 from vcsgraph.tsort import topo_sort
 
-from .. import errors, ui
 from .. import revision as _mod_revision
+from .. import ui
 from ..i18n import gettext
 from ..reconcile import ReconcileResult
 from ..trace import mutter
-from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
 class VersionedFileRepoReconciler:
@@ -219,7 +220,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         if self.thorough:
             try:
                 self._load_indexes()
-            except errors.BzrCheckError:
+            except BzrCheckError:
                 self.aborted = True
                 return
             # knits never suffer this

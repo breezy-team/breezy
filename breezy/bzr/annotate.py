@@ -18,16 +18,17 @@
 
 from typing import TYPE_CHECKING
 
+from bzrformats.errors import RevisionNotPresent
 from vcsgraph import (
     known_graph as _mod_known_graph,
 )
 
 from .. import annotate as _mod_annotate
-from .. import errors, osutils, ui
+from .. import osutils, ui
 from ..annotate import Annotator
 
 if TYPE_CHECKING:
-    from .versionedfile import VersionedFiles
+    from bzrformats.versionedfile import VersionedFiles
 
 
 class VersionedFileAnnotator(Annotator):
@@ -119,7 +120,7 @@ class VersionedFileAnnotator(Annotator):
             if pb is not None:
                 pb.update("extracting", 0, len(keys))
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent(record.key, self._vf)
+                raise RevisionNotPresent(record.key, self._vf)
             this_key = record.key
             lines = record.get_bytes_as("lines")
             num_lines = len(lines)
@@ -231,7 +232,7 @@ class VersionedFileAnnotator(Annotator):
         try:
             annotations = self._annotations_cache[key]
         except KeyError as exc:
-            raise errors.RevisionNotPresent(key, self._vf) from exc
+            raise RevisionNotPresent(key, self._vf) from exc
         return annotations, self._text_cache[key]
 
     def _get_heads_provider(self):

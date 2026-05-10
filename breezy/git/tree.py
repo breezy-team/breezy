@@ -25,6 +25,7 @@ from collections import deque
 from functools import partial
 from io import BytesIO
 
+from bzrformats.errors import NotVersionedError, ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile
 from dromedary.local import file_kind
@@ -1938,7 +1939,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             ObjectNotLocked: If the tree is not locked.
         """
         if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         self._versioned_dirs = set()
         for p, _entry in self._recurse_index_entries():
             self._ensure_versioned_dir(posixpath.dirname(p))
@@ -2301,7 +2302,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _unversion_path(self, path):
         if self._lock_mode is None:
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         encoded_path = encode_git_path(path)
         count = 0
         (index, subpath) = self._lookup_index(encoded_path)
@@ -2447,7 +2448,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     )
                 kind = self.kind(from_rel)
                 if not self.is_versioned(from_rel) and kind != "directory":
-                    raise exc_type(from_rel, to_rel, errors.NotVersionedError(from_rel))
+                    raise exc_type(from_rel, to_rel, NotVersionedError(from_rel))
                 if self.has_filename(to_rel):
                     raise errors.RenameFailedFilesExist(
                         from_rel, to_rel, FileExists(to_rel)
@@ -2460,7 +2461,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 if from_subpath not in index:
                     # It's not a file
                     raise errors.BzrMoveFailedError(
-                        from_rel, to_rel, errors.NotVersionedError(path=from_rel)
+                        from_rel, to_rel, NotVersionedError(path=from_rel)
                     )
 
             if not after:

@@ -18,15 +18,16 @@
 
 import sys
 
+from bzrformats.inventory import Inventory, InventoryDirectory
+
 import breezy
 import breezy.errors as errors
 import breezy.gpg
+from breezy.repository import WriteGroup
+from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable, TestSkipped
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory import ROOT_ID, Inventory, InventoryDirectory
-from ...repository import WriteGroup
-from ...revision import NULL_REVISION
 from ...workingtree import WorkingTree
 from ..matchers import MatchesAncestry
 
@@ -194,9 +195,19 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id, root_id=None)
-            root = InventoryDirectory(ROOT_ID, "", None, revision_id)
-            inv.add(root)
+            inv = Inventory(revision_id=revision_id)
+            # Rebuild the root with the commit's revision, since
+            # InventoryEntry is immutable.
+            old_root = inv.root
+            inv.delete(old_root.file_id)
+            inv.add(
+                InventoryDirectory(
+                    file_id=old_root.file_id,
+                    name=old_root.name,
+                    parent_id=None,
+                    revision=revision_id,
+                )
+            )
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -207,8 +218,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
                 message="Message",
                 properties={},
                 inventory_sha1=sha1,
-                parent_ids=parent_ids,
                 revision_id=revision_id,
+                parent_ids=parent_ids,
             )
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()

@@ -19,8 +19,13 @@
 The dromedary package dropped its built-in SmartMedium support because the
 smart protocol is bzr-specific. This module re-introduces the pieces breezy
 needs: the :class:`NoSmartMedium` exception and a :func:`get_smart_medium`
-helper that knows how to build a smart medium from each kind of transport
-breezy understands.
+helper that returns a smart medium for the transports that can carry the
+bzr protocol, by dispatching on the transport type.
+
+Doing the dispatch here (rather than via a method on a breezy-specific
+transport subclass) lets us reuse dromedary's HTTP/HTTPS transports
+unchanged - no need to register a parallel breezy.transport.http override
+just to attach a method.
 """
 
 from dromedary._transport_rs import TransportDecorator as _RustTransportDecorator
@@ -31,6 +36,7 @@ from dromedary.http.urllib import HttpTransport as _HttpTransport
 # Both decorator hierarchies expose ``_decorated`` and route arbitrary
 # attribute access to the wrapped transport. Match either when unwrapping.
 _TransportDecorator = (_PyTransportDecorator, _RustTransportDecorator)
+from dromedary.webdav import HttpDavTransport as _HttpDavTransport
 
 
 class NoSmartMedium(TransportError):
@@ -66,7 +72,10 @@ def get_smart_medium(transport):
     ``breezy.bzr.remote``, ``breezy.bzr.smart.client`` and ``breezy.gpg``,
     bloating the import tariff for ``bzr serve``).
     """
-    if isinstance(transport, _HttpTransport):
+    method = getattr(transport, "get_smart_medium", None)
+    if method is not None:
+        return method()
+    if isinstance(transport, (_HttpTransport, _HttpDavTransport)):
         from breezy.bzr.smart.http import SmartClientHTTPMedium
 
         # Cache the medium on the transport: callers like
@@ -83,7 +92,4 @@ def get_smart_medium(transport):
         if prefix == "nosmart+":
             raise NoSmartMedium(transport)
         return get_smart_medium(transport._decorated)
-    method = getattr(transport, "get_smart_medium", None)
-    if method is None:
-        raise NoSmartMedium(transport)
-    return method()
+    raise NoSmartMedium(transport)

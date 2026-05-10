@@ -1760,6 +1760,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
 
         self.build_tree(["data-file"])
         http_transport = transport.get_transport_from_url(self.http_server.get_url())
+
         medium = get_smart_medium(http_transport)
         # Since we provide the medium, the url below will be mostly ignored
         # during the test, as long as the path is '/'.
@@ -1775,6 +1776,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         expected_reply_body = b"ok\x012\n"
 
         http_transport = transport.get_transport_from_url(self.http_server.get_url())
+
         medium = get_smart_medium(http_transport)
         response = medium.send_http_smart_request(post_body)
         reply_body = response.read()

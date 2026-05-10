@@ -26,6 +26,8 @@ __docformat__ = "google"
 
 import operator
 
+from bzrformats.inventory import NoSuchId
+
 from .. import errors, ui
 from ..i18n import gettext
 from ..revision import NULL_REVISION
@@ -286,7 +288,7 @@ def _new_root_data_stream(
         root_keys_to_create.
       graph: a graph to use instead of repo.get_graph().
     """
-    from .versionedfile import ChunkedContentFactory
+    from bzrformats.versionedfile import ChunkedContentFactory
 
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
@@ -346,7 +348,7 @@ def _parent_keys_for_root_version(
                     parent_ids.append(
                         tree.get_file_revision(tree.id2path(root_id, recurse="none"))
                     )
-                except errors.NoSuchId:
+                except NoSuchId:
                     # not in the tree
                     pass
     # Drop non-head parents

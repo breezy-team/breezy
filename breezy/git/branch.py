@@ -23,6 +23,7 @@ from functools import partial
 from io import BytesIO
 
 import vcsgraph.errors
+from bzrformats.errors import ObjectNotLocked
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dulwich.config import ConfigFile as GitConfigFile
@@ -2246,7 +2247,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             TypeError: If stop_revision is not bytes.
         """
         if not self.source.is_locked():
-            raise errors.ObjectNotLocked(self.source)
+            raise ObjectNotLocked(self.source)
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         elif stop_revno is None:

@@ -97,24 +97,13 @@ class ForeignRevision(Revision):
 
     """
 
-    def __new__(cls, foreign_revid, mapping, *args, **kwargs):
-        """Create a new ForeignRevision instance.
-
-        Args:
-            foreign_revid: The foreign revision id.
-            mapping: The VcsMapping to use.
-            *args: Additional positional arguments for Revision.__new__.
-            **kwargs: Additional keyword arguments for Revision.__new__.
-
-        Returns:
-            A new ForeignRevision instance.
-        """
+    def __init__(self, foreign_revid, mapping, *args, **kwargs):
+        """Create a ForeignRevision object."""
         if "inventory_sha1" not in kwargs:
-            kwargs["inventory_sha1"] = None
-        self = Revision.__new__(cls, *args, **kwargs)
+            kwargs["inventory_sha1"] = b""
+        super().__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
-        return self
 
 
 class ForeignVcs:

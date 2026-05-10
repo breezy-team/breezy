@@ -25,7 +25,9 @@ import time
 from stat import S_IEXEC, S_ISREG
 from typing import Any
 
-from dromedary import errors as transport_errors
+from bzrformats import generate_ids, inventory, multiparent
+from bzrformats.errors import BadFileKindError as _BzrFormatsBadFileKindError
+from bzrformats.inventory import NoSuchId
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind
 
@@ -62,7 +64,7 @@ from ..transform import (
     unique_add,
 )
 from ..tree import find_previous_path
-from . import generate_ids, inventory, inventorytree, multiparent
+from . import inventorytree
 from .conflicts import Conflict
 
 
@@ -243,7 +245,7 @@ class TreeTransformBase(TreeTransform):
         else:
             try:
                 path = self._tree.id2path(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
@@ -1782,8 +1784,12 @@ class InventoryTreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
+        from bzrformats.inventory_delta import InventoryDelta
+
         if self.final_file_id(self.root) is None:
             inventory_delta = [e for e in inventory_delta if e[0] != ""]
+        if not isinstance(inventory_delta, InventoryDelta):
+            inventory_delta = InventoryDelta(list(inventory_delta))
         self._tree.apply_inventory_delta(inventory_delta)
         self._apply_observed_sha1s()
         self._done = True
@@ -1997,8 +2003,19 @@ class InventoryTreeTransform(DiskTreeTransform):
                     )
                 try:
                     old_path = self._tree.id2path(new_entry.file_id)
-                except errors.NoSuchId:
+                except NoSuchId:
                     old_path = None
+                new_executability = self._new_executability.get(trans_id)
+                if new_executability is not None and new_entry.kind == "file":
+                    new_entry = inventory.InventoryFile(
+                        new_entry.file_id,
+                        new_entry.name,
+                        new_entry.parent_id,
+                        revision=new_entry.revision,
+                        text_sha1=new_entry.text_sha1,
+                        text_size=new_entry.text_size,
+                        executable=new_executability,
+                    )
                 inventory_delta.append((old_path, path, new_entry.file_id, new_entry))
         return inventory_delta
 
@@ -2067,11 +2084,20 @@ class TransformPreview(InventoryTreeTransform):
         except KeyError:
             return
         try:
-            for child in self._tree.iter_child_entries(path):
-                childpath = joinpath(path, child.name)
-                yield self.trans_id_tree_path(childpath)
-        except (transport_errors.NotADirectory, NoSuchFile):
-            pass
+            entry = next(self._tree.iter_entries_by_dir(specific_files=[path]))[1]
+        except StopIteration:
+            return
+        if entry.kind != "directory":
+            return
+        # Use the tree's iter_child_entries rather than poking at
+        # root_inventory: PreviewTree doesn't expose an inventory.
+        try:
+            children = self._tree.iter_child_entries(path)
+        except NotImplementedError:
+            return
+        for child_entry in children:
+            childpath = joinpath(path, child_entry.name)
+            yield self.trans_id_tree_path(childpath)
 
     def new_orphan(self, trans_id, parent_id):
         """Handle orphan creation (not implemented).
@@ -2226,7 +2252,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         try:
             return self._final_paths._determine_path(trans_id)
         except NoFinalPath as e:
-            raise errors.NoSuchId(self, file_id) from e
+            raise NoSuchId(self, file_id) from e
 
     def extras(self):
         """Get extra (unversioned) files.
@@ -2260,9 +2286,12 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 kind = self._transform._tree.stored_kind(
                     self._transform._tree.id2path(file_id)
                 )
-            new_entry = inventory.make_entry(
-                kind, self._transform.final_name(trans_id), parent_file_id, file_id
-            )
+            try:
+                new_entry = inventory.make_entry(
+                    kind, self._transform.final_name(trans_id), parent_file_id, file_id
+                )
+            except _BzrFormatsBadFileKindError as e:
+                raise errors.BadFileKindError(e.filename, e.kind) from e
             yield new_entry, trans_id
 
     def _list_files_by_dir(self):

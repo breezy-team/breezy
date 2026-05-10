@@ -385,7 +385,7 @@ def _tree_to_objects(
             # calculate again from scratch
             ret = directory_to_tree(
                 path,
-                tree.iter_child_entries(path),
+                tree.root_inventory.iter_sorted_children(ie.file_id),
                 ie_to_hexsha,
                 unusual_modes,
                 dummy_file_name,

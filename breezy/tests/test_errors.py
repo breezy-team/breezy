@@ -19,6 +19,7 @@
 import inspect
 import re
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from .. import controldir, errors, osutils, tests, urlutils
@@ -137,7 +138,7 @@ class TestErrors(tests.TestCase):
         )
 
     def test_no_such_id(self):
-        error = errors.NoSuchId("atree", "anid")
+        error = NoSuchId("atree", "anid")
         self.assertEqualDiff(
             'The file id "anid" is not present in the tree atree.', str(error)
         )
@@ -252,11 +253,6 @@ class TestErrors(tests.TestCase):
         self.assertEqual(
             "Could not understand response from smart server: ('not yes',)", str(e)
         )
-
-    def test_check_error(self):
-        e = errors.BzrCheckError("example check failure")
-        self.assertEqual("Internal check failed: example check failure", str(e))
-        self.assertTrue(e.internal_error)
 
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""

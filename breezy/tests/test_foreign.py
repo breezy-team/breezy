@@ -454,7 +454,7 @@ class ForeignRevisionTests(tests.TestCase):
             timestamp=0,
             timezone=0,
         )
-        self.assertIs(None, rev.inventory_sha1)
+        self.assertEqual(b"", rev.inventory_sha1)
         self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
         self.assertEqual(mapp, rev.mapping)
 

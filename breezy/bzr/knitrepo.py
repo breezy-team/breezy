@@ -24,22 +24,23 @@ lazy_import(
 from breezy import (
     transactions,
     )
-from breezy.bzr import (
-    knit as _mod_knit,
-    lockable_files,
-    versionedfile,
-    )
+from bzrformats import knit as _mod_knit
+from bzrformats import versionedfile
 """,
 )
 import contextlib
 
+from bzrformats import xml5, xml6, xml7
+from bzrformats._bzr_rs import revision_serializer_v5
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.serializer import InventorySerializer, RevisionSerializer
 from dromedary.errors import NoSuchFile
 
-from .. import controldir, errors, lockdir, trace
+from .. import controldir, lockdir, trace
 from .. import revision as _mod_revision
 from ..repository import InterRepository, IsInWriteGroupError, Repository
+from . import lockable_files
 from .repository import RepositoryFormatMetaDir
-from .serializer import InventorySerializer, RevisionSerializer
 from .vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
@@ -66,7 +67,7 @@ class _KnitParentsProvider:
             else:
                 try:
                     parents = tuple(self._knit.get_parents_with_ghosts(revision_id))
-                except errors.RevisionNotPresent:
+                except RevisionNotPresent:
                     continue
                 else:
                     if len(parents) == 0:
@@ -109,8 +110,8 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: type[VersionedFileCommitBuilder]
-    _revision_serializer: RevisionSerializer
     _inventory_serializer: InventorySerializer
+    _revision_serializer: RevisionSerializer
 
     def __init__(
         self,
@@ -118,8 +119,8 @@ class KnitRepository(MetaDirVersionedFileRepository):
         a_controldir,
         control_files,
         _commit_builder_class,
-        _revision_serializer,
         _inventory_serializer,
+        _revision_serializer,
     ):
         """Initialize a KnitRepository.
 
@@ -133,8 +134,8 @@ class KnitRepository(MetaDirVersionedFileRepository):
         """
         super().__init__(_format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
-        self._revision_serializer = _revision_serializer
         self._inventory_serializer = _inventory_serializer
+        self._revision_serializer = _revision_serializer
         self._reconcile_fixes_text_parents = True
 
     def _all_revision_ids(self):
@@ -246,16 +247,12 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     # repository objects will have passed to their constructor.
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
@@ -375,8 +372,8 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
             a_controldir=a_controldir,
             control_files=control_files,
             _commit_builder_class=self._commit_builder_class,
-            _revision_serializer=self._revision_serializer,
             _inventory_serializer=self._inventory_serializer,
+            _revision_serializer=self._revision_serializer,
         )
         repo.revisions = self._get_revisions(repo_transport, repo)
         repo.signatures = self._get_signatures(repo_transport, repo)
@@ -407,16 +404,12 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     _commit_builder_class = VersionedFileCommitBuilder
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml5.inventory_serializer_v5
 
     @property
-    def _inventory_serializer(self):
-        from .xml5 import inventory_serializer_v5
-
-        return inventory_serializer_v5
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def __ne__(self, other):
         """Check if this format is not equal to another.
@@ -462,16 +455,12 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     supports_tree_reference = True
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml7.inventory_serializer_v7
 
     @property
-    def _inventory_serializer(self):
-        from .xml7 import inventory_serializer_v7
-
-        return inventory_serializer_v7
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("dirstate-with-subtree")
@@ -513,16 +502,12 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     supports_tree_reference = False
 
     @property
-    def _revision_serializer(self):
-        from .xml5 import revision_serializer_v5
-
-        return revision_serializer_v5
+    def _inventory_serializer(self):
+        return xml6.inventory_serializer_v6
 
     @property
-    def _inventory_serializer(self):
-        from .xml6 import inventory_serializer_v6
-
-        return inventory_serializer_v6
+    def _revision_serializer(self):
+        return revision_serializer_v5
 
     def _get_matching_bzrdir(self):
         return controldir.format_registry.make_controldir("rich-root")

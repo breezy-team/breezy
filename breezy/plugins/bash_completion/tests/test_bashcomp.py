@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import site
 import subprocess
 import sys
 
@@ -41,6 +42,14 @@ class BashCompletionMixin:
             self.script = self.get_script()
         env = dict(os.environ)
         env["PYTHONPATH"] = tests.subprocess_pythonpath()
+        # ``HOME`` is overridden to a tempdir for the duration of the
+        # test, so the user-site directory stops being discoverable
+        # via the default ``HOME``-derived path.  Pin
+        # ``PYTHONUSERBASE`` to the parent process's USER_BASE so any
+        # editable installs (whose `.pth` lives there) keep working
+        # in the spawned subprocess.
+        if site.USER_BASE is not None:
+            env["PYTHONUSERBASE"] = site.USER_BASE
         proc = subprocess.Popen(
             [features.bash_feature.path, "--noprofile"],
             stdin=subprocess.PIPE,

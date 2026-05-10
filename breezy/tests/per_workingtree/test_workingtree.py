@@ -21,6 +21,7 @@ import errno
 import os
 from io import StringIO
 
+from bzrformats.inventory import Inventory
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 
@@ -29,7 +30,6 @@ from ... import config, controldir, errors, merge, osutils, tests, trace, urluti
 from ... import revision as _mod_revision
 from ...bzr import bzrdir
 from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
-from ...bzr.inventory import Inventory
 from ...bzr.workingtree import InventoryWorkingTree
 from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree
@@ -325,7 +325,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
-        from ...errors import NotVersionedError
+        from bzrformats.errors import NotVersionedError
 
         wt = self.make_branch_and_tree(".")
         self.build_tree(["foo/", "foo/hello"])
@@ -1023,6 +1023,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(["tree/a"])
         self.assertRaises(NoSuchFile, tree.stored_kind, "a")
         tree.add(["a"])
+        # bzrformats inventory entries return a fresh `str` each access,
+        # so identity comparison no longer holds — use equality.
         self.assertEqual("file", tree.stored_kind("a"))
 
     def test_missing_file_sha1(self):

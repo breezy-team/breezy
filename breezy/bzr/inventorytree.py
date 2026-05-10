@@ -16,11 +16,13 @@
 
 """Tree classes, representing directory at point in time."""
 
+import contextlib
 import os
 import re
 import stat
 from collections import deque
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 from dromedary.errors import NoSuchFile
 from dromedary.local import file_kind, file_stat
@@ -38,12 +40,17 @@ lazy_import.lazy_import(
 from breezy import (
     add,
     )
-from breezy.bzr import (
+from bzrformats import (
     inventory as _mod_inventory,
     )
 """,
 )
-import contextlib
+from bzrformats.errors import (
+    BadFileKindError as _BzrFormatsBadFileKindError,
+)
+from bzrformats.errors import (
+    RevisionNotPresent,
+)
 
 from ..tree import (
     FileTimestampUnavailable,
@@ -118,12 +125,12 @@ class InventoryTreeChange(TreeChange):
         )
 
     def __eq__(self, other):
-        """Check equality with another change object."""
-        if isinstance(other, TreeChange):
+        """Compare two InventoryTreeChange objects."""
+        if isinstance(other, TreeChange) or hasattr(other, "_as_tuple"):
             return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
             return self._as_tuple() == other
-        return False
+        return NotImplemented
 
     def __lt__(self, other):
         """Compare with another change object for ordering."""
@@ -262,7 +269,7 @@ class InventoryTree(Tree):
         file_ids = self.paths2ids(paths, trees, require_versioned=require_versioned)
         ret = set()
         for file_id in file_ids:
-            with contextlib.suppress(errors.NoSuchId):
+            with contextlib.suppress(NoSuchId):
                 ret.add(self.id2path(file_id))
         return ret
 
@@ -347,7 +354,7 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         try:
             return inventory.id2path(file_id)
-        except errors.NoSuchId as e:
+        except NoSuchId as e:
             if recurse == "down":
                 if debug.debug_flag_enabled("evil"):
                     trace.mutter_callsite(
@@ -357,9 +364,9 @@ class InventoryTree(Tree):
                     subtree = self.get_nested_tree(path)
                     try:
                         return osutils.pathjoin(path, subtree.id2path(file_id))
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         pass
-            raise errors.NoSuchId(self, file_id) from e
+            raise NoSuchId(self, file_id) from e
 
     def all_file_ids(self):
         """Get all file IDs in the tree.
@@ -390,12 +397,13 @@ class InventoryTree(Tree):
             NoSuchFile: If path doesn't exist.
             NotADirectory: If path is not a directory.
         """
-        inv, ie = self._path2inv_ie(path)
-        if ie is None:
-            raise _mod_transport.NoSuchFile(path)
-        if ie.kind != "directory":
-            raise transport_errors.NotADirectory(path)
-        return inv.iter_sorted_children(ie.file_id)
+        with self.lock_read():
+            inv, ie = self._path2inv_ie(path)
+            if ie is None:
+                raise _mod_transport.NoSuchFile(path)
+            if ie.kind != "directory":
+                raise transport_errors.NotADirectory(path)
+            return inv.iter_sorted_children(ie.file_id)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
@@ -415,16 +423,18 @@ class InventoryTree(Tree):
                             f"{inventory!r} != {self.root_inventory!r}"
                         )
                     if inv_file_id is not None:
-                        # TODO(jelmer): Should we perhaps raise NoSuchFile here
-                        # rather than silently skipping entries?
                         inventory_file_ids.add(inv_file_id)
             else:
                 inventory_file_ids = None
 
             def iter_entries(inv):
-                for p, e in inv.iter_entries_by_dir(
-                    specific_file_ids=inventory_file_ids
-                ):
+                if inventory_file_ids is None:
+                    entries = inv.iter_entries_by_dir()
+                else:
+                    entries = inv.iter_entries_by_dir(
+                        specific_file_ids=inventory_file_ids
+                    )
+                for p, e in entries:
                     if e.kind == "tree-reference" and recurse_nested:
                         try:
                             subtree = self._get_nested_tree(
@@ -443,7 +453,7 @@ class InventoryTree(Tree):
             return iter_entries(self.root_inventory)
 
     def _get_plan_merge_data(self, path, other, base):
-        from . import versionedfile
+        from bzrformats import versionedfile
 
         file_id = self.path2id(path)
         vf = versionedfile._PlanMergeVersionedFile(file_id)
@@ -493,7 +503,7 @@ class InventoryTree(Tree):
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        from . import versionedfile
+        from bzrformats import versionedfile
 
         last_revision = tree_revision
         parent_keys = [
@@ -589,7 +599,7 @@ def _find_children_across_trees(specified_ids, trees):
             for tree in trees:
                 try:
                     path = tree.id2path(file_id)
-                except errors.NoSuchId:
+                except NoSuchId:
                     continue
                 try:
                     for child in tree.iter_child_entries(path):
@@ -616,7 +626,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
-        from .inventory_delta import InventoryDelta
+        from bzrformats.inventory_delta import InventoryDelta
 
         with self.lock_tree_write():
             self.flush()
@@ -841,14 +851,9 @@ class _SmartAddHelper:
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
-        """Get the inventory delta accumulated by this helper.
+        from bzrformats.inventory_delta import InventoryDelta
 
-        Returns:
-            list: List of inventory changes.
-        """
-        # GZ 2016-06-05: Returning view would probably be fine but currently
-        # Inventory.apply_delta is documented as requiring a list of changes.
-        return list(self._invdelta.values())
+        return InventoryDelta(list(self._invdelta.values()))
 
     def _get_ie(self, inv_path):
         """Retrieve the most up to date inventory entry for a path.
@@ -916,10 +921,23 @@ class _SmartAddHelper:
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
             parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
+        # Normalise the basename through breezy.osutils so that tests
+        # can monkeypatch ``osutils.normalized_filename`` at runtime.
+        # bzrformats's Rust ``ensure_normalized_name`` (inside
+        # ``make_entry``) doesn't see Python-level monkeypatches.
+        norm_name, can_access = osutils.normalized_filename(basename)
+        if norm_name != basename:
+            if can_access:
+                basename = norm_name
+            else:
+                raise errors.InvalidNormalization(path)
         file_id = self.action(self.tree, parent_ie, path, kind)
-        entry = _mod_inventory.make_entry(
-            kind, basename, parent_ie.file_id, file_id=file_id
-        )
+        try:
+            entry = _mod_inventory.make_entry(
+                kind, basename, parent_ie.file_id, file_id=file_id
+            )
+        except _BzrFormatsBadFileKindError as e:
+            raise errors.BadFileKindError(e.filename, e.kind) from e
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
         self.added.append(inv_path)
         return entry
@@ -1090,7 +1108,9 @@ class _SmartAddHelper:
                     if entry is not None:
                         sub_ie = entry[3]
                     else:
-                        sub_ie = InterInventoryTree._get_entry(self.tree, sub_invp)
+                        sub_ie = self.tree.root_inventory.get_child(
+                            this_ie.file_id, inv_f
+                        )
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))
@@ -1291,19 +1311,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 yield path, "V", entry.kind, entry
 
     def get_symlink_target(self, path):
-        """Get the target of a symbolic link.
+        """Return the target of a symlink.
 
-        Args:
-            path: Path to the symlink.
-
-        Returns:
-            str: Target path or None if not a symlink.
+        Inventories store symlink targets in unicode.  Non-symlink
+        entries (file/directory/tree-reference) don't carry a target;
+        callers that walk a tree across versions where the kind has
+        changed need ``None`` rather than an AttributeError.
         """
-        # Inventories store symlink targets in unicode
-        ie = self._path2ie(path)
-        if ie.kind != "symlink":
-            return None
-        return ie.symlink_target
+        return getattr(self._path2ie(path), "symlink_target", None)
 
     def get_reference_revision(self, path):
         """Get the reference revision for a tree reference.
@@ -1396,9 +1411,9 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             relroot = root + "/" if root else ""
             # FIXME: stash the node in pending
             subdirs = []
-            for child in inv.iter_sorted_children(file_id):
-                toppath = relroot + child.name
-                dirblock.append((toppath, child.name, child.kind, None, child.kind))
+            for name, child in sorted(inv.get_children(file_id).items()):
+                toppath = relroot + name
+                dirblock.append((toppath, name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield root, dirblock
@@ -1415,7 +1430,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         ]
         try:
             yield from self._repository.iter_files_bytes(repo_desired_files)
-        except errors.RevisionNotPresent as e:
+        except RevisionNotPresent as e:
             raise NoSuchFile(e.file_id) from e
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
@@ -1791,7 +1806,7 @@ class InterInventoryTree(InterTree):
             for parent_id in precise_file_ids:
                 try:
                     paths.append(self.target.id2path(parent_id))
-                except errors.NoSuchId:
+                except NoSuchId:
                     # This id has been dragged in from the source by delta
                     # expansion and isn't present in target at all: we don't
                     # need to check for path collisions on it.
@@ -1815,14 +1830,14 @@ class InterInventoryTree(InterTree):
                 if result is None:
                     try:
                         source_path = self.source.id2path(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         source_path = None
                         source_entry = None
                     else:
                         source_entry = self._get_entry(self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         target_path = None
                         target_entry = None
                     else:
@@ -1861,7 +1876,7 @@ class InterInventoryTree(InterTree):
             raise NoSuchFile(path)
         try:
             return self.target.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
+        except NoSuchId:
             return None
 
     def find_source_path(self, path, recurse="none"):
@@ -1876,7 +1891,7 @@ class InterInventoryTree(InterTree):
             raise NoSuchFile(path)
         try:
             return self.source.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
+        except NoSuchId:
             return None
 
 

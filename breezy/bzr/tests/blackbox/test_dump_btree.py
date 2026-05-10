@@ -17,10 +17,10 @@
 
 """Tests of the 'brz dump-btree' command."""
 
+from bzrformats import btree_index
 from dromedary.tests import http_server
 
 from breezy import tests
-from breezy.bzr import btree_index
 
 
 class TestDumpBtree(tests.TestCaseWithTransport):

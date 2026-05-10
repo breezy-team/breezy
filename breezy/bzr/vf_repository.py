@@ -40,18 +40,36 @@ from vcsgraph import graph, tsort
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,
-    generate_ids,
-    inventory_delta,
     inventorytree,
-    versionedfile,
     vf_search,
     )
+from bzrformats import generate_ids, inventory_delta, versionedfile
 from breezy.bzr.bundle import serializer
 
 from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """,
 )
+
+from typing import TYPE_CHECKING
+
+from bzrformats.errors import (
+    BzrCheckError,
+    ObjectNotLocked,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+)
+from bzrformats.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    NoSuchId,
+    TreeReference,
+    entry_factory,
+)
+from bzrformats.inventory import _make_delta as make_inventory_delta
+from bzrformats.inventory_delta import InventoryDelta
 
 from .. import debug, errors, osutils
 from ..decorators import only_raises
@@ -64,17 +82,35 @@ from ..repository import (
     WriteGroup,
 )
 from ..trace import mutter, note
-from .inventory import (
-    Inventory,
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    _make_delta,
-)
-from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryTreeChange
 from .repository import MetaDirRepository, RepositoryFormatMetaDir
+
+if TYPE_CHECKING:
+    from bzrformats.serializer import InventorySerializer, RevisionSerializer
+
+
+def _to_bzr_revision(revision):
+    """Coerce a breezy.revision.Revision into a bzrformats.revision.Revision.
+
+    bzrformats' Rust-backed serializers type-check their Revision argument
+    and will not accept the mutable Python breezy.revision.Revision; this
+    helper copies the relevant fields across into a fresh immutable
+    bzrformats.revision.Revision on demand.
+    """
+    from bzrformats.revision import Revision as _BzrRevision
+
+    if isinstance(revision, _BzrRevision):
+        return revision
+    return _BzrRevision(
+        revision_id=revision.revision_id,
+        parent_ids=list(revision.parent_ids),
+        committer=revision.committer,
+        message=revision.message,
+        properties=dict(revision.properties),
+        inventory_sha1=revision.inventory_sha1,
+        timestamp=float(revision.timestamp),
+        timezone=revision.timezone,
+    )
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -199,14 +235,16 @@ class VersionedFileCommitBuilder(CommitBuilder):
         :return: The revision id of the recorded revision.
         """
         self._validate_unicode_text(message, "commit message")
-        rev = _mod_revision.Revision(
-            timestamp=self._timestamp,
-            timezone=self._timezone,
-            committer=self._committer,
-            message=message,
-            inventory_sha1=self.inv_sha1,
+        from bzrformats.revision import Revision as _BzrRevision
+
+        rev = _BzrRevision(
             revision_id=self._new_revision_id,
             parent_ids=self.parents,
+            committer=self._committer,
+            message=message,
+            timestamp=self._timestamp,
+            timezone=self._timezone,
+            inventory_sha1=self.inv_sha1,
             properties=self._revprops,
         )
         create_signatures = self._config_stack.get("create_signatures")
@@ -291,7 +329,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
             return
         if len(self.parents) == 0:
             raise errors.RootMissing()
-        entry = InventoryDirectory(tree.path2id(""), "", None, self._new_revision_id)
+        entry = entry_factory["directory"](
+            tree.path2id(""), "", None, revision=self._new_revision_id
+        )
         self._basis_delta.append(("", "", entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
@@ -322,9 +362,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
     def get_basis_delta(self):
         """Return the complete inventory delta versus the basis inventory.
 
-        :return: An inventory delta, suitable for use with apply_delta, or
+        :return: An InventoryDelta, suitable for use with apply_delta, or
             Repository.add_inventory_by_delta, etc.
         """
+        from bzrformats.inventory_delta import InventoryDelta
+
         return InventoryDelta(self._basis_delta)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
@@ -378,7 +420,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception("arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
-                for change in _make_delta(revtree.root_inventory, basis_inv):
+                for change in make_inventory_delta(revtree.root_inventory, basis_inv):
                     if change[1] is None:
                         # Not present in this parent.
                         continue
@@ -434,7 +476,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             #   executable)
             try:
                 basis_entry = basis_inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 # a change from basis->some_parents but file_id isn't in basis
                 # so was new in the merge, which means it must have changed
                 # from basis -> current, and as it hasn't the add was reverted
@@ -470,6 +512,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 #  - record the change with the content from tree
                 kind = change.kind[1]
                 file_id = change.file_id
+                entry_name = change.name[1]
+                entry_parent_id = change.parent_id[1]
+                entry_kwargs: dict = {}
                 head_set = self._heads(change.file_id, set(head_candidates))
                 heads = []
                 # Preserve ordering.
@@ -498,8 +543,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # or carried over.
                         if (
                             parent_entry.kind != kind
-                            or parent_entry.parent_id != change.parent_id[1]
-                            or parent_entry.name != change.name[1]
+                            or parent_entry.parent_id != entry_parent_id
+                            or parent_entry.name != entry_name
                         ):
                             # Metadata common to all entries has changed
                             # against per-file parent
@@ -519,8 +564,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # new version even if some other process reverts it while
                     # commit is running (with the revert happening after
                     # iter_changes did its examination).
-                    executable = bool(change.executable[1])
-                    if carry_over_possible and parent_entry.executable == executable:
+                    entry_kwargs["executable"] = bool(change.executable[1])
+                    if (
+                        carry_over_possible
+                        and parent_entry.executable == entry_kwargs["executable"]
+                    ):
                         # Check the file length, content hash after reading
                         # the file.
                         nostore_sha = parent_entry.text_sha1
@@ -535,13 +583,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha,
                             size=(stat_value.st_size if stat_value else None),
                         )
+                        entry_kwargs["text_sha1"] = text_sha1
+                        entry_kwargs["text_size"] = text_size
                         yield change.path[1], (text_sha1, stat_value)
                     except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True
-                        text_size = parent_entry.text_size
-                        text_sha1 = parent_entry.text_sha1
+                        entry_kwargs["text_size"] = parent_entry.text_size
+                        entry_kwargs["text_sha1"] = parent_entry.text_sha1
                     finally:
                         file_obj.close()
                     if not carried_over:
@@ -553,13 +603,14 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         change.name[1],
                         change.parent_id[1],
                         revision=revision,
-                        executable=executable,
-                        text_size=text_size,
-                        text_sha1=text_sha1,
+                        executable=entry_kwargs["executable"],
+                        text_size=entry_kwargs["text_size"],
+                        text_sha1=entry_kwargs["text_sha1"],
                     )
                 elif kind == "symlink":
                     # Wants a path hint?
                     symlink_target = tree.get_symlink_target(change.path[1])
+                    entry_kwargs["symlink_target"] = symlink_target
                     if (
                         carry_over_possible
                         and parent_entry.symlink_target == symlink_target
@@ -607,6 +658,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             tree.add_reference, self.repository
                         )
                     reference_revision = tree.get_reference_revision(change.path[1])
+                    entry_kwargs["reference_revision"] = reference_revision
                     if (
                         carry_over_possible
                         and parent_entry.reference_revision == reference_revision
@@ -628,7 +680,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         reference_revision=reference_revision,
                     )
                 else:
-                    raise errors.BadFileKindError(change.name[1], kind)
+                    raise AssertionError("unknown kind {!r}".format(kind))
             else:
                 entry = None
             new_path = change.path[1]
@@ -717,6 +769,11 @@ class VersionedFileRepository(Repository):
     # in a Repository class subclass rather than to override
     # get_commit_builder.
     _commit_builder_class = VersionedFileCommitBuilder
+
+    # The serializers used for this repository's inventories and revisions.
+    # Set by subclasses; the base class declares them so we can compare formats.
+    _inventory_serializer: "InventorySerializer"
+    _revision_serializer: "RevisionSerializer"
 
     def add_fallback_repository(self, repository):
         """Add a repository to use for looking up data not held locally.
@@ -882,10 +939,15 @@ class VersionedFileRepository(Repository):
         self._add_revision(rev)
 
     def _add_revision(self, revision):
-        lines = self._revision_serializer.write_revision_to_lines(revision)
-        self._revision_serializer.read_revision_from_string(b"".join(lines))
+        lines = self._revision_serializer.write_revision_to_lines(
+            _to_bzr_revision(revision)
+        )
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
+        if self.revisions.get_parent_map([key]):
+            raise errors.BzrError(
+                f"Revision id {revision.revision_id!r} already present in repository"
+            )
         self.revisions.add_lines(key, parents, lines)
 
     def _check_inventories(self, checker):
@@ -967,7 +1029,7 @@ class VersionedFileRepository(Repository):
             rev_id = record.key[0]
             inv = self._deserialise_inventory(rev_id, record.get_bytes_as("lines"))
             if last_object is not None:
-                delta = _make_delta(inv, last_object)
+                delta = make_inventory_delta(inv, last_object)
                 for _old_path, _path, _file_id, ie in delta:
                     if ie is None:
                         continue
@@ -1421,7 +1483,7 @@ class VersionedFileRepository(Repository):
             text_keys[(file_id, revision_id)] = callable_data
         for record in self.texts.get_record_stream(text_keys, "unordered", True):
             if record.storage_kind == "absent":
-                raise errors.RevisionNotPresent(record.key[1], record.key[0])
+                raise RevisionNotPresent(record.key[1], record.key[0])
             yield text_keys[record.key], record.iter_bytes_as("chunked")
 
     def _generate_text_key_index(self, text_key_references=None, ancestors=None):
@@ -1505,7 +1567,7 @@ class VersionedFileRepository(Repository):
                                 inventory_cache[parent_id] = inv
                             try:
                                 parent_entry = inv.get_entry(text_key[0])
-                            except (KeyError, errors.NoSuchId):
+                            except (KeyError, NoSuchId):
                                 parent_entry = None
                             if parent_entry is not None:
                                 parent_text_key = (text_key[0], parent_entry.revision)
@@ -1662,11 +1724,7 @@ class VersionedFileRepository(Repository):
         return result
 
     def get_serializer_format(self):
-        """Get the format number of the inventory serializer.
-
-        Returns:
-            The inventory serializer's format number.
-        """
+        """Return the format of the inventory serializer."""
         return self._inventory_serializer.format_num
 
     def _get_inventory_xml(self, revision_id):
@@ -1824,7 +1882,7 @@ class VersionedFileRepository(Repository):
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
         if inconsistencies:
-            raise errors.BzrCheckError("Revision knit has inconsistent parents.")
+            raise BzrCheckError("Revision knit has inconsistent parents.")
 
     def _get_sink(self):
         """Return a sink for streaming into this repository."""
@@ -1944,10 +2002,11 @@ class StreamSink:
         :return: A set of keys that are missing.
         """
         if not self.target_repo.is_write_locked():
-            raise errors.ObjectNotLocked(self)
+            raise ObjectNotLocked(self)
         if not self.target_repo.is_in_write_group():
             raise errors.BzrError("you must already be in a write group")
         dest_format = self.target_repo._format
+        src_revision_serializer = src_format._revision_serializer
         new_pack = None
         if (
             src_format._revision_serializer == dest_format._revision_serializer
@@ -2005,7 +2064,7 @@ class StreamSink:
                     self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(
-                        substream, src_format._revision_serializer
+                        substream, src_revision_serializer
                     )
             elif substream_type == "signatures":
                 self.target_repo.signatures.insert_record_stream(substream)
@@ -2108,7 +2167,7 @@ class StreamSource:
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
-        from .recordcounter import RecordCounter
+        from bzrformats.recordcounter import RecordCounter
 
         self._record_counter = RecordCounter()
 
@@ -2117,13 +2176,9 @@ class StreamSource:
 
         That is on revisions and signatures.
         """
-        src_format = self.from_repository._format
-        dest_format = self.to_format
-        return (
-            self.to_format._fetch_uses_deltas
-            and src_format._revision_serializer == dest_format._revision_serializer
-            and src_format._inventory_serializer == dest_format._inventory_serializer
-        )
+        src_serializer = self.from_repository._format._inventory_serializer
+        target_serializer = self.to_format._inventory_serializer
+        return self.to_format._fetch_uses_deltas and src_serializer == target_serializer
 
     def _fetch_revision_texts(self, revs):
         # fetch signatures first and then the revision texts
@@ -2304,7 +2359,6 @@ class StreamSource:
         elif (
             not from_format.supports_chks
             and not self.to_format.supports_chks
-            and from_format._revision_serializer == self.to_format._revision_serializer
             and from_format._inventory_serializer
             == self.to_format._inventory_serializer
         ):
@@ -2394,7 +2448,7 @@ class StreamSource:
                         parent_inv = inventory_cache.get(parent_id, None)
                         if parent_inv is None:
                             parent_inv = from_repo.get_inventory(parent_id)
-                    candidate_delta = _make_delta(inv, parent_inv)
+                    candidate_delta = make_inventory_delta(inv, parent_inv)
                     if delta is None or len(delta) > len(candidate_delta):
                         delta = candidate_delta
                         basis_id = parent_id
@@ -2402,7 +2456,7 @@ class StreamSource:
                 # Either none of the parents ended up being suitable, or we
                 # were asked to delta against NULL
                 basis_id = _mod_revision.NULL_REVISION
-                delta = _make_delta(inv, null_inventory)
+                delta = make_inventory_delta(inv, null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
             delta_serialized = serializer.delta_to_lines(basis_id, key[-1], delta)
@@ -2466,7 +2520,7 @@ class _VersionedFileChecker:
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
-            except errors.RevisionNotPresent:
+            except RevisionNotPresent:
                 # Missing text!
                 knit_parents = None
             if correct_parents != knit_parents:
@@ -2742,7 +2796,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # FIXME: Support nested trees
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
-            delta = _make_delta(tree.root_inventory, basis_tree.root_inventory)
+            delta = make_inventory_delta(tree.root_inventory, basis_tree.root_inventory)
             for _old_path, new_path, file_id, new_entry in delta:
                 if new_path is None:
                     # This file_id isn't present in the new rev, so we don't
@@ -2783,7 +2837,9 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             parents_parents = [key[-1] for key in parents_parents_keys]
             basis_id = _mod_revision.NULL_REVISION
             basis_tree = self.source.revision_tree(basis_id)
-            delta = _make_delta(parent_tree.root_inventory, basis_tree.root_inventory)
+            delta = make_inventory_delta(
+                parent_tree.root_inventory, basis_tree.root_inventory
+            )
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents
             )
@@ -2854,7 +2910,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     file_id, file_revision = file_key
                     try:
                         entry = basis_inv.get_entry(file_id)
-                    except errors.NoSuchId:
+                    except NoSuchId:
                         continue
                     if entry.revision == file_revision:
                         texts_possibly_new_in_tree.remove(file_key)
@@ -3119,7 +3175,7 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
         for _revision, tree in parent_trees.items():
             try:
                 path = tree.id2path(ie.file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 continue
             parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
@@ -3139,13 +3195,13 @@ def _install_revision(repository, rev, revision_tree, signature, inventory_cache
             except KeyError:
                 repository.add_inventory(rev.revision_id, inv, present_parents)
             else:
-                delta = _make_delta(inv, basis_inv)
+                delta = make_inventory_delta(inv, basis_inv)
                 repository.add_inventory_by_delta(
                     rev.parent_ids[0], delta, rev.revision_id, present_parents
                 )
         else:
             repository.add_inventory(rev.revision_id, inv, present_parents)
-    except errors.RevisionAlreadyPresent:
+    except RevisionAlreadyPresent:
         pass
     if signature is not None:
         repository.add_signature_text(rev.revision_id, signature)

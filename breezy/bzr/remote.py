@@ -31,6 +31,14 @@ from typing import Optional
 import fastbencode as bencode
 import vcsgraph.errors
 import vcsgraph.graph
+from bzrformats import inventory_delta
+from bzrformats.errors import (
+    BzrCheckError,
+    RevisionNotPresent,
+)
+from bzrformats.inventory import Inventory
+from bzrformats.inventory_delta import InventoryDelta
+from bzrformats.serializer import revision_format_registry as serializer_format_registry
 from dromedary import errors as transport_errors
 from dromedary.errors import FileExists, NoSuchFile, SmartProtocolError
 from vcsgraph import known_graph
@@ -62,14 +70,11 @@ from ..revision import NULL_REVISION, RevisionID
 from ..trace import log_exception_quietly, mutter, note, warning
 from . import branch as bzrbranch
 from . import bzrdir as _mod_bzrdir
-from . import inventory_delta, vf_repository, vf_search
 from . import testament as _mod_testament
+from . import vf_repository, vf_search
 from .branch import BranchReferenceFormat
-from .inventory import Inventory
-from .inventory_delta import InventoryDelta
 from .inventorytree import InventoryRevisionTree
 from .lockable_files import LockableFiles
-from .serializer import revision_format_registry
 from .smart import client, vfs
 from .smart import repository as smart_repo
 from .smart import transport as _smart_transport
@@ -2008,24 +2013,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         return self._custom_format.pack_compresses
 
     @property
-    def _revision_serializer(self):
-        """Get the revision serializer for this format.
-
-        Returns:
-            The revision serializer from the underlying format.
-        """
-        self._ensure_real()
-        return self._custom_format._revision_serializer
-
-    @property
     def _inventory_serializer(self):
-        """Get the inventory serializer for this format.
-
-        Returns:
-            The inventory serializer from the underlying format.
-        """
         self._ensure_real()
         return self._custom_format._inventory_serializer
+
+    @property
+    def _revision_serializer(self):
+        self._ensure_real()
+        return self._custom_format._revision_serializer
 
 
 class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebugMixin):
@@ -3111,18 +3106,16 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
     def _add_revision(self, rev):
         if self._real_repository is not None:
             return self._real_repository._add_revision(rev)
-        lines = self._revision_serializer.write_revision_to_lines(rev)
+        from .vf_repository import _to_bzr_revision
+
+        lines = self._revision_serializer.write_revision_to_lines(_to_bzr_revision(rev))
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
         self._write_group_tokens, _missing_keys = self._get_sink().insert_stream(
             [
                 (
                     "revisions",
-                    [
-                        ChunkedContentFactory(
-                            key, parents, None, lines, chunks_are_lines=True
-                        )
-                    ],
+                    [ChunkedContentFactory(key, parents, None, lines)],
                 )
             ],
             self._format,
@@ -3526,7 +3519,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
                 # for just one.
                 missing_identifier = next(iter(absent))
                 missing_key = absent[missing_identifier]
-                raise errors.RevisionNotPresent(
+                raise RevisionNotPresent(
                     revision_id=missing_key[1], file_id=missing_key[0]
                 )
         except transport_errors.UnknownSmartMethod:
@@ -3993,7 +3986,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         if response_tuple[0] != b"ok":
             raise transport_errors.UnexpectedSmartServerResponse(response_tuple)
         serializer_format = response_tuple[1].decode("ascii")
-        serializer = revision_format_registry.get(serializer_format)
+        serializer = serializer_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
         chunks = []
@@ -4050,12 +4043,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper, lock._RelockDebug
         return self._format.rich_root_data
 
     @property
-    def _revision_serializer(self):
-        return self._format._revision_serializer
-
-    @property
     def _inventory_serializer(self):
         return self._format._inventory_serializer
+
+    @property
+    def _revision_serializer(self):
+        return self._format._revision_serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         """Store a revision signature.
@@ -4625,9 +4618,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.from_revision_serialiser = (
-            self.from_repository._format._revision_serializer
-        )
+        self.from_serialiser = self.from_repository._format._revision_serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not
@@ -4658,9 +4649,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         """
         for content in substream:
             revision_bytes = content.get_bytes_as("fulltext")
-            revision = self.from_revision_serialiser.read_revision_from_string(
-                revision_bytes
-            )
+            revision = self.from_serialiser.read_revision_from_string(revision_bytes)
             self.seen_revs.add(content.key[-1])
             self.referenced_revs.update(revision.parent_ids)
             yield content
@@ -6498,12 +6487,12 @@ no_context_error_translators.register(
 )
 no_context_error_translators.register(
     b"RevisionNotPresent",
-    lambda err: errors.RevisionNotPresent(
+    lambda err: RevisionNotPresent(
         err.error_args[0].decode("utf-8"), err.error_args[1].decode("utf-8")
     ),
 )
 
 no_context_error_translators.register(
     b"BzrCheckError",
-    lambda err: errors.BzrCheckError(msg=err.error_args[0].decode("utf-8")),
+    lambda err: BzrCheckError(msg=err.error_args[0].decode("utf-8")),
 )

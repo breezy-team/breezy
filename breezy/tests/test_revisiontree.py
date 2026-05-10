@@ -76,9 +76,16 @@ class TestTreeWithCommits(TestCaseWithTransport):
         if not hasattr(self.rev_tree.root_inventory, "delete"):
             self.skipTest("Inventory does not support delete")
         path = next(iter(self.rev_tree.all_versioned_paths()))
-        new_ie = self.rev_tree.root_inventory.get_entry(
-            self.rev_tree.path2id(path)
-        ).derive(revision=b"ghostrev")
-        self.rev_tree.root_inventory.delete(new_ie.file_id)
-        self.rev_tree.root_inventory.add(new_ie)
+        # bzrformats InventoryEntry attributes are read-only and the
+        # CHKInventory wrapper does not expose mutation.  Stub out the
+        # repository's get_revision so the entry's revision lookup
+        # fails as if it were a ghost.
+        from breezy.errors import NoSuchRevision
+
+        repo = self.rev_tree._repository
+
+        def raise_no_such(_revision_id):
+            raise NoSuchRevision(repo, b"ghostrev")
+
+        self.overrideAttr(repo, "get_revision", raise_no_such)
         self.assertRaises(FileTimestampUnavailable, self.rev_tree.get_file_mtime, path)

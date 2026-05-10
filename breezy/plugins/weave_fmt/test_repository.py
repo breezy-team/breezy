@@ -24,14 +24,17 @@ import sys
 from io import BytesIO
 from stat import S_ISDIR
 
+from bzrformats import xml4
+from bzrformats.serializer import (
+    inventory_format_registry,
+    revision_format_registry,
+)
 from dromedary.errors import NoSuchFile
 
 from ...bzr.bzrdir import BzrDirMetaFormat1
-from ...bzr.serializer import revision_format_registry
 from ...errors import IllegalPath
 from ...repository import InterRepository, Repository
 from ...tests import TestCase, TestCaseWithTransport
-from . import xml4
 from .bzrdir import BzrDirFormat6
 from .repository import (
     InterWeaveRepo,
@@ -288,6 +291,7 @@ class TestSerializer(TestCase):
     """Test serializer."""
 
     def test_registry(self):
+        self.assertIs(xml4.inventory_serializer_v4, inventory_format_registry.get("4"))
         self.assertIs(xml4.revision_serializer_v4, revision_format_registry.get("4"))
 
     def test_canned_inventory(self):

@@ -14,10 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Marker package for the bzr smart-over-HTTP WSGI app.
+"""Compatibility shim re-exporting dromedary's HTTP and WebDAV transports.
 
-The HTTP transport itself lives in :mod:`dromedary.http.urllib`; bzr-smart
-medium dispatch is handled by :mod:`breezy.bzr.smart.transport`. This
-package only exists so :mod:`breezy.transport.http.wsgi` keeps its import
-path.
+The smart-protocol dispatch lives in :mod:`breezy.bzr.smart.transport`
+which special-cases these classes — no breezy-side subclass is needed
+just to attach a ``get_smart_medium`` method.
 """
+
+from dromedary.http.urllib import HttpTransport
+from dromedary.webdav import HttpDavTransport
+
+__all__ = ["HttpDavTransport", "HttpTransport"]

@@ -25,9 +25,9 @@ unique ID.
 
 import os
 
+from bzrformats import versionedfile
 from dromedary.errors import NoSuchFile
 
-from ....bzr import versionedfile
 from ....errors import BzrError
 from ....trace import mutter
 

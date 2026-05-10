@@ -17,13 +17,14 @@
 import contextlib
 import os
 
+from bzrformats import inventory, knit, versionedfile
+from bzrformats.inventory import NoSuchId
 from dromedary.local import file_kind
 
 from .. import branch as _mod_branch
 from .. import errors, option, tests
 from .. import merge as _mod_merge
 from .. import revision as _mod_revision
-from ..bzr import inventory, knit, versionedfile
 from ..bzr.conflicts import (
     ContentsConflict,
     DeletingParent,
@@ -2635,7 +2636,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b"B-id", b"C-id"], [], revision_id=b"D-id")
         wt, conflicts = self.do_merge(builder, b"F-id")
         self.assertEqual([], conflicts)
-        self.assertRaises(errors.NoSuchId, wt.id2path, b"foo-id")
+        self.assertRaises(NoSuchId, wt.id2path, b"foo-id")
 
     def test_executable_changes(self):
         #   A       Path at 'foo'

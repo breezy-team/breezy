@@ -16,22 +16,41 @@
 
 """Tests for reconciliation of repositories."""
 
+from bzrformats.errors import RevisionNotPresent
+from bzrformats.inventory import Inventory, InventoryDirectory, InventoryFile
+from bzrformats.revision import Revision
+
 import breezy
 from breezy import errors
+from breezy.bzr.bzrdir import BzrDir
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository,
     all_repository_vf_format_scenarios,
 )
+from breezy.bzr.tests.per_repository_vf.helpers import (
+    TestCaseWithBrokenRevisionIndex,
+)
+from breezy.reconcile import Reconciler, reconcile
 from breezy.tests import TestSkipped
+from breezy.tests.matchers import MatchesAncestry
 
-from ....reconcile import Reconciler, reconcile
-from ....revision import Revision
-from ....tests.matchers import MatchesAncestry
-from ....tests.scenarios import load_tests_apply_scenarios
-from ....uncommit import uncommit
-from ...bzrdir import BzrDir
-from ...inventory import Inventory, InventoryDirectory
-from .helpers import TestCaseWithBrokenRevisionIndex
+
+def _set_root_revision(inv, revision):
+    """Replace inv.root with a new root entry carrying the given revision."""
+    old = inv.root
+    inv.delete(old.file_id)
+    inv.add(
+        InventoryDirectory(
+            file_id=old.file_id,
+            name=old.name,
+            parent_id=None,
+            revision=revision,
+        )
+    )
+
+
+from breezy.tests.scenarios import load_tests_apply_scenarios
+from breezy.uncommit import uncommit
 
 load_tests = load_tests_apply_scenarios
 
@@ -89,9 +108,8 @@ class TestsNeedingReweave(TestReconcile):
         repo = self.make_repository("inventory_without_revision")
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b"missing", root_id=None)
-        root = InventoryDirectory(b"TREE_ROOT", "", None, b"missing")
-        inv.add(root)
+        inv = Inventory(revision_id=b"missing")
+        _set_root_revision(inv, b"missing")
         repo.add_inventory(b"missing", inv, [])
         repo.commit_write_group()
         repo.unlock()
@@ -99,9 +117,8 @@ class TestsNeedingReweave(TestReconcile):
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
             repo.start_write_group()
-            inv = Inventory(revision_id=revision_id, root_id=None)
-            root = InventoryDirectory(b"TREE_ROOT", "", None, revision_id)
-            inv.add(root)
+            inv = Inventory(revision_id=revision_id)
+            _set_root_revision(inv, revision_id)
             root_id = inv.root.file_id
             sha1 = repo.add_inventory(revision_id, inv, parent_ids)
             repo.texts.add_lines((root_id, revision_id), [], [])
@@ -293,16 +310,17 @@ class TestsNeedingReweave(TestReconcile):
 
     def test_text_from_ghost_revision(self):
         repo = self.make_repository("text-from-ghost")
-        inv = Inventory(revision_id=b"final-revid", root_id=None)
-        root = InventoryDirectory(b"TREE_ROOT", "", None, revision=b"root-revid")
-        inv.add(root)
-        inv.add_path(
-            "bla",
-            "file",
-            b"myfileid",
-            revision=b"ghostrevid",
-            text_size=42,
-            text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00",
+        inv = Inventory(revision_id=b"final-revid")
+        _set_root_revision(inv, b"root-revid")
+        inv.add(
+            InventoryFile(
+                file_id=b"myfileid",
+                name="bla",
+                parent_id=inv.root.file_id,
+                revision=b"ghostrevid",
+                text_size=42,
+                text_sha1=b"bee68c8acd989f5f1765b4660695275948bf5c00",
+            )
         )
         rev = breezy.revision.Revision(
             timestamp=0,
@@ -324,7 +342,7 @@ class TestsNeedingReweave(TestReconcile):
                         ((b"myfileid", b"ghost-text-parent"),),
                         [b"line1\n", b"line2\n"],
                     )
-                except errors.RevisionNotPresent as e:
+                except RevisionNotPresent as e:
                     raise TestSkipped("text ghost parents not supported") from e
                 if repo.supports_rich_root():
                     repo.texts.add_lines((inv.root.file_id, inv.root.revision), [], [])
@@ -373,9 +391,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = self.first_tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b"wrong-first-parent", root_id=None)
-        root = InventoryDirectory(b"TREE_ROOT", "", None, b"wrong-first-parent")
-        inv.add(root)
+        inv = Inventory(revision_id=b"wrong-first-parent")
+        _set_root_revision(inv, b"wrong-first-parent")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"wrong-first-parent"), [], [])
@@ -398,9 +415,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo = repo_secondary
         repo.lock_write()
         repo.start_write_group()
-        inv = Inventory(revision_id=b"wrong-secondary-parent", root_id=None)
-        root = InventoryDirectory(b"TREE_ROOT", "", None, b"wrong-secondary-parent")
-        inv.add(root)
+        inv = Inventory(revision_id=b"wrong-secondary-parent")
+        _set_root_revision(inv, b"wrong-secondary-parent")
         if repo.supports_rich_root():
             root_id = inv.root.file_id
             repo.texts.add_lines((root_id, b"wrong-secondary-parent"), [], [])

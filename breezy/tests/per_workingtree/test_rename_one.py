@@ -18,6 +18,7 @@
 
 import os
 
+from bzrformats import errors as bzrformats_errors
 from dromedary.errors import NoSuchFile
 
 from breezy import errors, osutils, tests
@@ -377,7 +378,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         self.build_tree(["\xa7"])
         e = self.assertRaises(errors.BzrRenameFailedError, tree.rename_one, "\xa7", "b")
-        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertIsInstance(e.extra, bzrformats_errors.NotVersionedError)
         self.assertEqual(e.extra.path, "\xa7")
 
     def test_rename_into_unversioned_non_ascii_dir(self):
@@ -390,7 +391,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
             e = self.assertRaises(
                 errors.BzrMoveFailedError, tree.rename_one, "a", "\xa7/a"
             )
-            self.assertIsInstance(e.extra, errors.NotVersionedError)
+            self.assertIsInstance(e.extra, bzrformats_errors.NotVersionedError)
             self.assertEqual(e.extra.path, "\xa7")
         else:
             tree.rename_one("a", "\xa7/a")

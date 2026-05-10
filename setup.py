@@ -217,17 +217,6 @@ def add_cython_extension(module_name, libraries=None, extra_source=None):
     )
 
 
-add_cython_extension(
-    "breezy.bzr._groupcompress_pyx", extra_source=["breezy/bzr/diff-delta.c"]
-)
-add_cython_extension("breezy.bzr._knit_load_data_pyx")
-if sys.platform == "win32":
-    add_cython_extension("breezy.bzr._dirstate_helpers_pyx", libraries=["Ws2_32"])
-else:
-    add_cython_extension("breezy.bzr._dirstate_helpers_pyx")
-add_cython_extension("breezy.bzr._btree_serializer_pyx")
-
-
 if unavailable_files:
     print("C extension(s) not found:")
     print("   {}".format("\n  ".join(unavailable_files)))

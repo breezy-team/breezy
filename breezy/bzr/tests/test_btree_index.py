@@ -20,16 +20,18 @@
 import pprint
 import zlib
 
-from ... import fifo_cache, lru_cache, osutils, tests, transport
+from bzrformats import btree_index, lru_cache
+from bzrformats import index as _mod_index
+from bzrformats.lru_cache import FIFOCache
+
+from ... import osutils, tests, transport
 from ...tests import TestCaseWithTransport, features, scenarios
-from .. import btree_index
-from .. import index as _mod_index
 
 load_tests = scenarios.load_tests_apply_scenarios
 
 
 def btreeparser_scenarios():
-    import breezy.bzr._btree_serializer_py as py_module
+    from bzrformats.btree_index import _btree_serializer as py_module
 
     scenarios = [("python", {"parse_btree": py_module})]
     if compiled_btreeparser_feature.available():
@@ -38,7 +40,7 @@ def btreeparser_scenarios():
 
 
 compiled_btreeparser_feature = features.ModuleAvailableFeature(
-    "breezy.bzr._btree_serializer_pyx"
+    "bzrformats.btree_index._btree_serializer"
 )
 
 
@@ -1282,7 +1284,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(
             btree_index._NODE_CACHE_SIZE, index._leaf_node_cache._max_cache
         )
-        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertIsInstance(index._internal_node_cache, FIFOCache)
         self.assertEqual(100, index._internal_node_cache._max_cache)
         # No change if unlimited_cache=False is passed
         index = btree_index.BTreeGraphIndex(trans, "index", size, unlimited_cache=False)
@@ -1290,7 +1292,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(
             btree_index._NODE_CACHE_SIZE, index._leaf_node_cache._max_cache
         )
-        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertIsInstance(index._internal_node_cache, FIFOCache)
         self.assertEqual(100, index._internal_node_cache._max_cache)
         index = btree_index.BTreeGraphIndex(trans, "index", size, unlimited_cache=True)
         self.assertIsInstance(index._leaf_node_cache, dict)

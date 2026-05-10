@@ -17,16 +17,18 @@
 
 import sys
 
+from bzrformats import inventory, versionedfile
+from bzrformats.errors import BzrCheckError, RevisionNotPresent
+from bzrformats.inventory_delta import InventoryDelta
+
 from breezy import errors, osutils, repository
-from breezy.bzr import inventory, versionedfile
+from breezy.bzr.vf_search import SearchResult
+from breezy.errors import NoSuchRevision
+from breezy.repository import WriteGroup
+from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interrepository import TestCaseWithInterRepository
 
-from ...bzr.inventory_delta import InventoryDelta
-from ...bzr.vf_search import SearchResult
-from ...errors import NoSuchRevision
-from ...repository import WriteGroup
-from ...revision import NULL_REVISION, Revision
 from .test_interrepository import check_repo_format_for_funky_id_on_win32
 
 
@@ -108,7 +110,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                 "foo-path",
                 parent_id,
                 b"foo",
-                revid,
+                revision=revid,
                 text_size=len("contents"),
                 text_sha1=osutils.sha_string(b"contents"),
             )
@@ -463,7 +465,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
         with to_repo.lock_write(), WriteGroup(to_repo, suppress_errors=True):
-            inv = tree.branch.repository.get_inventory(rev1)
+            src_inv = tree.branch.repository.get_inventory(rev1)
+            inv = inventory.Inventory(None, src_inv.revision_id)
+            for _path, ie in src_inv.iter_entries_by_dir():
+                inv.add(ie.copy())
             to_repo.add_inventory(rev1, inv, [])
             rev = tree.branch.repository.get_revision(rev1)
             to_repo.add_revision(rev1, rev, inv=inv)
@@ -474,14 +479,14 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, rev2)
-        except (errors.BzrCheckError, errors.RevisionNotPresent):
+        except (BzrCheckError, RevisionNotPresent):
             # If an exception is raised, the revision should not be in the
             # target.
             #
             # Can also just raise a generic check errors; stream insertion
             # does this to include all the missing data
             self.assertRaises(
-                (errors.NoSuchRevision, errors.RevisionNotPresent),
+                (errors.NoSuchRevision, RevisionNotPresent),
                 to_repo.revision_tree,
                 rev2,
             )
@@ -521,29 +526,28 @@ class TestInterRepository(TestCaseWithInterRepository):
         # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
         # for during pull operations
+        from bzrformats.inventory_delta import InventoryDelta
+
         inv = source.get_inventory(b"a")
         source.lock_write()
         self.addCleanup(source.unlock)
         source.start_write_group()
-        old_ie = inv.get_entry(b"id")
+        # Replace the entry with one that carries revision 'b', since
+        # InventoryEntry is immutable.
+        old_entry = inv.get_entry(b"id")
+        new_entry = inventory.make_entry(
+            old_entry.kind,
+            old_entry.name,
+            old_entry.parent_id,
+            old_entry.file_id,
+            revision=b"b",
+            text_sha1=old_entry.text_sha1,
+            text_size=old_entry.text_size,
+            executable=old_entry.executable,
+        )
+        path = inv.id2path(old_entry.file_id)
         inv = inv.create_by_apply_delta(
-            InventoryDelta(
-                [
-                    (
-                        "id",
-                        "id",
-                        b"id",
-                        inventory.InventoryFile(
-                            b"id",
-                            "id",
-                            inv.root.file_id,
-                            revision=b"b",
-                            text_size=old_ie.text_size,
-                            text_sha1=old_ie.text_sha1,
-                        ),
-                    )
-                ]
-            ),
+            InventoryDelta([(path, path, old_entry.file_id, new_entry)]),
             b"b",
         )
         sha1 = source.add_inventory(b"b", inv, [b"a"])
@@ -553,17 +557,17 @@ class TestInterRepository(TestCaseWithInterRepository):
             committer="Foo Bar <foo@example.com>",
             message="Message",
             inventory_sha1=sha1,
-            parent_ids=[b"a"],
             revision_id=b"b",
+            parent_ids=[b"a"],
             properties={},
         )
         source.add_revision(b"b", rev)
         self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         try:
-            self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
-        except errors.NoRoundtrippingSupport as err:
-            raise TestNotApplicable("roundtripping not supported") from err
+            self.assertRaises(RevisionNotPresent, target.fetch, source)
+        except errors.NoRoundtrippingSupport:
+            raise TestNotApplicable("roundtripping not supported") from None
         self.assertFalse(target.has_revision(b"b"))
 
     def test_fetch_funky_file_id(self):

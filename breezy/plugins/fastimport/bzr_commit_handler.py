@@ -17,11 +17,12 @@
 
 import contextlib
 
+from bzrformats import generate_ids, inventory, serializer
+from bzrformats.inventory import NoSuchId
+from bzrformats.inventory_delta import InventoryDelta
 from fastimport import processor
 
 from ... import debug, errors, osutils, revision
-from ...bzr import generate_ids, inventory, serializer
-from ...bzr.inventory_delta import InventoryDelta
 from ...trace import mutter, note, warning
 from .helpers import escape_commit_message, mode_to_kind
 
@@ -44,6 +45,31 @@ def copy_inventory(inv: inventory.Inventory) -> inventory.Inventory:
     for _path, inv_entry in entries:
         inv.add(inv_entry.copy())
     return inv
+
+
+def _entry_kwargs(ie):
+    """Collect the kind-specific fields from an InventoryEntry as kwargs."""
+    kwargs = {}
+    if ie.kind == "file":
+        kwargs["executable"] = ie.executable
+        kwargs["text_sha1"] = ie.text_sha1
+        kwargs["text_size"] = ie.text_size
+    elif ie.kind == "symlink":
+        kwargs["symlink_target"] = ie.symlink_target
+    elif ie.kind == "tree-reference":
+        kwargs["reference_revision"] = ie.reference_revision
+    return kwargs
+
+
+def _with_revision(ie, revision):
+    """Return a fresh InventoryEntry copy of `ie` with the given revision."""
+    return inventory.entry_factory[ie.kind](
+        ie.file_id,
+        ie.name,
+        ie.parent_id,
+        revision=revision,
+        **_entry_kwargs(ie),
+    )
 
 
 class CommitHandler(processor.CommitHandler):
@@ -196,7 +222,9 @@ class CommitHandler(processor.CommitHandler):
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
-            root_ie = inventory.InventoryDirectory(root_id, "", None, self.revision_id)
+            root_ie = inventory.InventoryDirectory(
+                root_id, "", None, revision=self.revision_id
+            )
             self._add_entry((old_path, "", root_id, root_ie))
 
     def _init_inventory(self) -> inventory.Inventory:
@@ -547,33 +575,37 @@ class CommitHandler(processor.CommitHandler):
         basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
         if kind == "file":
-            if data is None:
-                raise AssertionError
-            ie = inventory.InventoryFile(
-                file_id,
+            assert data is not None
+            ie = inventory.make_entry(
+                kind,
                 basename,
                 parent_id,
-                self.revision_id,
+                file_id,
+                revision=self.revision_id,
                 executable=is_executable,
                 text_sha1=osutils.sha_string(data),
                 text_size=len(data),
             )
-            # lines = osutils.split_lines(data)
             self.data_for_commit[file_id] = data
         elif kind == "directory":
-            ie = inventory.InventoryDirectory(
-                file_id, basename, parent_id, self.revision_id
+            ie = inventory.make_entry(
+                kind,
+                basename,
+                parent_id,
+                file_id,
+                revision=self.revision_id,
             )
-            self.directory_entries[path] = ie
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = b""
         elif kind == "symlink":
-            ie = inventory.InventoryLink(
-                file_id,
+            assert data is not None
+            ie = inventory.make_entry(
+                kind,
                 basename,
                 parent_id,
-                self.revision_id,
+                file_id,
+                revision=self.revision_id,
                 symlink_target=self._decode_path(data),
             )
             # There are no lines stored for a symlink so
@@ -584,17 +616,23 @@ class CommitHandler(processor.CommitHandler):
                 f"Cannot import items of kind '{kind}' yet - ignoring '{path}'"
             )
             return
+        if kind == "directory":
+            self.directory_entries[path] = ie
         # Record it
         try:
             old_ie = inv.get_entry(file_id)
-        except errors.NoSuchId:
+        except NoSuchId:
             try:
                 self.record_new(path, ie)
             except:
                 print(
                     f"failed to add path '{path}' with entry '{ie}' in command {self.command.id}"
                 )
-                print(f"parent's children are:\n{inv.get_children(ie.parent_id)!r}\n")
+                print(
+                    "parent's children are:\n{!r}\n".format(
+                        inv.get_children(ie.parent_id)
+                    )
+                )
                 raise
         else:
             if old_ie.kind == "directory":
@@ -632,8 +670,8 @@ class CommitHandler(processor.CommitHandler):
         # the parent exists
         dir_basename, parent_id = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
-        ie = inventory.InventoryDirectory(
-            dir_file_id, dir_basename, parent_id, self.revision_id
+        ie = inventory.entry_factory["directory"](
+            dir_file_id, dir_basename, parent_id, revision=self.revision_id
         )
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
@@ -671,7 +709,7 @@ class CommitHandler(processor.CommitHandler):
                 raise KeyError
             try:
                 file_id = inv.path2id(dirname)
-            except errors.NoSuchId as e:
+            except NoSuchId as e:
                 # In a CHKInventory, this is raised if there's no root yet
                 raise KeyError from e
             if file_id is None:
@@ -707,7 +745,7 @@ class CommitHandler(processor.CommitHandler):
                 return
             try:
                 ie = inv.get_entry(file_id)
-            except errors.NoSuchId:
+            except NoSuchId:
                 self.mutter("ignoring delete of %s as not in inventory", path)
                 return
         self.record_delete(path, ie)
@@ -909,24 +947,18 @@ class CommitHandler(processor.CommitHandler):
             ie = new_inv.get_entry(file_id)
             if ie.kind != "directory":
                 continue
-            if len(new_inv.get_children(ie.file_id)) == 0:
+            if not new_inv.get_children(file_id):
                 result.append((dir, file_id))
                 if self.verbose:
                     self.note(f"pruning empty directory {dir}")
         return result
 
-    def _get_proposed_inventory(self, delta) -> inventory.Inventory:
-        """Create a test inventory by applying a delta.
+    def _get_proposed_inventory(self, delta):
+        from bzrformats.inventory_delta import InventoryDelta
 
-        Used to check what the inventory would look like after applying changes,
-        without actually committing them.
-
-        Args:
-            delta: The inventory delta to apply.
-
-        Returns:
-            inventory.Inventory: The inventory after applying the delta.
-        """
+        inv_delta = (
+            delta if isinstance(delta, InventoryDelta) else InventoryDelta(delta)
+        )
         if len(self.parents):
             # new_inv = self.basis_inventory._get_mutable_inventory()
             # Note that this will create unreferenced chk pages if we end up
@@ -934,13 +966,21 @@ class CommitHandler(processor.CommitHandler):
             # used. However, it is cheaper than having to create a full copy of
             # the inventory for every commit.
             new_inv = self.basis_inventory.create_by_apply_delta(
-                delta, b"not-a-valid-revision-id:"
+                inv_delta, b"not-a-valid-revision-id:"
             )
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
-            new_inv.remove_recursive_id(inventory.ROOT_ID)
-            new_inv.apply_delta(delta)
+            new_inv.delete(inventory.ROOT_ID)
+            try:
+                new_inv.apply_delta(inv_delta)
+            except errors.InconsistentDelta:
+                self.mutter(
+                    "INCONSISTENT DELTA IS:\n{}".format(
+                        "\n".join([str(de) for de in delta])
+                    )
+                )
+                raise
         return new_inv
 
     def _add_entry(
@@ -1019,32 +1059,22 @@ class CommitHandler(processor.CommitHandler):
         # Calculate the per-file parents, if not already done
         if file_id in self.per_file_parents_for_commit:
             return
-        if old_path is None:
-            # add
-            # If this is a merge, the file was most likely added already.
-            # The per-file parent(s) must therefore be calculated and
-            # we can't assume there are none.
-            (
-                per_file_parents,
-                revision,
-            ) = self.rev_store.get_parents_and_revision_for_entry(ie)
-            entry = (entry[0], entry[1], entry[2], ie.derive(revision=revision))
-            self.per_file_parents_for_commit[file_id] = per_file_parents
-        elif new_path is None:
-            # delete
-            pass
-        elif old_path != new_path:
-            # rename
-            per_file_parents, _ = self.rev_store.get_parents_and_revision_for_entry(ie)
-            self.per_file_parents_for_commit[file_id] = per_file_parents
-        else:
-            # modify
-            (
-                per_file_parents,
-                revision,
-            ) = self.rev_store.get_parents_and_revision_for_entry(ie)
-            entry = (entry[0], entry[1], entry[2], ie.derive(revision=revision))
-            self.per_file_parents_for_commit[file_id] = per_file_parents
+        if new_path is None:
+            # delete — no per-file-parents to compute
+            return
+        per_file_parents, new_revision = (
+            self.rev_store.get_parents_and_revision_for_entry(ie)
+        )
+        self.per_file_parents_for_commit[file_id] = per_file_parents
+        if old_path is None or old_path == new_path:
+            # add or modify — freshen `ie`'s revision to the one the
+            # rev_store computed, and re-seat it in the delta.
+            self._delta_entries_by_fileid[file_id] = (
+                old_path,
+                new_path,
+                file_id,
+                _with_revision(ie, new_revision),
+            )
 
     def record_new(self, path: str, ie: inventory.InventoryEntry) -> None:
         """Record the addition of a new inventory entry.
@@ -1090,29 +1120,17 @@ class CommitHandler(processor.CommitHandler):
                         with contextlib.suppress(KeyError):
                             del self.directory_entries[child_path]
 
-    def record_rename(
-        self,
-        old_path: str,
-        new_path: str,
-        file_id: inventory.FileId,
-        old_ie: inventory.InventoryEntry,
-    ) -> None:
-        """Record the renaming of an inventory entry.
-
-        Creates a new inventory entry with updated path information while
-        preserving the file ID.
-
-        Args:
-            old_path: The current path of the entry.
-            new_path: The new path for the entry.
-            file_id: The file ID of the entry.
-            old_ie: The current inventory entry.
-        """
+    def record_rename(self, old_path, new_path, file_id, old_ie):
+        """Record a rename."""
         new_basename, new_parent_id = self._ensure_directory(
             new_path, self.basis_inventory
         )
-        new_ie = old_ie.derive(
-            name=new_basename, parent_id=new_parent_id, revision=self.revision_id
+        new_ie = inventory.entry_factory[old_ie.kind](
+            old_ie.file_id,
+            new_basename,
+            new_parent_id,
+            revision=self.revision_id,
+            **_entry_kwargs(old_ie),
         )
         self._add_entry((old_path, new_path, file_id, new_ie))
         self._modified_file_ids[new_path] = file_id
@@ -1148,31 +1166,17 @@ class CommitHandler(processor.CommitHandler):
             del self._modified_file_ids[old_path]
         self._new_file_ids[new_path] = file_id
 
-        # Create the new InventoryEntry
-        kind = old_ie.kind
+        # Create the new InventoryEntry, copying the kind-specific fields
+        # from the old one.
         basename, parent_id = self._ensure_directory(new_path, self.basis_inventory)
-        if kind == "file":
-            ie = inventory.InventoryFile(
-                file_id,
-                basename,
-                parent_id,
-                self.revision_id,
-                executable=old_ie.executable,
-                text_sha1=old_ie.text_sha1,
-                text_size=old_ie.text_size,
-            )
-        elif kind == "symlink":
-            ie = inventory.InventoryLink(
-                file_id,
-                basename,
-                parent_id,
-                self.revision_id,
-                symlink_target=old_ie.symlink_target,
-            )
-        else:
-            raise AssertionError("unknown kind: {}".format(kind))
-
-        # Record it
+        ie = inventory.make_entry(
+            old_ie.kind,
+            basename,
+            parent_id,
+            file_id,
+            revision=self.revision_id,
+            **_entry_kwargs(old_ie),
+        )
         self.record_new(new_path, ie)
 
     def modify_handler(self, filecmd) -> None:

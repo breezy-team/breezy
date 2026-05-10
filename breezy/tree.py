@@ -21,6 +21,7 @@ __docformat__ = "google"
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Optional, cast
 
+from bzrformats.inventory import NoSuchId
 from dromedary import errors as transport_errors
 
 from . import errors, lock, osutils, trace
@@ -1167,7 +1168,7 @@ def get_canonical_path(tree, path, normalize):
                         break
                     elif normalize(child.name) == lelt:
                         new_path = osutils.pathjoin(cur_path, child.name)
-                except errors.NoSuchId:
+                except NoSuchId:
                     # before a change is committed we can see this error...
                     continue
         except transport_errors.NotADirectory:
