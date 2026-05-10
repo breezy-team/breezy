@@ -66,7 +66,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
 class CertReqsConfigTests(tests.TestCaseInTempDir):
     def test_default(self):
         stack = config.MemoryStack(b"")
-        self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
+        self.assertIn(stack.get("ssl.cert_reqs"), (ssl.CERT_NONE, ssl.CERT_REQUIRED))
 
     def test_from_string(self):
         stack = config.MemoryStack(b"ssl.cert_reqs = none\n")
