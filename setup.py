@@ -156,9 +156,6 @@ rust_extensions = [
     RustExtension(
         "breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3
     ),
-    RustExtension(
-        "breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3
-    ),
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
 
