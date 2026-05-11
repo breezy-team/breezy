@@ -16,6 +16,7 @@
 
 """Tests for the osutils wrapper."""
 
+import codecs
 import contextlib
 import errno
 import os
@@ -26,69 +27,8 @@ from io import BytesIO
 
 from .. import errors, osutils, tests, trace
 from . import features, file_utils
-from .scenarios import load_tests_apply_scenarios
-
-
-class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
-    def _probe(self):
-        try:
-            from .. import _readdir_pyx
-
-            self._module = _readdir_pyx
-            self.reader = _readdir_pyx.UTF8DirReader
-            return True
-        except ModuleNotFoundError:
-            return False
-
-
-UTF8DirReaderFeature = _UTF8DirReaderFeature("breezy._readdir_pyx")
 
 term_ios_feature = features.ModuleAvailableFeature("termios")
-
-
-def _already_unicode(s):
-    return s
-
-
-def _utf8_to_unicode(s):
-    return s.decode("UTF-8")
-
-
-def dir_reader_scenarios():
-    # For each dir reader we define:
-
-    # - native_to_unicode: a function converting the native_abspath as returned
-    #   by DirReader.read_dir to its unicode representation
-
-    # UnicodeDirReader is the fallback, it should be tested on all platforms.
-    scenarios = [
-        (
-            "unicode",
-            {
-                "_dir_reader_class": osutils.UnicodeDirReader,
-                "_native_to_unicode": _already_unicode,
-            },
-        )
-    ]
-    # Some DirReaders are platform specific and even there they may not be
-    # available.
-    if UTF8DirReaderFeature.available():
-        from .. import _readdir_pyx
-
-        scenarios.append(
-            (
-                "utf8",
-                {
-                    "_dir_reader_class": _readdir_pyx.UTF8DirReader,
-                    "_native_to_unicode": _utf8_to_unicode,
-                },
-            )
-        )
-
-    return scenarios
-
-
-load_tests = load_tests_apply_scenarios
 
 
 class TestContainsWhitespace(tests.TestCase):
@@ -1005,26 +945,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             result.append(dirblock)
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
-    def test_walkdirs_os_error(self):
-        # <https://bugs.launchpad.net/bzr/+bug/338653>
-        # Pyrex readdir didn't raise useful messages if it had an error
-        # reading the directory
-        if sys.platform == "win32":
-            raise tests.TestNotApplicable("readdir IOError not tested on win32")
-        self.requireFeature(features.not_running_as_root)
-        os.mkdir("test-unreadable")
-        os.chmod("test-unreadable", 0o0000)
-        # must chmod it back so that it can be removed
-        self.addCleanup(os.chmod, "test-unreadable", 0o700)
-        # The error is not raised until the generator is actually evaluated.
-        # (It would be ok if it happened earlier but at the moment it
-        # doesn't.)
-        e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual("./test-unreadable", osutils.safe_unicode(e.filename))
-        self.assertEqual(errno.EACCES, e.errno)
-        # Ensure the message contains the file name
-        self.assertContainsRe(str(e), "\\./test-unreadable")
-
     def test_walkdirs_encoding_error(self):
         # <https://bugs.launchpad.net/bzr/+bug/488519>
         # walkdirs didn't raise a useful message when the filenames
@@ -1042,61 +962,12 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if b"\xe8file" not in os.listdir("."):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
-        self._save_platform_info()
-
         # this should raise on error
         def attempt():
             for _dirdetail, _dirblock in osutils.walkdirs(b".", codecs.utf_8_decode):
                 pass
 
         self.assertRaises(UnicodeDecodeError, attempt)
-
-    def test__walkdirs_utf8(self):
-        tree = [".bzr", "0file", "1dir/", "1dir/0file", "1dir/1dir/", "2file"]
-        self.build_tree(tree)
-        expected_dirblocks = [
-            (
-                ("", "."),
-                [
-                    ("0file", "0file", "file"),
-                    ("1dir", "1dir", "directory"),
-                    ("2file", "2file", "file"),
-                ],
-            ),
-            (
-                ("1dir", "./1dir"),
-                [
-                    ("1dir/0file", "0file", "file"),
-                    ("1dir/1dir", "1dir", "directory"),
-                ],
-            ),
-            (("1dir/1dir", "./1dir/1dir"), []),
-        ]
-        result = []
-        found_bzrdir = False
-        for dirdetail, dirblock in osutils._walkdirs_utf8(b"."):
-            if len(dirblock) and dirblock[0][1] == b".bzr":
-                # this tests the filtering of selected paths
-                found_bzrdir = True
-                del dirblock[0]
-            dirdetail = (
-                dirdetail[0].decode("utf-8"),
-                osutils.safe_unicode(dirdetail[1]),
-            )
-            dirblock = [
-                (entry[0].decode("utf-8"), entry[1].decode("utf-8"), entry[2])
-                for entry in dirblock
-            ]
-            result.append((dirdetail, dirblock))
-
-        self.assertTrue(found_bzrdir)
-        self.assertExpectedBlocks(expected_dirblocks, result)
-
-        # you can search a subdir only, with a supplied prefix.
-        result = []
-        for dirblock in osutils.walkdirs("./1dir", "1dir"):
-            result.append(dirblock)
-        self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def _filter_out_stat(self, result):
         """Filter out the stat value from the walkdirs result."""
@@ -1106,37 +977,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 # Ignore info[3] which is the stat
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             dirblock[:] = new_dirblock
-
-    def _save_platform_info(self):
-        self.overrideAttr(osutils, "_selected_dir_reader")
-
-    def assertDirReaderIs(self, expected, top, fs_enc=None):
-        """Assert the right implementation for _walkdirs_utf8 is chosen."""
-        # Force it to redetect
-        osutils._selected_dir_reader = None
-        # Nothing to list, but should still trigger the selection logic
-        self.assertEqual(
-            [((b"", top), [])], list(osutils._walkdirs_utf8(".", fs_enc=fs_enc))
-        )
-        self.assertIsInstance(osutils._selected_dir_reader, expected)
-
-    def test_force_walkdirs_utf8_fs_utf8(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc="utf-8"
-        )
-
-    def test_force_walkdirs_utf8_fs_ascii(self):
-        self.requireFeature(UTF8DirReaderFeature)
-        self._save_platform_info()
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc="ascii"
-        )
-
-    def test_force_walkdirs_utf8_fs_latin1(self):
-        self._save_platform_info()
-        self.assertDirReaderIs(osutils.UnicodeDirReader, ".", fs_enc="iso-8859-1")
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -1181,125 +1021,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         result = list(osutils.walkdirs("./" + name1, name1))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks[1:], result)
-
-    def test_unicode__walkdirs_utf8(self):
-        """Walkdirs_utf8 should always return utf8 paths.
-
-        The abspath portion might be in unicode or utf-8
-        """
-        self.requireFeature(features.UnicodeFilenameFeature)
-        name0 = "0file-\xb6"
-        name1 = "1dir-\u062c\u0648"
-        name2 = "2file-\u0633"
-        tree = [
-            name0,
-            name1 + "/",
-            name1 + "/" + name0,
-            name1 + "/" + name1 + "/",
-            name2,
-        ]
-        self.build_tree(tree)
-        name0 = name0.encode("utf8")
-        name1 = name1.encode("utf8")
-        name2 = name2.encode("utf8")
-
-        expected_dirblocks = [
-            (
-                (b"", b"."),
-                [
-                    (name0, name0, "file", b"./" + name0),
-                    (name1, name1, "directory", b"./" + name1),
-                    (name2, name2, "file", b"./" + name2),
-                ],
-            ),
-            (
-                (name1, b"./" + name1),
-                [
-                    (name1 + b"/" + name0, name0, "file", b"./" + name1 + b"/" + name0),
-                    (
-                        name1 + b"/" + name1,
-                        name1,
-                        "directory",
-                        b"./" + name1 + b"/" + name1,
-                    ),
-                ],
-            ),
-            ((name1 + b"/" + name1, b"./" + name1 + b"/" + name1), []),
-        ]
-        result = []
-        # For ease in testing, if walkdirs_utf8 returns Unicode, assert that
-        # all abspaths are Unicode, and encode them back into utf8.
-        for dirdetail, dirblock in osutils._walkdirs_utf8("."):
-            self.assertIsInstance(dirdetail[0], bytes)
-            if isinstance(dirdetail[1], str):
-                dirdetail = (dirdetail[0], dirdetail[1].encode("utf8"))
-                dirblock = [list(info) for info in dirblock]
-                for info in dirblock:
-                    self.assertIsInstance(info[4], str)
-                    info[4] = info[4].encode("utf8")
-            new_dirblock = []
-            for info in dirblock:
-                self.assertIsInstance(info[0], bytes)
-                self.assertIsInstance(info[1], bytes)
-                self.assertIsInstance(info[4], bytes)
-                # Remove the stat information
-                new_dirblock.append((info[0], info[1], info[2], info[4]))
-            result.append((dirdetail, new_dirblock))
-        self.assertEqual(expected_dirblocks, result)
-
-    def test__walkdirs_utf8_with_unicode_fs(self):
-        """UnicodeDirReader should be a safe fallback everywhere.
-
-        The abspath portion should be in unicode
-        """
-        self.requireFeature(features.UnicodeFilenameFeature)
-        # Use the unicode reader. TODO: split into driver-and-driven unit
-        # tests.
-        self._save_platform_info()
-        osutils._selected_dir_reader = osutils.UnicodeDirReader()
-        name0u = "0file-\xb6"
-        name1u = "1dir-\u062c\u0648"
-        name2u = "2file-\u0633"
-        tree = [
-            name0u,
-            name1u + "/",
-            name1u + "/" + name0u,
-            name1u + "/" + name1u + "/",
-            name2u,
-        ]
-        self.build_tree(tree)
-        name0 = name0u.encode("utf8")
-        name1 = name1u.encode("utf8")
-        name2 = name2u.encode("utf8")
-
-        # All of the abspaths should be in unicode, all of the relative paths
-        # should be in utf8
-        expected_dirblocks = [
-            (
-                (b"", "."),
-                [
-                    (name0, name0, "file", "./" + name0u),
-                    (name1, name1, "directory", "./" + name1u),
-                    (name2, name2, "file", "./" + name2u),
-                ],
-            ),
-            (
-                (name1, "./" + name1u),
-                [
-                    (name1 + b"/" + name0, name0, "file", "./" + name1u + "/" + name0u),
-                    (
-                        name1 + b"/" + name1,
-                        name1,
-                        "directory",
-                        "./" + name1u + "/" + name1u,
-                    ),
-                ],
-            ),
-            ((name1 + b"/" + name1, "./" + name1u + "/" + name1u), []),
-        ]
-        result = list(osutils._walkdirs_utf8("."))
-        self._filter_out_stat(result)
-        self.assertEqual(expected_dirblocks, result)
 
 
 class TestCopyTree(tests.TestCaseInTempDir):
@@ -1411,133 +1132,6 @@ class TestShaFileByName(tests.TestCaseInTempDir):
         self.build_tree_contents([("foo", text)])
         expected_sha = osutils.sha_string(text)
         self.assertEqual(expected_sha, osutils.sha_file_by_name("foo"))
-
-
-class TestDirReader(tests.TestCaseInTempDir):
-    scenarios = dir_reader_scenarios()
-
-    # Set by load_tests
-    _dir_reader_class = None
-    _native_to_unicode = None
-
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(osutils, "_selected_dir_reader", self._dir_reader_class())
-
-    def _get_ascii_tree(self):
-        tree = ["0file", "1dir/", "1dir/0file", "1dir/1dir/", "2file"]
-        expected_dirblocks = [
-            (
-                (b"", "."),
-                [
-                    (b"0file", b"0file", "file", "./0file"),
-                    (b"1dir", b"1dir", "directory", "./1dir"),
-                    (b"2file", b"2file", "file", "./2file"),
-                ],
-            ),
-            (
-                (b"1dir", "./1dir"),
-                [
-                    (b"1dir/0file", b"0file", "file", "./1dir/0file"),
-                    (b"1dir/1dir", b"1dir", "directory", "./1dir/1dir"),
-                ],
-            ),
-            ((b"1dir/1dir", "./1dir/1dir"), []),
-        ]
-        return tree, expected_dirblocks
-
-    def test_walk_cur_dir(self):
-        tree, expected_dirblocks = self._get_ascii_tree()
-        self.build_tree(tree)
-        result = list(osutils._walkdirs_utf8("."))
-        # Filter out stat and abspath
-        self.assertEqual(expected_dirblocks, self._filter_out(result))
-
-    def test_walk_sub_dir(self):
-        tree, expected_dirblocks = self._get_ascii_tree()
-        self.build_tree(tree)
-        # you can search a subdir only, with a supplied prefix.
-        result = list(osutils._walkdirs_utf8(b"./1dir", b"1dir"))
-        # Filter out stat and abspath
-        self.assertEqual(expected_dirblocks[1:], self._filter_out(result))
-
-    def _get_unicode_tree(self):
-        name0u = "0file-\xb6"
-        name1u = "1dir-\u062c\u0648"
-        name2u = "2file-\u0633"
-        tree = [
-            name0u,
-            name1u + "/",
-            name1u + "/" + name0u,
-            name1u + "/" + name1u + "/",
-            name2u,
-        ]
-        name0 = name0u.encode("UTF-8")
-        name1 = name1u.encode("UTF-8")
-        name2 = name2u.encode("UTF-8")
-        expected_dirblocks = [
-            (
-                (b"", "."),
-                [
-                    (name0, name0, "file", "./" + name0u),
-                    (name1, name1, "directory", "./" + name1u),
-                    (name2, name2, "file", "./" + name2u),
-                ],
-            ),
-            (
-                (name1, "./" + name1u),
-                [
-                    (name1 + b"/" + name0, name0, "file", "./" + name1u + "/" + name0u),
-                    (
-                        name1 + b"/" + name1,
-                        name1,
-                        "directory",
-                        "./" + name1u + "/" + name1u,
-                    ),
-                ],
-            ),
-            ((name1 + b"/" + name1, "./" + name1u + "/" + name1u), []),
-        ]
-        return tree, expected_dirblocks
-
-    def _filter_out(self, raw_dirblocks):
-        """Filter out a walkdirs_utf8 result.
-
-        stat field is removed, all native paths are converted to unicode
-        """
-        filtered_dirblocks = []
-        for dirinfo, block in raw_dirblocks:
-            dirinfo = (dirinfo[0], self._native_to_unicode(dirinfo[1]))
-            details = []
-            for line in block:
-                details.append(line[0:3] + (self._native_to_unicode(line[4]),))
-            filtered_dirblocks.append((dirinfo, details))
-        return filtered_dirblocks
-
-    def test_walk_unicode_tree(self):
-        self.requireFeature(features.UnicodeFilenameFeature)
-        tree, expected_dirblocks = self._get_unicode_tree()
-        self.build_tree(tree)
-        result = list(osutils._walkdirs_utf8("."))
-        self.assertEqual(expected_dirblocks, self._filter_out(result))
-
-    def test_symlink(self):
-        self.requireFeature(features.SymlinkFeature(self.test_dir))
-        self.requireFeature(features.UnicodeFilenameFeature)
-        target = "target\N{EURO SIGN}"
-        link_name = "l\N{EURO SIGN}nk"
-        os.symlink(target, link_name)
-        link_name_utf8 = link_name.encode("UTF-8")
-        expected_dirblocks = [
-            (
-                (b"", "."),
-                [
-                    (link_name_utf8, link_name_utf8, "symlink", "./" + link_name),
-                ],
-            )
-        ]
-        result = list(osutils._walkdirs_utf8("."))
-        self.assertEqual(expected_dirblocks, self._filter_out(result))
 
 
 class TestReadLink(tests.TestCaseInTempDir):

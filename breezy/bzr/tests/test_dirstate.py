@@ -27,8 +27,7 @@ from bzrformats.inventory import _make_delta as make_inventory_delta
 
 from ... import controldir, osutils, tests
 from ... import revision as _mod_revision
-from ...tests import features, test_osutils
-from ...tests.scenarios import load_tests_apply_scenarios
+from ...tests import features
 from .. import inventorytree, workingtree_4
 
 # TODO:
@@ -56,21 +55,8 @@ class TestErrors(tests.TestCase):
         )
 
 
-load_tests = load_tests_apply_scenarios
-
-
 class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
-
-    scenarios = test_osutils.dir_reader_scenarios()
-
-    # Set by load_tests
-    _dir_reader_class = None
-    _native_to_unicode = None  # Not used yet
-
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(osutils, "_selected_dir_reader", self._dir_reader_class())
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate."""
