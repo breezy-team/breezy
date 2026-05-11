@@ -266,14 +266,6 @@ rust_extensions = [
     RustExtension("breezy._git_rs", "crates/git-py/Cargo.toml", binding=Binding.PyO3),
 ]
 
-if sys.platform != "win32":
-    rust_extensions.append(
-        RustExtension(
-            "breezy._readdir_pyx",
-            "crates/readdir-py/Cargo.toml",
-            binding=Binding.PyO3,
-        )
-    )
 entry_points = {}
 
 if (
