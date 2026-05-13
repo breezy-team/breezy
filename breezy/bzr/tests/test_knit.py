@@ -274,6 +274,21 @@ class MockTransport:
         else:
             return BytesIO(b"\n".join(self.file_lines))
 
+    def get_bytes(self, filename):
+        if self.file_lines is None:
+            raise NoSuchFile(filename)
+        return b"\n".join(self.file_lines)
+
+    def append_bytes(self, filename, bytes_):
+        self.calls.append(("append_bytes", (filename, bytes_), {}))
+        if self.file_lines is None:
+            self.file_lines = []
+            offset = 0
+        else:
+            offset = sum(len(line) + 1 for line in self.file_lines)
+        self.file_lines.extend(bytes_.rstrip(b"\n").split(b"\n"))
+        return offset
+
     def readv(self, relpath, offsets):
         fp = self.get(relpath)
         for offset, size in offsets:
