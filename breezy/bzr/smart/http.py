@@ -58,14 +58,16 @@ class SmartClientHTTPMedium(SmartClientMedium):
 
     def send_http_smart_request(self, bytes):
         """POST ``bytes`` as a smart request body and return the response body."""
+        from io import BytesIO
+
         try:
             t = self._http_transport_ref()
-            code, body_filelike = t._post(bytes)
+            code, body = t._post(".bzr/smart", bytes)
             if code != 200:
                 raise UnexpectedHttpStatus(t._remote_path(".bzr/smart"), code)
         except (InvalidHttpResponse, ConnectionResetError) as e:
             raise SmartProtocolError(str(e)) from e
-        return body_filelike
+        return BytesIO(body)
 
     def _report_activity(self, bytes, direction):
         # Does nothing; the underlying plain HTTP transport will report the

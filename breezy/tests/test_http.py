@@ -445,7 +445,7 @@ class TestPost(tests.TestCase):
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
         http_transport = transport.get_transport_from_url(url)
-        _code, _response = http_transport._post(b"abc def end-of-body")
+        _code, _response = http_transport._post(".bzr/smart", b"abc def end-of-body")
         self.assertTrue(server.received_bytes.startswith(b"POST /.bzr/smart HTTP/1."))
         self.assertIn(b"content-length: 19\r", server.received_bytes.lower())
         self.assertIn(
@@ -2098,8 +2098,8 @@ lalala whatever as long as itsssss
         t = self.get_transport()
         # We must send a single line of body bytes, see
         # PredefinedRequestHandler._handle_one_request
-        _code, f = t._post(b"abc def end-of-body\n")
-        self.assertEqual(b"lalala whatever as long as itsssss\n", f.read())
+        _code, body = t._post(".bzr/smart", b"abc def end-of-body\n")
+        self.assertEqual(b"lalala whatever as long as itsssss\n", body)
         self.assertActivitiesMatch()
 
 
