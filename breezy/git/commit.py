@@ -122,6 +122,15 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = f.read()
                 finally:
                     f.close()
+                # Apply gitattributes normalization for Git working trees
+                from breezy.git.workingtree import GitWorkingTree
+
+                if isinstance(workingtree, GitWorkingTree):
+                    blob_normalizer = workingtree._get_blob_normalizer()
+                    if blob_normalizer is not None:
+                        blob = blob_normalizer.checkin_normalize(
+                            blob, encode_git_path(change.path[1])
+                        )
                 sha = blob.id
                 if st is not None:
                     entry.text_size = st.st_size

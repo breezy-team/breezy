@@ -490,6 +490,92 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.store.add_object(t)
         self.expectDelta([], tree_id=t.id)
 
+    def test_gitattributes_crlf_eol(self):
+        """Working tree CRLF files should not show as changed when eol=crlf."""
+        # Create .gitattributes specifying eol=crlf for .bat files
+        self.build_tree_contents([(".gitattributes", "*.bat text eol=crlf\n")])
+        self.wt.add([".gitattributes"])
+        # Create a file with LF line endings (as git stores it)
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\nline2\n")
+        self.wt.add(["test.bat"])
+        self.wt.commit("initial commit")
+        # Now write the file with CRLF (as git checkout would produce
+        # for eol=crlf)
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        # The LF-normalized blob is what git stores
+        a_lf = Blob.from_string(b"line1\nline2\n")
+        gitattrs = Blob.from_string(b"*.bat text eol=crlf\n")
+        oldt = Tree()
+        oldt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        oldt.add(b"test.bat", stat.S_IFREG | 0o644, a_lf.id)
+        # After normalization, the CRLF working tree content should be
+        # normalized to LF, matching the committed content - no changes.
+        self.expectDelta([], tree_id=oldt.id)
+
+    def test_gitattributes_crlf_actual_change(self):
+        """Actual content changes should still be detected with eol=crlf."""
+        self.build_tree_contents([(".gitattributes", "*.bat text eol=crlf\n")])
+        self.wt.add([".gitattributes"])
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\nline2\n")
+        self.wt.add(["test.bat"])
+        self.wt.commit("initial commit")
+        # Write different content with CRLF
+        with open(self.wt.abspath("test.bat"), "wb") as f:
+            f.write(b"line1\r\nline2\r\nline3\r\n")
+        a_old = Blob.from_string(b"line1\nline2\n")
+        a_new = Blob.from_string(b"line1\nline2\nline3\n")
+        gitattrs = Blob.from_string(b"*.bat text eol=crlf\n")
+        oldt = Tree()
+        oldt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        oldt.add(b"test.bat", stat.S_IFREG | 0o644, a_old.id)
+        newt = Tree()
+        newt.add(b".gitattributes", stat.S_IFREG | 0o644, gitattrs.id)
+        newt.add(b"test.bat", stat.S_IFREG | 0o644, a_new.id)
+        self.expectDelta(
+            [
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"", stat.S_IFDIR, oldt.id),
+                    new=TreeEntry(b"", stat.S_IFDIR, newt.id),
+                ),
+                DulwichTreeChange(
+                    type="modify",
+                    old=TreeEntry(b"test.bat", stat.S_IFREG | 0o644, a_old.id),
+                    new=TreeEntry(b"test.bat", stat.S_IFREG | 0o644, a_new.id),
+                ),
+            ],
+            tree_id=oldt.id,
+        )
+
+    def test_gitattributes_text_auto(self):
+        """Files marked as text=auto should have LF normalized."""
+        self.build_tree_contents([(".gitattributes", "* text=auto\n")])
+        self.wt.add([".gitattributes"])
+        # Create a file with CRLF line endings
+        with open(self.wt.abspath("file.txt"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        self.wt.add(["file.txt"])
+        self.wt.commit("initial commit")
+        # The file should be stored with LF internally
+        # Get the actual committed tree to verify normalization worked
+        head_commit = self.store[self.wt.branch.repository._git.head()]
+        committed_tree = self.store[head_commit.tree]
+        # Verify file.txt was stored with LF
+        file_entry = committed_tree[b"file.txt"]
+        file_blob = self.store[file_entry[1]]
+        self.assertEqual(
+            file_blob.data, b"line1\nline2\n", "File should be stored with LF"
+        )
+
+        # Simulate checkout with CRLF (on Windows)
+        with open(self.wt.abspath("file.txt"), "wb") as f:
+            f.write(b"line1\r\nline2\r\n")
+        # Should not show as changed when compared to committed tree
+        self.expectDelta([], tree_id=head_commit.tree)
+
     def test_submodule_not_checked_out(self):
         a = Blob.from_string(b"irrelevant\n")
         with self.wt.lock_tree_write():

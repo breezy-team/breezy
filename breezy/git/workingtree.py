@@ -438,6 +438,75 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._detect_case_handling()
         self._reset_data()
 
+    def _get_blob_normalizer(self):
+        """Return a blob normalizer for checkin normalization."""
+        from dulwich.attrs import GitAttributes, Pattern, parse_git_attributes
+        from dulwich.object_store import Blob
+
+        git_repo = self.repository._git
+        config_stack = git_repo.get_config_stack()
+        patterns = []
+
+        # Read global gitattributes file if configured
+        try:
+            global_attrs_file = config_stack.get(b"core", b"attributesFile")
+        except KeyError:
+            global_attrs_file = None
+        if global_attrs_file:
+            global_attrs_path = os.path.expanduser(global_attrs_file.decode())
+            if os.path.exists(global_attrs_path):
+                with open(global_attrs_path, "rb") as f:
+                    for pattern_bytes, attrs in parse_git_attributes(f):
+                        patterns.append((Pattern(pattern_bytes), attrs))
+
+        # Read .git/info/attributes
+        info_attrs_path = os.path.join(git_repo.controldir(), "info", "attributes")
+        if os.path.exists(info_attrs_path):
+            with open(info_attrs_path, "rb") as f:
+                for pattern_bytes, attrs in parse_git_attributes(f):
+                    patterns.append((Pattern(pattern_bytes), attrs))
+
+        # Read .gitattributes from the working tree (highest priority)
+        gitattributes_path = self.abspath(".gitattributes")
+        if os.path.exists(gitattributes_path):
+            with open(gitattributes_path, "rb") as f:
+                for pattern_bytes, attrs in parse_git_attributes(f):
+                    patterns.append((Pattern(pattern_bytes), attrs))
+
+        git_attributes = GitAttributes(patterns)
+
+        # Create a simple normalizer that handles line endings
+        class SimpleLineEndingNormalizer:
+            def __init__(self, config, attrs):
+                self.config = config
+                self.attrs = attrs
+
+            def checkin_normalize(self, blob, path):
+                """Normalize line endings during checkin."""
+                # Get attributes for this path
+                attrs = self.attrs.match_path(path)
+
+                # Check for text attribute
+                text_attr = attrs.get(b"text")
+                eol_attr = attrs.get(b"eol")
+
+                # If binary (-text), don't normalize
+                if text_attr is False:
+                    return blob
+
+                # If text=auto or text is set, normalize CRLF to LF
+                if text_attr in (b"auto", True, b"true") or eol_attr in (b"lf", b"LF"):
+                    # Normalize CRLF to LF
+                    normalized_data = blob.data.replace(b"\r\n", b"\n")
+                    if normalized_data != blob.data:
+                        new_blob = Blob()
+                        new_blob.data = normalized_data
+                        return new_blob
+
+                return blob
+
+        return SimpleLineEndingNormalizer(config_stack, git_attributes)
+
     def supports_tree_reference(self):
         """Return True if this tree supports tree references (submodules).
 
@@ -1295,7 +1364,37 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             An IndexEntry representing the current file state.
         """
         encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
-        return index_entry_from_path(encoded_path)
+        entry = index_entry_from_path(encoded_path)
+
+        # Apply gitattributes normalization to the SHA calculation
+        if entry is not None and stat.S_ISREG(entry.mode):
+            blob_normalizer = self._get_blob_normalizer()
+            if blob_normalizer is not None:
+                from dulwich.object_store import Blob
+
+                # Read the file and normalize it
+                with open(encoded_path, "rb") as f:
+                    blob = Blob()
+                    blob.data = f.read()
+                normalized_blob = blob_normalizer.checkin_normalize(blob, path)
+                # Update the SHA in the entry to the normalized SHA
+                # IndexEntry is a namedtuple, recreate it with the normalized SHA
+                from dulwich.index import IndexEntry
+
+                entry = IndexEntry(
+                    entry.ctime,
+                    entry.mtime,
+                    entry.dev,
+                    entry.ino,
+                    entry.mode,
+                    entry.uid,
+                    entry.gid,
+                    entry.size,
+                    normalized_blob.id,
+                    entry.flags,
+                )
+
+        return entry
 
     def is_executable(self, path):
         """Check if a file is executable.
