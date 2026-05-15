@@ -481,7 +481,7 @@ def failed_to_load_extension(exception):
     implementation should be loaded instead::
 
     >>> try:
-    >>>     import breezy._fictional_extension_pyx
+    >>>     import breezy._fictional_extension_rs
     >>> except ModuleNotFoundError as e:
     >>>     breezy.osutils.failed_to_load_extension(e)
     >>>     import breezy._fictional_extension_py

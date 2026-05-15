@@ -3,7 +3,6 @@ requires = [
     "setuptools>=60",
     "setuptools-rust",
     "setuptools-gettext>=0.1.4",
-    "cython>=0.29",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -22,7 +21,6 @@ classifiers = [
     "Operating System :: POSIX",
     "Programming Language :: Python",
     "Programming Language :: Rust",
-    "Programming Language :: C",
     "Topic :: Software Development :: Version Control",
 ]
 requires-python = ">=3.10,<3.15"
@@ -65,7 +63,6 @@ dev = [
     "testtools>=0.9.9",
     "testscenarios",
     "python-subunit",
-    "cython>=0.29",
     "ruff==0.13.0",
     "types-paramiko",
     "types-PyYAML",

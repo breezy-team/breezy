@@ -26,11 +26,6 @@ from setuptools import setup
 from setuptools.command.build import build
 
 try:
-    from packaging.version import Version
-except ImportError:
-    from distutils.version import LooseVersion as Version
-
-try:
     from setuptools_gettext import build_mo  # noqa: F401
 except ImportError:
     sys.stderr.write(
@@ -125,105 +120,6 @@ command_classes = {
     "build_man": build_man,
 }
 
-from distutils.extension import Extension
-
-ext_modules = []
-try:
-    from Cython.Compiler.Version import version as cython_version
-    from Cython.Distutils import build_ext
-except ModuleNotFoundError:
-    have_cython = False
-    # try to build the extension from the prior generated source.
-    print("")
-    print(
-        "The python package 'Cython' is not available. If the .c files are available,"
-    )
-    print("they will be built, but modifying the .pyx files will not rebuild them.")
-    print("")
-    from distutils.command.build_ext import build_ext
-else:
-    minimum_cython_version = "0.29"
-    cython_version_info = Version(cython_version)
-    if cython_version_info < Version(minimum_cython_version):
-        print(
-            "Version of Cython is too old. "
-            f"Current is {cython_version}, need at least {minimum_cython_version}."
-        )
-        print(
-            "If the .c files are available, they will be built,"
-            " but modifying the .pyx files will not rebuild them."
-        )
-        have_cython = False
-    else:
-        have_cython = True
-
-
-# Override the build_ext if we have Cython available
-command_classes["build_ext"] = build_ext
-unavailable_files = []
-
-
-def add_cython_extension(module_name, libraries=None, extra_source=None):
-    """Add a Cython extension module to the build configuration.
-
-    This function configures a Cython extension for building. If Cython is
-    available, it will compile from .pyx files. Otherwise, it falls back to
-    pre-generated .c files. If neither is available, the extension is skipped
-    with a warning.
-
-    Args:
-        module_name (str): The python path to the module (e.g., 'breezy.foo').
-            This determines the .pyx and .c file paths to use.
-        libraries (list, optional): List of libraries to link against.
-            Defaults to None.
-        extra_source (list, optional): Additional source files to include.
-            Defaults to None.
-
-    Note:
-        On Windows, the WIN32 macro is automatically defined for Cython
-        compatibility. The function adds appropriate include directories
-        and handles the optional nature of extensions for CI builds.
-    """
-    if extra_source is None:
-        extra_source = []
-    path = module_name.replace(".", "/")
-    cython_name = path + ".pyx"
-    c_name = path + ".c"
-    define_macros = []
-    if sys.platform == "win32":
-        # cython uses the macro WIN32 to detect the platform, even though it
-        # should be using something like _WIN32 or MS_WINDOWS, oh well, we can
-        # give it the right value.
-        define_macros.append(("WIN32", None))
-    if have_cython:
-        source = [cython_name]
-    else:
-        if not os.path.isfile(c_name):
-            unavailable_files.append(c_name)
-            return
-        else:
-            source = [c_name]
-    source.extend(extra_source)
-    include_dirs = ["breezy"]
-    ext_modules.append(
-        Extension(
-            module_name,
-            source,
-            define_macros=define_macros,
-            libraries=libraries,
-            include_dirs=include_dirs,
-            optional=os.environ.get("CIBUILDWHEEL", "0") != "1",
-        )
-    )
-
-
-if unavailable_files:
-    print("C extension(s) not found:")
-    print("   {}".format("\n  ".join(unavailable_files)))
-    print("The python versions will be used instead.")
-    print("")
-
-
 if "editable_wheel" not in sys.argv:
     command_classes["build_scripts"] = brz_build_scripts
 
@@ -291,7 +187,6 @@ setup(
     ],
     data_files=DATA_FILES,
     cmdclass=command_classes,
-    ext_modules=ext_modules,
     entry_points=entry_points,
     rust_extensions=rust_extensions,
 )
