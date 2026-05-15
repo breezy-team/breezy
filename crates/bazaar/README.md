@@ -1,4 +1,3 @@
-This crate contains a rust implementation of the
-[Bazaar](https://www.bazaar-vcs.org/) file formats and protocols.
-
-It's currently incomplete.
+This crate provides the `RevisionId` type used by the Breezy Rust code.
+Higher-level Bazaar format support lives in the separate
+[bzrformats](https://pypi.org/project/bzrformats/) project.

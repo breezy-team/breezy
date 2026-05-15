@@ -22,8 +22,9 @@ expressions.
 
 import re
 
+from bzrformats._bzr_rs import globbing as _globbing_rs
+
 from . import lazy_regex
-from ._bzr_rs import globbing as _globbing_rs
 from .trace import mutter, warning
 
 Replacer = _globbing_rs.Replacer

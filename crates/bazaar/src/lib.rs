@@ -2,121 +2,6 @@
 use pyo3::{prelude::*, types::PyBytes};
 use std::fmt::{Debug, Error, Formatter};
 
-pub const DEFAULT_CHUNK_SIZE: usize = 4096;
-
-pub mod bencode_serializer;
-pub mod chk_inventory;
-pub mod chk_map;
-pub mod dirstate;
-pub mod filters;
-pub mod gen_ids;
-pub mod globbing;
-pub mod groupcompress;
-pub mod hashcache;
-pub mod inventory;
-pub mod inventory_delta;
-pub mod repository;
-pub mod revision;
-pub mod rio;
-pub mod serializer;
-pub mod smart;
-pub mod versionedfile;
-pub mod xml_serializer;
-
-#[cfg(feature = "pyo3")]
-pub mod pyversionedfile;
-
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FileId(Vec<u8>);
-
-impl Debug for FileId {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
-    }
-}
-
-impl From<Vec<u8>> for FileId {
-    fn from(v: Vec<u8>) -> Self {
-        check_valid(&v);
-        FileId(v)
-    }
-}
-
-impl From<FileId> for Vec<u8> {
-    fn from(v: FileId) -> Self {
-        v.0
-    }
-}
-
-impl From<&[u8]> for FileId {
-    fn from(v: &[u8]) -> Self {
-        check_valid(v);
-        FileId(v.to_vec())
-    }
-}
-
-impl From<&Vec<u8>> for FileId {
-    fn from(v: &Vec<u8>) -> Self {
-        FileId::from(v.as_slice())
-    }
-}
-
-impl FileId {
-    pub fn generate(name: &str) -> Self {
-        Self::from(gen_ids::gen_file_id(name))
-    }
-
-    pub fn generate_root_id() -> Self {
-        Self::from(gen_ids::gen_root_id())
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl FromPyObject<'_, '_> for FileId {
-    type Error = pyo3::PyErr;
-
-    fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-        let s: Vec<u8> = ob.extract()?;
-        Ok(FileId::from(s))
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl<'py> IntoPyObject<'py> for &FileId {
-    type Target = pyo3::types::PyBytes;
-
-    type Output = Bound<'py, Self::Target>;
-
-    type Error = pyo3::PyErr;
-
-    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        Ok(PyBytes::new(py, &self.0))
-    }
-}
-
-#[cfg(feature = "pyo3")]
-impl<'py> IntoPyObject<'py> for FileId {
-    type Target = pyo3::types::PyBytes;
-
-    type Output = Bound<'py, Self::Target>;
-
-    type Error = pyo3::PyErr;
-
-    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        (&self).into_pyobject(py)
-    }
-}
-
-impl std::fmt::Display for FileId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", String::from_utf8(self.0.clone()).unwrap())
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RevisionId(Vec<u8>);
 
@@ -225,21 +110,11 @@ impl RevisionId {
         self.0 == NULL_REVISION
     }
 
-    pub fn generate(username: &str, timestamp: Option<u64>) -> Self {
-        Self::from(gen_ids::gen_revision_id(username, timestamp))
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
     pub fn is_reserved(&self) -> bool {
         self.0.ends_with(b":")
-    }
-
-    pub fn expect_not_reserved(&self) {
-        if self.is_reserved() {
-            panic!("Expected non-reserved revision id, got {:?}", self);
-        }
     }
 }

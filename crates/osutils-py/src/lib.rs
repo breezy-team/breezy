@@ -1153,7 +1153,9 @@ fn ensure_empty_directory_exists(path: PathBuf) -> PyResult<()> {
         Err(ref e)
             if e.kind() == std::io::ErrorKind::Other && e.to_string().contains(" not empty") =>
         {
-            Err(DirectoryNotEmpty::new_err(path.to_string_lossy().into_owned()))
+            Err(DirectoryNotEmpty::new_err(
+                path.to_string_lossy().into_owned(),
+            ))
         }
         Err(e) => Err(e.into()),
     }
