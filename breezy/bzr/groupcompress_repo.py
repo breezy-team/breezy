@@ -819,7 +819,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #     entries too.
         # And all this should be independent of any fallback repository.
         problems = []
-        key_deps = self.repo.revisions._index._key_dependencies
+        key_deps = self.repo.revisions._index.key_dependencies
         new_revisions_keys = key_deps.get_new_keys()
         no_fallback_inv_index = self.repo.inventories._index
         no_fallback_chk_bytes_index = self.repo.chk_bytes._index
