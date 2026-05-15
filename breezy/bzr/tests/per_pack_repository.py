@@ -694,29 +694,29 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_missing_inventories_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.inventories._index._missing_compression_parents.add(key)
+        key = (b"junk",)
+        repo.inventories._index.add_missing_compression_parent(key)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_revisions_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.revisions._index._missing_compression_parents.add(key)
+        key = (b"junk",)
+        repo.revisions._index.add_missing_compression_parent(key)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_signatures_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("junk",)
-        repo.signatures._index._missing_compression_parents.add(key)
+        key = (b"junk",)
+        repo.signatures._index.add_missing_compression_parent(key)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
 
     def test_missing_text_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
-        key = ("some", "junk")
-        repo.texts._index._missing_compression_parents.add(key)
+        key = (b"some", b"junk")
+        repo.texts._index.add_missing_compression_parent(key)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
         self.assertRaises(BzrCheckError, repo.commit_write_group)
 
@@ -1054,7 +1054,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.abort_write_group()
@@ -1068,7 +1068,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.suspend_write_group()
@@ -1094,7 +1094,7 @@ class TestKeyDependencies(TestCaseWithTransport):
                 [(b"B-id",)], "unordered", True
             )
             target_repo.revisions.insert_record_stream(stream)
-            key_refs = target_repo.revisions._index._key_dependencies
+            key_refs = target_repo.revisions._index.key_dependencies
             self.assertEqual([(b"B-id",)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.commit_write_group()

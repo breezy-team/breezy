@@ -1192,13 +1192,13 @@ class RepositoryPackCollection:
         )
         if self.chk_index is not None:
             self.chk_index.add_writable_index(self._new_pack.chk_index, self._new_pack)
-            self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
+            self.repo.chk_bytes._index.set_add_callback(self.chk_index.add_callback)
             self._new_pack.chk_index.set_optimize(combine_backing_indices=False)
 
-        self.repo.inventories._index._add_callback = self.inventory_index.add_callback
-        self.repo.revisions._index._add_callback = self.revision_index.add_callback
-        self.repo.signatures._index._add_callback = self.signature_index.add_callback
-        self.repo.texts._index._add_callback = self.text_index.add_callback
+        self.repo.inventories._index.set_add_callback(self.inventory_index.add_callback)
+        self.repo.revisions._index.set_add_callback(self.revision_index.add_callback)
+        self.repo.signatures._index.set_add_callback(self.signature_index.add_callback)
+        self.repo.texts._index.set_add_callback(self.text_index.add_callback)
 
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
@@ -1379,7 +1379,7 @@ class PackRepository(MetaDirVersionedFileRepository):
             return [key[0] for key in self.revisions.keys()]
 
     def _abort_write_group(self):
-        self.revisions._index._key_dependencies.clear()
+        self.revisions._index.clear_key_dependencies()
         self._pack_collection._abort_write_group()
 
     def _make_parents_provider(self):
@@ -1401,7 +1401,7 @@ class PackRepository(MetaDirVersionedFileRepository):
 
     def _commit_write_group(self):
         hint = self._pack_collection._commit_write_group()
-        self.revisions._index._key_dependencies.clear()
+        self.revisions._index.clear_key_dependencies()
         # The commit may have added keys that were previously cached as
         # missing, so reset the cache.
         self._unstacked_provider.disable_cache()
@@ -1416,7 +1416,7 @@ class PackRepository(MetaDirVersionedFileRepository):
         """
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
-        self.revisions._index._key_dependencies.clear()
+        self.revisions._index.clear_key_dependencies()
         self._write_group = None
         return tokens
 
