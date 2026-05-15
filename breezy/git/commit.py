@@ -117,20 +117,12 @@ class GitCommitBuilder(CommitBuilder):
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
                 blob = Blob()
+                # get_file_with_stat will apply content filters if supported
                 f, st = workingtree.get_file_with_stat(change.path[1])
                 try:
                     blob.data = f.read()
                 finally:
                     f.close()
-                # Apply gitattributes normalization for Git working trees
-                from breezy.git.workingtree import GitWorkingTree
-
-                if isinstance(workingtree, GitWorkingTree):
-                    blob_normalizer = workingtree._get_blob_normalizer()
-                    if blob_normalizer is not None:
-                        blob = blob_normalizer.checkin_normalize(
-                            blob, encode_git_path(change.path[1])
-                        )
                 sha = blob.id
                 if st is not None:
                     entry.text_size = st.st_size

@@ -438,74 +438,130 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._detect_case_handling()
         self._reset_data()
 
-    def _get_blob_normalizer(self):
-        """Return a blob normalizer for checkin normalization."""
+    def supports_content_filtering(self):
+        """Git working trees support content filtering via gitattributes."""
+        return True
+
+    def _content_filter_stack(self, path=None):
+        """Get content filters for a path from gitattributes.
+
+        Returns a stack of Breezy ContentFilter objects that wrap
+        dulwich's filter drivers.
+        """
+        if path is None:
+            return []
+
+        from dulwich.filters import get_filter_for_path
+
+        from breezy.filters import ContentFilter
+
+        # Get the dulwich filter driver for this path
+        filter_context = self._get_filter_context()
+        if filter_context is None:
+            return []
+
+        gitattributes = self._get_gitattributes()
+        encoded_path = encode_git_path(path)
+
+        # Get attributes for this path
+        attrs = gitattributes.match_path(encoded_path)
+
+        # Check if we need text normalization
+        # Git treats text=auto, text=true, and text (without value) as enabling text normalization
+        text_attr = attrs.get(b"text")
+        eol_attr = attrs.get(b"eol")
+
+        # Handle text normalization
+        if text_attr in (b"auto", b"true", True) or eol_attr in (b"lf", b"crlf"):
+            # Create a simple text filter since dulwich doesn't handle text=auto
+
+            def normalize_to_lf(chunks):
+                """Normalize CRLF to LF for storage."""
+                data = b"".join(chunks)
+                normalized = data.replace(b"\r\n", b"\n")
+                yield normalized
+
+            def denormalize_to_native(chunks, context=None):
+                """Convert to platform line endings on checkout."""
+                # For now, we keep LF (Unix-style) on checkout
+                # TODO: Check core.autocrlf and core.eol settings
+                yield b"".join(chunks)
+
+            from breezy.filters import ContentFilter
+
+            return [ContentFilter(normalize_to_lf, denormalize_to_native)]
+
+        # Check for other filters (like custom filters)
+        filter_driver = get_filter_for_path(
+            encoded_path, gitattributes, filter_context=filter_context
+        )
+
+        if filter_driver is None:
+            return []
+
+        # Wrap the dulwich filter in a Breezy ContentFilter
+        def read_converter(chunks):
+            """Apply clean filter (working tree -> repo)."""
+            data = b"".join(chunks)
+            filtered = filter_driver.clean(data)
+            yield filtered
+
+        def write_converter(chunks, context=None):
+            """Apply smudge filter (repo -> working tree)."""
+            data = b"".join(chunks)
+            filtered = filter_driver.smudge(data)
+            yield filtered
+
+        return [ContentFilter(read_converter, write_converter)]
+
+    def _get_filter_context(self):
+        """Get or create the dulwich filter context."""
+        if not hasattr(self, "_filter_context"):
+            from dulwich.filters import FilterContext, FilterRegistry
+
+            git_repo = self.repository._git
+            config_stack = git_repo.get_config_stack()
+            filter_registry = FilterRegistry(config_stack, repo=git_repo)
+            self._filter_context = FilterContext(filter_registry)
+        return self._filter_context
+
+    def _get_gitattributes(self):
+        """Get GitAttributes object with patterns from all sources."""
         from dulwich.attrs import GitAttributes, Pattern, parse_git_attributes
-        from dulwich.object_store import Blob
 
-        git_repo = self.repository._git
-        config_stack = git_repo.get_config_stack()
-        patterns = []
+        if not hasattr(self, "_gitattributes"):
+            git_repo = self.repository._git
+            config_stack = git_repo.get_config_stack()
+            patterns = []
 
-        # Read global gitattributes file if configured
-        try:
-            global_attrs_file = config_stack.get(b"core", b"attributesFile")
-        except KeyError:
-            global_attrs_file = None
-        if global_attrs_file:
-            global_attrs_path = os.path.expanduser(global_attrs_file.decode())
-            if os.path.exists(global_attrs_path):
-                with open(global_attrs_path, "rb") as f:
+            # Read global gitattributes file if configured
+            try:
+                global_attrs_file = config_stack.get(b"core", b"attributesFile")
+            except KeyError:
+                global_attrs_file = None
+            if global_attrs_file:
+                global_attrs_path = os.path.expanduser(global_attrs_file.decode())
+                if os.path.exists(global_attrs_path):
+                    with open(global_attrs_path, "rb") as f:
+                        for pattern_bytes, attrs in parse_git_attributes(f):
+                            patterns.append((Pattern(pattern_bytes), attrs))
+
+            # Read .git/info/attributes
+            info_attrs_path = os.path.join(git_repo.controldir(), "info", "attributes")
+            if os.path.exists(info_attrs_path):
+                with open(info_attrs_path, "rb") as f:
                     for pattern_bytes, attrs in parse_git_attributes(f):
                         patterns.append((Pattern(pattern_bytes), attrs))
 
-        # Read .git/info/attributes
-        info_attrs_path = os.path.join(git_repo.controldir(), "info", "attributes")
-        if os.path.exists(info_attrs_path):
-            with open(info_attrs_path, "rb") as f:
-                for pattern_bytes, attrs in parse_git_attributes(f):
-                    patterns.append((Pattern(pattern_bytes), attrs))
+            # Read .gitattributes from the working tree (highest priority)
+            gitattributes_path = self.abspath(".gitattributes")
+            if os.path.exists(gitattributes_path):
+                with open(gitattributes_path, "rb") as f:
+                    for pattern_bytes, attrs in parse_git_attributes(f):
+                        patterns.append((Pattern(pattern_bytes), attrs))
 
-        # Read .gitattributes from the working tree (highest priority)
-        gitattributes_path = self.abspath(".gitattributes")
-        if os.path.exists(gitattributes_path):
-            with open(gitattributes_path, "rb") as f:
-                for pattern_bytes, attrs in parse_git_attributes(f):
-                    patterns.append((Pattern(pattern_bytes), attrs))
-
-        git_attributes = GitAttributes(patterns)
-
-        # Create a simple normalizer that handles line endings
-        class SimpleLineEndingNormalizer:
-            def __init__(self, config, attrs):
-                self.config = config
-                self.attrs = attrs
-
-            def checkin_normalize(self, blob, path):
-                """Normalize line endings during checkin."""
-                # Get attributes for this path
-                attrs = self.attrs.match_path(path)
-
-                # Check for text attribute
-                text_attr = attrs.get(b"text")
-                eol_attr = attrs.get(b"eol")
-
-                # If binary (-text), don't normalize
-                if text_attr is False:
-                    return blob
-
-                # If text=auto or text is set, normalize CRLF to LF
-                if text_attr in (b"auto", True, b"true") or eol_attr in (b"lf", b"LF"):
-                    # Normalize CRLF to LF
-                    normalized_data = blob.data.replace(b"\r\n", b"\n")
-                    if normalized_data != blob.data:
-                        new_blob = Blob()
-                        new_blob.data = normalized_data
-                        return new_blob
-
-                return blob
-
-        return SimpleLineEndingNormalizer(config_stack, git_attributes)
+            self._gitattributes = GitAttributes(patterns)
+        return self._gitattributes
 
     def supports_tree_reference(self):
         """Return True if this tree supports tree references (submodules).
@@ -1366,19 +1422,34 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
         entry = index_entry_from_path(encoded_path)
 
-        # Apply gitattributes normalization to the SHA calculation
-        if entry is not None and stat.S_ISREG(entry.mode):
-            blob_normalizer = self._get_blob_normalizer()
-            if blob_normalizer is not None:
+        # If content filtering is enabled, we need to calculate the SHA
+        # of the filtered content, not the raw file content
+        if (
+            entry is not None
+            and stat.S_ISREG(entry.mode)
+            and self.supports_content_filtering()
+        ):
+            decoded_path = decode_git_path(path)
+            filters = self._content_filter_stack(decoded_path)
+            if filters:
                 from dulwich.object_store import Blob
 
-                # Read the file and normalize it
+                # Read the file and apply filters
                 with open(encoded_path, "rb") as f:
-                    blob = Blob()
-                    blob.data = f.read()
-                normalized_blob = blob_normalizer.checkin_normalize(blob, path)
-                # Update the SHA in the entry to the normalized SHA
-                # IndexEntry is a namedtuple, recreate it with the normalized SHA
+                    chunks = [f.read()]
+
+                # Apply the read converters (clean filters)
+                for filter in filters:
+                    if filter.reader is not None:
+                        chunks = filter.reader(chunks)
+
+                filtered_data = b"".join(chunks)
+
+                # Calculate SHA of the filtered content
+                blob = Blob()
+                blob.data = filtered_data
+
+                # Update the entry with the filtered SHA
                 from dulwich.index import IndexEntry
 
                 entry = IndexEntry(
@@ -1390,7 +1461,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     entry.uid,
                     entry.gid,
                     entry.size,
-                    normalized_blob.id,
+                    blob.id,
                     entry.flags,
                 )
 

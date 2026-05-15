@@ -1886,10 +1886,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = False
         self._submodules = None
 
-    def _get_blob_normalizer(self):
-        """Return a blob normalizer for checkin normalization, or None."""
-        return None
-
     def git_snapshot(self, want_unversioned=False):
         """Create a Git snapshot of this working tree.
 
@@ -2667,7 +2663,6 @@ def snapshot_workingtree(
     # replaced with non-empty directories if they have contents.
     dirified = []
     trust_executable = target._supports_executable()  # type: ignore
-    blob_normalizer = target._get_blob_normalizer()
     for path, index_entry in target._recurse_index_entries():
         index_entry = getattr(index_entry, "this", index_entry)
         try:
@@ -2695,10 +2690,9 @@ def snapshot_workingtree(
                     rp = decode_git_path(path)
                     if stat.S_ISREG(live_entry.mode):
                         blob = Blob()
+                        # get_file applies content filters if supported
                         with target.get_file(rp) as f:
                             blob.data = f.read()
-                        if blob_normalizer is not None:
-                            blob = blob_normalizer.checkin_normalize(blob, path)
                     elif stat.S_ISLNK(live_entry.mode):
                         blob = Blob()
                         blob.data = os.fsencode(target.get_symlink_target(rp))
@@ -2722,10 +2716,13 @@ def snapshot_workingtree(
             obj: Tree | Blob
             if stat.S_ISDIR(st.st_mode):
                 obj = Tree()
-            elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
+            elif stat.S_ISREG(st.st_mode):
+                # For regular files, use get_file to apply filters
+                obj = Blob()
+                with target.get_file(extra) as f:  # type: ignore
+                    obj.data = f.read()
+            elif stat.S_ISLNK(st.st_mode):
                 obj = blob_from_path_and_stat(os.fsencode(target.abspath(extra)), st)  # type: ignore
-                if blob_normalizer is not None and stat.S_ISREG(st.st_mode):
-                    obj = blob_normalizer.checkin_normalize(obj, np)
             else:
                 continue
             target.store.add_object(obj)
