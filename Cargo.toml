@@ -38,7 +38,7 @@ gettext = { workspace = true, optional = true }
 log = { workspace = true }
 breezy-osutils = { path = "crates/osutils", version = ">=3.3.4" }
 chrono = { workspace = true }
-bazaar = { path = "crates/bazaar", features = ["pyo3"] }
+bazaar = ">=3.4.3"
 percent-encoding = "2"
 url = { workspace = true }
 regex = "1"
