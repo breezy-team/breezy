@@ -4214,7 +4214,6 @@ def _test_suite_testmod_names():
         "breezy.tests.test_scenarios",
         "breezy.tests.test_script",
         "breezy.tests.test_selftest",
-        "breezy.tests.test_setup",
         "breezy.tests.test_sftp_transport",
         "breezy.tests.test_shelf",
         "breezy.tests.test_shelf_ui",

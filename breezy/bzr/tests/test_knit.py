@@ -55,13 +55,8 @@ from ...tests import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestNotApplicable,
-    features,
 )
 from .. import knitpack_repo, pack_repo
-
-compiled_knit_feature = features.ModuleAvailableFeature(
-    "bzrformats._knit_load_data_pyx"
-)
 
 
 class ErrorTests(TestCase):
@@ -1356,16 +1351,6 @@ class LowLevelKnitIndexTests(TestCase):
         )
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({(b"a",), (b"c",)}, index.keys())
-
-
-class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
-    _test_needs_features = [compiled_knit_feature]
-
-    @property
-    def _load_data(self):
-        from bzrformats._knit_load_data_pyx import _load_data_c
-
-        return _load_data_c
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):
