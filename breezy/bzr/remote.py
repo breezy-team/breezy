@@ -4457,6 +4457,11 @@ class RemoteStreamSource(vf_repository.StreamSource):
             and self.to_format._fetch_order == "topological"
         ):
             return self._real_stream(self.from_repository, search)
+        if self._stream_self_contained_texts:
+            # The smart get_stream verb cannot be told to emit delta
+            # closures, so generate the stream through the VFS source,
+            # which honours _stream_self_contained_texts.
+            return self._real_stream(self.from_repository, search)
         sources = []
         seen = set()
         repos = [self.from_repository]
@@ -4541,6 +4546,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
         if isinstance(source, RemoteStreamSource):
             repo._ensure_real()
             source = repo._real_repository._get_source(self.to_format)
+        source._stream_self_contained_texts = self._stream_self_contained_texts
         return source.get_stream(search)
 
     def _get_stream(self, repo, search):

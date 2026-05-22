@@ -1411,8 +1411,13 @@ class GroupCHKStreamSource(StreamSource):
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are the identical network name.
+        # A stacked target cannot store a delta whose basis lives only in a
+        # fallback, so emit delta closures when asked for a self-contained
+        # stream.
         text_stream = self.from_repository.texts.get_record_stream(
-            self._text_keys, self._text_fetch_order, False
+            self._text_keys,
+            self._text_fetch_order,
+            self._stream_self_contained_texts,
         )
         return ("texts", text_stream)
 
