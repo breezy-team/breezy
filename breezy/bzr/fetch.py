@@ -123,6 +123,12 @@ class RepoFetcher:
         with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
             source = self.from_repository._get_source(self.to_repository._format)
+            # A stacked target cannot store a text delta whose basis lives
+            # only in a fallback (ResumedPack._check_references rejects it).
+            # Ask the source for self-contained texts so the stream never
+            # carries such deltas.
+            if self.to_repository._fallback_repositories:
+                source._stream_self_contained_texts = True
             stream = source.get_stream(search)
             from_format = self.from_repository._format
             pb.update("Inserting stream")

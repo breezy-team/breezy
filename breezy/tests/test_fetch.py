@@ -306,8 +306,10 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             ("get_record_stream", [(b"rev-one",)], target._format._fetch_order, False),
             self.find_get_record_stream(source.inventories.calls, 2),
         )
+        # Revisions are streamed topologically when sent as deltas, so a
+        # delta never arrives before the basis its expansion needs.
         self.assertEqual(
-            ("get_record_stream", [(b"rev-one",)], target._format._fetch_order, False),
+            ("get_record_stream", [(b"rev-one",)], "topological", False),
             self.find_get_record_stream(source.revisions.calls),
         )
         # XXX: Signatures is special, and slightly broken. The
