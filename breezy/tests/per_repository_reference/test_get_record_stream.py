@@ -16,8 +16,6 @@
 
 """Tests that get_record_stream() behaves itself properly when stacked."""
 
-from bzrformats import knit
-
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
 )
@@ -239,14 +237,9 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             if record.storage_kind == "absent":
                 raise ValueError(f"absent record: {record.key}")
             record_keys.append(record.key)
-        # Note that currently --2a format repositories do this correctly, but
-        # KnitPack format repositories do not.
-        if isinstance(self.stacked_repo.texts, knit.KnitVersionedFiles):
-            # See https://bugs.launchpad.net/bzr/+bug/399884
-            self.expectFailure(
-                "KVF does not weave fulltexts from fallback"
-                " repositories to preserve perfect order",
-                self.assertTrue,
-                record_keys in (keys, alt_1, alt_2, alt_3, alt_4),
-            )
+        # KnitVersionedFiles used to weave the local keys ahead of the
+        # fallback ones, breaking topological order across the stacking
+        # boundary (https://bugs.launchpad.net/bzr/+bug/399884). It now
+        # emits keys grouped by source in topological order, so the order
+        # is preserved for both --2a and KnitPack repositories.
         self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))
