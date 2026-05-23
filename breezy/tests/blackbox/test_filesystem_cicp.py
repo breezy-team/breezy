@@ -145,7 +145,7 @@ class TestAdd(TestCICPBase):
             self,
             f"""
             $ brz add mixedcaseparent/notfound
-            2>brz: ERROR: No such file: {expected_fname!r}
+            2>brz: ERROR: No such file or directory: "{expected_fname}"
             """,
         )
 

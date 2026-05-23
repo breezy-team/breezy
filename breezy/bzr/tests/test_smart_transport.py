@@ -244,7 +244,7 @@ class SmartClientMediumTests(tests.TestCase):
         # read.read() hangs. On Linux, read.read() returns the empty string.
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
@@ -286,7 +286,7 @@ class SmartClientMediumTests(tests.TestCase):
     def test_simple_pipes__flush_subprocess_closed(self):
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\nsys.stdout.write(sys.stdin.read(4))\nsys.stdout.close()\n",
             ],
@@ -313,7 +313,7 @@ class SmartClientMediumTests(tests.TestCase):
     def test_simple_pipes__read_bytes_subprocess_closed(self):
         p = subprocess.Popen(
             [
-                sys.executable,
+                tests.python_executable(),
                 "-c",
                 "import sys\n"
                 'if sys.platform == "win32":\n'

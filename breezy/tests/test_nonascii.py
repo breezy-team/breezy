@@ -17,7 +17,6 @@
 """Test that various operations work in a non-ASCII environment."""
 
 import os
-import sys
 from unicodedata import normalize
 
 from .. import osutils
@@ -117,12 +116,11 @@ class NormalizedFilename(TestCaseWithTransport):
         except UnicodeError as err:
             raise TestSkipped("filesystem cannot create unicode files") from err
 
-        if sys.platform == "darwin":
-            expected = sorted([a_circle_d + ".1", a_dots_d + ".2", z_umlat_d + ".3"])
-        else:
-            expected = sorted(files)
-
-        present = sorted(os.listdir("."))
+        # macOS HFS+ historically returned NFD-decomposed names from
+        # listdir; modern APFS may return NFC-composed names instead. Compare
+        # both lists normalised to NFC so the test passes either way.
+        present = sorted(normalize("NFC", n) for n in os.listdir("."))
+        expected = sorted(normalize("NFC", n) for n in files)
         self.assertEqual(expected, present)
 
     def test_access_normalized(self):

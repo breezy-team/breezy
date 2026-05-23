@@ -637,10 +637,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Detect whether the filesystem is case-sensitive.
 
         Sets self.case_sensitive based on whether we can stat a file
-        with different casing than the actual file.
+        with different casing than the actual file. ``self._transport``
+        is rooted at ``.git/`` already, so probe ``cOnFiG`` directly
+        rather than ``.git/cOnFiG`` (which would resolve to
+        ``.git/.git/cOnFiG`` and never exist).
         """
         try:
-            self._transport.stat(".git/cOnFiG")
+            self._transport.stat("cOnFiG")
         except NoSuchFile:
             self.case_sensitive = True
         else:
@@ -1319,6 +1322,79 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items on case-insensitive FS."""
+        with self.lock_read():
+            if not self.case_sensitive:
+
+                def normalize(x):
+                    return x.lower()
+            elif sys.platform == "darwin":
+                import unicodedata
+
+                def normalize(x):
+                    return unicodedata.normalize("NFC", x)
+            else:
+                normalize = None
+            for path in paths:
+                stripped = path.strip("/")
+                if normalize is None:
+                    yield stripped
+                else:
+                    yield self._canonicalize_path_via_index(stripped, normalize)
+
+    def _canonicalize_path_via_index(self, path, normalize):
+        """Map ``path`` to its canonical form by walking the Git index.
+
+        Generic ``tree.get_canonical_path`` relies on ``iter_child_entries``,
+        which mixes filesystem and index state in ways that are unreliable
+        on case-insensitive Windows filesystems. Walk the index entries
+        directly instead so the comparison is purely byte-level.
+        """
+        if path == "":
+            return ""
+        encoded = encode_git_path(path)
+        if encoded in self.index:
+            return path
+        if self._versioned_dirs is None:
+            self._load_dirs()
+        if encoded in self._versioned_dirs:
+            return path
+
+        index_paths = [decode_git_path(p) for p, _ in self._recurse_index_entries()]
+        components = path.split("/")
+        canonical = ""
+        for idx, elt in enumerate(components):
+            if not elt:
+                continue
+            wanted = normalize(elt)
+            prefix = canonical + "/" if canonical else ""
+            best = None
+            seen_dirs: set[str] = set()
+            for ip in index_paths:
+                if not ip.startswith(prefix):
+                    continue
+                rest = ip[len(prefix) :]
+                if "/" in rest:
+                    head = rest.split("/", 1)[0]
+                    if head in seen_dirs:
+                        continue
+                    seen_dirs.add(head)
+                    candidate = head
+                else:
+                    candidate = rest
+                if candidate == elt:
+                    best = candidate
+                    break
+                if normalize(candidate) == wanted and best is None:
+                    best = candidate
+            if best is None:
+                # No match for this component; keep the remainder as-is.
+                tail = components[idx:]
+                return canonical + ("/" if canonical else "") + "/".join(tail)
+            canonical = canonical + "/" + best if canonical else best
+        return canonical
 
     def list_files(
         self, include_root=False, from_dir=None, recursive=True, recurse_nested=False
