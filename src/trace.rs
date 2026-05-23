@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, warn};
 use std::fs::{File, OpenOptions};
 use std::io::Read;
 use std::io::{self, Write};
@@ -117,18 +117,26 @@ pub fn set_brz_log_filename(filename: Option<&Path>) {
 ///
 /// This sets the global `_brz_log_filename`.
 pub fn open_brz_log() -> Option<File> {
-    let filename = initialize_brz_log_filename().ok()?;
+    // Route failures via the `log` facade so Python-side handlers (including
+    // the test suite's in-memory log capture installed by
+    // `breezy.trace.push_log_file`) receive the message instead of it being
+    // written directly to stderr, which bypasses test redirection. The
+    // target is "brz" so it lands on the same Python logger that holds the
+    // BreezyTraceHandler.
+    let filename = match initialize_brz_log_filename() {
+        Ok(filename) => filename,
+        Err(e) => {
+            warn!(target: "brz", "failed to open trace file: {}", e);
+            return None;
+        }
+    };
     set_brz_log_filename(Some(filename.as_path()));
     rollover_trace_maybe(&filename).ok();
 
     let mut brz_log_file = match open_or_create_log_file(&filename) {
         Ok(fd) => fd,
         Err(e) => {
-            // If we are failing to open the log, then most likely logging has not
-            // been set up yet. So we just write to stderr rather than using 'warning()'.
-            // If we use warning(), users get the unhelpful 'no handlers registered for "brz"'
-            // when something goes wrong on the server. (bug #503886)
-            eprintln!("failed to open trace file: {}: {}", filename.display(), e);
+            warn!(target: "brz", "failed to open trace file: {}: {}", filename.display(), e);
             return None;
         }
     };
@@ -139,19 +147,19 @@ pub fn open_brz_log() -> Option<File> {
             brz_log_file,
             "this is a debug log for diagnosing/reporting problems in brz"
         ) {
-            eprintln!("failed to write to trace file: {}", e);
+            warn!(target: "brz", "failed to write to trace file: {}", e);
         }
         if let Err(e) = writeln!(
             brz_log_file,
             "you can delete or truncate this file, or include sections in"
         ) {
-            eprintln!("failed to write to trace file: {}", e);
+            warn!(target: "brz", "failed to write to trace file: {}", e);
         }
         if let Err(e) = writeln!(
             brz_log_file,
             "bug reports to https://bugs.launchpad.net/brz/+filebug"
         ) {
-            eprintln!("failed to write to trace file: {}", e);
+            warn!(target: "brz", "failed to write to trace file: {}", e);
         }
     }
 
