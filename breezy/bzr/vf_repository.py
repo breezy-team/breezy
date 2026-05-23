@@ -1244,7 +1244,7 @@ class VersionedFileRepository(Repository):
         # XXX: Texts referenced by all added inventories need to be present,
         # but at the moment we're only checking for texts referenced by
         # inventories at the graph's edge.
-        key_deps = self.revisions._index._key_dependencies
+        key_deps = self.revisions._index.key_dependencies
         key_deps.satisfy_refs_for_keys(present_inventories)
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
@@ -2167,6 +2167,11 @@ class StreamSource:
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        # When True the text substream is emitted with delta closures, so
+        # every record can be reconstructed without data outside the stream.
+        # Set by callers fetching into a stacked repository, which cannot
+        # store a delta whose basis lives only in a fallback.
+        self._stream_self_contained_texts = False
         from bzrformats.recordcounter import RecordCounter
 
         self._record_counter = RecordCounter()
@@ -2193,10 +2198,17 @@ class StreamSource:
         )
         # If a revision has a delta, this is actually expanded inside the
         # insert_record_stream code now, which is an alternate fix for
-        # bug #261339
+        # bug #261339. That expansion reads the delta basis back from the
+        # target, so the basis must already have been inserted: stream
+        # revisions topologically rather than unordered so a delta never
+        # arrives before its basis.
         from_rf = self.from_repository.revisions
+        if self.delta_on_metadata():
+            revision_order = "topological"
+        else:
+            revision_order = self.to_format._fetch_order
         revisions = from_rf.get_record_stream(
-            keys, self.to_format._fetch_order, not self.delta_on_metadata()
+            keys, revision_order, not self.delta_on_metadata()
         )
         return [("signatures", signatures), ("revisions", revisions)]
 
@@ -2241,7 +2253,8 @@ class StreamSource:
                     from_texts.get_record_stream(
                         text_keys,
                         self.to_format._fetch_order,
-                        not self.to_format._fetch_uses_deltas,
+                        not self.to_format._fetch_uses_deltas
+                        or self._stream_self_contained_texts,
                     ),
                 )
                 # Cause an error if a text occurs after we have done the

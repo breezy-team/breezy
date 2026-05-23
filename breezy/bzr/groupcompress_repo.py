@@ -819,7 +819,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #     entries too.
         # And all this should be independent of any fallback repository.
         problems = []
-        key_deps = self.repo.revisions._index._key_dependencies
+        key_deps = self.repo.revisions._index.key_dependencies
         new_revisions_keys = key_deps.get_new_keys()
         no_fallback_inv_index = self.repo.inventories._index
         no_fallback_chk_bytes_index = self.repo.chk_bytes._index
@@ -1411,8 +1411,13 @@ class GroupCHKStreamSource(StreamSource):
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are the identical network name.
+        # A stacked target cannot store a delta whose basis lives only in a
+        # fallback, so emit delta closures when asked for a self-contained
+        # stream.
         text_stream = self.from_repository.texts.get_record_stream(
-            self._text_keys, self._text_fetch_order, False
+            self._text_keys,
+            self._text_fetch_order,
+            self._stream_self_contained_texts,
         )
         return ("texts", text_stream)
 
