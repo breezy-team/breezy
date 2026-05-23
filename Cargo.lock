@@ -56,6 +56,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
+name = "arc-swap"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a3a1fd6f75306b68087b831f025c712524bcb19aad54e557b1129cfa0a2b207"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "async-compression"
 version = "0.4.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,14 +261,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "breezy-readdir"
-version = "3.4.0"
-dependencies = [
- "libc",
- "nix",
-]
-
-[[package]]
 name = "breezy-zlib-util"
 version = "3.4.0"
 dependencies = [
@@ -326,6 +327,7 @@ dependencies = [
  "log",
  "pyo3",
  "pyo3-filelike",
+ "pyo3-log",
 ]
 
 [[package]]
@@ -1406,6 +1408,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyo3-log"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26c2ec80932c5c3b2d4fbc578c9b56b2d4502098587edb8bef5b6bfcad43682e"
+dependencies = [
+ "arc-swap",
+ "log",
+ "pyo3",
+]
+
+[[package]]
 name = "pyo3-macros"
 version = "0.28.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1563,16 +1576,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
 dependencies = [
  "getrandom 0.3.4",
-]
-
-[[package]]
-name = "readdir-py"
-version = "3.4.0"
-dependencies = [
- "breezy-readdir",
- "libc",
- "nix",
- "pyo3",
 ]
 
 [[package]]

@@ -655,6 +655,15 @@ fn remove_tags(
 
 #[pymodule]
 fn _cmd_rs(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
+    // Route Rust `log` records to Python's `logging` module so that fixtures
+    // like the test suite's `breezy.trace.push_log_file` see them. Without
+    // this, Rust code that hits `log::warn!` etc. (or that fell back to
+    // `eprintln!` for things like "failed to open trace file") would bypass
+    // every Python-side handler and leak to the real stderr.
+    //
+    // `try_init` is used so re-imports of this extension module don't panic.
+    let _ = pyo3_log::try_init();
+
     let i18n = PyModule::new(py, "i18n")?;
     i18n.add_function(wrap_pyfunction!(i18n_install, &i18n)?)?;
     i18n.add_function(wrap_pyfunction!(i18n_install_plugin, &i18n)?)?;

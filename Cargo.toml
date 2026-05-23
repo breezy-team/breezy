@@ -60,6 +60,7 @@ dirs = "6"
 nix = ">=0.26"
 pyo3 = "0.28"
 pyo3-filelike = "0.5.2"
+pyo3-log = "0.13"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 url = "2"
 log = "0.4"
