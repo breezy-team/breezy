@@ -410,6 +410,103 @@ class ContentsConflict(_mod_conflicts.Conflict):
         return ConflictedIndexEntry(this=this, other=other, ancestor=base)
 
 
+class _BreezyContentFilterNormalizer:
+    """Adapter that exposes a tree's content filter stack as a dulwich BlobNormalizer.
+
+    Dulwich's checkout/checkin paths call ``checkout_normalize`` /
+    ``checkin_normalize`` on a blob normalizer. This adapter routes those
+    calls through the working tree's ``_content_filter_stack`` so that filters
+    installed via the rules system (or monkey-patched in tests) take effect
+    during dulwich-driven checkouts.
+    """
+
+    def __init__(self, tree):
+        self._tree = tree
+
+    def _stack_for(self, path):
+        return self._tree._content_filter_stack(decode_git_path(path))
+
+    def checkout_normalize(self, blob, path):
+        from dulwich.objects import Blob
+
+        from breezy.filters import filtered_output_bytes
+
+        filters = self._stack_for(path)
+        if not filters:
+            return blob
+        chunks = list(filtered_output_bytes([blob.data], filters))
+        data = b"".join(chunks)
+        if data == blob.data:
+            return blob
+        new_blob = Blob()
+        new_blob.data = data
+        return new_blob
+
+    def checkin_normalize(self, blob, path):
+        from io import BytesIO
+
+        from dulwich.objects import Blob
+
+        from breezy.filters import filtered_input_file
+
+        filters = self._stack_for(path)
+        if not filters:
+            return blob
+        f, _size = filtered_input_file(BytesIO(blob.data), filters)
+        data = f.read()
+        if data == blob.data:
+            return blob
+        new_blob = Blob()
+        new_blob.data = data
+        return new_blob
+
+
+class _GitAttributesRulesSearcher:
+    """Rules searcher that translates gitattributes into Breezy preferences.
+
+    Currently only the text/eol attributes are mapped; they become an
+    ``eol`` preference that the existing ``eol`` filter stack consumes.
+    Custom filter drivers (``filter=<name>``) are not exposed here because
+    materializing them needs the per-tree dulwich filter context, which the
+    global filter registry has no way to receive.
+    """
+
+    def __init__(self, tree):
+        self._tree = tree
+
+    def _eol_value_for(self, path):
+        if path is None:
+            return None
+        gitattributes = self._tree._get_gitattributes()
+        attrs = gitattributes.match_path(encode_git_path(path))
+        eol_attr = attrs.get(b"eol")
+        if eol_attr == b"lf":
+            return "lf"
+        if eol_attr == b"crlf":
+            return "crlf"
+        if attrs.get(b"text") in (b"auto", b"true", True):
+            return "lf"
+        return None
+
+    def get_items(self, path):
+        value = self._eol_value_for(path)
+        if value is None:
+            return ()
+        return (("eol", value),)
+
+    def get_selected_items(self, path, names):
+        items = self.get_items(path)
+        if not items:
+            return ()
+        as_dict = dict(items)
+        return tuple((name, as_dict.get(name)) for name in names)
+
+    def get_single_value(self, path, preference_name):
+        for _key, value in self.get_selected_items(path, [preference_name]):
+            return value
+        return None
+
+
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
 
@@ -438,79 +535,66 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         self._detect_case_handling()
         self._reset_data()
 
-    def supports_content_filtering(self):
-        """Git working trees support content filtering via gitattributes."""
-        return True
+    def _get_rules_searcher(self, default_searcher):
+        """Stack the gitattributes-derived rules on top of any inherited searcher.
+
+        ``super()._get_rules_searcher`` is called explicitly so subclasses or
+        tests that override the base method (for example to install an
+        ``eol``-only rules source) still take effect.
+        """
+        from ..rules import _StackedRulesSearcher
+
+        base_searcher = super()._get_rules_searcher(default_searcher)
+        gitattr_searcher = _GitAttributesRulesSearcher(self)
+        if base_searcher is None:
+            return gitattr_searcher
+        return _StackedRulesSearcher([gitattr_searcher, base_searcher])
 
     def _content_filter_stack(self, path=None):
-        """Get content filters for a path from gitattributes.
+        """Get the content filter stack for ``path``.
 
-        Returns a stack of Breezy ContentFilter objects that wrap
-        dulwich's filter drivers.
+        The base implementation consults the registered filter rules (which on
+        a Git working tree pick up text/eol rules from gitattributes via
+        :class:`_GitAttributesRulesSearcher`). Custom git filter drivers
+        configured via ``filter=<name>`` in gitattributes are appended on top
+        since they need access to the per-tree dulwich filter context that
+        cannot be expressed through the global filter registry.
         """
-        if path is None:
-            return []
+        stack = super()._content_filter_stack(path)
+        if path is not None:
+            stack = list(stack) + self._git_custom_filter_stack(path)
+        return stack
 
-        from dulwich.filters import get_filter_for_path
+    def _git_custom_filter_stack(self, path):
+        """Return filters configured via ``filter=<driver>`` in gitattributes.
 
+        Text/EOL normalization is handled separately through the rules-driven
+        ``eol`` filter; this method only materializes external clean/smudge
+        drivers registered in git config (``filter=<name>``).
+        """
         from breezy.filters import ContentFilter
-
-        # Get the dulwich filter driver for this path
-        filter_context = self._get_filter_context()
-        if filter_context is None:
-            return []
 
         gitattributes = self._get_gitattributes()
         encoded_path = encode_git_path(path)
-
-        # Get attributes for this path
         attrs = gitattributes.match_path(encoded_path)
-
-        # Check if we need text normalization
-        # Git treats text=auto, text=true, and text (without value) as enabling text normalization
-        text_attr = attrs.get(b"text")
-        eol_attr = attrs.get(b"eol")
-
-        # Handle text normalization
-        if text_attr in (b"auto", b"true", True) or eol_attr in (b"lf", b"crlf"):
-            # Create a simple text filter since dulwich doesn't handle text=auto
-
-            def normalize_to_lf(chunks):
-                """Normalize CRLF to LF for storage."""
-                data = b"".join(chunks)
-                normalized = data.replace(b"\r\n", b"\n")
-                yield normalized
-
-            def denormalize_to_native(chunks, context=None):
-                """Convert to platform line endings on checkout."""
-                # For now, we keep LF (Unix-style) on checkout
-                # TODO: Check core.autocrlf and core.eol settings
-                yield b"".join(chunks)
-
-            from breezy.filters import ContentFilter
-
-            return [ContentFilter(normalize_to_lf, denormalize_to_native)]
-
-        # Check for other filters (like custom filters)
-        filter_driver = get_filter_for_path(
-            encoded_path, gitattributes, filter_context=filter_context
-        )
-
+        filter_name = attrs.get(b"filter")
+        if not isinstance(filter_name, bytes):
+            return []
+        filter_context = self._get_filter_context()
+        if filter_context is None:
+            return []
+        try:
+            filter_driver = filter_context.get_driver(filter_name.decode("utf-8"))
+        except KeyError:
+            return []
         if filter_driver is None:
             return []
 
-        # Wrap the dulwich filter in a Breezy ContentFilter
         def read_converter(chunks):
-            """Apply clean filter (working tree -> repo)."""
-            data = b"".join(chunks)
-            filtered = filter_driver.clean(data)
-            yield filtered
+            yield filter_driver.clean(b"".join(chunks))
 
         def write_converter(chunks, context=None):
-            """Apply smudge filter (repo -> working tree)."""
-            data = b"".join(chunks)
-            filtered = filter_driver.smudge(data)
-            yield filtered
+            yield filter_driver.smudge(b"".join(chunks))
 
         return [ContentFilter(read_converter, write_converter)]
 
@@ -1326,6 +1410,19 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_read():
             if not self.is_versioned(path):
                 raise NoSuchFile(path)
+            # If filtering is active, callers comparing trees expect the
+            # canonical (filtered) sha1 — otherwise a working-tree merged in
+            # by content filters would always look modified relative to its
+            # basis.
+            if self.supports_content_filtering() and self._content_filter_stack(path):
+                try:
+                    f, _ = self.get_file_with_stat(path, filtered=True)
+                except FileNotFoundError:
+                    return None
+                try:
+                    return osutils.sha_file(f)
+                finally:
+                    f.close()
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
@@ -2084,12 +2181,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         This creates an index file that reflects the state of the tree
         at the branch head, used for initializing working trees.
         """
+        blob_normalizer = (
+            _BreezyContentFilterNormalizer(self)
+            if self.supports_content_filtering()
+            else None
+        )
         build_index_from_tree(
             self.user_transport.local_abspath("."),
             self.control_transport.local_abspath("index"),
             self.store,
             None if self.branch.head is None else self.store[self.branch.head].tree,
             honor_filemode=self._supports_executable(),
+            blob_normalizer=blob_normalizer,
         )
 
     def reset_state(self, revision_ids=None):
@@ -2616,6 +2719,10 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     supports_merge_modified = False
 
     ignore_filename = ".gitignore"
+
+    def supports_content_filtering(self):
+        """Git working trees support content filtering via gitattributes."""
+        return True
 
     @property
     def _matchingcontroldir(self):
