@@ -980,14 +980,21 @@ class TestInventoryEntry(TestCase):
     def test_make_entry_non_normalized(self):
         from bzrformats.errors import InvalidNormalization
 
-        # bzrformats rejects un-normalized names at construction time.
-        self.assertRaises(
-            InvalidNormalization,
-            inventory.make_entry,
-            "file",
-            "a\u030a",
-            ROOT_ID,
-        )
+        if osutils.normalizes_filenames():
+            # On platforms that normalize filenames (e.g. macOS), the
+            # decomposed form is accepted and normalized to NFC.
+            entry = inventory.make_entry("file", "a\u030a", ROOT_ID)
+            self.assertEqual("\xe5", entry.name)
+            self.assertIsInstance(entry, inventory.InventoryFile)
+        else:
+            # Elsewhere, bzrformats rejects un-normalized names.
+            self.assertRaises(
+                InvalidNormalization,
+                inventory.make_entry,
+                "file",
+                "a\u030a",
+                ROOT_ID,
+            )
         # Already-normalized names are accepted.
         entry = inventory.make_entry("file", "\xe5", ROOT_ID)
         self.assertEqual("\xe5", entry.name)
