@@ -117,6 +117,7 @@ class GitCommitBuilder(CommitBuilder):
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
                 blob = Blob()
+                # get_file_with_stat will apply content filters if supported
                 f, st = workingtree.get_file_with_stat(change.path[1])
                 try:
                     blob.data = f.read()

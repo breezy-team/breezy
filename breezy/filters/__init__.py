@@ -174,6 +174,13 @@ class FilteredStat:
         self.st_size = st_size or base.st_size
         self.st_mtime = base.st_mtime
         self.st_ctime = base.st_ctime
+        # Keep all other stat attributes for compatibility
+        self.st_dev = getattr(base, "st_dev", 0)
+        self.st_ino = getattr(base, "st_ino", 0)
+        self.st_uid = getattr(base, "st_uid", 0)
+        self.st_gid = getattr(base, "st_gid", 0)
+        self.st_atime = getattr(base, "st_atime", 0)
+        self.st_nlink = getattr(base, "st_nlink", 0)
 
 
 # The registry of filter stacks indexed by name.

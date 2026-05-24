@@ -1588,6 +1588,35 @@ def changes_from_git_changes(
         )
 
 
+class _ZeroShaTolerantStore:
+    """Wrap a dulwich object store and synthesize an empty blob for ZERO_SHA.
+
+    ``snapshot_workingtree`` records files that are tracked but absent from
+    disk as a blob entry with sha ``ZERO_SHA``. The dulwich ``RenameDetector``
+    dereferences every blob sha in its delete/add lists during rename scoring
+    and raises ``KeyError`` for ``ZERO_SHA``. Returning an empty blob there
+    keeps similarity at zero (so no false rename matches) without crashing.
+    """
+
+    def __init__(self, store):
+        self._store = store
+
+    def __getitem__(self, sha):
+        if sha == ZERO_SHA:
+            from dulwich.objects import Blob
+
+            return Blob()
+        return self._store[sha]
+
+    def __contains__(self, sha):
+        if sha == ZERO_SHA:
+            return True
+        return sha in self._store
+
+    def __getattr__(self, name):
+        return getattr(self._store, name)
+
+
 class InterGitTrees(_mod_tree.InterTree):
     """InterTree implementation for comparing between Git trees.
 
@@ -1750,12 +1779,16 @@ class InterGitTrees(_mod_tree.InterTree):
             to_tree_sha, to_extras = self.target.git_snapshot(
                 want_unversioned=want_unversioned
             )
+            # snapshot_workingtree records missing files as a ZERO_SHA blob
+            # entry; wrap the store so rename detection (which dereferences
+            # every delete/add sha) doesn't trip over those sentinels.
+            store = _ZeroShaTolerantStore(self.store)
             changes = tree_changes(
-                self.store,
+                store,
                 from_tree_sha,
                 to_tree_sha,
                 include_trees=include_trees,
-                rename_detector=self.rename_detector,
+                rename_detector=RenameDetector(store),
                 want_unchanged=want_unchanged,
                 change_type_same=True,
             )
@@ -2508,8 +2541,13 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             return ("missing", None, None, None)
         kind = mode_kind(stat_result.st_mode)
         if kind == "file":
-            size = stat_result.st_size
             executable = self._is_executable_from_path_and_stat(path, stat_result)
+            # If content filtering is active, the on-disk size is not canonical
+            # (see lp:415508). Return None to match WT5's behavior rather than
+            # paying the cost of filtering the file just to report a size.
+            if self.supports_content_filtering() and self._content_filter_stack(path):
+                return ("file", None, executable, None)
+            size = stat_result.st_size
             # try for a stat cache lookup
             return ("file", size, executable, self._sha_from_stat(path, stat_result))
         elif kind == "directory":
@@ -2690,6 +2728,7 @@ def snapshot_workingtree(
                     rp = decode_git_path(path)
                     if stat.S_ISREG(live_entry.mode):
                         blob = Blob()
+                        # get_file applies content filters if supported
                         with target.get_file(rp) as f:
                             blob.data = f.read()
                     elif stat.S_ISLNK(live_entry.mode):
@@ -2699,7 +2738,12 @@ def snapshot_workingtree(
                         blob = None
                     if blob is not None:
                         target.store.add_object(blob)
-                blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
+                    blobs[path] = (
+                        blob.id if blob is not None else live_entry.sha,
+                        cleanup_mode(live_entry.mode),
+                    )
+                else:
+                    blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for extra in target._iter_files_recursive(include_dirs=False):  # type: ignore
             extra, _accessible = osutils.normalized_filename(extra)
@@ -2710,7 +2754,12 @@ def snapshot_workingtree(
             obj: Tree | Blob
             if stat.S_ISDIR(st.st_mode):
                 obj = Tree()
-            elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
+            elif stat.S_ISREG(st.st_mode):
+                # For regular files, use get_file to apply filters
+                obj = Blob()
+                with target.get_file(extra) as f:  # type: ignore
+                    obj.data = f.read()
+            elif stat.S_ISLNK(st.st_mode):
                 obj = blob_from_path_and_stat(os.fsencode(target.abspath(extra)), st)  # type: ignore
             else:
                 continue
