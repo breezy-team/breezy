@@ -4648,14 +4648,17 @@ class cmd_commit(Command):  # noqa: D101
             raise errors.LocalRequiresBoundBranch()
 
         if amend:
+            # Inherit metadata from the revision being replaced.  The new
+            # message is resolved by get_message later; when the user does
+            # not pass --message/--file, the editor is opened pre-filled
+            # with the previous commit's message.
             with tree.lock_read():
                 tip_revid = tree.branch.last_revision()
                 if _mod_revision.is_null(tip_revid):
                     raise errors.CommandError(
                         gettext("Nothing to amend: branch has no revisions.")
                     )
-                pending_merges = tree.get_parent_ids()[1:]
-                if pending_merges:
+                if tree.get_parent_ids()[1:]:
                     raise errors.CommandError(
                         gettext(
                             "Cannot amend a commit while there are pending "
@@ -4663,14 +4666,7 @@ class cmd_commit(Command):  # noqa: D101
                         )
                     )
                 amended_revision = tree.branch.repository.get_revision(tip_revid)
-            if message is None and file is None:
-                # Inherit the existing message.  Use --message to provide
-                # a new one explicitly.
-                message = amended_revision.message
             if not author:
-                # Inherit only when the original commit recorded an explicit
-                # author distinct from the committer; otherwise let the new
-                # commit pick up the committer as usual.
                 existing_authors = amended_revision.properties.get("authors")
                 existing_author = amended_revision.properties.get("author")
                 if existing_authors is not None:
@@ -4731,6 +4727,8 @@ class cmd_commit(Command):  # noqa: D101
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
+                    if start_message is None and amend:
+                        start_message = amended_revision.message
                     if start_message is not None:
                         start_message = start_message.encode(
                             osutils.get_user_encoding()
@@ -4761,8 +4759,27 @@ class cmd_commit(Command):  # noqa: D101
         if not selected_list:
             selected_list = None
         if amend:
-            # Replace the tip revision by first removing it, then committing
-            # on top of its parent.  uncommit handles bound branches itself.
+            # Resolve the commit message before mutating any branch state so
+            # the user can cancel the editor without leaving us half-amended.
+            # The hooks called via get_message expect an object exposing the
+            # working tree, so synthesise a minimal stand-in.
+            class _AmendCommitContext:
+                def __init__(self, work_tree):
+                    self.work_tree = work_tree
+                    self.branch = work_tree.branch
+                    self.amended_revision = amended_revision
+                    self.parents = work_tree.get_parent_ids()
+                    self.revprops = properties
+                    self.config_stack = work_tree.get_config_stack()
+                    self.specific_files = selected_list
+                    self.exclude = exclude
+
+            resolved_message = get_message(_AmendCommitContext(tree))
+
+            def get_message(commit_obj, _resolved=resolved_message):
+                return _resolved
+
+            # Now rewind the branch tip; the next commit recreates it.
             uncommit(tree.branch, tree=tree, local=local, keep_tags=True)
         try:
             tree.commit(

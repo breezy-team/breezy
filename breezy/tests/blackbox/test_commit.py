@@ -906,6 +906,44 @@ altered in u2
         )
         self.assertContainsString(err, "Nothing to amend")
 
+    def test_amend_editor_prepopulated_with_old_message(self):
+        if sys.platform == "win32":
+            self.skipTest("editor recording not implemented on Windows")
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("first message")
+        # Record what the editor sees, then exit without modifying it.
+        with open("recorder.sh", "wb") as f:
+            f.write(b"#!/bin/sh\ncat $1 > recorded.txt\n")
+        os.chmod("recorder.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("recorder.sh"))
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "tree"], stdin="y\n")
+        with open("recorded.txt") as f:
+            recorded = f.read()
+        self.assertContainsString(recorded, "first message")
+
+    def test_amend_editor_cancellation_preserves_branch(self):
+        if sys.platform == "win32":
+            self.skipTest("editor cancellation not testable on Windows")
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("kept")
+        old_revid = tree.last_revision()
+        with open("noop.sh", "wb") as f:
+            f.write(b"#!/bin/sh\n")
+        os.chmod("noop.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("noop.sh"))
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        # Answering "no" to the "use anyway?" prompt should error out and
+        # leave the branch tip unchanged.
+        _out, err = self.run_bzr(["commit", "--amend", "tree"], retcode=3, stdin="n\n")
+        self.assertContainsString(err, "Empty commit message specified")
+        tree = tree.controldir.open_workingtree()
+        self.assertEqual(old_revid, tree.last_revision())
+
     def test_amend_with_pending_merges_refused(self):
         base = self.make_branch_and_tree("base")
         self.build_tree(["base/a"])
