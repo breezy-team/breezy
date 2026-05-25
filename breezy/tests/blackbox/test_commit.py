@@ -807,6 +807,121 @@ altered in u2
         # some other exception
         self.assertContainsString(err, "missing a timezone offset")
 
+    def test_amend_replaces_tip(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("first")
+        old_revid = tree.last_revision()
+        self.build_tree_contents([("tree/a", b"updated\n")])
+        self.run_bzr("commit --amend -m amended tree")
+        self.assertEqual(1, tree.branch.revno())
+        new_revid = tree.last_revision()
+        self.assertNotEqual(old_revid, new_revid)
+        new_rev = tree.branch.repository.get_revision(new_revid)
+        self.assertEqual("amended", new_rev.message)
+
+    def test_amend_inherits_message(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("original message")
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "--unchanged"], working_dir="tree")
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("original message", new_rev.message)
+
+    def test_amend_inherits_author_and_time(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(
+            [
+                "commit",
+                "-m",
+                "first",
+                "--author",
+                "Jane <jane@example.com>",
+                "--commit-time",
+                "2009-10-10 08:00:00 +0100",
+                "tree/a",
+            ]
+        )
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "amended", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("Jane <jane@example.com>", new_rev.properties["authors"])
+        self.assertEqual(
+            "Sat 2009-10-10 08:00:00 +0100",
+            osutils.format_date(new_rev.timestamp, new_rev.timezone),
+        )
+
+    def test_amend_inherits_bug_property(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(["commit", "-m", "first", "--fixes", "lp:42", "tree/a"])
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "amended", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertIn("bugs", new_rev.properties)
+        self.assertIn("lp/42", new_rev.properties["bugs"])
+
+    def test_amend_overrides_message(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        tree.commit("original")
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(["commit", "--amend", "-m", "replacement", "tree"])
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("replacement", new_rev.message)
+
+    def test_amend_overrides_author(self):
+        tree = self.make_branch_and_tree("tree")
+        self.build_tree(["tree/a"])
+        tree.add("a")
+        self.run_bzr(
+            ["commit", "-m", "first", "--author", "Jane <j@example.com>", "tree/a"]
+        )
+        self.build_tree_contents([("tree/a", b"changed\n")])
+        self.run_bzr(
+            [
+                "commit",
+                "--amend",
+                "-m",
+                "amended",
+                "--author",
+                "Joe <joe@example.com>",
+                "tree",
+            ]
+        )
+        new_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual("Joe <joe@example.com>", new_rev.properties["authors"])
+
+    def test_amend_with_no_revisions(self):
+        self.make_branch_and_tree("tree")
+        _out, err = self.run_bzr(
+            ["commit", "--amend", "-m", "amended", "tree"], retcode=3
+        )
+        self.assertContainsString(err, "Nothing to amend")
+
+    def test_amend_with_pending_merges_refused(self):
+        base = self.make_branch_and_tree("base")
+        self.build_tree(["base/a"])
+        base.add("a")
+        base.commit("base")
+        other = base.controldir.sprout("other").open_workingtree()
+        self.build_tree_contents([("other/a", b"other\n")])
+        other.commit("other")
+        self.build_tree_contents([("base/a", b"base change\n")])
+        base.commit("base change")
+        base.merge_from_branch(other.branch)
+        _out, err = self.run_bzr(
+            ["commit", "--amend", "-m", "amended", "base"], retcode=3
+        )
+        self.assertContainsString(err, "pending merges")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree(".")

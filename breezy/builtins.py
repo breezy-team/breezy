@@ -4491,6 +4491,13 @@ class cmd_commit(Command):  # noqa: D101
             "system do not push data that can not be natively "
             "represented.",
         ),
+        Option(
+            "amend",
+            help="Replace the tip of the branch by recording a new "
+            "revision with the same parents.  By default the previous "
+            "commit's message, authors and timestamp are reused; pass "
+            "--message, --author or --commit-time to override them.",
+        ),
     ]
     aliases = ["ci", "checkin"]
 
@@ -4571,6 +4578,7 @@ class cmd_commit(Command):  # noqa: D101
         exclude=None,
         commit_time=None,
         lossy=False,
+        amend=False,
     ):
         """Execute the commit command.
 
@@ -4589,9 +4597,11 @@ class cmd_commit(Command):  # noqa: D101
             exclude: Files to exclude from the commit.
             commit_time: Set specific commit timestamp.
             lossy: Allow lossy commits to foreign branches.
+            amend: Replace the tip revision rather than adding a new one.
         """
         import itertools
 
+        from . import revision as _mod_revision
         from .commit import PointlessCommit
         from .errors import ConflictsInTree, StrictCommitFailed
         from .msgeditor import (
@@ -4600,6 +4610,7 @@ class cmd_commit(Command):  # noqa: D101
             make_commit_message_template_encoded,
             set_commit_message,
         )
+        from .uncommit import uncommit
         from .workingtree import WorkingTree
 
         commit_stamp = offset = None
@@ -4635,6 +4646,44 @@ class cmd_commit(Command):  # noqa: D101
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
+
+        if amend:
+            with tree.lock_read():
+                tip_revid = tree.branch.last_revision()
+                if _mod_revision.is_null(tip_revid):
+                    raise errors.CommandError(
+                        gettext("Nothing to amend: branch has no revisions.")
+                    )
+                pending_merges = tree.get_parent_ids()[1:]
+                if pending_merges:
+                    raise errors.CommandError(
+                        gettext(
+                            "Cannot amend a commit while there are pending "
+                            "merges.  Commit the merge first, then amend."
+                        )
+                    )
+                amended_revision = tree.branch.repository.get_revision(tip_revid)
+            if message is None and file is None:
+                # Inherit the existing message.  Use --message to provide
+                # a new one explicitly.
+                message = amended_revision.message
+            if not author:
+                # Inherit only when the original commit recorded an explicit
+                # author distinct from the committer; otherwise let the new
+                # commit pick up the committer as usual.
+                existing_authors = amended_revision.properties.get("authors")
+                existing_author = amended_revision.properties.get("author")
+                if existing_authors is not None:
+                    author = existing_authors.split("\n")
+                elif existing_author is not None:
+                    author = [existing_author]
+            if commit_stamp is None:
+                commit_stamp = amended_revision.timestamp
+                offset = amended_revision.timezone
+            for key, value in amended_revision.properties.items():
+                if key in ("authors", "author", "branch-nick"):
+                    continue
+                properties.setdefault(key, value)
 
         if message is not None:
             try:
@@ -4711,11 +4760,15 @@ class cmd_commit(Command):  # noqa: D101
         # but the command line should not do that.
         if not selected_list:
             selected_list = None
+        if amend:
+            # Replace the tip revision by first removing it, then committing
+            # on top of its parent.  uncommit handles bound branches itself.
+            uncommit(tree.branch, tree=tree, local=local, keep_tags=True)
         try:
             tree.commit(
                 message_callback=get_message,
                 specific_files=selected_list,
-                allow_pointless=unchanged,
+                allow_pointless=unchanged or amend,
                 strict=strict,
                 local=local,
                 reporter=None,
