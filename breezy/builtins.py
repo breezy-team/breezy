@@ -4371,6 +4371,58 @@ class cmd_local_time_offset(Command):  # noqa: D101
         self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
+def _amend_status_template(tree, amended_revision, specific_files, show_diff):
+    """Build a commit message template for ``commit --amend``.
+
+    Unlike a regular commit, the relevant comparison is the working tree
+    against the grandparent of the original tip — that is what the new
+    revision will contain.  ``show_tree_status`` compares the working tree
+    against its current basis by default, so we drive it with an explicit
+    revision pointing at the grandparent.
+    """
+    from io import BytesIO, StringIO
+
+    from . import revision as _mod_revision
+    from . import revisionspec
+    from .diff import show_diff_trees
+    from .status import show_tree_status
+
+    repository = tree.branch.repository
+    grandparent_ids = [
+        p for p in amended_revision.parent_ids if not _mod_revision.is_null(p)
+    ]
+    grandparent_revid = (
+        grandparent_ids[0] if grandparent_ids else _mod_revision.NULL_REVISION
+    )
+    encoding = osutils.get_user_encoding()
+    status_tmp = StringIO()
+    show_tree_status(
+        tree,
+        specific_files=specific_files,
+        to_file=status_tmp,
+        verbose=True,
+        revision=[
+            revisionspec.RevisionSpec.from_string(
+                "revid:" + grandparent_revid.decode("utf-8")
+            )
+        ],
+        show_pending=False,
+    )
+    template = status_tmp.getvalue().encode(encoding, "replace")
+    if show_diff:
+        from_tree = repository.revision_tree(grandparent_revid)
+        stream = BytesIO()
+        show_diff_trees(
+            from_tree,
+            tree,
+            stream,
+            specific_files,
+            path_encoding=encoding,
+        )
+        template = template + b"\n" + stream.getvalue()
+    return template
+
+
 class cmd_commit(Command):  # noqa: D101
     __doc__ = """Commit changes into a new revision.
 
@@ -4713,12 +4765,25 @@ class cmd_commit(Command):  # noqa: D101
             else:
                 # No message supplied: make one up.
                 # text is the status of the tree
-                text = make_commit_message_template_encoded(
-                    tree,
-                    selected_list,
-                    diff=show_diff,
-                    output_encoding=osutils.get_user_encoding(),
-                )
+                if amend:
+                    # During amend the working tree's basis is still the
+                    # original tip, so the default template would show no
+                    # changes.  Generate a template that compares against
+                    # the tip's parent — what the new commit will actually
+                    # contain.
+                    text = _amend_status_template(
+                        tree,
+                        amended_revision,
+                        selected_list,
+                        show_diff=show_diff,
+                    )
+                else:
+                    text = make_commit_message_template_encoded(
+                        tree,
+                        selected_list,
+                        diff=show_diff,
+                        output_encoding=osutils.get_user_encoding(),
+                    )
                 # start_message is the template generated from hooks
                 # XXX: Warning - looks like hooks return unicode,
                 # make_commit_message_template_encoded returns user encoding.

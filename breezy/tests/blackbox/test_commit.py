@@ -913,16 +913,24 @@ altered in u2
         self.build_tree(["tree/a"])
         tree.add("a")
         tree.commit("first message")
+        tree.commit("second message", allow_pointless=True)
         # Record what the editor sees, then exit without modifying it.
         with open("recorder.sh", "wb") as f:
             f.write(b"#!/bin/sh\ncat $1 > recorded.txt\n")
         os.chmod("recorder.sh", 0o755)  # noqa: S103
         self.overrideEnv("BRZ_EDITOR", os.path.abspath("recorder.sh"))
+        self.build_tree(["tree/b"])
+        tree.add("b")
         self.build_tree_contents([("tree/a", b"changed\n")])
         self.run_bzr(["commit", "--amend", "tree"], stdin="y\n")
         with open("recorded.txt") as f:
             recorded = f.read()
-        self.assertContainsString(recorded, "first message")
+        self.assertContainsString(recorded, "second message")
+        # The status section should reflect the contents of the new commit
+        # (modifications since the grandparent), not an empty diff against
+        # the original tip.
+        self.assertContainsString(recorded, "added:\n  b")
+        self.assertContainsString(recorded, "modified:\n  a")
 
     def test_amend_editor_cancellation_preserves_branch(self):
         if sys.platform == "win32":
