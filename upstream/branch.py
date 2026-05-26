@@ -42,13 +42,14 @@ except ImportError:
 from ....branch import (
     Branch,
 )
+from bzrformats.errors import RevisionNotPresent
+
 from ....errors import (
     BzrError,
     InvalidRevisionId,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
-    RevisionNotPresent,
     UnsupportedOperation,
 )
 from ....memorybranch import MemoryBranch
