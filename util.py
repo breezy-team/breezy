@@ -41,13 +41,14 @@ from debmutate.changelog import (
 )
 from debmutate.versions import get_snapshot_revision
 
+from dromedary.errors import NoSuchFile, NotADirectory
+
 from ... import (
     bugtracker,
     errors,
     osutils,
     urlutils,
 )
-from ...transport import NoSuchFile
 from ...export import export
 from ...trace import (
     mutter,
@@ -387,7 +388,7 @@ def _dget(cls, dsc_location, target_dir):
       path to target source file
     """
     if not os.path.isdir(target_dir):
-        raise errors.NotADirectory(target_dir)
+        raise NotADirectory(target_dir)
     path, dsc_t = open_transport(dsc_location)
     with open_file_via_transport(path, dsc_t) as f:
         dsc_contents = f.read()

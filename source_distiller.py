@@ -24,10 +24,10 @@ import shutil
 import subprocess
 import tempfile
 
+from dromedary.errors import FileExists, NoSuchFile, NotADirectory
+
 from ... import errors as bzr_errors
 from ...trace import note
-
-from ...transport import NoSuchFile, FileExists
 
 from .util import (
     export_with_nested,
@@ -158,7 +158,7 @@ class MergeModeDistiller(SourceDistiller):
                 raise FileExists(target)
         elif self.use_existing:
             if not os.path.exists(target):
-                raise bzr_errors.NotADirectory(target)
+                raise NotADirectory(target)
 
         # Get the upstream tarball
         parent_dir = get_parent_dir(target)

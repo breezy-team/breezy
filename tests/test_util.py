@@ -68,7 +68,7 @@ from ..util import (
     MissingChangelogError,
 )
 
-from .... import errors as bzr_errors
+from dromedary.errors import NotADirectory
 from ....tests import (
     TestCase,
 )
@@ -415,7 +415,7 @@ class DgetTests(TestCaseWithTransport):
         builder.add_default_control()
         builder.build()
         self.assertRaises(
-            bzr_errors.NotADirectory, dget, self.get_url(builder.dsc_name()), "target"
+            NotADirectory, dget, self.get_url(builder.dsc_name()), "target"
         )
 
     def test_dget_changes(self):
