@@ -26,11 +26,14 @@ import shutil
 import tempfile
 from typing import Optional
 
-from dromedary.errors import (
-    FileExists,
-    NoSuchFile,
-    NotLocalUrl,
-)
+try:
+    from ...errors import NotLocalUrl
+except ImportError:
+    from dromedary.errors import NotLocalUrl
+try:
+    from ...transport import FileExists, NoSuchFile
+except ImportError:
+    from dromedary.errors import FileExists, NoSuchFile
 
 from ... import (
     urlutils,

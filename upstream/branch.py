@@ -42,7 +42,10 @@ except ImportError:
 from ....branch import (
     Branch,
 )
-from bzrformats.errors import RevisionNotPresent
+try:
+    from ....errors import RevisionNotPresent
+except ImportError:
+    from bzrformats.errors import RevisionNotPresent
 
 from ....errors import (
     BzrError,

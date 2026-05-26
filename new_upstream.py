@@ -45,12 +45,20 @@ from breezy.errors import (
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
-from dromedary.errors import (
-    FileExists,
-    NoSuchFile,
-    UnsupportedProtocol,
-    UnusableRedirect,
-)
+try:
+    from breezy.transport import (
+        FileExists,
+        NoSuchFile,
+        UnsupportedProtocol,
+        UnusableRedirect,
+    )
+except ImportError:
+    from dromedary.errors import (
+        FileExists,
+        NoSuchFile,
+        UnsupportedProtocol,
+        UnusableRedirect,
+    )
 
 from breezy.workingtree import PointlessMerge
 from breezy.transport import (

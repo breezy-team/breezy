@@ -24,7 +24,14 @@ import shutil
 import subprocess
 import tempfile
 
-from dromedary.errors import FileExists, NoSuchFile, NotADirectory
+try:
+    from ...errors import NotADirectory
+except ImportError:
+    from dromedary.errors import NotADirectory
+try:
+    from ...transport import FileExists, NoSuchFile
+except ImportError:
+    from dromedary.errors import FileExists, NoSuchFile
 
 from ... import errors as bzr_errors
 from ...trace import note

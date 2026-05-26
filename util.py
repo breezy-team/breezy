@@ -41,11 +41,17 @@ from debmutate.changelog import (
 )
 from debmutate.versions import get_snapshot_revision
 
-from dromedary.errors import NoSuchFile, NotADirectory
+try:
+    from ...errors import NotADirectory
+except ImportError:
+    from dromedary.errors import NotADirectory
+try:
+    from ...transport import NoSuchFile
+except ImportError:
+    from dromedary.errors import NoSuchFile
 
 from ... import (
     bugtracker,
-    errors,
     osutils,
     urlutils,
 )

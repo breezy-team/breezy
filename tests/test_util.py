@@ -68,7 +68,10 @@ from ..util import (
     MissingChangelogError,
 )
 
-from dromedary.errors import NotADirectory
+try:
+    from ....errors import NotADirectory
+except ImportError:
+    from dromedary.errors import NotADirectory
 from ....tests import (
     TestCase,
 )
