@@ -20,8 +20,10 @@
 import contextlib
 import errno
 import os
+import shutil
 import tempfile
 import time
+import weakref
 from stat import S_IEXEC, S_ISREG
 from typing import Any
 
@@ -1238,6 +1240,33 @@ def iter_cook_conflicts(raw_conflicts, tt):
             yield cooker(tt, fp, *conflict)
 
 
+def _cleanup_stale_dirs(dirs):
+    """Best-effort removal of any leftover transform working directories.
+
+    Invoked from a weakref.finalize safety net when a DiskTreeTransform is
+    garbage-collected without finalize() having been called.  Emits a
+    ResourceWarning for each surviving directory so callers learn to
+    finalize properly.  Must not raise.
+    """
+    import warnings
+
+    for path in dirs:
+        if path is None or not os.path.exists(path):
+            continue
+        warnings.warn(
+            f"DiskTreeTransform was garbage-collected with {path} still "
+            "present; finalize() or a 'with' block was not used.",
+            ResourceWarning,
+            stacklevel=2,
+        )
+        try:
+            shutil.rmtree(path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+
+
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
@@ -1256,6 +1285,15 @@ class DiskTreeTransform(TreeTransformBase):
         TreeTransformBase.__init__(self, tree, pb, case_sensitive)
         self._limbodir = limbodir
         self._deletiondir = None
+        # Safety net: if finalize() is never called (caller forgot, an
+        # exception escaped, the process is being torn down), remove the
+        # limbo and deletion directories so they don't pile up in /tmp.
+        # The list is mutated when a deletiondir is assigned later so the
+        # finalizer can see the current value without holding a self ref.
+        self._stale_dirs: list[str | None] = [limbodir, None]
+        self._cleanup_finalizer = weakref.finalize(
+            self, _cleanup_stale_dirs, self._stale_dirs
+        )
         # A mapping of transform ids to their limbo filename
         self._limbo_files: dict[str, str] = {}
         self._possibly_stale_limbo_files: set[str] = set()
@@ -1299,6 +1337,7 @@ class DiskTreeTransform(TreeTransformBase):
                     osutils.delete_any(self._deletiondir)
             except OSError as e:
                 raise errors.ImmortalPendingDeletion(self._deletiondir) from e
+            self._cleanup_finalizer.detach()
         finally:
             TreeTransformBase.finalize(self)
 
@@ -1576,6 +1615,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         self._relpaths: dict[str, str] = {}
         DiskTreeTransform.__init__(self, tree, limbodir, pb, tree.case_sensitive)
         self._deletiondir: str = deletiondir
+        self._stale_dirs[1] = deletiondir
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path."""
