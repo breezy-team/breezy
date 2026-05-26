@@ -65,12 +65,15 @@ def main():
     # there's no point doing any additional cleanup.  Abruptly exiting here
     # stops any background threads getting into trouble as code is unloaded,
     # and it may also be slightly faster, through avoiding gc of objects that
-    # are just about to be discarded anyhow.  This does mean that atexit hooks
-    # won't run but we don't use them.  Also file buffers won't be flushed,
-    # but our policy is to always close files from a finally block. -- mbp 20070215
-    exitfunc = getattr(sys, "exitfunc", None)
-    if exitfunc is not None:
-        exitfunc()
+    # are just about to be discarded anyhow.  Also file buffers won't be
+    # flushed, but our policy is to always close files from a finally block.
+    # -- mbp 20070215
+    # We do still want atexit hooks to run though: the selftest registers one
+    # to remove its top-level temp directory, and skipping it leaks a fresh
+    # /tmp/testbzr-*.tmp on every run.
+    import atexit
+
+    atexit._run_exitfuncs()
     os._exit(exit_val)
 
 
