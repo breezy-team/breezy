@@ -355,8 +355,10 @@ class ShelfCreator:
 
     def finalize(self):
         """Release all resources used by this ShelfCreator."""
-        self.work_transform.finalize()
-        self.shelf_transform.finalize()
+        try:
+            self.work_transform.finalize()
+        finally:
+            self.shelf_transform.finalize()
 
     def transform(self):
         """Shelve changes from working tree."""
@@ -481,6 +483,15 @@ class Unshelver:
     def finalize(self):
         """Release all resources held by this Unshelver."""
         self.transform.finalize()
+
+    def __enter__(self):
+        """Enter the context, returning self."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """Exit the context, releasing the underlying transform."""
+        self.finalize()
+        return False
 
 
 class ShelfManager:

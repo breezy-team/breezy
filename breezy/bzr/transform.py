@@ -1315,6 +1315,10 @@ class DiskTreeTransform(TreeTransformBase):
         """
         if self._tree is None:
             return
+        # The caller has signalled intent to clean up; detach the safety
+        # net so a leftover ImmortalLimbo/ImmortalPendingDeletion doesn't
+        # later trigger a (misleading) ResourceWarning at GC time.
+        self._cleanup_finalizer.detach()
         try:
             limbo_paths = list(self._limbo_files.values())
             limbo_paths.extend(self._possibly_stale_limbo_files)
@@ -1337,7 +1341,6 @@ class DiskTreeTransform(TreeTransformBase):
                     osutils.delete_any(self._deletiondir)
             except OSError as e:
                 raise errors.ImmortalPendingDeletion(self._deletiondir) from e
-            self._cleanup_finalizer.detach()
         finally:
             TreeTransformBase.finalize(self)
 
