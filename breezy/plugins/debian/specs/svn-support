@@ -1,0 +1,27 @@
+SVN support
+===========
+
+Status: Draft
+
+Aim
+---
+
+Thanks to Jelmer's great work Bazaar is able to work well against an SVN
+repository. It would be desirable for builddeb to use this and support SVN
+wherever Bazaar is used. This includes the package branch itself and when
+export-upstream is used.
+
+It would also be great if packages that are normally built with
+svn-buildpackage to be supported as-is. This would make migration easier, and
+mean that one dev on a team could use Bazaar if the rest wanted SVN. This 
+would require bzr-svn to somehow expose the Subversion file properties used 
+by svn-buildpackage, in particular ``mergeWithUpstream''. bzr-builddeb 
+would then also need support to use this data.
+
+The first thing to do is to audit the current code to see how well it works
+in these cases. Apparently Jelmer has tried export-upstream against an SVN
+repo and it worked. I think the package building may work if it is set up
+in builddeb's style, but not otherwise. Once this is done it should be
+worked out how bzr-svn can help to access the needed information, (e.g. the
+property used to indicate a merge build).
+

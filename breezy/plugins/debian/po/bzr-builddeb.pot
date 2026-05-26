@@ -1,0 +1,295 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Canonical Ltd. <bazaar@lists.canonical.com>
+# This file is distributed under the same license as the bzr-builddeb package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: bzr-builddeb\n"
+"Report-Msgid-Bugs-To: <bazaar@lists.canonical.com>\n"
+"POT-Creation-Date: 2017-06-17 13:03+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: __init__.py:308
+#, python-format
+msgid ""
+"Not attempting to fix packaging branch ancestry, missing pristine tar data "
+"for version %s."
+msgstr ""
+
+#: cmds.py:107
+#, python-format
+msgid "No distribution specified, and no changelog, assuming '%s'"
+msgstr ""
+
+#: cmds.py:117
+#, python-format
+msgid "Using distribution %s"
+msgstr ""
+
+#: cmds.py:120
+#, python-format
+msgid ""
+"No distribution specified, and no previous distribution in changelog. "
+"Assuming '%s'"
+msgstr ""
+
+#: cmds.py:126
+#, python-format
+msgid "Unknown target distribution: %s"
+msgstr ""
+
+#: cmds.py:218
+msgid "Building using working tree"
+msgstr ""
+
+#: cmds.py:227
+msgid "bzr builddeb --revision takes exactly one revision specifier."
+msgstr ""
+
+#: cmds.py:229
+#, python-format
+msgid "Building branch from revision %s"
+msgstr ""
+
+#: cmds.py:352
+msgid "--result is deprecated, use --result-dir instead"
+msgstr ""
+
+#: cmds.py:370
+msgid "Reusing existing build dir"
+msgstr ""
+
+#: cmds.py:382
+#, python-format
+msgid "Building package in %s mode"
+msgstr ""
+
+#: cmds.py:410
+msgid ""
+"The 'export-upstream' configuration option is deprecated. Use 'upstream-"
+"branch' instead."
+msgstr ""
+
+#: cmds.py:532
+#, python-format
+msgid "Tar now in %s"
+msgstr ""
+
+#: cmds.py:736
+msgid "Merge upstream in native mode is not supported."
+msgstr ""
+
+#: cmds.py:745
+#, python-format
+msgid "Using upstream branch %s"
+msgstr ""
+
+#: cmds.py:774
+msgid "--snapshot requires an upstream branch source"
+msgstr ""
+
+#: cmds.py:782
+msgid "--revision can only be used with a valid upstream branch"
+msgstr ""
+
+#: cmds.py:785
+msgid "merge-upstream takes only a single --revision"
+msgstr ""
+
+#: cmds.py:802
+msgid ""
+"You must specify the version number using --version or specify --snapshot to "
+"merge a snapshot from the upstream branch."
+msgstr ""
+
+#: cmds.py:807
+msgid "You must specify the version number using --version."
+msgstr ""
+
+#: cmds.py:810
+#, python-format
+msgid "Using version string %s."
+msgstr ""
+
+#: cmds.py:847
+#, python-format
+msgid "Upstream version %s has already been merged."
+msgstr ""
+
+#: cmds.py:857
+msgid "An entry for the new upstream version has been added to the changelog."
+msgstr ""
+
+#: cmds.py:860
+msgid "The new upstream version has been imported."
+msgstr ""
+
+#: cmds.py:862
+msgid ""
+"You should now resolve the conflicts, review the changes, and then commit."
+msgstr ""
+
+#: cmds.py:865
+msgid "You should now review the changes and then commit."
+msgstr ""
+
+#: cmds.py:945
+msgid "There is no tree to import the packages in to"
+msgstr ""
+
+#: cmds.py:949 cmds.py:1278
+msgid ""
+"There are uncommitted changes in the working tree. You must commit before "
+"using this command"
+msgstr ""
+
+#: cmds.py:963
+msgid ""
+"You must give the location of at least one source package to install, or use "
+"the --file option."
+msgstr ""
+
+#: cmds.py:969
+msgid "import-dsc in merge mode is not yet supported."
+msgstr ""
+
+#: cmds.py:986
+#, python-format
+msgid ""
+"Unable to find the tag for the previous upstream version, %(version)s, in "
+"the branch. Consider importing it via import-upstream.If it is already "
+"present in the branch please make sure it is tagged as %(tag)r."
+msgstr ""
+
+#: cmds.py:1069
+#, python-format
+msgid "Version %s is already present."
+msgstr ""
+
+#: cmds.py:1100
+msgid "bzr import-upstream --revision takes exactly one revision specifier."
+msgstr ""
+
+#: cmds.py:1108
+#, python-format
+msgid "Imported %(location)s as tag:%(tag)s.\n"
+msgstr ""
+
+#: cmds.py:1112
+#, python-format
+msgid "Imported %(location)s (%(component)s) as tag:%(tag)s.\n"
+msgstr ""
+
+#: cmds.py:1188
+msgid ""
+"This command only works for merge mode packages. See /usr/share/doc/bzr-"
+"builddeb/user_manual/merge.html for more information."
+msgstr ""
+
+#: cmds.py:1225
+#, python-format
+msgid "Running \"%s\" in the exported directory."
+msgstr ""
+
+#: cmds.py:1227
+msgid ""
+"If you want to cancel your changes then exit with a non-zero exit code, e.g. "
+"run \"exit 1\"."
+msgstr ""
+
+#: cmds.py:1232
+msgid "Not updating the working tree as the command failed."
+msgstr ""
+
+#: cmds.py:1234
+msgid "Copying debian/ back"
+msgstr ""
+
+#: cmds.py:1247
+msgid "Copying back debian/ failed"
+msgstr ""
+
+#: cmds.py:1249
+msgid ""
+"If any files were added or removed you should run \"bzr add\" or \"bzr rm\" "
+"as appropriate."
+msgstr ""
+
+#: cmds.py:1287
+msgid ""
+"The changelog still targets 'UNRELEASED', so apparently hasn't been uploaded."
+msgstr ""
+
+#: cmds.py:1296
+msgid ""
+"This version has already been marked uploaded. Use --force to force marking "
+"this new version."
+msgstr ""
+
+#: cmds.py:1300
+#, python-format
+msgid "Tag '%s' created.\n"
+msgstr ""
+
+#: cmds.py:1338
+msgid "There is no tree to merge the source branch in to"
+msgstr ""
+
+#: cmds.py:1343
+msgid "Invalid source branch URL?"
+msgstr ""
+
+#: cmds.py:1350
+msgid "bzr merge-package --revision takes exactly one argument"
+msgstr ""
+
+#: cmds.py:1369
+#, python-format
+msgid ""
+"The merge resulted in %s conflicts. Please resolve these and commit the "
+"changes with \"bzr commit\"."
+msgstr ""
+
+#: cmds.py:1372
+msgid ""
+"The merge resulted in no conflicts. You may commit the changes by running "
+"\"bzr commit\"."
+msgstr ""
+
+#: cmds.py:1413
+msgid ""
+"The --v3 option has been deprecated. dh_make now creates format v3 packages "
+"by default."
+msgstr ""
+
+#: cmds.py:1423
+#, python-format
+msgid "Package prepared in %s"
+msgstr ""
+
+#: cmds.py:1488
+msgid "No unmerged revisions"
+msgstr ""
+
+#: merge_quilt.py:109
+#, python-format
+msgid "Applying %d quilt patches."
+msgstr ""
+
+#: merge_quilt.py:121
+#, python-format
+msgid "Unapplying %d quilt patches."
+msgstr ""
+
+#: merge_quilt.py:136
+#, python-format
+msgid "Committing with %d patches applied and %d patches unapplied."
+msgstr ""
