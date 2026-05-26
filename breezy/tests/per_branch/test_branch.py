@@ -943,8 +943,8 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         tree.add("file")
         with skip_if_storing_uncommitted_unsupported():
             tree.store_uncommitted()
-        unshelver = tree.branch.get_unshelver(tree)
-        self.assertIsNot(None, unshelver)
+        with tree.branch.get_unshelver(tree) as unshelver:
+            self.assertIsNot(None, unshelver)
 
     def test_get_unshelver_bound(self):
         tree = self.make_branch_and_tree("tree")
@@ -955,8 +955,8 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
             tree.store_uncommitted()
         branch = self.make_branch("branch")
         self.bind(branch, tree.branch)
-        unshelver = branch.get_unshelver(tree)
-        self.assertIsNot(None, unshelver)
+        with branch.get_unshelver(tree) as unshelver:
+            self.assertIsNot(None, unshelver)
 
 
 class TestFormatMetadata(per_branch.TestCaseWithBranch):
