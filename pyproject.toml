@@ -52,7 +52,7 @@ fastimport = ["fastimport>=0.9.8"]
 git = ["dulwich>=1,<2"]
 launchpad = ["launchpadlib>=1.6.3"]
 udd = ["psycopg2"]
-apt = ["python-apt"]
+apt = ["python-apt @ git+https://salsa.debian.org/apt-team/python-apt"]
 workspace = ["pyinotify", "pyasyncore;python_version>='3.12'"]
 doc = [
     "docutils",
