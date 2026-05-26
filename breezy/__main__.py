@@ -68,12 +68,16 @@ def main():
     # are just about to be discarded anyhow.  Also file buffers won't be
     # flushed, but our policy is to always close files from a finally block.
     # -- mbp 20070215
-    # We do still want atexit hooks to run though: the selftest registers one
-    # to remove its top-level temp directory, and skipping it leaks a fresh
-    # /tmp/testbzr-*.tmp on every run.
+    # We do still need to run two cleanup phases that the normal interpreter
+    # shutdown would do for us: atexit hooks (the selftest uses one to remove
+    # its TEST_ROOT) and pending weakref finalizers (DiskTreeTransform uses
+    # one to remove leaked limbo dirs).  Without these, every selftest run
+    # leaks /tmp/testbzr-*.tmp and /tmp/{bzr,git}-limbo-*.
     import atexit
+    import weakref
 
     atexit._run_exitfuncs()
+    weakref.finalize._exitfunc()
     os._exit(exit_val)
 
 
