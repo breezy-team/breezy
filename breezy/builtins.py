@@ -4841,8 +4841,8 @@ class cmd_commit(Command):  # noqa: D101
 
             resolved_message = get_message(_AmendCommitContext(tree))
 
-            def get_message(commit_obj, _resolved=resolved_message):
-                return _resolved
+            def get_message(commit_obj):
+                return resolved_message
 
             # Now rewind the branch tip; the next commit recreates it.
             uncommit(tree.branch, tree=tree, local=local, keep_tags=True)
