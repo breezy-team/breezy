@@ -26,6 +26,12 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+ * ``brz commit`` now accepts an ``--amend`` option that replaces the tip
+   revision with a new one sharing the same parents.  The previous
+   commit's message, authors and timestamp are reused unless overridden
+   with ``--message``, ``--author`` or ``--commit-time``.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 

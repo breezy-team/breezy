@@ -4371,6 +4371,58 @@ class cmd_local_time_offset(Command):  # noqa: D101
         self.outf.write(f"{osutils.local_time_offset()}\n")
 
 
+def _amend_status_template(tree, amended_revision, specific_files, show_diff):
+    """Build a commit message template for ``commit --amend``.
+
+    Unlike a regular commit, the relevant comparison is the working tree
+    against the grandparent of the original tip — that is what the new
+    revision will contain.  ``show_tree_status`` compares the working tree
+    against its current basis by default, so we drive it with an explicit
+    revision pointing at the grandparent.
+    """
+    from io import BytesIO, StringIO
+
+    from . import revision as _mod_revision
+    from . import revisionspec
+    from .diff import show_diff_trees
+    from .status import show_tree_status
+
+    repository = tree.branch.repository
+    grandparent_ids = [
+        p for p in amended_revision.parent_ids if not _mod_revision.is_null(p)
+    ]
+    grandparent_revid = (
+        grandparent_ids[0] if grandparent_ids else _mod_revision.NULL_REVISION
+    )
+    encoding = osutils.get_user_encoding()
+    status_tmp = StringIO()
+    show_tree_status(
+        tree,
+        specific_files=specific_files,
+        to_file=status_tmp,
+        verbose=True,
+        revision=[
+            revisionspec.RevisionSpec.from_string(
+                "revid:" + grandparent_revid.decode("utf-8")
+            )
+        ],
+        show_pending=False,
+    )
+    template = status_tmp.getvalue().encode(encoding, "replace")
+    if show_diff:
+        from_tree = repository.revision_tree(grandparent_revid)
+        stream = BytesIO()
+        show_diff_trees(
+            from_tree,
+            tree,
+            stream,
+            specific_files,
+            path_encoding=encoding,
+        )
+        template = template + b"\n" + stream.getvalue()
+    return template
+
+
 class cmd_commit(Command):  # noqa: D101
     __doc__ = """Commit changes into a new revision.
 
@@ -4491,6 +4543,13 @@ class cmd_commit(Command):  # noqa: D101
             "system do not push data that can not be natively "
             "represented.",
         ),
+        Option(
+            "amend",
+            help="Replace the tip of the branch by recording a new "
+            "revision with the same parents.  By default the previous "
+            "commit's message, authors and timestamp are reused; pass "
+            "--message, --author or --commit-time to override them.",
+        ),
     ]
     aliases = ["ci", "checkin"]
 
@@ -4571,6 +4630,7 @@ class cmd_commit(Command):  # noqa: D101
         exclude=None,
         commit_time=None,
         lossy=False,
+        amend=False,
     ):
         """Execute the commit command.
 
@@ -4589,9 +4649,11 @@ class cmd_commit(Command):  # noqa: D101
             exclude: Files to exclude from the commit.
             commit_time: Set specific commit timestamp.
             lossy: Allow lossy commits to foreign branches.
+            amend: Replace the tip revision rather than adding a new one.
         """
         import itertools
 
+        from . import revision as _mod_revision
         from .commit import PointlessCommit
         from .errors import ConflictsInTree, StrictCommitFailed
         from .msgeditor import (
@@ -4600,6 +4662,7 @@ class cmd_commit(Command):  # noqa: D101
             make_commit_message_template_encoded,
             set_commit_message,
         )
+        from .uncommit import uncommit
         from .workingtree import WorkingTree
 
         commit_stamp = offset = None
@@ -4636,6 +4699,40 @@ class cmd_commit(Command):  # noqa: D101
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
+        if amend:
+            # Inherit metadata from the revision being replaced.  The new
+            # message is resolved by get_message later; when the user does
+            # not pass --message/--file, the editor is opened pre-filled
+            # with the previous commit's message.
+            with tree.lock_read():
+                tip_revid = tree.branch.last_revision()
+                if _mod_revision.is_null(tip_revid):
+                    raise errors.CommandError(
+                        gettext("Nothing to amend: branch has no revisions.")
+                    )
+                if tree.get_parent_ids()[1:]:
+                    raise errors.CommandError(
+                        gettext(
+                            "Cannot amend a commit while there are pending "
+                            "merges.  Commit the merge first, then amend."
+                        )
+                    )
+                amended_revision = tree.branch.repository.get_revision(tip_revid)
+            if not author:
+                existing_authors = amended_revision.properties.get("authors")
+                existing_author = amended_revision.properties.get("author")
+                if existing_authors is not None:
+                    author = existing_authors.split("\n")
+                elif existing_author is not None:
+                    author = [existing_author]
+            if commit_stamp is None:
+                commit_stamp = amended_revision.timestamp
+                offset = amended_revision.timezone
+            for key, value in amended_revision.properties.items():
+                if key in ("authors", "author", "branch-nick"):
+                    continue
+                properties.setdefault(key, value)
+
         if message is not None:
             try:
                 file_exists = osutils.lexists(message)
@@ -4668,12 +4765,25 @@ class cmd_commit(Command):  # noqa: D101
             else:
                 # No message supplied: make one up.
                 # text is the status of the tree
-                text = make_commit_message_template_encoded(
-                    tree,
-                    selected_list,
-                    diff=show_diff,
-                    output_encoding=osutils.get_user_encoding(),
-                )
+                if amend:
+                    # During amend the working tree's basis is still the
+                    # original tip, so the default template would show no
+                    # changes.  Generate a template that compares against
+                    # the tip's parent — what the new commit will actually
+                    # contain.
+                    text = _amend_status_template(
+                        tree,
+                        amended_revision,
+                        selected_list,
+                        show_diff=show_diff,
+                    )
+                else:
+                    text = make_commit_message_template_encoded(
+                        tree,
+                        selected_list,
+                        diff=show_diff,
+                        output_encoding=osutils.get_user_encoding(),
+                    )
                 # start_message is the template generated from hooks
                 # XXX: Warning - looks like hooks return unicode,
                 # make_commit_message_template_encoded returns user encoding.
@@ -4682,6 +4792,8 @@ class cmd_commit(Command):  # noqa: D101
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
+                    if start_message is None and amend:
+                        start_message = amended_revision.message
                     if start_message is not None:
                         start_message = start_message.encode(
                             osutils.get_user_encoding()
@@ -4711,11 +4823,34 @@ class cmd_commit(Command):  # noqa: D101
         # but the command line should not do that.
         if not selected_list:
             selected_list = None
+        if amend:
+            # Resolve the commit message before mutating any branch state so
+            # the user can cancel the editor without leaving us half-amended.
+            # The hooks called via get_message expect an object exposing the
+            # working tree, so synthesise a minimal stand-in.
+            class _AmendCommitContext:
+                def __init__(self, work_tree):
+                    self.work_tree = work_tree
+                    self.branch = work_tree.branch
+                    self.amended_revision = amended_revision
+                    self.parents = work_tree.get_parent_ids()
+                    self.revprops = properties
+                    self.config_stack = work_tree.get_config_stack()
+                    self.specific_files = selected_list
+                    self.exclude = exclude
+
+            resolved_message = get_message(_AmendCommitContext(tree))
+
+            def get_message(commit_obj):
+                return resolved_message
+
+            # Now rewind the branch tip; the next commit recreates it.
+            uncommit(tree.branch, tree=tree, local=local, keep_tags=True)
         try:
             tree.commit(
                 message_callback=get_message,
                 specific_files=selected_list,
-                allow_pointless=unchanged,
+                allow_pointless=unchanged or amend,
                 strict=strict,
                 local=local,
                 reporter=None,
