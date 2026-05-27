@@ -21,7 +21,7 @@
 import os
 
 from ..config import DebBuildConfig
-from ..hooks import run_hook, HookFailedError
+from ..hooks import HookFailedError, run_hook
 from . import TestCaseInTempDir
 
 

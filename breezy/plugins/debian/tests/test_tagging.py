@@ -19,10 +19,10 @@
 
 """Tests for builddeb.tagging."""
 
-from .. import tagging
 from ....tests import (
     TestCase,
 )
+from .. import tagging
 
 
 class TestDebVersionSort(TestCase):

@@ -1,19 +1,19 @@
 # This file is a modified copy of bzrtools' upstream_import.py, last changed in
 # bzrtools 1.14.0.
 
-"""Import upstream source into a branch"""
+"""Import upstream source into a branch."""
 
 from contextlib import ExitStack
-
 from io import BytesIO
 
 from ...upstream_import import (
+    DirWrapper,
     add_implied_parents,
     common_directory,
     do_directory,
     names_of_files,
-    DirWrapper,
 )
+
 try:
     from ...bzr import generate_ids
 except ImportError:
@@ -21,21 +21,24 @@ except ImportError:
 
 from ...errors import BzrError
 from ...osutils import (
-    file_iterator,
     basename,
-    splitpath,
-    normpath,
+    file_iterator,
     is_inside_any,
+    normpath,
+    splitpath,
 )
 from ...trace import warning
-from ...tree import Tree
 from ...transform import resolve_conflicts
+from ...tree import Tree
 
 
 class UnknownType(BzrError):
+    """UnknownType."""
+
     _fmt = 'Cannot extract "%(path)s" from archive as it is an unknown type.'
 
     def __init__(self, path):
+        """Initialize a unknown type."""
         BzrError.__init__(self, path=path)
 
 
@@ -43,6 +46,7 @@ files_to_ignore = {".shelf", ".bzr", ".bzr.backup", ".bzrtags", ".bzr-builddeb"}
 
 
 def should_ignore(relative_path: str) -> bool:
+    """Should ignore."""
     parts = splitpath(relative_path)
     if not parts:
         return False
@@ -56,6 +60,7 @@ def should_ignore(relative_path: str) -> bool:
 def import_dir(
     tree: Tree, dir: str, file_ids_from=None, target_tree=None, exclude=None
 ):
+    """Import dir."""
     dir_input = BytesIO(dir.encode("utf-8"))
     dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
@@ -121,7 +126,7 @@ def _import_archive(
         if target_tree is not None and tree.supports_setting_file_ids():
             other_trees.insert(0, target_tree)
         for other_tree in other_trees:
-            for relative_path, member in to_process:
+            for relative_path, _member in to_process:
                 trans_id = tt.trans_id_tree_path(relative_path)
                 existing_file_id = tt.tree_file_id(trans_id)
                 target_id = other_tree.path2id(relative_path)

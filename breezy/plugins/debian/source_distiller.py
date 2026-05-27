@@ -17,12 +17,14 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from debian.changelog import Changelog
+"""Produce a source tree ready for building a Debian package."""
 
 import os
 import shutil
 import subprocess
 import tempfile
+
+from debian.changelog import Changelog
 
 try:
     from ...errors import NotADirectory
@@ -35,7 +37,6 @@ except ImportError:
 
 from ... import errors as bzr_errors
 from ...trace import note
-
 from .util import (
     export_with_nested,
     extract_orig_tarballs,
@@ -99,7 +100,7 @@ class NativeSourceDistiller(SourceDistiller):
 
 
 class FullSourceDistiller(SourceDistiller):
-    """A SourceDistiller for full-source branches, a.k.a. normal mode"""
+    """A SourceDistiller for full-source branches, a.k.a. normal mode."""
 
     def __init__(self, tree, subpath, upstream_provider, use_existing=False):
         """Create a SourceDistiller to distill from the specified tree.
@@ -132,6 +133,8 @@ class FullSourceDistiller(SourceDistiller):
 
 
 class MergeModeDistiller(SourceDistiller):
+    """MergeModeDistiller."""
+
     def __init__(
         self, tree, subpath, upstream_provider, top_level=False, use_existing=False
     ):
@@ -195,11 +198,14 @@ class MergeModeDistiller(SourceDistiller):
 
 
 class DebcargoError(bzr_errors.BzrError):
+    """DebcargoError."""
+
     _fmt = "Debcargo failed to run."
 
 
 def cargo_translate_dashes(crate):
-    output = subprocess.check_output(["cargo", "search", crate])
+    """Cargo translate dashes."""
+    output = subprocess.check_output(["cargo", "search", crate])  # noqa: S607
     for line in output.splitlines(False):
         name = line.split(b" = ")[0].decode()
         return name
@@ -207,6 +213,7 @@ def cargo_translate_dashes(crate):
 
 
 def unmangle_debcargo_version(version):
+    """Unmangle debcargo version."""
     return version.replace("~", "-")
 
 

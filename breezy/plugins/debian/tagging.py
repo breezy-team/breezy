@@ -30,7 +30,7 @@ def sort_debversion(branch, tags):
     """
 
     def debversion_key(info):
-        (version, revid) = info
+        (version, _revid) = info
         return Version(version)
 
     tags.sort(key=debversion_key)

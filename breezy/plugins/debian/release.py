@@ -18,18 +18,21 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Release helpers for finalizing Debian package changelogs and tags."""
+
 import os
 
-from breezy.mutabletree import MutableTree
-
 from debmutate.changelog import (
-    release as mark_for_release,
     ChangelogEditor,
     distribution_is_unreleased,
 )
+from debmutate.changelog import (
+    release as mark_for_release,
+)
+
+from breezy.mutabletree import MutableTree
 
 from .changelog import debcommit_release
-
 from .util import find_changelog
 
 
@@ -53,12 +56,16 @@ def release(local_tree: MutableTree, subpath: str):
     return None
 
 
-class SuccessReleaseMarker(object):
+class SuccessReleaseMarker:
+    """SuccessReleaseMarker."""
+
     def __init__(self, local_tree, subpath):
+        """Initialize a success release marker."""
         self.local_tree = local_tree
         self.subpath = subpath
 
     def __enter__(self):
+        """Enter the runtime context."""
         self.old_revid = self.local_tree.last_revision()
         (changelog, top_level) = find_changelog(
             self.local_tree, self.subpath, merge=False, max_blocks=2
@@ -83,6 +90,7 @@ class SuccessReleaseMarker(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context."""
         if exc_type:
             if self.new_revid:
                 self.local_tree.set_last_revision(self.old_revid)

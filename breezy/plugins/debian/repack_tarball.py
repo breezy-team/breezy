@@ -18,27 +18,29 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import gzip
-import os
-from io import BytesIO
-import tarfile
-import bz2
-import hashlib
+"""Repack upstream tarballs into the format required by the Debian source package."""
 
+import bz2
+import gzip
+import hashlib
+import os
 import shutil
+import tarfile
 import time
 import zipfile
+from io import BytesIO
 
 from ...errors import (
     BzrError,
     DependencyNotPresent,
 )
-from ...transport import get_transport, FileExists
-
+from ...transport import FileExists, get_transport
 from .util import open_file, open_file_via_transport
 
 
 class UnsupportedRepackFormat(BzrError):
+    """UnsupportedRepackFormat."""
+
     _fmt = (
         'Either the file extension of "%(location)s" indicates that '
         "it is a format unsupported for repacking or it is a "
@@ -46,11 +48,12 @@ class UnsupportedRepackFormat(BzrError):
     )
 
     def __init__(self, location):
+        """Initialize a unsupported repack format."""
         BzrError.__init__(self, location=location)
 
 
 class TgzRepacker:
-    """Repacks something to be a .tar.gz"""
+    """Repacks something to be a .tar.gz."""
 
     def __init__(self, source_f):
         """Create a repacker that repacks what is in source_f.
@@ -73,6 +76,7 @@ class CopyRepacker(TgzRepacker):
     """A Repacker that just copies."""
 
     def repack(self, target_f):
+        """Repack."""
         shutil.copyfileobj(self.source_f, target_f)
 
 
@@ -80,6 +84,7 @@ class TarTgzRepacker(TgzRepacker):
     """A TgzRepacker that just gzips the input."""
 
     def repack(self, target_f):
+        """Repack."""
         with gzip.GzipFile(mode="w", fileobj=target_f) as gz:
             shutil.copyfileobj(self.source_f, gz)
 
@@ -88,6 +93,7 @@ class Tbz2TgzRepacker(TgzRepacker):
     """A TgzRepacker that repacks from a .tar.bz2."""
 
     def repack(self, target_f):
+        """Repack."""
         content = bz2.decompress(self.source_f.read())
         with gzip.GzipFile(mode="w", fileobj=target_f) as gz:
             gz.write(content)
@@ -97,6 +103,7 @@ class TarLzma2TgzRepacker(TgzRepacker):
     """A TgzRepacker that repacks from a .tar.lzma or .tar.xz."""
 
     def repack(self, target_f):
+        """Repack."""
         try:
             import lzma
         except ImportError as e:
@@ -124,12 +131,16 @@ class ZipTgzRepacker(TgzRepacker):
             tar.addfile(tarinfo, contents)
 
     def repack(self, target_f):
-        with zipfile.ZipFile(self.source_f, "r") as zip:
-            with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
-                self._repack_zip_to_tar(zip, tar)
+        """Repack."""
+        with (
+            zipfile.ZipFile(self.source_f, "r") as zip,
+            tarfile.open(mode="w:gz", fileobj=target_f) as tar,
+        ):
+            self._repack_zip_to_tar(zip, tar)
 
 
 def get_filetype(filename):
+    """Get filetype."""
     types = {
         ".tar.gz": "gz",
         ".tgz": "gz",
@@ -161,18 +172,20 @@ def get_repacker_class(source_format, target_format):
 
 def _error_if_exists(target_transport, new_name, source_name):
     with open_file(source_name) as source_f:
-        source_sha = hashlib.sha1(source_f.read()).hexdigest()
+        source_sha = hashlib.sha1(source_f.read(), usedforsecurity=False).hexdigest()
     with open_file_via_transport(new_name, target_transport) as target_f:
-        target_sha = hashlib.sha1(target_f.read()).hexdigest()
+        target_sha = hashlib.sha1(target_f.read(), usedforsecurity=False).hexdigest()
     if source_sha != target_sha:
         raise FileExists(new_name)
 
 
 def _repack_directory(target_transport, new_name, source_name):
     target_transport.ensure_base()
-    with target_transport.open_write_stream(new_name) as target_f:
-        with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
-            tar.add(source_name, os.path.basename(source_name))
+    with (
+        target_transport.open_write_stream(new_name) as target_f,
+        tarfile.open(mode="w:gz", fileobj=target_f) as tar,
+    ):
+        tar.add(source_name, os.path.basename(source_name))
 
 
 def _repack_other(target_transport, new_name, source_name):
@@ -182,10 +195,12 @@ def _repack_other(target_transport, new_name, source_name):
     if repacker_cls is None:
         raise UnsupportedRepackFormat(source_name)
     target_transport.ensure_base()
-    with target_transport.open_write_stream(new_name) as target_f:
-        with open_file(source_name) as source_f:
-            repacker = repacker_cls(source_f)
-            repacker.repack(target_f)
+    with (
+        target_transport.open_write_stream(new_name) as target_f,
+        open_file(source_name) as source_f,
+    ):
+        repacker = repacker_cls(source_f)
+        repacker.repack(target_f)
 
 
 def repack_tarball(source_name, new_name, target_dir=None):

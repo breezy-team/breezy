@@ -23,12 +23,11 @@ import re
 import shutil
 import tarfile
 import tempfile
-from typing import Optional
 
 from debmutate.versions import debianize_upstream_version
 
-from ....errors import BzrError, DependencyNotPresent
 from .... import osutils
+from ....errors import BzrError, DependencyNotPresent
 from ....revision import RevisionID
 from ....trace import (
     note,
@@ -46,19 +45,25 @@ from ..util import (
 
 
 class PackageVersionNotPresent(BzrError):
+    """PackageVersionNotPresent."""
+
     _fmt = "%(package)s %(version)s was not found in %(upstream)s."
 
     def __init__(self, package, version, upstream):
+        """Initialize a package version not present."""
         BzrError.__init__(self, package=package, version=version, upstream=upstream)
 
 
 class MissingUpstreamTarball(BzrError):
+    """MissingUpstreamTarball."""
+
     _fmt = (
         "Unable to find the needed upstream tarball for package "
         "%(package)s, version %(version)s."
     )
 
     def __init__(self, package, version):
+        """Initialize a missing upstream tarball."""
         BzrError.__init__(self, package=package, version=version)
 
 
@@ -87,13 +92,14 @@ class UpstreamSource:
         Args:
           package: Name of the package
           version: The current upstream version of the package.
+
         Returns:
           Tuple with the version string of the latest available upstream
           version, and mangled Debian version.
         """
         raise NotImplementedError(self.get_latest_version)
 
-    def get_recent_versions(self, package: str, since_version: Optional[str] = None):
+    def get_recent_versions(self, package: str, since_version: str | None = None):
         """Retrieve recent version strings.
 
         :param package: Name of the package
@@ -104,7 +110,7 @@ class UpstreamSource:
 
     def version_as_revisions(
         self, package: str, version: str, tarballs=None
-    ) -> dict[Optional[str], tuple[RevisionID, str]]:
+    ) -> dict[str | None, tuple[RevisionID, str]]:
         """Lookup the revision ids for a particular version.
 
         :param package: Package name
@@ -148,6 +154,7 @@ class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
     def __init__(self, apt=None):
+        """Initialize a apt source."""
         if apt is None:
             from ..apt_repo import LocalApt
 
@@ -155,8 +162,9 @@ class AptSource(UpstreamSource):
         self.apt = apt
 
     def fetch_tarballs(self, package, upstream_version, target_dir, components=None):
+        """Fetch tarballs."""
         with self.apt:
-            from ..apt_repo import NoAptSources, AptSourceError
+            from ..apt_repo import AptSourceError, NoAptSources
 
             source_name = package
             try:
@@ -203,7 +211,10 @@ class AptSource(UpstreamSource):
 
 
 class SelfSplitSource(UpstreamSource):
+    """SelfSplitSource."""
+
     def __init__(self, tree):
+        """Initialize a self split source."""
         self.tree = tree
 
     def _split(self, package, upstream_version, target_filename):
@@ -215,6 +226,7 @@ class SelfSplitSource(UpstreamSource):
                 tar.add(export_dir, "{}-{}".format(package, upstream_version))
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         note(
             "Using the current branch without the 'debian' directory "
             "to create the tarball"
@@ -231,12 +243,15 @@ class StackedUpstreamSource(UpstreamSource):
     """
 
     def __init__(self, sources):
+        """Initialize a stacked upstream source."""
         self._sources = sources
 
     def __repr__(self):
+        """Return a string representation."""
         return "{}({!r})".format(self.__class__.__name__, self._sources)
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         for source in self._sources:
             try:
                 paths = source.fetch_tarballs(package, version, target_dir, components)
@@ -249,6 +264,7 @@ class StackedUpstreamSource(UpstreamSource):
         raise PackageVersionNotPresent(package, version, self)
 
     def get_latest_version(self, package, version):
+        """Get latest version."""
         for source in self._sources:
             try:
                 new_version = source.get_latest_version(package, version)
@@ -259,6 +275,7 @@ class StackedUpstreamSource(UpstreamSource):
         return None, None
 
     def get_recent_versions(self, package, since_version=None):
+        """Get recent versions."""
         versions = {}
         for source in self._sources:
             for unmangled, mangled in source.get_recent_versions(
@@ -274,6 +291,7 @@ class StackedUpstreamSource(UpstreamSource):
         ]
 
     def version_as_revisions(self, package, version, tarballs=None):
+        """Version as revisions."""
         for source in self._sources:
             try:
                 return source.version_as_revisions(package, version, tarballs)
@@ -284,6 +302,7 @@ class StackedUpstreamSource(UpstreamSource):
         raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package: str, version: str, tarballs=None) -> bool:
+        """Has version."""
         for source in self._sources:
             if source.has_version(package, version, tarballs):
                 return True
@@ -384,12 +403,15 @@ class UpstreamProvider:
         ]
 
     def already_exists_in_target(self, target_dir):
+        """Already exists in target."""
         return gather_orig_files(self.package, self.version, target_dir)
 
     def already_exists_in_store(self):
+        """Already exists in store."""
         return gather_orig_files(self.package, self.version, self.store_dir)
 
     def provide_from_store_dir(self, target_dir):
+        """Provide from store dir."""
         paths = self.already_exists_in_store()
         if paths is None:
             return None
@@ -427,6 +449,7 @@ class TarfileSource(UpstreamSource):
     """Source that uses a single local tarball."""
 
     def __init__(self, path, version=None):
+        """Initialize a tarfile source."""
         self.path = path
         if version is not None:
             self.version = str(version)
@@ -434,6 +457,7 @@ class TarfileSource(UpstreamSource):
             self.version = None
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
         dest_name = new_tarball_name(package, version, self.path)
@@ -441,12 +465,14 @@ class TarfileSource(UpstreamSource):
         return [os.path.join(target_dir, dest_name)]
 
     def get_recent_versions(self, package, since_version=None):
+        """Get recent versions."""
         latest_version = self.get_latest_version(package, since_version)
         if latest_version is None:
             return []
         return [latest_version]
 
     def get_latest_version(self, package, version):
+        """Get latest version."""
         if self.version is not None:
             return (self.version, self.version)
         self.version = extract_tarball_version(self.path, package)
@@ -478,6 +504,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         return cls(project_series=project_series)
 
     def __init__(self, project=None, project_series=None):
+        """Initialize a launchpad release file source."""
         if project_series is None:
             self.project_series = project.development_focus
         else:
@@ -488,6 +515,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             self.project = project
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         note("Retrieving tarball for %s from Launchpad.", package)
         release = self.project.getRelease(version=version)
         if release is None:
@@ -529,6 +557,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             yield (release.date_released, release.version)
 
     def get_recent_versions(self, package, since_version=None):
+        """Get recent versions."""
         versions = []
         for unmangled, mangled in self._all_versions():
             if since_version is None or since_version < mangled:
@@ -536,6 +565,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         return sorted(versions)
 
     def get_latest_version(self, package, version):
+        """Get latest version."""
         versions = list(self._all_versions())
         versions.sort()
         return (versions[-1][1], debianize_upstream_version(versions[-1][1], package))
@@ -545,9 +575,11 @@ class DirectoryScanSource(UpstreamSource):
     """Source that scans a local directory for sources."""
 
     def __init__(self, path):
+        """Initialize a directory scan source."""
         self.path = os.path.abspath(path)
 
     def fetch_tarballs(self, package: str, version: str, target_dir, components=None):
+        """Fetch tarballs."""
         prefix = "{}_{}.orig".format(package, version)
         ret = []
         for entry in os.scandir(self.path):
@@ -561,7 +593,9 @@ class DirectoryScanSource(UpstreamSource):
         raise PackageVersionNotPresent(package, version, self)
 
     def get_recent_versions(self, package, since_version=None):
+        """Get recent versions."""
         return []
 
     def get_latest_version(self, package, version):
+        """Get latest version."""
         return None, None

@@ -25,52 +25,44 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Import Debian source packages (.dsc files) into Bazaar branches."""
+
 import calendar
-from contextlib import contextmanager, ExitStack
 import os
 import stat
-import tempfile
 import tarfile
-from typing import Optional
+import tempfile
+from contextlib import ExitStack, contextmanager
 
 from debian import deb822
-from debian.changelog import Version, Changelog, VersionError
+from debian.changelog import Changelog, Version, VersionError
 from debmutate.versions import mangle_version_for_git
 
-from ...branch import Branch
 from ... import (
     controldir,
 )
+from ...branch import Branch
 from ...config import ConfigObj
 from ...errors import (
-    BzrError,
     AlreadyBranchError,
-    NotBranchError,
+    BzrError,
     NoRoundtrippingSupport,
     NoSuchTag,
+    NotBranchError,
     NoWorkingTree,
     UnrelatedBranches,
 )
 from ...revision import NULL_REVISION, RevisionID
-from ...trace import warning, mutter
+from ...trace import mutter, warning
 from ...transport import (
     get_transport,
 )
 from ...tree import Tree
-
 from .bzrtools_import import import_dir
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
 )
 from .extract import extract
-from .util import (
-    export_with_nested,
-    extract_orig_tarball,
-    get_commit_info_from_changelog,
-    md5sum_filename,
-    open_file_via_transport,
-    open_transport,
-)
 from .upstream import (
     PackageVersionNotPresent,
 )
@@ -80,37 +72,59 @@ from .upstream.branch import (
 from .upstream.pristinetar import (
     get_pristine_tar_source,
 )
+from .util import (
+    export_with_nested,
+    extract_orig_tarball,
+    get_commit_info_from_changelog,
+    md5sum_filename,
+    open_file_via_transport,
+    open_transport,
+)
 
 
 class CorruptUpstreamSourceFile(BzrError):
+    """CorruptUpstreamSourceFile."""
+
     _fmt = "Corrupt upstream source file %(filename)s: %(reason)s"
 
 
 class UpstreamBranchAlreadyMerged(BzrError):
+    """UpstreamBranchAlreadyMerged."""
+
     _fmt = "That revision of the upstream branch has already been merged."
 
 
 class UpstreamAlreadyImported(BzrError):
+    """UpstreamAlreadyImported."""
+
     _fmt = 'Upstream version "%(version)s" has already been imported (tag: %(tag)s).'
 
     def __init__(self, version, tag):
+        """Initialize a upstream already imported."""
         BzrError.__init__(self, version=str(version), tag=tag)
 
 
 class VersionAlreadyImported(BzrError):
+    """VersionAlreadyImported."""
+
     _fmt = "Debian version %(version)s has already been imported."
 
     def __init__(self, version, tag_name):
+        """Initialize a version already imported."""
         BzrError.__init__(self, version=str(version), tag_name=tag_name)
 
 
 class DscCache:
+    """DscCache."""
+
     def __init__(self, transport=None):
+        """Initialize a dsc cache."""
         self.cache = {}
         self.transport_cache = {}
         self.transport = transport
 
     def get_dsc(self, name):
+        """Get dsc."""
         if name in self.cache:
             dsc1 = self.cache[name]
         else:
@@ -124,14 +138,19 @@ class DscCache:
         return dsc1
 
     def get_transport(self, name):
+        """Get transport."""
         return self.transport_cache[name]
 
 
 class DscComp:
+    """DscComp."""
+
     def __init__(self, cache):
+        """Initialize a dsc comp."""
         self.cache = cache
 
     def key(self, dscname):
+        """Key."""
         dsc = self.cache.get_dsc(dscname)
         return Version(dsc["Version"])
 
@@ -301,7 +320,7 @@ class DistributionBranch:
         """
         return self.get_lesser_branches() + self.get_greater_branches()
 
-    def tag_name(self, version: Version, vendor: Optional[str]) -> str:
+    def tag_name(self, version: Version, vendor: str | None) -> str:
         """Gets the name of the tag that is used for the version.
 
         :param version: the Version object that the tag should refer to.
@@ -313,7 +332,7 @@ class DistributionBranch:
             return mangle_version(self.branch, version)
 
     def has_version(
-        self, version: Version, md5: Optional[str] = None, vendor: Optional[str] = None
+        self, version: Version, md5: str | None = None, vendor: str | None = None
     ) -> bool:
         """Whether this branch contains the package version specified.
 
@@ -386,7 +405,7 @@ class DistributionBranch:
         index = versions.index(last_contained)
         return versions[:index]
 
-    def last_contained_version(self, versions: list[Version]) -> Optional[Version]:
+    def last_contained_version(self, versions: list[Version]) -> Version | None:
         """Returns the highest version from the list present in this branch.
 
         It assumes that the input list of versions is sorted with the
@@ -403,7 +422,8 @@ class DistributionBranch:
                 return version
         return None
 
-    def possible_tags(self, version: Version, vendor: Optional[str] = None):
+    def possible_tags(self, version: Version, vendor: str | None = None):
+        """Possible tags."""
         if vendor:
             if version.debian_revision:
                 yield from [
@@ -431,9 +451,7 @@ class DistributionBranch:
             raise NoSuchTag(version)
         return self.branch.tags.lookup_tag(tag)
 
-    def tag_of_version(
-        self, version: Version, vendor: Optional[str] = None
-    ) -> RevisionID:
+    def tag_of_version(self, version: Version, vendor: str | None = None) -> RevisionID:
         """Returns the revision id corresponding to that version.
 
         :param version: the Version object that you wish to retrieve the
@@ -448,8 +466,8 @@ class DistributionBranch:
     def tag_version(
         self,
         version: Version,
-        revid: Optional[RevisionID] = None,
-        vendor: Optional[str] = None,
+        revid: RevisionID | None = None,
+        vendor: str | None = None,
     ) -> str:
         """Tags the branch's last revision with the given version.
 
@@ -477,7 +495,7 @@ class DistributionBranch:
         """
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
-        (config_fileid, config_path, current_config) = _default_config_for_tree(
+        (_config_fileid, _config_path, _current_config) = _default_config_for_tree(
             rev_tree
         )
         rev = self.branch.repository.get_revision(revid)
@@ -488,6 +506,7 @@ class DistributionBranch:
             return False
 
     def can_pull_from_branch(self, branch, version, md5):
+        """Can pull from branch."""
         if not branch.has_version(version, md5=md5):
             return False
 
@@ -558,7 +577,7 @@ class DistributionBranch:
                 )
                 for (
                     pristine_upstream_revid,
-                    pristine_upstream_subpath,
+                    _pristine_upstream_subpath,
                 ) in pristine_upstream_revids.values():
                     if not graph.is_ancestor(
                         up_branch.last_revision(), pristine_upstream_revid
@@ -797,6 +816,7 @@ class DistributionBranch:
             )
 
             def key(a):
+                """Key."""
                 if a is None:
                     return ""
                 return a
@@ -813,7 +833,13 @@ class DistributionBranch:
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        for component, tag, revid, pristine_tar_imported, subpath in imported_revids:
+        for (
+            _component,
+            _tag,
+            revid,
+            _pristine_tar_imported,
+            _subpath,
+        ) in imported_revids:
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -977,6 +1003,7 @@ class DistributionBranch:
             tarball.
           upstream_revisions: Upstream revision ids dictionary
           md5sum: hex digest of the md5sum of the tarball, if known.
+
         Returns:
           list with (component, tag, revid, pristine_tar_imported, subpath)
           tuples
@@ -1004,7 +1031,7 @@ class DistributionBranch:
         *,
         native: bool = False,
         timestamp=None,
-        file_ids_from: Optional[Tree] = None,
+        file_ids_from: Tree | None = None,
     ):
         """Import the debian part of a source package.
 
@@ -1052,7 +1079,7 @@ class DistributionBranch:
         parent_trees = []
         if file_ids_from is not None:
             parent_trees = file_ids_from[:]
-        for parent_revid, parent_subpath in parents:
+        for parent_revid, _parent_subpath in parents:
             parent_trees.append(self.branch.repository.revision_tree(parent_revid))
         import_dir(self.tree, debian_part, file_ids_from=parent_trees + debian_trees)
         rules_path = os.path.join(self.tree.basedir, "debian", "rules")
@@ -1060,7 +1087,7 @@ class DistributionBranch:
             os.chmod(
                 rules_path,
                 (
-                    stat.S_IRWXU
+                    stat.S_IRWXU  # noqa: S103
                     | stat.S_IRGRP
                     | stat.S_IXGRP
                     | stat.S_IROTH
@@ -1266,6 +1293,7 @@ class DistributionBranch:
     def get_native_parents(
         self, version: Version, versions: list[Version]
     ) -> list[RevisionID]:
+        """Get native parents."""
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
             parents = []
@@ -1323,7 +1351,7 @@ class DistributionBranch:
         dsc_filename: str,
         *,
         use_time_from_changelog: bool = True,
-        file_ids_from: Optional[Tree] = None,
+        file_ids_from: Tree | None = None,
         pull_debian: bool = True,
         force_pristine_tar: bool = False,
         apply_patches: bool = False,
@@ -1414,6 +1442,7 @@ class DistributionBranch:
         self.pristine_upstream_branch.get_config_stack().set("branch.fetch_tags", True)
 
     def create_empty_upstream_tree(self, basedir):
+        """Create empty upstream tree."""
         to_location = os.path.join(basedir, "upstream")
         to_transport = get_transport(to_location)
         to_transport.ensure_base()
@@ -1462,6 +1491,7 @@ class DistributionBranch:
     def has_merged_upstream_revisions(
         self, this_revision, upstream_repository, upstream_revisions
     ):
+        """Has merged upstream revisions."""
         graph = self.branch.repository.get_graph(other_repository=upstream_repository)
         return all(
             graph.is_ancestor(upstream_revision, this_revision)
@@ -1482,6 +1512,7 @@ class DistributionBranch:
         committer=None,
         files_excluded=None,
     ):
+        """Merge upstream."""
         with ExitStack() as es:
             tempdir = es.enter_context(
                 tempfile.TemporaryDirectory(dir=os.path.join(self.tree.basedir, ".."))
@@ -1544,7 +1575,7 @@ class DistributionBranch:
                     else:
                         from_revision, from_subpath = parents[None][0]
                     if from_subpath:
-                        raise Exception("subpath not yet supported")
+                        raise Exception("subpath not yet supported") from None
                     conflicts = self.tree.merge_from_branch(
                         self.pristine_upstream_branch,
                         merge_type=merge_type,
@@ -1564,7 +1595,7 @@ class DistributionBranch:
 @contextmanager
 def _extract_tarballs_to_tempdir(tarballs):
     with tempfile.TemporaryDirectory() as tempdir:
-        for tarball_filename, component, md5 in tarballs:
+        for tarball_filename, component, _md5 in tarballs:
             try:
                 extract_orig_tarball(tarball_filename, component, tempdir)
             except tarfile.ReadError as e:
@@ -1583,6 +1614,7 @@ def _get_safe_versions_from_changelog(cl):
 
 
 def get_changelog_from_source(dir, max_blocks=None):
+    """Get changelog from source."""
     cl_filename = os.path.join(dir, "debian", "changelog")
     with open(cl_filename, "rb") as f:
         content = f.read()
@@ -1610,6 +1642,7 @@ def _default_config_for_tree(tree):
 
 
 def mangle_version(branch: Branch, version: Version) -> str:
+    """Mangle version."""
     git = getattr(branch.repository, "_git", None)
     if git:
         return mangle_version_for_git(version)
@@ -1617,6 +1650,7 @@ def mangle_version(branch: Branch, version: Version) -> str:
 
 
 def branch_has_debian_version(branch, tag_name, md5=None):
+    """Branch has debian version."""
     if not branch.tags.has_tag(tag_name):
         return False
     revid = branch.tags.lookup_tag(tag_name)

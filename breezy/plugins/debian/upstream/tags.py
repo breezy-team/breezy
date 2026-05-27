@@ -17,19 +17,20 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""Helpers for finding upstream import revisions by tag."""
+
 from itertools import islice
-from typing import Optional
+
+from debmutate.versions import mangle_version_for_git
 
 from ....repository import Repository
 from ....revision import Revision
 
 
-from debmutate.versions import mangle_version_for_git
-
-
 def possible_upstream_tag_names(
-    package: Optional[str], version: str, component: Optional[str] = None, try_hard=True
+    package: str | None, version: str, component: str | None = None, try_hard=True
 ):
+    """Possible upstream tag names."""
     tags = []
     if component is None:
         # compatibility with git-buildpackage
@@ -97,7 +98,7 @@ def upstream_tag_version(tag):
     return (component, version)
 
 
-def _rev_is_upstream_import(revision: Revision, package: Optional[str], version: str):
+def _rev_is_upstream_import(revision: Revision, package: str | None, version: str):
     possible_messages = []
     if package is not None:
         possible_messages.extend(
@@ -123,20 +124,21 @@ def _rev_is_upstream_import(revision: Revision, package: Optional[str], version:
 
 
 def _rev_is_upstream_merge(
-    revision: Revision, package: Optional[str], version: str
+    revision: Revision, package: str | None, version: str
 ) -> bool:
     if revision.message.lower().startswith(
         ("Merge tag 'v%s' into debian/" % version).lower()
     ):
         return True
-    if package is not None and revision.message.lower().startswith(
-        ("Merge tag '{}-{}' into ".format(package, version)).lower()
-    ):
-        return True
-    return False
+    return bool(
+        package is not None
+        and revision.message.lower().startswith(
+            "Merge tag '{}-{}' into ".format(package, version).lower()
+        )
+    )
 
 
-def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version: str):
+def upstream_version_tag_start_revids(tag_dict, package: str | None, version: str):
     """Find Debian tags related to a particular upstream version.
 
     This can be used by search_for_upstream_version
@@ -153,23 +155,23 @@ def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version:
     if package:
         candidate_tag_start.append("debian-{}-{}".format(package, version))
     for tag_name, revid in tag_dict.items():
-        if any([tag_name.startswith(tag_start) for tag_start in candidate_tag_start]):
+        if any(tag_name.startswith(tag_start) for tag_start in candidate_tag_start):
             yield (tag_name, revid)
 
 
 def search_for_upstream_version(
     repository: Repository,
     start_revids,
-    package: Optional[str],
+    package: str | None,
     version: str,
-    component: Optional[str] = None,
-    md5: Optional[str] = None,
+    component: str | None = None,
+    md5: str | None = None,
     scan_depth=None,
 ):
     """Find possible upstream revisions that don't have appropriate tags."""
     todo = []
     graph = repository.get_graph()
-    for revid, parents in islice(graph.iter_ancestry(start_revids), scan_depth):
+    for revid, _parents in islice(graph.iter_ancestry(start_revids), scan_depth):
         todo.append(revid)
     for revid, rev in repository.iter_revisions(todo):
         if rev is None:
@@ -178,7 +180,7 @@ def search_for_upstream_version(
             return revid
 
     # Try again, but this time search for merge revisions
-    for revid, rev in repository.iter_revisions(todo):
+    for _revid, rev in repository.iter_revisions(todo):
         if rev is None:
             continue
         if _rev_is_upstream_merge(rev, package, version):

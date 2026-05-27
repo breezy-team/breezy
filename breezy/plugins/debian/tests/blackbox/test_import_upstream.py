@@ -21,8 +21,8 @@
 
 from debian.changelog import Version
 
-from .test_import_dsc import TestBaseImportDsc
 from ..test_import_dsc import PristineTarFeature
+from .test_import_dsc import TestBaseImportDsc
 
 
 class TestImportUpstream(TestBaseImportDsc):
@@ -88,7 +88,7 @@ class TestImportUpstream(TestBaseImportDsc):
         tree.smart_add(["working"])
         tree.commit("save changes")
         tar_path = "../%s" % self.upstream_tarball_name
-        out, err = self.run_bzr(
+        out, _err = self.run_bzr(
             ["import-upstream", self.upstream_version, tar_path], working_dir="working"
         )
         self.assertEqual(

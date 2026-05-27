@@ -21,10 +21,11 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Command implementations for the Debian plugin."""
+
 import os
 import shutil
 import tempfile
-from typing import Optional
 
 try:
     from ...errors import NotLocalUrl
@@ -53,7 +54,6 @@ from ...option import Option
 from ...trace import mutter, note, warning
 from ...transport import get_transport
 from ...workingtree import WorkingTree
-
 from . import (
     default_build_dir,
     default_orig_dir,
@@ -117,6 +117,8 @@ apt_repository_opts = [
 
 
 class StrictBuildFailed(BzrCommandError):
+    """StrictBuildFailed."""
+
     _fmt = (
         "Build refused because there are unknown files in the tree. "
         "To list all known files, run 'bzr unknowns'."
@@ -125,7 +127,7 @@ class StrictBuildFailed(BzrCommandError):
 
 def _check_tree(tree, subpath, strict=False):
     if strict:
-        for unknown in tree.unknowns():
+        for _unknown in tree.unknowns():
             raise StrictBuildFailed()
 
     if len(tree.conflicts()) > 0:
@@ -150,10 +152,10 @@ def _get_changelog_info(
     tree, subpath, last_version=None, package=None, distribution=None
 ):
     from .util import (
+        MissingChangelogError,
         find_changelog,
         find_last_distribution,
         lookup_distribution,
-        MissingChangelogError,
     )
 
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
@@ -249,15 +251,15 @@ def _get_upstream_sources(
 ):
     from .upstream import (
         AptSource,
-        SelfSplitSource,
         DirectoryScanSource,
-    )
-    from .upstream.uscan import (
-        UScanSource,
-        NoWatchFile,
+        SelfSplitSource,
     )
     from .upstream.pristinetar import (
         get_pristine_tar_source,
+    )
+    from .upstream.uscan import (
+        NoWatchFile,
+        UScanSource,
     )
 
     yield AptSource(apt=apt)
@@ -279,6 +281,7 @@ def _get_upstream_sources(
         else:
 
             def guess_upstream_url():
+                """Guess upstream url."""
                 guessed_upstream_metadata = guess_upstream_metadata(
                     local_tree.abspath(subpath),
                     trust_package=trust_package,
@@ -323,17 +326,17 @@ def _get_distiller(
     apt=None,
     skip_signatures=False,
 ):
-    from .util import (
-        guess_build_type,
+    from .source_distiller import (
+        DebcargoDistiller,
+        FullSourceDistiller,
+        MergeModeDistiller,
+        NativeSourceDistiller,
     )
     from .upstream import (
         UpstreamProvider,
     )
-    from .source_distiller import (
-        FullSourceDistiller,
-        MergeModeDistiller,
-        NativeSourceDistiller,
-        DebcargoDistiller,
+    from .util import (
+        guess_build_type,
     )
 
     if build_type is None:
@@ -616,7 +619,9 @@ class cmd_builddeb(Command):
         apt_repository=None,
         apt_repository_key=None,
     ):
+        """Run."""
         from debian.changelog import ChangelogParseError
+
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
         from .hooks import run_hook
@@ -625,9 +630,9 @@ class cmd_builddeb(Command):
             NoPreviousUpload,
             dget_changes,
             find_changelog,
+            find_changes_files,
             find_previous_upload,
             tree_contains_upstream_source,
-            find_changes_files,
         )
 
         location, build_options, source = self._branch_and_build_options(
@@ -728,7 +733,7 @@ class cmd_builddeb(Command):
                 if not dont_purge:
                     builder.clean()
                 changes_paths = []
-                for kind, entry in find_changes_files(
+                for _kind, entry in find_changes_files(
                     build_dir, changelog.package, changelog.version
                 ):
                     changes_paths.append(entry.path)
@@ -768,16 +773,17 @@ class cmd_get_orig_source(Command):
     def run(
         self, directory=".", version=None, apt_repository=None, apt_repository_key=None
     ):
+        """Run."""
         from .upstream import (
             AptSource,
             UpstreamProvider,
         )
-        from .upstream.uscan import (
-            UScanSource,
-            NoWatchFile,
-        )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
+        )
+        from .upstream.uscan import (
+            NoWatchFile,
+            UScanSource,
         )
         from .util import (
             find_changelog,
@@ -814,7 +820,7 @@ class cmd_get_orig_source(Command):
         )
 
         result = upstream_provider.provide(orig_dir)
-        for tar, component in result:
+        for tar, _component in result:
             note(gettext("Tar now in %s") % tar)
 
 
@@ -939,23 +945,24 @@ class cmd_merge_upstream(Command):
 
     def run(
         self,
-        location: Optional[str] = None,
-        upstream_branch: Optional[str] = None,
-        version: Optional[str] = None,
-        distribution: Optional[str] = None,
-        package: Optional[str] = None,
+        location: str | None = None,
+        upstream_branch: str | None = None,
+        version: str | None = None,
+        distribution: str | None = None,
+        package: str | None = None,
         directory: str = ".",
         revision=None,
         merge_type=None,
-        last_version: Optional[str] = None,
-        force: Optional[bool] = None,
-        snapshot: Optional[bool] = None,
-        release: Optional[bool] = None,
+        last_version: str | None = None,
+        force: bool | None = None,
+        snapshot: bool | None = None,
+        release: bool | None = None,
         force_pristine_tar: bool = False,
-        dist_command: Optional[str] = None,
+        dist_command: str | None = None,
         guess_upstream_branch_url: bool = False,
         skip_signatures: bool = False,
     ):
+        """Run."""
         from debian.changelog import Version
 
         from .hooks import run_hook
@@ -974,13 +981,13 @@ class cmd_merge_upstream(Command):
             run_dist_command,
         )
         from .upstream.uscan import (
-            UScanSource,
             NoWatchFile,
+            UScanSource,
         )
         from .util import (
             detect_version_kind,
-            guess_build_type,
             get_files_excluded,
+            guess_build_type,
             tree_contains_upstream_source,
         )
 
@@ -1084,6 +1091,7 @@ class cmd_merge_upstream(Command):
             if dist_command:
 
                 def create_dist(tree, package, version, target_dir, subpath=""):
+                    """Create dist."""
                     return run_dist_command(
                         tree,
                         package,
@@ -1160,12 +1168,12 @@ class cmd_merge_upstream(Command):
 
             if version is None and upstream_revisions is not None:
                 # Look up the version from the upstream revision
-                unmangled_version, version = upstream_branch_source.get_version(
+                _unmangled_version, version = upstream_branch_source.get_version(
                     package, current_version, upstream_revisions[None][0]
                 )
             elif version is None and primary_upstream_source is not None:
-                unmangled_version, version = primary_upstream_source.get_latest_version(
-                    package, current_version
+                _unmangled_version, version = (
+                    primary_upstream_source.get_latest_version(package, current_version)
                 )
             if version is None:
                 if upstream_branch_source is not None:
@@ -1225,7 +1233,7 @@ class cmd_merge_upstream(Command):
                         "file, or use it as the argument to import." % e.path
                     ) from e
                 try:
-                    conflicts, imported_revids = do_merge(
+                    conflicts, _imported_revids = do_merge(
                         tree,
                         tarball_filenames,
                         package,
@@ -1305,6 +1313,7 @@ class cmd_import_dsc(Command):
     takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
+        """Import many."""
         from .import_dsc import (
             DscCache,
             DscComp,
@@ -1321,12 +1330,13 @@ class cmd_import_dsc(Command):
             dsc = cache.get_dsc(dscname)
 
             def get_dsc_part(from_transport, filename):
+                """Get dsc part."""
                 from_f = open_file_via_transport(filename, from_transport)
                 contents = from_f.read()
                 with open(os.path.join(orig_target, filename), "wb") as to_f:
                     to_f.write(contents)
 
-            base, filename = urlutils.split(dscname)
+            _base, filename = urlutils.split(dscname)
             from_transport = cache.get_transport(dscname)
             get_dsc_part(from_transport, filename)
             for file_details in dsc["files"]:
@@ -1335,14 +1345,15 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
+        """Run."""
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
         )
         from .util import (
+            MissingChangelogError,
             find_changelog,
             open_file,
-            MissingChangelogError,
         )
 
         try:
@@ -1381,7 +1392,7 @@ class cmd_import_dsc(Command):
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
-                (changelog, top_level) = find_changelog(tree, subpath, merge=False)
+                (changelog, _top_level) = find_changelog(tree, subpath, merge=False)
                 last_version = changelog.version
             except MissingChangelogError:
                 last_version = None
@@ -1473,7 +1484,9 @@ class cmd_import_upstream(Command):
         revision=None,
         force_pristine_tar=False,
     ):
+        """Run."""
         from debian.changelog import Version
+
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
@@ -1540,9 +1553,9 @@ class cmd_import_upstream(Command):
         for (
             component,
             tag_name,
-            revid,
-            pristine_tar_imported,
-            subpath,
+            _revid,
+            _pristine_tar_imported,
+            _subpath,
         ) in db.import_upstream_tarballs(
             tarballs,
             None,
@@ -1602,25 +1615,27 @@ class cmd_builddeb_do(Command):
         apt_repository=None,
         apt_repository_key=None,
     ):
+        """Run."""
         import subprocess
-        from .source_distiller import (
-            MergeModeDistiller,
-        )
+
         from .builder import (
             BuildFailedError,
             DebBuild,
+        )
+        from .hooks import run_hook
+        from .source_distiller import (
+            MergeModeDistiller,
         )
         from .upstream import (
             AptSource,
             UpstreamProvider,
         )
-        from .upstream.uscan import (
-            UScanSource,
-        )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
         )
-        from .hooks import run_hook
+        from .upstream.uscan import (
+            UScanSource,
+        )
         from .util import (
             find_changelog,
             guess_build_type,
@@ -1749,7 +1764,7 @@ class cmd_builddeb_do(Command):
 
 
 class cmd_dep3_patch(Command):
-    """Format the changes in a branch as a DEP-3 patch.
+    r"""Format the changes in a branch as a DEP-3 patch.
 
     This will generate a patch file containing as much information
     specified by DEP-3 (http://dep.debian.net/deps/dep3/) as possible.
@@ -1785,10 +1800,11 @@ class cmd_dep3_patch(Command):
     takes_options = [directory_opt, "revision", "change", no_upstream_check_opt]
 
     def run(self, location=".", directory=".", revision=None, no_upstream_check=False):
+        """Run."""
         from .dep3 import (
+            describe_origin,
             determine_applied_upstream,
             determine_forwarded,
-            describe_origin,
             gather_bugs_and_authors,
             write_dep3_patch,
         )
@@ -1797,7 +1813,7 @@ class cmd_dep3_patch(Command):
             directory
         )[:2]
         self.add_cleanup(packaging_branch.lock_read().unlock)
-        tree, branch = ControlDir.open_containing_tree_or_branch(location)[:2]
+        _tree, branch = ControlDir.open_containing_tree_or_branch(location)[:2]
         self.add_cleanup(branch.lock_read().unlock)
         if revision is not None and len(revision) >= 1:
             revision_id = revision[-1].as_revision_id(branch)
@@ -1860,11 +1876,15 @@ class cmd_dep3_patch(Command):
 
 
 class LocalTree:
+    """LocalTree."""
+
     def __init__(self, branch):
+        """Initialize a local tree."""
         self.branch = branch
         self._td = None
 
     def __enter__(self):
+        """Enter the runtime context."""
         try:
             return self.branch.controldir.open_workingtree()
         except (NoWorkingTree, NotLocalUrl):
@@ -1888,6 +1908,7 @@ class LocalTree:
         return to_dir.open_workingtree()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context."""
         if self._td is not None:
             shutil.rmtree(self._td)
         return False
@@ -1976,6 +1997,7 @@ class cmd_debrelease(Command):
         apt_repository=None,
         apt_repository_key=None,
     ):
+        """Run."""
         from .release import SuccessReleaseMarker
         from .util import (
             dput_changes,

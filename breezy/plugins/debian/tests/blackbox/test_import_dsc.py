@@ -24,7 +24,6 @@ import subprocess
 import tarfile
 
 from .....transport import get_transport
-
 from .. import BuilddebTestCase, Version
 from ..test_import_dsc import PristineTarFeature
 

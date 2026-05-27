@@ -20,25 +20,25 @@
 """Tests for the merge_changelog code."""
 
 import logging
-
 import subprocess
-from testtools.content_type import ContentType
+
 from testtools.content import Content
+from testtools.content_type import ContentType
 
 from .... import (
     merge,
     tests,
 )
+from ....tests.features import ExecutableFeature, Feature
 from ... import debian
 from .. import merge_changelog
-from ....tests.features import ExecutableFeature, Feature
 
 
 class _AlgorithmMergeFeature(Feature):
     def _probe(self):
         try:
             exitcode = subprocess.call(
-                ["perl", "-MAlgorithm::Merge", "-e", "1"],
+                ["perl", "-MAlgorithm::Merge", "-e", "1"],  # noqa: S607
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
@@ -182,10 +182,12 @@ class TestMergeChangelog(tests.TestCase):
         expected_lines,
         this_lines,
         other_lines,
-        base_lines=[],
+        base_lines=None,
         conflicted=False,
         possible_error=False,
     ):
+        if base_lines is None:
+            base_lines = []
         status, merged_lines = merge_changelog.merge_changelog(
             this_lines, other_lines, base_lines
         )
@@ -291,7 +293,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
         # invalid_changelog is missing the author, but dpkg-mergechangelogs
         # copes gracefully with invalid input.
-        status, lines = merge_changelog.merge_changelog(
+        status, _lines = merge_changelog.merge_changelog(
             invalid_changelog, v_111_2, v_111_2
         )
         self.assertEqual("success", status)
@@ -310,7 +312,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         )
 
     def test_invalid_version_starting_non_digit(self):
-        """Invalid version without digit first is rejected or correctly merged
+        """Invalid version without digit first is rejected or correctly merged.
 
         Versions of dpkg prior to 1.16.0.1 merge such changelogs correctly,
         however then a stricter check was introduced that aborts the script.
@@ -340,7 +342,7 @@ pseudo-prog (ss-0) unstable; urgency=low
             )
 
     def test_invalid_version_non_ascii(self):
-        """Invalid version with non-ascii data is rejected or correctly merged
+        """Invalid version with non-ascii data is rejected or correctly merged.
 
         Such a version has always been treated as invalid so fails
         consistently across dpkg versions currently.
@@ -432,6 +434,6 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         params.other_lines = [b""]
         params.base_lines = [b""]
         file_merger = debian.changelog_merge_hook_factory(merger)
-        result, new_content = file_merger.merge_text(params)
+        result, _new_content = file_merger.merge_text(params)
         self.assertEqual("success", result)
         # We ignore the new_content, as we test that elsewhere

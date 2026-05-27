@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Launchpad-specific integrations for the Debian plugin."""
+
 from ...trace import (
     mutter,
 )
@@ -32,6 +34,7 @@ except ImportError:
 
 
 def get_launchpad():
+    """Get launchpad."""
     if not HAVE_LPLIB:
         return None
     return Launchpad.login_anonymously("breezy-debian", service_root=LPNET_SERVICE_ROOT)

@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""APT repository access for Debian source and binary packages."""
+
 import errno
 import os
 import pwd
@@ -22,9 +24,8 @@ import shutil
 import subprocess
 import tempfile
 from threading import Semaphore
-from typing import Optional
 
-from debian.deb822 import Dsc, Deb822
+from debian.deb822 import Deb822, Dsc
 
 from breezy.errors import DependencyNotPresent
 
@@ -37,42 +38,53 @@ class AptSourceError(Exception):
     """An error occured while running 'apt source'."""
 
     def __init__(self, reason):
+        """Initialize a apt source error."""
         self.reason = reason
 
 
 def _convert_apt_pkg_error(e):
     if "28: No space left on device":
-        return IOError(errno.ENOSPC, str(e))
+        return OSError(errno.ENOSPC, str(e))
     return e
 
 
 class Apt:
+    """Apt."""
+
     def __enter__(self):
+        """Enter the runtime context."""
         raise NotImplementedError(self.__enter__)
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
+        """Exit the runtime context."""
         raise NotImplementedError(self.__exit__)
 
     def iter_source_by_name(self, source_name):
+        """Iter source by name."""
         for source in self.iter_sources():
             if source["Package"] == source_name:
                 yield source
 
     def iter_sources(self):
+        """Iter sources."""
         raise NotImplementedError(self.iter_sources)
 
     def iter_binaries(self):
+        """Iter binaries."""
         raise NotImplementedError(self.iter_binaries)
 
     def iter_binary_by_name(self, binary_name):
+        """Iter binary by name."""
         for binary in self.iter_binaries():
             if binary["Package"] == binary_name:
                 yield binary
 
     def retrieve_orig(self, source_name, target_directory, orig_version=None):
+        """Retrieve orig."""
         raise NotImplementedError(self.retrieve_orig)
 
     def retrieve_source(self, source_name, target_directory, source_version=None):
+        """Retrieve source."""
         raise NotImplementedError(self.retrieve_source)
 
 
@@ -80,14 +92,19 @@ _apt_semaphore = Semaphore()
 
 
 class LocalApt(Apt):
+    """LocalApt."""
+
     def __init__(self, rootdir=None):
+        """Initialize a local apt."""
         self.apt_pkg = None
         self._rootdir = rootdir
 
     def __repr__(self):
+        """Return a string representation."""
         return "{}({!r})".format(type(self).__name__, self._rootdir)
 
     def __enter__(self):
+        """Enter the runtime context."""
         try:
             import apt_pkg
         except ImportError as e:
@@ -109,9 +126,11 @@ class LocalApt(Apt):
             self.apt_pkg.config.set("Dir", "/")
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
+        """Exit the runtime context."""
         return False
 
     def iter_sources(self):
+        """Iter sources."""
         with _apt_semaphore:
             self._set_dir()
             try:
@@ -124,6 +143,7 @@ class LocalApt(Apt):
                 yield Dsc(sources.record)
 
     def iter_source_by_name(self, source_name):
+        """Iter source by name."""
         with _apt_semaphore:
             self._set_dir()
             try:
@@ -136,6 +156,7 @@ class LocalApt(Apt):
                 yield Dsc(sources.record)
 
     def iter_binaries(self):
+        """Iter binaries."""
         with _apt_semaphore:
             self._set_dir()
 
@@ -144,6 +165,7 @@ class LocalApt(Apt):
                     yield Deb822(version._records.record)
 
     def iter_binary_by_name(self, binary_name):
+        """Iter binary by name."""
         with _apt_semaphore:
             self._set_dir()
 
@@ -158,6 +180,7 @@ class LocalApt(Apt):
     def retrieve_source(
         self, package_name, target, source_version=None, tar_only=False
     ):
+        """Retrieve source."""
         self._run_apt_source(package_name, target, source_version, tar_only=tar_only)
 
     def _get_command(self, package, version_str=None, tar_only=False):
@@ -181,7 +204,7 @@ class LocalApt(Apt):
         self,
         package: str,
         target_dir,
-        version_str: Optional[str] = None,
+        version_str: str | None = None,
         tar_only: bool = False,
     ):
         command = self._get_command(package, version_str, tar_only=tar_only)
@@ -209,7 +232,10 @@ class LocalApt(Apt):
 
 
 class RemoteApt(LocalApt):
+    """RemoteApt."""
+
     def __init__(self, mirror_uri, distribution=None, components=None, key_path=None):
+        """Initialize a remote apt."""
         super().__init__()
         self.mirror_uri = mirror_uri
         self.distribution = distribution
@@ -218,6 +244,7 @@ class RemoteApt(LocalApt):
         self._rootdir = None
 
     def __repr__(self):
+        """Return a string representation."""
         return "{}({!r}, distribution={!r}, components={!r}, key_path={!r})".format(
             type(self).__name__,
             self.mirror_uri,
@@ -227,6 +254,7 @@ class RemoteApt(LocalApt):
         )
 
     def __enter__(self):
+        """Enter the runtime context."""
         self._rootdir = tempfile.mkdtemp()
         aptdir = os.path.join(self._rootdir, "etc", "apt")
         os.makedirs(aptdir)
@@ -273,10 +301,12 @@ class RemoteApt(LocalApt):
         self.apt_pkg.config.set("Dir", self._rootdir)
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
+        """Exit the runtime context."""
         shutil.rmtree(self._rootdir)
         return False
 
     @classmethod
     def from_string(cls, text, key_path=None):
+        """From string."""
         (mirror_uri, distribution, rest) = text.split(" ", 2)
         return cls(mirror_uri, distribution, rest.split(), key_path=key_path)

@@ -18,35 +18,33 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from typing import Optional
+"""Upstream source backed by pristine-tar."""
 
+import configparser
+import errno
+import os
+import re
+import subprocess
+import tempfile
 from base64 import (
     standard_b64decode,
     standard_b64encode,
 )
-import configparser
-from debian.copyright import globs_to_re
-import errno
 from io import BytesIO
-import os
-import re
-import subprocess
 from tarfile import TarFile
-import tempfile
 
-from .... import debug
-from . import (
-    PackageVersionNotPresent,
-    UpstreamSource,
-)
-from ..util import (
-    export_with_nested,
-    subprocess_setup,
-)
+from debian.copyright import globs_to_re
+from debmutate.vcs import gbp_expand_tag_name
+from debmutate.versions import mangle_version_for_git
 
 from .... import (
     config as _mod_config,
+)
+from .... import (
+    debug,
     osutils,
+)
+from .... import (
     revision as _mod_revision,
 )
 from ....branch import Branch
@@ -65,46 +63,62 @@ from ....trace import (
     warning,
 )
 from ....transport import NoSuchFile
-
+from ..util import (
+    export_with_nested,
+    subprocess_setup,
+)
+from . import (
+    PackageVersionNotPresent,
+    UpstreamSource,
+)
 from .branch import (
-    git_snapshot_data_from_version,
     InvalidRevisionSpec,
     RevisionSpec,
+    git_snapshot_data_from_version,
 )
 from .tags import (
     is_upstream_tag,
     possible_upstream_tag_names,
     search_for_upstream_version,
-    upstream_version_tag_start_revids,
     upstream_tag_version,
+    upstream_version_tag_start_revids,
 )
-from debmutate.vcs import gbp_expand_tag_name
-from debmutate.versions import mangle_version_for_git
 
 
 class PristineTarError(BzrError):
+    """PristineTarError."""
+
     _fmt = "There was an error using pristine-tar: %(error)s."
 
     def __init__(self, error):
+        """Initialize a pristine tar error."""
         BzrError.__init__(self, error=error)
 
 
 class PristineTarDeltaTooLarge(PristineTarError):
+    """PristineTarDeltaTooLarge."""
+
     _fmt = "The delta generated was too large: %(error)s."
 
 
 class PristineTarDeltaAbsent(PristineTarError):
+    """PristineTarDeltaAbsent."""
+
     _fmt = "There is no delta present for %(version)s."
 
     def __init__(self, version):
+        """Initialize a pristine tar delta absent."""
         BzrError.__init__(self, version=version)
 
 
 class PristineTarDeltaExists(PristineTarError):
+    """PristineTarDeltaExists."""
+
     _fmt = "An existing pristine tar entry exists for %(filename)s"
 
 
 def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
+    """Git store pristine tar."""
     tree = branch.create_memorytree()
     with tree.lock_write():
         id_filename = "%s.id" % filename
@@ -151,12 +165,13 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
             raise PristineTarError("pristine-tar is not installed") from e
         else:
             raise
-    (stdout, stderr) = proc.communicate(delta)
+    (stdout, _stderr) = proc.communicate(delta)
     if proc.returncode != 0:
         raise PristineTarError("Generating tar from delta failed: %s" % stdout)
 
 
 def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
+    """Commit pristine tar."""
     tarball_path = osutils.abspath(tarball_path)
     command = ["pristine-tar", "commit", tarball_path]
     if upstream:
@@ -232,6 +247,7 @@ def make_pristine_tar_delta(dest, tarball_path):
 
 
 def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=None):
+    """Make pristine tar delta from tree."""
     with tempfile.TemporaryDirectory(prefix="builddeb-pristine-") as tmpdir:
         dest = os.path.join(tmpdir, "orig")
         with tree.lock_read():
@@ -260,6 +276,7 @@ def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=N
 
 
 def revision_has_pristine_tar_delta(rev):
+    """Revision has pristine tar delta."""
     return (
         "deb-pristine-delta" in rev.properties
         or "deb-pristine-delta-bz2" in rev.properties
@@ -268,6 +285,7 @@ def revision_has_pristine_tar_delta(rev):
 
 
 def revision_pristine_tar_delta(rev):
+    """Revision pristine tar delta."""
     if "deb-pristine-delta" in rev.properties:
         uuencoded = rev.properties["deb-pristine-delta"]
     elif "deb-pristine-delta-bz2" in rev.properties:
@@ -281,6 +299,7 @@ def revision_pristine_tar_delta(rev):
 
 
 def revision_pristine_tar_format(rev):
+    """Revision pristine tar format."""
     if "deb-pristine-delta" in rev.properties:
         return "gz"
     elif "deb-pristine-delta-bz2" in rev.properties:
@@ -292,6 +311,8 @@ def revision_pristine_tar_format(rev):
 
 
 class BasePristineTarSource(UpstreamSource):
+    """BasePristineTarSource."""
+
     branch: Branch
 
     def _has_revision(self, revid, md5):
@@ -299,14 +320,16 @@ class BasePristineTarSource(UpstreamSource):
 
     def possible_tag_names(
         self,
-        package: Optional[str],
+        package: str | None,
         version: str,
-        component: Optional[str],
+        component: str | None,
         try_hard: bool = True,
     ):
+        """Possible tag names."""
         raise NotImplementedError(self.possible_tag_names)
 
     def tag_name(self, version, component=None, distro=None):
+        """Tag name."""
         raise NotImplementedError(self.tag_name)
 
     def tag_version(self, version, revid, component=None):
@@ -337,6 +360,7 @@ class BasePristineTarSource(UpstreamSource):
         return ret.items()
 
     def version_as_revisions(self, package, version, tarballs=None):
+        """Version as revisions."""
         if tarballs is None:
             # FIXME: What if there are multiple tarballs?
             return {
@@ -345,22 +369,23 @@ class BasePristineTarSource(UpstreamSource):
                 )
             }
         ret = {}
-        for tarball, component, md5 in tarballs:
+        for _tarball, component, md5 in tarballs:
             ret[component] = self.version_component_as_revision(
                 package, version, component, md5
             )
         return ret
 
     def version_tag(
-        self, package: Optional[str], version: str, tarballs=None, try_hard=True
-    ) -> Optional[str]:
+        self, package: str | None, version: str, tarballs=None, try_hard=True
+    ) -> str | None:
+        """Version tag."""
         if tarballs is None:
             return self.has_version_component(
                 package, version, component=None, try_hard=try_hard
             )
         else:
             tag = None
-            for tarball, component, md5 in tarballs:
+            for _tarball, component, md5 in tarballs:
                 tag = self.has_version_component(
                     package, version, component, md5, try_hard=try_hard
                 )
@@ -369,8 +394,9 @@ class BasePristineTarSource(UpstreamSource):
             return tag
 
     def has_version(
-        self, package: Optional[str], version: str, tarballs=None, try_hard=True
+        self, package: str | None, version: str, tarballs=None, try_hard=True
     ) -> bool:
+        """Has version."""
         return (
             self.version_tag(package, version, tarballs=tarballs, try_hard=try_hard)
             is not None
@@ -387,11 +413,12 @@ class BasePristineTarSource(UpstreamSource):
 
     def version_component_as_revision(
         self,
-        package: Optional[str],
+        package: str | None,
         version: str,
-        component: Optional[str],
-        md5: Optional[str] = None,
+        component: str | None,
+        md5: str | None = None,
     ) -> tuple[RevisionID, str]:
+        """Version component as revision."""
         with self.branch.lock_read():
             for tag_name in self.possible_tag_names(
                 package, version, component=component
@@ -405,7 +432,7 @@ class BasePristineTarSource(UpstreamSource):
                         return revid, ""
             # Note that we don't check *all* possible revids here,
             # since some of them are branch-local (such as revno:)
-            (git_id, git_date) = git_snapshot_data_from_version(version)
+            (git_id, _git_date) = git_snapshot_data_from_version(version)
             if git_id:
                 try:
                     revspec = RevisionSpec.from_string("git:%s" % git_id)
@@ -432,8 +459,9 @@ class BasePristineTarSource(UpstreamSource):
         raise NotImplementedError(self._search_for_upstream_version)
 
     def has_version_component(
-        self, package: Optional[str], version: str, component, md5=None, try_hard=True
-    ) -> Optional[str]:
+        self, package: str | None, version: str, component, md5=None, try_hard=True
+    ) -> str | None:
+        """Has version component."""
         for tag_name in self.possible_tag_names(
             package, version, component=component, try_hard=try_hard
         ):
@@ -451,9 +479,11 @@ class BzrPristineTarSource(BasePristineTarSource):
     """Source that uses the pristine-tar revisions in the packaging branch."""
 
     def __init__(self, branch):
+        """Initialize a bzr pristine tar source."""
         self.branch = branch
 
     def __repr__(self):
+        """Return a string representation."""
         return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
 
     def tag_name(self, version, component=None, distro=None):
@@ -512,14 +542,13 @@ class BzrPristineTarSource(BasePristineTarSource):
             files_excluded_re = None
 
         def include_change(c):
+            """Include change."""
             path = c.path[1]
             if path is None:
                 return True
             if exclude and osutils.is_inside_any(exclude, path):
                 return False
-            if files_excluded_re and files_excluded_re.match(path):
-                return False
-            return True
+            return not (files_excluded_re and files_excluded_re.match(path))
 
         message = "Import upstream version {}".format(version)
         revprops = {}
@@ -598,6 +627,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         return tag_name, revid, delta is not None
 
     def fetch_component_tarball(self, package, version, component, target_dir):
+        """Fetch component tarball."""
         revid, subpath = self.version_component_as_revision(package, version, component)
         assert subpath == ""
         try:
@@ -623,16 +653,18 @@ class BzrPristineTarSource(BasePristineTarSource):
 
     def possible_tag_names(
         self,
-        package: Optional[str],
+        package: str | None,
         version: str,
-        component: Optional[str],
+        component: str | None,
         try_hard: bool = True,
     ):
+        """Possible tag names."""
         return possible_upstream_tag_names(
             package, version, component, try_hard=try_hard
         )
 
     def get_pristine_tar_delta(self, package, version, dest_filename, revid=None):
+        """Get pristine tar delta."""
         rev = self.branch.repository.get_revision(revid)
         if revision_has_pristine_tar_delta(rev):
             return revision_pristine_tar_delta(rev)
@@ -671,6 +703,7 @@ class BzrPristineTarSource(BasePristineTarSource):
             return True
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         note("Looking for upstream tarball in local branch.")
         if components is None:
             # Scan tags for components
@@ -708,6 +741,7 @@ class BzrPristineTarSource(BasePristineTarSource):
 
 
 def get_pristine_tar_source(packaging_tree, packaging_branch):
+    """Get pristine tar source."""
     git = getattr(packaging_branch.repository, "_git", None)
     if git:
         return GitPristineTarSource.from_tree(packaging_tree, packaging_branch)
@@ -715,55 +749,71 @@ def get_pristine_tar_source(packaging_tree, packaging_branch):
 
 
 class PristineTarDelta:
+    """PristineTarDelta."""
+
     def __init__(self, tar):
+        """Initialize a pristine tar delta."""
         self._tar = tar
 
     @classmethod
     def from_bytes(cls, data):
+        """From bytes."""
         tar = TarFile.gzopen(name="delta.tar.gz", fileobj=BytesIO(data))
         return cls(tar)
 
     def root(self):
+        """Root."""
         return os.path.commonpath(self.manifest())
 
     @property
     def version(self):
+        """Version."""
         return int(self._tar.extractfile("version").read().strip())
 
     @property
     def type(self):
+        """Type."""
         return self._tar.extractfile("type").read().strip()
 
     @property
     def sha256sum(self):
+        """Sha256sum."""
         return self._tar.extractfile("sha256sum").read().strip()
 
     def manifest(self):
+        """Manifest."""
         return self._tar.extractfile("manifest").readlines(False)
 
     def delta(self):
+        """Delta."""
         return self._tar.extractfile("delta").read()
 
     def wrapper(self):
+        """Wrapper."""
         return self._tar.extractfile("wrapper").read()
 
 
 class GitPristineTarSource(BasePristineTarSource):
+    """GitPristineTarSource."""
+
     SUFFIXES = ["tar.gz", "tar.lzma", "tar.xz", "tar.bz2"]
 
     def __init__(
         self, branch, gbp_tag_format=None, pristine_tar=None, packaging_branch=None
     ):
+        """Initialize a git pristine tar source."""
         self.branch = branch
         self.gbp_tag_format = gbp_tag_format
         self.pristine_tar = pristine_tar
         self.packaging_branch = packaging_branch
 
     def __repr__(self):
+        """Return a string representation."""
         return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
 
     @classmethod
     def from_tree(cls, tree, packaging_branch=None):
+        """From tree."""
         if tree and tree.has_filename("debian/gbp.conf"):
             parser = configparser.ConfigParser(
                 defaults={
@@ -864,14 +914,13 @@ class GitPristineTarSource(BasePristineTarSource):
             files_excluded_re = None
 
         def include_change(c):
+            """Include change."""
             path = c.path[1]
             if path is None:
                 return True
             if exclude and osutils.is_inside_any(exclude, path):
                 return False
-            if files_excluded_re and files_excluded_re.match(path):
-                return False
-            return True
+            return not (files_excluded_re and files_excluded_re.match(path))
 
         message = "Import upstream version {}".format(version)
         revprops = {}
@@ -972,6 +1021,7 @@ class GitPristineTarSource(BasePristineTarSource):
         return tag_name, revid, pristine_tar_imported
 
     def fetch_component_tarball(self, package, version, component, target_dir):
+        """Fetch component tarball."""
         note("Using pristine-tar to reconstruct %s/%s.", package, version)
         try:
             target_filename = self.reconstruct_pristine_tar(
@@ -1006,11 +1056,12 @@ class GitPristineTarSource(BasePristineTarSource):
 
     def possible_tag_names(
         self,
-        package: Optional[str],
+        package: str | None,
         version: str,
-        component: Optional[str],
+        component: str | None,
         try_hard: bool = True,
     ):
+        """Possible tag names."""
         tags = []
         if self.gbp_tag_format:
             tags.append(
@@ -1025,6 +1076,7 @@ class GitPristineTarSource(BasePristineTarSource):
         return tags
 
     def get_pristine_tar_delta(self, package, version):
+        """Get pristine tar delta."""
         try:
             pristine_tar_branch = self.branch.controldir.open_branch("pristine-tar")
         except NotBranchError:
@@ -1050,7 +1102,7 @@ class GitPristineTarSource(BasePristineTarSource):
     def reconstruct_pristine_tar(self, package, version, component, target_dir):
         """Reconstruct a pristine-tar tarball from a git revision."""
         try:
-            (dest_filename, delta_bytes, delta_id, delta_sig) = (
+            (dest_filename, _delta_bytes, _delta_id, _delta_sig) = (
                 self.get_pristine_tar_delta(package, version)
             )
         except PristineTarDeltaAbsent:
@@ -1069,7 +1121,7 @@ class GitPristineTarSource(BasePristineTarSource):
             dest_filename = os.path.join(target_dir, dest_filename)
             try:
                 subprocess.check_call(
-                    ["pristine-tar", "checkout", dest_filename],
+                    ["pristine-tar", "checkout", dest_filename],  # noqa: S607
                     cwd=self.branch.repository.user_transport.local_abspath("."),
                 )
             except subprocess.CalledProcessError as e:
@@ -1118,6 +1170,7 @@ class GitPristineTarSource(BasePristineTarSource):
         return ret
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         note("Looking for upstream tarball in local branch.")
         if components is None:
             # Scan tags for components
@@ -1136,7 +1189,7 @@ class GitPristineTarSource(BasePristineTarSource):
         ]
 
     def _search_for_upstream_version(
-        self, package: Optional[str], version: str, component, md5=None
+        self, package: str | None, version: str, component, md5=None
     ):
         start_revids = []
         sources = []

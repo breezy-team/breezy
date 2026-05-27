@@ -19,21 +19,20 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from debian import deb822
-from debian.changelog import Version
 import os
 
-from ..extract import (
-    OneZeroSourceExtractor,
-    SOURCE_EXTRACTORS,
-    ThreeDotZeroNativeSourceExtractor,
-    ThreeDotZeroQuiltSourceExtractor,
-)
+from debian import deb822
+from debian.changelog import Version
 
 from .... import (
     tests,
 )
-
+from ..extract import (
+    SOURCE_EXTRACTORS,
+    OneZeroSourceExtractor,
+    ThreeDotZeroNativeSourceExtractor,
+    ThreeDotZeroQuiltSourceExtractor,
+)
 from . import (
     SourcePackageBuilder,
 )

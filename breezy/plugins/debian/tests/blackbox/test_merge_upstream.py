@@ -21,17 +21,16 @@
 import os.path
 
 from ..... import export
-
-from .. import (
-    BuilddebTestCase,
-    SourcePackageBuilder,
-)
 from ...import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
 )
 from ...util import (
     md5sum_filename,
+)
+from .. import (
+    BuilddebTestCase,
+    SourcePackageBuilder,
 )
 
 

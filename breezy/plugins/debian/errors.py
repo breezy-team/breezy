@@ -18,10 +18,14 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Exception classes shared by the Debian plugin."""
+
 from ...errors import BzrError
 
 
 class MultipleUpstreamTarballsNotSupported(BzrError):
+    """MultipleUpstreamTarballsNotSupported."""
+
     _fmt = (
         "Importing packages using source format 3.0 multiple tarballs "
         "is not yet supported."

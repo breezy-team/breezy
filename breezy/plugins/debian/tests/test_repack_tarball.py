@@ -23,15 +23,14 @@ import shutil
 import tarfile
 
 from ....transport import (
-    NoSuchFile,
     FileExists,
+    NoSuchFile,
 )
-
 from ..repack_tarball import (
-    repack_tarball,
+    UnsupportedRepackFormat,
     get_filetype,
     get_repacker_class,
-    UnsupportedRepackFormat,
+    repack_tarball,
 )
 from . import TestCaseInTempDir
 
@@ -54,7 +53,7 @@ class TestRepackTarball(TestCaseInTempDir):
     new_tarball = "package_0.2.orig.tar.gz"
 
     def create_basedir(self):
-        """Create the basedir that the source can be built from"""
+        """Create the basedir that the source can be built from."""
         os.mkdir(self.basedir)
         for filename in [os.path.join(self.basedir, file) for file in self.files]:
             if filename.endswith("/"):

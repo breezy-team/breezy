@@ -18,15 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Directory service implementations for resolving Debian package URLs."""
+
+from debian.changelog import Version
+from debian.deb822 import Deb822
+from debmutate.vcs import source_package_vcs, split_vcs_url
+
 from ... import urlutils
 from ...directory_service import directories
 from ...errors import DependencyNotPresent
 from ...trace import note, warning
-
-from debian.deb822 import Deb822
-from debian.changelog import Version
-
-from debmutate.vcs import source_package_vcs, split_vcs_url
 
 
 def fixup_broken_git_url(url):
@@ -91,22 +92,27 @@ def vcs_git_url_to_bzr_url(url):
 
 
 def vcs_bzr_url_to_bzr_url(url):
+    """Vcs bzr url to bzr url."""
     return directories.dereference(url)
 
 
 def vcs_darcs_url_to_bzr_url(url):
+    """Vcs darcs url to bzr url."""
     return url
 
 
 def vcs_mtn_url_to_bzr_url(url):
+    """Vcs mtn url to bzr url."""
     return url
 
 
 def vcs_arch_url_to_bzr_url(url):
+    """Vcs arch url to bzr url."""
     return url
 
 
 def vcs_cvs_url_to_bzr_url(location):
+    """Vcs cvs url to bzr url."""
     from breezy.location import cvs_to_url
 
     try:
@@ -121,6 +127,7 @@ def vcs_cvs_url_to_bzr_url(location):
 
 
 def vcs_hg_url_to_bzr_url(url):
+    """Vcs hg url to bzr url."""
     (url, branch, subpath) = split_vcs_url(url)
 
     if branch:
@@ -132,6 +139,7 @@ def vcs_hg_url_to_bzr_url(url):
 
 
 def vcs_svn_url_to_bzr_url(url):
+    """Vcs svn url to bzr url."""
     return url
 
 
@@ -157,6 +165,7 @@ class AptDirectory:
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
     def look_up(self, name, url, purpose=None):
+        """Look up."""
         if "/" in name:
             (name, version) = name.split("/", 1)
         else:
@@ -187,7 +196,7 @@ class AptDirectory:
         control = Deb822(by_version[version])
 
         try:
-            vcs, url = source_package_vcs_url(control)
+            _vcs, url = source_package_vcs_url(control)
         except KeyError as e:
             note("Retrieving Vcs locating from %s Debian version %s", name, version)
             raise urlutils.InvalidURL(path=url, extra="no VCS URL found") from e
@@ -200,6 +209,7 @@ class DgitDirectory:
     """Directory that looks up the URL according to a Dgit control field."""
 
     def look_up(self, name, url, purpose=None):
+        """Look up."""
         if "/" in name:
             (name, version) = name.split("/", 1)
         else:
@@ -250,15 +260,17 @@ class VcsDirectory:
     """Use local Vcs Directory."""
 
     def look_up(self, name, url, purpose=None):
+        """Look up."""
         from debian.deb822 import Deb822
 
         with open("debian/control") as f:
             source = Deb822(f)
-            vcs, url = source_package_vcs_url(source)
+            _vcs, url = source_package_vcs_url(source)
             return url
 
 
 def upstream_branch_alias(b):
+    """Upstream branch alias."""
     from .util import debuild_config
 
     with b.lock_read():

@@ -22,13 +22,12 @@ import os
 from debian.changelog import Version
 
 from ....transport import FileExists
-
-from ..upstream import MissingUpstreamTarball
 from ..source_distiller import (
     FullSourceDistiller,
     MergeModeDistiller,
     NativeSourceDistiller,
 )
+from ..upstream import MissingUpstreamTarball
 from . import (
     SourcePackageBuilder,
     TestCaseWithTransport,

@@ -16,6 +16,8 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""Plugin metadata and constants for breezy-debian."""
+
 brz_plugin_name = "debian"
 
 brz_plugin_version = (2, 8, 72, "final", 0)
@@ -29,9 +31,11 @@ brz_commands = [
 
 
 def versions_dict():
-    import breezy
+    """Versions dict."""
     import debian
     import debmutate
+
+    import breezy
 
     return {
         "python-debian": debian.__version__,

@@ -26,6 +26,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Merge new upstream releases into Debian packaging branches."""
+
 import os
 import tempfile
 
@@ -35,7 +37,6 @@ from debmutate.versions import new_package_version
 from ... import osutils
 from ...revision import NULL_REVISION
 from ...trace import note
-
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
@@ -43,13 +44,12 @@ from .import_dsc import (
 )
 from .repack_tarball import repack_tarball
 from .util import (
+    FORMAT_3_0_NATIVE,
+    FORMAT_3_0_QUILT,
     component_from_orig_tarball,
     tarball_name,
-    FORMAT_3_0_QUILT,
-    FORMAT_3_0_NATIVE,
     tree_get_source_format,
 )
-
 
 TAG_PREFIX = "upstream-"
 
@@ -208,6 +208,7 @@ def do_merge(
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):
+    """Fetch tarball."""
     ret = []
     format = None
     for location in locations:
@@ -234,6 +235,7 @@ def get_tarballs(orig_dir, tree, package, version, locations):
 
 
 def get_upstream_branch_location(tree, subpath, config, trust_package=False):
+    """Get upstream branch location."""
     from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
 
     if config.upstream_branch is not None:
@@ -269,6 +271,7 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
 def get_existing_imported_upstream_revids(
     upstream_source, package, new_upstream_version
 ):
+    """Get existing imported upstream revids."""
     imported_revids = []
     for component, (revid, subpath) in upstream_source.version_as_revisions(
         package, new_upstream_version

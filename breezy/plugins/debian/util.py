@@ -18,25 +18,26 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Miscellaneous utilities used across the Debian plugin."""
+
 import errno
 import hashlib
-import signal
-import shutil
-import subprocess
-import tempfile
 import os
 import re
-from typing import Optional, Tuple, Iterator
+import shutil
+import signal
+import subprocess
+import tempfile
+from collections.abc import Iterator
 
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError, Version
 from debian.copyright import Copyright, NotMachineReadableError
-
 from debmutate.changelog import (
     changes_by_author,
-    find_thanks,
     find_extra_authors,
     find_last_distribution,
+    find_thanks,
     strip_changelog_message,
 )
 from debmutate.versions import get_snapshot_revision
@@ -70,10 +71,10 @@ from . import (
     global_conf,
 )
 from .config import (
-    DebBuildConfig,
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
+    DebBuildConfig,
 )
 from .errors import (
     BzrError,
@@ -88,9 +89,12 @@ LOCAL_CONF = os.path.join(BUILDDEB_DIR, "local.conf")
 
 
 class MissingChangelogError(BzrError):
+    """MissingChangelogError."""
+
     _fmt = "Could not find changelog at %(location)s in tree."
 
     def __init__(self, locations):
+        """Initialize a missing changelog error."""
         BzrError.__init__(self, location=locations)
 
 
@@ -117,12 +121,14 @@ def _get_release_names():
 
 
 def debian_releases():
+    """Debian releases."""
     if _DEBIAN_RELEASES is None:
         _get_release_names()
     return _DEBIAN_RELEASES
 
 
 def ubuntu_releases():
+    """Ubuntu releases."""
     if _UBUNTU_RELEASES is None:
         _get_release_names()
     return _UBUNTU_RELEASES
@@ -156,9 +162,12 @@ def recursive_copy(fromdir, todir):
 
 
 class AddChangelogError(BzrError):
+    """AddChangelogError."""
+
     _fmt = 'Please add "%(changelog)s" to the branch using bzr add.'
 
     def __init__(self, changelog):
+        """Initialize a add changelog error."""
         BzrError.__init__(self, changelog=changelog)
 
 
@@ -285,7 +294,7 @@ def md5sum_filename(filename):
     :param filename: Path of the file to checksum
     :return: MD5 Checksum as hex digest
     """
-    m = hashlib.md5()
+    m = hashlib.md5(usedforsecurity=False)
     with open(filename, "rb") as f:
         for line in f:
             m.update(line)
@@ -316,7 +325,7 @@ def write_if_different(contents, target):
     :param contents: The contents to write, as a string
     :param target: Path of the target file
     """
-    md5sum = hashlib.md5()
+    md5sum = hashlib.md5(usedforsecurity=False)
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
     fobj = os.fdopen(fd, "wb")
@@ -372,9 +381,11 @@ def open_file_via_transport(filename, transport):
     """Open a file using the transport, follow redirects as necessary."""
 
     def open_file(transport):
+        """Open file."""
         return transport.get(filename)
 
     def follow_redirection(transport, e, redirection_notice):
+        """Follow redirection."""
         mutter(redirection_notice)
         _filename, redirected_transport = open_transport(e.target)
         return redirected_transport
@@ -408,14 +419,17 @@ def _dget(cls, dsc_location, target_dir):
 
 
 def dget(dsc_location, target_dir):
+    """Dget."""
     return _dget(deb822.Dsc, dsc_location, target_dir)
 
 
 def dget_changes(changes_location, target_dir):
+    """Dget changes."""
     return _dget(deb822.Changes, changes_location, target_dir)
 
 
 def get_parent_dir(target):
+    """Get parent dir."""
     parent = os.path.dirname(target)
     if os.path.basename(target) == "":
         parent = os.path.dirname(parent)
@@ -433,7 +447,7 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     if _lplib is None:
         from . import launchpad as _lplib
     bugs = []
-    for new_author, linenos, lines in changes_by_author(changes):
+    for _new_author, _linenos, lines in changes_by_author(changes):
         for match in re.finditer(
             "closes:\\s*(?:bug)?\\#?\\s?\\d+(?:,\\s*(?:bug)?\\#?\\s?\\d+)*",
             "".join(lines),
@@ -495,6 +509,7 @@ def subprocess_setup():
     # Python installs a SIGPIPE handler by default. This is usually not what
     # non-Python subprocesses expect.
     # Many, many thanks to Colin Watson
+    """Subprocess setup."""
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
@@ -536,6 +551,8 @@ def debuild_config(tree, subpath):
 
 
 class UnableToFindPreviousUpload(BzrError):
+    """UnableToFindPreviousUpload."""
+
     _fmt = "Unable to determine the previous upload for --package-merge."
 
 
@@ -564,9 +581,12 @@ def find_previous_upload(tree, subpath, merge=False):
 
 
 class NoPreviousUpload(BzrError):
+    """NoPreviousUpload."""
+
     _fmt = "There was no previous upload to %(distribution)s."
 
     def __init__(self, distribution):
+        """Initialize a no previous upload."""
         BzrError.__init__(self, distribution=distribution)
 
 
@@ -642,6 +662,8 @@ NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 
 class InconsistentSourceFormatError(BzrError):
+    """InconsistentSourceFormatError."""
+
     _fmt = (
         "Inconsistency between source format and version: "
         "version %(version)s is %(version_bool)snative, "
@@ -649,6 +671,7 @@ class InconsistentSourceFormatError(BzrError):
     )
 
     def __init__(self, version_native, format_native, version_str, format_str):
+        """Initialize a inconsistent source format error."""
         if version_native:
             version_bool = ""
         else:
@@ -713,6 +736,7 @@ def guess_build_type(tree, version, subpath="", contains_upstream_source=True):
 
 
 def component_from_orig_tarball(tarball_filename, package, version):
+    """Component from orig tarball."""
     tarball_filename = os.path.basename(tarball_filename)
     prefix = f"{package}_{version}.orig"
     if not tarball_filename.startswith(prefix):
@@ -739,13 +763,17 @@ def component_from_orig_tarball(tarball_filename, package, version):
 
 
 class TarFailed(BzrError):
+    """TarFailed."""
+
     _fmt = "There was an error executing tar to %(operation)s %(tarball)s: %(error)s."
 
     def __init__(self, operation, tarball, error):
+        """Initialize a tar failed."""
         BzrError.__init__(self, operation=operation, tarball=tarball, error=error)
 
 
 def needs_strip_components(tf):
+    """Needs strip components."""
     top_level_directories = set()
     for name in tf.getnames():
         top_level_directories.add(name.split("/")[0])
@@ -753,7 +781,7 @@ def needs_strip_components(tf):
 
 
 def extract_orig_tarball(
-    tarball_filename, component, target, strip_components: Optional[bool] = None
+    tarball_filename, component, target, strip_components: bool | None = None
 ) -> None:
     """Extract an orig tarball.
 
@@ -800,7 +828,7 @@ def extract_orig_tarball(
     proc = subprocess.Popen(
         tar_args, preexec_fn=subprocess_setup, stderr=subprocess.PIPE
     )
-    (stdout, stderr) = proc.communicate()
+    (_stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise TarFailed("extract", tarball_filename, error=stderr)
 
@@ -820,12 +848,13 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
 def dput_changes(path: str) -> None:
     """Upload a package."""
     (bd, changes_file) = os.path.split(path)
-    subprocess.check_call(["dput", changes_file], cwd=bd)
+    subprocess.check_call(["dput", changes_file], cwd=bd)  # noqa: S607
 
 
 def find_changes_files(
     path: str, package: str, version: Version
-) -> Iterator[Tuple[str, os.DirEntry]]:
+) -> Iterator[tuple[str, os.DirEntry]]:
+    """Find changes files."""
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
@@ -839,6 +868,7 @@ def find_changes_files(
 
 
 def get_files_excluded(tree, subpath="", top_level=False):
+    """Get files excluded."""
     if top_level:
         path = os.path.join(subpath, "copyright")
     else:
@@ -855,15 +885,14 @@ def get_files_excluded(tree, subpath="", top_level=False):
 
 
 def control_files_in_root(tree: Tree, subpath: str) -> bool:
+    """Control files in root."""
     debian_path = os.path.join(subpath, "debian")
     if tree.has_filename(debian_path):
         return False
     control_path = os.path.join(subpath, "control")
     if tree.has_filename(control_path):
         return True
-    if tree.has_filename(control_path + ".in"):
-        return True
-    return False
+    return bool(tree.has_filename(control_path + ".in"))
 
 
 def full_branch_url(branch):
@@ -890,6 +919,7 @@ def detect_version_kind(upstream_version):
 
 
 def export_with_nested(tree, dest, **kwargs):
+    """Export with nested."""
     with tree.lock_read():
         try:
             return export(tree, dest, recurse_nested=True, **kwargs)
@@ -899,7 +929,8 @@ def export_with_nested(tree, dest, **kwargs):
             raise
 
 
-def debsign(path: str, keyid: Optional[str] = None) -> None:
+def debsign(path: str, keyid: str | None = None) -> None:
+    """Debsign."""
     (bd, changes_file) = os.path.split(path)
     args = ["debsign"]
     if keyid:

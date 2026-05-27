@@ -23,15 +23,15 @@ from breezy.tests.scenarios import (
     multiply_scenarios,
 )
 
-from ..bzrtools_import import import_dir
 from .. import tests
+from ..bzrtools_import import import_dir
 
 load_tests = load_tests_apply_scenarios
 
 
 class ImportArchiveTests(tests.TestCaseWithTransport):
     scenarios = multiply_scenarios(
-        [("git", dict(_format="git")), ("bzr", dict(_format="bzr"))]
+        [("git", {"_format": "git"}), ("bzr", {"_format": "bzr"})]
     )
 
     def make_branch_and_tree(self, path):

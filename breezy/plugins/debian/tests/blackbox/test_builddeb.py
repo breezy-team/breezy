@@ -31,7 +31,8 @@ class TestBuilddeb(BuilddebTestCase):
     def make_unpacked_source(self):
         """Create an unpacked source tree in a branch.
 
-        Return the working tree"""
+        Return the working tree
+        """
         tree = self.make_branch_and_tree(".")
         cl_file = "debian/changelog"
         source_files = ["README", "debian/"] + [cl_file]
@@ -102,7 +103,7 @@ class TestBuilddeb(BuilddebTestCase):
         self.assertNotInBuildDir([self.unadded_file])
 
     def test_builddeb_refuses_tree_with_conflicts(self):
-        (conflicts, tree) = self.build_tree_with_conflict()
+        (conflicts, _tree) = self.build_tree_with_conflict()
         self.assertTrue(conflicts)
         self.run_bzr_error(
             ["There are conflicts in the working tree. You must resolve these"],
@@ -184,8 +185,8 @@ class TestBuilddeb(BuilddebTestCase):
         self.assertInBuildDir(["pre-build", "post-build"])
 
     def test_utf8_changelog(self):
-        from ... import debian_changelog_commit
         from .....msgeditor import hooks
+        from ... import debian_changelog_commit
 
         hooks.install_named_hook(
             "set_commit_message",

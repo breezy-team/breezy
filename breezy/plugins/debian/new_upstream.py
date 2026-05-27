@@ -25,26 +25,25 @@ import socket
 import ssl
 import tempfile
 import traceback
-from typing import Optional, Callable, Union
+from collections.abc import Callable
 
-from breezy.bzr import LineEndingError
-from breezy.git.remote import RemoteGitError
+from debian.changelog import ChangelogParseError, Version
+
 import breezy.plugins.launchpad  # noqa: F401
-from breezy.workingtree import WorkingTree
-
-from debian.changelog import Version, ChangelogParseError
-
 from breezy import errors, urlutils
-
 from breezy.branch import Branch
+from breezy.bzr import LineEndingError
 from breezy.controldir import ControlDir
 from breezy.errors import (
+    InvalidHttpResponse,
     InvalidNormalization,
     NoCommits,
-    InvalidHttpResponse,
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
+from breezy.git.remote import RemoteGitError
+from breezy.workingtree import WorkingTree
+
 try:
     from breezy.transport import (
         FileExists,
@@ -60,94 +59,87 @@ except ImportError:
         UnusableRedirect,
     )
 
-from breezy.workingtree import PointlessMerge
+from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
+from debmutate.reformatting import GeneratedFile
+from debmutate.vcs import split_vcs_url
+from debmutate.versions import (
+    add_dfsg_suffix,
+    debianize_upstream_version,
+    initial_debian_revision,
+    matches_release,
+    new_upstream_package_version,
+    strip_dfsg_suffix,
+)
+from debmutate.watch import WatchSyntaxError
+
+from breezy.transform import MalformedTransform
 from breezy.transport import (
     Transport,
     get_transport,
 )
+from breezy.tree import MissingNestedTree, Tree
+from breezy.workingtree import PointlessMerge
+
+from .changelog import debcommit
 from .config import UpstreamMetadataSyntaxError
-from .info import versions_dict
-from .util import (
-    InconsistentSourceFormatError,
-)
 from .import_dsc import (
+    CorruptUpstreamSourceFile,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
-    CorruptUpstreamSourceFile,
 )
-from .changelog import debcommit
-
-from breezy.transform import MalformedTransform
-
+from .info import versions_dict
 from .merge_upstream import (
-    get_upstream_branch_location,
     do_import,
     do_merge,
     get_existing_imported_upstream_revids,
     get_tarballs,
+    get_upstream_branch_location,
 )
 from .repack_tarball import (
     UnsupportedRepackFormat,
 )
-
+from .upstream import (
+    MissingUpstreamTarball,
+    PackageVersionNotPresent,
+    TarfileSource,
+)
+from .upstream.branch import (
+    DistCommandFailed,
+    PreviousVersionTagMissing,
+    UpstreamBranchSource,
+    run_dist_command,
+)
 from .upstream.pristinetar import (
     PristineTarError,
     get_pristine_tar_source,
 )
-
-from .util import (
-    debuild_config,
-    guess_build_type,
-    get_files_excluded,
-    tree_contains_upstream_source,
-    BUILD_TYPE_MERGE,
-    BUILD_TYPE_NATIVE,
-    find_changelog,
-    MissingChangelogError,
-    control_files_in_root,
-    full_branch_url,
-)
-
-from .upstream import (
-    TarfileSource,
-    MissingUpstreamTarball,
-    PackageVersionNotPresent,
-)
 from .upstream.uscan import (
-    UScanSource,
-    UScanError,
     NoWatchFile,
+    UScanError,
+    UScanSource,
     WatchLineWithoutMatches,
     WatchLineWithoutMatchingHrefs,
 )
-from .upstream.branch import (
-    UpstreamBranchSource,
-    DistCommandFailed,
-    run_dist_command,
-    PreviousVersionTagMissing,
+from .util import (
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NATIVE,
+    InconsistentSourceFormatError,
+    MissingChangelogError,
+    control_files_in_root,
+    debuild_config,
+    find_changelog,
+    full_branch_url,
+    get_files_excluded,
+    guess_build_type,
+    tree_contains_upstream_source,
 )
-
-from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
-from debmutate.reformatting import GeneratedFile
-from debmutate.versions import (
-    add_dfsg_suffix,
-    strip_dfsg_suffix,
-    matches_release,
-    new_upstream_package_version,
-    initial_debian_revision,
-    debianize_upstream_version,
-)
-
-from debmutate.vcs import split_vcs_url
-from debmutate.watch import WatchSyntaxError
-
-from breezy.tree import Tree, MissingNestedTree
 
 
 class BigVersionJump(Exception):
     """There was a big version jump."""
 
     def __init__(self, old_upstream_version, new_upstream_version):
+        """Initialize a big version jump."""
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
 
@@ -156,6 +148,7 @@ class DistMissingNestedTree(Exception):
     """Dist failed to find a nested tree."""
 
     def __init__(self, path):
+        """Initialize a dist missing nested tree."""
         self.path = path
 
 
@@ -163,6 +156,7 @@ class UpstreamMergeConflicted(Exception):
     """The upstream merge resulted in conflicts."""
 
     def __init__(self, upstream_version, conflicts):
+        """Initialize a upstream merge conflicted."""
         self.version = upstream_version
         self.conflicts = conflicts
 
@@ -171,6 +165,7 @@ class UpstreamAlreadyMerged(Exception):
     """Upstream release (or later version) has already been merged."""
 
     def __init__(self, upstream_version):
+        """Initialize a upstream already merged."""
         self.version = upstream_version
 
 
@@ -178,6 +173,7 @@ class UpstreamBranchLocationInvalid(Exception):
     """Upstream branch location is invalid."""
 
     def __init__(self, url, extra):
+        """Initialize a upstream branch location invalid."""
         self.url = url
         self.extra = extra
 
@@ -186,6 +182,7 @@ class InvalidFormatUpstreamVersion(Exception):
     """Invalid format upstream version string."""
 
     def __init__(self, version, source):
+        """Initialize a invalid format upstream version."""
         self.version = version
         self.source = source
 
@@ -202,6 +199,7 @@ class UpstreamBranchUnavailable(Exception):
     """Snapshot merging was requested by upstream branch is unavailable."""
 
     def __init__(self, location, error):
+        """Initialize a upstream branch unavailable."""
         self.location = location
         self.error = error
 
@@ -210,6 +208,7 @@ class UpstreamVersionMissingInUpstreamBranch(Exception):
     """The upstream version is missing in the upstream branch."""
 
     def __init__(self, upstream_branch, upstream_version):
+        """Initialize a upstream version missing in upstream branch."""
         self.branch = upstream_branch
         self.version = upstream_version
 
@@ -218,6 +217,7 @@ class PackageIsNative(Exception):
     """Unable to merge upstream version."""
 
     def __init__(self, package, version):
+        """Initialize a package is native."""
         self.package = package
         self.version = version
 
@@ -226,11 +226,15 @@ class UpstreamNotBundled(Exception):
     """Packaging branch does not carry upstream sources."""
 
     def __init__(self, package):
+        """Initialize a upstream not bundled."""
         self.package = package
 
 
 class NewUpstreamTarballMissing(Exception):
+    """NewUpstreamTarballMissing."""
+
     def __init__(self, package, version, upstream):
+        """Initialize a new upstream tarball missing."""
         self.package = package
         self.version = version
         self.upstream = upstream
@@ -240,6 +244,7 @@ class NoUpstreamLocationsKnown(Exception):
     """No upstream locations (uscan/repository) for the package are known."""
 
     def __init__(self, package):
+        """Initialize a no upstream locations known."""
         self.package = package
 
 
@@ -247,6 +252,7 @@ class NewerUpstreamAlreadyImported(Exception):
     """A newer upstream version has already been imported."""
 
     def __init__(self, old_upstream_version, new_upstream_version):
+        """Initialize a newer upstream already imported."""
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
 
@@ -255,6 +261,7 @@ class ChangelogGeneratedFile(Exception):
     """The changelog file is generated."""
 
     def __init__(self, path, template_path, template_type):
+        """Initialize a changelog generated file."""
         self.path = path
         self.template_path = template_path
         self.template_type = template_type
@@ -264,6 +271,7 @@ class ReleaseWithoutChanges(Exception):
     """There was a new release, but it didn't change anything."""
 
     def __init__(self, new_upstream_version):
+        """Initialize a release without changes."""
         self.new_upstream_version = new_upstream_version
 
 
@@ -282,6 +290,7 @@ VALUE_MERGE = {
 
 
 def is_big_version_jump(old_upstream_version, new_upstream_version):
+    """Is big version jump."""
     try:
         old_major_version = int(str(old_upstream_version).split(".")[0])
     except ValueError:
@@ -290,22 +299,20 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
         new_major_version = int(str(new_upstream_version).split(".")[0])
     except ValueError:
         return False
-    if old_major_version > 0 and new_major_version > 5 * old_major_version:
-        return True
-    return False
+    return bool(old_major_version > 0 and new_major_version > 5 * old_major_version)
 
 
 class ImportUpstreamResult:
     """Object representing the result of an import_upstream operation."""
 
     __slots__ = [
-        "old_upstream_version",
+        "imported_revisions",
+        "include_upstream_history",
         "new_upstream_version",
+        "old_upstream_version",
         "upstream_branch",
         "upstream_branch_browse",
         "upstream_revisions",
-        "imported_revisions",
-        "include_upstream_history",
     ]
 
     def __init__(
@@ -318,6 +325,7 @@ class ImportUpstreamResult:
         upstream_revisions,
         imported_revisions,
     ):
+        """Initialize a import upstream result."""
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
         self.upstream_branch = upstream_branch
@@ -332,6 +340,7 @@ def detect_include_upstream_history(
 ):
     # Simple heuristic: Find the old upstream version and see if it's present
     # in the history of the packaging branch
+    """Detect include upstream history."""
     try:
         (revision, _subpath) = upstream_branch_source.version_as_revision(
             package, old_upstream_version
@@ -368,7 +377,7 @@ class BranchOpenError(Exception):
     """Generic exception for branch open failures."""
 
 
-def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
+def _convert_exception(url: str, e: Exception) -> BranchOpenError | None:
     if isinstance(e, socket.error):
         return BranchOpenError(url, "Socket error: %s" % e)
     if isinstance(e, errors.NotBranchError):
@@ -400,8 +409,8 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
 
 def open_branch(
     url: str,
-    possible_transports: Optional[list[Transport]] = None,
-    name: str = None,
+    possible_transports: list[Transport] | None = None,
+    name: str | None = None,
 ) -> Branch:
     """Open a branch by URL."""
     from breezy.directory_service import directories
@@ -421,16 +430,16 @@ def open_branch(
     except Exception as e:
         converted = _convert_exception(url, e)
         if converted is not None:
-            raise converted
-        raise e
+            raise converted from e
+        raise
 
 
-def find_new_upstream(  # noqa: C901
+def find_new_upstream(
     tree,
     subpath: str,
     config,
     package,
-    location: Optional[str] = None,
+    location: str | None = None,
     old_upstream_version=None,
     new_upstream_version=None,
     trust_package: bool = False,
@@ -438,14 +447,14 @@ def find_new_upstream(  # noqa: C901
     allow_ignore_upstream_branch: bool = False,
     top_level: bool = False,
     create_dist=None,
-    include_upstream_history: Optional[bool] = None,
+    include_upstream_history: bool | None = None,
     force_big_version_jump: bool = False,
     require_uscan: bool = False,
     skip_signatures: bool = False,
 ):
     # TODO(jelmer): Find the lastest upstream present in the upstream branch
     # rather than what's in the changelog.
-
+    """Find new upstream."""
     upstream_branch_location, upstream_branch_browse = get_upstream_branch_location(
         tree, subpath, config, trust_package=trust_package
     )
@@ -468,7 +477,7 @@ def find_new_upstream(  # noqa: C901
                     e,
                 )
             else:
-                raise UpstreamBranchUnavailable(upstream_branch_location, e)
+                raise UpstreamBranchUnavailable(upstream_branch_location, e) from e
             upstream_branch = None
             upstream_branch_browse = None
         except urlutils.InvalidURL as e:
@@ -477,12 +486,12 @@ def find_new_upstream(  # noqa: C901
                     "Upstream branch location %s invalid; ignoring. %s", e.path, e
                 )
             else:
-                raise UpstreamBranchLocationInvalid(e.path, e.extra)
+                raise UpstreamBranchLocationInvalid(e.path, e.extra) from e
             upstream_branch = None
             upstream_branch_browse = None
     else:
         upstream_branch = None
-        upstream_subpath = None  # noqa: F841
+        upstream_subpath = None
 
     if upstream_branch is not None:
         try:
@@ -495,9 +504,9 @@ def find_new_upstream(  # noqa: C901
                 subpath=upstream_subpath,
             )
         except InvalidHttpResponse as e:
-            raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
+            raise UpstreamBranchUnavailable(upstream_branch_location, str(e)) from e
         except ssl.SSLError as e:
-            raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
+            raise UpstreamBranchUnavailable(upstream_branch_location, str(e)) from e
     else:
         upstream_branch_source = None
 
@@ -532,13 +541,13 @@ def find_new_upstream(  # noqa: C901
                 # TODO(jelmer): Call out to lintian_brush.watch to generate a
                 # watch file.
                 if upstream_branch_source is None:
-                    raise NoUpstreamLocationsKnown(package)
+                    raise NoUpstreamLocationsKnown(package) from None
                 if require_uscan:
                     raise
                 primary_upstream_source = upstream_branch_source
 
     if new_upstream_version is None and primary_upstream_source is not None:
-        unmangled_new_upstream_version, new_upstream_version = (
+        _unmangled_new_upstream_version, new_upstream_version = (
             primary_upstream_source.get_latest_version(package, old_upstream_version)
         )
     else:
@@ -558,7 +567,7 @@ def find_new_upstream(  # noqa: C901
     except ValueError:
         raise InvalidFormatUpstreamVersion(
             new_upstream_version, primary_upstream_source
-        )
+        ) from None
 
     if old_upstream_version:
         if strip_dfsg_suffix(str(old_upstream_version)) == strip_dfsg_suffix(
@@ -603,11 +612,11 @@ def find_new_upstream(  # noqa: C901
                 # find the version then there's nothing we can do.
                 raise UpstreamVersionMissingInUpstreamBranch(
                     upstream_branch_source.upstream_branch, str(new_upstream_version)
-                )
+                ) from None
             elif not allow_ignore_upstream_branch:
                 raise UpstreamVersionMissingInUpstreamBranch(
                     upstream_branch_source.upstream_branch, str(new_upstream_version)
-                )
+                ) from None
             else:
                 logging.warning(
                     "Upstream version %s is not in upstream branch %s. "
@@ -649,16 +658,16 @@ def find_new_upstream(  # noqa: C901
 def import_upstream(
     tree: Tree,
     version_kind: str = "release",
-    location: Optional[str] = None,
-    new_upstream_version: Optional[Union[Version, str]] = None,
+    location: str | None = None,
+    new_upstream_version: Version | str | None = None,
     force: bool = False,
     distribution_name: str = DEFAULT_DISTRIBUTION,
     allow_ignore_upstream_branch: bool = True,
     trust_package: bool = False,
-    committer: Optional[str] = None,
+    committer: str | None = None,
     subpath: str = "",
-    include_upstream_history: Optional[bool] = None,
-    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    include_upstream_history: bool | None = None,
+    create_dist: Callable[[Tree, str, Version, str], str | None] | None = None,
     force_big_version_jump: bool = False,
     skip_signatures: bool = False,
 ) -> ImportUpstreamResult:
@@ -765,7 +774,7 @@ def import_upstream(
                 "different to the new upstream tarball, or they "
                 "are of different formats. Either delete the target "
                 "file, or use it as the argument to import." % e.path
-            )
+            ) from e
         imported_revisions = do_import(
             tree,
             subpath,
@@ -796,15 +805,15 @@ class MergeUpstreamResult:
     """Object representing the result of a merge_upstream operation."""
 
     __slots__ = [
-        "old_upstream_version",
+        "imported_revisions",
+        "include_upstream_history",
+        "new_revision",
         "new_upstream_version",
+        "old_revision",
+        "old_upstream_version",
         "upstream_branch",
         "upstream_branch_browse",
         "upstream_revisions",
-        "old_revision",
-        "new_revision",
-        "imported_revisions",
-        "include_upstream_history",
     ]
 
     def __init__(
@@ -819,6 +828,7 @@ class MergeUpstreamResult:
         new_revision,
         imported_revisions,
     ):
+        """Initialize a merge upstream result."""
         self.include_upstream_history = include_upstream_history
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
@@ -831,26 +841,27 @@ class MergeUpstreamResult:
 
     def __tuple__(self):
         # Backwards compatibility
+        """__tuple__."""
         return (self.old_upstream_version, self.new_upstream_version)
 
 
-def merge_upstream(  # noqa: C901
+def merge_upstream(
     tree: Tree,
     version_kind: str = "release",
-    location: Optional[str] = None,
-    new_upstream_version: Optional[str] = None,
+    location: str | None = None,
+    new_upstream_version: str | None = None,
     *,
     force: bool = False,
     distribution_name: str = DEFAULT_DISTRIBUTION,
     allow_ignore_upstream_branch: bool = True,
     trust_package: bool = False,
-    committer: Optional[str] = None,
+    committer: str | None = None,
     update_changelog: bool = True,
     subpath: str = "",
-    include_upstream_history: Optional[bool] = None,
-    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    include_upstream_history: bool | None = None,
+    create_dist: Callable[[Tree, str, Version, str], str | None] | None = None,
     force_big_version_jump: bool = False,
-    debian_revision: Optional[str] = None,
+    debian_revision: str | None = None,
     require_uscan: bool = False,
     skip_signatures: bool = False,
     skip_empty: bool = False,
@@ -953,7 +964,9 @@ def merge_upstream(  # noqa: C901
                         revisions=upstream_revisions,
                     )
                 else:
-                    raise NewUpstreamTarballMissing(e.package, e.version, e.upstream)
+                    raise NewUpstreamTarballMissing(
+                        e.package, e.version, e.upstream
+                    ) from e
 
             orig_path = os.path.join(target_dir, "orig")
             os.mkdir(orig_path)
@@ -967,7 +980,7 @@ def merge_upstream(  # noqa: C901
                     "different to the new upstream tarball, or they "
                     "are of different formats. Either delete the target "
                     "file, or use it as the argument to import." % e.path
-                )
+                ) from e
             try:
                 conflicts, imported_revids = do_merge(
                     tree,
@@ -986,7 +999,7 @@ def merge_upstream(  # noqa: C901
                 )
             except UpstreamBranchAlreadyMerged:
                 # TODO(jelmer): Perhaps reconcile these two exceptions?
-                raise UpstreamAlreadyMerged(new_upstream_version)
+                raise UpstreamAlreadyMerged(new_upstream_version) from None
             except UpstreamAlreadyImported:
                 pristine_tar_source = get_pristine_tar_source(tree, tree.branch)
                 imported_revids = get_existing_imported_upstream_revids(
@@ -1010,7 +1023,7 @@ def merge_upstream(  # noqa: C901
                             tree.branch, to_revision=upstream_revid
                         )
                 except PointlessMerge:
-                    raise UpstreamAlreadyMerged(new_upstream_version)
+                    raise UpstreamAlreadyMerged(new_upstream_version) from None
     else:
         conflicts = 0
         imported_revids = []
@@ -1021,7 +1034,7 @@ def merge_upstream(  # noqa: C901
             next(changes)
         except StopIteration:
             tree.set_pending_merges([])
-            raise ReleaseWithoutChanges(new_upstream_version)
+            raise ReleaseWithoutChanges(new_upstream_version) from None
 
     # Re-read changelog, since it may have been changed by the merge
     # from upstream.
@@ -1031,7 +1044,7 @@ def merge_upstream(  # noqa: C901
         # If there was a conflict that affected debian/changelog, then that
         # might be to blame.
         if conflicts:
-            raise UpstreamMergeConflicted(old_upstream_version, conflicts)
+            raise UpstreamMergeConflicted(old_upstream_version, conflicts) from None
         raise
     if top_level:
         debian_path = subpath
@@ -1065,7 +1078,7 @@ def merge_upstream(  # noqa: C901
 
             cl.add_entry([upstream_merge_changelog_line(new_upstream_version)])
     except GeneratedFile as e:
-        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type) from e
 
     if not need_upstream_tarball:
         logging.info("The changelog has been updated for the new version.")
@@ -1092,12 +1105,13 @@ def report_fatal(
     code: str,
     description: str,
     *,
-    upstream_version: Optional[str] = None,
+    upstream_version: str | None = None,
     details=None,
-    hint: Optional[str] = None,
-    transient: Optional[bool] = None,
+    hint: str | None = None,
+    transient: bool | None = None,
     stage=None,
 ):
+    """Report fatal."""
     if os.environ.get("SVP_API") == "1":
         context = {}
         if upstream_version is not None:
@@ -1122,6 +1136,7 @@ def report_fatal(
 
 
 def main(argv=None):
+    """Main."""
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -1237,6 +1252,7 @@ def main(argv=None):
         if args.dist_command:
 
             def create_dist(tree, package, version, target_dir, subpath=""):
+                """Create dist."""
                 try:
                     return run_dist_command(
                         tree,
@@ -1639,8 +1655,8 @@ def main(argv=None):
             if args.refresh_patches and local_tree.has_filename(patch_series_path):
                 from .quilt_refresh import (
                     QuiltError,
-                    QuiltPatchPushFailure,
                     QuiltPatchDoesNotApply,
+                    QuiltPatchPushFailure,
                     refresh_quilt_patches,
                 )
 
@@ -1669,14 +1685,6 @@ def main(argv=None):
                     error_description = (
                         "An error (%d) occurred refreshing quilt patches: "
                         "%s%s" % (e.retcode, e.stderr, e.extra)
-                    )
-                    error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description, transient=False)
-                    return 1
-                except QuiltPatchPushFailure as e:
-                    error_description = (
-                        "An error occurred refreshing quilt patch %s: %s"
-                        % (e.patch_name, e.actual_error.extra)
                     )
                     error_code = "quilt-refresh-error"
                     report_fatal(error_code, error_description, transient=False)

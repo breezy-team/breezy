@@ -18,22 +18,20 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import doctest
+import os
 import shutil
 import subprocess
 import tarfile
 import zipfile
 
-import doctest
-import os
+from debian.changelog import Changelog, Version
 
 from .... import tests
-
-from debian.changelog import Version, Changelog
-
 from ....tests import (  # noqa: F401
-    multiply_tests,
-    TestCaseWithTransport,
     TestCaseInTempDir,
+    TestCaseWithTransport,
+    multiply_tests,
 )
 from ....tests.features import (  # noqa: F401
     ExecutableFeature,
@@ -90,7 +88,7 @@ def make_new_upstream_tarball_xz(source, dest):
         tar.add(source)
     finally:
         tar.close()
-    subprocess.check_call(["xz", "-z", uncompressed])
+    subprocess.check_call(["xz", "-z", uncompressed])  # noqa: S607
     os.rename(uncompressed + ".xz", dest)
 
 
@@ -147,51 +145,51 @@ def load_tests(loader, basic_tests, pattern):
     scenarios = [
         (
             "dir",
-            dict(build_tarball=make_new_upstream_dir, old_tarball="../package-0.2"),
+            {"build_tarball": make_new_upstream_dir, "old_tarball": "../package-0.2"},
         ),
         (
             ".tar.gz",
-            dict(
-                build_tarball=make_new_upstream_tarball,
-                old_tarball="../package-0.2.tar.gz",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball,
+                "old_tarball": "../package-0.2.tar.gz",
+            },
         ),
         (
             ".tar.bz2",
-            dict(
-                build_tarball=make_new_upstream_tarball_bz2,
-                old_tarball="../package-0.2.tar.bz2",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_bz2,
+                "old_tarball": "../package-0.2.tar.bz2",
+            },
         ),
         (
             ".tar.xz",
-            dict(
-                build_tarball=make_new_upstream_tarball_xz,
-                old_tarball="../package-0.2.tar.xz",
-                _test_needs_features=[XzFeature],
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_xz,
+                "old_tarball": "../package-0.2.tar.xz",
+                "_test_needs_features": [XzFeature],
+            },
         ),
         (
             ".tar.lzma",
-            dict(
-                build_tarball=make_new_upstream_tarball_lzma,
-                old_tarball="../package-0.2.tar.lzma",
-                _test_needs_features=[LzmaFeature],
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_lzma,
+                "old_tarball": "../package-0.2.tar.lzma",
+                "_test_needs_features": [LzmaFeature],
+            },
         ),
         (
             ".zip",
-            dict(
-                build_tarball=make_new_upstream_tarball_zip,
-                old_tarball="../package-0.2.zip",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_zip,
+                "old_tarball": "../package-0.2.zip",
+            },
         ),
         (
             ".tar",
-            dict(
-                build_tarball=make_new_upstream_tarball_bare,
-                old_tarball="../package-0.2.tar",
-            ),
+            {
+                "build_tarball": make_new_upstream_tarball_bare,
+                "old_tarball": "../package-0.2.tar",
+            },
         ),
     ]
     basic_tests = multiply_tests(repack_tarball_tests, scenarios, basic_tests)
@@ -288,8 +286,7 @@ class SourcePackageBuilder:
         version3=False,
         multiple_upstream_tarballs=None,
     ):
-        """
-        :param name: Package name
+        """:param name: Package name
         :param version: Package version
         :param native: Whether to build a native source package
         :param version3: Whether to build a version 3.0 source package

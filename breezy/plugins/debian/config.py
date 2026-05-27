@@ -18,18 +18,19 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import yaml
+"""Configuration loading for breezy-debian (debian/upstream/metadata and friends)."""
 
-from ...config import (
-    configobj,
-    ConfigObj,
-    TreeConfig,
-)
-from ...errors import BzrError
-from ...trace import mutter, warning
+import yaml
 
 from breezy.transport import NoSuchFile
 
+from ...config import (
+    ConfigObj,
+    TreeConfig,
+    configobj,
+)
+from ...errors import BzrError
+from ...trace import mutter, warning
 
 BUILD_TYPE_NORMAL = "normal"
 BUILD_TYPE_NATIVE = "native"
@@ -43,11 +44,13 @@ class SvnBuildPackageMappedConfig:
     """
 
     def __init__(self, bp_config):
+        """Initialize a svn build package mapped config."""
         self.bp_config = bp_config
 
     def get_option(self, option, section=None):
         """Retrieve the contents of an option, mapped from the equivalent
-        svn-buildpackage option."""
+        svn-buildpackage option.
+        """
         if section == "BUILDDEB":
             if option == "merge":
                 return self.bp_config.get_merge_with_upstream()
@@ -64,6 +67,7 @@ class UpstreamMetadataSyntaxError(BzrError):
     _fmt = "Unable to parse upstream metadata file %(path)s: %(error)s"
 
     def __init__(self, path, error):
+        """Initialize a upstream metadata syntax error."""
         self.path = path
         self.error = error
 
@@ -74,6 +78,7 @@ class UpstreamMetadataConfig:
     filename = "debian/upstream/metadata"
 
     def __init__(self, text):
+        """Initialize a upstream metadata config."""
         try:
             self.metadata = yaml.safe_load(text)
         except yaml.composer.ComposerError as e:
@@ -86,7 +91,6 @@ class UpstreamMetadataConfig:
             self.metadata = all_metadata[0]
         except (
             yaml.scanner.ScannerError,
-            yaml.composer.ComposerError,
             yaml.parser.ParserError,
         ) as e:
             raise UpstreamMetadataSyntaxError("debian/upstream/metadata", e) from e
@@ -100,6 +104,7 @@ class UpstreamMetadataConfig:
             )
 
     def get_value(self, section, option):
+        """Get value."""
         if section == "BUILDDEB":
             if option == "upstream-branch":
                 return self.metadata.get("Repository")
@@ -110,12 +115,15 @@ class UpstreamMetadataConfig:
         raise KeyError
 
     def __getitem__(self, key):
+        """Return the item at the given key."""
         return self.get_value(key, "BUILDDEB")
 
     def get_bool(self, section, option):
+        """Get bool."""
         raise KeyError
 
     def as_bool(self, option):
+        """As bool."""
         raise KeyError
 
 
@@ -125,13 +133,13 @@ class DebBuildConfig:
     debian/bzr-builddeb.conf.local,
     ~/.bazaar/builddeb.conf, debian/bzr-builddeb.conf,
     finally .bzr-builddeb/default.conf. The value is
-    taken from the first file in which it is specified."""
+    taken from the first file in which it is specified.
+    """
 
     section = "BUILDDEB"
 
     def __init__(self, files, branch=None, tree=None):
-        """
-        Creates a config to read from config files in a hierarchy.
+        """Creates a config to read from config files in a hierarchy.
 
         Pass it a list of tuples (file, secure) where file is the location of a
         config file (that doesn't have to exist, and trusted is True or false,
@@ -189,8 +197,8 @@ class DebBuildConfig:
                 # Imported here, since not everybody will have bzr-svn
                 # installed
                 from ..svn.config import (
-                    SubversionBuildPackageConfig,
                     NoSubversionBuildPackageConfig,
+                    SubversionBuildPackageConfig,
                 )
 
                 try:
@@ -220,6 +228,7 @@ class DebBuildConfig:
         self.user_config = None
 
     def set_user_config(self, user_conf):
+        """Set user config."""
         if user_conf is not None:
             self.user_config = ConfigObj(user_conf)
 
@@ -233,7 +242,8 @@ class DebBuildConfig:
 
     def _get_opt(self, config, key, section=None):
         """Returns the value for key from config, of None if it is not defined
-        in the file"""
+        in the file.
+        """
         if section is None:
             section = self.section
         try:
@@ -288,6 +298,7 @@ class DebBuildConfig:
         return None
 
     def get_hook(self, hook_name):
+        """Get hook."""
         return self._get_best_opt(hook_name, section="HOOKS")
 
     def _get_bool(self, config, key):
@@ -340,12 +351,12 @@ class DebBuildConfig:
                     return value
         return default
 
-    def _opt_property(name, help=None, trusted=False):
+    def _opt_property(name, help=None, trusted=False):  # noqa: N805
         return property(
             lambda self: self._get_best_opt(name, trusted), None, None, help
         )
 
-    def _bool_property(name, help=None, trusted=False, default=False):
+    def _bool_property(name, help=None, trusted=False, default=False):  # noqa: N805
         return property(
             lambda self: self._get_best_bool(name, trusted, default), None, None, help
         )
@@ -368,6 +379,7 @@ class DebBuildConfig:
 
     @property
     def build_type(self):
+        """Build type."""
         if self.merge:
             return BUILD_TYPE_MERGE
         elif self.native:

@@ -18,21 +18,26 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Helpers for working with Debian changelogs and commit messages."""
+
 import posixpath
-from typing import Optional
+
+from debian.changelog import Changelog
+from debmutate.changelog import new_changelog_entries, strip_changelog_message
 
 from breezy.errors import BzrError
 from breezy.tree import Tree
-from debian.changelog import Changelog
-from debmutate.changelog import new_changelog_entries, strip_changelog_message
 
 from . import tree_debian_tag_name
 
 
 class UnreleasedChanges(BzrError):
+    """UnreleasedChanges."""
+
     _fmt = "%(path)s says it's UNRELEASED."
 
     def __init__(self, path):
+        """Initialize a unreleased changes."""
         BzrError.__init__(self)
         self.path = path
 
@@ -40,6 +45,7 @@ class UnreleasedChanges(BzrError):
 def changelog_changes(
     tree: Tree, basis_tree: Tree, cl_path: str = "debian/changelog"
 ) -> list[str]:
+    """Changelog changes."""
     changes = []
     for change in tree.iter_changes(basis_tree, specific_files=[cl_path]):
         paths = change.path
@@ -64,7 +70,8 @@ def changelog_changes(
 
 def changelog_commit_message(
     tree: Tree, basis_tree: Tree, path: str = "debian/changelog"
-) -> Optional[str]:
+) -> str | None:
+    """Changelog commit message."""
     changes = changelog_changes(tree, basis_tree, path)
     if not changes:
         return None
@@ -106,6 +113,7 @@ def debcommit(
 
 
 def debcommit_release(tree, committer=None, subpath="", message=None, vendor=None):
+    """Debcommit release."""
     cl_path = posixpath.join(subpath, "debian/changelog")
     if message is None or vendor is None:
         cl = Changelog(tree.get_file(cl_path), max_blocks=1)

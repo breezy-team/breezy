@@ -18,28 +18,33 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Build helpers for Debian source and binary packages."""
+
+import os
 import shutil
 import subprocess
-import os
 import tempfile
 
 from ...errors import BzrError
 from ...trace import note
-
 from .hooks import run_hook
 from .util import (
+    dget_changes,
+    find_changes_files,
     get_parent_dir,
     subprocess_setup,
-    find_changes_files,
-    dget_changes,
 )
 
 
 class ChangesFileMissing(BzrError):
+    """ChangesFileMissing."""
+
     _fmt = "Missing changes file."
 
 
 class NoSourceDirError(BzrError):
+    """NoSourceDirError."""
+
     _fmt = (
         "There is no existing source directory to use. Use "
         "--export-only or --dont-purge to get one that can be used"
@@ -47,6 +52,8 @@ class NoSourceDirError(BzrError):
 
 
 class BuildFailedError(BzrError):
+    """BuildFailedError."""
+
     _fmt = "The build failed."
 
 
@@ -87,17 +94,20 @@ class DebBuild:
                 raise NoSourceDirError
 
     def export(self):
+        """Export."""
         self.distiller.distill(self.target_dir)
 
     def before_build(self):
+        """Before build."""
         subprocess.check_call(
-            ["dpkg-source", "--before-build", self.target_dir],
+            ["dpkg-source", "--before-build", self.target_dir],  # noqa: S607
             preexec_fn=subprocess_setup,
         )
 
     def after_build(self):
+        """After build."""
         subprocess.check_call(
-            ["dpkg-source", "--after-build", self.target_dir],
+            ["dpkg-source", "--after-build", self.target_dir],  # noqa: S607
             preexec_fn=subprocess_setup,
         )
 

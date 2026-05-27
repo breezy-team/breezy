@@ -18,24 +18,31 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Revision specifier implementations specific to Debian packaging."""
+
 from ...errors import (
-    NoSuchTag,
     BzrError,
+    NoSuchTag,
 )
-from ...revisionspec import RevisionSpec, RevisionInfo, InvalidRevisionSpec
+from ...revisionspec import InvalidRevisionSpec, RevisionInfo, RevisionSpec
 
 
 class UnknownVersion(BzrError):
+    """UnknownVersion."""
+
     _fmt = (
         "No tag exists in this branch indicating that version "
         '"%(version)s" has been uploaded.'
     )
 
     def __init__(self, version):
+        """Initialize a unknown version."""
         BzrError.__init__(self, version=version)
 
 
 class VersionNotSpecified(BzrError):
+    """VersionNotSpecified."""
+
     _fmt = "You did not specify a package version."
 
 
@@ -78,18 +85,19 @@ class RevisionSpec_upstream(RevisionSpec):
     prefix = "upstream:"
 
     def _match_on(self, branch, revs=None):
-        from ...workingtree import WorkingTree
-        from .util import (
-            find_changelog,
-            MissingChangelogError,
-        )
-        from .upstream.pristinetar import get_pristine_tar_source
-        from .upstream import StackedUpstreamSource
         from debian.changelog import Version
+
+        from ...workingtree import WorkingTree
+        from .upstream import StackedUpstreamSource
+        from .upstream.pristinetar import get_pristine_tar_source
+        from .util import (
+            MissingChangelogError,
+            find_changelog,
+        )
 
         tree, subpath = WorkingTree.open_containing(".")
         try:
-            (cl, top_level) = find_changelog(tree, subpath, merge=False)
+            (cl, _top_level) = find_changelog(tree, subpath, merge=False)
         except MissingChangelogError as e:
             raise InvalidRevisionSpec(
                 self.user_spec, branch, "no debian/changelog file found: %s" % e

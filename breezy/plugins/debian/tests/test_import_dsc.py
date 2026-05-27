@@ -27,15 +27,14 @@ from debian.changelog import Version
 
 from .... import (
     revision as _mod_revision,
+)
+from .... import (
     tests,
 )
 from ....tests.features import (
     Feature,
     SymlinkFeature,
 )
-
-from . import make_new_upstream_tarball_xz
-
 from ..import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
@@ -48,6 +47,7 @@ from . import (
     BuilddebTestCase,
     LzmaFeature,
     SourcePackageBuilder,
+    make_new_upstream_tarball_xz,
 )
 
 
@@ -869,7 +869,18 @@ class DistributionBranchTests(BuilddebTestCase):
             {None: (up_revid, "")},
         )
 
-    def check_changes(self, changes, added=[], removed=[], modified=[], renamed=[]):
+    def check_changes(
+        self, changes, added=None, removed=None, modified=None, renamed=None
+    ):
+        if renamed is None:
+            renamed = []
+        if modified is None:
+            modified = []
+        if removed is None:
+            removed = []
+        if added is None:
+            added = []
+
         def check_one_type(type, expected, actual):
             def make_set(list):
                 output = set()
@@ -1388,8 +1399,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        revno1, rev_id1 = self.tree1.branch.last_revision_info()
-        up_revno1, up_rev_id1 = self.up_tree1.branch.last_revision_info()
+        revno1, _rev_id1 = self.tree1.branch.last_revision_info()
+        up_revno1, _up_rev_id1 = self.up_tree1.branch.last_revision_info()
         self.assertEqual(revno1, 1)
         self.assertEqual(up_revno1, 0)
         self.tree1.lock_read()
@@ -1779,7 +1790,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts, imported_revids = db.merge_upstream(
+        conflicts, _imported_revids = db.merge_upstream(
             [(tarball_filename, None)], "foo", "0.2", "0.1"
         )
         self.assertFalse(conflicts)
@@ -1815,7 +1826,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts, imported_revids = db.merge_upstream(
+        conflicts, _imported_revids = db.merge_upstream(
             [(tarball_filename, None)],
             "foo",
             "0.2",
@@ -1857,7 +1868,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts, imported_revids = db.merge_upstream(
+        conflicts, _imported_revids = db.merge_upstream(
             [(tarball_filename, None)],
             "foo",
             "0.2",
@@ -1914,7 +1925,7 @@ class DistributionBranchTests(BuilddebTestCase):
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: (upstream_rev, "")},
         )
-        revno1, rev_id1 = tree.branch.last_revision_info()
+        revno1, _rev_id1 = tree.branch.last_revision_info()
         self.assertEqual(2, revno1)
         packaging_upstream_tip = tree.get_parent_ids()[1]
         # We added the extra parent for the upstream branch

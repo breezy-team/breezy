@@ -20,17 +20,16 @@
 
 """DEP-3 style patch formatting."""
 
+import time
 from email.message import Message
+from io import BytesIO
+
+from breezy.foreign import foreign_vcs_registry
 
 from ... import (
     diff,
     errors,
 )
-from breezy.foreign import foreign_vcs_registry
-
-from io import BytesIO
-
-import time
 
 
 def write_dep3_bug_line(message, bug_url, status):

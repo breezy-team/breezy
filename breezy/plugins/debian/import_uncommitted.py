@@ -15,62 +15,61 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Import package versions from the Debian archive that are not in the local branch."""
+
 import contextlib
 import errno
 import json
-from hashlib import sha1
 import logging
 import os
 import subprocess
 import tempfile
-from typing import Optional
-
-from urllib.request import urlopen
+from hashlib import sha1
 from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
-from debmutate.control import ControlEditor
+from debian.changelog import Changelog, Version
 from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
+from debmutate.control import ControlEditor
 
-import breezy.bzr  # noqa: F401
+import breezy.bzr
 import breezy.git  # noqa: F401
 from breezy import urlutils
 from breezy.errors import (
-    NotBranchError,
-    NoSuchTag,
     ConflictsInTree,
     NoSuchRevisionInTree,
+    NoSuchTag,
+    NotBranchError,
 )
-from breezy.revision import RevisionID, NULL_REVISION
+from breezy.revision import NULL_REVISION, RevisionID
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
-from breezy.tree import Tree
-
 from breezy.transport import NoSuchFile
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
-from debian.changelog import Changelog, Version
-
+from .apt_repo import (
+    Apt,
+    AptSourceError,
+    LocalApt,
+    NoAptSources,
+    RemoteApt,
+)
 from .changelog import debcommit
 from .directory import vcs_git_url_to_bzr_url
-from .info import versions_dict
-from .upstream import PackageVersionNotPresent
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     VersionAlreadyImported,
 )
-from .apt_repo import (
-    Apt,
-    LocalApt,
-    RemoteApt,
-    NoAptSources,
-    AptSourceError,
-)
+from .info import versions_dict
+from .upstream import PackageVersionNotPresent
 
 BRANCH_NAME = "missing-commits"
 
 
 def connect_udd_mirror():
+    """Connect udd mirror."""
     import psycopg2
 
     return psycopg2.connect(
@@ -82,6 +81,7 @@ def connect_udd_mirror():
 
 
 def select_vcswatch_packages():
+    """Select vcswatch packages."""
     conn = connect_udd_mirror()
     cursor = conn.cursor()
     args = []
@@ -94,32 +94,42 @@ def select_vcswatch_packages():
 """
     cursor.execute(query, tuple(args))
     packages = []
-    for package, vcs_url in cursor.fetchall():
+    for package, _vcs_url in cursor.fetchall():
         packages.append(package)
     return packages
 
 
 class SnapshotDownloadError(Exception):
+    """SnapshotDownloadError."""
+
     def __init__(self, url, inner, transient):
+        """Initialize a snapshot download error."""
         self.url = url
         self.inner = inner
         self.transient = transient
 
 
 class SnapshotMissing(Exception):
+    """SnapshotMissing."""
+
     def __init__(self, source_name, source_version):
+        """Initialize a snapshot missing."""
         self.source_name = source_name
         self.source_version = source_version
 
 
 class SnapshotHashMismatch(Exception):
+    """SnapshotHashMismatch."""
+
     def __init__(self, filename, actual_hash, expected_hash):
+        """Initialize a snapshot hash mismatch."""
         self.filename = filename
         self.actual_hash = actual_hash
         self.expected_hash = expected_hash
 
 
 def download_snapshot(package: str, version: Version, output_dir: str) -> str:
+    """Download snapshot."""
     note("Downloading %s %s", package, version)
     srcfiles_url = (
         "https://snapshot.debian.org/mr/package/%s/%s/"
@@ -127,7 +137,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     )
     files = {}
     try:
-        srcfiles = json.load(urlopen(srcfiles_url))
+        srcfiles = json.load(urlopen(srcfiles_url))  # noqa: S310
     except HTTPError as e:
         if e.status == 404:
             raise SnapshotMissing(package, version) from e
@@ -150,7 +160,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
         local_path = os.path.join(output_dir, os.path.basename(filename))
         try:
             with open(local_path, "rb") as f:
-                actual_hsh = sha1(f.read()).hexdigest()
+                actual_hsh = sha1(f.read(), usedforsecurity=False).hexdigest()
             if actual_hsh != hsh:
                 raise SnapshotHashMismatch(filename, actual_hsh, hsh)
         except FileNotFoundError:
@@ -158,7 +168,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                 url = "https://snapshot.debian.org/file/%s" % hsh
                 note(".. Downloading %s -> %s", url, filename)
                 try:
-                    with urlopen(url) as g:
+                    with urlopen(url) as g:  # noqa: S310
                         f.write(g.read())
                 except HTTPError as e:
                     if e.status // 100 == 5:
@@ -179,17 +189,23 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
 
 
 class NoopChangesOnly(Exception):
+    """NoopChangesOnly."""
+
     def __init__(self, vcs_version, archive_version):
+        """Initialize a noop changes only."""
         self.vcs_version = vcs_version
         self.archive_version = archive_version
-        super(NoopChangesOnly, self).__init__(
+        super().__init__(
             "No missing versions with effective changes. "
             "Archive has %s, VCS has %s" % (archive_version, vcs_version)
         )
 
 
 class NoMissingVersions(Exception):
+    """NoMissingVersions."""
+
     def __init__(self, vcs_version, archive_version):
+        """Initialize a no missing versions."""
         self.vcs_version = vcs_version
         self.archive_version = archive_version
         super().__init__(
@@ -199,7 +215,10 @@ class NoMissingVersions(Exception):
 
 
 class TreeVersionNotInArchiveChangelog(Exception):
+    """TreeVersionNotInArchiveChangelog."""
+
     def __init__(self, tree_version):
+        """Initialize a tree version not in archive changelog."""
         self.tree_version = tree_version
         super().__init__(
             "tree version %s does not appear in archive changelog" % tree_version
@@ -207,7 +226,10 @@ class TreeVersionNotInArchiveChangelog(Exception):
 
 
 class TreeVersionWithoutTag(Exception):
+    """TreeVersionWithoutTag."""
+
     def __init__(self, tree_version, tag_name):
+        """Initialize a tree version without tag."""
         self.tree_version = tree_version
         super().__init__(
             "unable to find revision for version {}; no tags (e.g. {})".format(
@@ -217,17 +239,24 @@ class TreeVersionWithoutTag(Exception):
 
 
 class TreeUpstreamVersionMissing(Exception):
+    """TreeUpstreamVersionMissing."""
+
     def __init__(self, upstream_version):
+        """Initialize a tree upstream version missing."""
         self.upstream_version = upstream_version
         super().__init__("unable to find upstream version %r" % upstream_version)
 
 
 class UnreleasedChangesSinceTreeVersion(Exception):
+    """UnreleasedChangesSinceTreeVersion."""
+
     def __init__(self, tree_version):
+        """Initialize a unreleased changes since tree version."""
         super().__init__("there are unreleased changes since %s" % tree_version)
 
 
 def find_missing_versions(archive_cl: Version, tree_version: Version) -> list[Version]:
+    """Find missing versions."""
     missing_versions: list[Version] = []
     for block in archive_cl:
         if tree_version is not None and block.version == tree_version:
@@ -240,6 +269,7 @@ def find_missing_versions(archive_cl: Version, tree_version: Version) -> list[Ve
 
 
 def is_noop_upload(tree, basis_tree=None, subpath=""):
+    """Is noop upload."""
     if basis_tree is None:
         basis_tree = tree.basis_tree()
     changes = tree.iter_changes(basis_tree)
@@ -280,18 +310,22 @@ def import_uncommitted(
     subpath: str,
     apt: Apt,
     source_name: str,
-    archive_version: Optional[Version] = None,
-    tree_version: Optional[Version] = None,
+    archive_version: Version | None = None,
+    tree_version: Version | None = None,
     merge_unreleased: bool = True,
     skip_noop: bool = True,
 ) -> list[tuple[str, Version, RevisionID]]:
+    """Import uncommitted."""
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
         apt.retrieve_source(source_name, archive_source, source_version=archive_version)
         [dsc] = [e.name for e in os.scandir(archive_source) if e.name.endswith(".dsc")]
         note("Unpacking source %s", dsc)
-        subprocess.check_output(["dpkg-source", "-x", dsc], cwd=archive_source)
+        subprocess.check_output(
+            ["dpkg-source", "-x", dsc],  # noqa: S607
+            cwd=archive_source,
+        )
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog")) as f:
             archive_cl = Changelog(f)
@@ -398,6 +432,7 @@ def import_uncommitted(
 
 
 def report_fatal(code, description, *, hint=None, transient=None):
+    """Report fatal."""
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump(
@@ -414,9 +449,8 @@ def report_fatal(code, description, *, hint=None, transient=None):
         logging.info("%s", hint)
 
 
-def set_vcs_git_url(
-    control, vcs_git_base: Optional[str], vcs_browser_base: Optional[str]
-):
+def set_vcs_git_url(control, vcs_git_base: str | None, vcs_browser_base: str | None):
+    """Set vcs git url."""
     old_vcs_url = control.source.get("Vcs-Git")
     if vcs_git_base is not None:
         control.source["Vcs-Git"] = urlutils.join(
@@ -431,7 +465,8 @@ def set_vcs_git_url(
 
 
 def contains_git_attributes(tree, subpath):
-    for path, versioned, kind, ie in tree.list_files(
+    """Contains git attributes."""
+    for path, _versioned, _kind, _ie in tree.list_files(
         recursive=True, recurse_nested=True, from_dir=subpath
     ):
         if os.path.basename(path) == ".gitattributes":
@@ -440,6 +475,7 @@ def contains_git_attributes(tree, subpath):
 
 
 def main(argv=None):
+    """Main."""
     import argparse
 
     parser = argparse.ArgumentParser()

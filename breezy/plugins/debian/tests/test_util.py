@@ -33,15 +33,10 @@ from ..config import (
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
 )
-from . import (
-    LzmaFeature,
-    SourcePackageBuilder,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-)
 from ..util import (
     AddChangelogError,
     InconsistentSourceFormatError,
+    MissingChangelogError,
     NoPreviousUpload,
     NoSuchFile,
     changelog_find_previous_upload,
@@ -53,19 +48,24 @@ from ..util import (
     find_changelog,
     find_extra_authors,
     find_thanks,
-    get_files_excluded,
     get_commit_info_from_changelog,
+    get_files_excluded,
+    get_parent_dir,
     guess_build_type,
     lookup_distribution,
     move_file_if_different,
-    get_parent_dir,
     recursive_copy,
     suite_to_distribution,
     tarball_name,
     tree_contains_upstream_source,
     tree_get_source_format,
     write_if_different,
-    MissingChangelogError,
+)
+from . import (
+    LzmaFeature,
+    SourcePackageBuilder,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
 )
 
 try:
@@ -76,8 +76,8 @@ from ....tests import (
     TestCase,
 )
 from ....tests.features import (
-    SymlinkFeature,
     ModuleAvailableFeature,
+    SymlinkFeature,
 )
 
 
@@ -195,7 +195,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertRaises(MissingChangelogError, find_changelog, tree, merge=True)
 
     def test_find_changelog_symlink(self):
-        """When there was a symlink debian -> . then the code used to break"""
+        """When there was a symlink debian -> . then the code used to break."""
         try:
             self.requireFeature(SymlinkFeature(self.test_dir))
         except TypeError:  # brz < 3.2
@@ -321,7 +321,7 @@ class MoveFileTests(TestCaseInTempDir):
 
     def test_move_file_same_md5(self):
         self.build_tree(["a"])
-        md5sum = hashlib.md5()
+        md5sum = hashlib.md5(usedforsecurity=False)
         with open("a", "rb") as f:
             md5sum.update(f.read())
         shutil.copy("a", "b")
@@ -331,11 +331,11 @@ class MoveFileTests(TestCaseInTempDir):
 
     def test_move_file_diff_md5(self):
         self.build_tree(["a", "b"])
-        md5sum = hashlib.md5()
+        md5sum = hashlib.md5(usedforsecurity=False)
         with open("a", "rb") as f:
             md5sum.update(f.read())
         a_hexdigest = md5sum.hexdigest()
-        md5sum = hashlib.md5()
+        md5sum = hashlib.md5(usedforsecurity=False)
         with open("b", "rb") as f:
             md5sum.update(f.read())
         b_hexdigest = md5sum.hexdigest()
@@ -343,7 +343,7 @@ class MoveFileTests(TestCaseInTempDir):
         move_file_if_different("a", "b", a_hexdigest)
         self.assertPathDoesNotExist("a")
         self.assertPathExists("b")
-        md5sum = hashlib.md5()
+        md5sum = hashlib.md5(usedforsecurity=False)
         with open("b", "rb") as f:
             md5sum.update(f.read())
         self.assertEqual(md5sum.hexdigest(), a_hexdigest)
@@ -670,7 +670,11 @@ class ChangelogInfoTests(TestCaseWithTransport):
 
 
 class MockLaunchpad:
-    def __init__(self, debian_bug_to_ubuntu_bugs={}, ubuntu_bug_to_debian_bugs={}):
+    def __init__(self, debian_bug_to_ubuntu_bugs=None, ubuntu_bug_to_debian_bugs=None):
+        if ubuntu_bug_to_debian_bugs is None:
+            ubuntu_bug_to_debian_bugs = {}
+        if debian_bug_to_ubuntu_bugs is None:
+            debian_bug_to_ubuntu_bugs = {}
         self.debian_bug_to_ubuntu_bugs = debian_bug_to_ubuntu_bugs
         self.ubuntu_bug_to_debian_bugs = ubuntu_bug_to_debian_bugs
         self.debian_bug_lookups = []

@@ -21,6 +21,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Helpers for merging Debian packaging branches."""
+
 import json
 import logging
 import os
@@ -28,8 +30,10 @@ import re
 import sys
 import tempfile
 
-from debian.changelog import Version, Changelog
+from debian.changelog import Changelog, Version, format_date, get_maintainer
 from debian.deb822 import Deb822
+from debmutate.changelog import ChangelogEditor, changeblock_add_line, increment_version
+from debmutate.reformatting import GeneratedFile
 
 from breezy.errors import (
     BzrError,
@@ -43,10 +47,6 @@ from breezy.workingtree import (
     PointlessMerge,
 )
 
-from debian.changelog import format_date, get_maintainer
-from debmutate.changelog import ChangelogEditor, changeblock_add_line, increment_version
-from debmutate.reformatting import GeneratedFile
-
 from .changelog import debcommit
 from .cmds import _build_helper
 from .directory import vcs_field_to_bzr_url_converters
@@ -55,10 +55,10 @@ from .errors import (
 )
 from .import_dsc import DistributionBranch
 from .util import (
-    dput_changes,
-    debsign,
-    find_changelog,
     MissingChangelogError,
+    debsign,
+    dput_changes,
+    find_changelog,
 )
 
 
@@ -66,12 +66,15 @@ class ChangelogGeneratedFile(Exception):
     """The changelog file is generated."""
 
     def __init__(self, path, template_path, template_type):
+        """Initialize a changelog generated file."""
         self.path = path
         self.template_path = template_path
         self.template_type = template_type
 
 
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
+    """SharedUpstreamConflictsWithTargetPackaging."""
+
     _fmt = (
         "The upstream branches for the merge source and target have "
         "diverged. Unfortunately, the attempt to fix this problem "
@@ -82,6 +85,7 @@ class SharedUpstreamConflictsWithTargetPackaging(BzrError):
     )
 
     def __init__(self, cmd):
+        """Initialize a shared upstream conflicts with target packaging."""
         self.cmd = cmd
 
 
@@ -226,6 +230,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
 
 
 def report_fatal(code, description, *, hint=None):
+    """Report fatal."""
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump({"result_code": code, "description": description}, f)
@@ -235,6 +240,7 @@ def report_fatal(code, description, *, hint=None):
 
 
 def find_origins(source):
+    """Find origins."""
     for field, value in source.items():
         m = re.match(r"XS\-(.*)\-Vcs\-(.*)", field, re.I)
         if not m:
@@ -250,6 +256,7 @@ def find_origins(source):
 def update_changelog(
     wt, subpath, target_distribution, version_fn, summary, author=None
 ):
+    """Update changelog."""
     changes = []
     # TODO(jelmer): Iterate Build-Depends and verify that depends are
     # satisfied by target_distribution
@@ -276,14 +283,15 @@ def update_changelog(
                 [summary] + [" +" + line for line in changes],
             )
     except FileNotFoundError:
-        raise MissingChangelogError([clp])
+        raise MissingChangelogError([clp]) from None
     except GeneratedFile as e:
-        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type) from e
 
     debcommit(wt, subpath=subpath)
 
 
 def backport_suffix(release):
+    """Backport suffix."""
     from distro_info import DebianDistroInfo
 
     distro_info = DebianDistroInfo()
@@ -295,6 +303,7 @@ def backport_suffix(release):
 
 
 def determine_distribution(release: str, backport=False) -> str:
+    """Determine distribution."""
     if backport:
         if release.endswith("-backports"):
             return release
@@ -310,6 +319,7 @@ def determine_distribution(release: str, backport=False) -> str:
 
 
 def create_bpo_version(orig_version, bpo_suffix):
+    """Create bpo version."""
     m = re.fullmatch(r"(.*)\~" + bpo_suffix + r"\+([0-9]+)", str(orig_version))
     if m:
         base = m.group(1)
@@ -321,21 +331,24 @@ def create_bpo_version(orig_version, bpo_suffix):
 
 
 def auto_backport(argv=None):
+    """Auto backport."""
     if argv is None:
         argv = sys.argv[1:]
     return main(argv + ["--backport"])
 
 
 def main(argv=None):
+    """Main."""
     DEFAULT_BUILDER = "sbuild --no-clean-source"
     import argparse
-    import breezy.bzr  # noqa: F401
+
+    import breezy.bzr
     import breezy.git  # noqa: F401
+    from breezy.branch import Branch
     from breezy.workingtree import WorkingTree
     from breezy.workspace import check_clean_tree
-    from breezy.branch import Branch
 
-    from .apt_repo import RemoteApt, LocalApt, NoAptSources
+    from .apt_repo import LocalApt, NoAptSources, RemoteApt
     from .directory import source_package_vcs_url
 
     parser = argparse.ArgumentParser()
@@ -570,6 +583,7 @@ def main(argv=None):
             version_suffix = backport_suffix(args.target_release)
 
             def version_fn(imported_version):
+                """Version fn."""
                 return create_bpo_version(imported_version, version_suffix)
 
             summary = f"Backport to {args.target_release}."

@@ -19,29 +19,31 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from contextlib import ExitStack
+"""Source package extraction helpers for the various dpkg-source formats."""
+
 import os
 import subprocess
 import tempfile
+from contextlib import ExitStack
 
 from debian.changelog import Version
 
 from ... import osutils
 from ...trace import mutter
-
 from .util import (
     FORMAT_1_0,
-    FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
+    FORMAT_3_0_QUILT,
     component_from_orig_tarball,
     subprocess_setup,
 )
 
 
 class SourceExtractor:
-    """A class to extract a source package to its constituent parts"""
+    """A class to extract a source package to its constituent parts."""
 
     def __init__(self, dsc_path, dsc, apply_patches: bool = False):
+        """Initialize a source extractor."""
         self.dsc_path = dsc_path
         self.dsc = dsc
         self.extracted_upstream = None
@@ -56,11 +58,13 @@ class SourceExtractor:
         raise NotImplementedError(self.extract)
 
     def __enter__(self):
+        """Enter the runtime context."""
         self.exit_stack.__enter__()
         self.extract()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the runtime context."""
         self.exit_stack.__exit__(exc_type, exc_val, exc_tb)
         return False
 
@@ -73,7 +77,7 @@ class OneZeroSourceExtractor(SourceExtractor):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ["dpkg-source", "-su", "-x", dsc_filename],
+            ["dpkg-source", "-su", "-x", dsc_filename],  # noqa: S607
             cwd=tempdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -119,10 +123,11 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (native)" source format."""
 
     def extract(self):
+        """Extract."""
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ["dpkg-source", "-x", dsc_filename],
+            ["dpkg-source", "-x", dsc_filename],  # noqa: S607
             cwd=tempdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -149,6 +154,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (quilt)" source format."""
 
     def extract(self):
+        """Extract."""
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         args = ["--no-preparation"]
@@ -183,7 +189,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % (stdout,)
         # Check that there are no unreadable files extracted.
         subprocess.call(
-            [
+            [  # noqa: S607
                 "find",
                 self.extracted_upstream,
                 "-perm",
@@ -196,7 +202,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             ]
         )
         subprocess.call(
-            [
+            [  # noqa: S607
                 "find",
                 self.extracted_debianised,
                 "-perm",
@@ -244,6 +250,7 @@ SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
 def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
+    """Extract."""
     format = dsc.get("Format", FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:

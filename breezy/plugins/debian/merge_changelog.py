@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Three-way merge support for Debian changelog files using dpkg-mergechangelogs."""
+
 import errno
 import logging
 import os.path
@@ -27,7 +29,6 @@ from ... import (
     osutils,
 )
 
-
 # A logger in the 'bzr' hierarchy.  By default messages will be propagated to
 # the standard bzr logger, but tests can easily intercept just this logger if
 # they wish.
@@ -35,20 +36,26 @@ _logger = logging.getLogger(__name__)
 
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
+    """ChangeLogFileMerge."""
+
     name_prefix = "deb_changelog"
     default_files = ["debian/changelog"]
 
     def merge_text(self, params):
+        """Merge text."""
         return merge_changelog(params.this_lines, params.other_lines, params.base_lines)
 
 
-def merge_changelog(this_lines, other_lines, base_lines=[]):
+def merge_changelog(this_lines, other_lines, base_lines=None):
     """Merge a changelog file."""
     # Write the BASE, THIS and OTHER versions to files in a temporary
     # directory, and use dpkg-mergechangelogs to merge them.
+    if base_lines is None:
+        base_lines = []
     with tempfile.TemporaryDirectory("deb_changelog_merge") as tmpdir:
 
         def writelines(filename, lines):
+            """Writelines."""
             with open(filename, "wb") as f:
                 f.writelines(lines)
                 f.flush()
@@ -61,7 +68,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
         writelines(other_filename, other_lines)
         try:
             proc = subprocess.Popen(
-                ["dpkg-mergechangelogs", base_filename, this_filename, other_filename],
+                ["dpkg-mergechangelogs", base_filename, this_filename, other_filename],  # noqa: S607
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
@@ -94,6 +101,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             # conflict marker made standard, which is more like a feature than
             # a bug!
             def replace_func(match_obj):
+                """Replace func."""
                 match_text = match_obj.group(0)
                 return match_text[0] * 7
 

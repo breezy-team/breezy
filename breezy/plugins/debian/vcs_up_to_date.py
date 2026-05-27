@@ -15,10 +15,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Check whether a packaging branch is up to date with the Debian archive."""
+
 __all__ = [
-    "PackageMissingInArchive",
-    "NewArchiveVersion",
     "MissingChangelogError",
+    "NewArchiveVersion",
+    "PackageMissingInArchive",
     "TreeVersionNotInArchive",
     "check_up_to_date",
 ]
@@ -26,29 +28,34 @@ __all__ = [
 import asyncio
 import logging
 import os
-from typing import List
 
 from debian.changelog import Version
 from debmutate.changelog import distribution_is_unreleased
 
-from breezy.tree import Tree
-from breezy.workingtree import WorkingTree
-from breezy.plugins.debian.util import find_changelog, MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
     Apt,
     LocalApt,
     RemoteApt,
 )
+from breezy.plugins.debian.util import MissingChangelogError, find_changelog
+from breezy.tree import Tree
+from breezy.workingtree import WorkingTree
 
 
 class PackageMissingInArchive(Exception):
+    """PackageMissingInArchive."""
+
     def __init__(self, package):
+        """Initialize a package missing in archive."""
         self.package = package
         super().__init__("package %s is missing in archive" % package)
 
 
 class NewArchiveVersion(Exception):
+    """NewArchiveVersion."""
+
     def __init__(self, archive_version, tree_version):
+        """Initialize a new archive version."""
         self.archive_version = archive_version
         self.tree_version = tree_version
         super().__init__(
@@ -59,15 +66,19 @@ class NewArchiveVersion(Exception):
 
 
 class TreeVersionNotInArchive(Exception):
+    """TreeVersionNotInArchive."""
+
     def __init__(self, tree_version, archive_versions):
+        """Initialize a tree version not in archive."""
         self.tree_version = tree_version
         self.archive_versions = archive_versions
         super().__init__("tree version %s does not appear in archive" % tree_version)
 
 
 def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
+    """Check up to date."""
     released_tree_versions = []
-    tree_cl, top_level = find_changelog(tree, subpath, max_blocks=None)
+    tree_cl, _top_level = find_changelog(tree, subpath, max_blocks=None)
     for block in tree_cl:
         if distribution_is_unreleased(block.distributions):
             continue
@@ -82,7 +93,7 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
                     for entry in apt.iter_source_by_name(tree_cl.package)
                 )
 
-            raise TreeVersionNotInArchive(block._raw_version, None)
+            raise TreeVersionNotInArchive(block._raw_version, None) from None
 
     package = tree_cl.package
 
@@ -92,7 +103,7 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
         return
     last_released_tree_version = released_tree_versions[-1]
 
-    archive_versions: List[Version] = []
+    archive_versions: list[Version] = []
     with apt:
         for entry in apt.iter_source_by_name(package):
             archive_versions.append(Version(entry["Version"]))
@@ -118,6 +129,7 @@ def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
 
 
 def main():
+    """Main."""
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -137,7 +149,7 @@ def main():
         "directory", default=".", nargs="?", type=str, help="Path to working tree"
     )
 
-    import breezy.bzr  # noqa: F401
+    import breezy.bzr
     import breezy.git  # noqa: F401
 
     args = parser.parse_args()

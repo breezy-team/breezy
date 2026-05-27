@@ -22,9 +22,8 @@ import string
 
 from debian.changelog import Version
 
-from .. import merge_package as MP
+from .. import merge_package as MP  # noqa: N812
 from ..import_dsc import DistributionBranch
-
 from . import TestCaseWithTransport
 
 _Debian_changelog = """\
@@ -163,7 +162,7 @@ class MergePackageTests(TestCaseWithTransport):
         The `SharedUpstreamConflictsWithTargetPackaging` exception is
         thrown instead.
         """
-        ubup, debp, ubuu, debu = self._setup_debian_upstream_conflicts()
+        ubup, debp, _ubuu, _debu = self._setup_debian_upstream_conflicts()
 
         self.assertRaises(
             MP.SharedUpstreamConflictsWithTargetPackaging,
@@ -283,8 +282,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEqual(conflict_paths, ["debian/changelog"])
 
     def _setup_debian_upstream_newer(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -359,8 +357,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_conflicts(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -435,8 +432,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_older(self):
-        r"""
-        Set up the following test configuration (debian upstream older).
+        r"""Set up the following test configuration (debian upstream older).
 
         debian-upstream                 ,----H-------------.
                            A-----------B                    \
@@ -511,8 +507,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_n, debp_o, ubuu_n, debu_o)
 
     def _setup_upstreams_not_diverged(self):
-        r"""
-        Set up a test configuration where the usptreams have not diverged.
+        r"""Set up a test configuration where the usptreams have not diverged.
 
         debian-upstream                       .-----G
                            A-----------B-----H       \

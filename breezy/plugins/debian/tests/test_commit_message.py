@@ -17,9 +17,9 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from .. import debian_changelog_commit_message, debian_changelog_commit
-from . import TestCaseWithTransport
 from ....tests.features import Feature
+from .. import debian_changelog_commit, debian_changelog_commit_message
+from . import TestCaseWithTransport
 
 
 class _LaunchpadConnectionFeature(Feature):
@@ -47,7 +47,11 @@ class CommitMessageTests(TestCaseWithTransport):
         class _Builder:
             _revprops = {}
 
-        def __init__(self, work_tree, exclude=[], specific_files=[]):
+        def __init__(self, work_tree, exclude=None, specific_files=None):
+            if specific_files is None:
+                specific_files = []
+            if exclude is None:
+                exclude = []
             self.work_tree = work_tree
             self.exclude = exclude
             self.specific_files = specific_files

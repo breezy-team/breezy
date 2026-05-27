@@ -18,50 +18,64 @@
 #    along with brz-debian; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""Upstream source backed by uscan / debian/watch."""
+
 import os
 import re
-import subprocess
 import shutil
+import subprocess
 import sys
 import tempfile
 
 from debmutate.watch import parse_watch_file
 
-from ....errors import BzrError
-from ....transport import NoSuchFile
 from .... import osutils
+from ....errors import BzrError
 from ....trace import note, warning
-from . import UpstreamSource, PackageVersionNotPresent
+from ....transport import NoSuchFile
 from ..util import export_with_nested
+from . import PackageVersionNotPresent, UpstreamSource
 
 
 class UScanError(BzrError):
+    """UScanError."""
+
     _fmt = "UScan failed to run: %(errors)s."
 
     def __init__(self, errors):
+        """Initialize a u scan error."""
         self.errors = errors
 
 
 class NoWatchFile(BzrError):
+    """NoWatchFile."""
+
     _fmt = "Tree %(tree)r has no watch file %(path)s."
 
     def __init__(self, tree, path):
+        """Initialize a no watch file."""
         BzrError.__init__(self, tree=tree, path=path)
 
 
 class WatchLineWithoutMatches(BzrError):
+    """WatchLineWithoutMatches."""
+
     _fmt = "No matching files for watch line %(line)r."
 
     def __init__(self, line):
+        """Initialize a watch line without matches."""
         BzrError.__init__(self, line=line)
 
 
 class WatchLineWithoutMatchingHrefs(PackageVersionNotPresent):
+    """WatchLineWithoutMatchingHrefs."""
+
     _fmt = (
         "No match for %(mangled_version)s was not found for %(line)r in %(upstream)s."
     )
 
     def __init__(self, mangled_version, line, package, version, upstream):
+        """Initialize a watch line without matching hrefs."""
         BzrError.__init__(
             self,
             package=package,
@@ -83,6 +97,7 @@ class UScanSource(UpstreamSource):
         auto_fix=False,
         skip_signatures: bool = False,
     ):
+        """Initialize a u scan source."""
         self.tree = tree
         self.subpath = subpath
         self.top_level = top_level
@@ -90,6 +105,7 @@ class UScanSource(UpstreamSource):
         self.skip_signatures = skip_signatures
 
     def __repr__(self):
+        """Return a string representation."""
         return (
             "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r,skip_signatures=%r)>"
         ) % (
@@ -110,6 +126,7 @@ class UScanSource(UpstreamSource):
         auto_fix: bool = False,
         skip_signatures: bool = False,
     ):
+        """From tree."""
         if top_level:
             file = "watch"
         else:
@@ -161,6 +178,7 @@ class UScanSource(UpstreamSource):
                 fix_watch_issues(updater)
 
     def get_latest_version(self, package, current_version):
+        """Get latest version."""
         with tempfile.TemporaryDirectory() as tmpdir:
             try:
                 watch_tempfilename = self._export_file("watch", tmpdir)
@@ -176,7 +194,7 @@ class UScanSource(UpstreamSource):
             ]
             if self.skip_signatures:
                 args.append("--skip-signature")
-            text, retcode = _run_dehs_uscan(args, cwd=tmpdir)
+            text, _retcode = _run_dehs_uscan(args, cwd=tmpdir)
             uversionmangle = None
             with open(watch_tempfilename) as f:
                 wf = parse_watch_file(f)
@@ -196,9 +214,11 @@ class UScanSource(UpstreamSource):
         return unmangled_new_version, uversionmangle(unmangled_new_version)
 
     def get_recent_versions(self, package, since_version=None):
+        """Get recent versions."""
         raise NotImplementedError(self.get_recent_versions)
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        """Fetch tarballs."""
         note("Using uscan to look for the upstream tarball.")
         with tempfile.TemporaryDirectory() as tmpdir:
             container = os.path.join(tmpdir, "container")
@@ -237,7 +257,7 @@ class UScanSource(UpstreamSource):
             ]
             if self.skip_signatures:
                 args.append("--skip-signature")
-            text, r = _run_dehs_uscan(args, cwd=container)
+            text, _r = _run_dehs_uscan(args, cwd=container)
             _xml_report_extract_errors(text)
             orig_files = _xml_report_extract_target_paths(text)
             if not orig_files:
@@ -253,7 +273,7 @@ class UScanSource(UpstreamSource):
                     raise UScanError(w)
                 raise PackageVersionNotPresent(package, version, self)
             _xml_report_print_warnings(text)
-            if all([os.path.exists(p) for p in orig_files]):
+            if all(os.path.exists(p) for p in orig_files):
                 pass
             else:
                 orig_files = [

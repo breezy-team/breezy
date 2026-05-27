@@ -26,22 +26,20 @@
 import os
 
 import breezy  # noqa: F401
-from ...commands import plugin_cmds
-from ...hooks import install_lazy_named_hook
+
 from ... import trace
-
-from .info import (  # noqa: F401
-    brz_plugin_version as version_info,
-)
-
+from ...commands import plugin_cmds
 from ...directory_service import (
     AliasDirectory,
     directories,
 )
-
+from ...hooks import install_lazy_named_hook
 from ...i18n import load_plugin_translations
-from ...tag import tag_sort_methods
 from ...revisionspec import revspec_registry
+from ...tag import tag_sort_methods
+from .info import (  # noqa: F401
+    brz_plugin_version as version_info,
+)
 
 translation = load_plugin_translations("brz-debian")
 gettext = translation.gettext
@@ -63,6 +61,7 @@ for command, aliases in commands.items():
 
 
 def global_conf():
+    """Global conf."""
     from ...bedding import config_dir
 
     return os.path.join(config_dir(), "builddeb.conf")
@@ -112,6 +111,7 @@ revspec_registry.register_lazy(
 
 
 def debian_changelog_commit_message(commit, start_message):
+    """Debian changelog commit message."""
     if start_message is not None:
         return start_message
     cl_path = "debian/changelog"
@@ -139,9 +139,10 @@ def debian_changelog_commit_message(commit, start_message):
 
 
 def debian_changelog_commit(commit, start_message):
-    """hooked into breezy.msgeditor set_commit_message.
+    """Hooked into breezy.msgeditor set_commit_message.
     Set the commit message from debian/changelog and set any LP: #1234 to bug
-    fixed tags."""
+    fixed tags.
+    """
     from .util import find_bugs_fixed
 
     changes = debian_changelog_commit_message(commit, start_message)
@@ -155,24 +156,26 @@ def debian_changelog_commit(commit, start_message):
 
 
 def changelog_merge_hook_factory(merger):
+    """Changelog merge hook factory."""
     from . import merge_changelog
 
     return merge_changelog.ChangeLogFileMerge(merger)
 
 
 def tree_debian_tag_name(tree, branch, subpath="", vendor=None):
+    """Tree debian tag name."""
     from .config import BUILD_TYPE_MERGE
     from .import_dsc import DistributionBranch, DistributionBranchSet
     from .util import (
+        MissingChangelogError,
         debuild_config,
         find_changelog,
-        MissingChangelogError,
         suite_to_distribution,
     )
 
     config = debuild_config(tree, subpath=subpath)
     try:
-        (changelog, top_level) = find_changelog(
+        (changelog, _top_level) = find_changelog(
             tree, subpath=subpath, merge=(config.build_type == BUILD_TYPE_MERGE)
         )
     except MissingChangelogError:
@@ -192,16 +195,18 @@ def tree_debian_tag_name(tree, branch, subpath="", vendor=None):
 
 
 def debian_tag_name(branch, revid):
+    """Debian tag name."""
     subpath = ""
     t = branch.repository.revision_tree(revid)
     return tree_debian_tag_name(t, branch, subpath, vendor=None)
 
 
 def pre_merge_fix_ancestry(merger):
-    from .config import BUILD_TYPE_NATIVE
-    from .util import debuild_config
-    from .merge_package import fix_ancestry_as_needed
+    """Pre merge fix ancestry."""
     from ...workingtree import WorkingTree
+    from .config import BUILD_TYPE_NATIVE
+    from .merge_package import fix_ancestry_as_needed
+    from .util import debuild_config
 
     if not isinstance(merger.this_tree, WorkingTree):
         return
@@ -268,5 +273,6 @@ install_lazy_named_hook(
 
 
 def load_tests(loader, basic_tests, pattern):
+    """Load tests."""
     basic_tests.addTest(loader.loadTestsFromModuleNames([__name__ + ".tests"]))
     return basic_tests

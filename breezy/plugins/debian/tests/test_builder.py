@@ -21,10 +21,9 @@
 import os
 
 from ....tests import TestCaseInTempDir
-
 from ..builder import (
-    DebBuild,
     BuildFailedError,
+    DebBuild,
     NoSourceDirError,
 )
 

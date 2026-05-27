@@ -18,23 +18,30 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from contextlib import ExitStack
-from datetime import date
+"""Upstream source backed by a VCS branch."""
+
 import os
 import re
 import subprocess
 import tempfile
-from typing import Optional, Iterable
+from collections.abc import Iterable
+from contextlib import ExitStack
+from datetime import date
 
 from debian.changelog import Version
 from debmutate.versions import (
-    git_snapshot_data_from_version,
-    get_snapshot_revision as _get_snapshot_revision,
     debianize_upstream_version,
+    git_snapshot_data_from_version,
+)
+from debmutate.versions import (
+    get_snapshot_revision as _get_snapshot_revision,
+)
+from debmutate.versions import (
     upstream_version_add_revision as _upstream_version_add_revision,
 )
 
 from .... import osutils
+
 try:
     from ....errors import GhostRevisionsHaveNoRevno
 except ImportError:
@@ -42,6 +49,7 @@ except ImportError:
 from ....branch import (
     Branch,
 )
+
 try:
     from ....errors import RevisionNotPresent
 except ImportError:
@@ -56,30 +64,29 @@ from ....errors import (
     UnsupportedOperation,
 )
 from ....memorybranch import MemoryBranch
-from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION, RevisionID
-from ....revisionspec import RevisionSpec
-from ....trace import note, mutter, warning
+from ....revisionspec import InvalidRevisionSpec, RevisionSpec
+from ....trace import mutter, note, warning
 from ....tree import Tree
-
-from ....revisionspec import InvalidRevisionSpec
-
+from ....workingtree import (
+    WorkingTree,
+)
+from .. import gettext
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
 )
-from .. import gettext
+from ..repack_tarball import get_filetype, repack_tarball
 from ..util import export_with_nested
 from . import (
-    UpstreamSource,
     PackageVersionNotPresent,
+    UpstreamSource,
     new_tarball_name,
-)
-from ....workingtree import (
-    WorkingTree,
 )
 
 
 class PreviousVersionTagMissing(BzrError):
+    """PreviousVersionTagMissing."""
+
     _fmt = (
         "Unable to find the tag for the "
         "previous upstream version (%(version)s) in the upstream branch: "
@@ -87,6 +94,7 @@ class PreviousVersionTagMissing(BzrError):
     )
 
     def __init__(self, version, tag_name):
+        """Initialize a previous version tag missing."""
         super().__init__(version=version, tag_name=tag_name)
 
 
@@ -115,7 +123,7 @@ def upstream_tag_to_version(tag_name, package=None):
         and tag_name[2].isdigit()
     ):
         tag_name = tag_name[2:]
-    if all([c.isdigit() or c in (".", "~", "_") for c in tag_name]):
+    if all(c.isdigit() or c in (".", "~", "_") for c in tag_name):
         return tag_name
     parts = tag_name.split(".")
     if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
@@ -147,7 +155,7 @@ def _upstream_branch_version(
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version, previous_version
-    last_upstream: Optional[tuple[Version, str, str]] = None
+    last_upstream: tuple[Version, str, str] | None = None
     try:
         for r in revhistory:
             if r in reverse_tag_dict:
@@ -239,7 +247,7 @@ def extract_svn_revno(rev):
         return None
     else:
         try:
-            (svn_uuid, branch_path, svn_revno) = extract_svn_foreign_revid(rev)
+            (_svn_uuid, _branch_path, svn_revno) = extract_svn_foreign_revid(rev)
         except InvalidRevisionId:
             return None
         else:
@@ -336,7 +344,7 @@ def upstream_branch_version(
     if previous_revision is not None:
         previous_revspec = RevisionSpec.from_string(previous_revision)
         try:
-            previous_revno, previous_revid = previous_revspec.in_history(
+            _previous_revno, previous_revid = previous_revspec.in_history(
                 upstream_branch
             )
         except InvalidRevisionSpec as e:
@@ -383,6 +391,7 @@ def get_export_upstream_revision(config=None, version=None):
 
 
 def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[str]:
+    """Guess upstream tag."""
     yield version
     if package:
         for prefix in ["rust-"]:
@@ -446,6 +455,7 @@ class UpstreamBranchSource(UpstreamSource):
         version_kind="auto",
         subpath=None,
     ):
+        """Initialize a upstream branch source."""
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
@@ -468,7 +478,7 @@ class UpstreamBranchSource(UpstreamSource):
         local_dir=None,
         create_dist=None,
         version_kind="auto",
-        subpath: Optional[str] = None,
+        subpath: str | None = None,
     ):
         """Create a new upstream branch source from a branch.
 
@@ -504,6 +514,7 @@ class UpstreamBranchSource(UpstreamSource):
     def version_as_revision(
         self, package, version, tarballs=None
     ) -> tuple[RevisionID, str]:
+        """Version as revision."""
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
         else:
@@ -531,17 +542,20 @@ class UpstreamBranchSource(UpstreamSource):
         raise PackageVersionNotPresent(package, version, self)
 
     def revision_tree(self, package, version):
+        """Revision tree."""
         revid, subpath = self.version_as_revision(package, version)
         return self.upstream_branch.repository.revision_tree(revid), subpath
 
     def version_as_revisions(self, package, version, tarballs=None):
         # FIXME: Support multiple upstream locations if there are multiple
         # components
+        """Version as revisions."""
         if tarballs is not None and tarballs.keys() != [None]:
             raise MultipleUpstreamTarballsNotSupported()
         return {None: self.version_as_revision(package, version, tarballs)}
 
     def has_version(self, package, version, tarballs=None):
+        """Has version."""
         try:
             self.version_as_revision(package, version, tarballs)
         except PackageVersionNotPresent:
@@ -550,6 +564,7 @@ class UpstreamBranchSource(UpstreamSource):
             return True
 
     def get_latest_snapshot_version(self, package, current_version):
+        """Get latest snapshot version."""
         revid = self.upstream_branch.last_revision()
         version, mangled_version = self.get_version(package, current_version, revid)
         if mangled_version is not None:
@@ -559,12 +574,14 @@ class UpstreamBranchSource(UpstreamSource):
         return version, mangled_version
 
     def get_latest_release_version(self, package, current_version):
+        """Get latest release version."""
         versions = list(self.get_recent_versions(package, current_version))
         if not versions:
             return None
         return versions[-1]
 
     def get_latest_version(self, package, current_version):
+        """Get latest version."""
         if self.version_kind == "snapshot":
             return self.get_latest_snapshot_version(package, current_version)
         elif self.version_kind == "release":
@@ -599,9 +616,8 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             raise ValueError(self.version_kind)
 
-    def get_recent_versions(
-        self, package: str, since_version: Optional[Version] = None
-    ):
+    def get_recent_versions(self, package: str, since_version: Version | None = None):
+        """Get recent versions."""
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
         with self.upstream_branch.repository.lock_read():
@@ -629,6 +645,7 @@ class UpstreamBranchSource(UpstreamSource):
         return sorted(versions, key=lambda v: Version(v[1]))
 
     def get_version(self, package, current_version, revision):
+        """Get version."""
         with self.upstream_branch.lock_read():
             return upstream_branch_version(
                 self.upstream_branch, revision, package, current_version
@@ -637,6 +654,7 @@ class UpstreamBranchSource(UpstreamSource):
     def fetch_tarballs(
         self, package: str, version, target_dir, components=None, revisions=None
     ):
+        """Fetch tarballs."""
         if components is not None and components != [None]:
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
@@ -690,6 +708,7 @@ class UpstreamBranchSource(UpstreamSource):
         return [target_filename]
 
     def __repr__(self):
+        """Return a string representation."""
         return "<{} for {!r}>".format(self.__class__.__name__, self._actual_branch.base)
 
 
@@ -706,6 +725,7 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         version_kind="auto",
         subpath=None,
     ):
+        """Initialize a lazy upstream branch source."""
         self.upstream_branch_url = upstream_branch_url
         self.version_kind = version_kind
         self._upstream_branch = None
@@ -722,6 +742,7 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 
     @property
     def upstream_branch(self):
+        """Upstream branch."""
         if self._upstream_branch is None:
             if callable(self.upstream_branch_url):
                 self.upstream_branch_url = self.upstream_branch_url()
@@ -729,13 +750,17 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         return self._upstream_branch
 
     def __repr__(self):
+        """Return a string representation."""
         return "<{} for {!r}>".format(self.__class__.__name__, self.upstream_branch_url)
 
 
 class DistCommandFailed(BzrError):
+    """DistCommandFailed."""
+
     _fmt = "Dist command failed to produce a tarball: %(error)s"
 
     def __init__(self, error, kind=None):
+        """Initialize a dist command failed."""
         super().__init__(error=error, kind=kind)
 
 
@@ -762,13 +787,15 @@ def _dupe_vcs_tree(tree, directory):
 
 def run_dist_command(
     rev_tree: Tree,
-    package: Optional[str],
+    package: str | None,
     version: Version,
     target_dir: str,
     dist_command: str,
     include_controldir: bool = False,
     subpath="",
 ) -> bool:
+    """Run dist command."""
+
     def _run_and_interpret(command, env, dir):
         try:
             subprocess.check_call(command, env=env, cwd=dir, shell=True)

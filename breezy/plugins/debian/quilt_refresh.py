@@ -19,34 +19,39 @@
 
 import os
 import re
-from typing import Optional
 
 from debmutate.changelog import ChangelogEditor
-from breezy.plugins.debian.changelog import debcommit
-from breezy.commit import PointlessCommit
-from breezy.tree import Tree
 
+from breezy.commit import PointlessCommit
+from breezy.plugins.debian.changelog import debcommit
 from breezy.plugins.quilt.quilt import (
     QuiltError,
     QuiltPatches,
 )
+from breezy.tree import Tree
 
 
 class QuiltPatchPushFailure(Exception):
+    """QuiltPatchPushFailure."""
+
     def __init__(self, patch_name, actual_error):
+        """Initialize a quilt patch push failure."""
         self.patch_name = patch_name
         self.actual_error = actual_error
 
 
 class QuiltPatchDoesNotApply(Exception):
+    """QuiltPatchDoesNotApply."""
+
     def __init__(self, patch_name, error_lines):
+        """Initialize a quilt patch does not apply."""
         self.patch_name = patch_name
         self.error_lines = error_lines
 
 
 def refresh_quilt_patches(
     local_tree: Tree,
-    committer: Optional[str] = None,
+    committer: str | None = None,
     subpath: str = "",
 ) -> None:
     # TODO(jelmer):
@@ -55,6 +60,7 @@ def refresh_quilt_patches(
     #   And then run 'gbp pqm export' or similar
     # If not:
     #   Refresh patches against the new upstream revision
+    """Refresh quilt patches."""
     patches = QuiltPatches(local_tree, os.path.join(subpath, "debian/patches"))
     patches.upgrade()
     for name in patches.unapplied():

@@ -15,42 +15,42 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from contextlib import ExitStack
+"""Move orphaned Debian packages to the QA maintainer."""
+
 import json
 import logging
 import os
 import sys
+from contextlib import ExitStack
 from urllib.parse import urlparse
-
-import breezy.bzr  # noqa: F401
-import breezy.git  # noqa: F401
-
-from breezy import osutils
-from breezy.branch import Branch
-from breezy.workingtree import WorkingTree
 
 from debmutate.changelog import ChangelogEditor
 from debmutate.control import ControlEditor
 from debmutate.deb822 import ChangeConflict
-from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
+from debmutate.reformatting import FormattingUnpreservable, GeneratedFile
 
-from breezy.plugins.debian.info import versions_dict
+import breezy.bzr
+import breezy.git  # noqa: F401
+from breezy import osutils
+from breezy.branch import Branch
 from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
-
+from breezy.plugins.debian.info import versions_dict
+from breezy.workingtree import WorkingTree
 
 BRANCH_NAME = "orphan"
 QA_MAINTAINER = "Debian QA Group <packages@qa.debian.org>"
 
 
 def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
-    from breezy import urlutils
-    from breezy.branch import Branch
-    from breezy.errors import PermissionDenied, AlreadyControlDirError
-    from breezy.plugins.gitlab.forge import GitLab
-    from breezy.forge import UnsupportedForge, get_forge, ForgeLoginRequired
-
+    """Push to salsa."""
     from silver_platter import pick_additional_colocated_branches
     from silver_platter.proposal import push_changes
+
+    from breezy import urlutils
+    from breezy.branch import Branch
+    from breezy.errors import AlreadyControlDirError, PermissionDenied
+    from breezy.forge import ForgeLoginRequired, UnsupportedForge, get_forge
+    from breezy.plugins.gitlab.forge import GitLab
 
     if dry_run:
         logging.info("Creating and pushing to salsa project %s/%s", user, name)
@@ -104,6 +104,8 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
 
 
 class OrphanResult:
+    """OrphanResult."""
+
     def __init__(
         self,
         package=None,
@@ -112,6 +114,7 @@ class OrphanResult:
         salsa_user=None,
         wnpp_bug=None,
     ):
+        """Initialize a orphan result."""
         self.package = package
         self.old_vcs_url = old_vcs_url
         self.new_vcs_url = new_vcs_url
@@ -120,6 +123,7 @@ class OrphanResult:
         self.wnpp_bug = wnpp_bug
 
     def json(self):
+        """Json."""
         return {
             "package": self.package,
             "old_vcs_url": self.old_vcs_url,
@@ -131,6 +135,7 @@ class OrphanResult:
 
 
 def connect_udd_mirror():
+    """Connect udd mirror."""
     import psycopg2
 
     return psycopg2.connect(
@@ -142,6 +147,7 @@ def connect_udd_mirror():
 
 
 def find_wnpp_bug(source):
+    """Find wnpp bug."""
     conn = connect_udd_mirror()
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM wnpp WHERE type = 'O' AND source = %s", (source,))
@@ -152,6 +158,7 @@ def find_wnpp_bug(source):
 
 
 def set_vcs_fields_to_salsa_user(control, salsa_user):
+    """Set vcs fields to salsa user."""
     old_vcs_url = control.source.get("Vcs-Git")
     control.source["Vcs-Git"] = "https://salsa.debian.org/{}/{}.git".format(
         salsa_user, control.source["Source"]
@@ -164,8 +171,9 @@ def set_vcs_fields_to_salsa_user(control, salsa_user):
 
 
 def set_maintainer_to_qa_team(control):
+    """Set maintainer to qa team."""
     if (
-        QA_MAINTAINER == control.source.get("Maintainer")
+        control.source.get("Maintainer") == QA_MAINTAINER
         and "Uploaders" not in control.source
     ):
         return False
@@ -181,6 +189,7 @@ class NoWnppBug(Exception):
     """No wnpp bug exists."""
 
     def __init__(self, package):
+        """Initialize a no wnpp bug."""
         self.package = package
 
 
@@ -203,18 +212,19 @@ def orphan(
     dry_run=False,
     check_wnpp=True,
 ) -> OrphanResult:
+    """Orphan."""
     control_path = local_tree.abspath(osutils.pathjoin(subpath, "debian/control"))
     changelog_entries = []
     with ExitStack() as es:
         try:
             control = es.enter_context(ControlEditor(path=control_path))
         except FileNotFoundError as e:
-            raise MissingControlFile(e.filename)
+            raise MissingControlFile(e.filename) from e
         if check_wnpp:
             try:
                 wnpp_bug = find_wnpp_bug(control.source["Source"])
             except KeyError:
-                raise NoWnppBug(control.source["Source"])
+                raise NoWnppBug(control.source["Source"]) from None
         else:
             wnpp_bug = None
         if set_maintainer_to_qa_team(control):
@@ -264,6 +274,7 @@ def orphan(
 
 
 def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
+    """Move instructions."""
     yield "Please move the repository from {} to {}.".format(old_vcs_url, new_vcs_url)
     if urlparse(old_vcs_url).hostname == "salsa.debian.org":
         path = urlparse(old_vcs_url).path
@@ -280,6 +291,7 @@ def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
 
 
 def report_fatal(code, description):
+    """Report fatal."""
     if os.environ.get("SVP_API") == "1":
         with open(os.environ["SVP_RESULT"], "w") as f:
             json.dump(
@@ -294,6 +306,7 @@ def report_fatal(code, description):
 
 
 def main(argv=None):
+    """Main."""
     import argparse
 
     parser = argparse.ArgumentParser(prog="deb-move-orphaned")

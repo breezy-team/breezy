@@ -17,24 +17,26 @@
 
 """Refresh packaging."""
 
-from email.utils import parseaddr
 import logging
 import os
-from typing import Optional
+from email.utils import parseaddr
 
 from debian.changelog import get_maintainer
 from debmutate.changelog import ChangelogEditor
+
 from breezy.plugins.debian.changelog import debcommit
 from breezy.tree import Tree
 
 
 def override_dh_autoreconf_add_arguments(basedir: str, args):
+    """Override dh autoreconf add arguments."""
     from debmutate._rules import update_rules
 
     # TODO(jelmer): Make sure dh-autoreconf is installed,
     # or debhelper version is >= 10
 
     def update_makefile(mf):
+        """Update makefile."""
         for rule in mf.iter_rules(b"override_dh_autoreconf"):
             command = rule.commands()[0].split(b" ")
             if command[0] != b"dh_autoreconf":
@@ -53,7 +55,7 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 
 def update_packaging(
-    tree: Tree, old_tree: Tree, subpath: str = "", committer: Optional[str] = None
+    tree: Tree, old_tree: Tree, subpath: str = "", committer: str | None = None
 ) -> list[str]:
     """Update packaging to take in changes between upstream trees.
 
@@ -99,12 +101,13 @@ def update_packaging(
 
 
 def main():
+    """Main."""
     import argparse
-    from breezy.workingtree import WorkingTree
-    from breezy.revisionspec import RevisionSpec
 
-    import breezy.bzr  # noqa: F401
+    import breezy.bzr
     import breezy.git  # noqa: F401
+    from breezy.revisionspec import RevisionSpec
+    from breezy.workingtree import WorkingTree
 
     parser = argparse.ArgumentParser("deb-update-packaging")
     parser.add_argument("--since", type=str, help="Revision since when to update")

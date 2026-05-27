@@ -18,17 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from .....merge import Merger
 import os
 import string
 
 from ..... import (
     errors,
 )
+from .....merge import Merger
 from .....tests import TestNotApplicable
 from ... import pre_merge_fix_ancestry
 from .. import BuilddebTestCase
-
 
 _Debian_changelog = """\
 ipsec-tools (%s) unstable; urgency=high
@@ -67,7 +66,7 @@ class TestMergePackageBB(BuilddebTestCase):
         The `SharedUpstreamConflictsWithTargetPackaging` exception is
         thrown instead.
         """
-        target, _source = self.make_conflicting_branches_setup()
+        _target, _source = self.make_conflicting_branches_setup()
         os.chdir("ubup-o")
         merge_source = "../debp-n"
         self.run_bzr_error(
@@ -84,7 +83,7 @@ class TestMergePackageBB(BuilddebTestCase):
         The `SharedUpstreamConflictsWithTargetPackaging` exception is
         thrown instead.
         """
-        target, _source = self.make_conflicting_branches_setup()
+        _target, _source = self.make_conflicting_branches_setup()
         os.chdir("ubup-o")
         merge_source = "../debp-n"
         try:
@@ -99,8 +98,7 @@ class TestMergePackageBB(BuilddebTestCase):
         )
 
     def make_conflicting_branches_setup(self):
-        r"""
-        Set up the following test configuration (debian upstream newer).
+        r"""Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \

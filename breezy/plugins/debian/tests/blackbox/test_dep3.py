@@ -21,9 +21,9 @@
 
 """Blackbox tests for "bzr dep3-patch"."""
 
-from .....tests.blackbox import ExternalBase
-
 import os
+
+from .....tests.blackbox import ExternalBase
 
 
 class TestDep3Patch(ExternalBase):
@@ -53,7 +53,7 @@ class TestDep3Patch(ExternalBase):
             authors=["Jelmer <jelmer@debian.org>"],
             rev_id=b"therevid",
         )
-        (out, err) = self.run_bzr("dep3-patch -d packaging feature")
+        (out, _err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertEqualDiff(
             out,
             "Description: A message\n"
@@ -79,14 +79,14 @@ class TestDep3Patch(ExternalBase):
             timezone=0,
             authors=["Jelmer <jelmer@debian.org>"],
         )
-        (out, err) = self.run_bzr("dep3-patch -d packaging feature")
+        (out, _err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Description: A message\n")
 
     def test_uses_config_description(self):
         config = self.feature_tree.branch.get_config()
         config.set_user_option("description", "What this does")
         self.feature_tree.commit(message="a message")
-        (out, err) = self.run_bzr("dep3-patch -d packaging feature")
+        (out, _err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Description: What this does\n")
 
     def test_upstream_branch(self):
@@ -96,7 +96,7 @@ class TestDep3Patch(ExternalBase):
                 "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
             )
         self.feature_tree.commit(message="a message")
-        (out, err) = self.run_bzr("dep3-patch -d packaging feature")
+        (out, _err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Applied-Upstream: no\n")
 
     def test_upstream_branch_disabled(self):
@@ -106,7 +106,9 @@ class TestDep3Patch(ExternalBase):
                 "[BUILDDEB]\nupstream-branch = %s\n" % self.upstream_tree.branch.base
             )
         self.feature_tree.commit(message="a message")
-        (out, err) = self.run_bzr("dep3-patch --no-upstream-check -d packaging feature")
+        (out, _err) = self.run_bzr(
+            "dep3-patch --no-upstream-check -d packaging feature"
+        )
         self.assertNotContainsRe(out, "Applied-Upstream")
 
     def test_range(self):
@@ -128,7 +130,7 @@ class TestDep3Patch(ExternalBase):
             authors=["Jelmer <jelmer@debian.org>"],
             rev_id=b"therevid",
         )
-        (out, err) = self.run_bzr("dep3-patch -c -1 -d packaging feature")
+        (out, _err) = self.run_bzr("dep3-patch -c -1 -d packaging feature")
         self.assertEqualDiff(
             out,
             "Description: A message\n"
@@ -155,5 +157,5 @@ class TestDep3Patch(ExternalBase):
             timezone=0,
             authors=["Jelmer <jelmer@debian.org>"],
         )
-        (out, err) = self.run_bzr("dep3-patch -d packaging feature -r-2..")
+        (out, _err) = self.run_bzr("dep3-patch -d packaging feature -r-2..")
         self.assertContainsRe(out, "Description: A message\n")

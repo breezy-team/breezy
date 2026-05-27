@@ -23,7 +23,6 @@ from debian.changelog import Changelog, Version
 from ....tests import (
     TestCaseWithTransport,
 )
-
 from ..merge_upstream import (
     changelog_add_new_version,
 )

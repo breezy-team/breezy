@@ -18,6 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+"""Hooks invoked at various stages of building a Debian package."""
+
 import subprocess
 
 from ...errors import BzrError
@@ -25,13 +27,17 @@ from ...trace import note
 
 
 class HookFailedError(BzrError):
+    """HookFailedError."""
+
     _fmt = 'The "%(hook_name)s" hook failed.'
 
     def __init__(self, hook_name):
+        """Initialize a hook failed error."""
         BzrError.__init__(self, hook_name=hook_name)
 
 
 def run_hook(tree, hook_name, config, wd="."):
+    """Run hook."""
     hook = config.get_hook(hook_name)
     if hook is None:
         return
