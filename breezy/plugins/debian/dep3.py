@@ -30,6 +30,7 @@ from ... import (
     diff,
     errors,
 )
+from ...revision import iter_bugs
 
 
 def write_dep3_bug_line(message, bug_url, status):
@@ -121,7 +122,7 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     for rev in repository.get_revisions(interesting_revision_ids):
         last_update = max(rev.timestamp, last_update)
         authors.update(rev.get_apparent_authors())
-        bugs.update(rev.iter_bugs())
+        bugs.update(iter_bugs(rev))
     if last_update == -0.0:
         last_update = None
     return (bugs, authors, last_update)
