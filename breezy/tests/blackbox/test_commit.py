@@ -822,14 +822,24 @@ altered in u2
         self.assertEqual("amended", new_rev.message)
 
     def test_amend_inherits_message(self):
+        if sys.platform == "win32":
+            self.skipTest("editor recording not implemented on Windows")
         tree = self.make_branch_and_tree("tree")
         self.build_tree(["tree/a"])
         tree.add("a")
         tree.commit("original message")
+        # Use an editor that leaves the pre-filled message untouched, then
+        # accept it via the "Commit message was not edited" confirmation.
+        with open("noop.sh", "wb") as f:
+            f.write(b"#!/bin/sh\n")
+        os.chmod("noop.sh", 0o755)  # noqa: S103
+        self.overrideEnv("BRZ_EDITOR", os.path.abspath("noop.sh"))
         self.build_tree_contents([("tree/a", b"changed\n")])
-        self.run_bzr(["commit", "--amend", "--unchanged"], working_dir="tree")
+        self.run_bzr(
+            ["commit", "--amend", "--unchanged"], working_dir="tree", stdin="y\n"
+        )
         new_rev = tree.branch.repository.get_revision(tree.last_revision())
-        self.assertEqual("original message", new_rev.message)
+        self.assertEqual("original message", new_rev.message.rstrip("\n"))
 
     def test_amend_inherits_author_and_time(self):
         tree = self.make_branch_and_tree("tree")
@@ -865,7 +875,7 @@ altered in u2
         self.run_bzr(["commit", "--amend", "-m", "amended", "tree"])
         new_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertIn("bugs", new_rev.properties)
-        self.assertIn("lp/42", new_rev.properties["bugs"])
+        self.assertIn("https://launchpad.net/bugs/42", new_rev.properties["bugs"])
 
     def test_amend_overrides_message(self):
         tree = self.make_branch_and_tree("tree")
