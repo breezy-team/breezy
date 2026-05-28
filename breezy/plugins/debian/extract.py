@@ -25,8 +25,12 @@ import os
 import subprocess
 import tempfile
 from contextlib import ExitStack
+from typing import TYPE_CHECKING
 
 from debian.changelog import Version
+
+if TYPE_CHECKING:
+    from debian.deb822 import Dsc
 
 from ... import osutils
 from ...trace import mutter
@@ -50,7 +54,7 @@ class SourceExtractor:
         self.extracted_debianised = None
         self.unextracted_debian_md5 = None
         self.apply_patches = apply_patches
-        self.upstream_tarballs = []
+        self.upstream_tarballs: list = []
         self.exit_stack = ExitStack()
 
     def extract(self):
@@ -243,13 +247,15 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         )
 
 
-SOURCE_EXTRACTORS = {}
+SOURCE_EXTRACTORS: dict[str, type[SourceExtractor]] = {}
 SOURCE_EXTRACTORS[FORMAT_1_0] = OneZeroSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
-def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
+def extract(
+    dsc_filename: str, dsc: "Dsc", *, apply_patches: bool = False
+) -> SourceExtractor:
     """Extract."""
     format = dsc.get("Format", FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)

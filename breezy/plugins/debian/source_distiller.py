@@ -27,7 +27,7 @@ import tempfile
 from debian.changelog import Changelog
 
 try:
-    from ...errors import NotADirectory
+    from ...errors import NotADirectory  # type: ignore[attr-defined]
 except ImportError:
     from dromedary.errors import NotADirectory
 try:

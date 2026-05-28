@@ -99,7 +99,7 @@ class UpstreamAlreadyImported(BzrError):
 
     _fmt = 'Upstream version "%(version)s" has already been imported (tag: %(tag)s).'
 
-    def __init__(self, version, tag):
+    def __init__(self, version, tag=None):
         """Initialize a upstream already imported."""
         BzrError.__init__(self, version=str(version), tag=tag)
 
@@ -108,6 +108,9 @@ class VersionAlreadyImported(BzrError):
     """VersionAlreadyImported."""
 
     _fmt = "Debian version %(version)s has already been imported."
+
+    version: str
+    tag_name: str
 
     def __init__(self, version, tag_name):
         """Initialize a version already imported."""
@@ -433,11 +436,11 @@ class DistributionBranch:
             else:
                 yield str(version)
         else:
-            version = mangle_version(self.branch, version)
-            yield str(version)
-            yield from ["debian-%s" % version, "debian/%s" % version]
-            yield from ["ubuntu-%s" % version, "ubuntu/%s" % version]
-            yield from ["v%s" % version]
+            mangled = mangle_version(self.branch, version)
+            yield str(mangled)
+            yield from ["debian-%s" % mangled, "debian/%s" % mangled]
+            yield from ["ubuntu-%s" % mangled, "ubuntu/%s" % mangled]
+            yield from ["v%s" % mangled]
 
     def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
@@ -451,7 +454,9 @@ class DistributionBranch:
             raise NoSuchTag(version)
         return self.branch.tags.lookup_tag(tag)
 
-    def tag_of_version(self, version: Version, vendor: str | None = None) -> RevisionID:
+    def tag_of_version(
+        self, version: Version, vendor: str | None = None
+    ) -> RevisionID | None:
         """Returns the revision id corresponding to that version.
 
         :param version: the Version object that you wish to retrieve the
@@ -1031,7 +1036,7 @@ class DistributionBranch:
         *,
         native: bool = False,
         timestamp=None,
-        file_ids_from: Tree | None = None,
+        file_ids_from: list[Tree] | None = None,
     ):
         """Import the debian part of a source package.
 
@@ -1237,7 +1242,7 @@ class DistributionBranch:
             ):
                 pull_branch = None
         if pull_branch is not None:
-            self.pull_version_from_branch(pull_branch, package, version)
+            return self.pull_version_from_branch(pull_branch, package, version)
         else:
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
@@ -1292,7 +1297,7 @@ class DistributionBranch:
 
     def get_native_parents(
         self, version: Version, versions: list[Version]
-    ) -> list[RevisionID]:
+    ) -> list[tuple[RevisionID, str]]:
         """Get native parents."""
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
@@ -1351,7 +1356,7 @@ class DistributionBranch:
         dsc_filename: str,
         *,
         use_time_from_changelog: bool = True,
-        file_ids_from: Tree | None = None,
+        file_ids_from: list[Tree] | None = None,
         pull_debian: bool = True,
         force_pristine_tar: bool = False,
         apply_patches: bool = False,

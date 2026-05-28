@@ -26,6 +26,7 @@ from debmutate.changelog import ChangelogEditor
 
 from breezy.plugins.debian.changelog import debcommit
 from breezy.tree import Tree
+from breezy.workingtree import WorkingTree
 
 
 def override_dh_autoreconf_add_arguments(basedir: str, args):
@@ -55,7 +56,10 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 
 def update_packaging(
-    tree: Tree, old_tree: Tree, subpath: str = "", committer: str | None = None
+    tree: WorkingTree,
+    old_tree: Tree,
+    subpath: str = "",
+    committer: str | None = None,
 ) -> list[str]:
     """Update packaging to take in changes between upstream trees.
 
@@ -64,8 +68,10 @@ def update_packaging(
       old_tree: Old tree
       committer: Optional committer to use for changes
     """
+    maintainer: tuple[str, str] | None
     if committer is None:
-        maintainer = get_maintainer()
+        name, email = get_maintainer()
+        maintainer = (name, email) if name is not None and email is not None else None
     else:
         maintainer = parseaddr(committer)
     notes = []
@@ -107,7 +113,6 @@ def main():
     import breezy.bzr
     import breezy.git  # noqa: F401
     from breezy.revisionspec import RevisionSpec
-    from breezy.workingtree import WorkingTree
 
     parser = argparse.ArgumentParser("deb-update-packaging")
     parser.add_argument("--since", type=str, help="Revision since when to update")

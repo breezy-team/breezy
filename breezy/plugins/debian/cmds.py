@@ -26,9 +26,10 @@
 import os
 import shutil
 import tempfile
+from typing import TYPE_CHECKING
 
 try:
-    from ...errors import NotLocalUrl
+    from ...errors import NotLocalUrl  # type: ignore[attr-defined]
 except ImportError:
     from dromedary.errors import NotLocalUrl
 try:
@@ -68,6 +69,9 @@ from .config import (
 from .util import (
     debuild_config,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 dont_purge_opt = Option(
     "dont-purge", help="Don't purge the build directory after building."
@@ -490,7 +494,8 @@ class cmd_builddeb(Command):
         strict_opt,
         package_merge_opt,
         guess_upstream_branch_url_opt,
-    ] + apt_repository_opts
+        *apt_repository_opts,
+    ]
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -1078,7 +1083,9 @@ class cmd_merge_upstream(Command):
                         net_access=True,
                         consult_external_directory=False,
                     )
-                    guessed_repo = guessed_upstream_metadata.get("Repository")
+                    guessed_repo = guessed_upstream_metadata.get(  # type: ignore[attr-defined]
+                        "Repository"
+                    )
                     if guessed_repo:
                         note(
                             "Opening upstream-ontologist provided branch %s",
@@ -1088,6 +1095,7 @@ class cmd_merge_upstream(Command):
                     else:
                         upstream_branch = None
 
+            create_dist: Callable | None = None
             if dist_command:
 
                 def create_dist(tree, package, version, target_dir, subpath=""):
@@ -1100,8 +1108,6 @@ class cmd_merge_upstream(Command):
                         dist_command,
                         subpath=subpath,
                     )
-            else:
-                create_dist = None
 
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource.from_branch(

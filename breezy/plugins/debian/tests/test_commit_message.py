@@ -45,7 +45,7 @@ LaunchpadConnectionFeature = _LaunchpadConnectionFeature()
 class CommitMessageTests(TestCaseWithTransport):
     class _Commit:
         class _Builder:
-            _revprops = {}
+            _revprops: dict[str, str] = {}
 
         def __init__(self, work_tree, exclude=None, specific_files=None):
             if specific_files is None:

@@ -22,6 +22,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterable
@@ -45,13 +46,15 @@ from .... import osutils
 try:
     from ....errors import GhostRevisionsHaveNoRevno
 except ImportError:
-    from vcsgraph.errors import GhostRevisionsHaveNoRevno
+    from vcsgraph.errors import (  # type: ignore[assignment]
+        GhostRevisionsHaveNoRevno,
+    )
 from ....branch import (
     Branch,
 )
 
 try:
-    from ....errors import RevisionNotPresent
+    from ....errors import RevisionNotPresent  # type: ignore[attr-defined]
 except ImportError:
     from bzrformats.errors import RevisionNotPresent
 
@@ -616,7 +619,7 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             raise ValueError(self.version_kind)
 
-    def get_recent_versions(self, package: str, since_version: Version | None = None):
+    def get_recent_versions(self, package: str, since_version: str | None = None):
         """Get recent versions."""
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
@@ -759,6 +762,9 @@ class DistCommandFailed(BzrError):
 
     _fmt = "Dist command failed to produce a tarball: %(error)s"
 
+    error: str
+    kind: str | None
+
     def __init__(self, error, kind=None):
         """Initialize a dist command failed."""
         super().__init__(error=error, kind=kind)
@@ -793,7 +799,7 @@ def run_dist_command(
     dist_command: str,
     include_controldir: bool = False,
     subpath="",
-) -> bool:
+) -> str | None:
     """Run dist command."""
 
     def _run_and_interpret(command, env, dir):
@@ -824,7 +830,7 @@ def run_dist_command(
         env = dict(os.environ.items())
         if package:
             env["PACKAGE"] = package
-        env["VERSION"] = version
+        env["VERSION"] = str(version)
         env["DIST_RESULT"] = os.path.join(td, "dist.json")
         note("Running dist command: %s", dist_command)
         if include_controldir:
@@ -841,7 +847,7 @@ def run_dist_command(
         except DistCommandFailed as e:
             # Retry with the control directory
             if e.kind == "vcs-control-directory-needed" and not include_controldir:
-                osutils.rmtree(package_dir)
+                shutil.rmtree(package_dir)
                 _dupe_vcs_tree(rev_tree, package_dir)
                 package_fullpath = os.path.join(package_dir, subpath)
                 existing_files = os.listdir(package_fullpath)
@@ -865,9 +871,9 @@ def run_dist_command(
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
             note("No tarballs found in dist directory.")
-        diff = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
-        if len(diff) == 1:
-            fn = diff.pop()
+        parent_diff = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
+        if len(parent_diff) == 1:
+            fn = parent_diff.pop()
             note("Found tarball %s in parent directory.", fn)
             os.rename(os.path.join(td, fn), os.path.join(target_dir, fn))
             return fn

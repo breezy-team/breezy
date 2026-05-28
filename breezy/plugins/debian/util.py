@@ -43,7 +43,7 @@ from debmutate.changelog import (
 from debmutate.versions import get_snapshot_revision
 
 try:
-    from ...errors import NotADirectory
+    from ...errors import NotADirectory  # type: ignore[attr-defined]
 except ImportError:
     from dromedary.errors import NotADirectory
 try:
@@ -781,7 +781,7 @@ def needs_strip_components(tf):
 
 
 def extract_orig_tarball(
-    tarball_filename, component, target, strip_components: bool | None = None
+    tarball_filename, component, target, strip_components: int | None = None
 ) -> None:
     """Extract an orig tarball.
 
@@ -856,6 +856,7 @@ def find_changes_files(
 ) -> Iterator[tuple[str, os.DirEntry]]:
     """Find changes files."""
     non_epoch_version = version.upstream_version
+    assert non_epoch_version is not None
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
     c = re.compile(

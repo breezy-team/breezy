@@ -17,7 +17,7 @@ from ...upstream_import import (
 try:
     from ...bzr import generate_ids
 except ImportError:
-    from bzrformats import generate_ids
+    from bzrformats import generate_ids  # type: ignore[no-redef]
 
 from ...errors import BzrError
 from ...osutils import (
@@ -29,7 +29,7 @@ from ...osutils import (
 )
 from ...trace import warning
 from ...transform import resolve_conflicts
-from ...tree import Tree
+from ...workingtree import WorkingTree
 
 
 class UnknownType(BzrError):
@@ -55,10 +55,11 @@ def should_ignore(relative_path: str) -> bool:
             return True
         if part.endswith(",v"):
             return True
+    return False
 
 
 def import_dir(
-    tree: Tree, dir: str, file_ids_from=None, target_tree=None, exclude=None
+    tree: WorkingTree, dir: str, file_ids_from=None, target_tree=None, exclude=None
 ):
     """Import dir."""
     dir_input = BytesIO(dir.encode("utf-8"))
@@ -74,7 +75,9 @@ def import_dir(
         )
 
 
-def _get_paths_to_process(archive_file: str, prefix, implied_parents, exclude=None):
+def _get_paths_to_process(
+    archive_file: DirWrapper, prefix, implied_parents, exclude=None
+):
     to_process = set()
     for member in archive_file.getmembers():
         if member.type == "g":
@@ -98,7 +101,11 @@ def _get_paths_to_process(archive_file: str, prefix, implied_parents, exclude=No
 
 
 def _import_archive(
-    tree: Tree, archive_file: str, file_ids_from, target_tree=None, exclude=None
+    tree: WorkingTree,
+    archive_file: DirWrapper,
+    file_ids_from,
+    target_tree=None,
+    exclude=None,
 ):
     prefix = common_directory(names_of_files(archive_file))
     with tree.transform() as tt:
@@ -111,7 +118,7 @@ def _import_archive(
             removed.add(path)
 
         added = set()
-        implied_parents = set()
+        implied_parents: set[str] = set()
         seen = set()
         to_process = _get_paths_to_process(
             archive_file, prefix, implied_parents, exclude=exclude

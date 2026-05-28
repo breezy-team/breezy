@@ -45,7 +45,6 @@ from breezy.revision import NULL_REVISION, RevisionID
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
 from breezy.transport import NoSuchFile
-from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 
 from .apt_repo import (
@@ -141,7 +140,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     except HTTPError as e:
         if e.status == 404:
             raise SnapshotMissing(package, version) from e
-        if e.status // 100 == 5:
+        if e.code // 100 == 5:
             transient = True
         else:
             transient = None
@@ -171,7 +170,7 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                     with urlopen(url) as g:  # noqa: S310
                         f.write(g.read())
                 except HTTPError as e:
-                    if e.status // 100 == 5:
+                    if e.code // 100 == 5:
                         transient = True
                     else:
                         transient = None
@@ -255,7 +254,9 @@ class UnreleasedChangesSinceTreeVersion(Exception):
         super().__init__("there are unreleased changes since %s" % tree_version)
 
 
-def find_missing_versions(archive_cl: Version, tree_version: Version) -> list[Version]:
+def find_missing_versions(
+    archive_cl: Changelog, tree_version: Version | None
+) -> list[Version]:
     """Find missing versions."""
     missing_versions: list[Version] = []
     for block in archive_cl:
@@ -306,7 +307,7 @@ def is_noop_upload(tree, basis_tree=None, subpath=""):
 
 
 def import_uncommitted(
-    tree: Tree,
+    tree: WorkingTree,
     subpath: str,
     apt: Apt,
     source_name: str,

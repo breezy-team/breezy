@@ -45,16 +45,20 @@ from breezy.git.remote import RemoteGitError
 from breezy.workingtree import WorkingTree
 
 try:
-    from breezy.transport import (
+    from breezy.transport import (  # type: ignore[attr-defined]
+        ConnectionError,
         FileExists,
         NoSuchFile,
+        PermissionDenied,
         UnsupportedProtocol,
         UnusableRedirect,
     )
 except ImportError:
     from dromedary.errors import (
+        ConnectionError,
         FileExists,
         NoSuchFile,
+        PermissionDenied,
         UnsupportedProtocol,
         UnusableRedirect,
     )
@@ -102,6 +106,7 @@ from .upstream import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     TarfileSource,
+    UpstreamSource,
 )
 from .upstream.branch import (
     DistCommandFailed,
@@ -384,9 +389,9 @@ def _convert_exception(url: str, e: Exception) -> BranchOpenError | None:
         return BranchOpenError(url, "Branch does not exist: %s" % e)
     if isinstance(e, UnsupportedProtocol):
         return BranchOpenError(url, str(e))
-    if isinstance(e, errors.ConnectionError):
+    if isinstance(e, ConnectionError):
         return BranchOpenError(url, str(e))
-    if isinstance(e, errors.PermissionDenied):
+    if isinstance(e, PermissionDenied):
         return BranchOpenError(url, str(e))
     if isinstance(e, errors.InvalidHttpResponse):
         if "Unexpected HTTP status 429" in str(e):
@@ -493,6 +498,7 @@ def find_new_upstream(
         upstream_branch = None
         upstream_subpath = None
 
+    upstream_branch_source: UpstreamBranchSource | None
     if upstream_branch is not None:
         try:
             upstream_branch_source = UpstreamBranchSource.from_branch(
@@ -510,6 +516,7 @@ def find_new_upstream(
     else:
         upstream_branch_source = None
 
+    primary_upstream_source: UpstreamSource
     if location is not None:
         try:
             branch = open_branch(location)
@@ -846,7 +853,7 @@ class MergeUpstreamResult:
 
 
 def merge_upstream(
-    tree: Tree,
+    tree: WorkingTree,
     version_kind: str = "release",
     location: str | None = None,
     new_upstream_version: str | None = None,
@@ -1062,10 +1069,8 @@ def merge_upstream(
         ) as cl:
             if debian_revision is None:
                 debian_revision = initial_debian_revision(distribution_name)
-            new_version = str(
-                new_upstream_package_version(
-                    new_upstream_version, debian_revision, cl[0].version.epoch
-                )
+            new_version = new_upstream_package_version(
+                new_upstream_version, debian_revision, cl[0].version.epoch
             )
             if not update_changelog:
                 # We need to run "gbp dch" here, since the next "gbp dch" runs

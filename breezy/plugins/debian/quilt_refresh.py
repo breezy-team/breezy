@@ -28,7 +28,7 @@ from breezy.plugins.quilt.quilt import (
     QuiltError,
     QuiltPatches,
 )
-from breezy.tree import Tree
+from breezy.workingtree import WorkingTree
 
 
 class QuiltPatchPushFailure(Exception):
@@ -50,7 +50,7 @@ class QuiltPatchDoesNotApply(Exception):
 
 
 def refresh_quilt_patches(
-    local_tree: Tree,
+    local_tree: WorkingTree,
     committer: str | None = None,
     subpath: str = "",
 ) -> None:

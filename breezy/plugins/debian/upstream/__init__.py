@@ -49,6 +49,10 @@ class PackageVersionNotPresent(BzrError):
 
     _fmt = "%(package)s %(version)s was not found in %(upstream)s."
 
+    package: str
+    version: str
+    upstream: object
+
     def __init__(self, package, version, upstream):
         """Initialize a package version not present."""
         BzrError.__init__(self, package=package, version=version, upstream=upstream)

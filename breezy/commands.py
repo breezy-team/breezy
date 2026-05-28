@@ -36,6 +36,7 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
+from collections.abc import Sequence
 
 from . import i18n, option, trace
 from .lazy_import import lazy_import
@@ -522,7 +523,7 @@ class Command:
 
     aliases: list[str] = []
     takes_args: list[str] = []
-    takes_options: list[str | option.Option] = []
+    takes_options: Sequence[str | option.Option] = []
     encoding_type: str = "strict"
     invoked_as: str | None = None
     l10n: bool = True
