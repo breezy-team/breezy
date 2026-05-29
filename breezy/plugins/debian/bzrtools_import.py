@@ -6,18 +6,7 @@
 from contextlib import ExitStack
 from io import BytesIO
 
-from ...upstream_import import (
-    DirWrapper,
-    add_implied_parents,
-    common_directory,
-    do_directory,
-    names_of_files,
-)
-
-try:
-    from ...bzr import generate_ids
-except ImportError:
-    from bzrformats import generate_ids  # type: ignore[no-redef]
+from bzrformats import generate_ids
 
 from ...errors import BzrError
 from ...osutils import (
@@ -29,6 +18,13 @@ from ...osutils import (
 )
 from ...trace import warning
 from ...transform import resolve_conflicts
+from ...upstream_import import (
+    DirWrapper,
+    add_implied_parents,
+    common_directory,
+    do_directory,
+    names_of_files,
+)
 from ...workingtree import WorkingTree
 
 
