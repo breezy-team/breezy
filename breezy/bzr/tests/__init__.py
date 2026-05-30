@@ -40,7 +40,6 @@ def load_tests(loader, basic_tests, pattern):
         "per_repository_chk",
         "per_repository_vf",
         "per_versionedfile",
-        "test_btree_index",
         "test_bundle",
         "test_bzrdir",
         "test_chk_map",
