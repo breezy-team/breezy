@@ -65,16 +65,26 @@ class _DpkgMergeChangelogsFeature(Feature):
     """A working ``dpkg-mergechangelogs``.
 
     The executable may be present but non-functional (e.g. missing its Perl
-    Dpkg modules on non-Debian platforms), so probe by actually running it on
-    an empty merge rather than only checking that it exists.
+    Dpkg modules on non-Debian platforms), so probe by actually merging a real
+    changelog rather than only checking that it exists. Empty input is not
+    enough: an installation without the Dpkg Perl modules exits successfully on
+    empty files but fails as soon as it has to parse an actual changelog entry.
     """
+
+    _sample = b"""\
+sample (1.0-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- J. Maintainer <maint@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
+"""
 
     def _probe(self):
         with tempfile.TemporaryDirectory("deb_changelog_merge") as tmpdir:
             paths = [os.path.join(tmpdir, name) for name in ("base", "this", "other")]
             for path in paths:
-                with open(path, "wb"):
-                    pass
+                with open(path, "wb") as f:
+                    f.write(self._sample)
             try:
                 exitcode = subprocess.call(
                     ["dpkg-mergechangelogs", *paths],  # noqa: S607

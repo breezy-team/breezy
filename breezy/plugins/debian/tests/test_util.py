@@ -701,6 +701,8 @@ class MockLaunchpad:
 
 
 class FindPreviousUploadTests(TestCase):
+    _test_needs_features = [DistroInfoFeature]
+
     def make_changelog(self, versions_and_distributions):
         cl = Changelog()
         changes = ["  [ A. Hacker ]", "  * Something"]
@@ -729,7 +731,6 @@ class FindPreviousUploadTests(TestCase):
         cl = self.make_changelog(
             [("0.1-1", "lucid"), ("0.1-1.1", "unstable"), ("0.1-2", "maverick")]
         )
-        self.requireFeature(DistroInfoFeature)
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu_pocket(self):
